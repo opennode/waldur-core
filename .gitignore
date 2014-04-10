@@ -1,0 +1,6 @@
+/dist
+/venv
+*.egg-info
+*.pyc
+db.sqlite3
+
