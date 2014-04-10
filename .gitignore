@@ -4,3 +4,5 @@
 *.pyc
 db.sqlite3
 
+nodeconductor/server/settings.py
+
