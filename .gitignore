@@ -1,0 +1,9 @@
+/dist
+/build
+/venv
+*.egg-info
+*.pyc
+db.sqlite3
+
+nodeconductor/server/settings.py
+
