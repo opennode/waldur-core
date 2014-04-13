@@ -5,5 +5,5 @@ from nodeconductor.vm.views import VmList
 
 urlpatterns = patterns(
     '',
-    url(r'^vms/$', VmList.as_view(), name='vm-list'),  # XXX: Should namespaces be used?
+    url(r'^vms/$', VmList.as_view(), name='vm-list'),
 )

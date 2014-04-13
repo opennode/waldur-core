@@ -23,7 +23,7 @@ setup(
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://code.opennodecloud.com/nodeconductor/nodeconductor',
-    description='Deployment Manager.',
+    description='Node Conductor.',
     long_description=open('README.rst').read(),
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     install_requires=install_requires,
