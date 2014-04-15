@@ -35,6 +35,7 @@ setup(
         'console_scripts': ('nodeconductor = nodeconductor.server.logan_runner:main',)
     },
     tests_require=tests_requires,
+    test_suite='nodeconductor.server.test_runner.run_tests',
     include_package_data=True,
     classifiers=[
         'Framework :: Django',
