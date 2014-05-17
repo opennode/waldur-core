@@ -19,56 +19,25 @@
     <link href="{{ STATIC_URL }}css/pages/plans.css" rel="stylesheet">
     <link href="{{ STATIC_URL }}css/pages/pricing.css" rel="stylesheet">
 
-
 </head>
 
 <body>
+    {% include "navbar.html" %}
 
-<nav class="navbar navbar-inverse" role="navigation">
+    {% if user.is_authenticated %}
+        {% include "subnavbar.html" %}
+    {% endif %}
 
-    <div class="container">
-  <!-- Brand and toggle get grouped for better mobile display -->
-  <div class="navbar-header">
-    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
-      <span class="sr-only">Toggle navigation</span>
-      <span class="icon-bar"></span>
-      <span class="icon-bar"></span>
-      <span class="icon-bar"></span>
-    </button>
-    <a class="navbar-brand" href="/index.html">NodeConductor</a>
-  </div>
+    {% block content %}
+    {% endblock %}
 
-  <!-- Collect the nav links, forms, and other content for toggling -->
-  <div class="collapse navbar-collapse navbar-ex1-collapse">
-    <ul class="nav navbar-nav navbar-right">
-      <li class="">
-            <a href="/signup.html">
-                Create an Account
-            </a>
-        </li>
+    {% include "footer.html" %}
 
-        <li class="">
-
-            <a href="#">
-                <i class="icon-chevron-left"></i>&nbsp;&nbsp;
-                Back to Homepage
-            </a>
-
-        </li>
-    </ul>
-  </div><!-- /.navbar-collapse -->
-</div> <!-- /.container -->
-</nav>
-
-{% block content %}
-{% endblock %}
-
-
-<script src="{{ STATIC_URL }}js/libs/jquery-1.9.1.min.js"></script>
-<script src="{{ STATIC_URL }}js/libs/jquery-ui-1.10.0.custom.min.js"></script>
-<script src="{{ STATIC_URL }}js/libs/bootstrap.min.js"></script>
-<script src="{{ STATIC_URL }}js/Application.js"></script>
-<script src="{{ STATIC_URL }}js/demo/signin.js"></script>
+    <script src="{{ STATIC_URL }}js/libs/jquery-1.9.1.min.js"></script>
+    <script src="{{ STATIC_URL }}js/libs/jquery-ui-1.10.0.custom.min.js"></script>
+    <script src="{{ STATIC_URL }}js/libs/bootstrap.min.js"></script>
+    <script src="{{ STATIC_URL }}js/Application.js"></script>
+    <script src="{{ STATIC_URL }}js/demo/signin.js"></script>
 
 </body>
 </html>
