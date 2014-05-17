@@ -25,6 +25,8 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
+STATIC_ROOT = %{static_root}s
+
 """
 
 
@@ -39,6 +41,7 @@ def generate_settings():
 
     return CONFIG_TEMPLATE % {
         'secret_key': base64.b64encode(os.urandom(32)),
+        'static_root': os.path.join(os.getcwd(), 'static_files')
     }
 
 
