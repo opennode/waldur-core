@@ -1,5 +1,5 @@
-Deployment Manager
-==================
+NodeConductor
+=============
 
 Requirements
 ------------
