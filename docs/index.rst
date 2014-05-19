@@ -13,8 +13,8 @@ with potentially different lifecycles, maintaining a single set of configuration
 restrictive. Moreover, we don't want to depend on upstream as it might be down, decide to introduce destructive
 changes or do something equally evil. 
 
-NodeConductor aims at solcing this issue by providing a system for management of the shared
-configuration formulas.
+NodeConductor aims at solving this issue by providing a system for management of the shared
+configuration formulas. In addition, NodeConductor backend enforce the configuration after a command.
 
 Main concepts
 -------------
