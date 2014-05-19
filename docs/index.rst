@@ -24,7 +24,10 @@ Main concepts
 
 Template
   A configuration management formula. Contains a state description and a set of example variables.
-  
+
+Host
+  A virtual or physical machine where application is running. 
+
 Application
   Instantiated and deployment specific instance of the template.
 
@@ -37,6 +40,7 @@ Configuration repository structure
 
 - Template - central store shared by all environments.
 - Application instance - forked repository of a formula.
+- Orchestration - an 'overstate' binding together hosts and applications.
 - Environment - a group containing Application instance repositories.
 
 Connections
@@ -45,8 +49,6 @@ Connections
 
 .. toctree::
    :maxdepth: 2
-
-
 
 
 Indices and tables
