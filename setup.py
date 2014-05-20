@@ -4,6 +4,7 @@ from setuptools import setup, find_packages
 
 
 dev_requires = [
+    'Sphinx==1.2.2'
 ]
 
 tests_requires = [

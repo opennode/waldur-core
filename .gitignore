@@ -11,3 +11,5 @@ nodeconductor/server/settings.py
 
 TEST-*.xml
 
+# documentation
+docs/_build/
