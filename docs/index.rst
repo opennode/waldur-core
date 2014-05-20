@@ -14,7 +14,7 @@ restrictive. Moreover, we don't want to depend on upstream as it might be down, 
 changes or do something equally evil. 
 
 NodeConductor aims at solving this issue by providing a system for management of the shared
-configuration formulas. In addition, NodeConductor backend enforce the configuration after a command.
+configuration formulas. In addition, NodeConductor backend (e.g. SaltStack) enforces the configuration upon request.
 
 Main concepts
 -------------
@@ -86,4 +86,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
