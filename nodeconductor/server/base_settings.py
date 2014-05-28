@@ -24,7 +24,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django.contrib.admin',
 
-    'nodeconductor.base',
+    'nc-admin.base',
     'nodeconductor.vm',
 
     'rest_framework',
