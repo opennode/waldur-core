@@ -27,6 +27,11 @@ Development Environment Setup
     $ venv/bin/nodeconductor init /path/to/settings.py
     $ vi /path/to/settings.py
 
+5. Initialise database::
+
+    $ venv/bin/nodeconductor sync
+    $ venv/bin/nodeconductor migrate
+
 Development Guidelines
 ----------------------
 
