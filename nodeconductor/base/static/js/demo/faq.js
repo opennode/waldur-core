@@ -1,5 +1,0 @@
-$(function () {
-	
-	$('.faq-list').goFaq ();
-
-});
