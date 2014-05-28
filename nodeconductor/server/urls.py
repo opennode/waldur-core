@@ -6,13 +6,16 @@ from django.conf.urls import url
 from django.contrib import admin
 
 
-
 urlpatterns = patterns(
     '',
-    url(r'^', include('nodeconductor.base.urls')),
     url(r'^vm/', include('nodeconductor.vm.urls')),
     url(r'^admin/', include(admin.site.urls), name='admin'),
 )
+
+if 'nc_admin.base' in settings.INSTALLED_APPS:
+    urlpatterns += patterns(
+        '',
+        url(r'^', include('nc_admin.base.urls')))
 
 if settings.DEBUG:
     (r'^%{static_url}/(?P<path>.*)$'.format(static_url=settings.STATIC_URL),
