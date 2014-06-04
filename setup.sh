@@ -3,7 +3,7 @@
 set -e
 
 if [ $# -lt 1 ]; then
-	echo "Usage: $(basename $0) /path/to/settings.py"
+	echo "Usage: $(basename $0) /path/to/settings.py [ /path/to/nc-admin ]"
 	echo ""
 	echo "/path/to/settings.py is Django settings file that will be created."
 	exit 1
@@ -11,14 +11,33 @@ fi
 
 export NODECONDUCTOR_CONF="$1"
 
-python setup.py develop
-nodeconductor init "$NODECONDUCTOR_CONF"
-nodeconductor syncdb --noinput
-nodeconductor migrate
-nodeconductor collectstatic --noinput
+# Initialize virtualenv
+[ -d "venv" ] || virtualenv venv
+
+# Build and configure nodeconductor
+venv/bin/python setup.py develop
+
+[ -f "$NODECONDUCTOR_CONF" ] && mv "$NODECONDUCTOR_CONF" "$NODECONDUCTOR_CONF.bak"
+venv/bin/nodeconductor init "$NODECONDUCTOR_CONF"
 
 echo "# Modifications made by installer script" >> "$NODECONDUCTOR_CONF"
-echo "ALLOWED_HOSTS += []" >> "$NODECONDUCTOR_CONF"
+echo "ALLOWED_HOSTS += ['*']" >> "$NODECONDUCTOR_CONF"
+
+# Build and configure nc-admin
+if [ $# -gt 1 ]; then
+	NC_ADMIN_DIR="$2"
+
+	venv/bin/python "$NC_ADMIN_DIR/setup.py" develop
+
+	[ -e nc_admin ] || ln -s "$NC_ADMIN_DIR/nc_admin"
+
+	echo "INSTALLED_APPS += ('nc_admin.base',)" >> "$NODECONDUCTOR_CONF"
+fi
+
+# Prepare database and collect static files
+venv/bin/nodeconductor syncdb --noinput
+venv/bin/nodeconductor migrate
+venv/bin/nodeconductor collectstatic --noinput
 
 echo "All done."
 echo ""
