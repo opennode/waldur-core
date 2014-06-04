@@ -5,7 +5,8 @@ set -e
 if [ $# -lt 1 ]; then
 	echo "Usage: $(basename $0) /path/to/settings.py [ /path/to/nc-admin ]"
 	echo ""
-	echo "/path/to/settings.py is Django settings file that will be created."
+	echo "/path/to/settings.py -- Django settings file that will be created"
+	echo "/path/to/nc-admin -- nc-admin distribution (cloned Git repository)"
 	exit 1
 fi
 
