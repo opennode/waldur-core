@@ -27,6 +27,7 @@ INSTALLED_APPS = (
 
     'rest_framework',
     'south',
+    'background_task'
 )
 
 MIDDLEWARE_CLASSES = (
