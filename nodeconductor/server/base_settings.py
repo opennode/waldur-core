@@ -24,6 +24,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
 
     'nodeconductor.vm',
+    'nodeconductor.structure',
 
     'rest_framework',
     'south',
