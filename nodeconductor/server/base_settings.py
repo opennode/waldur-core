@@ -25,10 +25,12 @@ INSTALLED_APPS = (
 
     'nodeconductor.vm',
     'nodeconductor.structure',
+    'nodeconductor.account',
 
     'rest_framework',
     'south',
-    'background_task'
+    'background_task',
+    'django_sshkey'
 )
 
 MIDDLEWARE_CLASSES = (
