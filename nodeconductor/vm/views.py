@@ -22,6 +22,8 @@ class VmList(APIView):
         serializer = VmSerializer(data=request.DATA)
         if serializer.is_valid():
             vms.append(serializer.object)
+#            serializer.object.create()  # calls a state transition function, that enques a task
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
