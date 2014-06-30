@@ -37,5 +37,5 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 
 %changelog
-* Thu Jun 30 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-1
+* Mon Jun 30 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-1
 - Initial version of the pacakge
