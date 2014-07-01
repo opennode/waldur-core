@@ -7,6 +7,10 @@ db.sqlite3
 
 nodeconductor/server/settings.py
 
+# Editor artifacts
+# vim
+*.sw*
+
 # Testing artifacts
 
 TEST-*.xml
