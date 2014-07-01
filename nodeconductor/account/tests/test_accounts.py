@@ -1,30 +1,28 @@
 from django.test import TestCase
 
-from nodeconductor.server.test_settings import *
+from django.conf import settings
 from nodeconductor.account.models import NodeUser
-
-# Create your tests here.
 
 
 class NodeUserTest(TestCase):
-    def NodeUserCreationTest(self):
+    def test_node_user_successful_creation(self):
         """
         Creates a user with name, email and password set.
         """
-        NodeUser.create_user('test', 'test@nodeconductor.com', 'asdf')
-        self.assertTrue(NodeUser.objects.filter(name=="test").exists())
+        NodeUser.objects.create_user('test', 'test@nodeconductor.com', 'asdf')
+        self.assertTrue(NodeUser.objects.filter(username="test").exists())
 
 
-    def NodeUserCreationFailureTest(self):
+    def test_node_user_missing_inputs(self):
         """
-        Creates a user with email and password set, missing name.
+        Creates a user with email and password set, missing username.
         This is expected to fail.
         """
-        NodeUser.create_user('', 'test@nodeconductor.com', 'asdf')
-        self.assertFalse(NodeUser.objects.filter(email=="test@nodeconductor.com").exists())
+        with self.assertRaises(ValueError):
+                NodeUser.objects.create_user('', 'test@nodeconductor.com', 'asdf')
 
-    def NodeUserDeleteTest(self):
-        NodeUser.create_user('test', 'test@nodeconductor.com', 'asdf')
-        self.assertTrue(NodeUser.objects.filter(name=="test").exists())
-        NodeUser.objects.get(name=="test").delete()
-        self.assertFalse(NodeUser.objects.filter(name=="test").exists())
+    def test_node_user_delete(self):
+        NodeUser.objects.create_user('test', 'test@nodeconductor.com', 'asdf')
+        self.assertTrue(NodeUser.objects.filter(username="test").exists())
+        NodeUser.objects.get(username="test").delete()
+        self.assertFalse(NodeUser.objects.filter(username="test").exists())
