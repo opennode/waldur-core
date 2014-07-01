@@ -25,7 +25,6 @@ INSTALLED_APPS = (
 
     'nodeconductor.vm',
     'nodeconductor.structure',
-    'nodeconductor.account',
 
     'rest_framework',
     'south',
