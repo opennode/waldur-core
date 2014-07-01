@@ -2,23 +2,19 @@
 
 from setuptools import setup, find_packages
 
+# Currently, a bug in setuptools prevents dependencies from being installed
+# into site-packages/foo/ when zip_safe=False.
+# Instead, they'll be installed ass .egg zip files. This breaks Django
+# migrations.  So, base requirements have to be installed before `python
+# setup.py develop` can be executed.
 
-dev_requires = [
-    'Sphinx==1.2.2'
-]
-
-tests_requires = [
-]
-
-install_requires = [
-    'Django>=1.6.2,<1.7',
-    'djangorestframework>=2.3.12,<2.4.0',
-    'South==0.8.4',
-    'logan==0.5.9.1',
-    'django-background-task==0.1.6',
-    'django-sshkey>=2.2.0'
-]
-
+from pip.req import parse_requirements
+#install_requirements = parse_requirements("./requirements.txt")
+#install_requires = [str(ir.req) for ir in install_requirements]
+dev_requirements = parse_requirements("./dev_requirements.txt")
+dev_requires = [str(ir.req) for ir in dev_requirements]
+tests_requirements = parse_requirements("./tests_requirements.txt")
+tests_requires = [str(ir.req) for ir in tests_requirements]
 
 setup(
     name='nodeconductor',
@@ -29,7 +25,7 @@ setup(
     description='Node Conductor.',
     long_description=open('README.rst').read(),
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
-    install_requires=install_requires,
+    #install_requires=install_requires,
     extras_require={
         'tests': tests_requires,
         'dev': dev_requires,
