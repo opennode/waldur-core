@@ -14,6 +14,12 @@ def run_tests():
     test_runner_class = get_runner(settings)
 
     try:
+        from south.management.commands import patch_for_test_db_setup
+        patch_for_test_db_setup()
+    except ImportError:
+        pass
+
+    try:
         import xmlrunner
 
         class XMLTestRunner(test_runner_class):
@@ -40,4 +46,4 @@ def run_tests():
 
 
 if __name__ == '__main__':
-    runtests()
+    run_tests()
