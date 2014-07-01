@@ -1,3 +1,0 @@
-unittest-xml-reporting==1.7.0
-Sphinx==1.2.2
-ipython==2.1.0

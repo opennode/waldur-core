@@ -20,7 +20,6 @@ Development Environment Setup
 
 3. Install nodeconductor in development mode along with dependencies::
 
-    $ venv/bin/pip install -r requirements.txt
     $ venv/bin/python setup.py develop
 
 4. Create settings file::
