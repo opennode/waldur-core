@@ -54,6 +54,6 @@ class Segment(models.Model):
     class Meta:
         unique_together = ('vlan', 'project')
     ip = models.GenericIPAddressField(primary_key=True)
-    cidr = models.PositiveIntegerField(null=False)
+    netmask = models.PositiveIntegerField(null=False)
     vlan = models.PositiveIntegerField(null=False)
     project = models.ForeignKey(Project, related_name='segments')

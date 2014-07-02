@@ -12,7 +12,7 @@ class NetworkTest(TestCase):
         org = Organisation.objects.create(name='test_org', abbreviation='to',
                                           manager=mgr)
         prj = Project.objects.create(name='test_proj', organisation=org)
-        seg = Segment.objects.create(ip='192.168.0.0', cidr=24, vlan=1, project=prj)
+        seg = Segment.objects.create(ip='192.168.0.0', netmask=24, vlan=1, project=prj)
 
     def test_segment_vlan_conflict(self):
         mgr = User.objects.create_user(username='foo', email='baz@bar.com',
@@ -20,8 +20,8 @@ class NetworkTest(TestCase):
         org = Organisation.objects.create(name='test_org', abbreviation='to',
                                           manager=mgr)
         prj = Project.objects.create(name='test_proj', organisation=org)
-        seg = Segment.objects.create(ip='192.168.0.0', cidr=24, vlan=1, project=prj)
+        seg = Segment.objects.create(ip='192.168.0.0', netmask=24, vlan=1, project=prj)
         with self.assertRaises(IntegrityError):
             seg = Segment.objects.create(ip='192.168.1.0',
-                                         cidr=24, vlan=1,
+                                         netmask=24, vlan=1,
                                          project=prj)
