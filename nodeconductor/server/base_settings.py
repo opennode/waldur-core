@@ -21,10 +21,12 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.admin',
 
     'nodeconductor.vm',
     'nodeconductor.structure',
+
+    # Template overrides need to happen before admin is imported.
+    'django.contrib.admin',
 
     'rest_framework',
     'south',
