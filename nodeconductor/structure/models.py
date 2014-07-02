@@ -50,7 +50,7 @@ class Environment(models.Model):
             }
 
 
-class Segment(models.Model):
+class NetworkSegment(models.Model):
     class Meta:
         unique_together = ('vlan', 'project')
     ip = models.GenericIPAddressField(primary_key=True)
