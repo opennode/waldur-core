@@ -48,3 +48,12 @@ class Environment(models.Model):
                 'env': self.ENVIRONMENT_CHOICES[self.kind],
                 'project': self.project
             }
+
+
+class Segment(models.Model):
+    class Meta:
+        unique_together = ('vlan', 'projekt')
+    ip = models.GenericIPAddressField(primary_key=True)
+    netmask = models.GenericIPAddressField(null=True)
+    vlan = models.PositiveIntegerField()
+    projekt = models.ForeignKey(Project, related_name='segments')
