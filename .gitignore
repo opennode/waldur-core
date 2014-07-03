@@ -5,6 +5,11 @@
 *.pyc
 db.sqlite3
 
+/.idea
+/.project
+/.pydevproject
+/.settings
+
 nodeconductor/server/settings.py
 
 # Editor artifacts
