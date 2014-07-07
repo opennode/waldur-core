@@ -66,12 +66,13 @@ class Instance(models.Model):
     Depending on a cloud the instance is deployed to
     it can be either a fully virtualized instance, or a container.
     """
-    class Statuses(object):
-        CREATING = 'c'
-        RUNNING = 'r'
+    class States(object):
+        DEFINED = 'd'
+        PROVISIONING = 'p'
+        STARTED = 'r'
         STOPPED = 's'
-        ERROR = 'e'
-        DELETED = 'd'
+        ERRED = 'e'
+        DELETED = 'x'
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, editable=False, related_name='+')
@@ -79,20 +80,21 @@ class Instance(models.Model):
     cloud = models.ForeignKey(Cloud, related_name='instances')
     flavor = models.ForeignKey(Flavor, related_name='+')
 
-    STATUS_CHOICES = (
-        (Statuses.CREATING, _(u'Creating')),
-        (Statuses.RUNNING, _(u'Running')),
-        (Statuses.STOPPED, _(u'Stopped')),
-        (Statuses.ERROR, _(u'Error')),
-        (Statuses.DELETED, _(u'Deleted')),
+    STATE_CHOICES = (
+        (States.DEFINED, _(u'Defined')),
+        (States.PROVISIONING, _(u'Provisioning')),
+        (States.STARTED, _(u'Started')),
+        (States.STOPPED, _(u'Stopped')),
+        (States.ERRED, _(u'Error')),
+        (States.DELETED, _(u'Deleted')),
     )
 
-    status = FSMField(default=Statuses.CREATING, max_length=1, choices=STATUS_CHOICES, protected=True)
+    state = FSMField(default=States.DEFINED, max_length=1, choices=STATE_CHOICES, protected=True)
 
     def __unicode__(self):
         return _(u'%(name)s - %(status)s') % {
             'name': self.hostname,
-            'status': self.get_status_display(),
+            'status': self.get_state_display(),
         }
 
 
