@@ -8,6 +8,7 @@ dev_requires = [
 ]
 
 tests_requires = [
+    'factory_boy==2.4.1',
 ]
 
 install_requires = [
@@ -16,6 +17,7 @@ install_requires = [
     'South==0.8.4',
     'logan==0.5.9.1',
     'django-background-task==0.1.6',
+    'django-fsm==2.1.0',
     'django-sshkey>=2.2.0'
 ]
 

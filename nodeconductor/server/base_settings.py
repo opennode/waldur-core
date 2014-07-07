@@ -22,8 +22,8 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'nodeconductor.vm',
     'nodeconductor.structure',
+    'nodeconductor.iaas',
 
     # Template overrides need to happen before admin is imported.
     'django.contrib.admin',
