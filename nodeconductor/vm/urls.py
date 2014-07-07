@@ -7,9 +7,9 @@ from nodeconductor.vm import views
 
 
 router = DefaultRouter()
-router.register(r'cloud', views.CloudViewSet)
+router.register(r'clouds', views.CloudViewSet)
 router.register(r'instances', views.InstanceViewSet)
-router.register(r'flavor', views.FlavorViewSet)
+router.register(r'flavors', views.FlavorViewSet)
 router.register(r'templates', views.TemplateViewSet)
 
 
