@@ -3,7 +3,7 @@ from django.conf.urls import patterns
 from django.conf.urls import url
 from rest_framework.routers import DefaultRouter
 
-from nodeconductor.vm import views
+from nodeconductor.iaas import views
 
 
 router = DefaultRouter()

@@ -1,8 +1,8 @@
 from rest_framework import generics
 from rest_framework import viewsets
 
-from nodeconductor.vm import models
-from nodeconductor.vm import serializers
+from nodeconductor.iaas import models
+from nodeconductor.iaas import serializers
 
 
 class InstanceViewSet(viewsets.ModelViewSet):

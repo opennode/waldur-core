@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from nodeconductor.vm import models
+from nodeconductor.iaas import models
 
 
 class CloudSerializer(serializers.Serializer):

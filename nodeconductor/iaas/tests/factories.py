@@ -1,6 +1,6 @@
 import factory
 from nodeconductor.structure.tests.factories import OrganizationFactory
-from nodeconductor.vm import models
+from nodeconductor.iaas import models
 
 
 class CloudFactory(factory.DjangoModelFactory):

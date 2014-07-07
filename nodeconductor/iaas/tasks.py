@@ -1,6 +1,6 @@
 from background_task import background
 
-from nodeconductor.vm import models
+from nodeconductor.iaas import models
 
 
 @background(schedule=1)

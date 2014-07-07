@@ -1,5 +1,5 @@
 from django.contrib import admin
 
-from nodeconductor.vm import models
+from nodeconductor.iaas import models
 
 admin.site.register(models.Instance)
