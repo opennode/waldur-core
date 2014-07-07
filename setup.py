@@ -8,6 +8,7 @@ dev_requires = [
 ]
 
 tests_requires = [
+    'factory_boy==2.4.1',
 ]
 
 install_requires = [
