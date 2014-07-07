@@ -1,29 +1,31 @@
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import APIView
+from rest_framework import generics
+from rest_framework import viewsets
 
-from nodeconductor.vm.serializers import VmSerializer
+from nodeconductor.vm import models
+from nodeconductor.vm import serializers
 
 
-class VmList(APIView):
-    def post(self, request, format=None):
-        '''
-        Provisions a vm
-        '''
-        # This is a stub so far
-        vms = [
-            dict(
-                name='name_{0}'.format(i),
-                image='image_{0}'.format(i),
-                volume_size=i,
-            ) for i in xrange(10)
-        ]
+class InstanceViewSet(viewsets.ModelViewSet):
+    queryset = models.Instance.objects.all()
+    serializer_class = serializers.InstanceSerializer
 
-        serializer = VmSerializer(data=request.DATA)
-        if serializer.is_valid():
-            vms.append(serializer.object)
-#            serializer.object.create()  # calls a state transition function, that enques a task
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return serializers.InstanceCreateSerializer
 
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return super(InstanceViewSet, self).get_serializer_class()
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.Flavor.objects.all()
+    serializer_class = serializers.FlavorSerializer
+
+
+class CloudViewSet(viewsets.ModelViewSet):
+    queryset = models.Cloud.objects.all()
+    serializer_class = serializers.CloudSerializer
+
+
+class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.Template.objects.all()
+    serializer_class = serializers.TemplateSerializer

@@ -9,8 +9,8 @@ admin.autodiscover()
 
 urlpatterns = patterns(
     '',
-    url(r'^vm/', include('nodeconductor.vm.urls')),
     url(r'^admin/', include(admin.site.urls), name='admin'),
+    url(r'^api/', include('nodeconductor.vm.urls')),
 )
 
 if 'nc_admin.base' in settings.INSTALLED_APPS:

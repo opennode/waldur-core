@@ -1,9 +1,19 @@
+from django.conf.urls import include
 from django.conf.urls import patterns
 from django.conf.urls import url
+from rest_framework.routers import DefaultRouter
 
-from nodeconductor.vm.views import VmList
+from nodeconductor.vm import views
+
+
+router = DefaultRouter()
+router.register(r'cloud', views.CloudViewSet)
+router.register(r'instances', views.InstanceViewSet)
+router.register(r'flavor', views.FlavorViewSet)
+router.register(r'templates', views.TemplateViewSet)
+
 
 urlpatterns = patterns(
     '',
-    url(r'^vms/$', VmList.as_view(), name='vm-list'),
+    url(r'^', include(router.urls)),
 )
