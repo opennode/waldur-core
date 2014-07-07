@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField
+from django_fsm import transition
 
 # TODO: Rename app to iaas
 
@@ -90,6 +91,16 @@ class Instance(models.Model):
     )
 
     state = FSMField(default=States.DEFINED, max_length=1, choices=STATE_CHOICES, protected=True)
+
+    @transition(field=state, source=States.DEFINED, target=States.PROVISIONING)
+    def start_provisioning(self):
+        # Delayed import to avoid circular imports
+        from . import tasks
+        tasks.stop_instance(self.pk)
+
+    @transition(field=state, source=States.PROVISIONING, target=States.STOPPED)
+    def stop(self):
+        pass
 
     def __unicode__(self):
         return _(u'%(name)s - %(status)s') % {
