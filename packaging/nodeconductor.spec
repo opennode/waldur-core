@@ -6,6 +6,7 @@ License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: python-django16 >= 1.6.5
 Requires: python-django-background-task = 0.1.6
+Requires: python-django-fsm = 2.1.0
 Requires: python-django-rest-framework >= 2.3.12
 Requires: python-django-sshkey >= 2.2.0
 Requires: python-logan = 0.5.9.1
