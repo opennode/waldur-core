@@ -1,4 +1,7 @@
+from __future__ import unicode_literals
+
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField
 from django_fsm import transition
@@ -7,6 +10,7 @@ from nodeconductor.core.models import UuidMixin
 from nodeconductor.structure import models as structure_models
 
 
+@python_2_unicode_compatible
 class Template(UuidMixin, models.Model):
     """
     A configuration management formula.
@@ -16,10 +20,11 @@ class Template(UuidMixin, models.Model):
     """
     name = models.CharField(max_length=100, unique=True)
 
-    def __unicode__(self):
-        return _(u'Template: {0}').format(self.name)
+    def __str__(self):
+        return self.name
 
 
+@python_2_unicode_compatible
 class Cloud(UuidMixin, models.Model):
     """
     A cloud instance information.
@@ -38,15 +43,19 @@ class Cloud(UuidMixin, models.Model):
         )
 
     CLOUD_TYPE_CHOICES = (
-        (CloudTypes.AMAZON, _(u'Amazon')),
-        (CloudTypes.OPENSTACK, _(u'OpenStack')),
+        (CloudTypes.AMAZON, _('Amazon')),
+        (CloudTypes.OPENSTACK, _('OpenStack')),
     )
 
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=20, choices=CLOUD_TYPE_CHOICES)
     organisation = models.ForeignKey(structure_models.Organisation)
 
+    def __str__(self):
+        return self.name
 
+
+@python_2_unicode_compatible
 class Flavor(UuidMixin, models.Model):
     """
     A preset of computing resources.
@@ -54,11 +63,15 @@ class Flavor(UuidMixin, models.Model):
     name = models.CharField(max_length=100)
     cloud = models.ForeignKey(Cloud)
 
-    cores = models.PositiveSmallIntegerField(help_text=_(u'Number of cores in a VM'))
-    ram = models.FloatField(help_text=_(u'Memory size in GB'))
-    disk = models.FloatField(help_text=_(u'Root disk size in GB'))
+    cores = models.PositiveSmallIntegerField(help_text=_('Number of cores in a VM'))
+    ram = models.FloatField(help_text=_('Memory size in GB'))
+    disk = models.FloatField(help_text=_('Root disk size in GB'))
+
+    def __str__(self):
+        return self.name
 
 
+@python_2_unicode_compatible
 class Instance(UuidMixin, models.Model):
     """
     A generalization of a single virtual machine.
@@ -81,12 +94,12 @@ class Instance(UuidMixin, models.Model):
     flavor = models.ForeignKey(Flavor, related_name='+')
 
     STATE_CHOICES = (
-        (States.DEFINED, _(u'Defined')),
-        (States.PROVISIONING, _(u'Provisioning')),
-        (States.STARTED, _(u'Started')),
-        (States.STOPPED, _(u'Stopped')),
-        (States.ERRED, _(u'Error')),
-        (States.DELETED, _(u'Deleted')),
+        (States.DEFINED, _('Defined')),
+        (States.PROVISIONING, _('Provisioning')),
+        (States.STARTED, _('Started')),
+        (States.STOPPED, _('Stopped')),
+        (States.ERRED, _('Error')),
+        (States.DELETED, _('Deleted')),
     )
 
     state = FSMField(default=States.DEFINED, max_length=1, choices=STATE_CHOICES, protected=True)
@@ -101,8 +114,8 @@ class Instance(UuidMixin, models.Model):
     def stop(self):
         pass
 
-    def __unicode__(self):
-        return _(u'%(name)s - %(status)s') % {
+    def __str__(self):
+        return _('%(name)s - %(status)s') % {
             'name': self.hostname,
             'status': self.get_state_display(),
         }
