@@ -23,6 +23,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
 
     'nodeconductor.structure',
+    'nodeconductor.cloud',
     'nodeconductor.iaas',
 
     # Template overrides need to happen before admin is imported.
