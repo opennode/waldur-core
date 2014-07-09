@@ -69,13 +69,13 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
         return {
             # Cloud independent parameters
             'hostname': 'host1',
-            'template': reverse('template-detail', kwargs={'pk': self.template.pk}),
+            'template': reverse('template-detail', kwargs={'uuid': self.template.uuid}),
 
             # Should not depend on cloud, instead represents an "aggregation" of templates
-            'cloud': reverse('cloud-detail', kwargs={'pk': self.cloud.pk}),
+            'cloud': reverse('cloud-detail', kwargs={'uuid': self.cloud.uuid}),
             'volume_sizes': [10, 15, 10],
             'tags': set(),
 
             # Cloud dependent parameters
-            'flavor': reverse('flavor-detail', kwargs={'pk': self.flavor.pk}),
+            'flavor': reverse('flavor-detail', kwargs={'uuid': self.flavor.uuid}),
         }

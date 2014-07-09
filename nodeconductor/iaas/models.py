@@ -3,12 +3,11 @@ from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField
 from django_fsm import transition
 
-# TODO: Rename app to iaas
-
+from nodeconductor.core.models import UuidMixin
 from nodeconductor.structure import models as structure_models
 
 
-class Template(models.Model):
+class Template(UuidMixin, models.Model):
     """
     A configuration management formula.
 
@@ -21,7 +20,7 @@ class Template(models.Model):
         return _(u'Template: {0}').format(self.name)
 
 
-class Cloud(models.Model):
+class Cloud(UuidMixin, models.Model):
     """
     A cloud instance information.
 
@@ -48,7 +47,7 @@ class Cloud(models.Model):
     organisation = models.ForeignKey(structure_models.Organisation)
 
 
-class Flavor(models.Model):
+class Flavor(UuidMixin, models.Model):
     """
     A preset of computing resources.
     """
@@ -60,7 +59,7 @@ class Flavor(models.Model):
     disk = models.FloatField(help_text=_(u'Root disk size in GB'))
 
 
-class Instance(models.Model):
+class Instance(UuidMixin, models.Model):
     """
     A generalization of a single virtual machine.
 
