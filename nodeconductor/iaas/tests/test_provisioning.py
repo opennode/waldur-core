@@ -4,6 +4,7 @@ from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
+from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories
 
 
@@ -11,9 +12,9 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
     def setUp(self):
         self.instance_list_url = reverse('instance-list')
 
-        self.cloud = factories.CloudFactory()
+        self.cloud = cloud_factories.CloudFactory()
         self.template = factories.TemplateFactory()
-        self.flavor = factories.FlavorFactory(cloud=self.cloud)
+        self.flavor = cloud_factories.FlavorFactory(cloud=self.cloud)
 
     # Positive tests
     def test_can_create_instance_without_volume_sizes(self):
