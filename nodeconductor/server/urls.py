@@ -5,12 +5,23 @@ from django.conf.urls import include
 from django.conf.urls import url
 from django.contrib import admin
 
+from rest_framework.routers import DefaultRouter
+
+from nodeconductor.cloud import urls as cloud_urls
+from nodeconductor.iaas import urls as iaas_urls
+
+
 admin.autodiscover()
+
+router = DefaultRouter()
+cloud_urls.register_in(router)
+iaas_urls.register_in(router)
+
 
 urlpatterns = patterns(
     '',
     url(r'^admin/', include(admin.site.urls), name='admin'),
-    url(r'^api/', include('nodeconductor.iaas.urls')),
+    url(r'^api/', include(router.urls)),
 )
 
 if 'nc_admin.base' in settings.INSTALLED_APPS:

@@ -24,10 +24,7 @@ class Cloud(UuidMixin, models.Model):
     organisation = models.ForeignKey(structure_models.Organisation)
 
     def __str__(self):
-        return '%(name)s - %(type)s' % {
-            'name': self.name,
-            'type': self.__name__,
-        }
+        return self.name
 
 
 @python_2_unicode_compatible
@@ -47,10 +44,13 @@ class Flavor(UuidMixin, models.Model):
 
 
 class OpenStackCloud(Cloud):
-    username = models.CharField(max_length=100)
-    password = models.CharField(max_length=100)
+    class Meta(object):
+        verbose_name = _('OpenStack Cloud')
+        verbose_name_plural = _('OpenStack Clouds')
 
-    unscoped_token = models.TextField()
-    scoped_token = models.TextField()
+    username = models.CharField(max_length=100, blank=True)
+    password = models.CharField(max_length=100, blank=True)
+
+    unscoped_token = models.TextField(blank=True)
+    scoped_token = models.TextField(blank=True)
     auth_url = models.CharField(max_length=200)
-

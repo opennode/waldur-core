@@ -1,20 +1,20 @@
 import factory
 from nodeconductor.structure.tests.factories import OrganizationFactory
 from nodeconductor.iaas import models
+from nodeconductor.cloud import models as cloud_models
 
 
 class CloudFactory(factory.DjangoModelFactory):
     class Meta(object):
-        model = models.Cloud
+        model = cloud_models.Cloud
 
     name = factory.Sequence(lambda n: 'cloud%s' % n)
-    type = factory.Iterator([models.Cloud.CloudTypes.AMAZON, models.Cloud.CloudTypes.OPENSTACK])
     organisation = factory.SubFactory(OrganizationFactory)
 
 
 class FlavorFactory(factory.DjangoModelFactory):
     class Meta(object):
-        model = models.Flavor
+        model = cloud_models.Flavor
 
     name = factory.Sequence(lambda n: 'flavor%s' % n)
     cloud = factory.SubFactory(CloudFactory)
