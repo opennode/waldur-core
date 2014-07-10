@@ -22,6 +22,8 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    'nodeconductor.core',
+    'nodeconductor.server',
     'nodeconductor.structure',
     'nodeconductor.cloud',
     'nodeconductor.iaas',
