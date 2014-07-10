@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from django.core.validators import URLValidator
 
 from nodeconductor.structure import models as structure_models
 from nodeconductor.core.models import UuidMixin
@@ -53,4 +54,4 @@ class OpenStackCloud(Cloud):
 
     unscoped_token = models.TextField(blank=True)
     scoped_token = models.TextField(blank=True)
-    auth_url = models.CharField(max_length=200)
+    auth_url = models.CharField(max_length=200, validators=[URLValidator()])
