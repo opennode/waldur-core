@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
@@ -30,7 +32,7 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
         response = self.client.post(self.instance_list_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'template': [u'This field is required.']}, response.data)
+        self.assertDictContainsSubset({'template': ['This field is required.']}, response.data)
 
     def test_cannot_create_instance_without_template_name(self):
         data = self.get_valid_data()
@@ -38,7 +40,7 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
         response = self.client.post(self.instance_list_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'template': [u'This field is required.']}, response.data)
+        self.assertDictContainsSubset({'template': ['This field is required.']}, response.data)
 
     def test_cannot_create_instance_with_negative_volume_size(self):
         self.skipTest("Not implemented yet")
@@ -49,7 +51,7 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
         response = self.client.post(self.instance_list_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'volume_size': [u'Ensure this value is greater than or equal to 1.']},
+        self.assertDictContainsSubset({'volume_size': ['Ensure this value is greater than or equal to 1.']},
                                       response.data)
 
     def test_cannot_create_instance_with_invalid_volume_sizes(self):
@@ -61,7 +63,7 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
         response = self.client.post(self.instance_list_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'volume_sizes': [u'Enter a whole number.']},
+        self.assertDictContainsSubset({'volume_sizes': ['Enter a whole number.']},
                                       response.data)
 
     # Helper methods
@@ -69,13 +71,13 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
         return {
             # Cloud independent parameters
             'hostname': 'host1',
-            'template': reverse('template-detail', kwargs={'pk': self.template.pk}),
+            'template': reverse('template-detail', kwargs={'uuid': self.template.uuid}),
 
             # Should not depend on cloud, instead represents an "aggregation" of templates
-            'cloud': reverse('cloud-detail', kwargs={'pk': self.cloud.pk}),
+            'cloud': reverse('cloud-detail', kwargs={'uuid': self.cloud.uuid}),
             'volume_sizes': [10, 15, 10],
             'tags': set(),
 
             # Cloud dependent parameters
-            'flavor': reverse('flavor-detail', kwargs={'pk': self.flavor.pk}),
+            'flavor': reverse('flavor-detail', kwargs={'uuid': self.flavor.uuid}),
         }
