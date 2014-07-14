@@ -14,7 +14,6 @@ TEMPLATE_DEBUG = False
 ALLOWED_HOSTS = []
 
 # Application definition
-
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -22,8 +21,6 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'nodeconductor.core',
-    'nodeconductor.server',
     'nodeconductor.structure',
     'nodeconductor.cloud',
     'nodeconductor.iaas',
@@ -56,6 +53,10 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
+
+TEMPLATE_DIRS = (
+    os.path.join(BASE_DIR, 'nodeconductor', 'templates'),
+)
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
 
