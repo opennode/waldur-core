@@ -2,6 +2,7 @@ from rest_framework import viewsets
 
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
+from nodeconductor.core import models as core_models
 
 
 class InstanceViewSet(viewsets.ModelViewSet):
@@ -20,3 +21,12 @@ class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.Template.objects.all()
     serializer_class = serializers.TemplateSerializer
     lookup_field = 'uuid'
+
+
+class SshKeyViewSet(viewsets.ModelViewSet):
+    queryset = core_models.SshPublicKey.objects.all()
+    serializer_class = serializers.SshKeySerializer
+    lookup_field = 'uuid'
+
+    def pre_save(self, key):
+        key.user = self.request.user

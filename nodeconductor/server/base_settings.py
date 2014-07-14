@@ -22,6 +22,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    'nodeconductor.core',
     'nodeconductor.structure',
     'nodeconductor.cloud',
     'nodeconductor.iaas',
@@ -32,7 +33,7 @@ INSTALLED_APPS = (
     'rest_framework',
     'south',
     'background_task',
-    'django_sshkey'
+    'taggit'
 )
 
 MIDDLEWARE_CLASSES = (
@@ -46,6 +47,10 @@ MIDDLEWARE_CLASSES = (
 
 REST_FRAMEWORK = {
     'TEST_REQUEST_DEFAULT_FORMAT': 'json',
+}
+
+SOUTH_MIGRATION_MODULES = {
+    'taggit': 'taggit.south_migrations',
 }
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
