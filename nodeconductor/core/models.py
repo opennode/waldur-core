@@ -26,7 +26,7 @@ class SshPublicKey(UuidMixin, models.Model):
     """
     user = models.ForeignKey(User, db_index=True)
     name = models.CharField(max_length=50, blank=True)
-    publickey = models.TextField(max_length=2000)
+    public_key = models.TextField(max_length=2000)
 
     def __str__(self):
         return self.name
