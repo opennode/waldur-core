@@ -32,7 +32,7 @@ INSTALLED_APPS = (
     'rest_framework',
     'south',
     'background_task',
-    'django_sshkey'
+    'taggit'
 )
 
 MIDDLEWARE_CLASSES = (
@@ -58,6 +58,10 @@ REST_FRAMEWORK = {
 TEMPLATE_DIRS = (
     os.path.join(BASE_DIR, 'nodeconductor', 'templates'),
 )
+
+SOUTH_MIGRATION_MODULES = {
+    'taggit': 'taggit.south_migrations',
+}
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
 
