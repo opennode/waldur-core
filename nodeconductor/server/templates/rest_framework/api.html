@@ -1,11 +1,12 @@
 {% extends "rest_framework/base.html" %}
+{% load i18n %}
 
 {% block title %}
-NodeConductor REST API
+{% trans 'NodeConductor REST API' %}
 {% endblock %}
 
 {% block branding %}
-<div class='brand'>NodeConductor REST API</div>
+<div class='brand'>{% trans 'NodeConductor REST API' %}</div>
 {% endblock %}
 
 
