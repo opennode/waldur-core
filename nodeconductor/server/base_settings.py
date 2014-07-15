@@ -14,7 +14,6 @@ TEMPLATE_DEBUG = False
 ALLOWED_HOSTS = []
 
 # Application definition
-
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -22,6 +21,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    'nodeconductor.core',
     'nodeconductor.structure',
     'nodeconductor.cloud',
     'nodeconductor.iaas',
@@ -32,7 +32,7 @@ INSTALLED_APPS = (
     'rest_framework',
     'south',
     'background_task',
-    'django_sshkey'
+    'taggit'
 )
 
 MIDDLEWARE_CLASSES = (
@@ -46,6 +46,21 @@ MIDDLEWARE_CLASSES = (
 
 REST_FRAMEWORK = {
     'TEST_REQUEST_DEFAULT_FORMAT': 'json',
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
+}
+
+TEMPLATE_DIRS = (
+    os.path.join(BASE_DIR, 'nodeconductor', 'templates'),
+)
+
+SOUTH_MIGRATION_MODULES = {
+    'taggit': 'taggit.south_migrations',
 }
 
 ROOT_URLCONF = 'nodeconductor.server.urls'

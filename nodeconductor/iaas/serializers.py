@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from nodeconductor.iaas import models
+from nodeconductor.core import models as core_models
 
 
 class InstanceCreateSerializer(serializers.HyperlinkedModelSerializer):
@@ -30,4 +31,11 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Template
         fields = ('url', 'name')
+        lookup_field = 'uuid'
+
+
+class SshKeySerializer(serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = core_models.SshPublicKey
+        fields = ('url', 'name', 'public_key')
         lookup_field = 'uuid'

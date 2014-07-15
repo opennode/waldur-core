@@ -6,6 +6,8 @@ from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField
 from django_fsm import transition
 
+from taggit.managers import TaggableManager
+
 from nodeconductor.core.models import UuidMixin
 from nodeconductor.cloud import models as cloud_models
 
@@ -43,6 +45,8 @@ class Instance(UuidMixin, models.Model):
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, editable=False, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
+
+    tags = TaggableManager()
 
     STATE_CHOICES = (
         (States.DEFINED, _('Defined')),
