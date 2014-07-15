@@ -1,10 +1,14 @@
+from rest_framework import mixins
 from rest_framework import viewsets
 
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 
 
-class InstanceViewSet(viewsets.ModelViewSet):
+class InstanceViewSet(mixins.CreateModelMixin,
+                      mixins.RetrieveModelMixin,
+                      mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'

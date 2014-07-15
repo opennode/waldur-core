@@ -96,3 +96,34 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
             # Cloud dependent parameters
             'flavor': reverse('flavor-detail', kwargs={'uuid': self.flavor.uuid}),
         }
+
+
+class InstanceManipulationTest(test.APISimpleTestCase):
+    def setUp(self):
+        self.instance = factories.InstanceFactory()
+        self.instance_url = reverse('instance-detail', kwargs={'uuid': self.instance.uuid})
+
+    def test_cannot_delete_instance(self):
+        response = self.client.delete(self.instance_url)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_cannot_change_instance_as_whole(self):
+        data = {
+            'hostname': self.instance.hostname,
+            'template': reverse('template-detail', kwargs={'uuid': self.instance.template.uuid}),
+            'flavor': reverse('flavor-detail', kwargs={'uuid': self.instance.flavor.uuid}),
+        }
+
+        response = self.client.put(self.instance_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_cannot_change_single_instance_field(self):
+        data = {
+            'hostname': self.instance.hostname,
+        }
+
+        response = self.client.patch(self.instance_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)

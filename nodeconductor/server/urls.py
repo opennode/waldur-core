@@ -24,6 +24,7 @@ urlpatterns = patterns(
     url(r'^api/', include(router.urls)),
 )
 
+# FIXME: This shouldn't be here
 if 'nc_admin.base' in settings.INSTALLED_APPS:
     urlpatterns += patterns(
         '',
