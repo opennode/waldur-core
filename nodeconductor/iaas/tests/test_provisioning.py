@@ -12,9 +12,23 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
     def setUp(self):
         self.instance_list_url = reverse('instance-list')
 
-        self.cloud = cloud_factories.CloudFactory()
         self.template = factories.TemplateFactory()
-        self.flavor = cloud_factories.FlavorFactory(cloud=self.cloud)
+        self.flavor = cloud_factories.FlavorFactory()
+
+    # Assertions
+    def assert_field_required(self, field_name):
+        data = self.get_valid_data()
+        del data[field_name]
+        response = self.client.post(self.instance_list_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset({field_name: ['This field is required.']}, response.data)
+
+    def assert_field_non_empty(self, field_name, empty_value=''):
+        data = self.get_valid_data()
+        data[field_name] = empty_value
+        response = self.client.post(self.instance_list_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset({field_name: ['This field is required.']}, response.data)
 
     # Positive tests
     def test_can_create_instance_without_volume_sizes(self):
@@ -25,23 +39,23 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     # Negative tests
-    # TODO: Validate whether flavor corresponds to chosen cloud type
+    def test_cannot_create_instance_with_empty_hostname_name(self):
+        self.assert_field_non_empty('hostname')
+
+    def test_cannot_create_instance_without_hostname_name(self):
+        self.assert_field_required('hostname')
+
     def test_cannot_create_instance_with_empty_template_name(self):
-        data = self.get_valid_data()
-        data['template'] = ''
-
-        response = self.client.post(self.instance_list_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'template': ['This field is required.']}, response.data)
+        self.assert_field_non_empty('template')
 
     def test_cannot_create_instance_without_template_name(self):
-        data = self.get_valid_data()
-        del data['template']
-        response = self.client.post(self.instance_list_url, data)
+        self.assert_field_required('template')
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'template': ['This field is required.']}, response.data)
+    def test_cannot_create_instance_without_flavor(self):
+        self.assert_field_required('flavor')
+
+    def test_cannot_create_instance_with_empty_flavor(self):
+        self.assert_field_non_empty('flavor')
 
     def test_cannot_create_instance_with_negative_volume_size(self):
         self.skipTest("Not implemented yet")
@@ -72,10 +86,10 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
         return {
             # Cloud independent parameters
             'hostname': 'host1',
-            'template': reverse('template-detail', kwargs={'uuid': self.template.uuid}),
 
             # Should not depend on cloud, instead represents an "aggregation" of templates
-            'cloud': reverse('cloud-detail', kwargs={'uuid': self.cloud.uuid}),
+            'template': reverse('template-detail', kwargs={'uuid': self.template.uuid}),
+
             'volume_sizes': [10, 15, 10],
             'tags': set(),
 

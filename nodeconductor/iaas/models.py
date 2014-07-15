@@ -42,8 +42,6 @@ class Instance(UuidMixin, models.Model):
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, editable=False, related_name='+')
-    # TODO: Do not persist cloud, infer from flavor
-    cloud = models.ForeignKey(cloud_models.Cloud, related_name="instances")
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
 
     STATE_CHOICES = (
