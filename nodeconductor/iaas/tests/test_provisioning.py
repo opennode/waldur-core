@@ -6,6 +6,7 @@ from rest_framework import test
 
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories
+from nodeconductor.structure.tests import factories as structure_factories
 
 
 class InstanceProvisioningTest(test.APISimpleTestCase):
@@ -14,6 +15,10 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
 
         self.template = factories.TemplateFactory()
         self.flavor = cloud_factories.FlavorFactory()
+
+        # XXX: This is temporary stub before proper permissions are enforced
+        self.user = structure_factories.UserFactory()
+        self.client.force_authenticate(user=self.user)
 
     # Assertions
     def assert_field_required(self, field_name):
@@ -100,6 +105,10 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
 
 class InstanceManipulationTest(test.APISimpleTestCase):
     def setUp(self):
+        # XXX: This is temporary stub before proper permissions are enforced
+        self.user = structure_factories.UserFactory()
+        self.client.force_authenticate(user=self.user)
+
         self.instance = factories.InstanceFactory()
         self.instance_url = reverse('instance-detail', kwargs={'uuid': self.instance.uuid})
 
