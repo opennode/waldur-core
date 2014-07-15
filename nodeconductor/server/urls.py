@@ -27,6 +27,7 @@ urlpatterns = patterns(
 
 )
 
+# FIXME: This shouldn't be here
 if 'nc_admin.base' in settings.INSTALLED_APPS:
     urlpatterns += patterns(
         '',
