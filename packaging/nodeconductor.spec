@@ -1,7 +1,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.1.0dev
-Release: 3
+Release: 4
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: python-django16 >= 1.6.5
@@ -9,6 +9,8 @@ Requires: python-django-background-task = 0.1.6
 Requires: python-django-fsm = 2.1.0
 Requires: python-django-rest-framework >= 2.3.12
 Requires: python-django-sshkey >= 2.2.0
+Requires: python-django-taggit = 0.12
+Requires: python-django-uuidfield = 0.5.0
 Requires: python-logan = 0.5.9.1
 Requires: python-south = 0.8.4
 
@@ -46,6 +48,9 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 
 %changelog
+* Mon Jul 15 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-4
+- Added new dependencies: django-taggit, django-uuidfield
+
 * Mon Jul 14 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-3
 - Added Upstart script
 
