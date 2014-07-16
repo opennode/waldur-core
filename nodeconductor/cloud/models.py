@@ -18,11 +18,11 @@ class Cloud(UuidMixin, models.Model):
     """
     class Meta(object):
         unique_together = (
-            ('organisation', 'name'),
+            ('organization', 'name'),
         )
 
     name = models.CharField(max_length=100)
-    organisation = models.ForeignKey(structure_models.Organisation)
+    organization = models.ForeignKey(structure_models.Organization)
 
     def __str__(self):
         return self.name

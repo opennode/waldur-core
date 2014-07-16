@@ -6,19 +6,73 @@ from rest_framework import test
 
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories
-from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.structure.tests import PermissionTestMixin
 
 
-class InstanceProvisioningTest(test.APISimpleTestCase):
+class InstancePermissionTest(PermissionTestMixin, test.APISimpleTestCase):
     def setUp(self):
+        super(InstancePermissionTest, self).setUp()
+
+        self.users_instances = [
+            factories.InstanceFactory(flavor__cloud__organization=org)
+            for org in self.users_organizations
+        ]
+
+        self.others_instances = [
+            factories.InstanceFactory(flavor__cloud__organization=org)
+            for org in self.others_organizations
+        ]
+
+    def test_user_can_list_all_of_the_instances_of_organizations_he_is_in(self):
+        response = self.client.get(reverse('instance-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        actual_urls = set(
+            instance['url']
+            for instance in response.data
+        )
+
+        for instance in self.users_instances:
+            url = self._get_instance_url(instance)
+            self.assertIn(url, actual_urls)
+
+    def test_user_can_list_none_of_the_instances_of_organizations_he_is_not_in(self):
+        response = self.client.get(reverse('instance-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        actual_urls = set(
+            instance['url']
+            for instance in response.data
+        )
+
+        for instance in self.others_instances:
+            url = self._get_instance_url(instance)
+            self.assertNotIn(url, actual_urls)
+
+    def test_user_can_access_any_of_the_instances_of_organizations_he_is_in(self):
+        for instance in self.users_instances:
+            response = self.client.get(self._get_instance_url(instance))
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_can_access_none_of_the_instances_of_organizations_he_is_in(self):
+        for instance in self.others_instances:
+            response = self.client.get(self._get_instance_url(instance))
+            # 404 is used instead of 403 to hide the fact that the resource exists at all
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # Helper methods
+    def _get_instance_url(self, instance):
+        return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
+
+
+class InstanceProvisioningTest(PermissionTestMixin, test.APISimpleTestCase):
+    def setUp(self):
+        super(InstanceProvisioningTest, self).setUp()
+
         self.instance_list_url = reverse('instance-list')
 
         self.template = factories.TemplateFactory()
         self.flavor = cloud_factories.FlavorFactory()
-
-        # XXX: This is temporary stub before proper permissions are enforced
-        self.user = structure_factories.UserFactory()
-        self.client.force_authenticate(user=self.user)
 
     # Assertions
     def assert_field_required(self, field_name):
@@ -93,21 +147,19 @@ class InstanceProvisioningTest(test.APISimpleTestCase):
             'hostname': 'host1',
 
             # Should not depend on cloud, instead represents an "aggregation" of templates
-            'template': reverse('template-detail', kwargs={'uuid': self.template.uuid}),
+            'template': 'http://testserver' + reverse('template-detail', kwargs={'uuid': self.template.uuid}),
 
             'volume_sizes': [10, 15, 10],
             'tags': set(),
 
             # Cloud dependent parameters
-            'flavor': reverse('flavor-detail', kwargs={'uuid': self.flavor.uuid}),
+            'flavor': 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': self.flavor.uuid}),
         }
 
 
-class InstanceManipulationTest(test.APISimpleTestCase):
+class InstanceManipulationTest(PermissionTestMixin, test.APISimpleTestCase):
     def setUp(self):
-        # XXX: This is temporary stub before proper permissions are enforced
-        self.user = structure_factories.UserFactory()
-        self.client.force_authenticate(user=self.user)
+        super(InstanceManipulationTest, self).setUp()
 
         self.instance = factories.InstanceFactory()
         self.instance_url = reverse('instance-detail', kwargs={'uuid': self.instance.uuid})

@@ -10,7 +10,7 @@ class CloudFactory(factory.DjangoModelFactory):
         model = models.OpenStackCloud
 
     name = factory.Sequence(lambda n: 'cloud%s' % n)
-    organisation = factory.SubFactory(OrganizationFactory)
+    organization = factory.SubFactory(OrganizationFactory)
 
 
 class FlavorFactory(factory.DjangoModelFactory):

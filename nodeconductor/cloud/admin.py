@@ -12,8 +12,8 @@ class CloudAdmin(admin.ModelAdmin):
     inlines = (
         FlavorInline,
     )
-    list_display = ('name', 'organisation')
-    ordering = ('name', 'organisation')
+    list_display = ('name', 'organization')
+    ordering = ('name', 'organization')
 
 
 admin.site.register(models.OpenStackCloud, CloudAdmin)
