@@ -27,7 +27,7 @@ class UserFactory(factory.DjangoModelFactory):
 
 class OrganizationFactory(factory.DjangoModelFactory):
     class Meta(object):
-        model = models.Organisation
+        model = models.Organization
 
     name = factory.Sequence(lambda n: 'Org%s' % n)
     abbreviation = factory.LazyAttribute(lambda o: o.name[:5])

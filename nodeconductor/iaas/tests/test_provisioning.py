@@ -14,12 +14,12 @@ class InstancePermissionTest(PermissionTestMixin, test.APISimpleTestCase):
         super(InstancePermissionTest, self).setUp()
 
         self.users_instances = [
-            factories.InstanceFactory(flavor__cloud__organisation=org)
+            factories.InstanceFactory(flavor__cloud__organization=org)
             for org in self.users_organizations
         ]
 
         self.others_instances = [
-            factories.InstanceFactory(flavor__cloud__organisation=org)
+            factories.InstanceFactory(flavor__cloud__organization=org)
             for org in self.others_organizations
         ]
 

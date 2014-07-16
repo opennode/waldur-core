@@ -16,7 +16,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     def get_queryset(self):
         queryset = super(InstanceViewSet, self).get_queryset()
-        queryset = queryset.filter(flavor__cloud__organisation__users=self.request.user)
+        queryset = queryset.filter(flavor__cloud__organization__users=self.request.user)
         return queryset
 
     def get_serializer_class(self):
