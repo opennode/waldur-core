@@ -15,11 +15,20 @@ class UserFactory(factory.DjangoModelFactory):
     is_active = True
     is_superuser = False
 
+    @factory.post_generation
+    def organizations(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for organization in extracted:
+                self.organizations.add(organization)
+
 
 class OrganizationFactory(factory.DjangoModelFactory):
     class Meta(object):
-        model = models.Organisation
+        model = models.Organization
 
     name = factory.Sequence(lambda n: 'Org%s' % n)
     abbreviation = factory.LazyAttribute(lambda o: o.name[:5])
-    manager = factory.SubFactory(UserFactory)
+    contact_details = factory.Sequence(lambda n: 'contacts %s' % n)

@@ -1,3 +1,4 @@
+from rest_framework import mixins
 from rest_framework import viewsets
 
 from nodeconductor.iaas import models
@@ -5,10 +6,18 @@ from nodeconductor.iaas import serializers
 from nodeconductor.core import models as core_models
 
 
-class InstanceViewSet(viewsets.ModelViewSet):
+class InstanceViewSet(mixins.CreateModelMixin,
+                      mixins.RetrieveModelMixin,
+                      mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
+
+    def get_queryset(self):
+        queryset = super(InstanceViewSet, self).get_queryset()
+        queryset = queryset.filter(flavor__cloud__organization__users=self.request.user)
+        return queryset
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

@@ -18,11 +18,11 @@ class Cloud(UuidMixin, models.Model):
     """
     class Meta(object):
         unique_together = (
-            ('organisation', 'name'),
+            ('organization', 'name'),
         )
 
     name = models.CharField(max_length=100)
-    organisation = models.ForeignKey(structure_models.Organisation)
+    organization = models.ForeignKey(structure_models.Organization)
 
     def __str__(self):
         return self.name
@@ -34,7 +34,7 @@ class Flavor(UuidMixin, models.Model):
     A preset of computing resources.
     """
     name = models.CharField(max_length=100)
-    cloud = models.ForeignKey(Cloud)
+    cloud = models.ForeignKey(Cloud, related_name='flavors')
 
     cores = models.PositiveSmallIntegerField(help_text=_('Number of cores in a VM'))
     ram = models.FloatField(help_text=_('Memory size in GB'))
