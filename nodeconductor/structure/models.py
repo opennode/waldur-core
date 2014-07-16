@@ -10,10 +10,11 @@ from django.db import models
 class Organisation(models.Model):
     name = models.CharField(max_length=80)
     abbreviation = models.CharField(max_length=80)
-    manager = models.ForeignKey(User, related_name='organisations')
+    contact_details = models.TextField()
+    users = models.ManyToManyField(User, related_name='organizations')
 
     def __str__(self):
-        return _('%(name)s (%(abbreviation)s)') % {
+        return '%(name)s (%(abbreviation)s)' % {
             'name': self.name,
             'abbreviation': self.abbreviation
         }

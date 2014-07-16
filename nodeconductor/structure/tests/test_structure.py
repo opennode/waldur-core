@@ -1,27 +1,21 @@
-from django.test import TestCase
-from django.conf import settings
-
-from nodeconductor.structure.models import *
-from django.contrib.auth.models import User
 from django.db.utils import IntegrityError
+from django.test import TestCase
+
+from nodeconductor.structure import models
+from nodeconductor.structure.tests import factories
+
 
 class NetworkTest(TestCase):
+    def setUp(self):
+        self.project = models.Project.objects.create(name='test_proj', organisation=factories.OrganizationFactory())
+
     def test_network_segment_creation(self):
-        mgr = User.objects.create_user(username='foo', email='baz@bar.com',
-                                       password='123')
-        org = Organisation.objects.create(name='test_org', abbreviation='to',
-                                          manager=mgr)
-        prj = Project.objects.create(name='test_proj', organisation=org)
-        seg = NetworkSegment.objects.create(ip='192.168.0.0', netmask=24, vlan=1, project=prj)
+        models.NetworkSegment.objects.create(ip='192.168.0.0', netmask=24, vlan=1, project=self.project)
 
     def test_network_segment_vlan_conflict(self):
-        mgr = User.objects.create_user(username='foo', email='baz@bar.com',
-                                       password='123')
-        org = Organisation.objects.create(name='test_org', abbreviation='to',
-                                          manager=mgr)
-        prj = Project.objects.create(name='test_proj', organisation=org)
-        seg = NetworkSegment.objects.create(ip='192.168.0.0', netmask=24, vlan=1, project=prj)
+        models.NetworkSegment.objects.create(ip='192.168.0.0', netmask=24, vlan=1, project=self.project)
+
         with self.assertRaises(IntegrityError):
-            seg = NetworkSegment.objects.create(ip='192.168.1.0',
-                                         netmask=24, vlan=1,
-                                         project=prj)
+            models.NetworkSegment.objects.create(ip='192.168.1.0',
+                                                 netmask=24, vlan=1,
+                                                 project=self.project)
