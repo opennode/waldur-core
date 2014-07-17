@@ -1,7 +1,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.1.0dev
-Release: 4
+Release: 5
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: python-django16 >= 1.6.5
@@ -31,11 +31,24 @@ NodeConductor is a infrastructure and application management server developed by
 python setup.py build
 
 %install
+%define __conf_dir %{_sysconfdir}/%{name}
+%define __data_dir %{_datadir}/%{name}
+%define __work_dir %{_sharedstatedir}/%{name}
+
 rm -rf %{buildroot}
 python setup.py install --single-version-externally-managed -O1 --root=%{buildroot} --record=INSTALLED_FILES
 
-mkdir -p %{buildroot}%{_datadir}/%{name}/static
-echo "%{_datadir}/%{name}" >> INSTALLED_FILES
+mkdir -p %{buildroot}%{__data_dir}/static
+echo "%{__data_dir}" >> INSTALLED_FILES
+
+mkdir -p %{buildroot}%{__work_dir}
+echo "%{__work_dir}" >> INSTALLED_FILES
+
+mkdir -p %{buildroot}%{_sysconfdir}/%{name}
+cp nodeconductor/server/settings.py.template %{buildroot}%{__conf_dir}/settings.py
+sed -i 's,{{ db_file_path }},%{__work_dir}/db.sqlite3,' %{buildroot}%{__conf_dir}/settings.py
+sed -i 's,{{ static_root }},%{__data_dir}/static,' %{buildroot}%{__conf_dir}/settings.py
+echo "%{__conf_dir}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{_sysconfdir}/init
 cp packaging/upstart/%{name}.conf %{buildroot}%{_sysconfdir}/init/
@@ -48,7 +61,10 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 
 %changelog
-* Mon Jul 15 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-4
+* Thu Jul 18 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-5
+- settings.py is now provided with RPM
+
+* Tue Jul 15 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-4
 - Added new dependencies: django-taggit, django-uuidfield
 
 * Mon Jul 14 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-3
