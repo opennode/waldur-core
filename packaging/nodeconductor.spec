@@ -16,6 +16,8 @@ Requires: python-south = 0.8.4
 
 Source0: %{name}-%{version}.tar.gz
 
+Patch0001: 0001-wsgi-default-settings-path.patch
+
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
@@ -26,6 +28,8 @@ NodeConductor is a infrastructure and application management server developed by
 
 %prep
 %setup -q -n %{name}-%{version}
+
+%patch0001 -p1
 
 %build
 python setup.py build
