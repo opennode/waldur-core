@@ -12,6 +12,7 @@ Requires: python-django-sshkey >= 2.2.0
 Requires: python-django-taggit = 0.12
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-logan = 0.5.9.1
+Requires: python-setuptools
 Requires: python-south = 0.8.4
 
 Source0: %{name}-%{version}.tar.gz
