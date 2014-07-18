@@ -17,6 +17,8 @@ Requires: python-south = 0.8.4
 
 Source0: %{name}-%{version}.tar.gz
 
+Patch0001: 0001-wsgi-default-settings-path.patch
+
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
@@ -27,6 +29,8 @@ NodeConductor is a infrastructure and application management server developed by
 
 %prep
 %setup -q -n %{name}-%{version}
+
+%patch0001 -p1
 
 %build
 python setup.py build
@@ -61,9 +65,17 @@ rm -rf %{buildroot}
 %files -f INSTALLED_FILES
 %defattr(-,root,root,-)
 
+%post
+sed -i "s,{{ secret_key }},$(head -c32 /dev/urandom | base64)," %{__conf_dir}/settings.py
+nodeconductor --config=%{__conf_dir}/settings.py syncdb --noinput
+nodeconductor --config=%{__conf_dir}/settings.py migrate
+nodeconductor --config=%{__conf_dir}/settings.py collectstatic --noinput
+
 %changelog
-* Thu Jul 18 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-5
+* Fri Jul 18 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-5
 - settings.py is now provided with RPM
+- Database initialization done on RPM install
+- NodeConductor is not started autoamtically on system boot -- use nodeconductor-wsgi instead
 
 * Tue Jul 15 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-4
 - Added new dependencies: django-taggit, django-uuidfield
