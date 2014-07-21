@@ -9,10 +9,11 @@ dev_requires = [
 
 tests_requires = [
     'factory_boy==2.4.1',
+    'six>=1.7.3,<1.8.0',
 ]
 
 install_requires = [
-    'Django>=1.6.2,<1.7',
+    'Django>=1.6.5,<1.7',
     'djangorestframework>=2.3.12,<2.4.0',
     'django-guardian>=1.2.4,<1.3.0',
     'South==0.8.4',
@@ -40,7 +41,7 @@ setup(
         'dev': dev_requires,
     },
     dependency_links = [
-        'https://github.com/opennode/django-sshkey/archive/2.2.0.zip#egg=django-sshkey-2.2.0'
+        'https://github.com/opennode/django-sshkey/archive/2.3.0.zip#egg=django-sshkey-2.3.0'
     ],
     entry_points={
         'console_scripts': ('nodeconductor = nodeconductor.server.logan_runner:main',)
