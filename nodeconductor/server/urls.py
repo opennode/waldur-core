@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.conf import settings
 
 from django.conf.urls import patterns
@@ -9,6 +11,7 @@ from rest_framework.routers import DefaultRouter
 
 from nodeconductor.cloud import urls as cloud_urls
 from nodeconductor.iaas import urls as iaas_urls
+from nodeconductor.structure import urls as structure_urls
 
 
 admin.autodiscover()
@@ -16,6 +19,7 @@ admin.autodiscover()
 router = DefaultRouter()
 cloud_urls.register_in(router)
 iaas_urls.register_in(router)
+structure_urls.register_in(router)
 
 
 urlpatterns = patterns(

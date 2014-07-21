@@ -9,6 +9,6 @@ class PermissionTestMixin(object):
         self.users_organizations = self.all_organizations[:2]
         self.others_organizations = self.all_organizations[2:]
 
-        self.user = factories.UserFactory.create(organizations=self.users_organizations)
+        self.user = factories.UserFactory.create()
 
         self.client.force_authenticate(user=self.user)

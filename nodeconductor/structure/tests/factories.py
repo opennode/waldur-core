@@ -1,5 +1,8 @@
+from __future__ import unicode_literals
+
 import django.contrib.auth
 import factory
+
 from nodeconductor.structure import models
 
 
@@ -32,3 +35,11 @@ class OrganizationFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'Org%s' % n)
     abbreviation = factory.LazyAttribute(lambda o: o.name[:5])
     contact_details = factory.Sequence(lambda n: 'contacts %s' % n)
+
+
+class ProjectFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.Project
+
+    name = factory.Sequence(lambda n: 'Proj%s' % n)
+    organization = factory.SubFactory(OrganizationFactory)

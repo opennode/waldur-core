@@ -32,6 +32,7 @@ INSTALLED_APPS = (
     'rest_framework',
     'south',
     'background_task',
+    'guardian',
     'taggit'
 )
 
@@ -52,8 +53,16 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-    )
+    ),
+    'DEFAULT_MODEL_SERIALIZER_CLASS': 'rest_framework.serializers.HyperlinkedModelSerializer',
 }
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'guardian.backends.ObjectPermissionBackend',
+)
+
+ANONYMOUS_USER_ID = None
 
 TEMPLATE_DIRS = (
     os.path.join(BASE_DIR, 'nodeconductor', 'templates'),
