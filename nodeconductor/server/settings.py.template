@@ -27,8 +27,8 @@ LOGGING = {
     'handlers': {
         'file': {
             'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': '/var/log/nodeconductor/info.log',
+            'class': 'logging.WatchedFileHandler',
+            'filename': '/var/log/nodeconductor/nodeconductor.log',
         },
     },
     'loggers': {
