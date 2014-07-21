@@ -38,6 +38,7 @@ python setup.py build
 %install
 %define __conf_dir %{_sysconfdir}/%{name}
 %define __data_dir %{_datadir}/%{name}
+%define __log_dir %{_localstatedir}/log/%{name}
 %define __work_dir %{_sharedstatedir}/%{name}
 
 rm -rf %{buildroot}
@@ -45,6 +46,9 @@ python setup.py install --single-version-externally-managed -O1 --root=%{buildro
 
 mkdir -p %{buildroot}%{__data_dir}/static
 echo "%{__data_dir}" >> INSTALLED_FILES
+
+mkdir -p %{buildroot}%{__log_dir}
+echo "%{__log_dir}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__work_dir}
 echo "%{__work_dir}" >> INSTALLED_FILES
@@ -59,6 +63,10 @@ mkdir -p %{buildroot}%{_sysconfdir}/init
 cp packaging/upstart/%{name}.conf %{buildroot}%{_sysconfdir}/init/
 echo "%{_sysconfdir}/init/%{name}.conf" >> INSTALLED_FILES
 
+mkdir -p %{buildroot}%{_sysconfdir}/logrotate.d
+cp packaging/logrotate/%{name} %{buildroot}%{_sysconfdir}/logrotate.d/
+echo "%{_sysconfdir}/logrotate.d/%{name}" >> INSTALLED_FILES
+
 %clean
 rm -rf %{buildroot}
 
@@ -72,6 +80,9 @@ nodeconductor --config=%{__conf_dir}/settings.py migrate
 nodeconductor --config=%{__conf_dir}/settings.py collectstatic --noinput
 
 %changelog
+* Mon Jul 21 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-6
+- Logging improved (NC-48)
+
 * Fri Jul 18 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-5
 - settings.py is now provided with RPM
 - Database initialization done on RPM install
