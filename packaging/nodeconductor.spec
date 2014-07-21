@@ -1,9 +1,10 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.1.0dev
-Release: 5
+Release: 6
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
+Requires: logrotate
 Requires: python-django16 >= 1.6.5
 Requires: python-django-background-task = 0.1.6
 Requires: python-django-fsm = 2.1.0
@@ -18,6 +19,7 @@ Requires: python-south = 0.8.4
 Source0: %{name}-%{version}.tar.gz
 
 Patch0001: 0001-wsgi-default-settings-path.patch
+Patch0002: 0002-logan-runner-default-settings-path.patch
 
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
@@ -31,6 +33,7 @@ NodeConductor is a infrastructure and application management server developed by
 %setup -q -n %{name}-%{version}
 
 %patch0001 -p1
+%patch0002 -p1
 
 %build
 python setup.py build
@@ -75,13 +78,14 @@ rm -rf %{buildroot}
 
 %post
 sed -i "s,{{ secret_key }},$(head -c32 /dev/urandom | base64)," %{__conf_dir}/settings.py
-nodeconductor --config=%{__conf_dir}/settings.py syncdb --noinput
-nodeconductor --config=%{__conf_dir}/settings.py migrate
-nodeconductor --config=%{__conf_dir}/settings.py collectstatic --noinput
+nodeconductor syncdb --noinput
+nodeconductor migrate
+nodeconductor collectstatic --noinput
 
 %changelog
 * Mon Jul 21 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-6
 - Logging improved (NC-48)
+- Default config file location fixed for nodeconductor tool
 
 * Fri Jul 18 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-5
 - settings.py is now provided with RPM
