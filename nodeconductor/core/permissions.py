@@ -27,3 +27,42 @@ class DjangoObjectLevelPermissions(DjangoObjectPermissions):
         # The permission check will be performed later, when the object
         # to check permission against will be available.
         return True
+
+
+# noinspection PyProtectedMember
+def register_group_access(model_class, get_group,
+                          permissions=('view', 'add', 'change', 'delete'),
+                          tag=''):
+    """
+    Register automatic permission granting for model during its creation.
+
+    Given the model being created has (in)direct linking to  permission
+    group, registration makes it possible for users of that group
+    to access model instances.
+
+    :param model_class: Model class to grant permissions to
+    :param get_group: Function to get Django auth groups from model instance
+    :param permissions: Tuple of permissions to grant
+    :param tag: Identifier used for signal registration
+    """
+    from django.db.models import signals
+    from guardian.shortcuts import assign_perm
+
+    app_name = model_class._meta.app_label
+    model_name = model_class._meta.model_name
+
+    uid = '{0}.{1}_object_level_permissions_{2}'.format(app_name, model_name, tag)
+
+    def grant_group_access(sender, instance, created, **kwargs):
+        if not created:
+            return
+
+        group = get_group(instance)
+        for permission in permissions:
+            perm = '{0}_{1}'.format(permission, model_name)
+            assign_perm(perm, group, obj=instance)
+
+    signals.post_save.connect(grant_group_access,
+                              sender=model_class,
+                              weak=False,
+                              dispatch_uid=uid)

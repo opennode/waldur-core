@@ -29,10 +29,8 @@ class ProjectPermissionTest(test.APISimpleTestCase):
 
         self.projects = factories.ProjectFactory.create_batch(3)
 
-        self.user.groups.add(
-            self.projects[0].roles.get(role_type=Role.ADMINISTRATOR).permission_group,
-            self.projects[1].roles.get(role_type=Role.MANAGER).permission_group,
-        )
+        self.projects[0].add_user(self.user, Role.ADMINISTRATOR)
+        self.projects[1].add_user(self.user, Role.MANAGER)
 
     def test_user_can_list_projects_he_is_administrator_of(self):
         response = self.client.get(reverse('project-list'))

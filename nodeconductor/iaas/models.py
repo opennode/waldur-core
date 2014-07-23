@@ -5,11 +5,12 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField
 from django_fsm import transition
-
 from taggit.managers import TaggableManager
 
-from nodeconductor.core.models import UuidMixin
 from nodeconductor.cloud import models as cloud_models
+from nodeconductor.core.models import UuidMixin
+from nodeconductor.core.permissions import register_group_access
+from nodeconductor.structure import models as structure_models
 
 
 @python_2_unicode_compatible
@@ -42,9 +43,15 @@ class Instance(UuidMixin, models.Model):
         ERRED = 'e'
         DELETED = 'x'
 
+    class Meta(object):
+        permissions = (
+            ('view_instance', _('Can see available instances')),
+        )
+
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, editable=False, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
+    project = models.ForeignKey(structure_models.Project, related_name='instances')
 
     tags = TaggableManager()
 
@@ -74,6 +81,21 @@ class Instance(UuidMixin, models.Model):
             'name': self.hostname,
             'status': self.get_state_display(),
         }
+
+register_group_access(
+    Instance,
+    (lambda instance: instance.project.roles.get(
+        role_type=structure_models.Role.ADMINISTRATOR).permission_group),
+    permissions=('view',),
+    tag='admin',
+)
+register_group_access(
+    Instance,
+    (lambda instance: instance.project.roles.get(
+        role_type=structure_models.Role.MANAGER).permission_group),
+    permissions=('view',),
+    tag='manager',
+)
 
 
 class Volume(models.Model):

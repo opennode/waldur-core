@@ -1,9 +1,11 @@
+from rest_framework import filters
 from rest_framework import mixins
 from rest_framework import viewsets
 
+from nodeconductor.core import models as core_models
+from nodeconductor.core import permissions
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
-from nodeconductor.core import models as core_models
 
 
 class InstanceViewSet(mixins.CreateModelMixin,
@@ -13,11 +15,8 @@ class InstanceViewSet(mixins.CreateModelMixin,
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
-
-    def get_queryset(self):
-        queryset = super(InstanceViewSet, self).get_queryset()
-        queryset = queryset.filter(flavor__cloud__organization__users=self.request.user)
-        return queryset
+    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    permission_classes = (permissions.DjangoObjectLevelPermissions,)
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

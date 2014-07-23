@@ -55,6 +55,18 @@ class Project(UuidMixin, models.Model):
     name = models.CharField(max_length=80)
     organization = models.ForeignKey(Organization, related_name='projects')
 
+    def add_user(self, user, role_type):
+        self.roles.get(role_type=role_type).permission_group.user_set.add(user)
+
+    def remove_user(self, user, role_type=None):
+        groups = user.groups.filter(role__project=self)
+
+        if role_type is not None:
+            groups = groups.filter(role__role_type=role_type)
+
+        for group in groups.iterator():
+            group.user_set.remove(user)
+
     def __str__(self):
         return _('Project \'%(name)s\' from %(organization)s') % {
             'name': self.name,

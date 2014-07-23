@@ -1,11 +1,12 @@
 from __future__ import unicode_literals
+
+from django.core.validators import URLValidator
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from django.core.validators import URLValidator
 
-from nodeconductor.structure import models as structure_models
 from nodeconductor.core.models import UuidMixin
+from nodeconductor.structure import models as structure_models
 
 
 @python_2_unicode_compatible
@@ -23,6 +24,8 @@ class Cloud(UuidMixin, models.Model):
 
     name = models.CharField(max_length=100)
     organization = models.ForeignKey(structure_models.Organization)
+
+    projects = models.ManyToManyField(structure_models.Project, related_name='clouds')
 
     def __str__(self):
         return self.name
