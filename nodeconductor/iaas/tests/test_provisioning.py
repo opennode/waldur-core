@@ -51,10 +51,12 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertIn(instance_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_instances_of_projects_he_has_no_role_in(self):
+        inaccessible_instance = factories.InstanceFactory()
+
         response = self.client.get(reverse('instance-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        instance_url = self._get_instance_url(factories.InstanceFactory())
+        instance_url = self._get_instance_url(inaccessible_instance)
         self.assertNotIn(instance_url, [instance['url'] for instance in response.data])
 
     def test_user_can_access_instances_of_projects_he_is_administrator_of(self):
@@ -66,9 +68,13 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_access_instances_of_projects_he_has_no_role_in(self):
-        response = self.client.get(self._get_project_url(factories.InstanceFactory()))
+        inaccessible_instance = factories.InstanceFactory()
+
+        response = self.client.get(self._get_project_url(inaccessible_instance))
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+# XXX: What should happen to existing instances when their project is removed?
 
 
 class InstanceProvisioningTest(PermissionTestMixin, UrlResolverMixin, test.APISimpleTestCase):
