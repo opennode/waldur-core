@@ -8,7 +8,6 @@ from rest_framework import test
 from nodeconductor.cloud.tests import factories as factories
 from nodeconductor.structure.models import Role
 from nodeconductor.structure.tests import factories as structure_factories
-from nodeconductor.structure.tests import PermissionTestMixin
 
 
 class FlavorPermissionLifecycleTest(unittest.TestCase):
@@ -196,9 +195,10 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
         return 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': flavor.uuid})
 
 
-class FlavorApiManipulationTest(PermissionTestMixin, test.APISimpleTestCase):
+class FlavorApiManipulationTest(test.APISimpleTestCase):
     def setUp(self):
-        super(FlavorApiManipulationTest, self).setUp()
+        self.user = structure_factories.UserFactory.create()
+        self.client.force_authenticate(user=self.user)
 
         self.flavor = factories.FlavorFactory()
         self.flavor_url = 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': self.flavor.uuid})
