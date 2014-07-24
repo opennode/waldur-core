@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
@@ -75,6 +76,14 @@ class Instance(UuidMixin, models.Model):
     @transition(field=state, source=States.PROVISIONING, target=States.STOPPED)
     def stop(self):
         pass
+
+    def clean(self):
+        # Only check while trying to provisioning instance,
+        # since later the cloud might get removed from this project
+        # and the validation will prevent even changing the state.
+        if self.state == self.States.DEFINED:
+            if not self.project.clouds.filter(pk=self.flavor.cloud.pk).exists():
+                raise ValidationError("Flavor is not within project's clouds.")
 
     def __str__(self):
         return _('%(name)s - %(status)s') % {

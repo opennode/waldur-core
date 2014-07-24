@@ -8,7 +8,6 @@ from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import Role
 from nodeconductor.structure.tests import factories as structure_factories
-from nodeconductor.structure.tests import PermissionTestMixin
 
 
 class UrlResolverMixin(object):
@@ -77,9 +76,10 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
 # XXX: What should happen to existing instances when their project is removed?
 
 
-class InstanceProvisioningTest(PermissionTestMixin, UrlResolverMixin, test.APISimpleTestCase):
+class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
     def setUp(self):
-        super(InstanceProvisioningTest, self).setUp()
+        self.user = structure_factories.UserFactory.create()
+        self.client.force_authenticate(user=self.user)
 
         self.instance_list_url = reverse('instance-list')
 
@@ -88,6 +88,9 @@ class InstanceProvisioningTest(PermissionTestMixin, UrlResolverMixin, test.APISi
         self.template = factories.TemplateFactory()
         self.flavor = cloud_factories.FlavorFactory(cloud=cloud)
         self.project = structure_factories.ProjectFactory(cloud=cloud)
+
+        # XXX: Is it admin or manager?
+        self.project.add_user(self.user, Role.ADMINISTRATOR)
 
     # Assertions
     def assert_field_required(self, field_name):
@@ -113,6 +116,22 @@ class InstanceProvisioningTest(PermissionTestMixin, UrlResolverMixin, test.APISi
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     # Negative tests
+    def test_cannot_create_instance_with_flavor_not_supplied_project(self):
+        data = self.get_valid_data()
+
+        another_flavor = cloud_factories.FlavorFactory()
+        another_project = structure_factories.ProjectFactory(
+            cloud=another_flavor.cloud)
+
+        # XXX: Is it admin or manager?
+        another_project.add_user(self.user, Role.ADMINISTRATOR)
+
+        data['flavor'] = self._get_flavor_url(another_flavor)
+
+        response = self.client.post(self.instance_list_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset({'__all__': ["Flavor is not within project's clouds."]}, response.data)
+
     def test_cannot_create_instance_with_flavor_not_from_users_projects(self):
         self.skipTest("Not implemented yet")
         data = self.get_valid_data()
