@@ -23,6 +23,9 @@ class Cloud(UuidMixin, models.Model):
         unique_together = (
             ('organization', 'name'),
         )
+        permissions = (
+            ('view_cloud', _('Can see available clouds')),
+        )
 
     name = models.CharField(max_length=100)
     organization = models.ForeignKey(structure_models.Organization)
@@ -128,7 +131,7 @@ signals.m2m_changed.connect(update_cloud_to_project_grants,
 
 
 class OpenStackCloud(Cloud):
-    class Meta(object):
+    class Meta(Cloud.Meta):
         verbose_name = _('OpenStack Cloud')
         verbose_name_plural = _('OpenStack Clouds')
 

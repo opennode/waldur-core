@@ -18,3 +18,5 @@ class OpenStackCloudViewSet(viewsets.ModelViewSet):
     queryset = models.OpenStackCloud.objects.all()
     serializer_class = serializers.OpenStackCloudSerializer
     lookup_field = 'uuid'
+    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    permission_classes = (permissions.DjangoObjectLevelPermissions,)
