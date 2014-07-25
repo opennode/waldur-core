@@ -28,7 +28,6 @@ Topics
    structure
    templates
    orchestration
-   terminology
 
 
 Indices and tables

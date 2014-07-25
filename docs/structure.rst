@@ -22,7 +22,6 @@ NodeConductor's user model includes several core models described below.
       a more technical 'Administrator' role and less technical 'Manager' role.
 
 
-
 Project roles
 =============
 
