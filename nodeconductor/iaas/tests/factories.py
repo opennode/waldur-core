@@ -2,6 +2,7 @@ import factory
 
 from nodeconductor.iaas import models
 from nodeconductor.cloud.tests import factories as cloud_factories
+from nodeconductor.structure.tests import factories as structure_factories
 
 
 class TemplateFactory(factory.DjangoModelFactory):
@@ -18,3 +19,4 @@ class InstanceFactory(factory.DjangoModelFactory):
     hostname = factory.Sequence(lambda n: 'host%s' % n)
     template = factory.SubFactory(TemplateFactory)
     flavor = factory.SubFactory(cloud_factories.FlavorFactory)
+    project = factory.SubFactory(structure_factories.ProjectFactory, cloud=factory.SelfAttribute('..flavor.cloud'))

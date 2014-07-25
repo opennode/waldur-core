@@ -7,7 +7,7 @@ from nodeconductor.core import models as core_models
 class InstanceCreateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'template', 'flavor')
+        fields = ('url', 'hostname', 'template', 'flavor', 'project')
         lookup_field = 'uuid'
         # TODO: Accept ip address count and volumes
 
@@ -22,7 +22,7 @@ class InstanceSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'template', 'cloud', 'flavor', 'state')
+        fields = ('url', 'hostname', 'template', 'cloud', 'project', 'flavor', 'state')
         lookup_field = 'uuid'
         # TODO: Render ip addresses and volumes
 

@@ -6,73 +6,91 @@ from rest_framework import test
 
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories
-from nodeconductor.structure.tests import PermissionTestMixin
+from nodeconductor.structure.models import Role
+from nodeconductor.structure.tests import factories as structure_factories
 
 
-class InstancePermissionTest(PermissionTestMixin, test.APISimpleTestCase):
-    def setUp(self):
-        super(InstancePermissionTest, self).setUp()
+class UrlResolverMixin(object):
+    def _get_flavor_url(self, flavor):
+        return 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': flavor.uuid})
 
-        self.users_instances = [
-            factories.InstanceFactory(flavor__cloud__organization=org)
-            for org in self.users_organizations
-        ]
+    def _get_project_url(self, project):
+        return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
 
-        self.others_instances = [
-            factories.InstanceFactory(flavor__cloud__organization=org)
-            for org in self.others_organizations
-        ]
+    def _get_template_url(self, template):
+        return 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
 
-    def test_user_can_list_all_of_the_instances_of_organizations_he_is_in(self):
-        response = self.client.get(reverse('instance-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        actual_urls = set(
-            instance['url']
-            for instance in response.data
-        )
-
-        for instance in self.users_instances:
-            url = self._get_instance_url(instance)
-            self.assertIn(url, actual_urls)
-
-    def test_user_can_list_none_of_the_instances_of_organizations_he_is_not_in(self):
-        response = self.client.get(reverse('instance-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        actual_urls = set(
-            instance['url']
-            for instance in response.data
-        )
-
-        for instance in self.others_instances:
-            url = self._get_instance_url(instance)
-            self.assertNotIn(url, actual_urls)
-
-    def test_user_can_access_any_of_the_instances_of_organizations_he_is_in(self):
-        for instance in self.users_instances:
-            response = self.client.get(self._get_instance_url(instance))
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-    def test_user_can_access_none_of_the_instances_of_organizations_he_is_in(self):
-        for instance in self.others_instances:
-            response = self.client.get(self._get_instance_url(instance))
-            # 404 is used instead of 403 to hide the fact that the resource exists at all
-            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    # Helper methods
     def _get_instance_url(self, instance):
         return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
 
 
-class InstanceProvisioningTest(PermissionTestMixin, test.APISimpleTestCase):
+class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
     def setUp(self):
-        super(InstanceProvisioningTest, self).setUp()
+        self.user = structure_factories.UserFactory.create()
+        self.client.force_authenticate(user=self.user)
+
+        self.admined_instance = factories.InstanceFactory()
+        self.managed_instance = factories.InstanceFactory()
+
+        self.admined_instance.project.add_user(self.user, Role.ADMINISTRATOR)
+        self.managed_instance.project.add_user(self.user, Role.MANAGER)
+
+    def test_user_can_list_instances_of_projects_he_is_administrator_of(self):
+        response = self.client.get(reverse('instance-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        instance_url = self._get_instance_url(self.admined_instance)
+        self.assertIn(instance_url, [instance['url'] for instance in response.data])
+
+    def test_user_can_list_instances_of_projects_he_is_manager_of(self):
+        response = self.client.get(reverse('instance-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        instance_url = self._get_instance_url(self.managed_instance)
+        self.assertIn(instance_url, [instance['url'] for instance in response.data])
+
+    def test_user_cannot_list_instances_of_projects_he_has_no_role_in(self):
+        inaccessible_instance = factories.InstanceFactory()
+
+        response = self.client.get(reverse('instance-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        instance_url = self._get_instance_url(inaccessible_instance)
+        self.assertNotIn(instance_url, [instance['url'] for instance in response.data])
+
+    def test_user_can_access_instances_of_projects_he_is_administrator_of(self):
+        response = self.client.get(self._get_instance_url(self.admined_instance))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_can_access_instances_of_projects_he_is_manager_of(self):
+        response = self.client.get(self._get_instance_url(self.managed_instance))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_cannot_access_instances_of_projects_he_has_no_role_in(self):
+        inaccessible_instance = factories.InstanceFactory()
+
+        response = self.client.get(self._get_project_url(inaccessible_instance))
+        # 404 is used instead of 403 to hide the fact that the resource exists at all
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+# XXX: What should happen to existing instances when their project is removed?
+
+
+class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
+    def setUp(self):
+        self.user = structure_factories.UserFactory.create()
+        self.client.force_authenticate(user=self.user)
 
         self.instance_list_url = reverse('instance-list')
 
+        cloud = cloud_factories.CloudFactory()
+
         self.template = factories.TemplateFactory()
-        self.flavor = cloud_factories.FlavorFactory()
+        self.flavor = cloud_factories.FlavorFactory(cloud=cloud)
+        self.project = structure_factories.ProjectFactory(cloud=cloud)
+
+        # XXX: Is it admin or manager?
+        self.project.add_user(self.user, Role.ADMINISTRATOR)
 
     # Assertions
     def assert_field_required(self, field_name):
@@ -98,6 +116,42 @@ class InstanceProvisioningTest(PermissionTestMixin, test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     # Negative tests
+    def test_cannot_create_instance_with_flavor_not_supplied_project(self):
+        data = self.get_valid_data()
+
+        another_flavor = cloud_factories.FlavorFactory()
+        another_project = structure_factories.ProjectFactory(
+            cloud=another_flavor.cloud)
+
+        # XXX: Is it admin or manager?
+        another_project.add_user(self.user, Role.ADMINISTRATOR)
+
+        data['flavor'] = self._get_flavor_url(another_flavor)
+
+        response = self.client.post(self.instance_list_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset({'__all__': ["Flavor is not within project's clouds."]}, response.data)
+
+    def test_cannot_create_instance_with_flavor_not_from_users_projects(self):
+        self.skipTest("Not implemented yet")
+        data = self.get_valid_data()
+        others_flavor = cloud_factories.FlavorFactory()
+        data['flavor'] = self._get_flavor_url(others_flavor)
+
+        response = self.client.post(self.instance_list_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset({'flavor': ['Invalid hyperlink - object does not exist.']}, response.data)
+
+    def test_cannot_create_instance_with_project_not_from_users_projects(self):
+        self.skipTest("Not implemented yet")
+        data = self.get_valid_data()
+        others_flavor = cloud_factories.FlavorFactory()
+        data['flavor'] = self._get_flavor_url(others_flavor)
+
+        response = self.client.post(self.instance_list_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset({'flavor': ['Invalid hyperlink - object does not exist.']}, response.data)
+
     def test_cannot_create_instance_with_empty_hostname_name(self):
         self.assert_field_non_empty('hostname')
 
@@ -146,23 +200,30 @@ class InstanceProvisioningTest(PermissionTestMixin, test.APISimpleTestCase):
             # Cloud independent parameters
             'hostname': 'host1',
 
+            # TODO: Make sure both project and flavor belong to the same organization
+            'project': self._get_project_url(self.project),
+
             # Should not depend on cloud, instead represents an "aggregation" of templates
-            'template': 'http://testserver' + reverse('template-detail', kwargs={'uuid': self.template.uuid}),
+            'template': self._get_template_url(self.template),
 
             'volume_sizes': [10, 15, 10],
             'tags': set(),
 
             # Cloud dependent parameters
-            'flavor': 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': self.flavor.uuid}),
+            'flavor': self._get_flavor_url(self.flavor),
         }
 
 
-class InstanceManipulationTest(PermissionTestMixin, test.APISimpleTestCase):
+class InstanceManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
     def setUp(self):
-        super(InstanceManipulationTest, self).setUp()
+        self.user = structure_factories.UserFactory.create()
+        self.client.force_authenticate(user=self.user)
 
         self.instance = factories.InstanceFactory()
-        self.instance_url = reverse('instance-detail', kwargs={'uuid': self.instance.uuid})
+        self.instance_url = self._get_instance_url(self.instance)
+
+        self.instance.project.add_user(self.user, Role.ADMINISTRATOR)
+        self.instance.project.add_user(self.user, Role.MANAGER)
 
     def test_cannot_delete_instance(self):
         response = self.client.delete(self.instance_url)
@@ -172,8 +233,8 @@ class InstanceManipulationTest(PermissionTestMixin, test.APISimpleTestCase):
     def test_cannot_change_instance_as_whole(self):
         data = {
             'hostname': self.instance.hostname,
-            'template': reverse('template-detail', kwargs={'uuid': self.instance.template.uuid}),
-            'flavor': reverse('flavor-detail', kwargs={'uuid': self.instance.flavor.uuid}),
+            'template': self._get_template_url(self.instance.template),
+            'flavor': self._get_flavor_url(self.instance.flavor),
         }
 
         response = self.client.put(self.instance_url, data)

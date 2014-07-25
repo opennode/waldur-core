@@ -1,15 +1,17 @@
 from __future__ import unicode_literals
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField
 from django_fsm import transition
-
 from taggit.managers import TaggableManager
 
-from nodeconductor.core.models import UuidMixin
 from nodeconductor.cloud import models as cloud_models
+from nodeconductor.core.models import UuidMixin
+from nodeconductor.core.permissions import register_group_access
+from nodeconductor.structure import models as structure_models
 
 
 @python_2_unicode_compatible
@@ -42,9 +44,15 @@ class Instance(UuidMixin, models.Model):
         ERRED = 'e'
         DELETED = 'x'
 
+    class Meta(object):
+        permissions = (
+            ('view_instance', _('Can see available instances')),
+        )
+
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, editable=False, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
+    project = models.ForeignKey(structure_models.Project, related_name='instances')
 
     tags = TaggableManager()
 
@@ -69,11 +77,34 @@ class Instance(UuidMixin, models.Model):
     def stop(self):
         pass
 
+    def clean(self):
+        # Only check while trying to provisioning instance,
+        # since later the cloud might get removed from this project
+        # and the validation will prevent even changing the state.
+        if self.state == self.States.DEFINED:
+            if not self.project.clouds.filter(pk=self.flavor.cloud.pk).exists():
+                raise ValidationError("Flavor is not within project's clouds.")
+
     def __str__(self):
         return _('%(name)s - %(status)s') % {
             'name': self.hostname,
             'status': self.get_state_display(),
         }
+
+register_group_access(
+    Instance,
+    (lambda instance: instance.project.roles.get(
+        role_type=structure_models.Role.ADMINISTRATOR).permission_group),
+    permissions=('view',),
+    tag='admin',
+)
+register_group_access(
+    Instance,
+    (lambda instance: instance.project.roles.get(
+        role_type=structure_models.Role.MANAGER).permission_group),
+    permissions=('view',),
+    tag='manager',
+)
 
 
 class Volume(models.Model):
