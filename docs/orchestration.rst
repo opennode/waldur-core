@@ -2,10 +2,9 @@ Orchestration & configuration management
 ----------------------------------------
 
 Configuration management is a great way to describe and implement best practices for deployment and lifecycle
-management of the applications. However, for multi-tenant cases when we have multiple environments,
-with potentially different lifecycles, maintaining a single set of configuration management scrips becomes too
-restrictive. Moreover, we don't want to depend on upstream as it might be down, decide to introduce destructive
-changes or do something equally evil.
+management of applications. However, for multiple projects with potentially different lifecycles, maintaining
+a single set of configuration management scripts becomes too restrictive. Moreover, depending on upstream is risky due
+to potential destructive modification.
 
 
 Configuration repository structure
