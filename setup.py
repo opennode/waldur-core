@@ -21,7 +21,6 @@ install_requires = [
     'django-background-task==0.1.6',
     'django-fsm==2.1.0',
     'django-uuidfield==0.5.0',
-    'django-sshkey>=2.2.0',
     'django-taggit==0.12'
 ]
 
@@ -40,9 +39,6 @@ setup(
         'tests': tests_requires,
         'dev': dev_requires,
     },
-    dependency_links = [
-        'https://github.com/opennode/django-sshkey/archive/2.3.0.zip#egg=django-sshkey-2.3.0'
-    ],
     entry_points={
         'console_scripts': ('nodeconductor = nodeconductor.server.logan_runner:main',)
     },
