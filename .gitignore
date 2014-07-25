@@ -22,3 +22,5 @@ TEST-*.xml
 
 # documentation
 docs/_build/
+
+/static_files
