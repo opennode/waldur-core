@@ -116,7 +116,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     # Negative tests
-    def test_cannot_create_instance_with_flavor_not_supplied_project(self):
+    def test_cannot_create_instance_with_flavor_not_from_supplied_project(self):
         data = self.get_valid_data()
 
         another_flavor = cloud_factories.FlavorFactory()
@@ -132,8 +132,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset({'__all__': ["Flavor is not within project's clouds."]}, response.data)
 
-    def test_cannot_create_instance_with_flavor_not_from_users_projects(self):
-        self.skipTest("Not implemented yet")
+    def test_cannot_create_instance_with_flavor_not_from_clouds_allowed_for_users_projects(self):
         data = self.get_valid_data()
         others_flavor = cloud_factories.FlavorFactory()
         data['flavor'] = self._get_flavor_url(others_flavor)
@@ -143,14 +142,13 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertDictContainsSubset({'flavor': ['Invalid hyperlink - object does not exist.']}, response.data)
 
     def test_cannot_create_instance_with_project_not_from_users_projects(self):
-        self.skipTest("Not implemented yet")
         data = self.get_valid_data()
-        others_flavor = cloud_factories.FlavorFactory()
-        data['flavor'] = self._get_flavor_url(others_flavor)
+        others_project = structure_factories.ProjectFactory()
+        data['project'] = self._get_project_url(others_project)
 
         response = self.client.post(self.instance_list_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'flavor': ['Invalid hyperlink - object does not exist.']}, response.data)
+        self.assertDictContainsSubset({'project': ['Invalid hyperlink - object does not exist.']}, response.data)
 
     def test_cannot_create_instance_with_empty_hostname_name(self):
         self.assert_field_non_empty('hostname')
