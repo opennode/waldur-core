@@ -12,7 +12,7 @@ class PermissionFieldFilteringMixin(object):
        'view' permission created, e.g. for Flavor there should
        be 'view_flavor' permission defined.
 
-    2. Implement `get_get_filtered_field_names()` method
+    2. Implement `get_filtered_field_names()` method
        in the class that this mixin is mixed into and return
        the field in question from that method.
     """
