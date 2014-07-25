@@ -1,18 +1,24 @@
 from rest_framework import serializers
 
+from core.serializers import PermissionFieldFilteringMixin
 from nodeconductor.iaas import models
 from nodeconductor.core import models as core_models
 
 
-class InstanceCreateSerializer(serializers.HyperlinkedModelSerializer):
+class InstanceCreateSerializer(PermissionFieldFilteringMixin,
+                               serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Instance
         fields = ('url', 'hostname', 'template', 'flavor', 'project')
         lookup_field = 'uuid'
         # TODO: Accept ip address count and volumes
 
+    def get_filtered_field_names(self):
+        return 'project', 'flavor'
 
-class InstanceSerializer(serializers.HyperlinkedModelSerializer):
+
+class InstanceSerializer(PermissionFieldFilteringMixin,
+                         serializers.HyperlinkedModelSerializer):
     cloud = serializers.HyperlinkedRelatedField(
         source='flavor.cloud',
         view_name='cloud-detail',
@@ -25,6 +31,9 @@ class InstanceSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('url', 'hostname', 'template', 'cloud', 'project', 'flavor', 'state')
         lookup_field = 'uuid'
         # TODO: Render ip addresses and volumes
+
+    def get_filtered_field_names(self):
+        return 'project', 'flavor'
 
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
