@@ -1,8 +1,8 @@
 from rest_framework import serializers
 
-from core.serializers import PermissionFieldFilteringMixin
 from nodeconductor.iaas import models
 from nodeconductor.core import models as core_models
+from nodeconductor.core.serializers import PermissionFieldFilteringMixin
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,
