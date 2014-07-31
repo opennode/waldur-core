@@ -12,7 +12,7 @@ from nodeconductor.core.models import UuidMixin
 
 
 @python_2_unicode_compatible
-class Customer(models.Model):
+class Organization(models.Model):
     name = models.CharField(max_length=80)
     abbreviation = models.CharField(max_length=80)
     contact_details = models.TextField()
@@ -53,7 +53,7 @@ class Project(UuidMixin, models.Model):
         )
 
     name = models.CharField(max_length=80)
-    customer = models.ForeignKey(Customer, related_name='projects')
+    organization = models.ForeignKey(Organization, related_name='projects')
 
     def add_user(self, user, role_type):
         self.roles.get(role_type=role_type).permission_group.user_set.add(user)
@@ -68,9 +68,9 @@ class Project(UuidMixin, models.Model):
             group.user_set.remove(user)
 
     def __str__(self):
-        return _('Project \'%(name)s\' from %(customer)s') % {
+        return _('Project \'%(name)s\' from %(organization)s') % {
             'name': self.name,
-            'customer': self.customer.name
+            'organization': self.organization.name
         }
 
 

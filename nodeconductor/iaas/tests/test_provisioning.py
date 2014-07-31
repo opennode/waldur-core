@@ -198,7 +198,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
             # Cloud independent parameters
             'hostname': 'host1',
 
-            # TODO: Make sure both project and flavor belong to the same customer
+            # TODO: Make sure both project and flavor belong to the same organization
             'project': self._get_project_url(self.project),
 
             # Should not depend on cloud, instead represents an "aggregation" of templates

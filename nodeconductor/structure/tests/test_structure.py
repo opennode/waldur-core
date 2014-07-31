@@ -7,7 +7,7 @@ from nodeconductor.structure.tests import factories
 
 class NetworkTest(TestCase):
     def setUp(self):
-        self.project = models.Project.objects.create(name='test_proj', customer=factories.CustomerFactory())
+        self.project = models.Project.objects.create(name='test_proj', organization=factories.OrganizationFactory())
 
     def test_network_segment_creation(self):
         models.NetworkSegment.objects.create(ip='192.168.0.0', netmask=24, vlan=1, project=self.project)

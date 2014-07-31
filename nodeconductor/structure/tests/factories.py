@@ -19,18 +19,18 @@ class UserFactory(factory.DjangoModelFactory):
     is_superuser = False
 
     @factory.post_generation
-    def customers(self, create, extracted, **kwargs):
+    def organizations(self, create, extracted, **kwargs):
         if not create:
             return
 
         if extracted:
-            for customer in extracted:
-                self.customers.add(customer)
+            for organization in extracted:
+                self.organizations.add(organization)
 
 
-class CustomerFactory(factory.DjangoModelFactory):
+class OrganizationFactory(factory.DjangoModelFactory):
     class Meta(object):
-        model = models.Customer
+        model = models.Organization
 
     name = factory.Sequence(lambda n: 'Org%s' % n)
     abbreviation = factory.LazyAttribute(lambda o: o.name[:5])
@@ -42,7 +42,7 @@ class ProjectFactory(factory.DjangoModelFactory):
         model = models.Project
 
     name = factory.Sequence(lambda n: 'Proj%s' % n)
-    customer = factory.SubFactory(CustomerFactory)
+    organization = factory.SubFactory(OrganizationFactory)
 
     @factory.post_generation
     def cloud(self, create, extracted, **kwargs):
