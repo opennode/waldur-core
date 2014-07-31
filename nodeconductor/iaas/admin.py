@@ -4,7 +4,7 @@ from nodeconductor.iaas import models
 
 
 class InstanceAdmin(admin.ModelAdmin):
-    readonly_fields = ('state',)
+    readonly_fields = ('template', 'state')
     ordering = ('hostname',)
 
 
