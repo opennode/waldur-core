@@ -1,20 +1,20 @@
-User model: Customers, Users, Roles and Projects
+User model: Organisations, Users, Roles and Projects
 ++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 NodeConductor's user model includes several core models described below.
 
 .. glossary::
 
-    Customer
+    Organisation
       A standalone entity. Represents a company or a department. Responsible for paying for consumed resources.
 
     Project
-      A project is an entity within an customer. Project is managed by users having different roles. Project
+      A project is an entity within an organisation. Project is managed by users having different roles. Project
       aggregates and separates resources.
 
     User
       An account in NodeConductor belonging to a person or robot. A user can have at most a single role in the project.
-      A user can work in different projects with different roles. User's Customer is derived based on what projects
+      A user can work in different projects with different roles. User's Organisation is derived based on what projects
       a user has access to.
 
     Role
