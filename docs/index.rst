@@ -26,6 +26,7 @@ Topics
    :maxdepth: 2
 
    structure
+   groups
    templates
    orchestration
 
