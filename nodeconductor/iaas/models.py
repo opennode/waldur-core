@@ -50,7 +50,7 @@ class Instance(UuidMixin, models.Model):
         )
 
     hostname = models.CharField(max_length=80)
-    template = models.ForeignKey(Template, editable=False, related_name='+')
+    template = models.ForeignKey(Template, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
 
