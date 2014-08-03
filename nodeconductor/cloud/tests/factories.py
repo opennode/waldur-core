@@ -1,7 +1,7 @@
 import factory
 
 from nodeconductor.cloud import models
-from nodeconductor.structure.tests.factories import OrganizationFactory
+from nodeconductor.structure.tests.factories import CustomerFactory
 
 
 class CloudFactory(factory.DjangoModelFactory):
@@ -10,7 +10,7 @@ class CloudFactory(factory.DjangoModelFactory):
         model = models.OpenStackCloud
 
     name = factory.Sequence(lambda n: 'cloud%s' % n)
-    organization = factory.SubFactory(OrganizationFactory)
+    customer = factory.SubFactory(CustomerFactory)
 
 
 class FlavorFactory(factory.DjangoModelFactory):
