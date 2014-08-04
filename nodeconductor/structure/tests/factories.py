@@ -32,8 +32,8 @@ class CustomerFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.Customer
 
-    name = factory.Sequence(lambda n: 'Org%s' % n)
-    abbreviation = factory.LazyAttribute(lambda o: o.name[:5])
+    name = factory.Sequence(lambda n: 'Customer%s' % n)
+    abbreviation = factory.LazyAttribute(lambda o: o.name[:4])
     contact_details = factory.Sequence(lambda n: 'contacts %s' % n)
 
 
