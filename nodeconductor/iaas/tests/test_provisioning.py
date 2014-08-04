@@ -73,6 +73,14 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_user_can_change_description_of_instance_he_is_administrator_of(self):
+        response = self.client.get(self._get_instance_url(self.admined_instance))
+        data = response.data
+        data['description'] = 'changed description1'
+
+        response = self.client.put(self._get_instance_url(self.admined_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
 # XXX: What should happen to existing instances when their project is removed?
 
 
@@ -111,6 +119,20 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
     def test_can_create_instance_without_volume_sizes(self):
         data = self.get_valid_data()
         del data['volume_sizes']
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_can_create_instance_without_description(self):
+        data = self.get_valid_data()
+        del data['description']
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_can_create_instance_with_empty_description(self):
+        data = self.get_valid_data()
+        data['description'] = ''
         response = self.client.post(self.instance_list_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -197,6 +219,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         return {
             # Cloud independent parameters
             'hostname': 'host1',
+            'description': 'description1',
 
             # TODO: Make sure both project and flavor belong to the same organization
             'project': self._get_project_url(self.project),
