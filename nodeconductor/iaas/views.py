@@ -11,6 +11,7 @@ from nodeconductor.iaas import serializers
 class InstanceViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       mixins.ListModelMixin,
+                      mixins.UpdateModelMixin,
                       viewsets.GenericViewSet):
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
@@ -19,7 +20,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     permission_classes = (permissions.DjangoObjectLevelPermissions,)
 
     def get_serializer_class(self):
-        if self.request.method == 'POST':
+        if self.request.method in ('POST', 'PUT'):
             return serializers.InstanceCreateSerializer
 
         return super(InstanceViewSet, self).get_serializer_class()

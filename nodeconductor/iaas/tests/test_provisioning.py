@@ -24,7 +24,7 @@ class UrlResolverMixin(object):
         return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
 
 
-class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
+class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory.create()
         self.client.force_authenticate(user=self.user)
@@ -80,6 +80,26 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
 
         response = self.client.put(self._get_instance_url(self.admined_instance), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.get(self._get_instance_url(self.admined_instance))
+        self.assertEqual(response.data['description'], 'changed description1')
+
+    def test_user_cannot_change_description_of_instance_he_is_manager_of(self):
+        response = self.client.get(self._get_instance_url(self.managed_instance))
+        data = response.data
+        data['description'] = 'changed description1'
+
+        response = self.client.put(self._get_instance_url(self.managed_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_cannot_change_description_of_instance_he_has_no_role_in(self):
+        inaccessible_instance = factories.InstanceFactory()
+        response = self.client.get(self._get_instance_url(inaccessible_instance))
+        data = response.data
+        data['description'] = 'changed description1'
+
+        response = self.client.put(self._get_instance_url(inaccessible_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 # XXX: What should happen to existing instances when their project is removed?
 
@@ -248,25 +268,5 @@ class InstanceManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
     def test_cannot_delete_instance(self):
         response = self.client.delete(self.instance_url)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_cannot_change_instance_as_whole(self):
-        data = {
-            'hostname': self.instance.hostname,
-            'template': self._get_template_url(self.instance.template),
-            'flavor': self._get_flavor_url(self.instance.flavor),
-        }
-
-        response = self.client.put(self.instance_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_cannot_change_single_instance_field(self):
-        data = {
-            'hostname': self.instance.hostname,
-        }
-
-        response = self.client.patch(self.instance_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
