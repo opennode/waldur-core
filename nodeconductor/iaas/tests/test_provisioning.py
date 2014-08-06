@@ -94,12 +94,52 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
 
     def test_user_cannot_change_description_of_instance_he_has_no_role_in(self):
         inaccessible_instance = factories.InstanceFactory()
-        response = self.client.get(self._get_instance_url(inaccessible_instance))
-        data = response.data
+        data = self.instance_to_dict(inaccessible_instance)
         data['description'] = 'changed description1'
 
         response = self.client.put(self._get_instance_url(inaccessible_instance), data)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        #TODO Discuss about formularity of updates
+        self.assertIsNot(response.status_code, status.HTTP_200_OK)
+
+    def test_user_can_change_description_single_field_of_instance_he_is_administrator_of(self):
+        data = {
+            'description': 'changed description1',
+        }
+
+        response = self.client.patch(self._get_instance_url(self.admined_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.get(self._get_instance_url(self.admined_instance))
+        self.assertEqual(response.data['description'], 'changed description1')
+
+    def test_user_cannot_change_description_single_field__of_instance_he_is_manager_of(self):
+        data = {
+            'description': 'changed description1',
+        }
+
+        response = self.client.patch(self._get_instance_url(self.managed_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_cannot_change_description_single_field_of_instance_he_has_no_role_in(self):
+        inaccessible_instance = factories.InstanceFactory()
+        data = {
+            'description': 'changed description1',
+        }
+
+        response = self.client.patch(self._get_instance_url(inaccessible_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # Helpers method
+    def instance_to_dict(self, instance):
+        return {
+            'hostname': instance.hostname,
+            'description': instance.description,
+            'project': self._get_project_url(instance.project),
+            'template': self._get_template_url(instance.template),
+            'volume_sizes': [11, 14, 9],
+            'tags': set(),
+            'flavor': self._get_flavor_url(instance.flavor),
+        }
 
 # XXX: What should happen to existing instances when their project is removed?
 

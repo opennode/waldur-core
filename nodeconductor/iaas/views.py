@@ -20,7 +20,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     permission_classes = (permissions.DjangoObjectLevelPermissions,)
 
     def get_serializer_class(self):
-        if self.request.method in ('POST', 'PUT'):
+        if self.request.method in ('POST', 'PUT', 'PATCH'):
             return serializers.InstanceCreateSerializer
 
         return super(InstanceViewSet, self).get_serializer_class()
