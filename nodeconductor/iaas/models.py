@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.contrib.auth.models import User
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField
@@ -113,3 +114,39 @@ class Volume(models.Model):
     """
     instance = models.ForeignKey(Instance, related_name='volumes')
     size = models.PositiveSmallIntegerField()
+
+
+class Purchase(UuidMixin, models.Model):
+    """
+    Purchase history allows to see historical information
+    about what services have been purchased alongside
+    with additional metadata.
+    """
+    class Meta(object):
+        permissions = (
+            ('view_purchase', _('Can see available purchases')),
+        )
+    date = models.DateTimeField()
+    user = models.ForeignKey(User, related_name='purchases')
+    project = models.ForeignKey(structure_models.Project, related_name='purchases')
+
+    def __str__(self):
+        return _('%(user)s - %(date)s') % {
+            'user': self.user.username,
+            'date': self.date,
+        }
+
+register_group_access(
+    Purchase,
+    (lambda purchase: purchase.project.roles.get(
+        role_type=structure_models.Role.ADMINISTRATOR).permission_group),
+    permissions=('view',),
+    tag='admin',
+)
+register_group_access(
+    Purchase,
+    (lambda purchase: purchase.project.roles.get(
+        role_type=structure_models.Role.MANAGER).permission_group),
+    permissions=('view',),
+    tag='manager',
+)
