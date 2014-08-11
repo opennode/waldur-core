@@ -1,10 +1,10 @@
 import factory
 
+from django.utils import timezone
+
 from nodeconductor.iaas import models
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.structure.tests import factories as structure_factories
-
-import datetime
 
 
 class TemplateFactory(factory.DjangoModelFactory):
@@ -29,7 +29,7 @@ class PurchaseFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.Purchase
 
-    date = factory.LazyAttribute(lambda o: datetime.datetime.now())
+    date = factory.LazyAttribute(lambda o: timezone.now())
     user = factory.SubFactory(structure_factories.UserFactory)
     project = factory.SubFactory(structure_factories.ProjectFactory)
 

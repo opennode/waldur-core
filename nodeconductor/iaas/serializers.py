@@ -52,12 +52,12 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
 
 class PurchaseSerializer(PermissionFieldFilteringMixin,
                          serializers.HyperlinkedModelSerializer):
-    organization = serializers.Field(source='project.organization')
+    customer = serializers.Field(source='project.customer')
     user = serializers.Field(source='user.username')
 
     class Meta(object):
         model = models.Purchase
-        fields = ('url', 'date', 'user', 'organization', 'project')
+        fields = ('url', 'date', 'user', 'customer', 'project')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
