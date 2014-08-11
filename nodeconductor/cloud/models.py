@@ -21,14 +21,14 @@ class Cloud(UuidMixin, models.Model):
     """
     class Meta(object):
         unique_together = (
-            ('organization', 'name'),
+            ('customer', 'name'),
         )
         permissions = (
             ('view_cloud', _('Can see available clouds')),
         )
 
     name = models.CharField(max_length=100)
-    organization = models.ForeignKey(structure_models.Organization)
+    customer = models.ForeignKey(structure_models.Customer)
 
     projects = models.ManyToManyField(structure_models.Project, related_name='clouds')
 

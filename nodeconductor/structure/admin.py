@@ -25,6 +25,6 @@ class CloudAdminForm(forms.ModelForm):
 class ProjectAdmin(admin.ModelAdmin):
     form = CloudAdminForm
 
-admin.site.register(models.Organization)
+admin.site.register(models.Customer)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.Environment)
