@@ -1,11 +1,13 @@
+from __future__ import unicode_literals
+
 import logging
 
 from django.contrib.auth.models import Group
-from django.utils.encoding import python_2_unicode_compatible
-from django_auth_ldap.backend import populate_user
 from django.dispatch import receiver
-
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
+from django.utils.translation import ugettext as _
+from django_auth_ldap.backend import populate_user
 
 
 logger = logging.getLogger(__name__)
@@ -14,15 +16,15 @@ logger = logging.getLogger(__name__)
 @python_2_unicode_compatible
 class LdapToGroup(models.Model):
     class Meta(object):
-        verbose_name = "LDAP to Django group mapping"
+        verbose_name = _("LDAP to Django group mapping")
 
     ldap_group_name = models.CharField(max_length=80)
     django_group = models.ForeignKey(Group)
 
     def __str__(self):
         return '%(ldap)s -> %(group)s' % {
-                'ldap': self.ldap_group_name,
-                'group': self.django_group
+            'ldap': self.ldap_group_name,
+            'group': self.django_group
         }
 
 
@@ -31,7 +33,7 @@ def synchronise_user_groups(**kwargs):
     """
     Synchronise Django group membership base on user's ldap groups and configured mappings.
     """
-    logger.debug('Synchronising user groups from ldap.')
+    logger.debug('Synchronizing user groups from ldap.')
     ldap_user = kwargs['ldap_user']
     user = kwargs['user']
     # get all the user groups marked for management
@@ -41,7 +43,6 @@ def synchronise_user_groups(**kwargs):
         if group.ldap_group_name in ldap_user.group_names:
             logger.debug('User is still in the group %s' % group)
         else:
-            print 'User has left the group %s' % group
             logger.debug('User has left the group %s' % group)
             user.groups.remove(group.django_group)
 
