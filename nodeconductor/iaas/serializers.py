@@ -9,7 +9,8 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
                                serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'template', 'flavor', 'project')
+        fields = ('url', 'hostname', 'description',
+                  'template', 'flavor', 'project')
         lookup_field = 'uuid'
         # TODO: Accept ip address count and volumes
 
@@ -28,7 +29,8 @@ class InstanceSerializer(PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'template', 'cloud', 'project', 'flavor', 'state')
+        fields = ('url', 'hostname', 'description',
+                  'template', 'cloud', 'project', 'flavor', 'state')
         lookup_field = 'uuid'
         # TODO: Render ip addresses and volumes
 

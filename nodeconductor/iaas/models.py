@@ -50,6 +50,7 @@ class Instance(UuidMixin, models.Model):
         )
 
     hostname = models.CharField(max_length=80)
+    description = models.TextField(blank=True)
     template = models.ForeignKey(Template, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
@@ -95,7 +96,7 @@ register_group_access(
     Instance,
     (lambda instance: instance.project.roles.get(
         role_type=structure_models.Role.ADMINISTRATOR).permission_group),
-    permissions=('view',),
+    permissions=('view', 'change',),
     tag='admin',
 )
 register_group_access(
