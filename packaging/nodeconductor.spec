@@ -85,10 +85,10 @@ nodeconductor migrate
 nodeconductor collectstatic --noinput
 
 %changelog
-* Sun 17 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-8
+* Sun Aug 17 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-8
 - Added dependency on django-guardian
 
-* Sun 17 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-7
+* Sun Aug 17 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-7
 - Added support for ldap integration
 
 * Mon Jul 21 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-6
