@@ -1,12 +1,12 @@
-from rest_framework import test
 from rest_framework import status
+from rest_framework import test
 from rest_framework.reverse import reverse
 
-from nodeconductor.structure import models
 from nodeconductor.iaas.tests import factories as iaas_factories
+from nodeconductor.structure import models
 
 
-class PurchasePermissionTest(test.APISimpleTestCase):
+class PurchaseApiPermissionTest(test.APISimpleTestCase):
     def setUp(self):
         self.purchases = iaas_factories.PurchaseFactory.create_batch(3)
 
