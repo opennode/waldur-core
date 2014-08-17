@@ -6,6 +6,7 @@ from rest_framework import viewsets
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
+from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.core import permissions
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
@@ -35,7 +36,7 @@ class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
 
 
-class SshKeyViewSet(viewsets.ModelViewSet):
+class SshKeyViewSet(core_viewsets.ModelViewSet):
     queryset = core_models.SshPublicKey.objects.all()
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'

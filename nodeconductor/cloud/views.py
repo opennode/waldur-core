@@ -4,6 +4,7 @@ from rest_framework import viewsets
 from nodeconductor.cloud import models
 from nodeconductor.cloud import serializers
 from nodeconductor.core import permissions
+from nodeconductor.core import viewsets as core_viewsets
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -14,7 +15,7 @@ class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (permissions.DjangoObjectLevelPermissions,)
 
 
-class OpenStackCloudViewSet(viewsets.ModelViewSet):
+class OpenStackCloudViewSet(core_viewsets.ModelViewSet):
     queryset = models.OpenStackCloud.objects.all()
     serializer_class = serializers.OpenStackCloudSerializer
     lookup_field = 'uuid'
