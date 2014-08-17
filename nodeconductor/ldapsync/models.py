@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 class LdapToGroup(models.Model):
     class Meta(object):
         verbose_name = _("LDAP to Django group mapping")
+        unique_together = ('ldap_group_name', 'django_group')
 
     ldap_group_name = models.CharField(max_length=80)
     django_group = models.ForeignKey(Group)
