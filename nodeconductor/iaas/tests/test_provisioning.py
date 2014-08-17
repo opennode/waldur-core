@@ -98,8 +98,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         data['description'] = 'changed description1'
 
         response = self.client.put(self._get_instance_url(inaccessible_instance), data)
-        #TODO Discuss about formularity of updates
-        self.assertIsNot(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_can_change_description_single_field_of_instance_he_is_administrator_of(self):
         data = {
