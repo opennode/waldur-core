@@ -1,7 +1,10 @@
+from __future__ import unicode_literals
+
 from rest_framework import filters
 from rest_framework import mixins
 from rest_framework import viewsets
 
+from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import permissions
 from nodeconductor.iaas import models
@@ -11,7 +14,7 @@ from nodeconductor.iaas import serializers
 class InstanceViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       mixins.ListModelMixin,
-                      mixins.UpdateModelMixin,
+                      core_mixins.UpdateOnlyModelMixin,
                       viewsets.GenericViewSet):
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
