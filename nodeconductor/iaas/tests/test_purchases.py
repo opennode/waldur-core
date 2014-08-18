@@ -78,3 +78,50 @@ class PurchasePermissionTest(test.APISimpleTestCase):
     # Helper methods
     def _get_purchase_url(self, purchase):
         return 'http://testserver' + reverse('purchase-detail', kwargs={'uuid': purchase.uuid})
+
+
+class PurchaseApiManipulationTest(test.APISimpleTestCase):
+    def setUp(self):
+        self.user = structure_factories.UserFactory.create()
+        self.client.force_authenticate(user=self.user)
+
+        self.purchase = iaas_factories.PurchaseFactory()
+        self.purchase_url = 'http://testserver' + reverse('purchase-detail', kwargs={'uuid': self.purchase.uuid})
+
+    def test_cannot_delete_purchase(self):
+        response = self.client.delete(self.purchase_url)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_cannot_create_purchase(self):
+        data = {
+            'user': self.purchase.user.username,
+            'date': self.purchase.date,
+            'project': 'http://testserver' + reverse('project-detail',
+                                                     kwargs={'uuid': structure_factories.ProjectFactory().uuid})
+        }
+
+        response = self.client.post(self.purchase_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_cannot_change_purchase_as_whole(self):
+        data = {
+            'user': self.purchase.user.username,
+            'date': self.purchase.date,
+            'project': 'http://testserver' + reverse('project-detail',
+                                                     kwargs={'uuid': self.purchase.project.uuid})
+        }
+
+        response = self.client.put(self.purchase_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_cannot_change_single_purchase_field(self):
+        data = {
+            'date': self.purchase.date,
+        }
+
+        response = self.client.patch(self.purchase_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
