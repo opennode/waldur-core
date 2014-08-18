@@ -15,3 +15,13 @@ For the moment, it is done by:
 - configuring LDAP access from NodeConductor
 - creating a new
 *nodeconductor.ldapsync.models.LdapToGroup* instance and specifying LDAP group name and the target Django group.
+
+To enable LDAP support, please update `settings.py` (probably located in /etc/nodeconductor/ if installed from RPMs)
+to enable LDAPBackend:
+
+.. code-block:: python
+
+    AUTHENTICATION_BACKENDS += (
+        'django_auth_ldap.backend.LDAPBackend',
+    )
+
