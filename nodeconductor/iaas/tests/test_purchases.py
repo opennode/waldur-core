@@ -54,6 +54,27 @@ class PurchasePermissionTest(test.APISimpleTestCase):
         purchase_url = self._get_purchase_url(inaccessible_purchase)
         self.assertNotIn(purchase_url, [instance['url'] for instance in response.data])
 
+    # Direct purchase access tests
+    def test_user_can_access_purchase_of_project_he_is_administrator_of(self):
+        response = self.client.get(self._get_purchase_url(self.admined_purchase))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_can_access_purchase_of_project_he_is_manager_of(self):
+        response = self.client.get(self._get_purchase_url(self.managed_purchase))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_cannot_access_purchase_of_project_he_has_no_role_in(self):
+        response = self.client.get(self._get_purchase_url(self.inaccessible_purchase))
+        # 404 is used instead of 403 to hide the fact that the resource exists at all
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_user_cannot_access_purchase_not_allowed_for_any_project(self):
+        inaccessible_purchase = iaas_factories.PurchaseFactory()
+
+        response = self.client.get(self._get_purchase_url(inaccessible_purchase))
+        # 404 is used instead of 403 to hide the fact that the resource exists at all
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        
     # Helper methods
     def _get_purchase_url(self, purchase):
         return 'http://testserver' + reverse('purchase-detail', kwargs={'uuid': purchase.uuid})
