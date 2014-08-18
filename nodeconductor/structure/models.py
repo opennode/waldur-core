@@ -92,31 +92,6 @@ signals.post_save.connect(create_project_roles,
                           dispatch_uid='structure.project_roles_bootstrap')
 
 
-@python_2_unicode_compatible
-class Environment(models.Model):
-    project = models.ForeignKey(Project, related_name='environments')
-    
-    DEVELOPMENT = 'd'
-    TESTING = 't'
-    STAGING = 's'
-    PRODUCTION = 'p'
-
-    ENVIRONMENT_CHOICES = {
-        DEVELOPMENT: _('Development environment'),
-        TESTING: _('Testing environment'),
-        STAGING: _('Staging environment'),
-        PRODUCTION: _('Production environment'),
-    }
-
-    kind = models.CharField(max_length=1, choices=ENVIRONMENT_CHOICES.iteritems())
-
-    def __str__(self):
-        return _('%(env)s of %(project)s') % {
-            'env': self.ENVIRONMENT_CHOICES[self.kind],
-            'project': self.project
-        }
-
-
 class NetworkSegment(models.Model):
     class Meta(object):
         unique_together = ('vlan', 'project')

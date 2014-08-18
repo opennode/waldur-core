@@ -27,4 +27,3 @@ class ProjectAdmin(admin.ModelAdmin):
 
 admin.site.register(models.Customer)
 admin.site.register(models.Project, ProjectAdmin)
-admin.site.register(models.Environment)
