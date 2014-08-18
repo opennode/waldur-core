@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.cloud.tests import factories as factories
-from nodeconductor.structure.models import Role
+from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -25,9 +25,9 @@ class FlavorPermissionLifecycleTest(unittest.TestCase):
         self.cloud = self.flavor.cloud
 
         self.admin_group = self.project.roles.get(
-            role_type=Role.ADMINISTRATOR).permission_group
+            role_type=ProjectRole.ADMINISTRATOR).permission_group
         self.manager_group = self.project.roles.get(
-            role_type=Role.MANAGER).permission_group
+            role_type=ProjectRole.MANAGER).permission_group
 
         self.admin = structure_factories.UserFactory()
         self.admin_group.user_set.add(self.admin)
@@ -126,8 +126,8 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
         admined_project = structure_factories.ProjectFactory()
         managed_project = structure_factories.ProjectFactory()
 
-        admined_project.add_user(self.user, Role.ADMINISTRATOR)
-        managed_project.add_user(self.user, Role.MANAGER)
+        admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        managed_project.add_user(self.user, ProjectRole.MANAGER)
 
         self.admined_flavor = factories.FlavorFactory()
         self.managed_flavor = factories.FlavorFactory()

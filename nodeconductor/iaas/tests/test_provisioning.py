@@ -6,7 +6,7 @@ from rest_framework import test
 
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories
-from nodeconductor.structure.models import Role
+from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -32,8 +32,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.admined_instance = factories.InstanceFactory()
         self.managed_instance = factories.InstanceFactory()
 
-        self.admined_instance.project.add_user(self.user, Role.ADMINISTRATOR)
-        self.managed_instance.project.add_user(self.user, Role.MANAGER)
+        self.admined_instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        self.managed_instance.project.add_user(self.user, ProjectRole.MANAGER)
 
     def test_user_can_list_instances_of_projects_he_is_administrator_of(self):
         response = self.client.get(reverse('instance-list'))
@@ -157,7 +157,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         self.project = structure_factories.ProjectFactory(cloud=cloud)
 
         # XXX: Is it admin or manager?
-        self.project.add_user(self.user, Role.ADMINISTRATOR)
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
     # Assertions
     def assert_field_required(self, field_name):
@@ -205,7 +205,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
             cloud=another_flavor.cloud)
 
         # XXX: Is it admin or manager?
-        another_project.add_user(self.user, Role.ADMINISTRATOR)
+        another_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         data['flavor'] = self._get_flavor_url(another_flavor)
 
@@ -302,8 +302,8 @@ class InstanceManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
         self.instance = factories.InstanceFactory()
         self.instance_url = self._get_instance_url(self.instance)
 
-        self.instance.project.add_user(self.user, Role.ADMINISTRATOR)
-        self.instance.project.add_user(self.user, Role.MANAGER)
+        self.instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        self.instance.project.add_user(self.user, ProjectRole.MANAGER)
 
     def test_cannot_delete_instance(self):
         response = self.client.delete(self.instance_url)

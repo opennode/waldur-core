@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.structure.tests import factories
-from nodeconductor.structure.models import Role
+from nodeconductor.structure.models import ProjectRole
 
 
 class ProjectRoleTest(TestCase):
@@ -14,11 +14,11 @@ class ProjectRoleTest(TestCase):
         self.project = factories.ProjectFactory()
 
     def test_admin_project_role_is_created_upon_project_creation(self):
-        self.assertTrue(self.project.roles.filter(role_type=Role.ADMINISTRATOR).exists(),
+        self.assertTrue(self.project.roles.filter(role_type=ProjectRole.ADMINISTRATOR).exists(),
                         'Administrator role should have been created')
 
     def test_manager_project_role_is_created_upon_project_creation(self):
-        self.assertTrue(self.project.roles.filter(role_type=Role.MANAGER).exists(),
+        self.assertTrue(self.project.roles.filter(role_type=ProjectRole.MANAGER).exists(),
                         'Manager role should have been created')
 
 
@@ -29,8 +29,10 @@ class ProjectPermissionTest(test.APISimpleTestCase):
 
         self.projects = factories.ProjectFactory.create_batch(3)
 
-        self.projects[0].add_user(self.user, Role.ADMINISTRATOR)
-        self.projects[1].add_user(self.user, Role.MANAGER)
+        self.projects[0].add_user(self.user, ProjectRole.ADMINISTRATOR)
+        self.projects[1].add_user(self.user, ProjectRole.MANAGER)
+
+    # TODO: Test for customer owners
 
     def test_user_can_list_projects_he_is_administrator_of(self):
         response = self.client.get(reverse('project-list'))

@@ -62,9 +62,9 @@ def update_cloud_to_project_grants(instance, action, reverse, pk_set, **kwargs):
     # TODO: Optimize the number of SQL queries
     def marry_cloud_and_project(cloud, project):
         admins = project.roles.get(
-            role_type=structure_models.Role.ADMINISTRATOR).permission_group
+            role_type=structure_models.ProjectRole.ADMINISTRATOR).permission_group
         managers = project.roles.get(
-            role_type=structure_models.Role.MANAGER).permission_group
+            role_type=structure_models.ProjectRole.MANAGER).permission_group
 
         # TODO: Grant access to cloud
 
@@ -74,9 +74,9 @@ def update_cloud_to_project_grants(instance, action, reverse, pk_set, **kwargs):
 
     def divorce_cloud_and_project(cloud, project):
         admins = project.roles.get(
-            role_type=structure_models.Role.ADMINISTRATOR).permission_group
+            role_type=structure_models.ProjectRole.ADMINISTRATOR).permission_group
         managers = project.roles.get(
-            role_type=structure_models.Role.MANAGER).permission_group
+            role_type=structure_models.ProjectRole.MANAGER).permission_group
 
         # TODO: Revoke access from cloud
 

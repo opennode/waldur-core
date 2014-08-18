@@ -25,7 +25,7 @@ class Customer(models.Model):
 
 
 @python_2_unicode_compatible
-class Role(models.Model):
+class ProjectRole(models.Model):
     class Meta(object):
         unique_together = ('project', 'role_type')
 
@@ -80,8 +80,8 @@ def create_project_roles(sender, instance, created, **kwargs):
             admin_group = Group.objects.create(name='Role: {0} admin'.format(instance.uuid))
             mgr_group = Group.objects.create(name='Role: {0} mgr'.format(instance.uuid))
 
-            instance.roles.create(role_type=Role.ADMINISTRATOR, permission_group=admin_group)
-            instance.roles.create(role_type=Role.MANAGER, permission_group=mgr_group)
+            instance.roles.create(role_type=ProjectRole.ADMINISTRATOR, permission_group=admin_group)
+            instance.roles.create(role_type=ProjectRole.MANAGER, permission_group=mgr_group)
 
             assign_perm('view_project', admin_group, obj=instance)
             assign_perm('view_project', mgr_group, obj=instance)

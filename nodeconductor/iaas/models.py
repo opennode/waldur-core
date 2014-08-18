@@ -95,14 +95,14 @@ class Instance(UuidMixin, models.Model):
 register_group_access(
     Instance,
     (lambda instance: instance.project.roles.get(
-        role_type=structure_models.Role.ADMINISTRATOR).permission_group),
+        role_type=structure_models.ProjectRole.ADMINISTRATOR).permission_group),
     permissions=('view', 'change',),
     tag='admin',
 )
 register_group_access(
     Instance,
     (lambda instance: instance.project.roles.get(
-        role_type=structure_models.Role.MANAGER).permission_group),
+        role_type=structure_models.ProjectRole.MANAGER).permission_group),
     permissions=('view',),
     tag='manager',
 )
