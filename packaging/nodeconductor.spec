@@ -1,7 +1,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.1.0dev
-Release: 10
+Release: 11
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: logrotate
@@ -86,8 +86,11 @@ nodeconductor migrate
 nodeconductor collectstatic --noinput
 
 %changelog
+* Tue Aug 19 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-11
+- Added missing branding to REST console and admin
+
 * Mon Aug 18 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-10
-- Added dependency on six package.
+- Added dependency on six package
 
 * Sun Aug 17 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-9
 - Dependency relaxation for minor libraries
