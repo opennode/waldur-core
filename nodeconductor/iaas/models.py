@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
 
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.contrib.auth.models import User
 from django.utils.encoding import python_2_unicode_compatible
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ugettext as _
 from django_fsm import FSMField
 from django_fsm import transition
 from taggit.managers import TaggableManager
@@ -132,7 +132,7 @@ class Purchase(UuidMixin, models.Model):
     project = models.ForeignKey(structure_models.Project, related_name='purchases')
 
     def __str__(self):
-        return _('%(user)s - %(date)s') % {
+        return '%(user)s - %(date)s' % {
             'user': self.user.username,
             'date': self.date,
         }

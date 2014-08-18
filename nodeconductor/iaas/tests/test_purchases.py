@@ -1,5 +1,5 @@
-from rest_framework import test
 from rest_framework import status
+from rest_framework import test
 from rest_framework.reverse import reverse
 
 from nodeconductor.iaas.tests import factories as iaas_factories
@@ -7,7 +7,7 @@ from nodeconductor.structure.models import Role
 from nodeconductor.structure.tests import factories as structure_factories
 
 
-class PurchasePermissionTest(test.APISimpleTestCase):
+class PurchaseApiPermissionTest(test.APISimpleTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory.create()
         self.client.force_authenticate(user=self.user)
