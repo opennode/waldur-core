@@ -21,7 +21,8 @@ install_requires = [
     'django-background-task==0.1.6',
     'django-fsm==2.1.0',
     'django-uuidfield==0.5.0',
-    'django-taggit==0.12'
+    'django-taggit==0.12',
+    'django-auth-ldap==1.2.0'
 ]
 
 

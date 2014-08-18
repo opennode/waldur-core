@@ -24,7 +24,7 @@ class UrlResolverMixin(object):
         return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
 
 
-class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
+class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory.create()
         self.client.force_authenticate(user=self.user)
@@ -73,6 +73,73 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_user_can_change_description_of_instance_he_is_administrator_of(self):
+        response = self.client.get(self._get_instance_url(self.admined_instance))
+        data = response.data
+        data['description'] = 'changed description1'
+
+        response = self.client.put(self._get_instance_url(self.admined_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.get(self._get_instance_url(self.admined_instance))
+        self.assertEqual(response.data['description'], 'changed description1')
+
+    def test_user_cannot_change_description_of_instance_he_is_manager_of(self):
+        response = self.client.get(self._get_instance_url(self.managed_instance))
+        data = response.data
+        data['description'] = 'changed description1'
+
+        response = self.client.put(self._get_instance_url(self.managed_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_cannot_change_description_of_instance_he_has_no_role_in(self):
+        inaccessible_instance = factories.InstanceFactory()
+        data = self.instance_to_dict(inaccessible_instance)
+        data['description'] = 'changed description1'
+
+        response = self.client.put(self._get_instance_url(inaccessible_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_user_can_change_description_single_field_of_instance_he_is_administrator_of(self):
+        data = {
+            'description': 'changed description1',
+        }
+
+        response = self.client.patch(self._get_instance_url(self.admined_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.get(self._get_instance_url(self.admined_instance))
+        self.assertEqual(response.data['description'], 'changed description1')
+
+    def test_user_cannot_change_description_single_field__of_instance_he_is_manager_of(self):
+        data = {
+            'description': 'changed description1',
+        }
+
+        response = self.client.patch(self._get_instance_url(self.managed_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_cannot_change_description_single_field_of_instance_he_has_no_role_in(self):
+        inaccessible_instance = factories.InstanceFactory()
+        data = {
+            'description': 'changed description1',
+        }
+
+        response = self.client.patch(self._get_instance_url(inaccessible_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # Helpers method
+    def instance_to_dict(self, instance):
+        return {
+            'hostname': instance.hostname,
+            'description': instance.description,
+            'project': self._get_project_url(instance.project),
+            'template': self._get_template_url(instance.template),
+            'volume_sizes': [11, 14, 9],
+            'tags': set(),
+            'flavor': self._get_flavor_url(instance.flavor),
+        }
+
 # XXX: What should happen to existing instances when their project is removed?
 
 
@@ -111,6 +178,20 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
     def test_can_create_instance_without_volume_sizes(self):
         data = self.get_valid_data()
         del data['volume_sizes']
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_can_create_instance_without_description(self):
+        data = self.get_valid_data()
+        del data['description']
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_can_create_instance_with_empty_description(self):
+        data = self.get_valid_data()
+        data['description'] = ''
         response = self.client.post(self.instance_list_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -197,6 +278,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         return {
             # Cloud independent parameters
             'hostname': 'host1',
+            'description': 'description1',
 
             # TODO: Make sure both project and flavor belong to the same customer
             'project': self._get_project_url(self.project),
@@ -225,25 +307,5 @@ class InstanceManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
     def test_cannot_delete_instance(self):
         response = self.client.delete(self.instance_url)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_cannot_change_instance_as_whole(self):
-        data = {
-            'hostname': self.instance.hostname,
-            'template': self._get_template_url(self.instance.template),
-            'flavor': self._get_flavor_url(self.instance.flavor),
-        }
-
-        response = self.client.put(self.instance_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_cannot_change_single_instance_field(self):
-        data = {
-            'hostname': self.instance.hostname,
-        }
-
-        response = self.client.patch(self.instance_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)

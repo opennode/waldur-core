@@ -1,7 +1,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.1.0dev
-Release: 6
+Release: 10
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: logrotate
@@ -15,6 +15,9 @@ Requires: python-django-uuidfield = 0.5.0
 Requires: python-logan = 0.5.9.1
 Requires: python-setuptools
 Requires: python-south = 0.8.4
+Requires: python-django-auth-ldap >= 1.2.0
+Requires: python-django-guardian >= 1.2.4
+Requires: python-six >= 1.7.3
 
 Source0: %{name}-%{version}.tar.gz
 
@@ -83,6 +86,18 @@ nodeconductor migrate
 nodeconductor collectstatic --noinput
 
 %changelog
+* Mon Aug 18 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-10
+- Added dependency on six package.
+
+* Sun Aug 17 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-9
+- Dependency relaxation for minor libraries
+
+* Sun Aug 17 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-8
+- Added dependency on django-guardian
+
+* Sun Aug 17 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-7
+- Added support for ldap integration
+
 * Mon Jul 21 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.1.0dev-6
 - Logging improved (NC-48)
 - Default config file location fixed for nodeconductor tool
