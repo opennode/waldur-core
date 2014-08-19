@@ -13,7 +13,12 @@ from nodeconductor.core.permissions import register_group_access
 
 
 @python_2_unicode_compatible
-class Customer(models.Model):
+class Customer(UuidMixin, models.Model):
+    class Meta(object):
+        permissions = (
+            ('view_customer', _('Can see available customers')),
+        )
+
     name = models.CharField(max_length=80)
     abbreviation = models.CharField(max_length=80)
     contact_details = models.TextField()
@@ -65,6 +70,8 @@ def create_customer_roles(sender, instance, created, **kwargs):
             owner_group = Group.objects.create(name='Role: {0} owner'.format(instance.pk))
 
             instance.roles.create(role_type=CustomerRole.OWNER, permission_group=owner_group)
+
+            assign_perm('view_customer', owner_group, obj=instance)
 
 signals.post_save.connect(create_customer_roles,
                           sender=Customer,

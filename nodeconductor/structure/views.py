@@ -9,6 +9,14 @@ from nodeconductor.structure import serializers
 from nodeconductor.structure import models
 
 
+class CustomerViewSet(viewsets.ReadOnlyModelViewSet):
+    model = models.Customer
+    lookup_field = 'uuid'
+    serializer_class = serializers.CustomerSerializer
+    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    permission_classes = (permissions.DjangoObjectLevelPermissions,)
+
+
 class ProjectViewSet(viewsets.ReadOnlyModelViewSet):
     model = models.Project
     lookup_field = 'uuid'
