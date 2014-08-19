@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+from django.contrib.auth import models as auth_models
+
 from rest_framework import filters
 from rest_framework import viewsets
 
@@ -31,3 +33,9 @@ class ProjectGroupViewSet(core_viewsets.ModelViewSet):
     serializer_class = serializers.ProjectGroupSerializer
     filter_backends = (filters.DjangoObjectPermissionsFilter,)
     permission_classes = (permissions.DjangoObjectLevelPermissions,)
+
+
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    model = auth_models.User
+    lookup_field = 'username'
+    serializer_class = serializers.UserSerializer

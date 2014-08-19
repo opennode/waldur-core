@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+from django.contrib.auth import models as auth_models
+
 from rest_framework import serializers
 
 from nodeconductor.structure import models
@@ -24,3 +26,10 @@ class ProjectGroupSerializer(serializers.HyperlinkedModelSerializer):
         model = models.ProjectGroup
         fields = ('url', 'name')
         lookup_field = 'uuid'
+
+
+class UserSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = auth_models.User
+        fields = ('username', 'first_name', 'last_name')
+        lookup_field = 'username'

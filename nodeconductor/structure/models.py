@@ -80,7 +80,7 @@ signals.post_save.connect(create_customer_roles,
 
 
 @python_2_unicode_compatible
-class ProjectRole(models.Model):
+class ProjectRole(UuidMixin, models.Model):
     class Meta(object):
         unique_together = ('project', 'role_type')
 
