@@ -134,4 +134,4 @@ def update_cloud_to_project_grants(instance, action, reverse, pk_set, **kwargs):
 signals.m2m_changed.connect(update_cloud_to_project_grants,
                             sender=Cloud.projects.through,
                             weak=False,
-                            dispatch_uid='project_level_level_permissions')
+                            dispatch_uid='project_level_object_permissions')
