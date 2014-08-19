@@ -43,3 +43,11 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
 
     def pre_save(self, key):
         key.user = self.request.user
+
+
+class PurchaseViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.Purchase.objects.all()
+    serializer_class = serializers.PurchaseSerializer
+    lookup_field = 'uuid'
+    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    permission_classes = (permissions.DjangoObjectLevelPermissions,)
