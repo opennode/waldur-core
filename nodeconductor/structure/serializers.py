@@ -10,3 +10,10 @@ class ProjectSerializer(serializers.HyperlinkedModelSerializer):
         model = models.Project
         fields = ('url', 'name')
         lookup_field = 'uuid'
+
+
+class ProjectGroupSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = models.ProjectGroup
+        fields = ('url', 'name')
+        lookup_field = 'uuid'

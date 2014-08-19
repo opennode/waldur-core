@@ -156,7 +156,6 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         self.flavor = cloud_factories.FlavorFactory(cloud=cloud)
         self.project = structure_factories.ProjectFactory(cloud=cloud)
 
-        # XXX: Is it admin or manager?
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
     # Assertions
@@ -196,6 +195,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    # TODO: Ensure that managers cannot provision instances
     # Negative tests
     def test_cannot_create_instance_with_flavor_not_from_supplied_project(self):
         data = self.get_valid_data()
@@ -204,7 +204,6 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         another_project = structure_factories.ProjectFactory(
             cloud=another_flavor.cloud)
 
-        # XXX: Is it admin or manager?
         another_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         data['flavor'] = self._get_flavor_url(another_flavor)
