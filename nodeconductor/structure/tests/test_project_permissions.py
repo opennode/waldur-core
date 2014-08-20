@@ -30,6 +30,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
 
         user_url = self._get_user_url(self.users[0])
         user2_url = self._get_user_url(self.users[1])
+        print response.data
         self.assertIn(user_url, [instance['managers'] for instance in response.data])
         self.assertIn(user2_url, [instance['admins'] for instance in response.data])
 
@@ -43,7 +44,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
             'managers': [user_url, user2_url],
         }
 
-        response = self.client.patch(self.project_url, data)
+        response = self.client.patch(project_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -66,14 +67,13 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
             'managers': [user_url, user2_url],
         }
 
-        response = self.client.patch(self.project_url, data)
+        response = self.client.patch(project_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
 
     # Helper methods
     def _get_project_url(self, project):
         return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
 
     def _get_user_url(self, user):
-        return 'http://testserver' + reverse('users-detail', kwargs={'uuid': user.username})
+        return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})

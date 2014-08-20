@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from django.contrib.auth import models as auth_models
+from django.contrib import auth
 
 from rest_framework import filters
 from rest_framework import viewsets
@@ -9,6 +9,8 @@ from nodeconductor.core import permissions
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.structure import serializers
 from nodeconductor.structure import models
+
+User = auth.get_user_model()
 
 
 class CustomerViewSet(viewsets.ReadOnlyModelViewSet):
@@ -19,7 +21,7 @@ class CustomerViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (permissions.DjangoObjectLevelPermissions,)
 
 
-class ProjectViewSet(viewsets.ReadOnlyModelViewSet):
+class ProjectViewSet(core_viewsets.ModelViewSet):
     model = models.Project
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectSerializer
@@ -36,6 +38,18 @@ class ProjectGroupViewSet(core_viewsets.ModelViewSet):
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
-    model = auth_models.User
-    lookup_field = 'username'
+    model = User
+    lookup_field = 'uuid'
     serializer_class = serializers.UserSerializer
+
+
+class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
+    model = User.groups.through
+    serializer_class = serializers.ProjectPermissionReadSerializer
+    queryset = User.groups.through.objects.exclude(group__projectrole__project=None)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return serializers.ProjectPermissionWriteSerializer
+        return super(ProjectPermissionViewSet, self).get_serializer_class()
+

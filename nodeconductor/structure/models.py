@@ -92,6 +92,13 @@ class ProjectRole(UuidMixin, models.Model):
         (MANAGER, _('Manager')),
     )
 
+    ROLE_TO_NAME = {
+        ADMINISTRATOR: 'admin',
+        MANAGER: 'manager'
+    }
+
+    NAME_TO_ROLE = dict((v, unicode(k)) for k, v in ROLE_TO_NAME.items())
+
     project = models.ForeignKey('structure.Project', related_name='roles')
     role_type = models.SmallIntegerField(choices=TYPE_CHOICES)
     permission_group = models.OneToOneField(Group)
