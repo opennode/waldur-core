@@ -6,8 +6,7 @@ from nodeconductor.structure.tests.factories import CustomerFactory
 
 class CloudFactory(factory.DjangoModelFactory):
     class Meta(object):
-        # model = models.Cloud
-        model = models.OpenStackCloud
+        model = models.Cloud
 
     name = factory.Sequence(lambda n: 'cloud%s' % n)
     customer = factory.SubFactory(CustomerFactory)
