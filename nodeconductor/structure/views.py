@@ -52,4 +52,3 @@ class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
         if self.request.method == 'POST':
             return serializers.ProjectPermissionWriteSerializer
         return super(ProjectPermissionViewSet, self).get_serializer_class()
-

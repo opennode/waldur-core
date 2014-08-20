@@ -12,6 +12,7 @@ from rest_framework.exceptions import APIException
 
 User = auth.get_user_model()
 
+
 class CustomerSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Customer
@@ -55,9 +56,6 @@ class ProjectPermissionReadSerializer(serializers.HyperlinkedModelSerializer):
 
     role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
 
-    def get_role_type(self, obj):
-        return obj.group.projectrole.get_role_type_display()
-
     class Meta(object):
         model = User.groups.through
         fields = ('url', 'project', 'user', 'role')
@@ -72,7 +70,7 @@ class ProjectPermissionWriteSerializer(serializers.Serializer):
     project = serializers.HyperlinkedRelatedField(queryset=models.Project.objects.all(), view_name='project-detail',
                                                   lookup_field='uuid', source='group.projectrole.project')
     user = serializers.HyperlinkedRelatedField(view_name='user-detail', queryset=User.objects.all(),
-                                                  lookup_field='uuid')
+                                               lookup_field='uuid')
 
     role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
 
@@ -100,11 +98,12 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         user_groups = obj.groups.through.objects.exclude(group__projectrole__project=None)
         project_metadata = []
         for g in user_groups:
+            project = g.group.projectrole.project
             project_metadata.append({
-            'role': models.ProjectRole.ROLE_TO_NAME[g.group.projectrole.role_type],
-            'project': g.group.projectrole.project.name,
-            'customer': g.group.projectrole.project.customer.name,
-            'projectgroups': g.group.projectrole.project.project_groups.all().values_list('name', flat=True)
+                'role': models.ProjectRole.ROLE_TO_NAME[g.group.projectrole.role_type],
+                'project': project.name,
+                'customer': project.customer.name,
+                'projectgroups': project.project_groups.all().values_list('name', flat=True)
             })
 
         return project_metadata
