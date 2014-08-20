@@ -10,7 +10,6 @@ from nodeconductor.structure.models import Role
 from nodeconductor.structure.tests import factories as structure_factories
 
 
-@unittest.skip("Model inheritance & object level permissions haven't been married yet")
 class CloudPermissionTest(test.APISimpleTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory.create()

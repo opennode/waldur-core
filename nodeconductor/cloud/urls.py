@@ -5,7 +5,7 @@ from nodeconductor.cloud import views
 
 def register_in(router):
     # FIXME: come up with a solution for AWS/Rightscale/...
-    router.register(r'clouds', views.OpenStackCloudViewSet, base_name='cloud')
+    router.register(r'clouds', views.CloudViewSet)
     router.register(r'flavors', views.FlavorViewSet)
 
 

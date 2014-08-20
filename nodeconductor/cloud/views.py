@@ -15,9 +15,9 @@ class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (permissions.DjangoObjectLevelPermissions,)
 
 
-class OpenStackCloudViewSet(core_viewsets.ModelViewSet):
-    queryset = models.OpenStackCloud.objects.all()
-    serializer_class = serializers.OpenStackCloudSerializer
+class CloudViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.Cloud.objects.all()
+    serializer_class = serializers.CloudSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.DjangoObjectPermissionsFilter,)
     permission_classes = (permissions.DjangoObjectLevelPermissions,)
