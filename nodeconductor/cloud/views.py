@@ -4,7 +4,6 @@ from rest_framework import viewsets
 from nodeconductor.cloud import models
 from nodeconductor.cloud import serializers
 from nodeconductor.core import permissions
-from nodeconductor.core import viewsets as core_viewsets
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):

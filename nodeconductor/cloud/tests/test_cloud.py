@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
-from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
 
