@@ -78,7 +78,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         }
 
         response = self.client.post(reverse('user_groups-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_cannot_modify_roles_of_projects_he_has_no_role_in(self):
         user_url = self._get_user_url(self.users[0])
@@ -92,7 +92,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         }
 
         response = self.client.post(reverse('user_groups-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
     # Helper methods
