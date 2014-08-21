@@ -1,7 +1,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.1.0dev
-Release: 11
+Release: 12
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: logrotate
