@@ -7,7 +7,7 @@ from rest_framework import test
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tests import factories
-from nodeconductor.structure.models import Role
+from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -32,8 +32,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.admined_instance = factories.InstanceFactory()
         self.managed_instance = factories.InstanceFactory()
 
-        self.admined_instance.project.add_user(self.user, Role.ADMINISTRATOR)
-        self.managed_instance.project.add_user(self.user, Role.MANAGER)
+        self.admined_instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        self.managed_instance.project.add_user(self.user, ProjectRole.MANAGER)
 
     # List filtration tests
     def test_anonymous_user_cannot_list_instances(self):
@@ -104,13 +104,13 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
     def test_user_cannot_delete_instances_of_projects_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.delete(self._get_project_url(self.admined_instance))
+        response = self.client.delete(self._get_instance_url(self.admined_instance))
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_user_cannot_delete_instances_of_projects_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.delete(self._get_project_url(self.managed_instance))
+        response = self.client.delete(self._get_instance_url(self.managed_instance))
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     # Mutation tests
@@ -208,8 +208,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         self.flavor = cloud_factories.FlavorFactory(cloud=cloud)
         self.project = structure_factories.ProjectFactory(cloud=cloud)
 
-        # XXX: Is it admin or manager?
-        self.project.add_user(self.user, Role.ADMINISTRATOR)
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
     # Assertions
     def assert_field_required(self, field_name):
@@ -248,6 +247,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    # TODO: Ensure that managers cannot provision instances
     # Negative tests
     def test_cannot_create_instance_with_flavor_not_from_supplied_project(self):
         data = self.get_valid_data()
@@ -256,8 +256,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         another_project = structure_factories.ProjectFactory(
             cloud=another_flavor.cloud)
 
-        # XXX: Is it admin or manager?
-        another_project.add_user(self.user, Role.ADMINISTRATOR)
+        another_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         data['flavor'] = self._get_flavor_url(another_flavor)
 

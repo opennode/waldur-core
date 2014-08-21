@@ -3,7 +3,7 @@ from rest_framework import test
 from rest_framework.reverse import reverse
 
 from nodeconductor.iaas.tests import factories as iaas_factories
-from nodeconductor.structure.models import Role
+from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -15,8 +15,8 @@ class PurchaseApiPermissionTest(test.APISimpleTestCase):
         managed_project = structure_factories.ProjectFactory()
         inaccessible_project = structure_factories.ProjectFactory()
 
-        admined_project.add_user(self.user, Role.ADMINISTRATOR)
-        managed_project.add_user(self.user, Role.MANAGER)
+        admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        managed_project.add_user(self.user, ProjectRole.MANAGER)
 
         self.admined_purchase = iaas_factories.PurchaseFactory(project=admined_project)
         self.managed_purchase = iaas_factories.PurchaseFactory(project=managed_project)

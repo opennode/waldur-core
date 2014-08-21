@@ -67,9 +67,9 @@ def update_cloud_to_project_grants(instance, action, reverse, pk_set, **kwargs):
     # TODO: Optimize the number of SQL queries
     def marry_cloud_and_project(cloud, project):
         admins = project.roles.get(
-            role_type=structure_models.Role.ADMINISTRATOR).permission_group
+            role_type=structure_models.ProjectRole.ADMINISTRATOR).permission_group
         managers = project.roles.get(
-            role_type=structure_models.Role.MANAGER).permission_group
+            role_type=structure_models.ProjectRole.MANAGER).permission_group
 
         assign_perm('view_cloud', admins, obj=cloud)
         assign_perm('view_cloud', managers, obj=cloud)
@@ -80,9 +80,9 @@ def update_cloud_to_project_grants(instance, action, reverse, pk_set, **kwargs):
 
     def divorce_cloud_and_project(cloud, project):
         admins = project.roles.get(
-            role_type=structure_models.Role.ADMINISTRATOR).permission_group
+            role_type=structure_models.ProjectRole.ADMINISTRATOR).permission_group
         managers = project.roles.get(
-            role_type=structure_models.Role.MANAGER).permission_group
+            role_type=structure_models.ProjectRole.MANAGER).permission_group
 
         remove_perm('view_cloud', admins, obj=cloud)
         remove_perm('view_cloud', managers, obj=cloud)

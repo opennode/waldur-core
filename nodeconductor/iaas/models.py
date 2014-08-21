@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
@@ -96,14 +96,14 @@ class Instance(UuidMixin, models.Model):
 register_group_access(
     Instance,
     (lambda instance: instance.project.roles.get(
-        role_type=structure_models.Role.ADMINISTRATOR).permission_group),
+        role_type=structure_models.ProjectRole.ADMINISTRATOR).permission_group),
     permissions=('view', 'change',),
     tag='admin',
 )
 register_group_access(
     Instance,
     (lambda instance: instance.project.roles.get(
-        role_type=structure_models.Role.MANAGER).permission_group),
+        role_type=structure_models.ProjectRole.MANAGER).permission_group),
     permissions=('view',),
     tag='manager',
 )
@@ -128,7 +128,7 @@ class Purchase(UuidMixin, models.Model):
             ('view_purchase', _('Can see available purchases')),
         )
     date = models.DateTimeField()
-    user = models.ForeignKey(User, related_name='purchases')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='purchases')
     project = models.ForeignKey(structure_models.Project, related_name='purchases')
 
     def __str__(self):
@@ -140,14 +140,14 @@ class Purchase(UuidMixin, models.Model):
 register_group_access(
     Purchase,
     (lambda purchase: purchase.project.roles.get(
-        role_type=structure_models.Role.ADMINISTRATOR).permission_group),
+        role_type=structure_models.ProjectRole.ADMINISTRATOR).permission_group),
     permissions=('view',),
     tag='admin',
 )
 register_group_access(
     Purchase,
     (lambda purchase: purchase.project.roles.get(
-        role_type=structure_models.Role.MANAGER).permission_group),
+        role_type=structure_models.ProjectRole.MANAGER).permission_group),
     permissions=('view',),
     tag='manager',
 )

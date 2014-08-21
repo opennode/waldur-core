@@ -1,12 +1,14 @@
 from __future__ import unicode_literals
 
+import unittest
+
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.structure.tests import factories
-from nodeconductor.structure.models import Role
+from nodeconductor.structure.models import ProjectRole
 
 
 class ProjectRoleTest(TestCase):
@@ -14,22 +16,59 @@ class ProjectRoleTest(TestCase):
         self.project = factories.ProjectFactory()
 
     def test_admin_project_role_is_created_upon_project_creation(self):
-        self.assertTrue(self.project.roles.filter(role_type=Role.ADMINISTRATOR).exists(),
+        self.assertTrue(self.project.roles.filter(role_type=ProjectRole.ADMINISTRATOR).exists(),
                         'Administrator role should have been created')
 
     def test_manager_project_role_is_created_upon_project_creation(self):
-        self.assertTrue(self.project.roles.filter(role_type=Role.MANAGER).exists(),
+        self.assertTrue(self.project.roles.filter(role_type=ProjectRole.MANAGER).exists(),
                         'Manager role should have been created')
 
 
 class ProjectPermissionTest(test.APISimpleTestCase):
+    forbidden_combinations = (
+        # User role, Project
+        ('admin', 'manager'),
+        ('admin', 'inaccessible'),
+        ('manager', 'admin'),
+        ('manager', 'inaccessible'),
+        ('no_role', 'admin'),
+        ('no_role', 'manager'),
+        ('no_role', 'inaccessible'),
+    )
+
     def setUp(self):
+        self.users = {
+            'admin': factories.UserFactory(),
+            'manager': factories.UserFactory(),
+            'no_role': factories.UserFactory(),
+        }
+
+        self.projects = {
+            'admin': factories.ProjectFactory(),
+            'manager': factories.ProjectFactory(),
+            'inaccessible': factories.ProjectFactory(),
+        }
+        
         self.user = factories.UserFactory.create()
 
-        self.projects = factories.ProjectFactory.create_batch(3)
+        self.projects['admin'].add_user(self.user, ProjectRole.ADMINISTRATOR)
+        self.projects['manager'].add_user(self.user, ProjectRole.MANAGER)
 
-        self.projects[0].add_user(self.user, Role.ADMINISTRATOR)
-        self.projects[1].add_user(self.user, Role.MANAGER)
+    # TODO: Test for customer owners
+    # Creation tests
+    def test_anonymous_user_cannot_create_project(self):
+        for old_project in self.projects.values():
+            project = factories.ProjectFactory(customer=old_project.customer)
+            response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    @unittest.skip('Not implemented yet')
+    def test_user_cannot_create_project_in_customer_he_doesnt_own(self):
+        pass
+
+    @unittest.skip('Not implemented yet')
+    def test_user_can_create_project_in_customer_he_owns(self):
+        pass
 
     # List filtration tests
     def test_anonymous_user_cannot_list_projects(self):
@@ -42,7 +81,7 @@ class ProjectPermissionTest(test.APISimpleTestCase):
         response = self.client.get(reverse('project-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        project_url = self._get_project_url(self.projects[0])
+        project_url = self._get_project_url(self.projects['admin'])
         self.assertIn(project_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_projects_he_is_manager_of(self):
@@ -51,17 +90,12 @@ class ProjectPermissionTest(test.APISimpleTestCase):
         response = self.client.get(reverse('project-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        project_url = self._get_project_url(self.projects[1])
+        project_url = self._get_project_url(self.projects['manager'])
         self.assertIn(project_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_projects_he_has_no_role_in(self):
-        self.client.force_authenticate(user=self.user)
-
-        response = self.client.get(reverse('project-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        project_url = self._get_project_url(self.projects[2])
-        self.assertNotIn(project_url, [instance['url'] for instance in response.data])
+        for user_role, project in self.forbidden_combinations:
+            self._ensure_list_access_forbidden(user_role, project)
 
     # Direct instance access tests
     def test_anonymous_user_cannot_access_project(self):
@@ -72,27 +106,48 @@ class ProjectPermissionTest(test.APISimpleTestCase):
     def test_user_can_access_project_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.get(self._get_project_url(self.projects[0]))
+        response = self.client.get(self._get_project_url(self.projects['admin']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_access_project_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.get(self._get_project_url(self.projects[1]))
+        response = self.client.get(self._get_project_url(self.projects['manager']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_access_project_he_has_no_role_in(self):
-        self.client.force_authenticate(user=self.user)
-
-        response = self.client.get(self._get_project_url(self.projects[2]))
-        # 404 is used instead of 403 to hide the fact that the resource exists at all
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        for user_role, project in self.forbidden_combinations:
+            self._ensure_direct_access_forbidden(user_role, project)
 
     # Helper methods
     def _get_project_url(self, project):
         return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
 
+    def _get_valid_payload(self, resource=None):
+        resource = resource or factories.ProjectFactory()
+        return {
+            'name': resource.name,
+            'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
+        }
 
+    def _ensure_list_access_forbidden(self, user_role, project):
+        self.client.force_authenticate(user=self.users[user_role])
+
+        response = self.client.get(reverse('project-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        project_url = self._get_project_url(self.projects[project])
+        self.assertNotIn(project_url, [resource['url'] for resource in response.data])
+
+    def _ensure_direct_access_forbidden(self, user_role, project):
+        self.client.force_authenticate(user=self.users[user_role])
+
+        response = self.client.get(self._get_project_url(self.projects[project]))
+        # 404 is used instead of 403 to hide the fact that the resource exists at all
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+@unittest.skip('Needs to be revised, see NC-82')
 class ProjectManipulationTest(test.APISimpleTestCase):
     def setUp(self):
         self.user = factories.UserFactory()
@@ -101,28 +156,13 @@ class ProjectManipulationTest(test.APISimpleTestCase):
         self.project = factories.ProjectFactory()
         self.project_url = reverse('project-detail', kwargs={'uuid': self.project.uuid})
 
-    def test_cannot_create_project(self):
-        # This is temporary constraint until project creation flow
-        # is implemented
-        data = {
-            'name': self.project.name,
-        }
-
-        response = self.client.post(reverse('project-list'), data)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
     def test_cannot_delete_project(self):
         response = self.client.delete(self.project_url)
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_cannot_change_project_as_whole(self):
-        data = {
-            'name': self.project.name,
-        }
-
-        response = self.client.put(self.project_url, data)
+        response = self.client.put(self.project_url, self._get_valid_payload(self.project))
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
@@ -134,3 +174,10 @@ class ProjectManipulationTest(test.APISimpleTestCase):
         response = self.client.patch(self.project_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def _get_valid_payload(self, resource=None):
+        resource = resource or factories.ProjectFactory()
+        return {
+            'name': resource.name,
+            'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
+        }

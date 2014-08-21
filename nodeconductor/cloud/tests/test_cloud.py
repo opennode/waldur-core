@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.cloud.tests import factories as factories
-from nodeconductor.structure.models import Role
+from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -16,8 +16,8 @@ class CloudPermissionTest(test.APISimpleTestCase):
         admined_project = structure_factories.ProjectFactory()
         managed_project = structure_factories.ProjectFactory()
         
-        admined_project.add_user(self.user, Role.ADMINISTRATOR)
-        managed_project.add_user(self.user, Role.MANAGER)
+        admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        managed_project.add_user(self.user, ProjectRole.MANAGER)
 
         self.admined_cloud = factories.CloudFactory()
         self.managed_cloud = factories.CloudFactory()

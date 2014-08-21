@@ -76,6 +76,8 @@ SOUTH_MIGRATION_MODULES = {
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
 
+AUTH_USER_MODEL = 'core.User'
+
 WSGI_APPLICATION = 'nodeconductor.server.wsgi.application'
 
 # Internationalization
