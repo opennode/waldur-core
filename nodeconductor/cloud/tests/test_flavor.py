@@ -119,126 +119,188 @@ class FlavorPermissionLifecycleTest(unittest.TestCase):
 
 
 class FlavorApiPermissionTest(test.APISimpleTestCase):
-    def setUp(self):
-        self.user = structure_factories.UserFactory.create()
-        self.client.force_authenticate(user=self.user)
+    forbidden_combinations = (
+        # User role, Flavor
+        ('admin', 'manager'),
+        ('admin', 'inaccessible'),
+        ('manager', 'admin'),
+        ('manager', 'inaccessible'),
+        ('no_role', 'admin'),
+        ('no_role', 'manager'),
+        ('no_role', 'inaccessible'),
+    )
 
+    def setUp(self):
+        self.users = {
+            'admin': structure_factories.UserFactory(),
+            'manager': structure_factories.UserFactory(),
+            'no_role': structure_factories.UserFactory(),
+        }
+        
+        self.flavors = {
+            'admin': factories.FlavorFactory(),
+            'manager': factories.FlavorFactory(),
+            'inaccessible': factories.FlavorFactory(),
+        }
+        
         admined_project = structure_factories.ProjectFactory()
         managed_project = structure_factories.ProjectFactory()
 
-        admined_project.add_user(self.user, Role.ADMINISTRATOR)
-        managed_project.add_user(self.user, Role.MANAGER)
+        admined_project.add_user(self.users['admin'], Role.ADMINISTRATOR)
+        managed_project.add_user(self.users['manager'], Role.MANAGER)
 
-        self.admined_flavor = factories.FlavorFactory()
-        self.managed_flavor = factories.FlavorFactory()
-        self.inaccessible_flavor = factories.FlavorFactory()
-
-        admined_project.clouds.add(self.admined_flavor.cloud)
-        managed_project.clouds.add(self.managed_flavor.cloud)
+        admined_project.clouds.add(self.flavors['admin'].cloud)
+        managed_project.clouds.add(self.flavors['manager'].cloud)
 
     # List filtration tests
+    def test_anonymous_user_cannot_list_flavors(self):
+        response = self.client.get(reverse('flavor-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_list_flavors_of_projects_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.users['admin'])
+
         response = self.client.get(reverse('flavor-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        flavor_url = self._get_flavor_url(self.admined_flavor)
+        flavor_url = self._get_flavor_url(self.flavors['admin'])
         self.assertIn(flavor_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_flavors_of_projects_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.users['manager'])
+
         response = self.client.get(reverse('flavor-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        flavor_url = self._get_flavor_url(self.managed_flavor)
+        flavor_url = self._get_flavor_url(self.flavors['manager'])
         self.assertIn(flavor_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_flavors_of_projects_he_has_no_role_in(self):
         inaccessible_project = structure_factories.ProjectFactory()
-        inaccessible_project.clouds.add(self.inaccessible_flavor.cloud)
+        inaccessible_project.clouds.add(self.flavors['inaccessible'].cloud)
 
-        response = self.client.get(reverse('flavor-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        flavor_url = self._get_flavor_url(self.inaccessible_flavor)
-        self.assertNotIn(flavor_url, [instance['url'] for instance in response.data])
+        for user_role, flavor in self.forbidden_combinations:
+            self._ensure_list_access_forbidden(user_role, flavor)
 
     def test_user_cannot_list_flavors_not_allowed_for_any_project(self):
-        response = self.client.get(reverse('flavor-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        flavor_url = self._get_flavor_url(self.inaccessible_flavor)
-        self.assertNotIn(flavor_url, [instance['url'] for instance in response.data])
+        for user_role in ('admin', 'manager', 'no_role'):
+            self._ensure_list_access_forbidden(user_role, 'inaccessible')
 
     # Direct instance access tests
+    def test_anonymous_user_cannot_access_flavor(self):
+        flavor = factories.FlavorFactory()
+        response = self.client.get(self._get_flavor_url(flavor))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_access_flavor_allowed_for_project_he_is_administrator_of(self):
-        response = self.client.get(self._get_flavor_url(self.admined_flavor))
+        self.client.force_authenticate(user=self.users['admin'])
+
+        response = self.client.get(self._get_flavor_url(self.flavors['admin']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_access_flavor_allowed_for_project_he_is_manager_of(self):
-        response = self.client.get(self._get_flavor_url(self.managed_flavor))
+        self.client.force_authenticate(user=self.users['manager'])
+
+        response = self.client.get(self._get_flavor_url(self.flavors['manager']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_access_flavor_allowed_for_project_he_has_no_role_in(self):
         inaccessible_project = structure_factories.ProjectFactory()
-        inaccessible_project.clouds.add(self.inaccessible_flavor.cloud)
+        inaccessible_project.clouds.add(self.flavors['inaccessible'].cloud)
 
-        response = self.client.get(self._get_flavor_url(self.inaccessible_flavor))
-        # 404 is used instead of 403 to hide the fact that the resource exists at all
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        for user_role, flavor in self.forbidden_combinations:
+            self._ensure_direct_access_forbidden(user_role, flavor)
 
     def test_user_cannot_access_flavor_not_allowed_for_any_project(self):
-        response = self.client.get(self._get_flavor_url(self.inaccessible_flavor))
+        for user_role in ('admin', 'manager', 'no_role'):
+            self._ensure_direct_access_forbidden(user_role, 'inaccessible')
+
+    # Creation tests
+    def test_anonymous_user_cannot_create_flavor(self):
+        for old_flavor in self.flavors.values():
+            flavor = factories.FlavorFactory(cloud=old_flavor.cloud)
+            response = self.client.post(reverse('flavor-list'), self._get_valid_payload(flavor))
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_authenticated_user_cannot_create_flavor(self):
+        for user in self.users.values():
+            self.client.force_authenticate(user=user)
+
+            for old_flavor in self.flavors.values():
+                flavor = factories.FlavorFactory(cloud=old_flavor.cloud)
+                response = self.client.post(reverse('flavor-list'), self._get_valid_payload(flavor))
+                self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_anonymous_user_cannot_change_flavor(self):
+        for flavor in self.flavors.values():
+            payload = self._get_valid_payload(flavor)
+            response = self.client.put(self._get_flavor_url(flavor), payload)
+
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_cannot_change_flavor_allowed_for_project_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.users['admin'])
+        flavor = self.flavors['admin']
+
+        payload = self._get_valid_payload(flavor)
+        response = self.client.put(self._get_flavor_url(flavor), payload)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_user_cannot_change_flavor_allowed_for_project_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.users['manager'])
+        flavor = self.flavors['manager']
+
+        payload = self._get_valid_payload(flavor)
+        response = self.client.put(self._get_flavor_url(flavor), payload)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    # Deletion tests
+    def test_anonymous_user_cannot_delete_flavor(self):
+        flavor = factories.FlavorFactory()
+        response = self.client.delete(self._get_flavor_url(flavor))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_cannot_delete_flavor_allowed_for_project_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.users['admin'])
+
+        response = self.client.delete(self._get_flavor_url(self.flavors['admin']))
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_user_cannot_delete_flavor_allowed_for_project_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.users['manager'])
+
+        response = self.client.delete(self._get_flavor_url(self.flavors['manager']))
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    # Helper methods
+    def _ensure_list_access_forbidden(self, user_role, flavor):
+        self.client.force_authenticate(user=self.users[user_role])
+
+        response = self.client.get(reverse('flavor-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        flavor_url = self._get_flavor_url(self.flavors[flavor])
+        self.assertNotIn(flavor_url, [instance['url'] for instance in response.data])
+
+    def _ensure_direct_access_forbidden(self, user_role, flavor):
+        self.client.force_authenticate(user=self.users[user_role])
+
+        response = self.client.get(self._get_flavor_url(self.flavors[flavor]))
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    # Helper methods
     def _get_flavor_url(self, flavor):
         return 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': flavor.uuid})
 
-
-class FlavorApiManipulationTest(test.APISimpleTestCase):
-    def setUp(self):
-        self.user = structure_factories.UserFactory.create()
-        self.client.force_authenticate(user=self.user)
-
-        self.flavor = factories.FlavorFactory()
-        self.flavor_url = 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': self.flavor.uuid})
-
-    def test_cannot_delete_flavor(self):
-        response = self.client.delete(self.flavor_url)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_cannot_create_flavor(self):
-        data = {
-            'name': 'test-flavor',
-            'cloud': 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': factories.CloudFactory().uuid}),
-            'cores': 2,
-            'ram': 2.0,
-            'disk': 10,
+    def _get_valid_payload(self, resource):
+        return {
+            'name': resource.name,
+            'cloud': 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': resource.cloud.uuid}),
+            'cores': resource.cores,
+            'ram': resource.ram,
+            'disk': resource.disk,
         }
-
-        response = self.client.post(self.flavor_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_cannot_change_flavor_as_whole(self):
-        data = {
-            'name': self.flavor.name,
-            'cloud': 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': self.flavor.cloud.uuid}),
-            'cores': self.flavor.cores,
-            'ram': self.flavor.ram,
-            'disk': self.flavor.disk,
-        }
-
-        response = self.client.put(self.flavor_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_cannot_change_single_flavor_field(self):
-        data = {
-            'name': self.flavor.name,
-        }
-
-        response = self.client.patch(self.flavor_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)

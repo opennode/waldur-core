@@ -10,7 +10,6 @@ from nodeconductor.structure.tests import factories as structure_factories
 class PurchaseApiPermissionTest(test.APISimpleTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory.create()
-        self.client.force_authenticate(user=self.user)
 
         admined_project = structure_factories.ProjectFactory()
         managed_project = structure_factories.ProjectFactory()
@@ -24,7 +23,13 @@ class PurchaseApiPermissionTest(test.APISimpleTestCase):
         self.inaccessible_purchase = iaas_factories.PurchaseFactory(project=inaccessible_project)
 
     # List filtration tests
+    def test_anonymous_user_cannot_list_purchases(self):
+        response = self.client.get(reverse('purchase-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_list_purchase_history_of_project_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('purchase-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -32,6 +37,8 @@ class PurchaseApiPermissionTest(test.APISimpleTestCase):
         self.assertIn(purchase_url, [purchase['url'] for purchase in response.data])
 
     def test_user_can_list_purchase_history_of_project_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('purchase-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -39,6 +46,8 @@ class PurchaseApiPermissionTest(test.APISimpleTestCase):
         self.assertIn(purchase_url, [purchase['url'] for purchase in response.data])
 
     def test_user_cannot_list_purchase_history_of_project_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('purchase-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -46,6 +55,8 @@ class PurchaseApiPermissionTest(test.APISimpleTestCase):
         self.assertNotIn(purchase_url, [purchase['url'] for purchase in response.data])
 
     def test_user_cannot_list_purchases_not_allowed_for_any_project(self):
+        self.client.force_authenticate(user=self.user)
+
         inaccessible_purchase = iaas_factories.PurchaseFactory()
 
         response = self.client.get(reverse('purchase-list'))
@@ -55,20 +66,33 @@ class PurchaseApiPermissionTest(test.APISimpleTestCase):
         self.assertNotIn(purchase_url, [instance['url'] for instance in response.data])
 
     # Direct purchase access tests
+    def test_anonymous_user_cannot_access_flavor(self):
+        purchase = iaas_factories.PurchaseFactory()
+        response = self.client.get(self._get_purchase_url(purchase))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_access_purchase_of_project_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_purchase_url(self.admined_purchase))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_access_purchase_of_project_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_purchase_url(self.managed_purchase))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_access_purchase_of_project_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_purchase_url(self.inaccessible_purchase))
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_cannot_access_purchase_not_allowed_for_any_project(self):
+        self.client.force_authenticate(user=self.user)
+
         inaccessible_purchase = iaas_factories.PurchaseFactory()
 
         response = self.client.get(self._get_purchase_url(inaccessible_purchase))

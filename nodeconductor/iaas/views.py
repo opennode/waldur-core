@@ -7,7 +7,6 @@ from rest_framework import viewsets
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
-from nodeconductor.core import permissions
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 
@@ -21,7 +20,6 @@ class InstanceViewSet(mixins.CreateModelMixin,
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.DjangoObjectPermissionsFilter,)
-    permission_classes = (permissions.DjangoObjectLevelPermissions,)
 
     def get_serializer_class(self):
         if self.request.method in ('POST', 'PUT', 'PATCH'):
@@ -50,4 +48,3 @@ class PurchaseViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.DjangoObjectPermissionsFilter,)
-    permission_classes = (permissions.DjangoObjectLevelPermissions,)

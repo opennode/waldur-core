@@ -25,14 +25,20 @@ class ProjectRoleTest(TestCase):
 class ProjectPermissionTest(test.APISimpleTestCase):
     def setUp(self):
         self.user = factories.UserFactory.create()
-        self.client.force_authenticate(user=self.user)
 
         self.projects = factories.ProjectFactory.create_batch(3)
 
         self.projects[0].add_user(self.user, Role.ADMINISTRATOR)
         self.projects[1].add_user(self.user, Role.MANAGER)
 
+    # List filtration tests
+    def test_anonymous_user_cannot_list_projects(self):
+        response = self.client.get(reverse('project-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_list_projects_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('project-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -40,6 +46,8 @@ class ProjectPermissionTest(test.APISimpleTestCase):
         self.assertIn(project_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_projects_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('project-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -47,21 +55,35 @@ class ProjectPermissionTest(test.APISimpleTestCase):
         self.assertIn(project_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_projects_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('project-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         project_url = self._get_project_url(self.projects[2])
         self.assertNotIn(project_url, [instance['url'] for instance in response.data])
 
+    # Direct instance access tests
+    def test_anonymous_user_cannot_access_project(self):
+        project = factories.ProjectFactory()
+        response = self.client.get(self._get_project_url(project))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_access_project_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_project_url(self.projects[0]))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_access_project_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_project_url(self.projects[1]))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_access_project_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_project_url(self.projects[2]))
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -73,6 +95,9 @@ class ProjectPermissionTest(test.APISimpleTestCase):
 
 class ProjectManipulationTest(test.APISimpleTestCase):
     def setUp(self):
+        self.user = factories.UserFactory()
+        self.client.force_authenticate(user=self.user)
+
         self.project = factories.ProjectFactory()
         self.project_url = reverse('project-detail', kwargs={'uuid': self.project.uuid})
 
