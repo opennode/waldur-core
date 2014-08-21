@@ -10,37 +10,46 @@ from nodeconductor.structure.models import ProjectRole
 
 class UserProjectPermissionTest(test.APISimpleTestCase):
     def setUp(self):
-        self.users = factories.UserFactory.create_batch(3)
-
-        self.client.force_authenticate(user=self.users[0])
+        self.users = {
+            'owner': factories.UserFactory(),
+            'admin': factories.UserFactory(),
+            'manager': factories.UserFactory(),
+            'no_role': factories.UserFactory(),
+        }
+        self.client.force_authenticate(user=self.users['owner'])
 
         self.projects = factories.ProjectFactory.create_batch(3)
 
-        self.projects[0].add_user(self.users[0], ProjectRole.MANAGER)
-        self.projects[1].add_user(self.users[0], ProjectRole.ADMINISTRATOR)
+        self.projects[0].add_user(self.users['owner'], ProjectRole.MANAGER)
+        self.projects[1].add_user(self.users['owner'], ProjectRole.ADMINISTRATOR)
 
-        self.projects[0].add_user(self.users[1], ProjectRole.ADMINISTRATOR)
+        self.projects[0].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
 
-        self.projects[1].add_user(self.users[1], ProjectRole.ADMINISTRATOR)
-        self.projects[2].add_user(self.users[1], ProjectRole.ADMINISTRATOR)
+        self.projects[1].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
+        self.projects[1].add_user(self.users['manager'], ProjectRole.MANAGER)
+
+        self.projects[2].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
 
     def test_user_can_list_roles_of_projects_he_is_manager_of(self):
         response = self.client.get(reverse('user_groups-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        self.assertTrue(self._check_if_present(self.projects[0], self.users[0], 'manager', response.data))
-        self.assertTrue(self._check_if_present(self.projects[0], self.users[1], 'admin', response.data))
-        self.assertFalse(self._check_if_present(self.projects[0], self.users[2], 'admin', response.data))
-        self.assertFalse(self._check_if_present(self.projects[0], self.users[2], 'manager', response.data))
+        self.assertTrue(self._check_if_present(self.projects[0], self.users['owner'], 'manager', response.data),
+                        'Owner user doesn\'t have manager privileges')
+        self.assertTrue(self._check_if_present(self.projects[0], self.users['admin'], 'admin', response.data),
+                        'Admin user doesn\'t have admin privileges')
 
     def test_user_cannot_list_roles_of_projects_he_has_no_role_in(self):
         response = self.client.get(reverse('user_groups-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        self.assertFalse(self._check_if_present(self.projects[2], self.users[1], 'admin', response.data))
+        self.assertFalse(self._check_if_present(self.projects[2], self.users['no_role'], 'admin', response.data),
+                         'Norole user has admin privileges in not connected project')
+        self.assertFalse(self._check_if_present(self.projects[2], self.users['no_role'], 'manager', response.data),
+                         'Norole user has manager privileges in not connected project')
 
     def test_user_can_modify_roles_of_projects_he_is_manager_of(self):
-        user_url = self._get_user_url(self.users[1])
+        user_url = self._get_user_url(self.users['no_role'])
 
         project_url = self._get_project_url(self.projects[0])
 
@@ -60,14 +69,13 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         response = self.client.get(reverse('user_groups-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        self.assertTrue(self._check_if_present(self.projects[1], self.users[0], 'admin', response.data))
-        self.assertTrue(self._check_if_present(self.projects[1], self.users[1], 'admin', response.data))
-        self.assertFalse(self._check_if_present(self.projects[1], self.users[0], 'manager', response.data))
-        self.assertFalse(self._check_if_present(self.projects[1], self.users[2], 'manager', response.data))
-        self.assertFalse(self._check_if_present(self.projects[1], self.users[2], 'admin', response.data))
+        self.assertTrue(self._check_if_present(self.projects[1], self.users['owner'], 'admin', response.data),
+                        'Admin user cannot list his permissions in a project.')
+        self.assertTrue(self._check_if_present(self.projects[1], self.users['admin'], 'admin', response.data),
+                        'Admin user cannot list admin user permissions in a project.')
 
     def test_user_cannot_modify_roles_of_projects_he_is_admin_of(self):
-        user_url = self._get_user_url(self.users[0])
+        user_url = self._get_user_url(self.users['owner'])
 
         project_url = self._get_project_url(self.projects[1])
 
@@ -78,10 +86,11 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         }
 
         response = self.client.post(reverse('user_groups-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN,
+                         'Modifications of permissions in a project without manager role is not allowed.')
 
     def test_user_cannot_modify_roles_of_projects_he_has_no_role_in(self):
-        user_url = self._get_user_url(self.users[0])
+        user_url = self._get_user_url(self.users['owner'])
 
         project_url = self._get_project_url(self.projects[2])
 
@@ -92,7 +101,8 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         }
 
         response = self.client.post(reverse('user_groups-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN,
+                         'Modifications of permissions in a not connected project is not allowed.')
 
 
     # Helper methods
