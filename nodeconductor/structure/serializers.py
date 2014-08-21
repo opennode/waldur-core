@@ -59,6 +59,7 @@ class ProjectPermissionReadSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = User.groups.through
         fields = ('url', 'project', 'user', 'role')
+        view_name = 'project_permission-detail'
 
 
 class NotModifiedPermission(APIException):
@@ -77,6 +78,7 @@ class ProjectPermissionWriteSerializer(serializers.Serializer):
     class Meta(object):
         model = User.groups.through
         fields = ('project', 'user', 'role')
+        view_name = 'project_permission-detail'
 
     def restore_object(self, attrs, instance=None):
         project = attrs['group.projectrole.project']

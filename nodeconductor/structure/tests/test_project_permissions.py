@@ -31,7 +31,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         self.projects[2].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
 
     def test_user_can_list_roles_of_projects_he_is_manager_of(self):
-        response = self.client.get(reverse('user_groups-list'))
+        response = self.client.get(reverse('project_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.assertTrue(self._check_if_present(self.projects[0], self.users['owner'], 'manager', response.data),
@@ -40,7 +40,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
                         'Admin user doesn\'t have admin privileges')
 
     def test_user_cannot_list_roles_of_projects_he_has_no_role_in(self):
-        response = self.client.get(reverse('user_groups-list'))
+        response = self.client.get(reverse('project_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.assertFalse(self._check_if_present(self.projects[2], self.users['no_role'], 'admin', response.data),
@@ -59,14 +59,14 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
             'role': 'manager'
         }
 
-        response = self.client.post(reverse('user_groups-list'), data)
+        response = self.client.post(reverse('project_permission-list'), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # modification of an existing permission has a different status code
-        response = self.client.post(reverse('user_groups-list'), data)
+        response = self.client.post(reverse('project_permission-list'), data)
         self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
 
     def test_user_can_list_roles_of_projects_he_is_admin_of(self):
-        response = self.client.get(reverse('user_groups-list'))
+        response = self.client.get(reverse('project_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.assertTrue(self._check_if_present(self.projects[1], self.users['owner'], 'admin', response.data),
@@ -85,7 +85,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
             'role': 'manager'
         }
 
-        response = self.client.post(reverse('user_groups-list'), data)
+        response = self.client.post(reverse('project_permission-list'), data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Modifications of permissions in a project without manager role is not allowed.')
 
@@ -100,7 +100,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
             'role': 'manager'
         }
 
-        response = self.client.post(reverse('user_groups-list'), data)
+        response = self.client.post(reverse('project_permission-list'), data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Modifications of permissions in a not connected project is not allowed.')
 
