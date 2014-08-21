@@ -86,6 +86,12 @@ nodeconductor migrate
 nodeconductor collectstatic --noinput
 
 %changelog
+* Thu Aug 21 2014 Ihor Kaharlichenko <ihor@opennodecloud.com> - 0.1.0dev-12
+- Enforced authentication on all endpoints
+- Exposed clouds and enforced proper authorization on them
+- Renamed organization resource to customer
+- Implemented purchase history
+
 * Tue Aug 19 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-11
 - Added missing branding to REST console and admin
 
