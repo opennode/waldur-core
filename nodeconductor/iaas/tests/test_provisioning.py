@@ -96,6 +96,23 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    # Deletion tests
+    def test_anonymous_user_cannot_delete_instances(self):
+        response = self.client.delete(self._get_project_url(factories.InstanceFactory()))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_cannot_delete_instances_of_projects_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.delete(self._get_project_url(self.admined_instance))
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_user_cannot_delete_instances_of_projects_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.delete(self._get_project_url(self.managed_instance))
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
     # Mutation tests
     def test_user_can_change_description_of_instance_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
@@ -327,20 +344,3 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
             # Cloud dependent parameters
             'flavor': self._get_flavor_url(self.flavor),
         }
-
-
-class InstanceManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
-    def setUp(self):
-        self.user = structure_factories.UserFactory.create()
-        self.client.force_authenticate(user=self.user)
-
-        self.instance = factories.InstanceFactory()
-        self.instance_url = self._get_instance_url(self.instance)
-
-        self.instance.project.add_user(self.user, Role.ADMINISTRATOR)
-        self.instance.project.add_user(self.user, Role.MANAGER)
-
-    def test_cannot_delete_instance(self):
-        response = self.client.delete(self.instance_url)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
