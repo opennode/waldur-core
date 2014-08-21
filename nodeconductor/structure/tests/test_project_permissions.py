@@ -33,13 +33,11 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         self.assertFalse(self._check_if_present(self.projects[0], self.users[2], 'admin', response.data))
         self.assertFalse(self._check_if_present(self.projects[0], self.users[2], 'manager', response.data))
 
-
     def test_user_cannot_list_roles_of_projects_he_has_no_role_in(self):
         response = self.client.get(reverse('user_groups-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.assertFalse(self._check_if_present(self.projects[2], self.users[1], 'admin', response.data))
-
 
     def test_user_can_modify_roles_of_projects_he_is_manager_of(self):
         user_url = self._get_user_url(self.users[1])
@@ -81,6 +79,21 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
 
         response = self.client.post(reverse('user_groups-list'), data)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_cannot_modify_roles_of_projects_he_has_no_role_in(self):
+        user_url = self._get_user_url(self.users[0])
+
+        project_url = self._get_project_url(self.projects[2])
+
+        data = {
+            'project': project_url,
+            'user': user_url,
+            'role': 'manager'
+        }
+
+        response = self.client.post(reverse('user_groups-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
 
     # Helper methods
     def _get_project_url(self, project):
