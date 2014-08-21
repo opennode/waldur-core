@@ -3,7 +3,6 @@ from rest_framework import viewsets
 
 from nodeconductor.cloud import models
 from nodeconductor.cloud import serializers
-from nodeconductor.core import permissions
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -11,7 +10,6 @@ class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.FlavorSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.DjangoObjectPermissionsFilter,)
-    permission_classes = (permissions.DjangoObjectLevelPermissions,)
 
 
 class CloudViewSet(viewsets.ReadOnlyModelViewSet):
@@ -19,4 +17,3 @@ class CloudViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.CloudSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.DjangoObjectPermissionsFilter,)
-    permission_classes = (permissions.DjangoObjectLevelPermissions,)

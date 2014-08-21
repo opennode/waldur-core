@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.cloud.tests import factories as cloud_factories
+from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import Role
 from nodeconductor.structure.tests import factories as structure_factories
@@ -27,7 +28,6 @@ class UrlResolverMixin(object):
 class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory.create()
-        self.client.force_authenticate(user=self.user)
 
         self.admined_instance = factories.InstanceFactory()
         self.managed_instance = factories.InstanceFactory()
@@ -35,7 +35,14 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.admined_instance.project.add_user(self.user, Role.ADMINISTRATOR)
         self.managed_instance.project.add_user(self.user, Role.MANAGER)
 
+    # List filtration tests
+    def test_anonymous_user_cannot_list_instances(self):
+        response = self.client.get(reverse('instance-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_list_instances_of_projects_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('instance-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -43,6 +50,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertIn(instance_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_instances_of_projects_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('instance-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -50,6 +59,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertIn(instance_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_instances_of_projects_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         inaccessible_instance = factories.InstanceFactory()
 
         response = self.client.get(reverse('instance-list'))
@@ -58,49 +69,69 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         instance_url = self._get_instance_url(inaccessible_instance)
         self.assertNotIn(instance_url, [instance['url'] for instance in response.data])
 
+    # Direct instance access tests
+    def test_anonymous_user_cannot_access_instance(self):
+        instance = factories.InstanceFactory()
+        response = self.client.get(self._get_instance_url(instance))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_access_instances_of_projects_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_instance_url(self.admined_instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_access_instances_of_projects_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_instance_url(self.managed_instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_access_instances_of_projects_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         inaccessible_instance = factories.InstanceFactory()
 
         response = self.client.get(self._get_project_url(inaccessible_instance))
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    # Mutation tests
     def test_user_can_change_description_of_instance_he_is_administrator_of(self):
-        response = self.client.get(self._get_instance_url(self.admined_instance))
-        data = response.data
+        self.client.force_authenticate(user=self.user)
+
+        data = self._get_valid_payload(self.admined_instance)
         data['description'] = 'changed description1'
 
         response = self.client.put(self._get_instance_url(self.admined_instance), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        response = self.client.get(self._get_instance_url(self.admined_instance))
-        self.assertEqual(response.data['description'], 'changed description1')
+        changed_instance = Instance.objects.get(pk=self.admined_instance.pk)
+
+        self.assertEqual(changed_instance.description, 'changed description1')
 
     def test_user_cannot_change_description_of_instance_he_is_manager_of(self):
-        response = self.client.get(self._get_instance_url(self.managed_instance))
-        data = response.data
+        self.client.force_authenticate(user=self.user)
+
+        data = self._get_valid_payload(self.managed_instance)
         data['description'] = 'changed description1'
 
         response = self.client.put(self._get_instance_url(self.managed_instance), data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_cannot_change_description_of_instance_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         inaccessible_instance = factories.InstanceFactory()
-        data = self.instance_to_dict(inaccessible_instance)
+        data = self._get_valid_payload(inaccessible_instance)
         data['description'] = 'changed description1'
 
         response = self.client.put(self._get_instance_url(inaccessible_instance), data)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_can_change_description_single_field_of_instance_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         data = {
             'description': 'changed description1',
         }
@@ -108,10 +139,12 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         response = self.client.patch(self._get_instance_url(self.admined_instance), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        response = self.client.get(self._get_instance_url(self.admined_instance))
-        self.assertEqual(response.data['description'], 'changed description1')
+        changed_instance = Instance.objects.get(pk=self.admined_instance.pk)
+        self.assertEqual(changed_instance.description, 'changed description1')
 
     def test_user_cannot_change_description_single_field__of_instance_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         data = {
             'description': 'changed description1',
         }
@@ -120,6 +153,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_cannot_change_description_single_field_of_instance_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         inaccessible_instance = factories.InstanceFactory()
         data = {
             'description': 'changed description1',
@@ -129,15 +164,15 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     # Helpers method
-    def instance_to_dict(self, instance):
+    def _get_valid_payload(self, resource=None):
+        resource = resource or factories.InstanceFactory()
+
         return {
-            'hostname': instance.hostname,
-            'description': instance.description,
-            'project': self._get_project_url(instance.project),
-            'template': self._get_template_url(instance.template),
-            'volume_sizes': [11, 14, 9],
-            'tags': set(),
-            'flavor': self._get_flavor_url(instance.flavor),
+            'hostname': resource.hostname,
+            'description': resource.description,
+            'project': self._get_project_url(resource.project),
+            'template': self._get_template_url(resource.template),
+            'flavor': self._get_flavor_url(resource.flavor),
         }
 
 # XXX: What should happen to existing instances when their project is removed?

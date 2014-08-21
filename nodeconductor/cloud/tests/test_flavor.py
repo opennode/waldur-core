@@ -121,7 +121,6 @@ class FlavorPermissionLifecycleTest(unittest.TestCase):
 class FlavorApiPermissionTest(test.APISimpleTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory.create()
-        self.client.force_authenticate(user=self.user)
 
         admined_project = structure_factories.ProjectFactory()
         managed_project = structure_factories.ProjectFactory()
@@ -137,7 +136,13 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
         managed_project.clouds.add(self.managed_flavor.cloud)
 
     # List filtration tests
+    def test_anonymous_user_cannot_list_flavors(self):
+        response = self.client.get(reverse('flavor-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_list_flavors_of_projects_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('flavor-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -145,6 +150,8 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
         self.assertIn(flavor_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_flavors_of_projects_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('flavor-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -152,6 +159,8 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
         self.assertIn(flavor_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_flavors_of_projects_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         inaccessible_project = structure_factories.ProjectFactory()
         inaccessible_project.clouds.add(self.inaccessible_flavor.cloud)
 
@@ -162,6 +171,8 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
         self.assertNotIn(flavor_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_flavors_not_allowed_for_any_project(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('flavor-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -169,15 +180,26 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
         self.assertNotIn(flavor_url, [instance['url'] for instance in response.data])
 
     # Direct instance access tests
+    def test_anonymous_user_cannot_access_flavor(self):
+        flavor = factories.FlavorFactory()
+        response = self.client.get(self._get_flavor_url(flavor))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_access_flavor_allowed_for_project_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_flavor_url(self.admined_flavor))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_access_flavor_allowed_for_project_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_flavor_url(self.managed_flavor))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_access_flavor_allowed_for_project_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         inaccessible_project = structure_factories.ProjectFactory()
         inaccessible_project.clouds.add(self.inaccessible_flavor.cloud)
 
@@ -186,6 +208,8 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_cannot_access_flavor_not_allowed_for_any_project(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_flavor_url(self.inaccessible_flavor))
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -197,7 +221,7 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
 
 class FlavorApiManipulationTest(test.APISimpleTestCase):
     def setUp(self):
-        self.user = structure_factories.UserFactory.create()
+        self.user = structure_factories.UserFactory()
         self.client.force_authenticate(user=self.user)
 
         self.flavor = factories.FlavorFactory()
