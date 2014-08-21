@@ -3,11 +3,10 @@ from __future__ import unicode_literals
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.contrib import auth
-
 from rest_framework import serializers
+from rest_framework.exceptions import APIException
 
 from nodeconductor.structure import models
-from rest_framework.exceptions import APIException
 
 
 User = auth.get_user_model()
