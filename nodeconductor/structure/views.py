@@ -9,6 +9,7 @@ from nodeconductor.core import permissions
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.structure import serializers
 from nodeconductor.structure import models
+from rest_framework.permissions import BasePermission
 
 User = auth.get_user_model()
 
@@ -46,7 +47,10 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
     model = User.groups.through
     serializer_class = serializers.ProjectPermissionReadSerializer
-    queryset = User.groups.through.objects.exclude(group__projectrole__project=None)
+
+    def get_queryset(self):
+        user = self.request.user
+        return user.groups.through.objects.exclude(group__projectrole__project=None)
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

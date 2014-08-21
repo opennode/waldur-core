@@ -86,7 +86,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         }
 
         response = self.client.post(reverse('user_groups-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN,
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Modifications of permissions in a project without manager role is not allowed.')
 
     def test_user_cannot_modify_roles_of_projects_he_has_no_role_in(self):
@@ -101,7 +101,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         }
 
         response = self.client.post(reverse('user_groups-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN,
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Modifications of permissions in a not connected project is not allowed.')
 
 

@@ -90,6 +90,19 @@ class ProjectPermissionWriteSerializer(serializers.Serializer):
         except IntegrityError:
             raise NotModifiedPermission()
 
+    def get_fields(self):
+        fields = super(ProjectPermissionWriteSerializer, self).get_fields()
+
+        try:
+            request = self.context['view'].request
+            user = request.user
+        except (KeyError, AttributeError):
+            return fields
+
+        fields['project'].queryset = models.Project.objects.filter(roles__permission_group__user=user,
+                                                                   roles__role_type=models.ProjectRole.MANAGER)
+        return fields
+
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField('user_projects_roles')
