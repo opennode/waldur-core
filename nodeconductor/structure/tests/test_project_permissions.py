@@ -22,6 +22,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         self.projects[0].add_user(self.users[1], ProjectRole.ADMINISTRATOR)
 
         self.projects[1].add_user(self.users[1], ProjectRole.ADMINISTRATOR)
+        self.projects[2].add_user(self.users[1], ProjectRole.ADMINISTRATOR)
 
     def test_user_can_list_roles_of_projects_he_is_manager_of(self):
         response = self.client.get(reverse('user_groups-list'))
@@ -31,6 +32,13 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         self.assertTrue(self._check_if_present(self.projects[0], self.users[1], 'admin', response.data))
         self.assertFalse(self._check_if_present(self.projects[0], self.users[2], 'admin', response.data))
         self.assertFalse(self._check_if_present(self.projects[0], self.users[2], 'manager', response.data))
+
+
+    def test_user_cannot_list_roles_of_projects_he_has_no_role_in(self):
+        response = self.client.get(reverse('user_groups-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertFalse(self._check_if_present(self.projects[2], self.users[1], 'admin', response.data))
 
 
     def test_user_can_modify_roles_of_projects_he_is_manager_of(self):
