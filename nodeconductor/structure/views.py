@@ -43,6 +43,10 @@ class UserViewSet(core_viewsets.ModelViewSet):
     serializer_class = serializers.UserSerializer
     permission_classes = (IsAuthenticatedOrAdminWhenModifying,)
 
+    def dispatch(self, request, *args, **kwargs):
+        if kwargs.get('uuid') == 'current' and request.user.is_authenticated():
+            kwargs['uuid'] = request.user.uuid
+        return super(UserViewSet, self).dispatch(request, *args, **kwargs)
 
 class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
     model = User.groups.through
