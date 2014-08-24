@@ -5,6 +5,7 @@ from django.db import IntegrityError
 from django.contrib import auth
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
+from core.serializers import PermissionFieldFilteringMixin
 
 from nodeconductor.structure import models
 
@@ -26,11 +27,14 @@ class ProjectSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
 
 
-class ProjectGroupSerializer(serializers.HyperlinkedModelSerializer):
+class ProjectGroupSerializer(PermissionFieldFilteringMixin, serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.ProjectGroup
-        fields = ('url', 'name')
+        fields = ('url', 'name', 'customer')
         lookup_field = 'uuid'
+
+    def get_filtered_field_names(self):
+        return 'customer',
 
 
 class ProjectRoleField(serializers.ChoiceField):

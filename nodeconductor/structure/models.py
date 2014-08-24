@@ -177,7 +177,7 @@ register_group_access(
     ProjectGroup,
     (lambda instance: instance.customer.roles.get(
         role_type=CustomerRole.OWNER).permission_group),
-    permissions=('view', 'change'),
+    permissions=('view', 'change', 'delete'),
     tag='owner',
 )
 

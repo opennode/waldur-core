@@ -135,10 +135,10 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
             'no_role': factories.UserFactory(),
         }
 
-        customer = factories.CustomerFactory()
-        customer.add_user(self.users['owner'], CustomerRole.OWNER)
+        self.customer = factories.CustomerFactory()
+        self.customer.add_user(self.users['owner'], CustomerRole.OWNER)
 
-        project_groups = factories.ProjectGroupFactory.create_batch(3, customer=customer)
+        project_groups = factories.ProjectGroupFactory.create_batch(3, customer=self.customer)
         project_groups.append(factories.ProjectGroupFactory())
 
         self.project_groups = {
@@ -148,17 +148,47 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
             'inaccessible': project_groups[-1:],
         }
 
-        admined_project = factories.ProjectFactory(customer=customer)
+        admined_project = factories.ProjectFactory(customer=self.customer)
         admined_project.add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         admined_project.project_groups.add(*self.project_groups['admin'])
 
-        managed_project = factories.ProjectFactory(customer=customer)
+        managed_project = factories.ProjectFactory(customer=self.customer)
         managed_project.add_user(self.users['manager'], ProjectRole.MANAGER)
         managed_project.project_groups.add(*self.project_groups['manager'])
 
-        # self.client.force_authenticate(user=self.user)
+    # Creation tests
+    def test_user_can_create_project_group_belonging_to_customer_he_owns(self):
+        self.client.force_authenticate(user=self.users['owner'])
 
-    # TODO: Creation tests
+        payload = self._get_valid_payload(factories.ProjectGroupFactory(customer=self.customer))
+
+        response = self.client.post(reverse('projectgroup-list'), payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_user_cannot_create_project_group_belonging_to_customer_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        payload = self._get_valid_payload()
+
+        response = self.client.post(reverse('projectgroup-list'), payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset({'customer': ['Invalid hyperlink - object does not exist.']}, response.data)
+
+    # Deletion tests
+    def test_user_can_delete_project_group_belonging_to_customer_he_owns(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        for project_group in self.project_groups['owner']:
+            response = self.client.delete(self._get_project_group_url(project_group))
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_cannot_delete_project_group_belonging_to_customer_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        for project_group in self.project_groups['inaccessible']:
+            response = self.client.delete(self._get_project_group_url(project_group))
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     # TODO: Cannot add other customer's project to own project group
     # List filtration tests
     def test_user_can_list_project_groups_of_customers_he_is_owner_of(self):
@@ -230,5 +260,16 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
             # 404 is used instead of 403 to hide the fact that the resource exists at all
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def _get_customer_url(self, customer):
+        return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
+
     def _get_project_group_url(self, project_group):
         return 'http://testserver' + reverse('projectgroup-detail', kwargs={'uuid': project_group.uuid})
+
+    def _get_valid_payload(self, resource=None):
+        resource = resource or factories.ProjectGroupFactory()
+
+        return {
+            'name': resource.name,
+            'customer': self._get_customer_url(resource.customer),
+        }
