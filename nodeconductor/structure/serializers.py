@@ -12,9 +12,6 @@ from nodeconductor.structure import models
 
 User = auth.get_user_model()
 
-# TODO: can_delete field for all standalone entities (customer, project, pg, cloud etc) for super_admin users
-# TODO: get_current_user should return is_superadmin
-
 
 class CustomerSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
@@ -145,5 +142,5 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = User
         fields = ('url', 'uuid', 'username', 'first_name', 'last_name', 'alternative_name', 'job_title', 'email',
-                  'civil_number', 'description')
+                  'civil_number', 'description', 'is_staff')
         lookup_field = 'uuid'

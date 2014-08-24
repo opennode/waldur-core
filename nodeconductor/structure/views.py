@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 from django.contrib import auth
-from rest_framework.permissions import IsAuthenticated
 
 from rest_framework import filters
 from rest_framework import viewsets
@@ -10,6 +9,7 @@ from nodeconductor.core import permissions
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.structure import serializers
 from nodeconductor.structure import models
+from nodeconductor.core.permissions import IsAuthenticatedOrAdminWhenModifying
 
 
 User = auth.get_user_model()
@@ -41,7 +41,7 @@ class UserViewSet(core_viewsets.ModelViewSet):
     model = User
     lookup_field = 'uuid'
     serializer_class = serializers.UserSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticatedOrAdminWhenModifying,)
 
 
 class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
