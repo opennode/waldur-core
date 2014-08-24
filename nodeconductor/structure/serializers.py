@@ -36,6 +36,19 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin, serializers.Hyperlin
     def get_filtered_field_names(self):
         return 'customer',
 
+    def get_fields(self):
+        fields = super(ProjectGroupSerializer, self).get_fields()
+
+        try:
+            method = self.context['view'].request.method
+        except (KeyError, AttributeError):
+            return fields
+
+        if method in ('PUT', 'PATCH'):
+            fields['customer'].read_only = True
+
+        return fields
+
 
 class ProjectRoleField(serializers.ChoiceField):
 

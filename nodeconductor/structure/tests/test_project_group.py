@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.structure.models import CustomerRole
+from nodeconductor.structure.models import ProjectGroup
 from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories
 
@@ -187,6 +188,63 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
 
         for project_group in self.project_groups['inaccessible']:
             response = self.client.delete(self._get_project_group_url(project_group))
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # Mutation tests
+    def test_user_can_change_name_of_project_group_belonging_to_customer_he_owns(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        for project_group in self.project_groups['owner']:
+            payload = self._get_valid_payload(project_group)
+            payload['name'] = (factories.ProjectGroupFactory()).name
+
+            response = self.client.put(self._get_project_group_url(project_group), payload)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+            updated_project_group = ProjectGroup.objects.get(pk=project_group.pk)
+            self.assertEqual(updated_project_group.name, payload['name'])
+
+    def test_user_cannot_change_customer_of_project_group_belonging_to_customer_he_owns(self):
+        user = self.users['owner']
+        self.client.force_authenticate(user=user)
+
+        new_not_owned_customer = (factories.ProjectGroupFactory()).customer
+
+        new_owned_customer = (factories.ProjectGroupFactory()).customer
+        new_owned_customer.add_user(user, CustomerRole.OWNER)
+
+        for project_group in self.project_groups['owner']:
+            payload = self._get_valid_payload(project_group)
+
+            # Testing owner that can be accessed
+            payload['customer'] = self._get_customer_url(new_owned_customer)
+
+            # TODO: Instead of just ignoring the field, we should have forbidden the update
+            # see NC-73 for explanation of similar issue
+            response = self.client.put(self._get_project_group_url(project_group), payload)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+            updated_project_group = ProjectGroup.objects.get(pk=project_group.pk)
+            self.assertEqual(updated_project_group.customer, project_group.customer,
+                             'Customer should have stayed intact')
+
+            # Testing owner that cannot be accessed
+            payload['customer'] = self._get_customer_url(new_not_owned_customer)
+            response = self.client.put(self._get_project_group_url(project_group), payload)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+            updated_project_group = ProjectGroup.objects.get(pk=project_group.pk)
+            self.assertEqual(updated_project_group.customer, project_group.customer,
+                             'Customer should have stayed intact')
+
+    def test_user_cannot_change_name_of_project_group_belonging_to_customer_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        for project_group in self.project_groups['inaccessible']:
+            payload = self._get_valid_payload(project_group)
+            payload['name'] = (factories.ProjectGroupFactory()).name
+
+            response = self.client.put(self._get_project_group_url(project_group), payload)
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     # TODO: Cannot add other customer's project to own project group
