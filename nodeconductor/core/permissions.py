@@ -74,7 +74,7 @@ SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS']
 class IsAuthenticatedOrAdminWhenModifying(BasePermission):
 
     def has_permission(self, request, view):
-        if (request.method in SAFE_METHODS or
-            request.user and request.user.is_staff):
+        if request.user.is_authenticated() and\
+                (request.method in SAFE_METHODS or request.user.is_staff):
             return True
         return False
