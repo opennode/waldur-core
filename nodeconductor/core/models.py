@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
+from django.utils.translation import ugettext_lazy as _
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 
@@ -20,7 +21,10 @@ class UuidMixin(models.Model):
 
 
 class User(UuidMixin, AbstractUser):
-    pass
+    job_title = models.CharField(_('job title'), max_length=40, blank=True)
+    alternative_name = models.CharField(_('alternative name'), max_length=40, blank=True)
+    civil_number = models.CharField(_('civil number'), max_length=40, blank=True)
+    description = models.TextField(_('description'), blank=True)
 
 
 @python_2_unicode_compatible

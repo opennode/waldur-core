@@ -5,18 +5,21 @@ from django.db import IntegrityError
 from django.contrib import auth
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
-from core.serializers import PermissionFieldFilteringMixin
 
+from nodeconductor.core.serializers import PermissionFieldFilteringMixin
 from nodeconductor.structure import models
 
 
 User = auth.get_user_model()
 
+# TODO: can_delete field for all standalone entities (customer, project, pg, cloud etc) for super_admin users
+# TODO: get_current_user should return is_superadmin
+
 
 class CustomerSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Customer
-        fields = ('url', 'name', 'abbreviation', 'contact_details')
+        fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
 
 
@@ -30,7 +33,7 @@ class ProjectSerializer(serializers.HyperlinkedModelSerializer):
 class ProjectGroupSerializer(PermissionFieldFilteringMixin, serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.ProjectGroup
-        fields = ('url', 'name', 'customer')
+        fields = ('url', 'name', 'customer', 'projects')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
@@ -141,5 +144,6 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = User
-        fields = ('url', 'uuid', 'username', 'first_name', 'last_name', 'projects')
+        fields = ('url', 'uuid', 'username', 'first_name', 'last_name', 'alternative_name', 'job_title', 'email',
+                  'civil_number', 'description')
         lookup_field = 'uuid'

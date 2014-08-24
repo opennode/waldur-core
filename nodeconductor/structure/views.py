@@ -37,7 +37,7 @@ class ProjectGroupViewSet(core_viewsets.ModelViewSet):
     filter_backends = (filters.DjangoObjectPermissionsFilter,)
 
 
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(core_viewsets.ModelViewSet):
     model = User
     lookup_field = 'uuid'
     serializer_class = serializers.UserSerializer

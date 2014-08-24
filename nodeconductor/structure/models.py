@@ -19,8 +19,8 @@ class Customer(UuidMixin, models.Model):
             ('view_customer', _('Can see available customers')),
         )
 
-    name = models.CharField(max_length=80)
-    abbreviation = models.CharField(max_length=80)
+    name = models.CharField(max_length=160)
+    abbreviation = models.CharField(max_length=8)
     contact_details = models.TextField()
     # XXX: How do we tell customers with same names from each other?
 
