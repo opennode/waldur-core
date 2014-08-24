@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib import auth
+from rest_framework.permissions import IsAuthenticated
 
 from rest_framework import filters
 from rest_framework import viewsets
@@ -34,13 +35,13 @@ class ProjectGroupViewSet(core_viewsets.ModelViewSet):
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectGroupSerializer
     filter_backends = (filters.DjangoObjectPermissionsFilter,)
-    permission_classes = (permissions.DjangoObjectLevelPermissions,)
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     model = User
     lookup_field = 'uuid'
     serializer_class = serializers.UserSerializer
+    permission_classes = (IsAuthenticated,)
 
 
 class ProjectPermissionViewSet(core_viewsets.ModelViewSet):

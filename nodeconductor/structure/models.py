@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import signals
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from guardian.shortcuts import assign_perm
+from guardian.shortcuts import assign_perm, remove_perm
 
 from nodeconductor.core.models import UuidMixin
 from nodeconductor.core.permissions import register_group_access
@@ -177,9 +177,69 @@ register_group_access(
     ProjectGroup,
     (lambda instance: instance.customer.roles.get(
         role_type=CustomerRole.OWNER).permission_group),
-    permissions=('view', 'change'),
+    permissions=('view', 'change', 'delete'),
     tag='owner',
 )
+
+
+def update_project_group_to_project_grants(instance, action, reverse, pk_set, **kwargs):
+    # TODO: Optimize the number of SQL queries
+    def marry_project_group_and_project(project_group, project):
+        admins = project.roles.get(
+            role_type=ProjectRole.ADMINISTRATOR).permission_group
+        managers = project.roles.get(
+            role_type=ProjectRole.MANAGER).permission_group
+
+        assign_perm('view_projectgroup', admins, obj=project_group)
+        assign_perm('view_projectgroup', managers, obj=project_group)
+
+    def divorce_project_group_and_project(project_group, project):
+        admins = project.roles.get(
+            role_type=ProjectRole.ADMINISTRATOR).permission_group
+        managers = project.roles.get(
+            role_type=ProjectRole.MANAGER).permission_group
+
+        remove_perm('view_projectgroup', admins, obj=project_group)
+        remove_perm('view_projectgroup', managers, obj=project_group)
+
+    function_map = {
+        'post_add': marry_project_group_and_project,
+        'post_remove': divorce_project_group_and_project,
+        'pre_clear': divorce_project_group_and_project,
+    }
+    relation_model_map = {
+        False: (Project, 'projects'),
+        True: (ProjectGroup, 'project_groups'),
+    }
+
+    try:
+        update_function = function_map[action]
+    except KeyError:
+        # We don't care about this kind of action
+        return
+
+    # Depending on "reverse", "instance" can be either project_group of project.
+    # Bind it to the update_function
+    if reverse:
+        update_permissions = lambda project_group: update_function(project_group, instance)
+    else:
+        update_permissions = lambda project: update_function(instance, project)
+
+    related_model, related_set_attribute = relation_model_map[reverse]
+
+    if action == 'pre_clear':
+        related_instances = getattr(instance, related_set_attribute).iterator()
+    else:
+        related_instances = related_model.objects.filter(pk__in=pk_set)
+
+    for related_instance in related_instances:
+        update_permissions(related_instance)
+
+
+signals.m2m_changed.connect(update_project_group_to_project_grants,
+                            sender=ProjectGroup.projects.through,
+                            weak=False,
+                            dispatch_uid='project_group_level_object_permissions')
 
 
 class NetworkSegment(models.Model):
