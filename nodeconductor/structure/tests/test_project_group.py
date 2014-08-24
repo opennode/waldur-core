@@ -158,6 +158,10 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
         managed_project.project_groups.add(*self.project_groups['manager'])
 
     # Creation tests
+    def test_anonymous_user_cannot_create_project_groups(self):
+        response = self.client.post(reverse('projectgroup-list'), self._get_valid_payload())
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_create_project_group_belonging_to_customer_he_owns(self):
         self.client.force_authenticate(user=self.users['owner'])
 
@@ -176,6 +180,12 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
         self.assertDictContainsSubset({'customer': ['Invalid hyperlink - object does not exist.']}, response.data)
 
     # Deletion tests
+    def test_anonymous_user_cannot_delete_project_groups(self):
+        from itertools import chain
+        for project_group in set(chain(*self.project_groups.values())):
+            response = self.client.delete(self._get_project_group_url(project_group))
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_delete_project_group_belonging_to_customer_he_owns(self):
         self.client.force_authenticate(user=self.users['owner'])
 
@@ -191,6 +201,13 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     # Mutation tests
+    def test_anonymous_user_cannot_change_project_groups(self):
+        from itertools import chain
+        for project_group in set(chain(*self.project_groups.values())):
+            response = self.client.put(self._get_project_group_url(project_group),
+                                       self._get_valid_payload(project_group))
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_change_name_of_project_group_belonging_to_customer_he_owns(self):
         self.client.force_authenticate(user=self.users['owner'])
 
@@ -249,6 +266,10 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
 
     # TODO: Cannot add other customer's project to own project group
     # List filtration tests
+    def test_anonymous_user_cannot_list_project_groups(self):
+        response = self.client.get(reverse('projectgroup-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_list_project_groups_of_customers_he_is_owner_of(self):
         self._ensure_list_access_allowed('owner')
 
@@ -264,6 +285,11 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
         self._ensure_list_access_forbidden('manager')
 
     # Direct instance access tests
+    def test_anonymous_user_cannot_access_project_group(self):
+        project_group = factories.ProjectGroupFactory()
+        response = self.client.get(self._get_project_group_url(project_group))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_access_project_groups_of_customers_he_is_owner_of(self):
         self._ensure_direct_access_allowed('owner')
 
