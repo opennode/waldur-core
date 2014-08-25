@@ -44,7 +44,7 @@ class UserViewSet(core_viewsets.ModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated, permissions.IsAdminOrReadOnly)
 
     def dispatch(self, request, *args, **kwargs):
-        if kwargs.get('uuid') == 'current':
+        if kwargs.get('uuid') == 'current' and request.user.is_authenticated():
             kwargs['uuid'] = request.user.uuid
         return super(UserViewSet, self).dispatch(request, *args, **kwargs)
 
