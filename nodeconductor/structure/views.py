@@ -43,10 +43,22 @@ class UserViewSet(core_viewsets.ModelViewSet):
     serializer_class = serializers.UserSerializer
     permission_classes = (rf_permissions.IsAuthenticated, permissions.IsAdminOrReadOnly)
 
+    def get_queryset(self):
+        """
+        Optionally restrict returned user to the civil number,
+        by filtering against a `civil_number` query parameter in the URL.
+        """
+        queryset = User.objects.all()
+        civil_number = self.request.QUERY_PARAMS.get('civil_number', None)
+        if civil_number is not None:
+            queryset = queryset.filter(civil_number=civil_number)
+        return queryset
+
     def dispatch(self, request, *args, **kwargs):
         if kwargs.get('uuid') == 'current' and request.user.is_authenticated():
             kwargs['uuid'] = request.user.uuid
         return super(UserViewSet, self).dispatch(request, *args, **kwargs)
+
 
 class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
     model = User.groups.through
