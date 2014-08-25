@@ -4,12 +4,12 @@ from django.contrib import auth
 
 from rest_framework import filters
 from rest_framework import viewsets
+from rest_framework import permissions as rf_permissions
 
 from nodeconductor.core import permissions
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.structure import serializers
 from nodeconductor.structure import models
-from nodeconductor.core.permissions import IsAuthenticatedOrAdminWhenModifying
 
 
 User = auth.get_user_model()
@@ -41,10 +41,10 @@ class UserViewSet(core_viewsets.ModelViewSet):
     model = User
     lookup_field = 'uuid'
     serializer_class = serializers.UserSerializer
-    permission_classes = (IsAuthenticatedOrAdminWhenModifying,)
+    permission_classes = (rf_permissions.IsAuthenticated, permissions.IsAdminOrReadOnly)
 
     def dispatch(self, request, *args, **kwargs):
-        if kwargs.get('uuid') == 'current' and request.user.is_authenticated():
+        if kwargs.get('uuid') == 'current':
             kwargs['uuid'] = request.user.uuid
         return super(UserViewSet, self).dispatch(request, *args, **kwargs)
 

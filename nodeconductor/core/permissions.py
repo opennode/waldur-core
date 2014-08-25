@@ -71,10 +71,10 @@ def register_group_access(model_class, get_group,
 SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS']
 
 
-class IsAuthenticatedOrAdminWhenModifying(BasePermission):
+class IsAdminOrReadOnly(BasePermission):
 
     def has_permission(self, request, view):
-        if request.user.is_authenticated() and\
-                (request.method in SAFE_METHODS or request.user.is_staff):
+        if request.method in SAFE_METHODS or\
+            request.user.is_authenticated() and request.user.is_staff:
             return True
         return False
