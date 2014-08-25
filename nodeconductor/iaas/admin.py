@@ -13,3 +13,4 @@ class InstanceAdmin(admin.ModelAdmin):
 
 admin.site.register(models.Instance, InstanceAdmin)
 admin.site.register(models.Template)
+admin.site.register(models.InstanceIp)

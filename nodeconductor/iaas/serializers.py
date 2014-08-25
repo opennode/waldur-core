@@ -31,16 +31,16 @@ class InstanceSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = models.Instance
         fields = ('url', 'state', 'flavor', 'hostname',
-                  'template', 'cloud', 'project')
+                  'template', 'uptime', 'ips', 'cloud', 'project')
         lookup_field = 'uuid'
         # TODO: Render ip addresses and volumes
 
-    def to_native(self, obj):
-        ret = super(InstanceSerializer, self).to_native(obj)
+    def to_native(self, instance):
+        ret = super(InstanceSerializer, self).to_native(instance)
         request = self.context['view'].request
-        additional_fields = ('environment', 'state', 'uptime',
-                             'flavor', 'IPs', 'hostname')
-        if request.user in obj.project.roles. \
+        additional_fields = ('state', 'uptime',
+                             'flavor', 'ips', 'hostname')
+        if request.user in instance.project.roles. \
                 get(role_type=Role.MANAGER).permission_group.user_set.all():
             for k in ret.keys():
                 if k in additional_fields:

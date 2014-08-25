@@ -78,8 +78,8 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.data
-        fields = ('environment', 'status', 'uptime',
-                  'flavor', 'IPs', 'hostname')
+        fields = ('state', 'uptime',
+                  'flavor', 'ips', 'hostname')
         for field in fields:
             self.assertIn(field, data)
 
