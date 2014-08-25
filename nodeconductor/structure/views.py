@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
 
 from django.contrib import auth
-from rest_framework.permissions import IsAuthenticated
 
 from rest_framework import filters
 from rest_framework import viewsets
+from rest_framework import permissions as rf_permissions
 
 from nodeconductor.core import permissions
 from nodeconductor.core import viewsets as core_viewsets
@@ -37,12 +37,16 @@ class ProjectGroupViewSet(core_viewsets.ModelViewSet):
     filter_backends = (filters.DjangoObjectPermissionsFilter,)
 
 
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(core_viewsets.ModelViewSet):
     model = User
     lookup_field = 'uuid'
     serializer_class = serializers.UserSerializer
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (rf_permissions.IsAuthenticated, permissions.IsAdminOrReadOnly)
 
+    def dispatch(self, request, *args, **kwargs):
+        if kwargs.get('uuid') == 'current':
+            kwargs['uuid'] = request.user.uuid
+        return super(UserViewSet, self).dispatch(request, *args, **kwargs)
 
 class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
     model = User.groups.through
