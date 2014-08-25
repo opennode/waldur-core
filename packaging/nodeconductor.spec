@@ -1,7 +1,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.1.0dev
-Release: 14
+Release: 15
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: logrotate
@@ -86,6 +86,9 @@ nodeconductor migrate
 nodeconductor collectstatic --noinput
 
 %changelog
+* Mon Aug 25 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-15
+- Bugfix
+
 * Mon Aug 25 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-14
 - Exposed user management through REST
 
