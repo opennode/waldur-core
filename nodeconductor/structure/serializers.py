@@ -64,6 +64,22 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin, serializers.Hyperlin
         return fields
 
 
+class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin, serializers.HyperlinkedModelSerializer):
+    project_group = serializers.HyperlinkedRelatedField(source='projectgroup',
+                                                        view_name='projectgroup-detail',
+                                                        lookup_field='uuid')
+    project = serializers.HyperlinkedRelatedField(view_name='project-detail',
+                                                  lookup_field='uuid')
+
+    class Meta(object):
+        model = models.ProjectGroup.projects.through
+        fields = ('url', 'project_group', 'project')
+        view_name = 'projectgroup_membership-detail'
+
+    def get_filtered_field_names(self):
+        return 'project',
+
+
 class ProjectRoleField(serializers.ChoiceField):
 
     def field_to_native(self, obj, field_name):

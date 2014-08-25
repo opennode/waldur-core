@@ -10,6 +10,7 @@ from nodeconductor.core import permissions
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.structure import serializers
 from nodeconductor.structure import models
+from nodeconductor.structure.models import CustomerRole
 
 
 User = auth.get_user_model()
@@ -36,6 +37,18 @@ class ProjectGroupViewSet(core_viewsets.ModelViewSet):
     serializer_class = serializers.ProjectGroupSerializer
     filter_backends = (filters.DjangoObjectPermissionsFilter,)
 
+
+class ProjectGroupMembershipViewSet(core_viewsets.ModelViewSet):
+    model = models.ProjectGroup.projects.through
+    serializer_class = serializers.ProjectGroupMembershipSerializer
+
+    def get_queryset(self):
+        queryset = super(ProjectGroupMembershipViewSet, self).get_queryset()
+
+        user = self.request.user
+
+        return queryset.filter(projectgroup__customer__roles__permission_group__user=user,
+                               projectgroup__customer__roles__role_type=CustomerRole.OWNER)
 
 class UserViewSet(core_viewsets.ModelViewSet):
     model = User

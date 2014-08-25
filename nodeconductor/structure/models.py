@@ -67,7 +67,7 @@ class CustomerRole(models.Model):
 def create_customer_roles(sender, instance, created, **kwargs):
     if created:
         with transaction.atomic():
-            owner_group = Group.objects.create(name='Role: {0} owner'.format(instance.pk))
+            owner_group = Group.objects.create(name='Role: {0} owner'.format(instance.uuid))
 
             instance.roles.create(role_type=CustomerRole.OWNER, permission_group=owner_group)
 
@@ -168,7 +168,9 @@ class ProjectGroup(UuidMixin, models.Model):
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='project_groups')
-    projects = models.ManyToManyField(Project, related_name='project_groups')
+    projects = models.ManyToManyField(Project,
+                                      # through='structure.ProjectGroupMembership',
+                                      related_name='project_groups')
 
     def __str__(self):
         return self.name
@@ -240,6 +242,11 @@ signals.m2m_changed.connect(update_project_group_to_project_grants,
                             sender=ProjectGroup.projects.through,
                             weak=False,
                             dispatch_uid='project_group_level_object_permissions')
+
+
+class ProjectGroupMembership(UuidMixin, models.Model):
+    project = models.ForeignKey(Project)
+    project_group = models.ForeignKey(ProjectGroup)
 
 
 class NetworkSegment(models.Model):
