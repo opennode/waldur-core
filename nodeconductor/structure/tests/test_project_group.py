@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-
+from itertools import chain
 import unittest
 
 from django.core.urlresolvers import reverse
@@ -11,6 +11,21 @@ from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.models import ProjectGroup
 from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories
+
+
+# noinspection PyMethodMayBeStatic
+class UrlResolverMixin(object):
+    def _get_customer_url(self, customer):
+        return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
+
+    def _get_project_url(self, project):
+        return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
+
+    def _get_project_group_url(self, project_group):
+        return 'http://testserver' + reverse('projectgroup-detail', kwargs={'uuid': project_group.uuid})
+
+    def _get_membership_url(self, membership):
+        return 'http://testserver' + reverse('projectgroup_membership-detail', kwargs={'pk': membership.pk})
 
 
 class ProjectGroupPermissionLifecycleTest(unittest.TestCase):
@@ -127,7 +142,7 @@ class ProjectGroupPermissionLifecycleTest(unittest.TestCase):
         self.assertTrue(user.has_perm('view_projectgroup', obj=project_group))
 
 
-class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
+class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
     def setUp(self):
         self.users = {
             'owner': factories.UserFactory(),
@@ -181,7 +196,6 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
 
     # Deletion tests
     def test_anonymous_user_cannot_delete_project_groups(self):
-        from itertools import chain
         for project_group in set(chain(*self.project_groups.values())):
             response = self.client.delete(self._get_project_group_url(project_group))
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -264,7 +278,6 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
             response = self.client.put(self._get_project_group_url(project_group), payload)
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    # TODO: Cannot add other customer's project to own project group
     # List filtration tests
     def test_anonymous_user_cannot_list_project_groups(self):
         response = self.client.get(reverse('projectgroup-list'))
@@ -344,12 +357,6 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
             # 404 is used instead of 403 to hide the fact that the resource exists at all
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def _get_customer_url(self, customer):
-        return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
-
-    def _get_project_group_url(self, project_group):
-        return 'http://testserver' + reverse('projectgroup-detail', kwargs={'uuid': project_group.uuid})
-
     def _get_valid_payload(self, resource=None):
         resource = resource or factories.ProjectGroupFactory()
 
@@ -357,3 +364,112 @@ class ProjectGroupApiPermissionTest(test.APISimpleTestCase):
             'name': resource.name,
             'customer': self._get_customer_url(resource.customer),
         }
+
+
+ProjectGroupMembership = ProjectGroup.projects.through
+
+
+class ProjectGroupMembershipApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
+    def setUp(self):
+        self.users = {
+            'owner': factories.UserFactory(),
+            'no_role': factories.UserFactory(),
+        }
+
+        self.project_groups = {}
+        self.projects = {}
+        self.memberships = {}
+        self.customers = {}
+
+        for i in ('owner', 'inaccessible'):
+            customer = factories.CustomerFactory()
+
+            self.customers[i] = customer
+            self.projects[i] = factories.ProjectFactory.create_batch(2, customer=customer)
+            self.project_groups[i] = factories.ProjectGroupFactory.create_batch(2, customer=customer)
+
+            project = self.projects[i][0]
+            project_group = self.project_groups[i][0]
+
+            project_group.projects.add(project)
+
+            membership = ProjectGroupMembership.objects.get(project=project, projectgroup=project_group)
+            self.memberships[i] = membership
+
+        self.customers['owner'].add_user(self.users['owner'], CustomerRole.OWNER)
+
+    # Creation tests
+    def test_anonymous_user_cannot_create_project_group_membership(self):
+        from itertools import product
+
+        project_groups = chain.from_iterable(self.project_groups.values())
+        projects = chain.from_iterable(self.projects.values())
+
+        for project_group, project in product(project_groups, projects):
+            membership = ProjectGroupMembership(project=project, projectgroup=project_group)
+
+            response = self.client.post(reverse('projectgroup_membership-list'),
+                                        self._get_valid_payload(membership))
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # Deletion tests
+    def test_anonymous_user_cannot_delete_project_group_membership(self):
+        for membership in self.memberships.values():
+            response = self.client.delete(self._get_membership_url(membership))
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    # TODO: Cannot add other customer's project to own project group
+    @unittest.skip('Not implemented')
+    def test_user_can_add_project_to_project_group_given_they_belong_to_the_same_customer_he_owns(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        project_group = self.project_groups['owner'][0]
+        project = self.projects['owner'][0]
+
+        # TODO: Grant owner access to Customer's Project
+        membership = ProjectGroupMembership(project=project, projectgroup=project_group)
+
+        response = self.client.post(reverse('projectgroup_membership-list'),
+                                    self._get_valid_payload(membership))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        self.assertIn(project_group.projects.all(), project)
+
+    # List filtration tests
+    def test_anonymous_user_cannot_list_project_group_membership(self):
+        response = self.client.get(reverse('projectgroup_membership-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_can_list_membership_of_project_groups_of_customer_he_owns(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        response = self.client.get(reverse('projectgroup_membership-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        urls = set([instance['url'] for instance in response.data])
+        url = self._get_membership_url(self.memberships['owner'])
+
+        self.assertIn(url, urls)
+
+    def test_user_cannot_list_membership_of_project_groups_of_customer_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        response = self.client.get(reverse('projectgroup_membership-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        urls = set([instance['url'] for instance in response.data])
+        url = self._get_membership_url(self.memberships['inaccessible'])
+
+        self.assertNotIn(url, urls)
+
+    # Helper methods
+    def _get_valid_payload(self, resource=None, include_url=False):
+        payload = {
+            'project': self._get_project_url(resource.project),
+            'project_group': self._get_project_group_url(resource.projectgroup),
+        }
+
+        if include_url:
+            payload['url'] = self._get_membership_url(resource)
+
+        return payload

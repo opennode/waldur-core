@@ -12,25 +12,39 @@ from nodeconductor.structure import models
 
 User = auth.get_user_model()
 
+class ProjectSerializer(serializers.HyperlinkedModelSerializer):
+    customer_name = serializers.Field(source='customer.name')
+
+    class Meta(object):
+        model = models.Project
+        fields = ('url', 'name', 'customer', 'customer_name')
+        lookup_field = 'uuid'
+
+class BasicProjectGroupSerializer(serializers.HyperlinkedModelSerializer):
+
+    class Meta(object):
+        model = models.ProjectGroup
+        fields = ('url', 'name', 'customer')
+        lookup_field = 'uuid'
+
 
 class CustomerSerializer(serializers.HyperlinkedModelSerializer):
+    projects = ProjectSerializer(many=True, read_only=True)
+    project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
+
     class Meta(object):
         model = models.Customer
         fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
 
 
-class ProjectSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta(object):
-        model = models.Project
-        fields = ('url', 'name', 'customer')
-        lookup_field = 'uuid'
-
-
 class ProjectGroupSerializer(PermissionFieldFilteringMixin, serializers.HyperlinkedModelSerializer):
+    projects = ProjectSerializer(many=True, read_only=True)
+    customer_name = serializers.Field(source='customer.name')
+
     class Meta(object):
         model = models.ProjectGroup
-        fields = ('url', 'name', 'customer', 'projects')
+        fields = ('url', 'name', 'customer', 'customer_name', 'projects')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
@@ -48,6 +62,22 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin, serializers.Hyperlin
             fields['customer'].read_only = True
 
         return fields
+
+
+class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin, serializers.HyperlinkedModelSerializer):
+    project_group = serializers.HyperlinkedRelatedField(source='projectgroup',
+                                                        view_name='projectgroup-detail',
+                                                        lookup_field='uuid')
+    project = serializers.HyperlinkedRelatedField(view_name='project-detail',
+                                                  lookup_field='uuid')
+
+    class Meta(object):
+        model = models.ProjectGroup.projects.through
+        fields = ('url', 'project_group', 'project')
+        view_name = 'projectgroup_membership-detail'
+
+    def get_filtered_field_names(self):
+        return 'project',
 
 
 class ProjectRoleField(serializers.ChoiceField):
@@ -142,5 +172,5 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = User
         fields = ('url', 'uuid', 'username', 'first_name', 'last_name', 'alternative_name', 'job_title', 'email',
-                  'civil_number', 'description', 'is_staff')
+                  'civil_number', 'phone_number', 'description', 'is_staff')
         lookup_field = 'uuid'
