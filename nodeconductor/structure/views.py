@@ -49,6 +49,7 @@ class UserViewSet(core_viewsets.ModelViewSet):
         by filtering against a `civil_number` query parameter in the URL.
         """
         queryset = User.objects.all()
+        # TODO: refactor against django filtering
         civil_number = self.request.QUERY_PARAMS.get('civil_number', None)
         if civil_number is not None:
             queryset = queryset.filter(civil_number=civil_number)
@@ -64,9 +65,16 @@ class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
     model = User.groups.through
     serializer_class = serializers.ProjectPermissionReadSerializer
 
+
     def get_queryset(self):
         user = self.request.user
-        return user.groups.through.objects.exclude(group__projectrole__project=None)
+        user_uuid= self.request.QUERY_PARAMS.get('user', None)
+
+        queryset = user.groups.through.objects.exclude(group__projectrole__project=None)
+        # TODO: refactor against django filtering
+        if user_uuid is not None:
+            queryset.filter(group__user__uuid=user_uuid)
+        return queryset
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
