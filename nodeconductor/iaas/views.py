@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from rest_framework import filters
 from rest_framework import mixins
 from rest_framework import viewsets
 
@@ -9,6 +8,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
+from nodeconductor.structure import filters
 
 
 class InstanceViewSet(mixins.CreateModelMixin,
@@ -19,7 +19,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    filter_backends = (filters.ProjectRoleFilter,)
+
+    project_path = 'project'
 
     def get_serializer_class(self):
         if self.request.method in ('POST', 'PUT', 'PATCH'):
@@ -47,4 +49,6 @@ class PurchaseViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.Purchase.objects.all()
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    filter_backends = (filters.ProjectRoleFilter,)
+
+    project_path = 'project'

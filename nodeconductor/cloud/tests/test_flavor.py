@@ -1,121 +1,12 @@
 from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
-from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.cloud.tests import factories as factories
+from nodeconductor.cloud.tests import factories
 from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories as structure_factories
-
-
-class FlavorPermissionLifecycleTest(unittest.TestCase):
-    # Permission lifecycle test requires at least two tests
-    # per role per action.
-    #
-    # Roles: admin, mgr
-    # Action: add, remove, clear
-    #
-    # Roles * Action * 2 (reversed and non-reversed)
-
-    def setUp(self):
-        self.project = structure_factories.ProjectFactory()
-        self.flavor = factories.FlavorFactory()
-        self.cloud = self.flavor.cloud
-
-        self.admin_group = self.project.roles.get(
-            role_type=ProjectRole.ADMINISTRATOR).permission_group
-        self.manager_group = self.project.roles.get(
-            role_type=ProjectRole.MANAGER).permission_group
-
-        self.admin = structure_factories.UserFactory()
-        self.admin_group.user_set.add(self.admin)
-
-        self.manager = structure_factories.UserFactory()
-        self.manager_group.user_set.add(self.manager)
-
-    # Base test: user has no relation to flavor
-    def test_user_has_no_access_to_flavor_of_a_cloud_that_is_not_allowed_to_any_of_his_projects(self):
-        self.assert_user_has_no_access(self.admin, self.flavor)
-        self.assert_user_has_no_access(self.manager, self.flavor)
-
-    ## Manager role
-
-    # Addition tests
-    def test_manager_gets_readonly_access_to_flavor_when_flavors_cloud_is_added_to_managed_project(self):
-        self.project.clouds.add(self.cloud)
-        self.assert_user_has_readonly_access(self.manager, self.flavor)
-
-    def test_manager_gets_readonly_access_to_flavor_when_flavors_managed_project_is_added_to_cloud(self):
-        self.cloud.projects.add(self.project)
-        self.assert_user_has_readonly_access(self.manager, self.flavor)
-
-    # Removal tests
-    def test_manager_ceases_any_access_from_flavor_when_flavors_cloud_is_removed_from_managed_project(self):
-        self.project.clouds.add(self.cloud)
-        self.project.clouds.remove(self.cloud)
-        self.assert_user_has_no_access(self.manager, self.flavor)
-
-    def test_manager_ceases_any_access_from_flavor_when_flavors_managed_project_is_removed_from_cloud(self):
-        self.cloud.projects.add(self.project)
-        self.cloud.projects.remove(self.project)
-        self.assert_user_has_no_access(self.manager, self.flavor)
-
-    # Clearance tests
-    def test_manager_ceases_any_access_from_flavor_when_managed_projects_clouds_are_cleared(self):
-        self.project.clouds.add(self.cloud)
-        self.project.clouds.clear()
-        self.assert_user_has_no_access(self.manager, self.flavor)
-
-    def test_manager_ceases_any_access_from_flavor_when_projects_of_cloud_allowed_to_managed_project_are_cleared(self):
-        self.cloud.projects.add(self.project)
-        self.cloud.projects.clear()
-        self.assert_user_has_no_access(self.manager, self.flavor)
-
-    ## Administrator role
-
-    # Addition tests
-    def test_administrator_gets_readonly_access_to_flavor_when_flavors_cloud_is_added_to_administered_project(self):
-        self.project.clouds.add(self.cloud)
-        self.assert_user_has_readonly_access(self.admin, self.flavor)
-
-    def test_administrator_gets_readonly_access_to_flavor_when_flavors_managed_project_is_added_to_cloud(self):
-        self.cloud.projects.add(self.project)
-        self.assert_user_has_readonly_access(self.admin, self.flavor)
-
-    # Removal tests
-    def test_administrator_ceases_any_access_from_flavor_when_flavors_cloud_is_removed_from_administered_project(self):
-        self.project.clouds.add(self.cloud)
-        self.project.clouds.remove(self.cloud)
-        self.assert_user_has_no_access(self.admin, self.flavor)
-
-    def test_administrator_ceases_any_access_from_flavor_when_flavors_administered_project_is_removed_from_cloud(self):
-        self.cloud.projects.add(self.project)
-        self.cloud.projects.remove(self.project)
-        self.assert_user_has_no_access(self.admin, self.flavor)
-
-    # Clearance tests
-    def test_administrator_ceases_any_access_from_flavor_when_administered_projects_clouds_are_cleared(self):
-        self.project.clouds.add(self.cloud)
-        self.project.clouds.clear()
-        self.assert_user_has_no_access(self.admin, self.flavor)
-
-    def test_administrator_ceases_any_access_from_flavor_when_projects_of_cloud_allowed_to_administerated_project_are_cleared(self):
-        self.cloud.projects.add(self.project)
-        self.cloud.projects.clear()
-        self.assert_user_has_no_access(self.admin, self.flavor)
-
-    # Helper methods
-    def assert_user_has_no_access(self, user, flavor):
-        self.assertFalse(user.has_perm('change_flavor', obj=flavor))
-        self.assertFalse(user.has_perm('delete_flavor', obj=flavor))
-        self.assertFalse(user.has_perm('view_flavor', obj=flavor))
-
-    def assert_user_has_readonly_access(self, user, flavor):
-        self.assertFalse(user.has_perm('change_flavor', obj=flavor))
-        self.assertFalse(user.has_perm('delete_flavor', obj=flavor))
-        self.assertTrue(user.has_perm('view_flavor', obj=flavor))
 
 
 class FlavorApiPermissionTest(test.APISimpleTestCase):
