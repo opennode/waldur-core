@@ -54,3 +54,11 @@ class ProjectFactory(factory.DjangoModelFactory):
         if create and extracted:
             for cloud in extracted:
                 self.clouds.add(cloud)
+
+
+class ProjectGroupFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.ProjectGroup
+
+    name = factory.Sequence(lambda n: 'Proj Grp %s' % n)
+    customer = factory.SubFactory(CustomerFactory)

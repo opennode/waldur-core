@@ -1,5 +1,6 @@
 import factory
-import time
+
+from django.utils import timezone
 
 from nodeconductor.iaas import models
 from nodeconductor.cloud.tests import factories as cloud_factories
@@ -20,5 +21,16 @@ class InstanceFactory(factory.DjangoModelFactory):
     hostname = factory.Sequence(lambda n: 'host%s' % n)
     template = factory.SubFactory(TemplateFactory)
     flavor = factory.SubFactory(cloud_factories.FlavorFactory)
-    project = factory.SubFactory(structure_factories.ProjectFactory, cloud=factory.SelfAttribute('..flavor.cloud'))
-    uptime = time.strftime('00:00:%S')
+    project = factory.SubFactory(structure_factories.ProjectFactory,
+                                 cloud=factory.SelfAttribute('..flavor.cloud'))
+
+
+class PurchaseFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.Purchase
+
+    date = factory.LazyAttribute(lambda o: timezone.now())
+    user = factory.SubFactory(structure_factories.UserFactory)
+    project = factory.SubFactory(structure_factories.ProjectFactory)
+
+

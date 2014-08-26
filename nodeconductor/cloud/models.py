@@ -26,11 +26,16 @@ class Cloud(UuidMixin, models.Model):
         permissions = (
             ('view_cloud', _('Can see available clouds')),
         )
+    username = models.CharField(max_length=100, blank=True)
+    password = models.CharField(max_length=100, blank=True)
 
     name = models.CharField(max_length=100)
     customer = models.ForeignKey(structure_models.Customer)
-
     projects = models.ManyToManyField(structure_models.Project, related_name='clouds')
+
+    unscoped_token = models.TextField(blank=True)
+    scoped_token = models.TextField(blank=True)
+    auth_url = models.CharField(max_length=200, validators=[URLValidator()])
 
     def __str__(self):
         return self.name
@@ -62,11 +67,12 @@ def update_cloud_to_project_grants(instance, action, reverse, pk_set, **kwargs):
     # TODO: Optimize the number of SQL queries
     def marry_cloud_and_project(cloud, project):
         admins = project.roles.get(
-            role_type=structure_models.Role.ADMINISTRATOR).permission_group
+            role_type=structure_models.ProjectRole.ADMINISTRATOR).permission_group
         managers = project.roles.get(
-            role_type=structure_models.Role.MANAGER).permission_group
+            role_type=structure_models.ProjectRole.MANAGER).permission_group
 
-        # TODO: Grant access to cloud
+        assign_perm('view_cloud', admins, obj=cloud)
+        assign_perm('view_cloud', managers, obj=cloud)
 
         for flavor in cloud.flavors.iterator():
             assign_perm('view_flavor', admins, obj=flavor)
@@ -74,11 +80,12 @@ def update_cloud_to_project_grants(instance, action, reverse, pk_set, **kwargs):
 
     def divorce_cloud_and_project(cloud, project):
         admins = project.roles.get(
-            role_type=structure_models.Role.ADMINISTRATOR).permission_group
+            role_type=structure_models.ProjectRole.ADMINISTRATOR).permission_group
         managers = project.roles.get(
-            role_type=structure_models.Role.MANAGER).permission_group
+            role_type=structure_models.ProjectRole.MANAGER).permission_group
 
-        # TODO: Revoke access from cloud
+        remove_perm('view_cloud', admins, obj=cloud)
+        remove_perm('view_cloud', managers, obj=cloud)
 
         for flavor in cloud.flavors.iterator():
             for permission in (
@@ -127,17 +134,4 @@ def update_cloud_to_project_grants(instance, action, reverse, pk_set, **kwargs):
 signals.m2m_changed.connect(update_cloud_to_project_grants,
                             sender=Cloud.projects.through,
                             weak=False,
-                            dispatch_uid='project_level_level_permissions')
-
-
-class OpenStackCloud(Cloud):
-    class Meta(Cloud.Meta):
-        verbose_name = _('OpenStack Cloud')
-        verbose_name_plural = _('OpenStack Clouds')
-
-    username = models.CharField(max_length=100, blank=True)
-    password = models.CharField(max_length=100, blank=True)
-
-    unscoped_token = models.TextField(blank=True)
-    scoped_token = models.TextField(blank=True)
-    auth_url = models.CharField(max_length=200, validators=[URLValidator()])
+                            dispatch_uid='project_level_object_permissions')

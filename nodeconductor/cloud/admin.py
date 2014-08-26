@@ -16,4 +16,4 @@ class CloudAdmin(admin.ModelAdmin):
     ordering = ('name', 'customer')
 
 
-admin.site.register(models.OpenStackCloud, CloudAdmin)
+admin.site.register(models.Cloud, CloudAdmin)

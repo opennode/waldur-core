@@ -25,6 +25,7 @@ INSTALLED_APPS = (
     'nodeconductor.structure',
     'nodeconductor.cloud',
     'nodeconductor.iaas',
+    'nodeconductor.ldapsync',
 
     # Template overrides need to happen before admin is imported.
     'django.contrib.admin',
@@ -53,6 +54,7 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
+        'nodeconductor.core.permissions.DjangoObjectLevelPermissions',
     ),
     'DEFAULT_MODEL_SERIALIZER_CLASS': 'rest_framework.serializers.HyperlinkedModelSerializer',
 }
@@ -74,6 +76,8 @@ SOUTH_MIGRATION_MODULES = {
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
 
+AUTH_USER_MODEL = 'core.User'
+
 WSGI_APPLICATION = 'nodeconductor.server.wsgi.application'
 
 # Internationalization
@@ -89,9 +93,7 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATIC_URL = '/static/'
-

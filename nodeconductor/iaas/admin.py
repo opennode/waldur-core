@@ -11,6 +11,11 @@ class InstanceAdmin(admin.ModelAdmin):
             return ['state', ]
     ordering = ('hostname',)
 
+
+class PurchaseAdmin(admin.ModelAdmin):
+    readonly_fields = ('date', 'user', 'project')
+
+
 admin.site.register(models.Instance, InstanceAdmin)
 admin.site.register(models.Template)
-admin.site.register(models.InstanceIp)
+admin.site.register(models.Purchase, PurchaseAdmin)

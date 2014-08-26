@@ -5,8 +5,9 @@ from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.cloud.tests import factories as cloud_factories
+from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tests import factories
-from nodeconductor.structure.models import Role
+from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -24,18 +25,24 @@ class UrlResolverMixin(object):
         return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
 
 
-class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
+class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory.create()
-        self.client.force_authenticate(user=self.user)
 
         self.admined_instance = factories.InstanceFactory()
         self.managed_instance = factories.InstanceFactory()
 
-        self.admined_instance.project.add_user(self.user, Role.ADMINISTRATOR)
-        self.managed_instance.project.add_user(self.user, Role.MANAGER)
+        self.admined_instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        self.managed_instance.project.add_user(self.user, ProjectRole.MANAGER)
+
+    # List filtration tests
+    def test_anonymous_user_cannot_list_instances(self):
+        response = self.client.get(reverse('instance-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_list_instances_of_projects_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('instance-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -43,6 +50,8 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertIn(instance_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_instances_of_projects_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(reverse('instance-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -50,6 +59,8 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertIn(instance_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_instances_of_projects_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         inaccessible_instance = factories.InstanceFactory()
 
         response = self.client.get(reverse('instance-list'))
@@ -58,15 +69,27 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         instance_url = self._get_instance_url(inaccessible_instance)
         self.assertNotIn(instance_url, [instance['url'] for instance in response.data])
 
+    # Direct instance access tests
+    def test_anonymous_user_cannot_access_instance(self):
+        instance = factories.InstanceFactory()
+        response = self.client.get(self._get_instance_url(instance))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_access_instances_of_projects_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_instance_url(self.admined_instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_access_instances_of_projects_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_instance_url(self.managed_instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_access_instances_of_projects_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         inaccessible_instance = factories.InstanceFactory()
 
         response = self.client.get(self._get_project_url(inaccessible_instance))
@@ -74,6 +97,8 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_can_access_additional_fields_of_instances_of_projects_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_instance_url(self.admined_instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -84,6 +109,8 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
             self.assertIn(field, data)
 
     def test_user_cannot_access_additional_fields_of_instances_of_projects_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
         response = self.client.get(self._get_instance_url(self.managed_instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -94,6 +121,8 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
             self.assertNotIn(field, data)
 
     def test_user_cannot_access_additional_fields_of_instances_of_projects_he__has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
         inaccessible_instance = factories.InstanceFactory()
 
         response = self.client.get(self._get_project_url(inaccessible_instance))
@@ -104,6 +133,102 @@ class InstancePermissionTest(UrlResolverMixin, test.APISimpleTestCase):
                   'flavor', 'IPs', 'hostname')
         for field in fields:
             self.assertNotIn(field, data)
+
+    # Deletion tests
+    def test_anonymous_user_cannot_delete_instances(self):
+        response = self.client.delete(self._get_project_url(factories.InstanceFactory()))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_cannot_delete_instances_of_projects_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.delete(self._get_instance_url(self.admined_instance))
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_user_cannot_delete_instances_of_projects_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.delete(self._get_instance_url(self.managed_instance))
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    # Mutation tests
+    def test_user_can_change_description_of_instance_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        data = self._get_valid_payload(self.admined_instance)
+        data['description'] = 'changed description1'
+
+        response = self.client.put(self._get_instance_url(self.admined_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        changed_instance = Instance.objects.get(pk=self.admined_instance.pk)
+
+        self.assertEqual(changed_instance.description, 'changed description1')
+
+    def test_user_cannot_change_description_of_instance_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        data = self._get_valid_payload(self.managed_instance)
+        data['description'] = 'changed description1'
+
+        response = self.client.put(self._get_instance_url(self.managed_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_cannot_change_description_of_instance_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
+        inaccessible_instance = factories.InstanceFactory()
+        data = self._get_valid_payload(inaccessible_instance)
+        data['description'] = 'changed description1'
+
+        response = self.client.put(self._get_instance_url(inaccessible_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_user_can_change_description_single_field_of_instance_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        data = {
+            'description': 'changed description1',
+        }
+
+        response = self.client.patch(self._get_instance_url(self.admined_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        changed_instance = Instance.objects.get(pk=self.admined_instance.pk)
+        self.assertEqual(changed_instance.description, 'changed description1')
+
+    def test_user_cannot_change_description_single_field__of_instance_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        data = {
+            'description': 'changed description1',
+        }
+
+        response = self.client.patch(self._get_instance_url(self.managed_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_cannot_change_description_single_field_of_instance_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
+        inaccessible_instance = factories.InstanceFactory()
+        data = {
+            'description': 'changed description1',
+        }
+
+        response = self.client.patch(self._get_instance_url(inaccessible_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # Helpers method
+    def _get_valid_payload(self, resource=None):
+        resource = resource or factories.InstanceFactory()
+
+        return {
+            'hostname': resource.hostname,
+            'description': resource.description,
+            'project': self._get_project_url(resource.project),
+            'template': self._get_template_url(resource.template),
+            'flavor': self._get_flavor_url(resource.flavor),
+        }
 
 # XXX: What should happen to existing instances when their project is removed?
 
@@ -121,8 +246,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         self.flavor = cloud_factories.FlavorFactory(cloud=cloud)
         self.project = structure_factories.ProjectFactory(cloud=cloud)
 
-        # XXX: Is it admin or manager?
-        self.project.add_user(self.user, Role.ADMINISTRATOR)
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
     # Assertions
     def assert_field_required(self, field_name):
@@ -147,6 +271,21 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    def test_can_create_instance_without_description(self):
+        data = self.get_valid_data()
+        del data['description']
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_can_create_instance_with_empty_description(self):
+        data = self.get_valid_data()
+        data['description'] = ''
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    # TODO: Ensure that managers cannot provision instances
     # Negative tests
     def test_cannot_create_instance_with_flavor_not_from_supplied_project(self):
         data = self.get_valid_data()
@@ -155,8 +294,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         another_project = structure_factories.ProjectFactory(
             cloud=another_flavor.cloud)
 
-        # XXX: Is it admin or manager?
-        another_project.add_user(self.user, Role.ADMINISTRATOR)
+        another_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         data['flavor'] = self._get_flavor_url(another_flavor)
 
@@ -229,6 +367,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
         return {
             # Cloud independent parameters
             'hostname': 'host1',
+            'description': 'description1',
 
             # TODO: Make sure both project and flavor belong to the same customer
             'project': self._get_project_url(self.project),
@@ -242,40 +381,3 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
             # Cloud dependent parameters
             'flavor': self._get_flavor_url(self.flavor),
         }
-
-
-class InstanceManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
-    def setUp(self):
-        self.user = structure_factories.UserFactory.create()
-        self.client.force_authenticate(user=self.user)
-
-        self.instance = factories.InstanceFactory()
-        self.instance_url = self._get_instance_url(self.instance)
-
-        self.instance.project.add_user(self.user, Role.ADMINISTRATOR)
-        self.instance.project.add_user(self.user, Role.MANAGER)
-
-    def test_cannot_delete_instance(self):
-        response = self.client.delete(self.instance_url)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_cannot_change_instance_as_whole(self):
-        data = {
-            'hostname': self.instance.hostname,
-            'template': self._get_template_url(self.instance.template),
-            'flavor': self._get_flavor_url(self.instance.flavor),
-        }
-
-        response = self.client.put(self.instance_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_cannot_change_single_instance_field(self):
-        data = {
-            'hostname': self.instance.hostname,
-        }
-
-        response = self.client.patch(self.instance_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)

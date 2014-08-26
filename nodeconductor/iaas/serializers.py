@@ -1,17 +1,17 @@
 from rest_framework import serializers
 
-from nodeconductor.structure.models import Role
-
 from nodeconductor.iaas import models
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin
+from nodeconductor.structure.models import ProjectRole
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,
                                serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'template', 'flavor', 'project')
+        fields = ('url', 'hostname', 'description',
+                  'template', 'flavor', 'project')
         lookup_field = 'uuid'
         # TODO: Accept ip address count and volumes
 
@@ -30,8 +30,8 @@ class InstanceSerializer(PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'state', 'flavor', 'hostname',
-                  'template', 'uptime', 'ips', 'cloud', 'project')
+        fields = ('url', 'hostname', 'description', 'template', 
+                  'uptime', 'ips', 'cloud', 'project', 'flavor', 'state')
         lookup_field = 'uuid'
         # TODO: Render ip addresses and volumes
 
@@ -41,7 +41,7 @@ class InstanceSerializer(PermissionFieldFilteringMixin,
         additional_fields = ('state', 'uptime',
                              'flavor', 'ips', 'hostname')
         if request.user in instance.project.roles. \
-                get(role_type=Role.MANAGER).permission_group.user_set.all():
+                get(role_type=ProjectRole.MANAGER).permission_group.user_set.all():
             for k in ret.keys():
                 if k in additional_fields:
                     del ret[k]
@@ -63,3 +63,17 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         model = core_models.SshPublicKey
         fields = ('url', 'name', 'public_key')
         lookup_field = 'uuid'
+
+
+class PurchaseSerializer(PermissionFieldFilteringMixin,
+                         serializers.HyperlinkedModelSerializer):
+    customer = serializers.Field(source='project.customer')
+    user = serializers.Field(source='user.username')
+
+    class Meta(object):
+        model = models.Purchase
+        fields = ('url', 'date', 'user', 'customer', 'project')
+        lookup_field = 'uuid'
+
+    def get_filtered_field_names(self):
+        return 'project',
