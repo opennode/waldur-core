@@ -171,6 +171,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = User
-        fields = ('url', 'uuid', 'username', 'first_name', 'last_name', 'alternative_name', 'job_title', 'email',
-                  'civil_number', 'phone_number', 'description', 'is_staff')
+        fields = ('url', 'uuid', 'first_name', 'last_name', 'alternative_name', 'job_title', 'email',
+                  'civil_number', 'phone_number', 'description', 'is_staff', 'organization')
+        read_only_fields = ('uuid', 'is_staff')
         lookup_field = 'uuid'

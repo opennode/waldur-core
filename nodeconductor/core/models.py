@@ -25,7 +25,7 @@ class User(UuidMixin, AbstractUser):
     civil_number = models.CharField(_('civil number'), max_length=40, blank=True)
     phone_number = models.CharField(_('phone number'), max_length=40, blank=True)
     description = models.TextField(_('description'), blank=True)
-    organization = models.TextField(_('organization'), blank=True)
+    organization = models.CharField(_('organization'),  max_length=80,  blank=True)
     job_title = models.CharField(_('job title'), max_length=40, blank=True)
 
 @python_2_unicode_compatible
