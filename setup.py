@@ -15,7 +15,6 @@ tests_requires = [
 install_requires = [
     'Django>=1.6.5,<1.7',
     'djangorestframework>=2.3.12,<2.4.0',
-    'django-guardian>=1.2.4,<1.3.0',
     'South==0.8.4',
     'logan==0.5.9.1',
     'django-background-task==0.1.6',

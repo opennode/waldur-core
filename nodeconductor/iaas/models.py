@@ -11,7 +11,6 @@ from taggit.managers import TaggableManager
 
 from nodeconductor.cloud import models as cloud_models
 from nodeconductor.core.models import UuidMixin
-from nodeconductor.core.permissions import register_group_access
 from nodeconductor.structure import models as structure_models
 
 
@@ -47,11 +46,6 @@ class Instance(UuidMixin, models.Model):
         STOPPED = 's'
         ERRED = 'e'
         DELETED = 'x'
-
-    class Meta(object):
-        permissions = (
-            ('view_instance', _('Can see available instances')),
-        )
 
     hostname = models.CharField(max_length=80)
     description = models.TextField(blank=True)
@@ -96,21 +90,6 @@ class Instance(UuidMixin, models.Model):
             'status': self.get_state_display(),
         }
 
-register_group_access(
-    Instance,
-    (lambda instance: instance.project.roles.get(
-        role_type=structure_models.ProjectRole.ADMINISTRATOR).permission_group),
-    permissions=('view', 'change',),
-    tag='admin',
-)
-register_group_access(
-    Instance,
-    (lambda instance: instance.project.roles.get(
-        role_type=structure_models.ProjectRole.MANAGER).permission_group),
-    permissions=('view',),
-    tag='manager',
-)
-
 
 class Volume(models.Model):
     """
@@ -126,10 +105,6 @@ class Purchase(UuidMixin, models.Model):
     about what services have been purchased alongside
     with additional metadata.
     """
-    class Meta(object):
-        permissions = (
-            ('view_purchase', _('Can see available purchases')),
-        )
     class Permissions(object):
         project_path = 'project'
 
@@ -142,18 +117,3 @@ class Purchase(UuidMixin, models.Model):
             'user': self.user.username,
             'date': self.date,
         }
-
-register_group_access(
-    Purchase,
-    (lambda purchase: purchase.project.roles.get(
-        role_type=structure_models.ProjectRole.ADMINISTRATOR).permission_group),
-    permissions=('view',),
-    tag='admin',
-)
-register_group_access(
-    Purchase,
-    (lambda purchase: purchase.project.roles.get(
-        role_type=structure_models.ProjectRole.MANAGER).permission_group),
-    permissions=('view',),
-    tag='manager',
-)

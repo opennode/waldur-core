@@ -16,7 +16,6 @@ Requires: python-logan = 0.5.9.1
 Requires: python-setuptools
 Requires: python-south = 0.8.4
 Requires: python-django-auth-ldap >= 1.2.0
-Requires: python-django-guardian >= 1.2.4
 Requires: python-six >= 1.7.3
 
 Source0: %{name}-%{version}.tar.gz

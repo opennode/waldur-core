@@ -1,4 +1,4 @@
-from guardian.shortcuts import get_objects_for_user
+from nodeconductor.structure.filters import filter_queryset_for_user
 
 
 class PermissionFieldFilteringMixin(object):
@@ -9,8 +9,7 @@ class PermissionFieldFilteringMixin(object):
     as a value for the field:
 
     1. Make sure that the entity in question has corresponding
-       'view' permission created, e.g. for Flavor there should
-       be 'view_flavor' permission defined.
+       Permission class defined.
 
     2. Implement `get_filtered_field_names()` method
        in the class that this mixin is mixed into and return
@@ -26,11 +25,8 @@ class PermissionFieldFilteringMixin(object):
             return fields
 
         for field_name in self.get_filtered_field_names():
-            fields[field_name].queryset = get_objects_for_user(
-                user,
-                'view_{0}'.format(field_name),
-                fields[field_name].queryset
-            )
+            fields[field_name].queryset = filter_queryset_for_user(
+                fields[field_name].queryset, user)
 
         return fields
 
