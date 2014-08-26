@@ -6,19 +6,15 @@ from nodeconductor.structure import filters
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.Flavor.objects.all()
+    model = models.Flavor
     serializer_class = serializers.FlavorSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.CustomerOrProjectRoleFilter,)
-
-    customer_path = 'cloud__projects__customer'
-    project_path = 'cloud__projects'
+    filter_backends = (filters.GenericRoleFilter,)
 
 
 class CloudViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.Cloud.objects.all()
+    model = models.Cloud
     serializer_class = serializers.CloudSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.ProjectRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter,)
 
-    project_path = 'projects'

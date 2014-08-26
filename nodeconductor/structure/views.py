@@ -9,7 +9,6 @@ from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.structure import filters
 from nodeconductor.structure import serializers
 from nodeconductor.structure import models
-from nodeconductor.structure.models import CustomerRole
 
 
 User = auth.get_user_model()
@@ -19,43 +18,34 @@ class CustomerViewSet(viewsets.ReadOnlyModelViewSet):
     model = models.Customer
     lookup_field = 'uuid'
     serializer_class = serializers.CustomerSerializer
-    filter_backends = (filters.CustomerRoleFilter,)
-
-    customer_path = 'self'
+    filter_backends = (filters.GenericRoleFilter,)
 
 
 class ProjectViewSet(core_viewsets.ModelViewSet):
     model = models.Project
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectSerializer
-    filter_backends = (filters.CustomerOrProjectRoleFilter,)
-
-    customer_path = 'customer'
-    project_path = 'self'
+    filter_backends = (filters.GenericRoleFilter,)
 
 
 class ProjectGroupViewSet(core_viewsets.ModelViewSet):
     model = models.ProjectGroup
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectGroupSerializer
-    filter_backends = (filters.CustomerOrProjectRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter,)
     # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
-
-    customer_path = 'customer'
-    project_path = 'projects'
 
 
 class ProjectGroupMembershipViewSet(core_viewsets.ModelViewSet):
     model = models.ProjectGroup.projects.through
     serializer_class = serializers.ProjectGroupMembershipSerializer
+    filter_backends = (filters.GenericRoleFilter,)
 
-    def get_queryset(self):
-        queryset = super(ProjectGroupMembershipViewSet, self).get_queryset()
-
-        user = self.request.user
-
-        return queryset.filter(projectgroup__customer__roles__permission_group__user=user,
-                               projectgroup__customer__roles__role_type=CustomerRole.OWNER)
+# XXX: This should be put to models
+filters.set_permissions_for_model(
+    models.ProjectGroup.projects.through,
+    customer_path='projectgroup__customer',
+)
 
 
 class UserViewSet(core_viewsets.ModelViewSet):
@@ -85,12 +75,12 @@ class UserViewSet(core_viewsets.ModelViewSet):
 class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
     model = User.groups.through
     serializer_class = serializers.ProjectPermissionReadSerializer
-    filter_backends = (filters.ProjectRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter,)
     # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
 
     def get_queryset(self):
         user = self.request.user
-        user_uuid= self.request.QUERY_PARAMS.get('user', None)
+        user_uuid = self.request.QUERY_PARAMS.get('user', None)
 
         queryset = user.groups.through.objects.exclude(group__projectrole__project=None)
         # TODO: refactor against django filtering
@@ -102,3 +92,9 @@ class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
         if self.request.method == 'POST':
             return serializers.ProjectPermissionWriteSerializer
         return super(ProjectPermissionViewSet, self).get_serializer_class()
+
+# XXX: This should be put to models
+filters.set_permissions_for_model(
+    User.groups.through,
+    project_path='group__projectrole__project',
+)

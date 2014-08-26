@@ -18,6 +18,8 @@ class Customer(UuidMixin, models.Model):
         permissions = (
             ('view_customer', _('Can see available customers')),
         )
+    class Permissions(object):
+        customer_path = 'self'
 
     name = models.CharField(max_length=160)
     abbreviation = models.CharField(max_length=8)
@@ -113,6 +115,9 @@ class Project(UuidMixin, models.Model):
         permissions = (
             ('view_project', _('Can see available projects')),
         )
+    class Permissions(object):
+        customer_path = 'customer'
+        project_path = 'self'
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='projects')
@@ -165,6 +170,9 @@ class ProjectGroup(UuidMixin, models.Model):
         permissions = (
             ('view_projectgroup', _('Can see available project groups')),
         )
+    class Permissions(object):
+        customer_path = 'customer'
+        project_path = 'projects'
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='project_groups')

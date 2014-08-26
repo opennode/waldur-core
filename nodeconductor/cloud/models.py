@@ -26,6 +26,10 @@ class Cloud(UuidMixin, models.Model):
         permissions = (
             ('view_cloud', _('Can see available clouds')),
         )
+
+    class Permissions(object):
+        project_path = 'projects'
+
     username = models.CharField(max_length=100, blank=True)
     password = models.CharField(max_length=100, blank=True)
 
@@ -51,6 +55,9 @@ class Flavor(UuidMixin, models.Model):
         permissions = (
             ("view_flavor", _("Can see available flavors")),
         )
+    class Permissions(object):
+        customer_path = 'cloud__projects__customer'
+        project_path = 'cloud__projects'
 
     name = models.CharField(max_length=100)
     cloud = models.ForeignKey(Cloud, related_name='flavors')

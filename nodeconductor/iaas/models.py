@@ -37,6 +37,9 @@ class Instance(UuidMixin, models.Model):
     Depending on a cloud the instance is deployed to
     it can be either a fully virtualized instance, or a container.
     """
+    class Permissions(object):
+        project_path = 'project'
+
     class States(object):
         DEFINED = 'd'
         PROVISIONING = 'p'
@@ -127,6 +130,9 @@ class Purchase(UuidMixin, models.Model):
         permissions = (
             ('view_purchase', _('Can see available purchases')),
         )
+    class Permissions(object):
+        project_path = 'project'
+
     date = models.DateTimeField()
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='purchases')
     project = models.ForeignKey(structure_models.Project, related_name='purchases')

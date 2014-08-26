@@ -16,12 +16,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
                       mixins.ListModelMixin,
                       core_mixins.UpdateOnlyModelMixin,
                       viewsets.GenericViewSet):
-    queryset = models.Instance.objects.all()
+    model = models.Instance
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.ProjectRoleFilter,)
-
-    project_path = 'project'
+    filter_backends = (filters.GenericRoleFilter,)
 
     def get_serializer_class(self):
         if self.request.method in ('POST', 'PUT', 'PATCH'):
@@ -31,13 +29,13 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
 
 class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.Template.objects.all()
+    model = models.Template
     serializer_class = serializers.TemplateSerializer
     lookup_field = 'uuid'
 
 
 class SshKeyViewSet(core_viewsets.ModelViewSet):
-    queryset = core_models.SshPublicKey.objects.all()
+    model = core_models.SshPublicKey
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
 
@@ -46,9 +44,7 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
 
 
 class PurchaseViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.Purchase.objects.all()
+    model = models.Purchase
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.ProjectRoleFilter,)
-
-    project_path = 'project'
+    filter_backends = (filters.GenericRoleFilter,)
