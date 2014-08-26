@@ -16,12 +16,12 @@ from nodeconductor.structure.models import CustomerRole
 User = auth.get_user_model()
 
 
-class CustomerViewSet(viewsets.ReadOnlyModelViewSet):
+class CustomerViewSet(core_viewsets.ModelViewSet):
     model = models.Customer
     lookup_field = 'uuid'
     serializer_class = serializers.CustomerSerializer
     filter_backends = (filters.DjangoObjectPermissionsFilter,)
-    permission_classes = (permissions.DjangoObjectLevelPermissions,)
+    permission_classes = (permissions.DjangoObjectLevelPermissions, permissions.IsAdminOrReadOnly)
 
 
 class ProjectViewSet(core_viewsets.ModelViewSet):
