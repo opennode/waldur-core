@@ -154,6 +154,7 @@ class ProjectPermissionWriteSerializer(serializers.Serializer):
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField('user_projects_roles')
+    email = serializers.EmailField()
 
     def user_projects_roles(self, obj):
         user_groups = obj.groups.through.objects.exclude(group__projectrole__project=None)
@@ -172,6 +173,6 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = User
         fields = ('url', 'uuid', 'username', 'first_name', 'last_name', 'alternative_name', 'job_title', 'email',
-                  'civil_number', 'phone_number', 'description', 'is_staff', 'organization')
+                  'civil_number', 'phone_number', 'description', 'is_staff', 'organization', 'projects')
         read_only_fields = ('uuid', 'is_staff')
         lookup_field = 'uuid'
