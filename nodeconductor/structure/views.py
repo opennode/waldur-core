@@ -50,6 +50,7 @@ class ProjectGroupMembershipViewSet(core_viewsets.ModelViewSet):
         return queryset.filter(projectgroup__customer__roles__permission_group__user=user,
                                projectgroup__customer__roles__role_type=CustomerRole.OWNER)
 
+
 class UserViewSet(core_viewsets.ModelViewSet):
     model = User
     lookup_field = 'uuid'
@@ -57,31 +58,27 @@ class UserViewSet(core_viewsets.ModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated, permissions.IsAdminOrReadOnly)
 
     def get_queryset(self):
-        """
-        Optionally restrict returned user to the civil number,
-        by filtering against a `civil_number` query parameter in the URL.
-        """
+        user = self.request.user
         queryset = User.objects.all()
         # TODO: refactor against django filtering
+
         civil_number = self.request.QUERY_PARAMS.get('civil_number', None)
         if civil_number is not None:
             queryset = queryset.filter(civil_number=civil_number)
-        return queryset
 
-    def dispatch(self, request, *args, **kwargs):
-        if kwargs.get('uuid') == 'current' and request.user.is_authenticated():
-            kwargs['uuid'] = request.user.uuid
-        return super(UserViewSet, self).dispatch(request, *args, **kwargs)
+        current_user = self.request.QUERY_PARAMS.get('current', None)
+        if current_user is not None and not user.is_anonymous():
+            queryset = User.objects.filter(uuid=user.uuid)
+        return queryset
 
 
 class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
     model = User.groups.through
     serializer_class = serializers.ProjectPermissionReadSerializer
 
-
     def get_queryset(self):
         user = self.request.user
-        user_uuid= self.request.QUERY_PARAMS.get('user', None)
+        user_uuid = self.request.QUERY_PARAMS.get('user', None)
 
         queryset = user.groups.through.objects.exclude(group__projectrole__project=None)
         # TODO: refactor against django filtering
