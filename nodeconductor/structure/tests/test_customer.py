@@ -82,17 +82,17 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
     def test_cannot_delete_customer(self):
         response = self.client.delete(self.customer_url)
 
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_cannot_create_customer(self):
         response = self.client.post(self.customer_url, self._get_valid_payload())
 
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_cannot_change_customer_as_whole(self):
         response = self.client.put(self.customer_url, self._get_valid_payload(self.customer))
 
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_cannot_change_single_customer_field(self):
         payload = self._get_valid_payload(self.customer)
@@ -104,7 +104,7 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
             response = self.client.patch(self.customer_url, data)
 
-            self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def _get_valid_payload(self, resource=None):
         resource = resource or factories.CustomerFactory()
