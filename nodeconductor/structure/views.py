@@ -69,6 +69,14 @@ class UserViewSet(core_viewsets.ModelViewSet):
         current_user = self.request.QUERY_PARAMS.get('current', None)
         if current_user is not None and not user.is_anonymous():
             queryset = User.objects.filter(uuid=user.uuid)
+
+        # TODO: refactor to a separate endpoint or structure
+        # a special query for all users with assigned privileges that the current user can remove privileges from
+        can_manage = self.request.QUERY_PARAMS.get('can_manage', None)
+        if can_manage is not None:
+            queryset = queryset.filter(groups__projectrole__project__roles__permission_group__user=user,
+                                       groups__projectrole__project__roles__role_type=models.ProjectRole.MANAGER).distinct()
+
         return queryset
 
 
