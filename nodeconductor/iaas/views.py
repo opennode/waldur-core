@@ -9,6 +9,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
+from nodeconductor.structure.models import ProjectRole
 
 
 class InstanceViewSet(mixins.CreateModelMixin,
@@ -24,6 +25,11 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def get_serializer_class(self):
         if self.request.method in ('POST', 'PUT', 'PATCH'):
             return serializers.InstanceCreateSerializer
+        for instance in self.queryset:
+            if models.Instance.objects.filter(project__roles__permission_group__user=self.request.user,
+                                              project__roles__role_type=ProjectRole.ADMINISTRATOR,
+                                              pk=instance.pk).exists():
+                return serializers.InstanceAdminSerializer
 
         return super(InstanceViewSet, self).get_serializer_class()
 

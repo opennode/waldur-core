@@ -63,7 +63,7 @@ class Instance(UuidMixin, models.Model):
     template = models.ForeignKey(Template, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
-    ips = models.ManyToManyField(InstanceIp, verbose_name='IPs', related_name='instances', blank=True)
+    ips = models.ManyToManyField(InstanceIp, related_name='instances', blank=True)
     uptime = models.TimeField(blank=True, null=True)
 
     tags = TaggableManager()
