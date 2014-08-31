@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from rest_framework import permissions
 from rest_framework import mixins
 from rest_framework import viewsets
 
@@ -20,6 +21,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter,)
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
 
     def get_serializer_class(self):
         if self.request.method in ('POST', 'PUT', 'PATCH'):
