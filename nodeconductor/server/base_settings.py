@@ -33,6 +33,8 @@ INSTALLED_APPS = (
     'rest_framework',
     'south',
     'background_task',
+
+    'permission',
     'taggit'
 )
 
@@ -59,6 +61,7 @@ REST_FRAMEWORK = {
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
+    'permission.backends.PermissionBackend',
 )
 
 ANONYMOUS_USER_ID = None

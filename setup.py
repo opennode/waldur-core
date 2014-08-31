@@ -21,7 +21,8 @@ install_requires = [
     'django-fsm==2.1.0',
     'django-uuidfield==0.5.0',
     'django-taggit==0.12',
-    'django-auth-ldap==1.2.0'
+    'django-permission==0.8.2',
+    'django-auth-ldap==1.2.0',
 ]
 
 
