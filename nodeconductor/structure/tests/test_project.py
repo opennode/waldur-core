@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.structure.tests import factories
+from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.models import ProjectRole
 
 
@@ -24,7 +25,7 @@ class ProjectRoleTest(TestCase):
                         'Manager role should have been created')
 
 
-class ProjectPermissionTest(test.APISimpleTestCase):
+class ProjectApiPermissionTest(test.APISimpleTestCase):
     forbidden_combinations = (
         # User role, Project
         ('admin', 'manager'),
@@ -38,21 +39,23 @@ class ProjectPermissionTest(test.APISimpleTestCase):
 
     def setUp(self):
         self.users = {
+            'owner': factories.UserFactory(),
             'admin': factories.UserFactory(),
             'manager': factories.UserFactory(),
             'no_role': factories.UserFactory(),
         }
 
         self.projects = {
+            'owner': factories.ProjectFactory(),
             'admin': factories.ProjectFactory(),
             'manager': factories.ProjectFactory(),
             'inaccessible': factories.ProjectFactory(),
         }
         
-        self.user = factories.UserFactory.create()
+        self.projects['admin'].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
+        self.projects['manager'].add_user(self.users['manager'], ProjectRole.MANAGER)
 
-        self.projects['admin'].add_user(self.user, ProjectRole.ADMINISTRATOR)
-        self.projects['manager'].add_user(self.user, ProjectRole.MANAGER)
+        self.projects['owner'].customer.add_user(self.users['owner'], CustomerRole.OWNER)
 
     # TODO: Test for customer owners
     # Creation tests
@@ -75,23 +78,14 @@ class ProjectPermissionTest(test.APISimpleTestCase):
         response = self.client.get(reverse('project-list'))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_user_can_list_projects_belonging_to_customer_he_owns(self):
+        self._ensure_list_access_allowed('owner')
+
     def test_user_can_list_projects_he_is_administrator_of(self):
-        self.client.force_authenticate(user=self.user)
-
-        response = self.client.get(reverse('project-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        project_url = self._get_project_url(self.projects['admin'])
-        self.assertIn(project_url, [instance['url'] for instance in response.data])
+        self._ensure_list_access_allowed('admin')
 
     def test_user_can_list_projects_he_is_manager_of(self):
-        self.client.force_authenticate(user=self.user)
-
-        response = self.client.get(reverse('project-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        project_url = self._get_project_url(self.projects['manager'])
-        self.assertIn(project_url, [instance['url'] for instance in response.data])
+        self._ensure_list_access_allowed('manager')
 
     def test_user_cannot_list_projects_he_has_no_role_in(self):
         for user_role, project in self.forbidden_combinations:
@@ -103,17 +97,14 @@ class ProjectPermissionTest(test.APISimpleTestCase):
         response = self.client.get(self._get_project_url(project))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_user_can_access_project_he_is_administrator_of(self):
-        self.client.force_authenticate(user=self.user)
+    def test_user_can_access_project_belonging_to_customer_he_owns(self):
+        self._ensure_direct_access_allowed('owner')
 
-        response = self.client.get(self._get_project_url(self.projects['admin']))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def test_user_can_access_project_he_is_administrator_of(self):
+        self._ensure_direct_access_allowed('admin')
 
     def test_user_can_access_project_he_is_manager_of(self):
-        self.client.force_authenticate(user=self.user)
-
-        response = self.client.get(self._get_project_url(self.projects['manager']))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self._ensure_direct_access_allowed('manager')
 
     def test_user_cannot_access_project_he_has_no_role_in(self):
         for user_role, project in self.forbidden_combinations:
@@ -130,6 +121,15 @@ class ProjectPermissionTest(test.APISimpleTestCase):
             'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
         }
 
+    def _ensure_list_access_allowed(self, user_role):
+        self.client.force_authenticate(user=self.users[user_role])
+
+        response = self.client.get(reverse('project-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        project_url = self._get_project_url(self.projects[user_role])
+        self.assertIn(project_url, [instance['url'] for instance in response.data])
+
     def _ensure_list_access_forbidden(self, user_role, project):
         self.client.force_authenticate(user=self.users[user_role])
 
@@ -138,6 +138,11 @@ class ProjectPermissionTest(test.APISimpleTestCase):
 
         project_url = self._get_project_url(self.projects[project])
         self.assertNotIn(project_url, [resource['url'] for resource in response.data])
+
+    def _ensure_direct_access_allowed(self, user_role):
+        self.client.force_authenticate(user=self.users[user_role])
+        response = self.client.get(self._get_project_url(self.projects[user_role]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def _ensure_direct_access_forbidden(self, user_role, project):
         self.client.force_authenticate(user=self.users[user_role])

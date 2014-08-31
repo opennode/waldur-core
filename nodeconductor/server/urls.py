@@ -6,7 +6,7 @@ from django.conf.urls import patterns
 from django.conf.urls import include
 from django.conf.urls import url
 from django.contrib import admin
-
+import permission
 from rest_framework.routers import DefaultRouter
 
 from nodeconductor.cloud import urls as cloud_urls
@@ -15,6 +15,7 @@ from nodeconductor.structure import urls as structure_urls
 
 
 admin.autodiscover()
+permission.autodiscover()
 
 router = DefaultRouter()
 cloud_urls.register_in(router)

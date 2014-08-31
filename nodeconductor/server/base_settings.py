@@ -33,7 +33,8 @@ INSTALLED_APPS = (
     'rest_framework',
     'south',
     'background_task',
-    'guardian',
+
+    'permission',
     'taggit'
 )
 
@@ -54,14 +55,13 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-        'nodeconductor.core.permissions.DjangoObjectLevelPermissions',
     ),
     'DEFAULT_MODEL_SERIALIZER_CLASS': 'rest_framework.serializers.HyperlinkedModelSerializer',
 }
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    'guardian.backends.ObjectPermissionBackend',
+    'permission.backends.PermissionBackend',
 )
 
 ANONYMOUS_USER_ID = None
@@ -97,3 +97,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATIC_URL = '/static/'
+
+NODE_CONDUCTOR = {
+    'FILTERED_RELATIONS': ('customer', 'project'),
+}

@@ -51,6 +51,7 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin, serializers.Hyperlin
         return 'customer',
 
     def get_fields(self):
+        # TODO: Extract to a proper mixin
         fields = super(ProjectGroupSerializer, self).get_fields()
 
         try:

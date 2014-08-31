@@ -1,8 +1,8 @@
 from rest_framework import serializers
 
-from nodeconductor.iaas import models
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin
+from nodeconductor.iaas import models
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,
@@ -52,8 +52,8 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
 
 
-class PurchaseSerializer(PermissionFieldFilteringMixin,
-                         serializers.HyperlinkedModelSerializer):
+class PurchaseSerializer(serializers.HyperlinkedModelSerializer):
+    # TODO: Serialize customer and user with both url and name
     customer = serializers.Field(source='project.customer')
     user = serializers.Field(source='user.username')
 
@@ -61,6 +61,3 @@ class PurchaseSerializer(PermissionFieldFilteringMixin,
         model = models.Purchase
         fields = ('url', 'date', 'user', 'customer', 'project')
         lookup_field = 'uuid'
-
-    def get_filtered_field_names(self):
-        return 'project',
