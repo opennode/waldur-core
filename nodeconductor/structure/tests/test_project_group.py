@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 from itertools import chain
-import unittest
 
 from django.core.urlresolvers import reverse
 from rest_framework import status
@@ -298,28 +297,107 @@ class ProjectGroupMembershipApiPermissionTest(UrlResolverMixin, test.APISimpleTe
                                         self._get_valid_payload(membership))
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_user_cannot_create_project_group_membership_within_project_group_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        project_group = self.project_groups['inaccessible'][0]
+        project = self.projects['owner'][0]
+
+        membership = ProjectGroupMembership(project=project, projectgroup=project_group)
+
+        response = self.client.post(reverse('projectgroup_membership-list'),
+                                    self._get_valid_payload(membership))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'project_group': ['Invalid hyperlink - object does not exist.']}, response.data)
+
+    def test_user_cannot_create_project_group_membership_within_project_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        project_group = self.project_groups['owner'][0]
+        project = self.projects['inaccessible'][0]
+
+        membership = ProjectGroupMembership(project=project, projectgroup=project_group)
+
+        response = self.client.post(reverse('projectgroup_membership-list'),
+                                    self._get_valid_payload(membership))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'project': ['Invalid hyperlink - object does not exist.']}, response.data)
+
+    # TODO: return 409 CONFLICT or 304 NOT MODIFIED instead of 400 BAD REQUEST for already existing links
+
+    def test_user_can_add_project_to_project_group_given_they_belong_to_the_same_customer_he_owns(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        project_groups = self.project_groups['owner']
+        projects = self.projects['owner']
+
+        for project_group_index, project_index in (
+                (0, 1),
+                (1, 0),
+                (1, 1),
+        ):
+            project_group = project_groups[project_group_index]
+            project = projects[project_index]
+
+            membership = ProjectGroupMembership(project=project, projectgroup=project_group)
+
+            response = self.client.post(reverse('projectgroup_membership-list'),
+                                        self._get_valid_payload(membership))
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+            self.assertIn(project, project_group.projects.all())
+
+    # Mutation tests
+    def test_anonymous_user_cannot_change_project_group_membership(self):
+        for i in ('owner', 'inaccessible'):
+            project_group, project = self.project_groups[i][0], self.projects[i][0]
+
+            membership = ProjectGroupMembership.objects.get(project=project, projectgroup=project_group)
+
+            response = self.client.put(self._get_membership_url(membership),
+                                       self._get_valid_payload(membership))
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_cannot_change_project_group_membership(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        membership = self.memberships['owner']
+
+        response = self.client.put(self._get_membership_url(membership),
+                                   self._get_valid_payload(membership))
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
     # Deletion tests
     def test_anonymous_user_cannot_delete_project_group_membership(self):
         for membership in self.memberships.values():
             response = self.client.delete(self._get_membership_url(membership))
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    # TODO: Cannot add other customer's project to own project group
-    @unittest.skip('Not implemented')
-    def test_user_can_add_project_to_project_group_given_they_belong_to_the_same_customer_he_owns(self):
+    def test_user_can_delete_project_group_membership_he_owns(self):
         self.client.force_authenticate(user=self.users['owner'])
+
+        membership = self.memberships['owner']
+
+        response = self.client.delete(self._get_membership_url(membership))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
         project_group = self.project_groups['owner'][0]
         project = self.projects['owner'][0]
+        self.assertNotIn(project, project_group.projects.all())
 
-        # TODO: Grant owner access to Customer's Project
-        membership = ProjectGroupMembership(project=project, projectgroup=project_group)
+    def test_user_cannot_delete_project_group_membership_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['owner'])
 
-        response = self.client.post(reverse('projectgroup_membership-list'),
-                                    self._get_valid_payload(membership))
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        membership = self.memberships['inaccessible']
 
-        self.assertIn(project_group.projects.all(), project)
+        response = self.client.delete(self._get_membership_url(membership))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        project_group = self.project_groups['inaccessible'][0]
+        project = self.projects['inaccessible'][0]
+        self.assertIn(project, project_group.projects.all())
 
     # List filtration tests
     def test_anonymous_user_cannot_list_project_group_membership(self):

@@ -1,34 +1,35 @@
 from __future__ import unicode_literals
 
 from django.contrib import auth
-from rest_framework import viewsets
+from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
+from rest_framework import viewsets as rf_viewsets
 
 from nodeconductor.core import permissions
-from nodeconductor.core import viewsets as core_viewsets
+from nodeconductor.core import viewsets
 from nodeconductor.structure import filters
-from nodeconductor.structure import serializers
 from nodeconductor.structure import models
+from nodeconductor.structure import serializers
 
 
 User = auth.get_user_model()
 
 
-class CustomerViewSet(core_viewsets.ModelViewSet):
+class CustomerViewSet(viewsets.ModelViewSet):
     model = models.Customer
     lookup_field = 'uuid'
     serializer_class = serializers.CustomerSerializer
     filter_backends = (filters.GenericRoleFilter,)
 
 
-class ProjectViewSet(core_viewsets.ModelViewSet):
+class ProjectViewSet(viewsets.ModelViewSet):
     model = models.Project
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectSerializer
     filter_backends = (filters.GenericRoleFilter,)
 
 
-class ProjectGroupViewSet(core_viewsets.ModelViewSet):
+class ProjectGroupViewSet(viewsets.ModelViewSet):
     model = models.ProjectGroup
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectGroupSerializer
@@ -36,7 +37,11 @@ class ProjectGroupViewSet(core_viewsets.ModelViewSet):
     # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
 
 
-class ProjectGroupMembershipViewSet(core_viewsets.ModelViewSet):
+class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
+                                    rf_mixins.RetrieveModelMixin,
+                                    rf_mixins.DestroyModelMixin,
+                                    rf_mixins.ListModelMixin,
+                                    rf_viewsets.GenericViewSet):
     model = models.ProjectGroup.projects.through
     serializer_class = serializers.ProjectGroupMembershipSerializer
     filter_backends = (filters.GenericRoleFilter,)
@@ -48,7 +53,7 @@ filters.set_permissions_for_model(
 )
 
 
-class UserViewSet(core_viewsets.ModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     model = User
     lookup_field = 'uuid'
     serializer_class = serializers.UserSerializer
@@ -77,7 +82,7 @@ class UserViewSet(core_viewsets.ModelViewSet):
         return queryset
 
 
-class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
+class ProjectPermissionViewSet(viewsets.ModelViewSet):
     model = User.groups.through
     serializer_class = serializers.ProjectPermissionReadSerializer
     filter_backends = (filters.GenericRoleFilter,)

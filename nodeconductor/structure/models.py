@@ -158,16 +158,10 @@ class ProjectGroup(UuidMixin, models.Model):
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='project_groups')
     projects = models.ManyToManyField(Project,
-                                      # through='structure.ProjectGroupMembership',
                                       related_name='project_groups')
 
     def __str__(self):
         return self.name
-
-
-class ProjectGroupMembership(UuidMixin, models.Model):
-    project = models.ForeignKey(Project)
-    project_group = models.ForeignKey(ProjectGroup)
 
 
 class NetworkSegment(models.Model):

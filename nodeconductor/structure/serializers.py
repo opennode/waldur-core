@@ -78,7 +78,7 @@ class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin, serializer
         view_name = 'projectgroup_membership-detail'
 
     def get_filtered_field_names(self):
-        return 'project',
+        return 'project', 'project_group'
 
 
 class ProjectRoleField(serializers.ChoiceField):
