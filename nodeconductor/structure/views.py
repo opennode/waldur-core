@@ -56,7 +56,7 @@ class UserViewSet(core_viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = User.objects.all()
+        queryset = super(UserViewSet, self).get_queryset()
         # TODO: refactor against django filtering
 
         civil_number = self.request.QUERY_PARAMS.get('civil_number', None)
@@ -84,13 +84,12 @@ class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
     # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
 
     def get_queryset(self):
-        user = self.request.user
-        user_uuid = self.request.QUERY_PARAMS.get('user', None)
+        queryset = super(ProjectPermissionViewSet, self).get_queryset()
 
-        queryset = user.groups.through.objects.exclude(group__projectrole__project=None)
         # TODO: refactor against django filtering
+        user_uuid = self.request.QUERY_PARAMS.get('user', None)
         if user_uuid is not None:
-            queryset.filter(group__user__uuid=user_uuid)
+            queryset = queryset.filter(user__uuid=user_uuid)
         return queryset
 
     def get_serializer_class(self):
@@ -101,5 +100,6 @@ class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
 # XXX: This should be put to models
 filters.set_permissions_for_model(
     User.groups.through,
+    customer_path='group__projectrole__project__customer',
     project_path='group__projectrole__project',
 )
