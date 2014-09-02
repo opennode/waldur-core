@@ -1,2 +1,2 @@
-include README.rst
+include *.md *.rst
 recursive-include nodeconductor/templates *.html
