@@ -95,7 +95,7 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
         for user_role, project in self.forbidden_combinations:
             self._ensure_list_access_forbidden(user_role, project)
 
-    def test_user_filter_by_projects_where_he_is_manager(self):
+    def test_user_can_filter_by_projects_where_he_has_manager_role(self):
         self.client.force_authenticate(user=self.users['multirole'])
         response = self.client.get(reverse('project-list') + '?can_manage')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
