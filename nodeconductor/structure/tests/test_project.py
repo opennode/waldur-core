@@ -43,6 +43,7 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
             'admin': factories.UserFactory(),
             'manager': factories.UserFactory(),
             'no_role': factories.UserFactory(),
+            'multirole': factories.UserFactory(),
         }
 
         self.projects = {
@@ -54,6 +55,9 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
         
         self.projects['admin'].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         self.projects['manager'].add_user(self.users['manager'], ProjectRole.MANAGER)
+
+        self.projects['admin'].add_user(self.users['multirole'], ProjectRole.ADMINISTRATOR)
+        self.projects['manager'].add_user(self.users['multirole'], ProjectRole.MANAGER)
 
         self.projects['owner'].customer.add_user(self.users['owner'], CustomerRole.OWNER)
 
@@ -90,6 +94,17 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
     def test_user_cannot_list_projects_he_has_no_role_in(self):
         for user_role, project in self.forbidden_combinations:
             self._ensure_list_access_forbidden(user_role, project)
+
+    def test_user_filter_by_projects_where_he_is_manager(self):
+        self.client.force_authenticate(user=self.users['multirole'])
+        response = self.client.get(reverse('project-list') + '?can_manage')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        managed_project_url = self._get_project_url(self.projects['manager'])
+        administrated_project_url = self._get_project_url(self.projects['admin'])
+
+        self.assertIn(managed_project_url, [resource['url'] for resource in response.data])
+        self.assertNotIn(administrated_project_url, [resource['url'] for resource in response.data])
 
     # Direct instance access tests
     def test_anonymous_user_cannot_access_project(self):
