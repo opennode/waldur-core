@@ -1,4 +1,34 @@
+from django.contrib.auth import authenticate
+from rest_framework import serializers
+
 from nodeconductor.structure.filters import filter_queryset_for_user
+
+
+class AuthTokenSerializer(serializers.Serializer):
+    """
+    Api token serializer loosely based on DRF's default AuthTokenSerializer,
+    but with the response text and aligned with BasicAuthentication behavior.
+    """
+    username = serializers.CharField(required=True, blank=False)
+    password = serializers.CharField(required=True, blank=False)
+
+    def validate(self, attrs):
+        # Since the fields are both required and non-blank
+        # and field-validation is performed before object-level validation
+        # it is safe to assume these dict keys present.
+        username = attrs['username']
+        password = attrs['password']
+
+        user = authenticate(username=username, password=password)
+
+        if not user:
+            raise serializers.ValidationError('Invalid username/password')
+
+        if not user.is_active:
+            raise serializers.ValidationError('User account is disabled')
+        attrs['user'] = user
+
+        return attrs
 
 
 class PermissionFieldFilteringMixin(object):
