@@ -28,6 +28,16 @@ class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ProjectSerializer
     filter_backends = (filters.GenericRoleFilter,)
 
+    def get_queryset(self):
+        user = self.request.user
+        queryset = super(ProjectViewSet, self).get_queryset()
+
+        can_manage = self.request.QUERY_PARAMS.get('can_manage', None)
+        if can_manage is not None:
+            queryset = queryset.filter(roles__permission_group__user=user,
+                                       roles__role_type=models.ProjectRole.MANAGER).distinct()
+
+        return queryset
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
     model = models.ProjectGroup
@@ -95,6 +105,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
         user_uuid = self.request.QUERY_PARAMS.get('user', None)
         if user_uuid is not None:
             queryset = queryset.filter(user__uuid=user_uuid)
+
         return queryset
 
     def get_serializer_class(self):
