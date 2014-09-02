@@ -7,6 +7,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext as _
 from django_fsm import FSMField
 from django_fsm import transition
+
 from taggit.managers import TaggableManager
 
 from nodeconductor.cloud import models as cloud_models
@@ -116,4 +117,29 @@ class Purchase(UuidMixin, models.Model):
         return '%(user)s - %(date)s' % {
             'user': self.user.username,
             'date': self.date,
+        }
+
+
+@python_2_unicode_compatible
+class Image(UuidMixin, models.Model):
+    class Permissions(object):
+        project_path = 'cloud__projects'
+
+    i386 = 0
+    amd64 = 1
+
+    ARCHITECTURE_CHOICES = (
+        (i386, _('i386')),
+        (amd64, _('amd64')),
+    )
+    name = models.CharField(max_length=80)
+    cloud = models.ForeignKey(cloud_models.Cloud, related_name='images')
+    architecture = models.SmallIntegerField(choices=ARCHITECTURE_CHOICES)
+    description = models.TextField()
+    license_type = models.CharField(max_length=80)
+
+    def __str__(self):
+        return '%(name)s | %(cloud)s' % {
+            'name': self.name,
+            'cloud': self.cloud.name
         }
