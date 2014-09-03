@@ -23,7 +23,7 @@ install_requires = [
     'django-taggit==0.12',
     'django-permission==0.8.2',
     'django-auth-ldap==1.2.0',
-    'django-filter==0.7'
+    'django-filter==0.7',
 ]
 
 
