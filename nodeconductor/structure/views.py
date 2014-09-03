@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib import auth
+import django_filters
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import viewsets as rf_viewsets
@@ -39,6 +40,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+
 class ProjectGroupViewSet(viewsets.ModelViewSet):
     model = models.ProjectGroup
     lookup_field = 'uuid'
@@ -63,11 +65,31 @@ filters.set_permissions_for_model(
 )
 
 
+class UserFilter(django_filters.FilterSet):
+    project_group = django_filters.CharFilter(name='groups__projectrole__project__project_groups__name', distinct=True)
+    project = django_filters.CharFilter(name='groups__projectrole__project__name', distinct=True)
+
+    class Meta:
+        model = User
+        fields = ['first_name',
+                  'last_name',
+                  'alternative_name',
+                  'organization',
+                  'email',
+                  'phone_number',
+                  'description',
+                  'job_title',
+                  'project',
+                  'project_group'
+                  ]
+
+
 class UserViewSet(viewsets.ModelViewSet):
     model = User
     lookup_field = 'uuid'
     serializer_class = serializers.UserSerializer
     permission_classes = (rf_permissions.IsAuthenticated, permissions.IsAdminOrReadOnly)
+    filter_class = UserFilter
 
     def get_queryset(self):
         user = self.request.user
