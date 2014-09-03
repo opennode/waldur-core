@@ -66,22 +66,29 @@ filters.set_permissions_for_model(
 
 
 class UserFilter(django_filters.FilterSet):
-    project_group = django_filters.CharFilter(name='groups__projectrole__project__project_groups__name', distinct=True)
-    project = django_filters.CharFilter(name='groups__projectrole__project__name', distinct=True)
+    project_group = django_filters.CharFilter(
+        name='groups__projectrole__project__project_groups__name',
+        distinct=True,
+    )
+    project = django_filters.CharFilter(
+        name='groups__projectrole__project__name',
+        distinct=True,
+    )
 
-    class Meta:
+    class Meta(object):
         model = User
-        fields = ['first_name',
-                  'last_name',
-                  'alternative_name',
-                  'organization',
-                  'email',
-                  'phone_number',
-                  'description',
-                  'job_title',
-                  'project',
-                  'project_group'
-                  ]
+        fields = [
+            'first_name',
+            'last_name',
+            'alternative_name',
+            'organization',
+            'email',
+            'phone_number',
+            'description',
+            'job_title',
+            'project',
+            'project_group',
+        ]
 
 
 class UserViewSet(viewsets.ModelViewSet):
