@@ -44,7 +44,7 @@ DATABASE_MYSQL = {
 
 DATABASE_SQLITE = {
     'ENGINE': 'django.db.backends.sqlite3',
-    'NAME': '/var/lib/nodeconductor/db.sqlite3', # database file
+    'NAME': '{{ db_file_path }}', # database file
 }
 
 DATABASE_NONE = {}
