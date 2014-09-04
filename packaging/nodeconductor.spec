@@ -1,7 +1,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.1.0dev
-Release: 17
+Release: 18
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: logrotate
@@ -85,6 +85,12 @@ nodeconductor migrate
 nodeconductor collectstatic --noinput
 
 %changelog
+* Thu Sep 4 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-18
+- Added filtering for User list
+- Added pagination for all the views
+- Changed default authentication schema to token-based
+- Bugfixes
+
 * Wed Aug 27 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-17
 - Further improvements to user management
 - Customer write operations
