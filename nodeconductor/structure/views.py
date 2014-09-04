@@ -8,6 +8,7 @@ from rest_framework import viewsets as rf_viewsets
 
 from nodeconductor.core import permissions
 from nodeconductor.core import viewsets
+from nodeconductor.core import mixins
 from nodeconductor.structure import filters
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
@@ -52,7 +53,7 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
 class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.RetrieveModelMixin,
                                     rf_mixins.DestroyModelMixin,
-                                    rf_mixins.ListModelMixin,
+                                    mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
     model = models.ProjectGroup.projects.through
     serializer_class = serializers.ProjectGroupMembershipSerializer

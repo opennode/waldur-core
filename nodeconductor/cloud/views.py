@@ -1,5 +1,4 @@
-from rest_framework import viewsets
-
+from nodeconductor.core import viewsets
 from nodeconductor.cloud import models
 from nodeconductor.cloud import serializers
 from nodeconductor.structure import filters
