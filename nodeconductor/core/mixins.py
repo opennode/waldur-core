@@ -1,14 +1,14 @@
 from __future__ import unicode_literals
-from django.core.paginator import EmptyPage
-from rest_framework.templatetags.rest_framework import replace_query_param
 import warnings
 
 from django.core.exceptions import ValidationError
+from django.core.paginator import EmptyPage
 from django.http.response import Http404
 
 from rest_framework import status
 from rest_framework.mixins import _get_validation_exclusions
 from rest_framework.response import Response
+from rest_framework.templatetags.rest_framework import replace_query_param
 
 
 class UpdateOnlyModelMixin(object):
@@ -109,7 +109,7 @@ class ListModelMixin(object):
             'first': lambda p: p.paginator.page_range[0],
             'prev': lambda p: p.previous_page_number(),
             'next': lambda p: p.next_page_number(),
-            'last': lambda p: p.paginator.page_range[1],
+            'last': lambda p: p.paginator.page_range[-1],
         }
 
         for rel, get_page_number in siblings.items():
