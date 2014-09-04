@@ -31,7 +31,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
 
         self.customers = {
             'owned': factories.CustomerFactory.create_batch(2),
-            'inaccessible': factories.ProjectGroupFactory.create_batch(2),
+            'inaccessible': factories.CustomerFactory.create_batch(2),
         }
 
         for customer in self.customers['owned']:

@@ -39,7 +39,7 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
             collaborators.
             Default is False.
         add_permission : boolean
-            True to give change permission of the specified object to the
+            True to give add permission of the specified object to the
             collaborators.
             It will be ignored if :attr:`any_permission` is True.
             Default is False.
