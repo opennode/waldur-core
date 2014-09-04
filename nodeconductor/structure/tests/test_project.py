@@ -152,6 +152,68 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
+class ProjectOwnerManipulationTest(test.APISimpleTestCase):
+    def setUp(self):
+        self.user = factories.UserFactory()
+        self.client.force_authenticate(user=self.user)
+
+        self.projects = {
+            'accessible': factories.ProjectFactory(),
+            'inaccessible': factories.ProjectFactory(),
+        }
+        self.project_urls = {
+            'accessible': reverse('project-detail',
+                                  kwargs={'uuid': self.projects['accessible'].uuid}),
+            'inaccessible': reverse('project-detail',
+                                    kwargs={'uuid': self.projects['inaccessible'].uuid}),
+        }
+        self.customer = factories.CustomerFactory()
+        self.customer.add_user(self.user, CustomerRole.OWNER)
+        self.foreign_customer = factories.CustomerFactory()
+        self.projects['accessible'].add_user(self.user, ProjectRole.MANAGER)
+
+    def test_owner_can_delete_project(self):
+        response = self.client.delete(self.project_urls['accessible'])
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_can_not_delete_project_that_does_not_belong_to_owned_customer(self):
+        response = self.client.delete(self.project_urls['inaccessible'])
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_user_can_create_project_for_own_customer(self):
+        response = self.client.post(reverse('project-list'),
+                                    self._get_valid_project_payload(self.projects['accessible']))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    @unittest.skip('Implementation pending')
+    def test_user_cant_create_project_for_non_customer(self):
+        response = self.client.post(reverse('project-list'),
+                                    self._get_valid_project_payload(self.projects['inaccessible']))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_can_change_single_project_field_for_owned_customer_project(self):
+        response = self.client.patch(self._get_project_url(self.projects['accessible']),
+                                     {'name': 'New project name'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_cant_change_single_project_field_for_non_customer(self):
+        response = self.client.patch(self._get_project_url(self.projects['inaccessible']),
+                                     {'name': 'New project name'})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # Helper functions
+    def _get_valid_project_payload(self, resource=None):
+        resource = resource or factories.ProjectFactory()
+        return {
+            'name': resource.name,
+            'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
+        }
+
+    def _get_project_url(self, project):
+        return 'http://testserver' + reverse('project-detail',
+                                             kwargs={'uuid': project.uuid})
+
+
 @unittest.skip('Needs to be revised, see NC-82')
 class ProjectManipulationTest(test.APISimpleTestCase):
     def setUp(self):
