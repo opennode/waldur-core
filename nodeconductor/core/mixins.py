@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from django.core.paginator import EmptyPage
 from rest_framework.templatetags.rest_framework import replace_query_param
 import warnings
 
@@ -100,30 +101,29 @@ class ListModelMixin(object):
 
         return Response(serializer.data, headers=headers)
 
-    def _get_next_page_url(self, request, value):
-        if not value.has_next():
-            return None
-        page = value.next_page_number()
-        url = request and request.build_absolute_uri() or ''
-        return replace_query_param(url, self.page_field, page)
-
-    def _get_previous_page_url(self, request, value):
-        if not value.has_previous():
-            return None
-        page = value.previous_page_number()
-        url = request and request.build_absolute_uri() or ''
-        return replace_query_param(url, self.page_field, page)
-
     def get_pagination_headers(self, request, page):
-        link_header = ''
-        next = self._get_next_page_url(request, page)
-        if next is not None:
-            link_header += '<{nextlink}>; rel="next"'.format(nextlink=next)
+        links = []
+        url = request and request.build_absolute_uri() or ''
 
-        previous = self._get_previous_page_url(request, page)
-        if previous is not None:
-            link_header += '<{prevlink}>; rel="previous"'.format(prevlink=previous)
+        siblings = {
+            'first': lambda p: p.paginator.page_range[0],
+            'prev': lambda p: p.previous_page_number(),
+            'next': lambda p: p.next_page_number(),
+            'last': lambda p: p.paginator.page_range[1],
+        }
 
-        return {'X-Result-Count': page.paginator.count,
-                'Link': link_header,
-                'Previous': previous}
+        for rel, get_page_number in siblings.items():
+            try:
+                page_url = replace_query_param(url, self.page_field, get_page_number(page))
+                links.append('<%s>; rel="%s"' % (page_url, rel))
+            except EmptyPage:
+                pass
+
+        headers = {
+            'X-Result-Count': page.paginator.count,
+        }
+
+        if links:
+            headers['Link'] = ', '.join(links)
+
+        return headers
