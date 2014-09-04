@@ -115,12 +115,15 @@ class ListModelMixin(object):
         return replace_query_param(url, self.page_field, page)
 
     def get_pagination_headers(self, request, page):
-        try:
-            next = self._get_next_page_url(request, page)
-            previous = self._get_previous_page_url(request, page)
+        link_header = ''
+        next = self._get_next_page_url(request, page)
+        if next is not None:
+            link_header += '<{nextlink}>; rel="next"'.format(nextlink=next)
 
-            return {'Count': page.paginator.count,
-                    'Next': next,
-                    'Previous': previous}
-        except (TypeError, KeyError):
-            return {}
+        previous = self._get_previous_page_url(request, page)
+        if previous is not None:
+            link_header += '<{prevlink}>; rel="previous"'.format(prevlink=previous)
+
+        return {'X-Result-Count': page.paginator.count,
+                'Link': link_header,
+                'Previous': previous}
