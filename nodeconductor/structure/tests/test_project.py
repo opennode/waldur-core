@@ -152,7 +152,7 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
-class ProjectOwnerManipulationTest(test.APISimpleTestCase):
+class CustomerOwnerManipulationTest(test.APISimpleTestCase):
     def setUp(self):
         self.user = factories.UserFactory()
         self.client.force_authenticate(user=self.user)
@@ -185,8 +185,7 @@ class ProjectOwnerManipulationTest(test.APISimpleTestCase):
                                     self._get_valid_project_payload(self.projects['accessible']))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    @unittest.skip('Implementation pending')
-    def test_user_cant_create_project_for_non_customer(self):
+    def test_create_project_for_not_connected_customer(self):
         response = self.client.post(reverse('project-list'),
                                     self._get_valid_project_payload(self.projects['inaccessible']))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
