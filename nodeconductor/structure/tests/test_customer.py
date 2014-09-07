@@ -26,8 +26,11 @@ class CustomerRoleTest(TestCase):
 
 class CustomerApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
     def setUp(self):
-        user = factories.UserFactory()
-        self.client.force_authenticate(user=user)
+        self.users = {
+            'staff': factories.UserFactory(is_staff=True),
+            'owner': factories.UserFactory(),
+            'not_owner': factories.UserFactory(),
+        }
 
         self.customers = {
             'owned': factories.CustomerFactory.create_batch(2),
@@ -35,40 +38,60 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         }
 
         for customer in self.customers['owned']:
-            customer.add_user(user, CustomerRole.OWNER)
+            customer.add_user(self.users['owner'], CustomerRole.OWNER)
 
     # List filtration tests
     def test_user_can_list_customers_he_is_owner_of(self):
-        response = self.client.get(reverse('customer-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.client.force_authenticate(user=self.users['owner'])
 
-        urls = set([instance['url'] for instance in response.data])
-        for customer in self.customers['owned']:
-            url = self._get_customer_url(customer)
-
-            self.assertIn(url, urls)
+        self._check_user_list_access_customers(self.customers['owned'], 'assertIn')
 
     def test_user_cannot_list_customers_he_is_not_owner_of(self):
-        response = self.client.get(reverse('customer-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.client.force_authenticate(user=self.users['not_owner'])
 
-        urls = set([instance['url'] for instance in response.data])
-        for customer in self.customers['inaccessible']:
-            url = self._get_customer_url(customer)
+        self._check_user_list_access_customers(self.customers['inaccessible'], 'assertNotIn')
 
-            self.assertNotIn(url, urls)
+    def test_user_can_list_customers_if_he_is_staff(self):
+        self.client.force_authenticate(user=self.users['staff'])
+
+        self._check_user_list_access_customers(self.customers['owned'], 'assertIn')
+
+        self._check_user_list_access_customers(self.customers['inaccessible'], 'assertNotIn')
 
     # Direct instance access tests
     def test_user_can_access_customers_he_is_owner_of(self):
-        for customer in self.customers['owned']:
-            response = self.client.get(self._get_customer_url(customer))
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.client.force_authenticate(user=self.users['owner'])
+
+        self._check_user_direct_access_customer(self.customers['owned'], status.HTTP_200_OK)
 
     def test_user_cannot_access_customers_he_is_not_owner_of(self):
-        for customer in self.customers['inaccessible']:
+        self.client.force_authenticate(user=self.users['owner'])
+        # 404 is used instead of 403 to hide the fact that the resource exists at all
+        self._check_user_direct_access_customer(self.customers['inaccessible'], status.HTTP_404_NOT_FOUND)
+
+    def test_user_can_access_customers_if_he_is_staff(self):
+        self.client.force_authenticate(user=self.users['staff'])
+
+        self._check_user_direct_access_customer(self.customers['owned'], status.HTTP_200_OK)
+
+        self._check_user_direct_access_customer(self.customers['inaccessible'], status.HTTP_200_OK)
+
+    # Helper methods
+    def _check_user_list_access_customers(self, customers, test_function):
+        response = self.client.get(reverse('customer-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        urls = set([instance['url'] for instance in response.data])
+        for customer in customers:
+            url = self._get_customer_url(customer)
+
+            getattr(self, test_function)(url, urls)
+
+    def _check_user_direct_access_customer(self, customers, status_code):
+        for customer in customers:
             response = self.client.get(self._get_customer_url(customer))
-            # 404 is used instead of 403 to hide the fact that the resource exists at all
-            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+            self.assertEqual(response.status_code, status_code)
 
 
 class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
