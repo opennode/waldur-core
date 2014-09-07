@@ -79,33 +79,36 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
             'not_owner': factories.UserFactory(),
         }
 
-        self.customer = factories.CustomerFactory()
+        self.customers = {
+            'owner': factories.CustomerFactory(),
+            'inaccessible': factories.CustomerFactory(),
+        }
 
-        self.customer.add_user(self.users['owner'], CustomerRole.OWNER)
-
-        self.customer_url = self._get_customer_url(self.customer)
+        self.customers['owner'].add_user(self.users['owner'], CustomerRole.OWNER)
 
     # Deletion tests
     def test_user_cannot_delete_customer_he_is_not_owner_of(self):
         self.client.force_authenticate(user=self.users['not_owner'])
 
-        response = self.client.delete(self.customer_url)
+        response = self.client.delete(self._get_customer_url(self.customers['inaccessible']))
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_cannot_delete_customer_he_is_owner_of(self):
         self.client.force_authenticate(user=self.users['owner'])
 
-        response = self.client.delete(self.customer_url)
+        response = self.client.delete(self._get_customer_url(self.customers['owner']))
 
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_cannot_delete_customer_if_he_is_staff(self):
         self.client.force_authenticate(user=self.users['staff'])
 
-        response = self.client.delete(self.customer_url)
+        response = self.client.delete(self._get_customer_url(self.customers['owner']))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        response = self.client.delete(self._get_customer_url(self.customers['inaccessible']))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     # Creation tests
     def test_user_cannot_create_customer_he_is_not_owner_of(self):
@@ -133,65 +136,46 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
     def test_user_cannot_change_customer_as_whole_he_is_not_owner_of(self):
         self.client.force_authenticate(user=self.users['not_owner'])
 
-        response = self.client.put(self.customer_url, self._get_valid_payload(self.customer))
+        response = self.client.put(self._get_customer_url(self.customers['inaccessible']),
+                                   self._get_valid_payload())
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_cannot_change_customer_as_whole_he_is_owner_of(self):
         self.client.force_authenticate(user=self.users['owner'])
 
-        response = self.client.put(self.customer_url, self._get_valid_payload(self.customer))
+        response = self.client.put(self._get_customer_url(self.customers['owner']),
+                                   self._get_valid_payload())
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_can_change_customer_as_whole_if_he_is_staff(self):
         self.client.force_authenticate(user=self.users['staff'])
 
-        response = self.client.put(self.customer_url, self._get_valid_payload(self.customer))
+        response = self.client.put(self._get_customer_url(self.customers['owner']),
+                                   self._get_valid_payload())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+        response = self.client.put(self._get_customer_url(self.customers['inaccessible']),
+                                   self._get_valid_payload())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_change_single_customer_field_he_is_not_owner_of(self):
         self.client.force_authenticate(user=self.users['not_owner'])
 
-        payload = self._get_valid_payload(self.customer)
-
-        for field, value in payload.items():
-            data = {
-                field: value
-            }
-
-            response = self.client.patch(self.customer_url, data)
-
-            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self._check_single_customer_field_change_permission(self.customers['inaccessible'], status.HTTP_404_NOT_FOUND)
 
     def test_user_cannot_change_single_customer_field_he_is_owner_of(self):
         self.client.force_authenticate(user=self.users['owner'])
 
-        payload = self._get_valid_payload(self.customer)
-
-        for field, value in payload.items():
-            data = {
-                field: value
-            }
-
-            response = self.client.patch(self.customer_url, data)
-
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self._check_single_customer_field_change_permission(self.customers['owner'], status.HTTP_403_FORBIDDEN)
 
     def test_user_can_change_single_customer_field_if_he_is_staff(self):
         self.client.force_authenticate(user=self.users['staff'])
 
-        payload = self._get_valid_payload(self.customer)
+        self._check_single_customer_field_change_permission(self.customers['owner'], status.HTTP_200_OK)
 
-        for field, value in payload.items():
-            data = {
-                field: value
-            }
-
-            response = self.client.patch(self.customer_url, data)
-
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self._check_single_customer_field_change_permission(self.customers['inaccessible'], status.HTTP_200_OK)
 
     # Helper methods
     def _get_valid_payload(self, resource=None):
@@ -202,3 +186,14 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
             'abbreviation': resource.abbreviation,
             'contact_details': resource.contact_details,
         }
+
+    def _check_single_customer_field_change_permission(self, customer, status_code):
+        payload = self._get_valid_payload(customer)
+
+        for field, value in payload.items():
+            data = {
+                field: value
+            }
+
+            response = self.client.patch(self._get_customer_url(customer), data)
+            self.assertEqual(response.status_code, status_code)
