@@ -11,13 +11,6 @@ class IsAdminOrReadOnly(BasePermission):
         )
 
 
-class HasCustomer(BasePermission):
-
-    def has_permission(self, request, view):
-        # XXX: Fix this
-        return True
-
-
 class FilteredCollaboratorsPermissionLogic(PermissionLogic):
     """
     Permission logic class for collaborators based permission system
@@ -124,6 +117,59 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
         if obj is None:
             # object permission without obj should return True
             # Ref: https://code.djangoproject.com/wiki/RowLevelPermissions
+            return self.is_permission_allowed(perm)
+        elif user_obj.is_active:
+            kwargs = {
+                self.collaborators_query: user_obj,
+                'pk': obj.pk,
+            }
+            kwargs.update(self.collaborators_filter)
+
+            if obj._meta.model._default_manager.filter(**kwargs).exists():
+                return self.is_permission_allowed(perm)
+        return False
+
+
+class FilteredCustomersPermissionLogic(PermissionLogic):
+    """
+    Permission logic class for user/customer/project permission system
+    Please refer to FilteredCollaboratorsPermissionLogic for detailed
+    description.
+    """
+    def __init__(self,
+                 customers_query=None,
+                 customers_filter=None,
+                 any_permission=False,
+                 add_permission=False,
+                 change_permission=False,
+                 delete_permission=False):
+        self.customers_query = customers_query
+        self.customers_filter = customers_filter
+        self.any_permission = any_permission
+        self.add_permission = add_permission
+        self.change_permission = change_permission
+        self.delete_permission = delete_permission
+
+    def is_permission_allowed(self, perm):
+        add_permission = self.get_full_permission_string('add')
+        change_permission = self.get_full_permission_string('change')
+        delete_permission = self.get_full_permission_string('delete')
+
+        if self.any_permission:
+            return True
+        if self.add_permission and perm == add_permission:
+            return True
+        if self.change_permission and perm == change_permission:
+            return True
+        if self.delete_permission and perm == delete_permission:
+            return True
+        return False
+
+    def has_perm(self, user_obj, perm, obj=None):
+
+        if not user_obj.is_authenticated():
+            return False
+        if obj is None:
             return self.is_permission_allowed(perm)
         elif user_obj.is_active:
             kwargs = {

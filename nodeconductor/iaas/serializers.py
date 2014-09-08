@@ -17,15 +17,6 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
     def get_filtered_field_names(self):
         return 'project', 'flavor'
 
-    def get_fields(self):
-        fields = super(InstanceCreateSerializer, self).get_fields()
-
-        method = self.context['view'].request.method
-
-        if method in ('POST', 'PUT', 'PATCH'):
-            fields['customer'].read_only = True
-        return fields
-
 
 class InstanceSerializer(PermissionFieldFilteringMixin,
                          serializers.HyperlinkedModelSerializer):
