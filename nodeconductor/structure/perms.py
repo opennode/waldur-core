@@ -1,14 +1,6 @@
-from core.permissions import FilteredCollaboratorsOrStaffPermissionLogic
-from structure.models import CustomerRole
+from nodeconductor.core.permissions import StaffPermissionLogic
 
 
 PERMISSION_LOGICS = (
-    ('structure.Customer', FilteredCollaboratorsOrStaffPermissionLogic(
-        collaborators_query='roles__permission_group__user',
-        collaborators_filter={
-            'roles__role_type': CustomerRole.OWNER,
-        },
-
-        any_permission=True,
-    )),
+    ('structure.Customer',  StaffPermissionLogic(any_permission=True)),
 )

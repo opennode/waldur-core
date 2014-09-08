@@ -30,21 +30,7 @@ class BasicProjectGroupSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
 
 
-class CustomerSerializer(PermissionFieldFilteringMixin, serializers.HyperlinkedModelSerializer):
-    projects = ProjectSerializer(many=True, read_only=True)
-    project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
-
-    class Meta(object):
-        model = models.Customer
-        fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
-        read_only_fields = ('name', 'abbreviation', 'contact_details')
-        lookup_field = 'uuid'
-
-    def get_filtered_field_names(self):
-        return []
-
-
-class CustomerSerializerForStaff(PermissionFieldFilteringMixin, serializers.HyperlinkedModelSerializer):
+class CustomerSerializer(serializers.HyperlinkedModelSerializer):
     projects = ProjectSerializer(many=True, read_only=True)
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
 
@@ -52,9 +38,6 @@ class CustomerSerializerForStaff(PermissionFieldFilteringMixin, serializers.Hype
         model = models.Customer
         fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
-
-    def get_filtered_field_names(self):
-        return []
 
 
 class ProjectGroupSerializer(PermissionFieldFilteringMixin, serializers.HyperlinkedModelSerializer):

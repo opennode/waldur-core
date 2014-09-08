@@ -124,25 +124,18 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_user_cannot_delete_customer_if_he_is_staff(self):
+    def test_user_can_delete_customer_if_he_is_staff(self):
         self.client.force_authenticate(user=self.users['staff'])
 
         response = self.client.delete(self._get_customer_url(self.customers['owner']))
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
         response = self.client.delete(self._get_customer_url(self.customers['inaccessible']))
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     # Creation tests
-    def test_user_cannot_create_customer_he_is_not_owner_of(self):
+    def test_user_cannot_create_customer_if_he_is_not_staff(self):
         self.client.force_authenticate(user=self.users['not_owner'])
-
-        response = self.client.post(reverse('customer-list'), self._get_valid_payload())
-
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_user_cannot_create_customer_he_is_owner_of(self):
-        self.client.force_authenticate(user=self.users['owner'])
 
         response = self.client.post(reverse('customer-list'), self._get_valid_payload())
 
@@ -164,7 +157,7 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_user_cannot_change_customer_as_whole_he_is_owner_of(self):
+    def test_user_cannot_change_customer_he_is_owner_of(self):
         self.client.force_authenticate(user=self.users['owner'])
 
         response = self.client.put(self._get_customer_url(self.customers['owner']),
@@ -188,7 +181,7 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
         self._check_single_customer_field_change_permission(self.customers['inaccessible'], status.HTTP_404_NOT_FOUND)
 
-    def test_user_cannot_change_single_customer_field_he_is_owner_of(self):
+    def test_user_cannot_change_customer_field_he_is_owner_of(self):
         self.client.force_authenticate(user=self.users['owner'])
 
         self._check_single_customer_field_change_permission(self.customers['owner'], status.HTTP_403_FORBIDDEN)
