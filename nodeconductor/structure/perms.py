@@ -3,10 +3,10 @@ from nodeconductor.structure.models import ProjectRole
 
 
 PERMISSION_LOGICS = (
-    ('iaas.Instance', FilteredCollaboratorsPermissionLogic(
-        collaborators_query='project__roles__permission_group__user',
+    ('structure.Project', FilteredCollaboratorsPermissionLogic(
+        collaborators_query='customer',
         collaborators_filter={
-            'project__roles__role_type': ProjectRole.ADMINISTRATOR,
+            'roles__role_type': ProjectRole.ADMINISTRATOR,
         },
 
         any_permission=True,

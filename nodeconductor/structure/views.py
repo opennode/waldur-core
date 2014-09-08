@@ -27,6 +27,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectSerializer
     filter_backends = (filters.GenericRoleFilter,)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
 
     def get_serializer_class(self):
         if self.request.method in ('POST', 'PUT', 'PATCH'):
