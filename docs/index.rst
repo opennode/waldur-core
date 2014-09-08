@@ -27,6 +27,7 @@ Topics
 
    structure
    groups
+   authentication
    templates
    orchestration
 

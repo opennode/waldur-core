@@ -27,6 +27,7 @@ urlpatterns = patterns(
     '',
     url(r'^admin/', include(admin.site.urls), name='admin'),
     url(r'^api/', include(router.urls)),
+    url(r'^api-auth/password/', 'nodeconductor.core.views.obtain_auth_token'),
     url(r'^api-auth/', include('rest_framework.urls',
                                namespace='rest_framework')),
 

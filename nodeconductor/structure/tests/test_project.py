@@ -43,6 +43,7 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
             'admin': factories.UserFactory(),
             'manager': factories.UserFactory(),
             'no_role': factories.UserFactory(),
+            'multirole': factories.UserFactory(),
         }
 
         self.projects = {
@@ -54,6 +55,9 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
         
         self.projects['admin'].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         self.projects['manager'].add_user(self.users['manager'], ProjectRole.MANAGER)
+
+        self.projects['admin'].add_user(self.users['multirole'], ProjectRole.ADMINISTRATOR)
+        self.projects['manager'].add_user(self.users['multirole'], ProjectRole.MANAGER)
 
         self.projects['owner'].customer.add_user(self.users['owner'], CustomerRole.OWNER)
 
@@ -90,6 +94,17 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
     def test_user_cannot_list_projects_he_has_no_role_in(self):
         for user_role, project in self.forbidden_combinations:
             self._ensure_list_access_forbidden(user_role, project)
+
+    def test_user_can_filter_by_projects_where_he_has_manager_role(self):
+        self.client.force_authenticate(user=self.users['multirole'])
+        response = self.client.get(reverse('project-list') + '?can_manage')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        managed_project_url = self._get_project_url(self.projects['manager'])
+        administrated_project_url = self._get_project_url(self.projects['admin'])
+
+        self.assertIn(managed_project_url, [resource['url'] for resource in response.data])
+        self.assertNotIn(administrated_project_url, [resource['url'] for resource in response.data])
 
     # Direct instance access tests
     def test_anonymous_user_cannot_access_project(self):
@@ -152,14 +167,18 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
-class CustomerOwnerManipulationTest(test.APISimpleTestCase):
+class CustomerOwnerManipulationTest(test.APITransactionTestCase):
     def setUp(self):
         self.user = factories.UserFactory()
         self.client.force_authenticate(user=self.user)
 
+        self.customer = factories.CustomerFactory()
+        self.customer.add_user(self.user, CustomerRole.OWNER)
+        self.foreign_customer = factories.CustomerFactory()
+
         self.projects = {
-            'accessible': factories.ProjectFactory(),
-            'inaccessible': factories.ProjectFactory(),
+            'accessible': factories.ProjectFactory(customer=self.customer),
+            'inaccessible': factories.ProjectFactory(customer=self.foreign_customer),
         }
         self.project_urls = {
             'accessible': reverse('project-detail',
@@ -167,12 +186,9 @@ class CustomerOwnerManipulationTest(test.APISimpleTestCase):
             'inaccessible': reverse('project-detail',
                                     kwargs={'uuid': self.projects['inaccessible'].uuid}),
         }
-        self.customer = factories.CustomerFactory()
-        self.customer.add_user(self.user, CustomerRole.OWNER)
-        self.foreign_customer = factories.CustomerFactory()
-        self.projects['accessible'].add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-    def test_owner_can_delete_project(self):
+
+    def test_user_can_delete_project_belonging_to_the_customer_he_owns(self):
         response = self.client.delete(self.project_urls['accessible'])
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
@@ -185,12 +201,12 @@ class CustomerOwnerManipulationTest(test.APISimpleTestCase):
                                     self._get_valid_project_payload(self.projects['accessible']))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_create_project_for_not_connected_customer(self):
+    def test_user_cannot_create_project_for_customer_he_doesnt_own(self):
         response = self.client.post(reverse('project-list'),
                                     self._get_valid_project_payload(self.projects['inaccessible']))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_user_can_change_single_project_field_for_owned_customer_project(self):
+    def test_user_can_change_single_project_field_for_project_belonging_to_customer_he_owns(self):
         response = self.client.patch(self._get_project_url(self.projects['accessible']),
                                      {'name': 'New project name'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
