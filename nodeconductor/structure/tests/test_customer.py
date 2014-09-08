@@ -56,7 +56,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
 
         self._check_user_list_access_customers(self.customers['owned'], 'assertIn')
 
-        self._check_user_list_access_customers(self.customers['inaccessible'], 'assertNotIn')
+        self._check_user_list_access_customers(self.customers['inaccessible'], 'assertIn')
 
     # Direct instance access tests
     def test_user_can_access_customers_he_is_owner_of(self):
@@ -65,7 +65,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         self._check_user_direct_access_customer(self.customers['owned'], status.HTTP_200_OK)
 
     def test_user_cannot_access_customers_he_is_not_owner_of(self):
-        self.client.force_authenticate(user=self.users['owner'])
+        self.client.force_authenticate(user=self.users['not_owner'])
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self._check_user_direct_access_customer(self.customers['inaccessible'], status.HTTP_404_NOT_FOUND)
 

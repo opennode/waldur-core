@@ -20,6 +20,14 @@ class CustomerViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     serializer_class = serializers.CustomerSerializer
     filter_backends = (filters.GenericRoleFilter,)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
+
+    def get_serializer_class(self):
+        if self.request.method in ('POST', 'PUT', 'PATCH') and self.request.user.is_staff:
+            return serializers.CustomerSerializerForStaff
+
+        return super(CustomerViewSet, self).get_serializer_class()
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
