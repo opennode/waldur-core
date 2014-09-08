@@ -42,6 +42,9 @@ def filter_queryset_for_user(queryset, user):
 
         return Q(**kwargs)
 
+    if user.is_staff:
+        return queryset
+    
     try:
         permissions = queryset.model.Permissions
     except AttributeError:
