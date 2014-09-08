@@ -22,6 +22,8 @@ class CustomerViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     serializer_class = serializers.CustomerSerializer
     filter_backends = (filters.GenericRoleFilter,)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
 
 
 class ProjectViewSet(viewsets.ModelViewSet):

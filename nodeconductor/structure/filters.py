@@ -20,6 +20,9 @@ def filter_queryset_for_user(queryset, user):
     nc = getattr(settings, 'NODE_CONDUCTOR', {})
     filtered_relations = nc.get('FILTERED_RELATIONS', ())
 
+    if user.is_staff:
+        return queryset
+
     def create_q(entity):
         try:
             path = getattr(permissions, '%s_path' % entity)
