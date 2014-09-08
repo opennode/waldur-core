@@ -27,6 +27,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectSerializer
     filter_backends = (filters.GenericRoleFilter,)
+    # XXX: Fix this
+    # permission_classes = (permissions.HasCustomer,)
+
+    def get_serializer_class(self):
+        if self.request.method in ('POST', 'PUT', 'PATCH'):
+            return serializers.ProjectCreateSerializer
+        return super(ProjectViewSet, self).get_serializer_class()
 
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):

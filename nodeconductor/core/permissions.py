@@ -11,6 +11,13 @@ class IsAdminOrReadOnly(BasePermission):
         )
 
 
+class HasCustomer(BasePermission):
+
+    def has_permission(self, request, view):
+        # XXX: Fix this
+        return True
+
+
 class FilteredCollaboratorsPermissionLogic(PermissionLogic):
     """
     Permission logic class for collaborators based permission system

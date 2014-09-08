@@ -20,6 +20,18 @@ class ProjectSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('url', 'name', 'customer', 'customer_name')
         lookup_field = 'uuid'
 
+
+class ProjectCreateSerializer(PermissionFieldFilteringMixin,
+                              serializers.HyperlinkedModelSerializer):
+    class Meta():
+        model = models.Project
+        fields = ('name', 'customer')
+        lookup_field = 'uuid'
+
+    def get_filtered_field_names(self):
+        return ('customer',)
+
+
 class BasicProjectGroupSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):

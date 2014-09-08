@@ -170,7 +170,7 @@ class CustomerOwnerManipulationTest(test.APISimpleTestCase):
         self.customer = factories.CustomerFactory()
         self.customer.add_user(self.user, CustomerRole.OWNER)
         self.foreign_customer = factories.CustomerFactory()
-        self.projects['accessible'].add_user(self.user, ProjectRole.MANAGER)
+        self.projects['accessible'].add_user(self.user, ProjectRole.ADMINISTRATOR)
 
     def test_owner_can_delete_project(self):
         response = self.client.delete(self.project_urls['accessible'])
@@ -194,8 +194,9 @@ class CustomerOwnerManipulationTest(test.APISimpleTestCase):
         response = self.client.patch(self._get_project_url(self.projects['accessible']),
                                      {'name': 'New project name'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('New project name', response.data['name'])
 
-    def test_user_cant_change_single_project_field_for_non_customer(self):
+    def test_user_cant_change_single_project_field_for_not_connected_customer(self):
         response = self.client.patch(self._get_project_url(self.projects['inaccessible']),
                                      {'name': 'New project name'})
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
