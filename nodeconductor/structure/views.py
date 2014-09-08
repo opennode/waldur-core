@@ -45,6 +45,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    def get_serializer_class(self):
+        if self.request.method in ('POST', 'PUT', 'PATCH'):
+            return serializers.ProjectCreateSerializer
+
+        return super(ProjectViewSet, self).get_serializer_class()
+
+
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
     model = models.ProjectGroup

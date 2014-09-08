@@ -25,7 +25,7 @@ class ProjectRoleTest(TestCase):
                         'Manager role should have been created')
 
 
-class ProjectApiPermissionTest(test.APISimpleTestCase):
+class ProjectApiPermissionTest(test.APITransactionTestCase):
     forbidden_combinations = (
         # User role, Project
         ('admin', 'manager'),
@@ -68,14 +68,6 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
             project = factories.ProjectFactory(customer=old_project.customer)
             response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    @unittest.skip('Not implemented yet')
-    def test_user_cannot_create_project_in_customer_he_doesnt_own(self):
-        pass
-
-    @unittest.skip('Not implemented yet')
-    def test_user_can_create_project_in_customer_he_owns(self):
-        pass
 
     # List filtration tests
     def test_anonymous_user_cannot_list_projects(self):
@@ -167,7 +159,7 @@ class ProjectApiPermissionTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
-class CustomerOwnerManipulationTest(test.APITransactionTestCase):
+class ProjectManipulationTest(test.APITransactionTestCase):
     def setUp(self):
         self.user = factories.UserFactory()
         self.client.force_authenticate(user=self.user)
@@ -204,7 +196,8 @@ class CustomerOwnerManipulationTest(test.APITransactionTestCase):
     def test_user_cannot_create_project_for_customer_he_doesnt_own(self):
         response = self.client.post(reverse('project-list'),
                                     self._get_valid_project_payload(self.projects['inaccessible']))
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # a reference to the invisible customer will be treated as a bad request link
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_user_can_change_single_project_field_for_project_belonging_to_customer_he_owns(self):
         response = self.client.patch(self._get_project_url(self.projects['accessible']),
@@ -228,39 +221,3 @@ class CustomerOwnerManipulationTest(test.APITransactionTestCase):
     def _get_project_url(self, project):
         return 'http://testserver' + reverse('project-detail',
                                              kwargs={'uuid': project.uuid})
-
-
-@unittest.skip('Needs to be revised, see NC-82')
-class ProjectManipulationTest(test.APISimpleTestCase):
-    def setUp(self):
-        self.user = factories.UserFactory()
-        self.client.force_authenticate(user=self.user)
-
-        self.project = factories.ProjectFactory()
-        self.project_url = reverse('project-detail', kwargs={'uuid': self.project.uuid})
-
-    def test_cannot_delete_project(self):
-        response = self.client.delete(self.project_url)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_cannot_change_project_as_whole(self):
-        response = self.client.put(self.project_url, self._get_valid_payload(self.project))
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_cannot_change_single_project_field(self):
-        data = {
-            'name': self.project.name,
-        }
-
-        response = self.client.patch(self.project_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def _get_valid_payload(self, resource=None):
-        resource = resource or factories.ProjectFactory()
-        return {
-            'name': resource.name,
-            'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
-        }
