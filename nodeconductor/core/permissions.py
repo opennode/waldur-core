@@ -3,7 +3,6 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
 class IsAdminOrReadOnly(BasePermission):
-
     def has_permission(self, request, view):
         return (
             request.method in SAFE_METHODS or
@@ -15,6 +14,7 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
     """
     Permission logic class for collaborators based permission system
     """
+
     def __init__(self,
                  collaborators_query=None,
                  collaborators_filter=None,
@@ -130,26 +130,8 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
         return False
 
 
-class FilteredCollaboratorsOrAdminPermissionLogic(FilteredCollaboratorsPermissionLogic):
+class FilteredCollaboratorsOrStaffPermissionLogic(FilteredCollaboratorsPermissionLogic):
     def has_perm(self, user_obj, perm, obj=None):
-        if not user_obj.is_authenticated():
-            return False
-        # construct the permission full name
-        if obj is None:
-            # object permission without obj should return True
-            # Ref: https://code.djangoproject.com/wiki/RowLevelPermissions
-            return self.is_permission_allowed(perm)
-        elif user_obj.is_active:
-            
-            if user_obj.is_staff:
-                return True
-
-            kwargs = {
-                self.collaborators_query: user_obj,
-                'pk': obj.pk,
-            }
-            kwargs.update(self.collaborators_filter)
-
-            if obj._meta.model._default_manager.filter(**kwargs).exists():
-                return self.is_permission_allowed(perm)
-        return False
+        if user_obj.is_staff:
+            return True
+        return super(FilteredCollaboratorsOrStaffPermissionLogic, self).has_perm(user_obj, perm, obj)
