@@ -32,16 +32,14 @@ class ProjectSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class ProjectCreateSerializer(PermissionFieldFilteringMixin,
-                               serializers.HyperlinkedModelSerializer):
+                              serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Project
         fields = ('url', 'name', 'customer')
         lookup_field = 'uuid'
-        # TODO: Accept ip address count and volumes
 
     def get_filtered_field_names(self):
         return 'customer',
-
 
 
 class CustomerSerializer(serializers.HyperlinkedModelSerializer):
