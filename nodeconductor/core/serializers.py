@@ -11,8 +11,8 @@ class AuthTokenSerializer(serializers.Serializer):
     Api token serializer loosely based on DRF's default AuthTokenSerializer,
     but with the response text and aligned with BasicAuthentication behavior.
     """
-    username = serializers.CharField(required=True, blank=False)
-    password = serializers.CharField(required=True, blank=False)
+    username = serializers.CharField(required=True)
+    password = serializers.CharField(required=True)
 
     def validate(self, attrs):
         # Since the fields are both required and non-blank
