@@ -1,6 +1,6 @@
 from nodeconductor.core.permissions import StaffPermissionLogic
 from nodeconductor.core.permissions import FilteredCollaboratorsPermissionLogic
-from nodeconductor.structure.models import ProjectRole, CustomerRole
+from nodeconductor.structure.models import CustomerRole
 
 
 PERMISSION_LOGICS = (

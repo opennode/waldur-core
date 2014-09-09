@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-import unittest
-
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 from rest_framework import status
@@ -179,12 +177,11 @@ class ProjectManipulationTest(test.APITransactionTestCase):
                                     kwargs={'uuid': self.projects['inaccessible'].uuid}),
         }
 
-
     def test_user_can_delete_project_belonging_to_the_customer_he_owns(self):
         response = self.client.delete(self.project_urls['accessible'])
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-    def test_user_can_not_delete_project_that_does_not_belong_to_owned_customer(self):
+    def test_user_cannot_delete_project_that_does_not_belong_to_owned_customer(self):
         response = self.client.delete(self.project_urls['inaccessible'])
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -205,7 +202,7 @@ class ProjectManipulationTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('New project name', response.data['name'])
 
-    def test_user_cant_change_single_project_field_for_not_connected_customer(self):
+    def test_user_cannot_change_single_project_field_for_not_connected_customer(self):
         response = self.client.patch(self._get_project_url(self.projects['inaccessible']),
                                      {'name': 'New project name'})
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

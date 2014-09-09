@@ -52,7 +52,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return super(ProjectViewSet, self).get_serializer_class()
 
 
-
 class ProjectGroupViewSet(viewsets.ModelViewSet):
     model = models.ProjectGroup
     lookup_field = 'uuid'
