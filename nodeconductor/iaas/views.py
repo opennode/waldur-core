@@ -14,7 +14,7 @@ from nodeconductor.structure import filters
 
 class InstanceViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
-                      mixins.ListModelMixin,
+                      core_mixins.ListModelMixin,
                       core_mixins.UpdateOnlyModelMixin,
                       viewsets.GenericViewSet):
     model = models.Instance
@@ -30,7 +30,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         return super(InstanceViewSet, self).get_serializer_class()
 
 
-class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
+class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
     model = models.Template
     serializer_class = serializers.TemplateSerializer
     lookup_field = 'uuid'
@@ -45,7 +45,7 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
         key.user = self.request.user
 
 
-class PurchaseViewSet(viewsets.ReadOnlyModelViewSet):
+class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
     model = models.Purchase
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'

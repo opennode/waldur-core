@@ -31,6 +31,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
 
     'rest_framework',
+    'rest_framework.authtoken',
     'south',
     'background_task',
 
@@ -50,13 +51,17 @@ MIDDLEWARE_CLASSES = (
 REST_FRAMEWORK = {
     'TEST_REQUEST_DEFAULT_FORMAT': 'json',
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_MODEL_SERIALIZER_CLASS': 'rest_framework.serializers.HyperlinkedModelSerializer',
+    'DEFAULT_FILTER_BACKENDS': ('rest_framework.filters.DjangoFilterBackend',),
+    'PAGINATE_BY_PARAM': 'page_size',
+    'MAX_PAGINATE_BY': 100,
+    'PAGINATE_BY': 10
 }
 
 AUTHENTICATION_BACKENDS = (

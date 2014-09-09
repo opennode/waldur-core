@@ -12,13 +12,6 @@ from nodeconductor.structure import models
 
 User = auth.get_user_model()
 
-class ProjectSerializer(serializers.HyperlinkedModelSerializer):
-    customer_name = serializers.Field(source='customer.name')
-
-    class Meta(object):
-        model = models.Project
-        fields = ('url', 'name', 'customer', 'customer_name')
-        lookup_field = 'uuid'
 
 class BasicProjectGroupSerializer(serializers.HyperlinkedModelSerializer):
 
@@ -26,6 +19,27 @@ class BasicProjectGroupSerializer(serializers.HyperlinkedModelSerializer):
         model = models.ProjectGroup
         fields = ('url', 'name', 'customer')
         lookup_field = 'uuid'
+
+
+class ProjectSerializer(serializers.HyperlinkedModelSerializer):
+    customer_name = serializers.Field(source='customer.name')
+    project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
+
+    class Meta(object):
+        model = models.Project
+        fields = ('url', 'name', 'customer', 'customer_name', 'project_groups')
+        lookup_field = 'uuid'
+
+
+class ProjectCreateSerializer(PermissionFieldFilteringMixin,
+                              serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = models.Project
+        fields = ('url', 'name', 'customer')
+        lookup_field = 'uuid'
+
+    def get_filtered_field_names(self):
+        return 'customer',
 
 
 class CustomerSerializer(serializers.HyperlinkedModelSerializer):

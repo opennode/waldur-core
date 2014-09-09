@@ -1,12 +1,14 @@
 from __future__ import unicode_literals
 
 from django.contrib import auth
+import django_filters
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import viewsets as rf_viewsets
 
 from nodeconductor.core import permissions
 from nodeconductor.core import viewsets
+from nodeconductor.core import mixins
 from nodeconductor.structure import filters
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
@@ -20,6 +22,8 @@ class CustomerViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     serializer_class = serializers.CustomerSerializer
     filter_backends = (filters.GenericRoleFilter,)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -27,6 +31,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectSerializer
     filter_backends = (filters.GenericRoleFilter,)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = super(ProjectViewSet, self).get_queryset()
+
+        can_manage = self.request.QUERY_PARAMS.get('can_manage', None)
+        if can_manage is not None:
+            queryset = queryset.filter(roles__permission_group__user=user,
+                                       roles__role_type=models.ProjectRole.MANAGER).distinct()
+
+        return queryset
+
+    def get_serializer_class(self):
+        if self.request.method in ('POST', 'PUT', 'PATCH'):
+            return serializers.ProjectCreateSerializer
+
+        return super(ProjectViewSet, self).get_serializer_class()
 
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
@@ -40,7 +63,7 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
 class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.RetrieveModelMixin,
                                     rf_mixins.DestroyModelMixin,
-                                    rf_mixins.ListModelMixin,
+                                    mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
     model = models.ProjectGroup.projects.through
     serializer_class = serializers.ProjectGroupMembershipSerializer
@@ -53,11 +76,38 @@ filters.set_permissions_for_model(
 )
 
 
+class UserFilter(django_filters.FilterSet):
+    project_group = django_filters.CharFilter(
+        name='groups__projectrole__project__project_groups__name',
+        distinct=True,
+    )
+    project = django_filters.CharFilter(
+        name='groups__projectrole__project__name',
+        distinct=True,
+    )
+
+    class Meta(object):
+        model = User
+        fields = [
+            'first_name',
+            'last_name',
+            'alternative_name',
+            'organization',
+            'email',
+            'phone_number',
+            'description',
+            'job_title',
+            'project',
+            'project_group',
+        ]
+
+
 class UserViewSet(viewsets.ModelViewSet):
     model = User
     lookup_field = 'uuid'
     serializer_class = serializers.UserSerializer
     permission_classes = (rf_permissions.IsAuthenticated, permissions.IsAdminOrReadOnly)
+    filter_class = UserFilter
 
     def get_queryset(self):
         user = self.request.user
@@ -95,6 +145,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
         user_uuid = self.request.QUERY_PARAMS.get('user', None)
         if user_uuid is not None:
             queryset = queryset.filter(user__uuid=user_uuid)
+
         return queryset
 
     def get_serializer_class(self):
