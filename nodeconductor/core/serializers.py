@@ -1,3 +1,5 @@
+import base64
+
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 
@@ -29,6 +31,19 @@ class AuthTokenSerializer(serializers.Serializer):
         attrs['user'] = user
 
         return attrs
+
+
+class Base64Field(serializers.CharField):
+    def from_native(self, value):
+        value = super(Base64Field, self).from_native(value)
+        try:
+            return base64.b64decode(value)
+        except TypeError:
+            raise serializers.ValidationError("Enter valid Base64 encoded string.")
+
+    def to_native(self, value):
+        value = super(Base64Field, self).to_native(value)
+        return base64.b64encode(value)
 
 
 class PermissionFieldFilteringMixin(object):
