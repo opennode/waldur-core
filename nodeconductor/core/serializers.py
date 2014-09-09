@@ -46,6 +46,10 @@ class Base64Field(serializers.CharField):
         return base64.b64encode(value)
 
 
+class Saml2ResponseSerializer(serializers.Serializer):
+    saml2response = Base64Field(required=True)
+
+
 class PermissionFieldFilteringMixin(object):
     """
     Mixin allowing to filter related fields.

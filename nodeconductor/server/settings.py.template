@@ -75,3 +75,72 @@ STATIC_ROOT = '{{ static_root }}'
 # Cache group memberships for an 10 mins to minimize LDAP traffic
 #AUTH_LDAP_CACHE_GROUPS = True
 #AUTH_LDAP_GROUP_CACHE_TIMEOUT = 600
+
+# SAML2 settings
+SAML_CONFIG = {
+    # full path to the xmlsec1 binary program
+    'xmlsec_binary': '/usr/bin/xmlsec1',
+
+    # your entity id, usually your subdomain plus the url to the metadata view
+    'entityid': 'saml-sp2',
+
+    # directory with attribute mapping
+    'attribute_map_dir': '/path/to/attribute-maps',
+
+    # this block states what services we provide
+    'service': {
+        # we are just a lonely SP
+        'sp': {
+            'endpoints': {
+                # url and binding to the assertion consumer service view
+                # do not change the binding or service name
+                'assertion_consumer_service': [
+                    ('http://sp.domain/saml2/acs/', saml2.BINDING_HTTP_POST),
+                ],
+            },
+            'allow_unsolicited': True,  # NOTE: This is the cornerstone! Never set to False
+
+            # attributes that this project needs to identify a user
+            'required_attributes': [
+                'omanIDCivilNumber',
+            ],
+
+            # attributes that may be useful to have but not required
+            'optional_attributes': [
+                'omancardTitleFullNameEn',
+                'omancardTitleFullNameAr',
+            ],
+        },
+    },
+
+    # where the remote metadata is stored
+    'metadata': {
+        'local': [
+            '/path/to/idp/on-disk/metadata.xml'),
+        ],
+        # OR
+        # 'remote': [
+        #     {
+        #         "url": "https://idp.domain/path/to/online/metadata",
+        #         "cert": "/path/to/on-disk/certificate.crt",
+        #     },
+        # ],
+    },
+
+    # set to 1 to output debugging information
+    'debug': 0,
+
+    # These following files are dummies
+    # They are supposed to be valid, but are not really used.
+    # They are only used to make PySAML2 happy.
+    'key_file': '/path/to/key.pem',   # private part
+    'cert_file': '/path/to/certificate.crt',  # public part
+}
+
+SAML_DJANGO_USER_MAIN_ATTRIBUTE = 'civil_number'
+
+SAML_ATTRIBUTE_MAPPING = {
+    'omanIDCivilNumber': ('username', 'civil_number'),
+    'omancardTitleFullNameEn': ('first_name', ),
+    'omancardTitleFullNameAr': ('alternative_name', ),
+}
