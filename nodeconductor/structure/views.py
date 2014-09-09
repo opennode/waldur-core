@@ -31,6 +31,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectSerializer
     filter_backends = (filters.GenericRoleFilter,)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
 
     def get_queryset(self):
         user = self.request.user
@@ -42,6 +44,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
                                        roles__role_type=models.ProjectRole.MANAGER).distinct()
 
         return queryset
+
+    def get_serializer_class(self):
+        if self.request.method in ('POST', 'PUT', 'PATCH'):
+            return serializers.ProjectCreateSerializer
+
+        return super(ProjectViewSet, self).get_serializer_class()
 
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
