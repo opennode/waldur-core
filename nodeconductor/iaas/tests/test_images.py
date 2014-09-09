@@ -53,17 +53,11 @@ class ImagesApiPermissionTest(test.APISimpleTestCase):
         image_url = self._get_image_url(self.images['manager'])
         self.assertIn(image_url, [image['url'] for image in response.data])
 
-    def test_user_cannot_list_images_project_he_has_no_role_in(self):
+    def test_user_cannot_list_images_of_project_he_has_no_role_in(self):
         inaccessible_project = structure_factories.ProjectFactory()
         inaccessible_project.clouds.add(self.images['inaccessible'].cloud)
 
-        self.client.force_authenticate(user=self.users['no_role'])
-
-        response = self.client.get(reverse('image-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        image_url = self._get_image_url(self.images['inaccessible'])
-        self.assertNotIn(image_url, [image['url'] for image in response.data])
+        self._ensure_list_access_forbidden(self.users['no_role'], 'inaccessible')
 
     def test_user_cannot_list_images_not_allowed_for_any_project(self):
         for user in self.users.values():
@@ -90,10 +84,7 @@ class ImagesApiPermissionTest(test.APISimpleTestCase):
         inaccessible_project = structure_factories.ProjectFactory()
         inaccessible_project.clouds.add(self.images['inaccessible'].cloud)
 
-        self.client.force_authenticate(user=self.users['no_role'])
-
-        response = self.client.get(self._get_image_url(self.images['inaccessible']))
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self._ensure_direct_access_forbidden(self.users['no_role'], 'inaccessible')
 
     def test_user_cannot_access_image_not_allowed_for_any_project(self):
         for user_role in self.users.values():

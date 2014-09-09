@@ -52,7 +52,7 @@ class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
     filter_backends = (filters.GenericRoleFilter,)
 
 
-class ImageViewSet(viewsets.ReadOnlyModelViewSet):
+class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
     model = models.Image
     serializer_class = serializers.ImageSerializer
     lookup_field = 'uuid'
