@@ -61,3 +61,15 @@ class PurchaseSerializer(serializers.HyperlinkedModelSerializer):
         model = models.Purchase
         fields = ('url', 'date', 'user', 'customer', 'project')
         lookup_field = 'uuid'
+
+
+class ImageSerializer(PermissionFieldFilteringMixin,
+                      serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = models.Image
+        fields = ('url', 'name', 'cloud', 'description',
+                  'architecture', 'license_type')
+        lookup_field = 'uuid'
+
+    def get_filtered_field_names(self):
+        return 'cloud',

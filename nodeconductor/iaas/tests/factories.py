@@ -34,3 +34,12 @@ class PurchaseFactory(factory.DjangoModelFactory):
     project = factory.SubFactory(structure_factories.ProjectFactory)
 
 
+class ImageFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.Image
+
+    name = factory.Sequence(lambda n: 'image%s' % n)
+    cloud = factory.SubFactory(cloud_factories.CloudFactory)
+    architecture = factory.Iterator(models.Image.ARCHITECTURE_CHOICES, getter=lambda c: c[0])
+    description = factory.Sequence(lambda n: 'description%s' % n)
+    license_type = factory.Sequence(lambda n: 'license type%s' % n)

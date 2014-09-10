@@ -50,3 +50,10 @@ class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter,)
+
+
+class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
+    model = models.Image
+    serializer_class = serializers.ImageSerializer
+    lookup_field = 'uuid'
+    filter_backends = (filters.GenericRoleFilter,)
