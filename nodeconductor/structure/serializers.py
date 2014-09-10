@@ -12,13 +12,6 @@ from nodeconductor.structure import models
 
 User = auth.get_user_model()
 
-class ProjectSerializer(serializers.HyperlinkedModelSerializer):
-    customer_name = serializers.Field(source='customer.name')
-
-    class Meta(object):
-        model = models.Project
-        fields = ('url', 'name', 'customer', 'customer_name')
-        lookup_field = 'uuid'
 
 class BasicProjectGroupSerializer(serializers.HyperlinkedModelSerializer):
 
@@ -26,6 +19,27 @@ class BasicProjectGroupSerializer(serializers.HyperlinkedModelSerializer):
         model = models.ProjectGroup
         fields = ('url', 'name', 'customer')
         lookup_field = 'uuid'
+
+
+class ProjectSerializer(serializers.HyperlinkedModelSerializer):
+    customer_name = serializers.Field(source='customer.name')
+    project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
+
+    class Meta(object):
+        model = models.Project
+        fields = ('url', 'name', 'customer', 'customer_name', 'project_groups')
+        lookup_field = 'uuid'
+
+
+class ProjectCreateSerializer(PermissionFieldFilteringMixin,
+                              serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = models.Project
+        fields = ('url', 'name', 'customer')
+        lookup_field = 'uuid'
+
+    def get_filtered_field_names(self):
+        return 'customer',
 
 
 class CustomerSerializer(serializers.HyperlinkedModelSerializer):
@@ -51,6 +65,7 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin, serializers.Hyperlin
         return 'customer',
 
     def get_fields(self):
+        # TODO: Extract to a proper mixin
         fields = super(ProjectGroupSerializer, self).get_fields()
 
         try:
@@ -77,7 +92,7 @@ class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin, serializer
         view_name = 'projectgroup_membership-detail'
 
     def get_filtered_field_names(self):
-        return 'project',
+        return 'project', 'project_group'
 
 
 class ProjectRoleField(serializers.ChoiceField):
@@ -154,6 +169,7 @@ class ProjectPermissionWriteSerializer(serializers.Serializer):
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField('user_projects_roles')
+    email = serializers.EmailField()
 
     def user_projects_roles(self, obj):
         user_groups = obj.groups.through.objects.exclude(group__projectrole__project=None)
@@ -172,5 +188,6 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = User
         fields = ('url', 'uuid', 'username', 'first_name', 'last_name', 'alternative_name', 'job_title', 'email',
-                  'civil_number', 'phone_number', 'description', 'is_staff')
+                  'civil_number', 'phone_number', 'description', 'is_staff', 'organization', 'projects')
+        read_only_fields = ('uuid', 'is_staff')
         lookup_field = 'uuid'

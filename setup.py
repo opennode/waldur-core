@@ -15,14 +15,15 @@ tests_requires = [
 install_requires = [
     'Django>=1.6.5,<1.7',
     'djangorestframework>=2.3.12,<2.4.0',
-    'django-guardian>=1.2.4,<1.3.0',
     'South==0.8.4',
     'logan==0.5.9.1',
     'django-background-task==0.1.6',
-    'django-fsm==2.1.0',
+    'django-fsm==2.2.0',
     'django-uuidfield==0.5.0',
     'django-taggit==0.12',
-    'django-auth-ldap==1.2.0'
+    'django-permission==0.8.2',
+    'django-auth-ldap==1.2.0',
+    'django-filter==0.7',
 ]
 
 

@@ -1,19 +1,19 @@
-from rest_framework import filters
-from rest_framework import viewsets
-
+from nodeconductor.core import viewsets
 from nodeconductor.cloud import models
 from nodeconductor.cloud import serializers
+from nodeconductor.structure import filters
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.Flavor.objects.all()
+    model = models.Flavor
     serializer_class = serializers.FlavorSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    filter_backends = (filters.GenericRoleFilter,)
 
 
 class CloudViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.Cloud.objects.all()
+    model = models.Cloud
     serializer_class = serializers.CloudSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    filter_backends = (filters.GenericRoleFilter,)
+

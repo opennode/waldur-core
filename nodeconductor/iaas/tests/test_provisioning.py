@@ -25,7 +25,7 @@ class UrlResolverMixin(object):
         return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
 
 
-class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
+class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory.create()
 
@@ -233,7 +233,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
 # XXX: What should happen to existing instances when their project is removed?
 
 
-class InstanceProvisioningTest(UrlResolverMixin, test.APISimpleTestCase):
+class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory.create()
         self.client.force_authenticate(user=self.user)

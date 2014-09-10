@@ -31,9 +31,11 @@ INSTALLED_APPS = (
     'django.contrib.admin',
 
     'rest_framework',
+    'rest_framework.authtoken',
     'south',
     'background_task',
-    'guardian',
+
+    'permission',
     'taggit'
 )
 
@@ -49,19 +51,22 @@ MIDDLEWARE_CLASSES = (
 REST_FRAMEWORK = {
     'TEST_REQUEST_DEFAULT_FORMAT': 'json',
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-        'nodeconductor.core.permissions.DjangoObjectLevelPermissions',
     ),
     'DEFAULT_MODEL_SERIALIZER_CLASS': 'rest_framework.serializers.HyperlinkedModelSerializer',
+    'DEFAULT_FILTER_BACKENDS': ('rest_framework.filters.DjangoFilterBackend',),
+    'PAGINATE_BY_PARAM': 'page_size',
+    'MAX_PAGINATE_BY': 100,
+    'PAGINATE_BY': 10
 }
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    'guardian.backends.ObjectPermissionBackend',
+    'permission.backends.PermissionBackend',
 )
 
 ANONYMOUS_USER_ID = None
@@ -97,3 +102,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATIC_URL = '/static/'
+
+NODE_CONDUCTOR = {
+    'FILTERED_RELATIONS': ('customer', 'project'),
+}

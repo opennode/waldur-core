@@ -1,7 +1,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.1.0dev
-Release: 16
+Release: 18
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: logrotate
@@ -16,7 +16,6 @@ Requires: python-logan = 0.5.9.1
 Requires: python-setuptools
 Requires: python-south = 0.8.4
 Requires: python-django-auth-ldap >= 1.2.0
-Requires: python-django-guardian >= 1.2.4
 Requires: python-six >= 1.7.3
 
 Source0: %{name}-%{version}.tar.gz
@@ -86,6 +85,16 @@ nodeconductor migrate
 nodeconductor collectstatic --noinput
 
 %changelog
+* Thu Sep 4 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-18
+- Added filtering for User list
+- Added pagination for all the views
+- Changed default authentication schema to token-based
+- Bugfixes
+
+* Wed Aug 27 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-17
+- Further improvements to user management
+- Customer write operations
+
 * Mon Aug 25 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-16
 - Extended user display in REST
 - Added project group membership management in REST

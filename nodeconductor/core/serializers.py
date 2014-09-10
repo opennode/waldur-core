@@ -1,4 +1,34 @@
-from guardian.shortcuts import get_objects_for_user
+from django.contrib.auth import authenticate
+from rest_framework import serializers
+
+from nodeconductor.structure.filters import filter_queryset_for_user
+
+
+class AuthTokenSerializer(serializers.Serializer):
+    """
+    Api token serializer loosely based on DRF's default AuthTokenSerializer,
+    but with the response text and aligned with BasicAuthentication behavior.
+    """
+    username = serializers.CharField(required=True, blank=False)
+    password = serializers.CharField(required=True, blank=False)
+
+    def validate(self, attrs):
+        # Since the fields are both required and non-blank
+        # and field-validation is performed before object-level validation
+        # it is safe to assume these dict keys present.
+        username = attrs['username']
+        password = attrs['password']
+
+        user = authenticate(username=username, password=password)
+
+        if not user:
+            raise serializers.ValidationError('Invalid username/password')
+
+        if not user.is_active:
+            raise serializers.ValidationError('User account is disabled')
+        attrs['user'] = user
+
+        return attrs
 
 
 class PermissionFieldFilteringMixin(object):
@@ -9,8 +39,7 @@ class PermissionFieldFilteringMixin(object):
     as a value for the field:
 
     1. Make sure that the entity in question has corresponding
-       'view' permission created, e.g. for Flavor there should
-       be 'view_flavor' permission defined.
+       Permission class defined.
 
     2. Implement `get_filtered_field_names()` method
        in the class that this mixin is mixed into and return
@@ -26,11 +55,8 @@ class PermissionFieldFilteringMixin(object):
             return fields
 
         for field_name in self.get_filtered_field_names():
-            fields[field_name].queryset = get_objects_for_user(
-                user,
-                'view_{0}'.format(field_name),
-                fields[field_name].queryset
-            )
+            fields[field_name].queryset = filter_queryset_for_user(
+                fields[field_name].queryset, user)
 
         return fields
 

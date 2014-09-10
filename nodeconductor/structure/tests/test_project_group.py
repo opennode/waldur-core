@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 from itertools import chain
-import unittest
 
 from django.core.urlresolvers import reverse
 from rest_framework import status
@@ -26,120 +25,6 @@ class UrlResolverMixin(object):
 
     def _get_membership_url(self, membership):
         return 'http://testserver' + reverse('projectgroup_membership-detail', kwargs={'pk': membership.pk})
-
-
-class ProjectGroupPermissionLifecycleTest(unittest.TestCase):
-    """
-    This tests how does adding and removal of a Project from
-    a ProjectGroup affects permissions of Project's administrators and managers
-    with respect to the ProjectGroup.
-    """
-    # Permission lifecycle test requires at least two tests
-    # per role per action.
-    #
-    # Roles: admin, mgr
-    # Action: add, remove, clear
-    #
-    # Roles * Action * 2 (reversed and non-reversed)
-
-    def setUp(self):
-        self.project = factories.ProjectFactory()
-        self.project_group = factories.ProjectGroupFactory()
-
-        admin_group = self.project.roles.get(
-            role_type=ProjectRole.ADMINISTRATOR).permission_group
-        manager_group = self.project.roles.get(
-            role_type=ProjectRole.MANAGER).permission_group
-        
-        self.users = {
-            'admin': factories.UserFactory(),
-            'manager': factories.UserFactory(),
-        }
-
-        admin_group.user_set.add(self.users['admin'])
-        manager_group.user_set.add(self.users['manager'])
-
-    # Base test: user has no relation to project group
-    def test_user_has_no_access_to_project_group_that_doesnt_contain_any_of_his_projects(self):
-        self.assert_user_has_no_access(self.users['admin'], self.project_group)
-        self.assert_user_has_no_access(self.users['manager'], self.project_group)
-
-    ## Manager role
-
-    # Addition tests
-    def test_manager_gets_readonly_access_to_project_group_when_project_group_is_added_to_managed_project(self):
-        self.project.project_groups.add(self.project_group)
-        self.assert_user_has_readonly_access(self.users['manager'], self.project_group)
-
-    def test_manager_gets_readonly_access_to_project_group_when_managed_project_is_added_to_project_group(self):
-        self.project_group.projects.add(self.project)
-        self.assert_user_has_readonly_access(self.users['manager'], self.project_group)
-
-    # Removal tests
-    def test_manager_ceases_any_access_from_project_group_when_project_group_is_removed_from_managed_project(self):
-        self.project.project_groups.add(self.project_group)
-        self.project.project_groups.remove(self.project_group)
-        self.assert_user_has_no_access(self.users['manager'], self.project_group)
-
-    def test_manager_ceases_any_access_from_project_group_when_managed_project_is_removed_from_project_group(self):
-        self.project_group.projects.add(self.project)
-        self.project_group.projects.remove(self.project)
-        self.assert_user_has_no_access(self.users['manager'], self.project_group)
-
-    # Clearance tests
-    def test_manager_ceases_any_access_from_project_group_when_managed_projects_project_groups_are_cleared(self):
-        self.project.project_groups.add(self.project_group)
-        self.project.project_groups.clear()
-        self.assert_user_has_no_access(self.users['manager'], self.project_group)
-
-    def test_manager_ceases_any_access_from_project_group_when_projects_of_allowed_project_group_are_cleared(self):
-        self.project_group.projects.add(self.project)
-        self.project_group.projects.clear()
-        self.assert_user_has_no_access(self.users['manager'], self.project_group)
-
-    ## Administrator role
-
-    # Addition tests
-    def test_administrator_gets_readonly_access_to_project_group_when_project_group_is_added_to_administered_project(self):
-        self.project.project_groups.add(self.project_group)
-        self.assert_user_has_readonly_access(self.users['admin'], self.project_group)
-
-    def test_administrator_gets_readonly_access_to_project_group_when_administered_project_is_added_to_project_group(self):
-        self.project_group.projects.add(self.project)
-        self.assert_user_has_readonly_access(self.users['admin'], self.project_group)
-
-    # Removal tests
-    def test_administrator_ceases_any_access_from_project_group_when_project_group_is_removed_from_administered_project(self):
-        self.project.project_groups.add(self.project_group)
-        self.project.project_groups.remove(self.project_group)
-        self.assert_user_has_no_access(self.users['admin'], self.project_group)
-
-    def test_administrator_ceases_any_access_from_project_group_when_administered_project_is_removed_from_project_group(self):
-        self.project_group.projects.add(self.project)
-        self.project_group.projects.remove(self.project)
-        self.assert_user_has_no_access(self.users['admin'], self.project_group)
-
-    # Clearance tests
-    def test_administrator_ceases_any_access_from_project_group_when_administered_projects_project_groups_are_cleared(self):
-        self.project.project_groups.add(self.project_group)
-        self.project.project_groups.clear()
-        self.assert_user_has_no_access(self.users['admin'], self.project_group)
-
-    def test_administrator_ceases_any_access_from_project_group_when_projects_of_allowed_project_group_are_cleared(self):
-        self.project_group.projects.add(self.project)
-        self.project_group.projects.clear()
-        self.assert_user_has_no_access(self.users['admin'], self.project_group)
-
-    # Helper methods
-    def assert_user_has_no_access(self, user, project_group):
-        self.assertFalse(user.has_perm('change_projectgroup', obj=project_group))
-        self.assertFalse(user.has_perm('delete_projectgroup', obj=project_group))
-        self.assertFalse(user.has_perm('view_projectgroup', obj=project_group))
-
-    def assert_user_has_readonly_access(self, user, project_group):
-        self.assertFalse(user.has_perm('change_projectgroup', obj=project_group))
-        self.assertFalse(user.has_perm('delete_projectgroup', obj=project_group))
-        self.assertTrue(user.has_perm('view_projectgroup', obj=project_group))
 
 
 class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
@@ -412,28 +297,107 @@ class ProjectGroupMembershipApiPermissionTest(UrlResolverMixin, test.APISimpleTe
                                         self._get_valid_payload(membership))
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_user_cannot_create_project_group_membership_within_project_group_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        project_group = self.project_groups['inaccessible'][0]
+        project = self.projects['owner'][0]
+
+        membership = ProjectGroupMembership(project=project, projectgroup=project_group)
+
+        response = self.client.post(reverse('projectgroup_membership-list'),
+                                    self._get_valid_payload(membership))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'project_group': ['Invalid hyperlink - object does not exist.']}, response.data)
+
+    def test_user_cannot_create_project_group_membership_within_project_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        project_group = self.project_groups['owner'][0]
+        project = self.projects['inaccessible'][0]
+
+        membership = ProjectGroupMembership(project=project, projectgroup=project_group)
+
+        response = self.client.post(reverse('projectgroup_membership-list'),
+                                    self._get_valid_payload(membership))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'project': ['Invalid hyperlink - object does not exist.']}, response.data)
+
+    # TODO: return 409 CONFLICT or 304 NOT MODIFIED instead of 400 BAD REQUEST for already existing links
+
+    def test_user_can_add_project_to_project_group_given_they_belong_to_the_same_customer_he_owns(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        project_groups = self.project_groups['owner']
+        projects = self.projects['owner']
+
+        for project_group_index, project_index in (
+                (0, 1),
+                (1, 0),
+                (1, 1),
+        ):
+            project_group = project_groups[project_group_index]
+            project = projects[project_index]
+
+            membership = ProjectGroupMembership(project=project, projectgroup=project_group)
+
+            response = self.client.post(reverse('projectgroup_membership-list'),
+                                        self._get_valid_payload(membership))
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+            self.assertIn(project, project_group.projects.all())
+
+    # Mutation tests
+    def test_anonymous_user_cannot_change_project_group_membership(self):
+        for i in ('owner', 'inaccessible'):
+            project_group, project = self.project_groups[i][0], self.projects[i][0]
+
+            membership = ProjectGroupMembership.objects.get(project=project, projectgroup=project_group)
+
+            response = self.client.put(self._get_membership_url(membership),
+                                       self._get_valid_payload(membership))
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_cannot_change_project_group_membership(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        membership = self.memberships['owner']
+
+        response = self.client.put(self._get_membership_url(membership),
+                                   self._get_valid_payload(membership))
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
     # Deletion tests
     def test_anonymous_user_cannot_delete_project_group_membership(self):
         for membership in self.memberships.values():
             response = self.client.delete(self._get_membership_url(membership))
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    # TODO: Cannot add other customer's project to own project group
-    @unittest.skip('Not implemented')
-    def test_user_can_add_project_to_project_group_given_they_belong_to_the_same_customer_he_owns(self):
+    def test_user_can_delete_project_group_membership_he_owns(self):
         self.client.force_authenticate(user=self.users['owner'])
+
+        membership = self.memberships['owner']
+
+        response = self.client.delete(self._get_membership_url(membership))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
         project_group = self.project_groups['owner'][0]
         project = self.projects['owner'][0]
+        self.assertNotIn(project, project_group.projects.all())
 
-        # TODO: Grant owner access to Customer's Project
-        membership = ProjectGroupMembership(project=project, projectgroup=project_group)
+    def test_user_cannot_delete_project_group_membership_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['owner'])
 
-        response = self.client.post(reverse('projectgroup_membership-list'),
-                                    self._get_valid_payload(membership))
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        membership = self.memberships['inaccessible']
 
-        self.assertIn(project_group.projects.all(), project)
+        response = self.client.delete(self._get_membership_url(membership))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        project_group = self.project_groups['inaccessible'][0]
+        project = self.projects['inaccessible'][0]
+        self.assertIn(project, project_group.projects.all())
 
     # List filtration tests
     def test_anonymous_user_cannot_list_project_group_membership(self):

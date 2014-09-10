@@ -1,95 +1,162 @@
 from __future__ import unicode_literals
 
 from django.contrib import auth
-
-from rest_framework import filters
-from rest_framework import viewsets
+import django_filters
+from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
+from rest_framework import viewsets as rf_viewsets
 
 from nodeconductor.core import permissions
-from nodeconductor.core import viewsets as core_viewsets
-from nodeconductor.structure import serializers
+from nodeconductor.core import viewsets
+from nodeconductor.core import mixins
+from nodeconductor.structure import filters
 from nodeconductor.structure import models
-from nodeconductor.structure.models import CustomerRole
+from nodeconductor.structure import serializers
 
 
 User = auth.get_user_model()
 
 
-class CustomerViewSet(viewsets.ReadOnlyModelViewSet):
+class CustomerViewSet(viewsets.ModelViewSet):
     model = models.Customer
     lookup_field = 'uuid'
     serializer_class = serializers.CustomerSerializer
-    filter_backends = (filters.DjangoObjectPermissionsFilter,)
-    permission_classes = (permissions.DjangoObjectLevelPermissions,)
+    filter_backends = (filters.GenericRoleFilter,)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
 
 
-class ProjectViewSet(core_viewsets.ModelViewSet):
+class ProjectViewSet(viewsets.ModelViewSet):
     model = models.Project
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectSerializer
-    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    filter_backends = (filters.GenericRoleFilter,)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = super(ProjectViewSet, self).get_queryset()
+
+        can_manage = self.request.QUERY_PARAMS.get('can_manage', None)
+        if can_manage is not None:
+            queryset = queryset.filter(roles__permission_group__user=user,
+                                       roles__role_type=models.ProjectRole.MANAGER).distinct()
+
+        return queryset
+
+    def get_serializer_class(self):
+        if self.request.method in ('POST', 'PUT', 'PATCH'):
+            return serializers.ProjectCreateSerializer
+
+        return super(ProjectViewSet, self).get_serializer_class()
 
 
-class ProjectGroupViewSet(core_viewsets.ModelViewSet):
+class ProjectGroupViewSet(viewsets.ModelViewSet):
     model = models.ProjectGroup
     lookup_field = 'uuid'
     serializer_class = serializers.ProjectGroupSerializer
-    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    filter_backends = (filters.GenericRoleFilter,)
+    # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
 
 
-class ProjectGroupMembershipViewSet(core_viewsets.ModelViewSet):
+class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
+                                    rf_mixins.RetrieveModelMixin,
+                                    rf_mixins.DestroyModelMixin,
+                                    mixins.ListModelMixin,
+                                    rf_viewsets.GenericViewSet):
     model = models.ProjectGroup.projects.through
     serializer_class = serializers.ProjectGroupMembershipSerializer
+    filter_backends = (filters.GenericRoleFilter,)
 
-    def get_queryset(self):
-        queryset = super(ProjectGroupMembershipViewSet, self).get_queryset()
+# XXX: This should be put to models
+filters.set_permissions_for_model(
+    models.ProjectGroup.projects.through,
+    customer_path='projectgroup__customer',
+)
 
-        user = self.request.user
 
-        return queryset.filter(projectgroup__customer__roles__permission_group__user=user,
-                               projectgroup__customer__roles__role_type=CustomerRole.OWNER)
+class UserFilter(django_filters.FilterSet):
+    project_group = django_filters.CharFilter(
+        name='groups__projectrole__project__project_groups__name',
+        distinct=True,
+    )
+    project = django_filters.CharFilter(
+        name='groups__projectrole__project__name',
+        distinct=True,
+    )
 
-class UserViewSet(core_viewsets.ModelViewSet):
+    class Meta(object):
+        model = User
+        fields = [
+            'first_name',
+            'last_name',
+            'alternative_name',
+            'organization',
+            'email',
+            'phone_number',
+            'description',
+            'job_title',
+            'project',
+            'project_group',
+        ]
+
+
+class UserViewSet(viewsets.ModelViewSet):
     model = User
     lookup_field = 'uuid'
     serializer_class = serializers.UserSerializer
     permission_classes = (rf_permissions.IsAuthenticated, permissions.IsAdminOrReadOnly)
-
-    def get_queryset(self):
-        """
-        Optionally restrict returned user to the civil number,
-        by filtering against a `civil_number` query parameter in the URL.
-        """
-        queryset = User.objects.all()
-        # TODO: refactor against django filtering
-        civil_number = self.request.QUERY_PARAMS.get('civil_number', None)
-        if civil_number is not None:
-            queryset = queryset.filter(civil_number=civil_number)
-        return queryset
-
-    def dispatch(self, request, *args, **kwargs):
-        if kwargs.get('uuid') == 'current' and request.user.is_authenticated():
-            kwargs['uuid'] = request.user.uuid
-        return super(UserViewSet, self).dispatch(request, *args, **kwargs)
-
-
-class ProjectPermissionViewSet(core_viewsets.ModelViewSet):
-    model = User.groups.through
-    serializer_class = serializers.ProjectPermissionReadSerializer
-
+    filter_class = UserFilter
 
     def get_queryset(self):
         user = self.request.user
-        user_uuid= self.request.QUERY_PARAMS.get('user', None)
-
-        queryset = user.groups.through.objects.exclude(group__projectrole__project=None)
+        queryset = super(UserViewSet, self).get_queryset()
         # TODO: refactor against django filtering
+
+        civil_number = self.request.QUERY_PARAMS.get('civil_number', None)
+        if civil_number is not None:
+            queryset = queryset.filter(civil_number=civil_number)
+
+        current_user = self.request.QUERY_PARAMS.get('current', None)
+        if current_user is not None and not user.is_anonymous():
+            queryset = User.objects.filter(uuid=user.uuid)
+
+        # TODO: refactor to a separate endpoint or structure
+        # a special query for all users with assigned privileges that the current user can remove privileges from
+        can_manage = self.request.QUERY_PARAMS.get('can_manage', None)
+        if can_manage is not None:
+            queryset = queryset.filter(groups__projectrole__project__roles__permission_group__user=user,
+                                       groups__projectrole__project__roles__role_type=models.ProjectRole.MANAGER).distinct()
+
+        return queryset
+
+
+class ProjectPermissionViewSet(viewsets.ModelViewSet):
+    model = User.groups.through
+    serializer_class = serializers.ProjectPermissionReadSerializer
+    filter_backends = (filters.GenericRoleFilter,)
+    # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
+
+    def get_queryset(self):
+        queryset = super(ProjectPermissionViewSet, self).get_queryset()
+        queryset = queryset.filter(group__projectrole__isnull=False)  # Only take groups defining project roles
+
+        # TODO: refactor against django filtering
+        user_uuid = self.request.QUERY_PARAMS.get('user', None)
         if user_uuid is not None:
-            queryset.filter(group__user__uuid=user_uuid)
+            queryset = queryset.filter(user__uuid=user_uuid)
+
         return queryset
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return serializers.ProjectPermissionWriteSerializer
         return super(ProjectPermissionViewSet, self).get_serializer_class()
+
+# XXX: This should be put to models
+filters.set_permissions_for_model(
+    User.groups.through,
+    customer_path='group__projectrole__project__customer',
+    project_path='group__projectrole__project',
+)

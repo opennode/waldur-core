@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from rest_framework import filters
+from rest_framework import permissions
 from rest_framework import mixins
 from rest_framework import viewsets
 
@@ -9,18 +9,20 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
+from nodeconductor.structure import filters
 from nodeconductor.structure.models import ProjectRole
 
 
 class InstanceViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
-                      mixins.ListModelMixin,
+                      core_mixins.ListModelMixin,
                       core_mixins.UpdateOnlyModelMixin,
                       viewsets.GenericViewSet):
-    queryset = models.Instance.objects.all()
+    model = models.Instance
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    filter_backends = (filters.GenericRoleFilter,)
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
 
     def get_serializer_class(self):
         if self.request.method in ('POST', 'PUT', 'PATCH'):
@@ -34,14 +36,14 @@ class InstanceViewSet(mixins.CreateModelMixin,
         return super(InstanceViewSet, self).get_serializer_class()
 
 
-class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.Template.objects.all()
+class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
+    model = models.Template
     serializer_class = serializers.TemplateSerializer
     lookup_field = 'uuid'
 
 
 class SshKeyViewSet(core_viewsets.ModelViewSet):
-    queryset = core_models.SshPublicKey.objects.all()
+    model = core_models.SshPublicKey
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
 
@@ -49,8 +51,15 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
         key.user = self.request.user
 
 
-class PurchaseViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.Purchase.objects.all()
+class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
+    model = models.Purchase
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.DjangoObjectPermissionsFilter,)
+    filter_backends = (filters.GenericRoleFilter,)
+
+
+class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
+    model = models.Image
+    serializer_class = serializers.ImageSerializer
+    lookup_field = 'uuid'
+    filter_backends = (filters.GenericRoleFilter,)
