@@ -140,6 +140,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super(ProjectPermissionViewSet, self).get_queryset()
+        queryset = queryset.filter(group__projectrole__isnull=False)  # Only take groups defining project roles
 
         # TODO: refactor against django filtering
         user_uuid = self.request.QUERY_PARAMS.get('user', None)
