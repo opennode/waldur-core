@@ -96,44 +96,6 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_user_can_access_additional_fields_of_instances_of_projects_he_is_administrator_of(self):
-        self.client.force_authenticate(user=self.user)
-
-        response = self.client.get(self._get_instance_url(self.admined_instance))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        data = response.data
-        fields = ('state', 'uptime',
-                  'flavor', 'ips', 'hostname')
-        for field in fields:
-            self.assertIn(field, data)
-
-    def test_user_cannot_access_additional_fields_of_instances_of_projects_he_is_manager_of(self):
-        self.client.force_authenticate(user=self.user)
-
-        response = self.client.get(self._get_instance_url(self.managed_instance))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        data = response.data
-        fields = ('environment', 'status', 'uptime',
-                  'flavor', 'IPs', 'hostname')
-        for field in fields:
-            self.assertNotIn(field, data)
-
-    def test_user_cannot_access_additional_fields_of_instances_of_projects_he__has_no_role_in(self):
-        self.client.force_authenticate(user=self.user)
-
-        inaccessible_instance = factories.InstanceFactory()
-
-        response = self.client.get(self._get_project_url(inaccessible_instance))
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-        data = response.data
-        fields = ('environment', 'status', 'uptime',
-                  'flavor', 'IPs', 'hostname')
-        for field in fields:
-            self.assertNotIn(field, data)
-
     # Deletion tests
     def test_anonymous_user_cannot_delete_instances(self):
         response = self.client.delete(self._get_project_url(factories.InstanceFactory()))

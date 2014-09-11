@@ -38,25 +38,6 @@ class InstanceSerializer(PermissionFieldFilteringMixin,
     def get_filtered_field_names(self):
         return 'project', 'flavor'
 
-    def get_fields(self):
-        fields = super(InstanceSerializer, self).get_fields()
-        admin_fields = ('environment', 'state', 'uptime',
-                        'flavor', 'IPs', 'hostname')
-
-        try:
-            user = self.context['view'].request.user
-        except (KeyError, AttributeError):
-            return fields
-
-        if not models.Instance.objects.filter(project__roles__permission_group__user=user,
-                                              project__roles__role_type=ProjectRole.ADMINISTRATOR,
-                                              pk=self.object.pk).exists():
-            for k in fields.keys():
-                if k in admin_fields:
-                    fields.pop(k, None)
-
-        return fields
-
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
