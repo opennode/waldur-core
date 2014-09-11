@@ -3,6 +3,7 @@ from rest_framework import serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin
 from nodeconductor.iaas import models
+from nodeconductor.structure.models import ProjectRole
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,
@@ -29,8 +30,8 @@ class InstanceSerializer(PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'description',
-                  'template', 'cloud', 'project', 'flavor', 'state')
+        fields = ('url', 'hostname', 'description', 'template',
+                  'uptime', 'ips', 'cloud', 'project', 'flavor', 'state')
         lookup_field = 'uuid'
         # TODO: Render ip addresses and volumes
 

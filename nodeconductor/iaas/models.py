@@ -28,6 +28,14 @@ class Template(UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
+class InstanceIp(models.Model):
+        ip = models.IPAddressField(primary_key=True)
+
+        def __str__(self):
+            return self.ip
+
+
+@python_2_unicode_compatible
 class Instance(UuidMixin, models.Model):
     """
     A generalization of a single virtual machine.
@@ -51,6 +59,8 @@ class Instance(UuidMixin, models.Model):
     template = models.ForeignKey(Template, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
+    ips = models.ManyToManyField(InstanceIp, related_name='instances', blank=True)
+    uptime = models.TimeField(blank=True, null=True)
 
     STATE_CHOICES = (
         (States.DEFINED, _('Defined')),
