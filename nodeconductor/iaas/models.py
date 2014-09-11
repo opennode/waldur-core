@@ -31,7 +31,7 @@ class Template(UuidMixin, models.Model):
 
 @python_2_unicode_compatible
 class InstanceIp(models.Model):
-        ip = models.GenericIPAddressField(primary_key=True)
+        ip = models.IPAddressField(primary_key=True)
 
         def __str__(self):
             return self.ip

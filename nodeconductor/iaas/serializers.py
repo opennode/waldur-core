@@ -3,6 +3,7 @@ from rest_framework import serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin
 from nodeconductor.iaas import models
+from nodeconductor.structure.models import ProjectRole
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,
@@ -29,31 +30,32 @@ class InstanceSerializer(PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'description', 'template', 'cloud', 'project')
+        fields = ('url', 'hostname', 'description', 'template',
+                  'uptime', 'ips', 'cloud', 'project', 'flavor', 'state')
         lookup_field = 'uuid'
         # TODO: Render ip addresses and volumes
 
     def get_filtered_field_names(self):
-        return 'project',
-
-
-class InstanceAdminSerializer(PermissionFieldFilteringMixin,
-                              serializers.HyperlinkedModelSerializer):
-    cloud = serializers.HyperlinkedRelatedField(
-        source='flavor.cloud',
-        view_name='cloud-detail',
-        lookup_field='uuid',
-        read_only=True,
-    )
-
-    class Meta(object):
-        model = models.Instance
-        fields = ('url', 'hostname', 'description', 'template',
-                  'uptime', 'ips', 'cloud', 'project', 'flavor', 'state')
-        lookup_field = 'uuid'
-
-    def get_filtered_field_names(self):
         return 'project', 'flavor'
+
+    def get_fields(self):
+        fields = super(InstanceSerializer, self).get_fields()
+        admin_fields = ('environment', 'state', 'uptime',
+                        'flavor', 'IPs', 'hostname')
+
+        try:
+            user = self.context['view'].request.user
+        except (KeyError, AttributeError):
+            return fields
+
+        if not models.Instance.objects.filter(project__roles__permission_group__user=user,
+                                              project__roles__role_type=ProjectRole.ADMINISTRATOR,
+                                              pk=self.object.pk).exists():
+            for k in fields.keys():
+                if k in admin_fields:
+                    fields.pop(k, None)
+
+        return fields
 
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
