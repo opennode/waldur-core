@@ -4,6 +4,7 @@ Django base settings for nodeconductor project.
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
 
 
@@ -67,6 +68,7 @@ REST_FRAMEWORK = {
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'permission.backends.PermissionBackend',
+    'djangosaml2.backends.Saml2Backend',
 )
 
 ANONYMOUS_USER_ID = None
@@ -106,3 +108,5 @@ STATIC_URL = '/static/'
 NODE_CONDUCTOR = {
     'FILTERED_RELATIONS': ('customer', 'project'),
 }
+
+SAML_CREATE_UNKNOWN_USER = True
