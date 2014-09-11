@@ -338,7 +338,6 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
             'template': self._get_template_url(self.template),
 
             'volume_sizes': [10, 15, 10],
-            'tags': set(),
 
             # Cloud dependent parameters
             'flavor': self._get_flavor_url(self.flavor),

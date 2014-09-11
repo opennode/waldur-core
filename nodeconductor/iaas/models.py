@@ -8,8 +8,6 @@ from django.utils.translation import ugettext as _
 from django_fsm import FSMField
 from django_fsm import transition
 
-from taggit.managers import TaggableManager
-
 from nodeconductor.cloud import models as cloud_models
 from nodeconductor.core.models import UuidMixin
 from nodeconductor.structure import models as structure_models
@@ -54,8 +52,6 @@ class Instance(UuidMixin, models.Model):
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
 
-    tags = TaggableManager()
-
     STATE_CHOICES = (
         (States.DEFINED, _('Defined')),
         (States.PROVISIONING, _('Provisioning')),
@@ -70,8 +66,7 @@ class Instance(UuidMixin, models.Model):
     @transition(field=state, source=States.DEFINED, target=States.PROVISIONING)
     def start_provisioning(self):
         # Delayed import to avoid circular imports
-        from . import tasks
-        tasks.stop_instance(self.pk)
+        pass
 
     @transition(field=state, source=States.PROVISIONING, target=States.STOPPED)
     def stop(self):
