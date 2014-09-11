@@ -9,6 +9,7 @@ Requires: python-django16 >= 1.6.5
 Requires: python-django-background-task = 0.1.6
 Requires: python-django-fsm = 2.2.0
 Requires: python-django-filter = 0.7
+Requires: python-django-permission = 0.8.2
 Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework < 2.4.0
 Requires: python-django-sshkey >= 2.2.0
 Requires: python-django-taggit = 0.12
@@ -17,7 +18,6 @@ Requires: python-logan = 0.5.9.1
 Requires: python-setuptools
 Requires: python-south = 0.8.4
 Requires: python-django-auth-ldap >= 1.2.0
-Requires: python-six >= 1.7.3
 
 Source0: %{name}-%{version}.tar.gz
 
