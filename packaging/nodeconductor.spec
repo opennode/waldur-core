@@ -7,8 +7,8 @@ License: Copyright 2014 OpenNode LLC.  All rights reserved.
 Requires: logrotate
 Requires: python-django16 >= 1.6.5
 Requires: python-django-background-task = 0.1.6
-Requires: python-django-fsm = 2.1.0
-Requires: python-django-rest-framework >= 2.3.12
+Requires: python-django-fsm = 2.2.0
+Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework < 2.4.0
 Requires: python-django-sshkey >= 2.2.0
 Requires: python-django-taggit = 0.12
 Requires: python-django-uuidfield = 0.5.0
