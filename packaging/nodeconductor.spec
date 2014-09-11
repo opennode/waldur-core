@@ -6,9 +6,10 @@ License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: logrotate
 Requires: python-django16 >= 1.6.5
+Requires: python-django-auth-ldap >= 1.2.0
 Requires: python-django-background-task = 0.1.6
-Requires: python-django-fsm = 2.2.0
 Requires: python-django-filter = 0.7
+Requires: python-django-fsm = 2.2.0
 Requires: python-django-permission = 0.8.2
 Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework < 2.4.0
 Requires: python-django-sshkey >= 2.2.0
@@ -17,7 +18,6 @@ Requires: python-django-uuidfield = 0.5.0
 Requires: python-logan = 0.5.9.1
 Requires: python-setuptools
 Requires: python-south = 0.8.4
-Requires: python-django-auth-ldap >= 1.2.0
 
 Source0: %{name}-%{version}.tar.gz
 
@@ -81,9 +81,19 @@ rm -rf %{buildroot}
 
 %post
 sed -i "s,{{ secret_key }},$(head -c32 /dev/urandom | base64)," %{__conf_dir}/settings.py
-nodeconductor syncdb --noinput
-nodeconductor migrate
-nodeconductor collectstatic --noinput
+echo "NodeConductor installed successfully."
+echo ""
+echo "Next steps:"
+echo ""
+echo " 1. Configure database -- check %{__conf_dir}/settings.py for details"
+echo ""
+echo " 2. Initialize application -- run"
+echo ""
+echo "   nodeconductor syncdb --noinput"
+echo "   nodeconductor migrate -- noinput"
+echo "   nodeconductor collectstatic --noinput"
+echo ""
+echo " -- note that you will need to run this again on next NodeConductor update"
 
 %changelog
 * Mon Jan 1 2099 John Doe <john@example.org> - 0.1.0dev-19
@@ -94,6 +104,12 @@ nodeconductor collectstatic --noinput
 - Added filtering for User list
 - Added pagination for all the views
 - Changed default authentication schema to token-based
+- Added support for MySQL backend
+- Added dependency on django-permission
+- Added dependency on django-filter
+- Removed dependency on django-guardian
+- Removed dependency on python-six
+- Database initialization is no longer done automatically on RPM install
 - Bugfixes
 
 * Wed Aug 27 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-17
