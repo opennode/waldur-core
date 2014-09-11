@@ -8,6 +8,7 @@ Requires: logrotate
 Requires: python-django16 >= 1.6.5
 Requires: python-django-background-task = 0.1.6
 Requires: python-django-fsm = 2.2.0
+Requires: python-django-filter = 0.7
 Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework < 2.4.0
 Requires: python-django-sshkey >= 2.2.0
 Requires: python-django-taggit = 0.12
@@ -85,6 +86,10 @@ nodeconductor migrate
 nodeconductor collectstatic --noinput
 
 %changelog
+* Mon Jan 1 2099 John Doe <john@example.org> - 0.1.0dev-19
+- (Changelog for future release; fix date, version, releaser name and remove this line once ready)
+- Added django-filter dependency
+
 * Thu Sep 4 2014 Ilja Livenson <ilja@opennodecloud.com> - 0.1.0dev-18
 - Added filtering for User list
 - Added pagination for all the views
