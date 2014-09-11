@@ -1,3 +1,5 @@
+import base64
+
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 
@@ -9,8 +11,8 @@ class AuthTokenSerializer(serializers.Serializer):
     Api token serializer loosely based on DRF's default AuthTokenSerializer,
     but with the response text and aligned with BasicAuthentication behavior.
     """
-    username = serializers.CharField(required=True, blank=False)
-    password = serializers.CharField(required=True, blank=False)
+    username = serializers.CharField(required=True)
+    password = serializers.CharField(required=True)
 
     def validate(self, attrs):
         # Since the fields are both required and non-blank
@@ -29,6 +31,23 @@ class AuthTokenSerializer(serializers.Serializer):
         attrs['user'] = user
 
         return attrs
+
+
+class Base64Field(serializers.CharField):
+    def from_native(self, value):
+        value = super(Base64Field, self).from_native(value)
+        try:
+            return base64.b64decode(value)
+        except TypeError:
+            raise serializers.ValidationError("Enter valid Base64 encoded string.")
+
+    def to_native(self, value):
+        value = super(Base64Field, self).to_native(value)
+        return base64.b64encode(value)
+
+
+class Saml2ResponseSerializer(serializers.Serializer):
+    saml2response = Base64Field(required=True)
 
 
 class PermissionFieldFilteringMixin(object):
