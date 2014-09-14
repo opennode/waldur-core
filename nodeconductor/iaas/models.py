@@ -14,25 +14,42 @@ from nodeconductor.structure import models as structure_models
 
 
 @python_2_unicode_compatible
-class Template(UuidMixin, models.Model):
-    """
-    A configuration management formula.
+class Image(UuidMixin, models.Model):
+    class Permissions(object):
+        project_path = 'cloud__projects'
 
-    Contains a state description and a set of example variables. A Template corresponds
-    to a "correct way" of handling an certain component, e.g. MySQL DB or Liferay portal.
-    """
-    name = models.CharField(max_length=100, unique=True)
+    i386 = 0
+    amd64 = 1
+
+    ARCHITECTURE_CHOICES = (
+        (i386, _('i386')),
+        (amd64, _('amd64')),
+    )
+    name = models.CharField(max_length=80)
+    cloud = models.ForeignKey(cloud_models.Cloud, related_name='images')
+    architecture = models.SmallIntegerField(choices=ARCHITECTURE_CHOICES)
+    description = models.TextField()
+    license_type = models.CharField(max_length=80)
 
     def __str__(self):
-        return self.name
+        return '%(name)s | %(cloud)s' % {
+            'name': self.name,
+            'cloud': self.cloud.name
+        }
 
 
 @python_2_unicode_compatible
-class InstanceIp(models.Model):
-        ip = models.IPAddressField(primary_key=True)
+class Template(UuidMixin, models.Model):
+    """
+    A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
+    """
+    name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=False)
+    image = models.ForeignKey(Image, related_name='templates')
+    license = models.CharField(max_length=100)
 
-        def __str__(self):
-            return self.ip
+    def __str__(self):
+        return self.name
 
 
 @python_2_unicode_compatible
@@ -59,8 +76,8 @@ class Instance(UuidMixin, models.Model):
     template = models.ForeignKey(Template, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
-    ips = models.ManyToManyField(InstanceIp, related_name='instances', blank=True)
-    uptime = models.TimeField(blank=True, null=True)
+    ips = models.CharField(max_length=256)
+    start_time = models.DateTimeField(blank=True, null=True)
 
     STATE_CHOICES = (
         (States.DEFINED, _('Defined')),
@@ -124,27 +141,3 @@ class Purchase(UuidMixin, models.Model):
             'date': self.date,
         }
 
-
-@python_2_unicode_compatible
-class Image(UuidMixin, models.Model):
-    class Permissions(object):
-        project_path = 'cloud__projects'
-
-    i386 = 0
-    amd64 = 1
-
-    ARCHITECTURE_CHOICES = (
-        (i386, _('i386')),
-        (amd64, _('amd64')),
-    )
-    name = models.CharField(max_length=80)
-    cloud = models.ForeignKey(cloud_models.Cloud, related_name='images')
-    architecture = models.SmallIntegerField(choices=ARCHITECTURE_CHOICES)
-    description = models.TextField()
-    license_type = models.CharField(max_length=80)
-
-    def __str__(self):
-        return '%(name)s | %(cloud)s' % {
-            'name': self.name,
-            'cloud': self.cloud.name
-        }

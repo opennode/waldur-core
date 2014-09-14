@@ -4,6 +4,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin
 from nodeconductor.iaas import models
 from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure import serializers as structure_serializers
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,
@@ -28,12 +29,29 @@ class InstanceSerializer(PermissionFieldFilteringMixin,
         read_only=True,
     )
 
+    template_name = serializers.Field(source='template.name')
+    project_name = serializers.Field(source='project.name')
+    flavor_name = serializers.Field(source='flavor.name')
+    customer_name = serializers.Field(source='project.customer.name')
+
+    project_groups = structure_serializers.BasicProjectGroupSerializer(source='project.project_groups', many=True,
+                                                                       read_only=True)
+
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'description', 'template',
-                  'uptime', 'ips', 'cloud', 'project', 'flavor', 'state')
+        fields = ('url', 'hostname', 'description', 'start_time',
+                  'template', 'template_name',
+                  'ips',
+                  'cloud', 'flavor', 'flavor_name',
+                  'project', 'project_name',
+                  'state',
+                  'customer_name',
+                  'project_groups',
+                  )
+                  # TODO: add security groups 1:N (source, port, proto, desc, url)
+
+        read_only_fields = ('ips',)
         lookup_field = 'uuid'
-        # TODO: Render ip addresses and volumes
 
     def get_filtered_field_names(self):
         return 'project', 'flavor'

@@ -59,3 +59,12 @@ class Flavor(UuidMixin, models.Model):
 
     def __str__(self):
         return self.name
+
+
+class SecurityGroup(UuidMixin, models.Model):
+    """
+    A cached information about the Security Group configured in a cloud
+    """
+    name = models.CharField(max_length=100)
+    description = models.CharField(max_length=300)
+    cloud = models.ForeignKey(Cloud, related_name='security_groups')
