@@ -13,7 +13,6 @@ from django.db import models
 from django.db.models import signals
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
-from django.utils.http import urlquote
 from django.utils.translation import ugettext_lazy as _
 from rest_framework.authtoken.models import Token
 from uuidfield import UUIDField
@@ -62,9 +61,6 @@ class User(UuidMixin, AbstractBaseUser, PermissionsMixin):
     class Meta(object):
         verbose_name = _('user')
         verbose_name_plural = _('users')
-
-    def get_absolute_url(self):
-        return "/users/%s/" % urlquote(self.username)
 
     def email_user(self, subject, message, from_email=None):
         """
