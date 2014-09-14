@@ -20,7 +20,7 @@ def random_string(min_length, max_length=None, alphabet=string.ascii_letters, wi
         for _ in range(int(result_length * space_ratio)):
             result[random.randrange(result_length)] = ' '
 
-    return ''.join(result)
+    return ''.join(result).strip()
 
 
 # noinspection PyMethodMayBeStatic
@@ -117,9 +117,8 @@ class Command(NoArgsCommand):
         user = User(
             username=username,
             email='%s@example.com' % username,
-            first_name=random_string(5, 10),
-            last_name=random_string(5, 10),
-            alternative_name=random_string(30, 50, with_spaces=True),
+            full_name=random_string(10, 20, with_spaces=True),
+            native_name=random_string(10, 20, with_spaces=True),
             civil_number=random_string(8, alphabet=string.digits),
             phone_number=random_string(10, alphabet=string.digits),
             description=random_string(100, 200, with_spaces=True),

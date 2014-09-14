@@ -89,9 +89,8 @@ class UserFilter(django_filters.FilterSet):
     class Meta(object):
         model = User
         fields = [
-            'first_name',
-            'last_name',
-            'alternative_name',
+            'full_name',
+            'native_name',
             'organization',
             'email',
             'phone_number',

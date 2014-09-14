@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.contrib.auth import admin as auth_admin, get_user_model
+from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core import models
 
@@ -30,11 +31,22 @@ class UserChangeForm(auth_admin.UserChangeForm):
         model = get_user_model()
         fields = '__all__'
 
+    def clean_civil_number(self):
+        # See http://stackoverflow.com/a/1400046/175349
+        # and https://code.djangoproject.com/ticket/9039
+        return self.cleaned_data['civil_number'].strip() or None
+
 
 class UserAdmin(auth_admin.UserAdmin):
-    list_display = ('username', 'uuid', 'email', 'first_name', 'last_name', 'is_staff')
-    search_fields = ('username', 'uuid', 'first_name', 'last_name', 'email')
+    list_display = ('username', 'uuid', 'email', 'full_name', 'native_name', 'is_staff')
+    search_fields = ('username', 'uuid', 'full_name', 'native_name', 'email')
     list_filter = ('is_staff', 'is_superuser', 'is_active')
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        (_('Personal info'), {'fields': ('civil_number', 'full_name', 'native_name', 'email')}),
+        (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups')}),
+        (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
+    )
     form = UserChangeForm
     add_form = UserCreationForm
 

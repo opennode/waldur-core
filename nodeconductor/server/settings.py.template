@@ -194,6 +194,6 @@ SAML_DJANGO_USER_MAIN_ATTRIBUTE = 'civil_number'
 
 SAML_ATTRIBUTE_MAPPING = {
     'omanIDCivilNumber': ('username', 'civil_number'),
-    'omancardTitleFullNameEn': ('first_name', ),
-    'omancardTitleFullNameAr': ('alternative_name', ),
+    'omancardTitleFullNameEn': ('full_name', ),
+    'omancardTitleFullNameAr': ('native_name', ),
 }
