@@ -1,3 +1,4 @@
+# encoding: utf-8
 from __future__ import unicode_literals
 
 import django.contrib.auth
@@ -11,9 +12,10 @@ class UserFactory(factory.DjangoModelFactory):
         model = django.contrib.auth.get_user_model()
 
     username = factory.Sequence(lambda n: 'john%s' % n)
+    civil_number = factory.Sequence(lambda n: '%08d' % n)
     email = factory.LazyAttribute(lambda o: '%s@example.org' % o.username)
-    first_name = 'John'
-    last_name = 'Doe'
+    full_name = 'John Doe'
+    native_name = 'Jöhn Dõe'
     is_staff = False
     is_active = True
     is_superuser = False
