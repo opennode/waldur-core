@@ -28,6 +28,8 @@ INSTALLED_APPS = (
     'nodeconductor.iaas',
     'nodeconductor.ldapsync',
 
+    'nodeconductor.testdata',
+
     # Template overrides need to happen before admin is imported.
     'django.contrib.admin',
 
