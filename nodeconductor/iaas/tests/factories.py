@@ -16,7 +16,6 @@ class ImageFactory(factory.DjangoModelFactory):
     cloud = factory.SubFactory(cloud_factories.CloudFactory)
     architecture = factory.Iterator(models.Image.ARCHITECTURE_CHOICES, getter=lambda c: c[0])
     description = factory.Sequence(lambda n: 'description%s' % n)
-    license_type = factory.Sequence(lambda n: 'license type%s' % n)
 
 
 class TemplateFactory(factory.DjangoModelFactory):

@@ -173,5 +173,4 @@ class ImagesApiPermissionTest(test.APISimpleTestCase):
                                                    kwargs={'uuid': resource.cloud.uuid}),
             'architecture': resource.architecture,
             'description': resource.description,
-            'license_type': resource.license_type,
         }

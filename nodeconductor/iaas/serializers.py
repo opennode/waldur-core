@@ -87,7 +87,7 @@ class ImageSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = models.Image
         fields = ('url', 'name', 'cloud', 'description',
-                  'architecture', 'license_type')
+                  'architecture')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):

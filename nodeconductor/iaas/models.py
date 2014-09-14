@@ -29,7 +29,6 @@ class Image(UuidMixin, models.Model):
     cloud = models.ForeignKey(cloud_models.Cloud, related_name='images')
     architecture = models.SmallIntegerField(choices=ARCHITECTURE_CHOICES)
     description = models.TextField()
-    license_type = models.CharField(max_length=80)
 
     def __str__(self):
         return '%(name)s | %(cloud)s' % {
