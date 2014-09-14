@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin
 from django.contrib.auth import admin as auth_admin, get_user_model
 
@@ -18,7 +19,7 @@ class UserCreationForm(auth_admin.UserCreationForm):
             get_user_model()._default_manager.get(username=username)
         except get_user_model().DoesNotExist:
             return username
-        raise auth_admin.forms.ValidationError(
+        raise forms.ValidationError(
             self.error_messages['duplicate_username'],
             code='duplicate_username',
         )
@@ -33,6 +34,7 @@ class UserChangeForm(auth_admin.UserChangeForm):
 class UserAdmin(auth_admin.UserAdmin):
     list_display = ('username', 'uuid', 'email', 'first_name', 'last_name', 'is_staff')
     search_fields = ('username', 'uuid', 'first_name', 'last_name', 'email')
+    list_filter = ('is_staff', 'is_superuser', 'is_active')
     form = UserChangeForm
     add_form = UserCreationForm
 
