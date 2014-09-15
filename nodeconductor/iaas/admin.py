@@ -18,4 +18,5 @@ class PurchaseAdmin(admin.ModelAdmin):
 
 admin.site.register(models.Instance, InstanceAdmin)
 admin.site.register(models.Template)
+admin.site.register(models.Image)
 admin.site.register(models.Purchase, PurchaseAdmin)
