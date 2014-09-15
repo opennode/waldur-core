@@ -66,46 +66,40 @@ class Command(NoArgsCommand):
         cloud.projects.add(*list(customer.projects.all()))
 
         # add flavors
-        Flavor.objects.create(
-            cloud=cloud,
+        cloud.flavors.create(
             name='x1.xx of cloud %s' % cloud.uuid,
             cores=2,
             ram=1024,
-            disk=45
+            disk=45,
         )
-        Flavor.objects.create(
-            cloud=cloud,
+        cloud.flavors.create(
             name='x2.xx of cloud %s' % cloud.uuid,
             cores=4,
             ram=2048,
-            disk=90
+            disk=90,
         )
 
         # add images
-        image1 = Image.objects.create(
-            cloud=cloud,
+        image1 = cloud.images.create(
             name='CentOS 6',
             architecture=0,
-            description='A CentOS 6 image'
+            description='A CentOS 6 image',
         )
-        image2 = Image.objects.create(
-            cloud=cloud,
+        image2 = cloud.images.create(
             name='Windows 2008',
             architecture=1,
-            description='A CentOS 6 image'
+            description='A CentOS 6 image',
         )
 
-        Template.objects.create(
+        image1.templates.create(
             name='Template %s' % random_string(3, 7),
             is_active=False,
-            image=image1,
-            license='Paid by SP'
+            license='Paid by SP',
         )
-        Template.objects.create(
+        image2.templates.create(
             name='Template %s' % random_string(3, 7),
             is_active=True,
-            image=image2,
-            license='Paid by the Customer'
+            license='Paid by the Customer',
         )
 
     def create_customer(self):
