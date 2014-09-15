@@ -3,7 +3,9 @@ import string
 
 from django.core.management.base import NoArgsCommand
 
+from nodeconductor.cloud.models import Cloud, Flavor
 from nodeconductor.core.models import User
+from nodeconductor.iaas.models import Image, Template
 from nodeconductor.structure.models import *
 
 
@@ -52,6 +54,54 @@ class Command(NoArgsCommand):
         # Add more customers
         [self.create_customer() for _ in range(3)]
 
+    def create_cloud(self, customer):
+        cloud_name = 'CloudAccount of %s (%s)' % (customer.name, random_string(10, 20, with_spaces=True))
+        self.stdout.write('Creating cloud "%s"' % cloud_name)
+
+        cloud = Cloud.objects.create(
+            customer=customer,
+            name=cloud_name,
+            auth_url='http://%s.com' % random_string(10, 12, with_spaces=True),
+        )
+        cloud.projects.add(*list(customer.projects.all()))
+
+        # add flavors
+        cloud.flavors.create(
+            name='x1.xx of cloud %s' % cloud.uuid,
+            cores=2,
+            ram=1024,
+            disk=45,
+        )
+        cloud.flavors.create(
+            name='x2.xx of cloud %s' % cloud.uuid,
+            cores=4,
+            ram=2048,
+            disk=90,
+        )
+
+        # add images
+        image1 = cloud.images.create(
+            name='CentOS 6',
+            architecture=0,
+            description='A CentOS 6 image',
+        )
+        image2 = cloud.images.create(
+            name='Windows 2008',
+            architecture=1,
+            description='A CentOS 6 image',
+        )
+
+        image1.templates.create(
+            name='Template %s' % random_string(3, 7),
+            is_active=False,
+            license='Paid by SP',
+        )
+        image2.templates.create(
+            name='Template %s' % random_string(3, 7),
+            is_active=True,
+            license='Paid by the Customer',
+        )
+
     def create_customer(self):
         customer_name = 'Customer %s' % random_string(3, 7)
         self.stdout.write('Creating customer "%s"' % customer_name)
@@ -66,6 +116,8 @@ class Command(NoArgsCommand):
             self.create_project(customer),
             self.create_project(customer),
         ]
+
+        self.create_cloud(customer)
 
         # Use Case 5: User has roles in several projects of the same customer
         user1 = self.create_user()
@@ -111,7 +163,7 @@ class Command(NoArgsCommand):
         return project
 
     def create_user(self):
-        username = 'user%s' % random_string(3, 7, alphabet=string.digits)
+        username = 'user%s' % random_string(3, 15, alphabet=string.digits)
         self.stdout.write('Creating user "%s"' % username)
 
         user = User(
