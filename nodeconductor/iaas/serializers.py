@@ -47,6 +47,9 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     def get_filtered_field_names(self):
         return 'project', 'flavor'
 
+    def get_related_paths(self):
+        return 'flavor.cloud', 'template', 'project', 'flavor', 'project.customer'
+
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
