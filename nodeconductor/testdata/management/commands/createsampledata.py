@@ -2,8 +2,8 @@ import random
 import string
 
 from django.core.management.base import NoArgsCommand
-from nodeconductor.cloud.models import Cloud, Flavor
 
+from nodeconductor.cloud.models import Cloud, Flavor
 from nodeconductor.core.models import User
 from nodeconductor.iaas.models import Image, Template
 from nodeconductor.structure.models import *
