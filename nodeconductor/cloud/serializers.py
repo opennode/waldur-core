@@ -13,5 +13,5 @@ class CloudSerializer(serializers.HyperlinkedModelSerializer):
 class FlavorSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Flavor
-        fields = ('url', 'name')
+        fields = ('url', 'name', 'ram', 'disk', 'cores')
         lookup_field = 'uuid'

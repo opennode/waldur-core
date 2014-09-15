@@ -104,7 +104,6 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Modifications of permissions in a not connected project is not allowed.')
 
-
     # Helper methods
     def _get_project_url(self, project):
         return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
@@ -118,6 +117,13 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         for permission in permissions:
             if 'url' in permission:
                 del permission['url']
-        return {u'role': role,
-                u'user': user_url,
-                u'project': project_url} in permissions
+
+        role = {
+            u'user': user_url,
+            u'user_full_name': user.full_name,
+            u'user_native_name': user.native_name,
+            u'project': project_url,
+            u'project_name': project.name,
+            u'role': role,
+        }
+        return role in permissions
