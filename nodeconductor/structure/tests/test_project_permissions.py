@@ -65,7 +65,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         response = self.client.post(reverse('project_permission-list'), data)
         self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
 
-    def test_user_can_directly_modify_roles_of_projects_he_is_manager_of(self):
+    def test_user_can_directly_modify_role_of_project_he_is_manager_of(self):
         user_url = self._get_user_url(self.users['no_role'])
 
         project_url = self._get_project_url(self.projects[0])
@@ -107,7 +107,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Modifications of permissions in a project without manager role is not allowed.')
 
-    def test_user_cannot_directly_modify_roles_of_projects_he_is_admin_of(self):
+    def test_user_cannot_directly_modify_role_of_project_he_is_admin_of(self):
         user_url = self._get_user_url(self.users['owner'])
 
         project_url = self._get_project_url(self.projects[1])
@@ -139,6 +139,23 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         response = self.client.post(reverse('project_permission-list'), data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Modifications of permissions in a not connected project is not allowed.')
+
+    # Deletion tests
+    def test_user_can_delete_role_of_project_he_is_manager_of(self):
+        response = self.client.get(reverse('project_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for permission in response.data:
+            response = self.client.delete(permission['url'])
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_cannot_delete_role_of_project_he_is_administrator_of(self):
+        response = self.client.get(reverse('project_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for permission in response.data:
+            response = self.client.delete(permission['url'])
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     # Helper methods
     def _get_project_url(self, project):
