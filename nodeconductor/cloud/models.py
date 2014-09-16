@@ -5,7 +5,7 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
-from nodeconductor.core.models import UuidMixin
+from nodeconductor.core.models import DescribableMixin, UuidMixin
 from nodeconductor.structure import models as structure_models
 
 
@@ -61,10 +61,9 @@ class Flavor(UuidMixin, models.Model):
         return self.name
 
 
-class SecurityGroup(UuidMixin, models.Model):
+class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
     """
     A cached information about the Security Group configured in a cloud
     """
     name = models.CharField(max_length=100)
-    description = models.CharField(max_length=300)
     cloud = models.ForeignKey(Cloud, related_name='security_groups')
