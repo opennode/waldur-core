@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.structure.tests import factories
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import ProjectRole, CustomerRole
 
 
 class UserProjectPermissionTest(test.APISimpleTestCase):
@@ -18,7 +18,10 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         }
         self.client.force_authenticate(user=self.users['owner'])
 
-        self.projects = factories.ProjectFactory.create_batch(3)
+        customer = factories.CustomerFactory()
+        customer.add_user(self.users['owner'], CustomerRole.OWNER)
+
+        self.projects = factories.ProjectFactory.create_batch(3, customer=customer)
 
         self.projects[0].add_user(self.users['owner'], ProjectRole.MANAGER)
         self.projects[1].add_user(self.users['owner'], ProjectRole.ADMINISTRATOR)
