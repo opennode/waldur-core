@@ -54,8 +54,26 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Template
-        fields = ('url', 'name')
+        fields = (
+            'url',
+            'name', 'description', 'icon_url',
+            'is_active',
+            'license',
+        )
         lookup_field = 'uuid'
+
+    def get_fields(self):
+        fields = super(TemplateSerializer, self).get_fields()
+
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return fields
+
+        if not user.is_staff:
+            del fields['is_active']
+
+        return fields
 
 
 class SshKeySerializer(serializers.HyperlinkedModelSerializer):

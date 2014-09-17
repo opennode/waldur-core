@@ -6,7 +6,7 @@ from nodeconductor.cloud import models
 class CloudSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Cloud
-        fields = ('url', 'name')
+        fields = ('uuid', 'url', 'name')
         lookup_field = 'uuid'
 
 

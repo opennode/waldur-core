@@ -17,6 +17,9 @@ from nodeconductor.structure import models as structure_models
 class Image(core_models.UuidMixin,
             core_models.DescribableMixin,
             models.Model):
+    class Meta(object):
+        unique_together = ('cloud', 'template')
+
     class Permissions(object):
         project_path = 'cloud__projects'
 
@@ -24,11 +27,12 @@ class Image(core_models.UuidMixin,
     amd64 = 1
 
     ARCHITECTURE_CHOICES = (
-        (i386, _('i386')),
-        (amd64, _('amd64')),
+        (i386, 'i386'),
+        (amd64, 'amd64'),
     )
     name = models.CharField(max_length=80)
     cloud = models.ForeignKey(cloud_models.Cloud, related_name='images')
+    template = models.ForeignKey('iaas.Template', null=True, blank=True, related_name='images')
     architecture = models.SmallIntegerField(choices=ARCHITECTURE_CHOICES)
 
     def __str__(self):
@@ -47,7 +51,6 @@ class Template(core_models.UuidMixin,
     """
     name = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=False)
-    image = models.ForeignKey(Image, related_name='templates')
     license = models.CharField(max_length=100)
 
     def __str__(self):

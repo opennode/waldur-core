@@ -3,9 +3,9 @@ import string
 
 from django.core.management.base import NoArgsCommand
 
-from nodeconductor.cloud.models import Cloud, Flavor
+from nodeconductor.cloud.models import Cloud
 from nodeconductor.core.models import User
-from nodeconductor.iaas.models import Image, Template
+from nodeconductor.iaas.models import Template
 from nodeconductor.structure.models import *
 
 
@@ -79,27 +79,35 @@ class Command(NoArgsCommand):
             disk=90,
         )
 
-        # add images
-        image1 = cloud.images.create(
-            name='CentOS 6',
-            architecture=0,
-            description='A CentOS 6 image',
-        )
-        image2 = cloud.images.create(
-            name='Windows 2008',
-            architecture=1,
-            description='A CentOS 6 image',
-        )
-
-        image1.templates.create(
+        # add templates
+        template1 = Template.objects.create(
             name='Template %s' % random_string(3, 7),
             is_active=False,
             license='Paid by SP',
         )
-        image2.templates.create(
+        template2 = Template.objects.create(
             name='Template %s' % random_string(3, 7),
             is_active=True,
             license='Paid by the Customer',
+        )
+
+        # add images
+        cloud.images.create(
+            name='CentOS 6',
+            architecture=0,
+            description='A CentOS 6 image',
+            template=template1,
+        )
+        cloud.images.create(
+            name='Windows 2008',
+            architecture=1,
+            description='A Windows 2008 R2',
+            template=template2,
+        )
+        cloud.images.create(
+            name='Windows XP backup',
+            architecture=1,
+            description='A backup image of WinXP',
         )
 
     def create_customer(self):
