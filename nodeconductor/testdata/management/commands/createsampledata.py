@@ -1,7 +1,9 @@
 import random
 import string
+from decimal import Decimal
 
 from django.core.management.base import NoArgsCommand
+import sys
 
 from nodeconductor.cloud.models import Cloud
 from nodeconductor.core.models import User
@@ -85,15 +87,15 @@ class Command(NoArgsCommand):
             os='CentOS 6.5',
             is_active=True,
             icon_url='http://wiki.centos.org/ArtWork/Brand?action=AttachFile&do=get&target=centos-symbol.png',
-            setup_fee=random.random() * 100.0,
-            monthly_fee=random.random() * 100.0,
+            setup_fee=Decimal(str(random.random() * 100.0)),
+            monthly_fee=Decimal(str(random.random() * 100.0)),
         )
         template2 = Template.objects.create(
             name='Windows 3.11 %s' % random_string(3, 7),
             os='Windows 3.11',
             is_active=False,
-            setup_fee=random.random() * 100.0,
-            monthly_fee=random.random() * 100.0,
+            setup_fee=Decimal(str(random.random() * 100.0)),
+            monthly_fee=Decimal(str(random.random() * 100.0)),
         )
 
         # add images
