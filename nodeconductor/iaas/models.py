@@ -1,7 +1,10 @@
 from __future__ import unicode_literals
 
+from decimal import Decimal
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext as _
@@ -50,8 +53,14 @@ class Template(core_models.UuidMixin,
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
     """
     name = models.CharField(max_length=100, unique=True)
+    os = models.CharField(max_length=100)
     is_active = models.BooleanField(default=False)
-    license = models.CharField(max_length=100)
+    setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
+                                    validators=[MinValueValidator(Decimal('0.1')),
+                                                MaxValueValidator(Decimal('1000.0'))])
+    monthly_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
+                                      validators=[MinValueValidator(Decimal('0.1')),
+                                                  MaxValueValidator(Decimal('1000.0'))])
 
     def __str__(self):
         return self.name

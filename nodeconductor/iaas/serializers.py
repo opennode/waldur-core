@@ -57,8 +57,10 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
         fields = (
             'url',
             'name', 'description', 'icon_url',
+            'os',
             'is_active',
-            'license',
+            'setup_fee',
+            'monthly_fee',
         )
         lookup_field = 'uuid'
 

@@ -81,14 +81,19 @@ class Command(NoArgsCommand):
 
         # add templates
         template1 = Template.objects.create(
-            name='Template %s' % random_string(3, 7),
-            is_active=False,
-            license='Paid by SP',
+            name='CentOS 6 x64 %s' % random_string(3, 7),
+            os='CentOS 6.5',
+            is_active=True,
+            icon_url='http://wiki.centos.org/ArtWork/Brand?action=AttachFile&do=get&target=centos-symbol.png',
+            setup_fee=random.random() * 100.0,
+            monthly_fee=random.random() * 100.0,
         )
         template2 = Template.objects.create(
-            name='Template %s' % random_string(3, 7),
-            is_active=True,
-            license='Paid by the Customer',
+            name='Windows 3.11 %s' % random_string(3, 7),
+            os='Windows 3.11',
+            is_active=False,
+            setup_fee=random.random() * 100.0,
+            monthly_fee=random.random() * 100.0,
         )
 
         # add images

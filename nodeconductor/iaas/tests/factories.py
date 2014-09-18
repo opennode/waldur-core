@@ -2,6 +2,7 @@ import datetime
 
 from django.utils import timezone
 import factory
+import factory.fuzzy
 
 from nodeconductor.iaas import models
 from nodeconductor.cloud.tests import factories as cloud_factories
@@ -27,7 +28,8 @@ class TemplateFactory(factory.DjangoModelFactory):
     description = factory.Sequence(lambda n: 'description %d' % n)
     icon_url = factory.Sequence(lambda n: 'http://example.com/%d.png' % n)
     is_active = True
-    license = 'Free'
+    setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
+    monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
 
 class InstanceFactory(factory.DjangoModelFactory):
