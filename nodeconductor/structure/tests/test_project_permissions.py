@@ -87,7 +87,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
                 response = self.client.put(permission['url'], data)
                 self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_user_can_list_roles_of_projects_he_is_admin_of(self):
+    def test_user_can_list_roles_of_projects_he_is_administrator_of(self):
         response = self.client.get(reverse('project_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -96,7 +96,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         self.assertTrue(self._check_if_present(self.projects[1], self.users['admin'], 'admin', response.data),
                         'Admin user cannot list admin user permissions in a project.')
 
-    def test_user_cannot_modify_roles_of_projects_he_is_admin_of(self):
+    def test_user_cannot_modify_roles_of_projects_he_is_administrator_of(self):
         user_url = self._get_user_url(self.users['owner'])
 
         project_url = self._get_project_url(self.projects[1])
@@ -111,7 +111,7 @@ class UserProjectPermissionTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Modifications of permissions in a project without manager role is not allowed.')
 
-    def test_user_cannot_directly_modify_role_of_project_he_is_admin_of(self):
+    def test_user_cannot_directly_modify_role_of_project_he_is_administrator_of(self):
         user_url = self._get_user_url(self.users['owner'])
 
         project_url = self._get_project_url(self.projects[1])

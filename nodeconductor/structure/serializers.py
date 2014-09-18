@@ -113,14 +113,39 @@ class ProjectPermissionReadSerializer(serializers.HyperlinkedModelSerializer):
     project = serializers.HyperlinkedRelatedField(source='group.projectrole.project', view_name='project-detail',
                                                   read_only=True, lookup_field='uuid')
     user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
-                                               queryset=User.objects.all())
+                                               read_only=True, queryset=User.objects.all())
 
-    role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
+    role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES, read_only=True)
 
     class Meta(object):
         model = User.groups.through
         fields = ('url', 'project', 'user', 'role')
         view_name = 'project_permission-detail'
+
+    def get_fields(self):
+        fields = super(ProjectPermissionReadSerializer, self).get_fields()
+
+        try:
+            request = self.context['view'].request
+            method = request.method
+            user = request.user
+        except (KeyError, AttributeError):
+            return fields
+
+        if method in ('PUT', 'PATCH', 'DELETE'):
+            try:
+                pk = request.parser_context['kwargs']['pk']
+            except (KeyError, AttributeError):
+                return fields
+
+            if User.groups.through.objects.filter(
+                    group__projectrole__permission_group__user=user,
+                    group__projectrole__role_type=models.ProjectRole.MANAGER,
+                    group__projectrole__pk=pk).exists():
+                fields['role'].read_only = False
+                fields['user'].reead_only = False
+
+        return fields
 
 
 class NotModifiedPermission(APIException):
