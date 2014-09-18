@@ -18,6 +18,26 @@ from rest_framework.authtoken.models import Token
 from uuidfield import UUIDField
 
 
+class DescribableMixin(models.Model):
+    """
+    Mixin to add a standardized "description" field.
+    """
+    class Meta(object):
+        abstract = True
+
+    description = models.CharField(_('description'), max_length=100, blank=True)
+
+
+class UiDescribableMixin(DescribableMixin):
+    """
+    Mixin to add a standardized "description" and "icon url" fields.
+    """
+    class Meta(object):
+        abstract = True
+
+    icon_url = models.URLField(_('icon url'), null=True, blank=True)
+
+
 class UuidMixin(models.Model):
     """
     Mixin to identify models by UUID.
@@ -28,7 +48,7 @@ class UuidMixin(models.Model):
     uuid = UUIDField(auto=True, unique=True)
 
 
-class User(UuidMixin, AbstractBaseUser, PermissionsMixin):
+class User(UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
     username = models.CharField(
         _('username'), max_length=30, unique=True,
         help_text=_('Required. 30 characters or fewer. Letters, numbers and '
@@ -40,7 +60,6 @@ class User(UuidMixin, AbstractBaseUser, PermissionsMixin):
     full_name = models.CharField(_('full name'), max_length=100, blank=True)
     native_name = models.CharField(_('native name'), max_length=100, blank=True)
     phone_number = models.CharField(_('phone number'), max_length=40, blank=True)
-    description = models.TextField(_('description'), blank=True)
     organization = models.CharField(_('organization'), max_length=80, blank=True)
     job_title = models.CharField(_('job title'), max_length=40, blank=True)
     email = models.EmailField(_('email address'), blank=True)
