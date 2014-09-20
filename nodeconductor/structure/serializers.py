@@ -8,6 +8,7 @@ from rest_framework.exceptions import APIException
 
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin
 from nodeconductor.structure import models
+from nodeconductor.structure.models import Project
 
 
 User = auth.get_user_model()
@@ -109,61 +110,23 @@ class ProjectRoleField(serializers.ChoiceField):
             raise ValidationError('Unknown role')
 
 
-class ProjectPermissionReadSerializer(serializers.HyperlinkedModelSerializer):
-    project = serializers.HyperlinkedRelatedField(source='group.projectrole.project', view_name='project-detail',
-                                                  read_only=True, lookup_field='uuid')
-    user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
-                                               read_only=True, queryset=User.objects.all())
-
-    role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES, read_only=True)
-
-    class Meta(object):
-        model = User.groups.through
-        fields = ('url', 'project', 'user', 'role')
-        view_name = 'project_permission-detail'
-
-    def get_fields(self):
-        fields = super(ProjectPermissionReadSerializer, self).get_fields()
-
-        try:
-            request = self.context['view'].request
-            method = request.method
-            user = request.user
-        except (KeyError, AttributeError):
-            return fields
-
-        if method in ('PUT', 'PATCH', 'DELETE'):
-            try:
-                pk = request.parser_context['kwargs']['pk']
-            except (KeyError, AttributeError):
-                return fields
-
-            if User.groups.through.objects.filter(
-                    group__projectrole__permission_group__user=user,
-                    group__projectrole__role_type=models.ProjectRole.MANAGER,
-                    group__projectrole__pk=pk).exists():
-                fields['role'].read_only = False
-                fields['user'].reead_only = False
-
-        return fields
-
-
 class NotModifiedPermission(APIException):
     status_code = 304
     default_detail = 'Permissions were not modified'
 
 
-class ProjectPermissionWriteSerializer(serializers.Serializer):
-    project = serializers.HyperlinkedRelatedField(queryset=models.Project.objects.all(), view_name='project-detail',
-                                                  lookup_field='uuid', source='group.projectrole.project')
-    user = serializers.HyperlinkedRelatedField(view_name='user-detail', queryset=User.objects.all(),
-                                               lookup_field='uuid')
+class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
+                                  serializers.HyperlinkedModelSerializer):
+    project = serializers.HyperlinkedRelatedField(source='group.projectrole.project', view_name='project-detail',
+                                                  lookup_field='uuid', queryset=Project.objects.all())
+    user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
+                                               queryset=User.objects.all())
 
     role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
 
     class Meta(object):
         model = User.groups.through
-        fields = ('project', 'user', 'role')
+        fields = ('url', 'project', 'user', 'role')
         view_name = 'project_permission-detail'
 
     def restore_object(self, attrs, instance=None):
@@ -178,18 +141,9 @@ class ProjectPermissionWriteSerializer(serializers.Serializer):
         except IntegrityError:
             raise NotModifiedPermission()
 
-    def get_fields(self):
-        fields = super(ProjectPermissionWriteSerializer, self).get_fields()
+    def get_filtered_field_names(self):
+        return 'project',
 
-        try:
-            request = self.context['view'].request
-            user = request.user
-        except (KeyError, AttributeError):
-            return fields
-
-        fields['project'].queryset = models.Project.objects.filter(roles__permission_group__user=user,
-                                                                   roles__role_type=models.ProjectRole.MANAGER)
-        return fields
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):

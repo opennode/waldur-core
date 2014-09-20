@@ -5,7 +5,8 @@ import warnings
 
 from django.conf import settings
 from django.contrib.auth.models import (
-    AbstractBaseUser, PermissionsMixin, UserManager, SiteProfileNotAvailable)
+    AbstractBaseUser, PermissionsMixin, UserManager, SiteProfileNotAvailable, Permission)
+from django.contrib.contenttypes.models import ContentType
 from django.core import validators
 from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import send_mail
@@ -106,6 +107,27 @@ def create_auth_token(sender, instance=None, created=False, **kwargs):
         Token.objects.create(user=instance)
 
 signals.post_save.connect(create_auth_token, sender=User)
+
+
+def create_user_group_permissions(sender, **kwargs):
+    """
+    Create permissions for the User.groups.through objects so that DjangoObjectPermissions could be applied.
+    """
+    if not sender.__name__ == 'nodeconductor.core.models':
+        return
+    content_type = ContentType.objects.get_for_model(User.groups.through)
+    Permission.objects.get_or_create(codename='delete_user_groups',
+                                       name='Can delete user groups',
+                                       content_type=content_type)
+    Permission.objects.get_or_create(codename='add_user_groups',
+                                       name='Can add user groups',
+                                       content_type=content_type)
+    Permission.objects.get_or_create(codename='change_user_groups',
+                                       name='Can change user groups',
+                                       content_type=content_type)
+
+
+signals.post_syncdb.connect(create_user_group_permissions)
 
 
 @python_2_unicode_compatible
