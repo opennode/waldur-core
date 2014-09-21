@@ -9,6 +9,7 @@ from rest_framework.reverse import reverse
 
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin
 from nodeconductor.structure import models
+from nodeconductor.structure.filters import filter_queryset_for_user
 
 
 User = auth.get_user_model()
@@ -24,14 +25,13 @@ class BasicProjectSerializer(BasicInfoSerializer):
     class Meta(BasicInfoSerializer.Meta):
         model = models.Project
 
-    queryset = models.Project.objects.all()
+    def get_fields(self):
+        return super(BasicProjectSerializer, self).get_fields()
 
 
 class BasicProjectGroupSerializer(BasicInfoSerializer):
     class Meta(BasicInfoSerializer.Meta):
         model = models.ProjectGroup
-
-    queryset = models.ProjectGroup.objects.all()
 
 
 class ProjectSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
@@ -57,18 +57,30 @@ class ProjectCreateSerializer(PermissionFieldFilteringMixin,
         return 'customer',
 
 
-class CustomerSerializer(PermissionFieldFilteringMixin,
-                         serializers.HyperlinkedModelSerializer):
-    projects = BasicProjectSerializer(many=True, read_only=True)
-    project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
+class CustomerSerializer(serializers.HyperlinkedModelSerializer):
+    projects = serializers.SerializerMethodField('get_customer_projects')
+    project_groups = serializers.SerializerMethodField('get_customer_project_groups')
 
     class Meta(object):
         model = models.Customer
         fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
 
-    def get_filtered_field_names(self):
-        return 'projects', 'project_groups'
+    def _get_filtered_data(self, cls, serializer):
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return None
+
+        projects = filter_queryset_for_user(cls.objects.all(), user)
+        serializer_instance = serializer(projects, context={'request': self.context['request']})
+        return serializer_instance.data
+
+    def get_customer_projects(self, obj):
+        return self._get_filtered_data(models.Project, BasicProjectSerializer)
+
+    def get_customer_project_groups(self, obj):
+        return self._get_filtered_data(models.ProjectGroup, BasicProjectGroupSerializer)
 
 
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
