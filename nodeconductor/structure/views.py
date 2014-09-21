@@ -25,6 +25,13 @@ class CustomerViewSet(viewsets.ModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
 
+# XXX: This should be put to models
+filters.set_permissions_for_model(
+    models.Customer,
+    project_path='projects',
+    customer_path='self'
+)
+
 
 class ProjectViewSet(viewsets.ModelViewSet):
     model = models.Project
