@@ -1,5 +1,3 @@
-import datetime
-
 from django.utils import timezone
 import factory
 import factory.fuzzy
@@ -41,7 +39,7 @@ class InstanceFactory(factory.DjangoModelFactory):
     flavor = factory.SubFactory(cloud_factories.FlavorFactory)
     project = factory.SubFactory(structure_factories.ProjectFactory, 
                                  cloud=factory.SelfAttribute('..flavor.cloud'))
-    start_time = factory.LazyAttribute(lambda o: datetime.datetime.now())
+    start_time = factory.LazyAttribute(lambda o: timezone.now())
 
 
 class PurchaseFactory(factory.DjangoModelFactory):

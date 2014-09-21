@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
+from django.contrib import auth
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.contrib import auth
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
 from rest_framework.reverse import reverse
@@ -162,17 +162,27 @@ class NotModifiedPermission(APIException):
     default_detail = 'Permissions were not modified'
 
 
-class ProjectPermissionWriteSerializer(serializers.Serializer):
-    project = serializers.HyperlinkedRelatedField(queryset=models.Project.objects.all(), view_name='project-detail',
-                                                  lookup_field='uuid', source='group.projectrole.project')
-    user = serializers.HyperlinkedRelatedField(view_name='user-detail', queryset=User.objects.all(),
-                                               lookup_field='uuid')
+class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
+                                  serializers.HyperlinkedModelSerializer):
+    project = serializers.HyperlinkedRelatedField(source='group.projectrole.project', view_name='project-detail',
+                                                  lookup_field='uuid', queryset=models.Project.objects.all())
+    user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
+                                               queryset=User.objects.all())
+
+    project_name = serializers.Field(source='group.projectrole.project.name')
+    user_full_name = serializers.Field(source='user.full_name')
+    user_native_name = serializers.Field(source='user.native_name')
 
     role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
 
     class Meta(object):
         model = User.groups.through
-        fields = ('project', 'user', 'role')
+        fields = (
+            'url',
+            'role',
+            'project', 'project_name',
+            'user', 'user_full_name', 'user_native_name',
+        )
         view_name = 'project_permission-detail'
 
     def restore_object(self, attrs, instance=None):
@@ -187,18 +197,8 @@ class ProjectPermissionWriteSerializer(serializers.Serializer):
         except IntegrityError:
             raise NotModifiedPermission()
 
-    def get_fields(self):
-        fields = super(ProjectPermissionWriteSerializer, self).get_fields()
-
-        try:
-            request = self.context['view'].request
-            user = request.user
-        except (KeyError, AttributeError):
-            return fields
-
-        fields['project'].queryset = models.Project.objects.filter(roles__permission_group__user=user,
-                                                                   roles__role_type=models.ProjectRole.MANAGER)
-        return fields
+    def get_filtered_field_names(self):
+        return 'project',
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
