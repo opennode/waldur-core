@@ -57,8 +57,6 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
         for user, project, role in self.all_roles:
             self.projects[project].add_user(self.users[user], self.role_map[role])
 
-        # TODO: Add project name and user name to the results
-
     # No role tests
     def test_user_cannot_list_roles_in_projects_he_has_no_role_in(self):
         for login_user in self.users:

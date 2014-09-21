@@ -120,12 +120,14 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
                                                   lookup_field='uuid', queryset=models.Project.objects.all())
     user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
                                                queryset=User.objects.all())
+    project_name = serializers.Field(source='group.projectrole.project.name')
+    user_name = serializers.Field(source='user.username')
 
     role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
 
     class Meta(object):
         model = User.groups.through
-        fields = ('url', 'project', 'user', 'role')
+        fields = ('url', 'project', 'user', 'role', 'user_name', 'project_name')
         view_name = 'project_permission-detail'
 
     def restore_object(self, attrs, instance=None):
