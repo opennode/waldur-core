@@ -17,16 +17,16 @@ TestRole = collections.namedtuple('TestRole', ['user', 'project', 'role'])
 
 class UserProjectPermissionTest(test.APITransactionTestCase):
     all_roles = (
-        #         user        project       role
-        TestRole('admin',    'admin',      'admin'),
-        TestRole('manager',  'manager',    'manager'),
+        # user        project       role
+        TestRole('admin', 'admin', 'admin'),
+        TestRole('manager', 'manager', 'manager'),
 
-        TestRole('admin2',   'admin',      'admin'),
-        TestRole('admin2',   'manager',    'admin'),
-        TestRole('admin2',   'standalone', 'admin'),
+        TestRole('admin2', 'admin', 'admin'),
+        TestRole('admin2', 'manager', 'admin'),
+        TestRole('admin2', 'standalone', 'admin'),
 
-        TestRole('manager2', 'admin',      'manager'),
-        TestRole('manager2', 'manager',    'manager'),
+        TestRole('manager2', 'admin', 'manager'),
+        TestRole('manager2', 'manager', 'manager'),
         TestRole('manager2', 'standalone', 'manager'),
     )
 
@@ -288,4 +288,7 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
                 del permission['url']
         return {u'role': role,
                 u'user': user_url,
-                u'project': project_url} in permissions
+                u'user_name': user.username,
+                u'project_name': project.name,
+                u'project': project_url,
+                } in permissions
