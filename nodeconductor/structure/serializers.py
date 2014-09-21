@@ -5,30 +5,41 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
+from rest_framework.reverse import reverse
 
-from nodeconductor.core.serializers import PermissionFieldFilteringMixin
+from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin
 from nodeconductor.structure import models
 
 
 User = auth.get_user_model()
 
 
-class BasicProjectGroupSerializer(serializers.HyperlinkedModelSerializer):
-
+class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
-        model = models.ProjectGroup
-        fields = ('url', 'name', 'customer')
+        fields = ('url', 'name')
         lookup_field = 'uuid'
 
 
-class ProjectSerializer(serializers.HyperlinkedModelSerializer):
-    customer_name = serializers.Field(source='customer.name')
+class BasicProjectSerializer(BasicInfoSerializer):
+    class Meta(BasicInfoSerializer.Meta):
+        model = models.Project
+
+
+class BasicProjectGroupSerializer(BasicInfoSerializer):
+    class Meta(BasicInfoSerializer.Meta):
+        model = models.ProjectGroup
+
+
+class ProjectSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.Project
         fields = ('url', 'name', 'customer', 'customer_name', 'project_groups')
         lookup_field = 'uuid'
+
+    def get_related_paths(self):
+        return 'customer',
 
 
 class ProjectCreateSerializer(PermissionFieldFilteringMixin,
@@ -43,7 +54,7 @@ class ProjectCreateSerializer(PermissionFieldFilteringMixin,
 
 
 class CustomerSerializer(serializers.HyperlinkedModelSerializer):
-    projects = ProjectSerializer(many=True, read_only=True)
+    projects = BasicProjectSerializer(many=True, read_only=True)
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
 
     class Meta(object):
@@ -52,9 +63,10 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
 
 
-class ProjectGroupSerializer(PermissionFieldFilteringMixin, serializers.HyperlinkedModelSerializer):
-    projects = ProjectSerializer(many=True, read_only=True)
-    customer_name = serializers.Field(source='customer.name')
+class ProjectGroupSerializer(PermissionFieldFilteringMixin,
+                             RelatedResourcesFieldMixin,
+                             serializers.HyperlinkedModelSerializer):
+    projects = BasicProjectSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.ProjectGroup
@@ -78,17 +90,30 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin, serializers.Hyperlin
 
         return fields
 
+    def get_related_paths(self):
+        return 'customer',
+
 
 class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin, serializers.HyperlinkedModelSerializer):
-    project_group = serializers.HyperlinkedRelatedField(source='projectgroup',
-                                                        view_name='projectgroup-detail',
-                                                        lookup_field='uuid')
-    project = serializers.HyperlinkedRelatedField(view_name='project-detail',
-                                                  lookup_field='uuid')
+    project_group = serializers.HyperlinkedRelatedField(
+        source='projectgroup',
+        view_name='projectgroup-detail',
+        lookup_field='uuid',
+    )
+    project_group_name = serializers.Field(source='projectgroup.name')
+    project = serializers.HyperlinkedRelatedField(
+        view_name='project-detail',
+        lookup_field='uuid',
+    )
+    project_name = serializers.Field(source='project.name')
 
     class Meta(object):
         model = models.ProjectGroup.projects.through
-        fields = ('url', 'project_group', 'project')
+        fields = (
+            'url',
+            'project_group', 'project_group_name',
+            'project', 'project_name',
+        )
         view_name = 'projectgroup_membership-detail'
 
     def get_filtered_field_names(self):
@@ -109,6 +134,29 @@ class ProjectRoleField(serializers.ChoiceField):
             raise ValidationError('Unknown role')
 
 
+class ProjectPermissionReadSerializer(RelatedResourcesFieldMixin,
+                                      serializers.HyperlinkedModelSerializer):
+    user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
+                                               queryset=User.objects.all())
+    user_full_name = serializers.Field(source='user.full_name')
+    user_native_name = serializers.Field(source='user.native_name')
+
+    role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
+
+    class Meta(object):
+        model = User.groups.through
+        fields = (
+            'url',
+            'project', 'project_name',
+            'user', 'user_full_name', 'user_native_name',
+            'role',
+        )
+        view_name = 'project_permission-detail'
+
+    def get_related_paths(self):
+        return 'group.projectrole.project',
+
+
 class NotModifiedPermission(APIException):
     status_code = 304
     default_detail = 'Permissions were not modified'
@@ -120,14 +168,21 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
                                                   lookup_field='uuid', queryset=models.Project.objects.all())
     user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
                                                queryset=User.objects.all())
+
     project_name = serializers.Field(source='group.projectrole.project.name')
-    user_name = serializers.Field(source='user.username')
+    user_full_name = serializers.Field(source='user.full_name')
+    user_native_name = serializers.Field(source='user.native_name')
 
     role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
 
     class Meta(object):
         model = User.groups.through
-        fields = ('url', 'project', 'user', 'role', 'user_name', 'project_name')
+        fields = (
+            'url',
+            'role',
+            'project', 'project_name',
+            'user', 'user_full_name', 'user_native_name',
+        )
         view_name = 'project_permission-detail'
 
     def restore_object(self, attrs, instance=None):
@@ -147,26 +202,27 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
-    projects = serializers.SerializerMethodField('user_projects_roles')
+    project_groups = serializers.SerializerMethodField('user_project_groups')
     email = serializers.EmailField()
 
-    def user_projects_roles(self, obj):
-        user_groups = obj.groups.through.objects.exclude(group__projectrole__project=None)
-        project_metadata = []
-        for g in user_groups:
-            project = g.group.projectrole.project
-            project_metadata.append({
-                'role': models.ProjectRole.ROLE_TO_NAME[g.group.projectrole.role_type],
-                'project': project.name,
-                'customer': project.customer.name,
-                'projectgroups': project.project_groups.all().values_list('name', flat=True)
-            })
+    def user_project_groups(self, obj):
+        request = self.context.get('request')
 
-        return project_metadata
+        project_groups_qs = models.ProjectGroup.objects.filter(
+            projects__roles__permission_group__user=obj).distinct()
+
+        return [
+            {
+                'url': reverse('projectgroup-detail', kwargs={'uuid': project_group['uuid']}, request=request),
+                'name': project_group['name'],
+            }
+            for project_group in
+            project_groups_qs.values('uuid', 'name').iterator()
+        ]
 
     class Meta(object):
         model = User
         fields = ('url', 'uuid', 'username', 'full_name', 'native_name', 'job_title', 'email',
-                  'civil_number', 'phone_number', 'description', 'is_staff', 'organization', 'projects')
+                  'civil_number', 'phone_number', 'description', 'is_staff', 'organization', 'project_groups')
         read_only_fields = ('uuid', 'is_staff')
         lookup_field = 'uuid'

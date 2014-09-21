@@ -83,3 +83,43 @@ class PermissionFieldFilteringMixin(object):
         raise NotImplementedError(
             'Implement get_filtered_field_names() '
             'to return list of filtered fields')
+
+
+class RelatedResourcesFieldMixin(object):
+    """
+    Mixin that adds fields describing related resources.
+
+    For related resource Foo two fields are added:
+
+    1. `foo` containing a URL to the Foo resource
+    2. `foo_name` containing the name of the Foo resource
+
+    In order to add related resource fields:
+
+    1. Inherit from `RelatedResourcesFieldMixin`.
+
+    2. Implement `get_related_paths()` method
+       and return paths to related resources
+       from the current resource.
+    """
+    def get_default_fields(self):
+        fields = super(RelatedResourcesFieldMixin, self).get_default_fields()
+
+        for path in self.get_related_paths():
+            path_components = path.split('.')
+            entity_name = path_components[-1]
+
+            fields[entity_name] = serializers.HyperlinkedRelatedField(
+                source=path,
+                view_name='{0}-detail'.format(entity_name),
+                lookup_field='uuid',
+                read_only=len(path_components) > 1,
+            )
+
+            fields['{0}_name'.format(entity_name)] = serializers.Field(source='{0}.name'.format(path))
+
+        return fields
+
+    def get_related_paths(self):
+        raise NotImplementedError(
+            'Implement get_paths() to return list of filtered fields')

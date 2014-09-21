@@ -1,5 +1,6 @@
 from django.utils import timezone
 import factory
+import factory.fuzzy
 
 from nodeconductor.iaas import models
 from nodeconductor.cloud.tests import factories as cloud_factories
@@ -14,6 +15,7 @@ class ImageFactory(factory.DjangoModelFactory):
     cloud = factory.SubFactory(cloud_factories.CloudFactory)
     architecture = factory.Iterator(models.Image.ARCHITECTURE_CHOICES, getter=lambda c: c[0])
     description = factory.Sequence(lambda n: 'description%s' % n)
+    template = None
 
 
 class TemplateFactory(factory.DjangoModelFactory):
@@ -21,7 +23,11 @@ class TemplateFactory(factory.DjangoModelFactory):
         model = models.Template
 
     name = factory.Sequence(lambda n: 'template%s' % n)
-    image = factory.SubFactory(ImageFactory)
+    description = factory.Sequence(lambda n: 'description %d' % n)
+    icon_url = factory.Sequence(lambda n: 'http://example.com/%d.png' % n)
+    is_active = True
+    setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
+    monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
 
 class InstanceFactory(factory.DjangoModelFactory):

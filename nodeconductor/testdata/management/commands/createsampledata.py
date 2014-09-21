@@ -1,9 +1,13 @@
 import random
 import string
+from decimal import Decimal
 
 from django.core.management.base import NoArgsCommand
+import sys
 
+from nodeconductor.cloud.models import Cloud
 from nodeconductor.core.models import User
+from nodeconductor.iaas.models import Template
 from nodeconductor.structure.models import *
 
 
@@ -52,6 +56,67 @@ class Command(NoArgsCommand):
         # Add more customers
         [self.create_customer() for _ in range(3)]
 
+    def create_cloud(self, customer):
+        cloud_name = 'CloudAccount of %s (%s)' % (customer.name, random_string(10, 20, with_spaces=True))
+        self.stdout.write('Creating cloud "%s"' % cloud_name)
+
+        cloud = Cloud.objects.create(
+            customer=customer,
+            name=cloud_name,
+            auth_url='http://%s.com' % random_string(10, 12, with_spaces=True),
+        )
+        cloud.projects.add(*list(customer.projects.all()))
+
+        # add flavors
+        cloud.flavors.create(
+            name='x1.xx of cloud %s' % cloud.uuid,
+            cores=2,
+            ram=1024,
+            disk=45,
+        )
+        cloud.flavors.create(
+            name='x2.xx of cloud %s' % cloud.uuid,
+            cores=4,
+            ram=2048,
+            disk=90,
+        )
+
+        # add templates
+        template1 = Template.objects.create(
+            name='CentOS 6 x64 %s' % random_string(3, 7),
+            os='CentOS 6.5',
+            is_active=True,
+            icon_url='http://wiki.centos.org/ArtWork/Brand?action=AttachFile&do=get&target=centos-symbol.png',
+            setup_fee=Decimal(str(random.random() * 100.0)),
+            monthly_fee=Decimal(str(random.random() * 100.0)),
+        )
+        template2 = Template.objects.create(
+            name='Windows 3.11 %s' % random_string(3, 7),
+            os='Windows 3.11',
+            is_active=False,
+            setup_fee=Decimal(str(random.random() * 100.0)),
+            monthly_fee=Decimal(str(random.random() * 100.0)),
+        )
+
+        # add images
+        cloud.images.create(
+            name='CentOS 6',
+            architecture=0,
+            description='A CentOS 6 image',
+            template=template1,
+        )
+        cloud.images.create(
+            name='Windows 2008',
+            architecture=1,
+            description='A Windows 2008 R2',
+            template=template2,
+        )
+        cloud.images.create(
+            name='Windows XP backup',
+            architecture=1,
+            description='A backup image of WinXP',
+        )
+
     def create_customer(self):
         customer_name = 'Customer %s' % random_string(3, 7)
         self.stdout.write('Creating customer "%s"' % customer_name)
@@ -66,6 +131,8 @@ class Command(NoArgsCommand):
             self.create_project(customer),
             self.create_project(customer),
         ]
+
+        self.create_cloud(customer)
 
         # Use Case 5: User has roles in several projects of the same customer
         user1 = self.create_user()
@@ -111,7 +178,7 @@ class Command(NoArgsCommand):
         return project
 
     def create_user(self):
-        username = 'user%s' % random_string(3, 7, alphabet=string.digits)
+        username = 'user%s' % random_string(3, 15, alphabet=string.digits)
         self.stdout.write('Creating user "%s"' % username)
 
         user = User(

@@ -101,7 +101,6 @@ class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
 
     # Mutation tests
     def test_anonymous_user_cannot_change_project_groups(self):
-        from itertools import chain
         for project_group in set(chain(*self.project_groups.values())):
             response = self.client.put(self._get_project_group_url(project_group),
                                        self._get_valid_payload(project_group))

@@ -232,7 +232,6 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
     # Deletion tests
     def test_user_can_delete_role_of_project_he_is_manager_of(self):
         self.client.force_authenticate(user=self.users['manager'])
-
         # We skip deleting manager's permission now
         # otherwise he won't be able to manage roles anymore
         managed_roles = (
@@ -286,9 +285,13 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
         for permission in permissions:
             if 'url' in permission:
                 del permission['url']
-        return {u'role': role,
-                u'user': user_url,
-                u'user_name': user.username,
-                u'project_name': project.name,
-                u'project': project_url,
-                } in permissions
+
+        role = {
+            'user': user_url,
+            'user_full_name': user.full_name,
+            'user_native_name': user.native_name,
+            'project': project_url,
+            'project_name': project.name,
+            'role': role,
+        }
+        return role in permissions
