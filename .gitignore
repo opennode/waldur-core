@@ -1,6 +1,7 @@
 /dist
 /build
 /venv
+*.egg
 *.egg-info
 *.pyc
 db.sqlite3
