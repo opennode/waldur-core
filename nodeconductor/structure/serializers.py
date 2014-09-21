@@ -24,10 +24,14 @@ class BasicProjectSerializer(BasicInfoSerializer):
     class Meta(BasicInfoSerializer.Meta):
         model = models.Project
 
+    queryset = models.Project.objects.all()
+
 
 class BasicProjectGroupSerializer(BasicInfoSerializer):
     class Meta(BasicInfoSerializer.Meta):
         model = models.ProjectGroup
+
+    queryset = models.ProjectGroup.objects.all()
 
 
 class ProjectSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
@@ -53,7 +57,8 @@ class ProjectCreateSerializer(PermissionFieldFilteringMixin,
         return 'customer',
 
 
-class CustomerSerializer(serializers.HyperlinkedModelSerializer):
+class CustomerSerializer(PermissionFieldFilteringMixin,
+                         serializers.HyperlinkedModelSerializer):
     projects = BasicProjectSerializer(many=True, read_only=True)
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
 
@@ -61,6 +66,9 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         model = models.Customer
         fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
+
+    def get_filtered_field_names(self):
+        return 'projects', 'project_groups'
 
 
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
