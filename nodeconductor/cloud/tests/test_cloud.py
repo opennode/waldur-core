@@ -125,18 +125,18 @@ class CloudPermissionTest(test.APITransactionTestCase):
         response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.cloud_resources['owned']))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-#    def test_user_cannot_add_cloud_to_the_customer_he_doesnt_own(self):
-#        self.client.force_authenticate(user=self.users['project_admin'])
-#
-#        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.cloud_resources['owned']))
-#        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-#        self.assertDictContainsSubset({'customer': ['Invalid hyperlink - object does not exist.']}, response.data)
+    def test_user_cannot_add_cloud_to_the_customer_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['project_admin'])
 
-#    def test_user_cannot_add_cloud_to_the_customer_he_has_no_role_in(self):
-#        self.client.force_authenticate(user=self.users['no_role'])
-#
-#        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.cloud_resources['owned']))
-#        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.cloud_resources['owned']))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset({'customer': ['Invalid hyperlink - object does not exist.']}, response.data)
+
+    def test_user_cannot_add_cloud_to_the_customer_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.users['no_role'])
+
+        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.cloud_resources['owned']))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def _get_cloud_url(self, cloud):
         return 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': cloud.uuid})

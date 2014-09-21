@@ -1,13 +1,18 @@
 from rest_framework import serializers
 
 from nodeconductor.cloud import models
+from nodeconductor.core.serializers import PermissionFieldFilteringMixin
 
 
-class CloudSerializer(serializers.HyperlinkedModelSerializer):
+class CloudSerializer(PermissionFieldFilteringMixin,
+                      serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Cloud
-        fields = ('uuid', 'url', 'name')
+        fields = ('uuid', 'url', 'name', 'customer')
         lookup_field = 'uuid'
+
+    def get_filtered_field_names(self):
+        return 'customer',
 
 
 class FlavorSerializer(serializers.HyperlinkedModelSerializer):
