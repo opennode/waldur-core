@@ -5,6 +5,7 @@ import django_filters
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import viewsets as rf_viewsets
+from rest_framework.exceptions import PermissionDenied
 
 from nodeconductor.core import permissions
 from nodeconductor.core import viewsets
@@ -12,6 +13,7 @@ from nodeconductor.core import mixins
 from nodeconductor.structure import filters
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
+from nodeconductor.structure.models import ProjectRole
 
 
 User = auth.get_user_model()
@@ -131,11 +133,16 @@ class UserViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class ProjectPermissionViewSet(viewsets.ModelViewSet):
+class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
+                                    rf_mixins.RetrieveModelMixin,
+                                    rf_mixins.DestroyModelMixin,
+                                    mixins.ListModelMixin,
+                                    rf_viewsets.GenericViewSet):
     model = User.groups.through
-    serializer_class = serializers.ProjectPermissionReadSerializer
+    serializer_class = serializers.ProjectPermissionSerializer
     filter_backends = (filters.GenericRoleFilter,)
-    # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
 
     def get_queryset(self):
         queryset = super(ProjectPermissionViewSet, self).get_queryset()
@@ -148,10 +155,12 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    def get_serializer_class(self):
-        if self.request.method == 'POST':
-            return serializers.ProjectPermissionWriteSerializer
-        return super(ProjectPermissionViewSet, self).get_serializer_class()
+    def pre_save(self, obj):
+        super(ProjectPermissionViewSet, self).pre_save(obj)
+        if not obj.group.projectrole.project.roles.filter(permission_group__user=self.request.user, role_type=ProjectRole.MANAGER).exists():
+            raise PermissionDenied()
+
+
 
 # XXX: This should be put to models
 filters.set_permissions_for_model(
