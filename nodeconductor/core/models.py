@@ -117,14 +117,14 @@ def create_user_group_permissions(sender, **kwargs):
         return
     content_type = ContentType.objects.get_for_model(User.groups.through)
     Permission.objects.get_or_create(codename='delete_user_groups',
-                                       name='Can delete user groups',
-                                       content_type=content_type)
+                                     name='Can delete user groups',
+                                     content_type=content_type)
     Permission.objects.get_or_create(codename='add_user_groups',
-                                       name='Can add user groups',
-                                       content_type=content_type)
+                                     name='Can add user groups',
+                                     content_type=content_type)
     Permission.objects.get_or_create(codename='change_user_groups',
-                                       name='Can change user groups',
-                                       content_type=content_type)
+                                     name='Can change user groups',
+                                     content_type=content_type)
 
 
 signals.post_syncdb.connect(create_user_group_permissions)

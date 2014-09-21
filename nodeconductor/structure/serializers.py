@@ -1,14 +1,13 @@
 from __future__ import unicode_literals
 
+from django.contrib import auth
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.contrib import auth
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
 
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin
 from nodeconductor.structure import models
-from nodeconductor.structure.models import Project
 
 
 User = auth.get_user_model()
@@ -118,7 +117,7 @@ class NotModifiedPermission(APIException):
 class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
                                   serializers.HyperlinkedModelSerializer):
     project = serializers.HyperlinkedRelatedField(source='group.projectrole.project', view_name='project-detail',
-                                                  lookup_field='uuid', queryset=Project.objects.all())
+                                                  lookup_field='uuid', queryset=models.Project.objects.all())
     user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
                                                queryset=User.objects.all())
 
@@ -143,7 +142,6 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'project',
-
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
