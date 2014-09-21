@@ -14,6 +14,12 @@ class UrlResolverMixin(object):
     def _get_customer_url(self, customer):
         return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
 
+    def _get_project_url(self, project):
+        return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
+
+    def _get_project_group_url(self, project_group):
+        return 'http://testserver' + reverse('projectgroup-detail', kwargs={'uuid': project_group.uuid})
+
 
 class CustomerRoleTest(TestCase):
     def setUp(self):
@@ -53,6 +59,14 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.projects['admin'].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         self.projects['manager'].add_user(self.users['manager'], ProjectRole.MANAGER)
 
+        self.project_groups = {
+            'admin': factories.ProjectGroupFactory(customer=self.customers['admin']),
+            'manager': factories.ProjectGroupFactory(customer=self.customers['manager']),
+        }
+
+        self.project_groups['admin'].projects.add(self.projects['admin'])
+        self.project_groups['manager'].projects.add(self.projects['manager'])
+
     # List filtration tests
     def test_user_can_list_customers_he_is_owner_of(self):
         self.client.force_authenticate(user=self.users['owner'])
@@ -86,6 +100,77 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_user_cannot_list_customer_if_he_is_manager_in_a_project_not_owned_by_a_customer(self):
         self.client.force_authenticate(user=self.users['manager'])
         self._check_customer_in_list(self.customers['admin'], False)
+
+    # Nested objects filtration tests
+    def test_user_can_see_project_he_has_a_role_in_within_customer(self):
+        for user_role in ('admin', 'manager'):
+            self.client.force_authenticate(user=self.users[user_role])
+
+            customer = self.customers[user_role]
+
+            seen_project = self.projects[user_role]
+
+            response = self.client.get(self._get_customer_url(customer))
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+            project_urls = set([project['url'] for project in response.data['projects']])
+            self.assertIn(
+                self._get_project_url(seen_project), project_urls,
+                'User should see project',
+            )
+
+    def test_user_can_see_project_group_he_has_a_role_in_within_customer(self):
+        for user_role in ('admin', 'manager'):
+            self.client.force_authenticate(user=self.users[user_role])
+
+            customer = self.customers[user_role]
+
+            seen_project_group = self.project_groups[user_role]
+
+            response = self.client.get(self._get_customer_url(customer))
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+            project_group_urls = set([pgrp['url'] for pgrp in response.data['project_groups']])
+            self.assertIn(
+                self._get_project_group_url(seen_project_group), project_group_urls,
+                'User should see project group',
+            )
+
+    def test_user_cannot_see_project_he_has_no_role_in_within_customer(self):
+        for user_role in ('admin', 'manager'):
+            self.client.force_authenticate(user=self.users[user_role])
+
+            customer = self.customers[user_role]
+
+            non_seen_project = factories.ProjectFactory(customer=customer)
+
+            response = self.client.get(self._get_customer_url(customer))
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+            project_urls = set([project['url'] for project in response.data['projects']])
+            self.assertNotIn(
+                self._get_project_url(non_seen_project), project_urls,
+                'User should not see project',
+            )
+
+    def test_user_cannot_see_project_group_he_has_no_role_in_within_customer(self):
+        for user_role in ('admin', 'manager'):
+            self.client.force_authenticate(user=self.users[user_role])
+
+            customer = self.customers[user_role]
+
+            non_seen_project = factories.ProjectFactory(customer=customer)
+            non_seen_project_group = factories.ProjectGroupFactory(customer=customer)
+            non_seen_project_group.projects.add(non_seen_project)
+
+            response = self.client.get(self._get_customer_url(customer))
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+            project_group_urls = set([pgrp['url'] for pgrp in response.data['project_groups']])
+            self.assertNotIn(
+                self._get_project_group_url(non_seen_project_group), project_group_urls,
+                'User should not see project group',
+            )
 
     # Direct instance access tests
     def test_user_can_access_customers_he_is_owner_of(self):
