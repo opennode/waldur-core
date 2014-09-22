@@ -63,7 +63,6 @@ class CustomerAddendumApiPermissionTest(UrlResolverMixin, test.APITransactionTes
                 'User should see cloud',
             )
 
-    @unittest.skip('Not implemented yet')
     def test_user_can_not_see_cloud_he_has_no_access_to_within_customer(self):
         for user_role, cloud in (
                 ('admin', 'manager'),
