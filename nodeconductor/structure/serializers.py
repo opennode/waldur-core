@@ -25,9 +25,6 @@ class BasicProjectSerializer(BasicInfoSerializer):
     class Meta(BasicInfoSerializer.Meta):
         model = models.Project
 
-    def get_fields(self):
-        return super(BasicProjectSerializer, self).get_fields()
-
 
 class BasicProjectGroupSerializer(BasicInfoSerializer):
     class Meta(BasicInfoSerializer.Meta):
@@ -65,6 +62,9 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         model = models.Customer
         fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
+
+    def get_filtered_field_names(self):
+        return 'projects', 'project_groups'
 
     def _get_filtered_data(self, cls, serializer):
         try:
