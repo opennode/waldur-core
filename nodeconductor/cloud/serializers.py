@@ -1,10 +1,15 @@
 from rest_framework import serializers
 
+from nodeconductor.core import serializers as core_serializers
 from nodeconductor.cloud import models
-from nodeconductor.core.serializers import PermissionFieldFilteringMixin
 
 
-class CloudSerializer(PermissionFieldFilteringMixin,
+class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
+    class Meta(core_serializers.BasicInfoSerializer.Meta):
+        model = models.Cloud
+
+
+class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
                       serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Cloud
