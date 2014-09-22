@@ -71,8 +71,8 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         except (KeyError, AttributeError):
             return None
 
-        projects = filter_queryset_for_user(objects, user)
-        serializer_instance = serializer(projects, context={'request': self.context['request']})
+        queryset = filter_queryset_for_user(objects, user)
+        serializer_instance = serializer(queryset, context={'request': self.context['request']})
         return serializer_instance.data
 
     def get_customer_projects(self, obj):

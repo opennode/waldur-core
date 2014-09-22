@@ -145,7 +145,7 @@ class UnboundSerializerMethodField(Field):
         try:
             request = self.context['request']
         except KeyError:
-            return None
+            return self.to_native(obj)
 
         value = self.filter_function(obj, request)
         return self.to_native(value)

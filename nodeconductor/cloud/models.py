@@ -46,16 +46,16 @@ class Cloud(UuidMixin, models.Model):
 
 
 def get_customer_clouds(obj, request):
+    customer_clouds = obj.clouds.all()
+
     try:
         user = request.user
+        customer_clouds = filter_queryset_for_user(customer_clouds, user)
     except AttributeError:
-        return None
-
-    objects = obj.clouds.all()
-    queryset = filter_queryset_for_user(objects, user)
+        pass
 
     from nodeconductor.cloud.serializers import BasicCloudSerializer
-    serializer_instance = BasicCloudSerializer(queryset, context={'request': request})
+    serializer_instance = BasicCloudSerializer(customer_clouds, context={'request': request})
 
     return serializer_instance.data
 
