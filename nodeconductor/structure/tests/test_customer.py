@@ -136,6 +136,38 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
                 'User should see project group',
             )
 
+    def test_user_cannot_see_project_groups_from_different_customer(self):
+        # setUp
+        project_group_1_1 = self.project_groups['admin']
+        project_group_1_2 = factories.ProjectGroupFactory(customer=self.customers['admin'])
+
+        project_group_2_1 = self.project_groups['manager']
+        project_group_2_2 = factories.ProjectGroupFactory(customer=self.customers['manager'])
+
+        self.projects['manager'].add_user(self.users['admin'], ProjectRole.MANAGER)
+
+        # test body
+        self.client.force_authenticate(user=self.users['admin'])
+        response = self.client.get(self._get_customer_url(self.customers['admin']))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        project_group_urls = set([project_group['url'] for project_group in response.data['project_groups']])
+
+        self.assertIn(
+            self._get_project_group_url(project_group_1_1), project_group_urls,
+            'User should see project group {0}'.format(project_group_1_1),
+        )
+
+        for project_group in (
+                project_group_1_2,
+                project_group_2_1,
+                project_group_2_2,
+        ):
+            self.assertNotIn(
+                self._get_project_group_url(project_group), project_group_urls,
+                'User should not see project group {0}'.format(project_group),
+            )
+
     def test_user_cannot_see_project_he_has_no_role_in_within_customer(self):
         for user_role in ('admin', 'manager'):
             self.client.force_authenticate(user=self.users[user_role])

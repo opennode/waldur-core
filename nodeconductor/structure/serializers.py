@@ -63,24 +63,22 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
 
-    def get_filtered_field_names(self):
-        return 'projects', 'project_groups'
 
-    def _get_filtered_data(self, cls, serializer):
+    def _get_filtered_data(self, objects, serializer):
         try:
             user = self.context['request'].user
         except (KeyError, AttributeError):
             return None
 
-        projects = filter_queryset_for_user(cls.objects.all(), user)
+        projects = filter_queryset_for_user(objects, user)
         serializer_instance = serializer(projects, context={'request': self.context['request']})
         return serializer_instance.data
 
     def get_customer_projects(self, obj):
-        return self._get_filtered_data(models.Project, BasicProjectSerializer)
+        return self._get_filtered_data(obj.projects.all(), BasicProjectSerializer)
 
     def get_customer_project_groups(self, obj):
-        return self._get_filtered_data(models.ProjectGroup, BasicProjectGroupSerializer)
+        return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
 
 
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
