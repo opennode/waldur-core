@@ -2,6 +2,7 @@ import base64
 
 from django.contrib.auth import authenticate
 from rest_framework import serializers
+from rest_framework.fields import Field
 
 from nodeconductor.structure.filters import filter_queryset_for_user
 
@@ -129,3 +130,22 @@ class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         fields = ('url', 'name')
         lookup_field = 'uuid'
+
+
+class UnboundSerializerMethodField(Field):
+    """
+    A field that gets its value by calling a provided filter callback.
+    """
+
+    def __init__(self, filter_function, *args, **kwargs):
+        self.filter_function = filter_function
+        super(UnboundSerializerMethodField, self).__init__(*args, **kwargs)
+
+    def field_to_native(self, obj, field_name):
+        try:
+            request = self.context['request']
+        except KeyError:
+            return None
+
+        value = self.filter_function(obj, request)
+        return self.to_native(value)

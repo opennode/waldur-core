@@ -8,8 +8,10 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import DescribableMixin, UuidMixin
+from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models as structure_models
+from nodeconductor.structure.filters import filter_queryset_for_user
 
 
 @python_2_unicode_compatible
@@ -43,6 +45,21 @@ class Cloud(UuidMixin, models.Model):
         return self.name
 
 
+def get_customer_clouds(obj, request):
+    try:
+        user = request.user
+    except AttributeError:
+        return None
+
+    objects = obj.clouds.all()
+    queryset = filter_queryset_for_user(objects, user)
+
+    from nodeconductor.cloud.serializers import BasicCloudSerializer
+    serializer_instance = BasicCloudSerializer(queryset, context={'request': request})
+
+    return serializer_instance.data
+
+
 # These hacks are necessary for Django <1.7
 # TODO: Refactor to use app.ready() after transition to Django 1.7
 # See https://docs.djangoproject.com/en/1.7/topics/signals/#connecting-receiver-functions
@@ -55,9 +72,7 @@ def add_clouds_to_customer(sender, fields, **kwargs):
     if sender is not CustomerSerializer:
         return
 
-    from nodeconductor.cloud.serializers import BasicCloudSerializer
-
-    fields['clouds'] = BasicCloudSerializer(many=True, read_only=True)
+    fields['clouds'] = UnboundSerializerMethodField(get_customer_clouds)
 
 
 @python_2_unicode_compatible
