@@ -8,6 +8,7 @@ from rest_framework.exceptions import APIException
 from rest_framework.reverse import reverse
 
 from nodeconductor.core import serializers as core_serializers
+from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models
 from nodeconductor.structure.filters import filter_queryset_for_user
 
@@ -58,6 +59,11 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
 
+    # TODO: Move to a separate documented mixin
+    def get_fields(self):
+        fields = super(CustomerSerializer, self).get_fields()
+        pre_serializer_fields.send(sender=self.__class__, fields=fields)
+        return fields
 
     def _get_filtered_data(self, objects, serializer):
         try:
