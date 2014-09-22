@@ -14,6 +14,7 @@ from nodeconductor.core.models import UuidMixin
 class Customer(UuidMixin, models.Model):
     class Permissions(object):
         customer_path = 'self'
+        project_path = 'projects'
 
     name = models.CharField(max_length=160)
     abbreviation = models.CharField(max_length=8)
