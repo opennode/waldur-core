@@ -11,26 +11,29 @@ from nodeconductor.structure.tests import factories as structure_factories
 
 class CloudPermissionTest(test.APITransactionTestCase):
     def setUp(self):
-        self.customers = {}
-        for customer_type in 'owned', :
-            self.customers[customer_type] = structure_factories.CustomerFactory()
+        self.customers = {
+            'owned': structure_factories.CustomerFactory(),
+            'project_admin': structure_factories.CustomerFactory(),
+        }
 
-        self.users = {}
-        for user_type in 'customer_owner', 'project_admin', 'no_role':
-            self.users[user_type] = structure_factories.UserFactory()
+        self.users = {
+            'customer_owner': structure_factories.UserFactory(),
+            'project_admin': structure_factories.UserFactory(),
+            'no_role': structure_factories.UserFactory(),
+        }
 
-        self.projects = {}
-        for project_type in 'owned', :
-            self.projects[project_type] = structure_factories.ProjectFactory()
+        self.projects = {
+            'owned': structure_factories.ProjectFactory(customer=self.customers['owned']),
+            'project_admin': structure_factories.ProjectFactory(customer=self.customers['project_admin']),
+        }
 
-        self.cloud_resources = {}
-        for cloud_type in 'owned', :
-            self.cloud_resources[cloud_type] = factories.CloudFactory.build()
+        self.clouds = {
+            'owned': factories.CloudFactory.build(customer=self.customers['owned']),  # Note, not committed to db
+        }
 
         self.customers['owned'].add_user(self.users['customer_owner'], CustomerRole.OWNER)
-        self.projects['owned'].customer = self.customers['owned']
-        self.cloud_resources['owned'].customer = self.customers['owned']
 
+        self.projects['project_admin'].add_user(self.users['project_admin'], ProjectRole.ADMINISTRATOR)
         # Deprecated
 
         self.user = structure_factories.UserFactory.create()
@@ -119,23 +122,24 @@ class CloudPermissionTest(test.APITransactionTestCase):
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    # Creation tests
     def test_user_can_add_cloud_to_the_customer_he_owns(self):
         self.client.force_authenticate(user=self.users['customer_owner'])
 
-        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.cloud_resources['owned']))
+        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.clouds['owned']))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_user_cannot_add_cloud_to_the_customer_he_doesnt_own(self):
+    def test_user_cannot_add_cloud_to_the_customer_he_sees_but_doesnt_own(self):
         self.client.force_authenticate(user=self.users['project_admin'])
 
-        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.cloud_resources['owned']))
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'customer': ['Invalid hyperlink - object does not exist.']}, response.data)
+        cloud = factories.CloudFactory.build(customer=self.customers['project_admin'])
+        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(cloud))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_cannot_add_cloud_to_the_customer_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.users['no_role'])
 
-        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.cloud_resources['owned']))
+        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.clouds['owned']))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def _get_cloud_url(self, cloud):
