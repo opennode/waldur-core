@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.core.validators import URLValidator
 from django.db import models
+from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
@@ -78,6 +79,36 @@ class Flavor(UuidMixin, models.Model):
 
     def __str__(self):
         return self.name
+
+
+# These should come from backend properly
+@receiver(signals.post_save, sender=Cloud)
+def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
+    if created:
+        instance.flavors.create(
+            name='Weak & Small',
+            cores=2,
+            ram=2.0,
+            disk=10.0,
+        )
+        instance.flavors.create(
+            name='Powerful & Small',
+            cores=16,
+            ram=2.0,
+            disk=10.0,
+        )
+        instance.flavors.create(
+            name='Weak & Large',
+            cores=2,
+            ram=32.0,
+            disk=100.0,
+        )
+        instance.flavors.create(
+            name='Powerful & Large',
+            cores=16,
+            ram=32.0,
+            disk=100.0,
+        )
 
 
 class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
