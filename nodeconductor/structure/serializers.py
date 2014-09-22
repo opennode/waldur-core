@@ -7,7 +7,8 @@ from rest_framework import serializers
 from rest_framework.exceptions import APIException
 from rest_framework.reverse import reverse
 
-from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin
+from nodeconductor.core import serializers as core_serializers
+from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models
 from nodeconductor.structure.filters import filter_queryset_for_user
 
@@ -15,23 +16,18 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 User = auth.get_user_model()
 
 
-class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta(object):
-        fields = ('url', 'name')
-        lookup_field = 'uuid'
-
-
-class BasicProjectSerializer(BasicInfoSerializer):
-    class Meta(BasicInfoSerializer.Meta):
+class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
+    class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.Project
 
 
-class BasicProjectGroupSerializer(BasicInfoSerializer):
-    class Meta(BasicInfoSerializer.Meta):
+class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
+    class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.ProjectGroup
 
 
-class ProjectSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
+class ProjectSerializer(core_serializers.RelatedResourcesFieldMixin,
+                        serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
 
     class Meta(object):
@@ -43,7 +39,7 @@ class ProjectSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModel
         return 'customer',
 
 
-class ProjectCreateSerializer(PermissionFieldFilteringMixin,
+class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                               serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Project
@@ -63,6 +59,11 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
 
+    # TODO: Move to a separate documented mixin
+    def get_fields(self):
+        fields = super(CustomerSerializer, self).get_fields()
+        pre_serializer_fields.send(sender=self.__class__, fields=fields)
+        return fields
 
     def _get_filtered_data(self, objects, serializer):
         try:
@@ -81,8 +82,8 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
 
 
-class ProjectGroupSerializer(PermissionFieldFilteringMixin,
-                             RelatedResourcesFieldMixin,
+class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
+                             core_serializers.RelatedResourcesFieldMixin,
                              serializers.HyperlinkedModelSerializer):
     projects = BasicProjectSerializer(many=True, read_only=True)
 
@@ -112,7 +113,8 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin,
         return 'customer',
 
 
-class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin, serializers.HyperlinkedModelSerializer):
+class ProjectGroupMembershipSerializer(core_serializers.PermissionFieldFilteringMixin,
+                                       serializers.HyperlinkedModelSerializer):
     project_group = serializers.HyperlinkedRelatedField(
         source='projectgroup',
         view_name='projectgroup-detail',
@@ -152,7 +154,7 @@ class ProjectRoleField(serializers.ChoiceField):
             raise ValidationError('Unknown role')
 
 
-class ProjectPermissionReadSerializer(RelatedResourcesFieldMixin,
+class ProjectPermissionReadSerializer(core_serializers.RelatedResourcesFieldMixin,
                                       serializers.HyperlinkedModelSerializer):
     user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
                                                queryset=User.objects.all())
@@ -180,7 +182,7 @@ class NotModifiedPermission(APIException):
     default_detail = 'Permissions were not modified'
 
 
-class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
+class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
                                   serializers.HyperlinkedModelSerializer):
     project = serializers.HyperlinkedRelatedField(source='group.projectrole.project', view_name='project-detail',
                                                   lookup_field='uuid', queryset=models.Project.objects.all())

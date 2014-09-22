@@ -123,3 +123,9 @@ class RelatedResourcesFieldMixin(object):
     def get_related_paths(self):
         raise NotImplementedError(
             'Implement get_paths() to return list of filtered fields')
+
+
+class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        fields = ('url', 'name')
+        lookup_field = 'uuid'

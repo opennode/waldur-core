@@ -2,10 +2,12 @@ from __future__ import unicode_literals
 
 from django.core.validators import URLValidator
 from django.db import models
+from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import DescribableMixin, UuidMixin
+from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models as structure_models
 
 
@@ -29,7 +31,7 @@ class Cloud(UuidMixin, models.Model):
     password = models.CharField(max_length=100, blank=True)
 
     name = models.CharField(max_length=100)
-    customer = models.ForeignKey(structure_models.Customer)
+    customer = models.ForeignKey(structure_models.Customer, related_name='clouds')
     projects = models.ManyToManyField(structure_models.Project, related_name='clouds')
 
     unscoped_token = models.TextField(blank=True)
@@ -38,6 +40,23 @@ class Cloud(UuidMixin, models.Model):
 
     def __str__(self):
         return self.name
+
+
+# These hacks are necessary for Django <1.7
+# TODO: Refactor to use app.ready() after transition to Django 1.7
+# See https://docs.djangoproject.com/en/1.7/topics/signals/#connecting-receiver-functions
+
+# @receiver(pre_serializer_fields, sender=CustomerSerializer)
+@receiver(pre_serializer_fields)
+def add_clouds_to_customer(sender, fields, **kwargs):
+    # Note: importing here to avoid circular import hell
+    from nodeconductor.structure.serializers import CustomerSerializer
+    if sender is not CustomerSerializer:
+        return
+
+    from nodeconductor.cloud.serializers import BasicCloudSerializer
+
+    fields['clouds'] = BasicCloudSerializer(many=True, read_only=True)
 
 
 @python_2_unicode_compatible
