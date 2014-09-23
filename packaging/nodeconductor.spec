@@ -121,6 +121,12 @@ Note: you will need to run this again on next NodeConductor update.
 
     nodeconductor createsuperuser
 
+5. Configure SAML2 details in %{__conf_file}:
+
+    'entityid': ...
+    'assertion_consumer_service': ...
+    'metadata': ...
+
 All done. Happy NodeConducting!
 ------------------------------------------------------------------------
 EOF
@@ -129,6 +135,7 @@ EOF
 * Tue Sep 23 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.2.1-1
 - New upstream release
 - SAML2 keys are generated in the correct dir
+- SAML2 configuration hints are now displayed during install
 
 * Mon Sep 22 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.2.0-1
 - New upstream release

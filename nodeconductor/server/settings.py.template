@@ -193,7 +193,7 @@ SAML_CONFIG = {
     },
 
     # set to 1 to output debugging information
-    'debug': 0,
+    'debug': 1,
 
     # These following files are dummies
     # They are supposed to be valid, but are not really used.
@@ -207,7 +207,7 @@ SAML_CONFIG = {
 SAML_DJANGO_USER_MAIN_ATTRIBUTE = 'civil_number'
 
 SAML_ATTRIBUTE_MAPPING = {
-    'omanIDCivilNumber': ('username', 'civil_number'),
+    'Civil number': ('username', 'civil_number'),
     'omancardTitleFullNameEn': ('full_name', ),
     'omancardTitleFullNameAr': ('native_name', ),
 }
