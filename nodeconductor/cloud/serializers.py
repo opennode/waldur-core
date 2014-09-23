@@ -10,13 +10,17 @@ class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
 
 
 class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
+                      core_serializers.RelatedResourcesFieldMixin,
                       serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Cloud
-        fields = ('uuid', 'url', 'name', 'customer')
+        fields = ('uuid', 'url', 'name', 'customer', 'customer_name')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
+        return 'customer',
+
+    def get_related_paths(self):
         return 'customer',
 
 
