@@ -16,7 +16,7 @@ class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class CloudViewSet(viewsets.ModelViewSet):
-    model = models.Cloud
+    queryset = models.Cloud.objects.all().prefetch_related('flavors')
     serializer_class = serializers.CloudSerializer
     lookup_field = 'uuid'
     filter_backends = (structure_filters.GenericRoleFilter,)

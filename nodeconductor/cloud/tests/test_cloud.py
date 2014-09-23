@@ -29,6 +29,7 @@ class CloudPermissionTest(test.APITransactionTestCase):
 
         self.clouds = {
             'owned': factories.CloudFactory.build(customer=self.customers['owned']),  # Note, not committed to db
+            'project_admin': factories.CloudFactory(customer=self.customers['project_admin']),
         }
 
         self.customers['owned'].add_user(self.users['customer_owner'], CustomerRole.OWNER)
@@ -38,16 +39,15 @@ class CloudPermissionTest(test.APITransactionTestCase):
 
         self.user = structure_factories.UserFactory.create()
 
-        admined_project = structure_factories.ProjectFactory()
         managed_project = structure_factories.ProjectFactory()
 
-        admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        self.projects['project_admin'].add_user(self.user, ProjectRole.ADMINISTRATOR)
         managed_project.add_user(self.user, ProjectRole.MANAGER)
 
-        self.admined_cloud = factories.CloudFactory()
+        self.admined_cloud = self.clouds['project_admin']
         self.managed_cloud = factories.CloudFactory()
 
-        admined_project.clouds.add(self.admined_cloud)
+        self.projects['project_admin'].clouds.add(self.admined_cloud)
         managed_project.clouds.add(self.managed_cloud)
 
     # List filtration tests
@@ -102,6 +102,19 @@ class CloudPermissionTest(test.APITransactionTestCase):
         response = self.client.get(self._get_cloud_url(self.managed_cloud))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_user_can_see_clouds_customer_name(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self._get_cloud_url(self.admined_cloud))
+
+        customer = self.admined_cloud.customer
+
+        self.assertIn('customer', response.data)
+        self.assertEqual(self._get_custmer_url(customer), response.data['customer'])
+
+        self.assertIn('customer_name', response.data)
+        self.assertEqual(customer.name, response.data['customer_name'])
+
     def test_user_cannot_access_cloud_allowed_for_project_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.user)
 
@@ -121,6 +134,25 @@ class CloudPermissionTest(test.APITransactionTestCase):
         response = self.client.get(self._get_cloud_url(inaccessible_cloud))
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # Nested objects filtration tests
+    def test_user_can_see_flavors_within_cloud(self):
+        self.client.force_authenticate(user=self.users['project_admin'])
+
+        cloud = self.clouds['project_admin']
+
+        seen_flavor = factories.FlavorFactory(cloud=cloud)
+
+        response = self.client.get(self._get_cloud_url(cloud))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertIn('flavors', response.data, 'Cloud must contain flavor list')
+
+        flavor_urls = set([flavor['url'] for flavor in response.data['flavors']])
+        self.assertIn(
+            self._get_flavor_url(seen_flavor), flavor_urls,
+            'User should see flavor',
+        )
 
     # Creation tests
     def test_user_can_add_cloud_to_the_customer_he_owns(self):
@@ -144,6 +176,12 @@ class CloudPermissionTest(test.APITransactionTestCase):
 
     def _get_cloud_url(self, cloud):
         return 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': cloud.uuid})
+
+    def _get_flavor_url(self, flavor):
+        return 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': flavor.uuid})
+
+    def _get_custmer_url(self, customer):
+        return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
 
     def _get_valid_payload(self, resource):
         return {
