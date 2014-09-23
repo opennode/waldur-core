@@ -75,6 +75,11 @@ LOGGING = {
             'class': 'logging.handlers.WatchedFileHandler',
             'filename': '/var/log/nodeconductor/nodeconductor.log',
         },
+        'file_saml2': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.WatchedFileHandler',
+            'filename': '/var/log/nodeconductor/saml2.log',
+        },
 
         # Logging to syslog
         # (make sure to add 'syslog' to loggers.django.handlers to enable)
@@ -90,7 +95,12 @@ LOGGING = {
             'handlers': ['file'],
             'level': 'INFO',
             'propagate': True,
-        }
+        },
+        'nodeconductor.core.views': {
+            'handlers': ['file_saml2'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
     },
 }
 
@@ -183,19 +193,21 @@ SAML_CONFIG = {
     },
 
     # set to 1 to output debugging information
-    'debug': 0,
+    'debug': 1,
 
     # These following files are dummies
     # They are supposed to be valid, but are not really used.
     # They are only used to make PySAML2 happy.
     'key_file': '/path/to/key.pem',   # private part
     'cert_file': '/path/to/certificate.crt',  # public part
+
+    'accepted_time_diff': 120,
 }
 
 SAML_DJANGO_USER_MAIN_ATTRIBUTE = 'civil_number'
 
 SAML_ATTRIBUTE_MAPPING = {
-    'omanIDCivilNumber': ('username', 'civil_number'),
+    'Civil number': ('username', 'civil_number'),
     'omancardTitleFullNameEn': ('full_name', ),
     'omancardTitleFullNameAr': ('native_name', ),
 }

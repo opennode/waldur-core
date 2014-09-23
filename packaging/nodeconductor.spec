@@ -8,7 +8,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.2.0
+Version: 0.2.1
 Release: 1
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -76,9 +76,9 @@ cp nodeconductor/server/settings.py.template %{buildroot}%{__conf_file}
 sed -i 's,{{ db_file_path }},%{__work_dir}/db.sqlite3,' %{buildroot}%{__conf_file}
 sed -i 's,{{ static_root }},%{__data_dir}/static,' %{buildroot}%{__conf_file}
 sed -i "s#^    'default': DATABASE_NONE#    'default': DATABASE_MYSQL#" %{buildroot}%{__conf_file}
-sed -i "s#^    'attribute_map_dir': '/path/to/attribute-maps',#    'attribute_map_dir': '%{__saml2_conf_dir}attribute-maps',#" %{buildroot}%{__conf_file}
-sed -i "s#^    'key_file': '/path/to/key.pem',#    'key_file': '%{__saml2_conf_dir}dummy.pem',#" %{buildroot}%{__conf_file}
-sed -i "s#^    'cert_file': '/path/to/certificate.crt',#    'cert_file': '%{__saml2_conf_dir}dummy.crt',#" %{buildroot}%{__conf_file}
+sed -i "s#^    'attribute_map_dir': '/path/to/attribute-maps',#    'attribute_map_dir': '%{__saml2_conf_dir}/attribute-maps',#" %{buildroot}%{__conf_file}
+sed -i "s#^    'key_file': '/path/to/key.pem',#    'key_file': '%{__saml2_conf_dir}/dummy.pem',#" %{buildroot}%{__conf_file}
+sed -i "s#^    'cert_file': '/path/to/certificate.crt',#    'cert_file': '%{__saml2_conf_dir}/dummy.crt',#" %{buildroot}%{__conf_file}
 
 %clean
 rm -rf %{buildroot}
@@ -92,7 +92,7 @@ sed -i "s,{{ secret_key }},$(head -c32 /dev/urandom | base64)," %{__conf_file}
 
 echo "[nodeconductor] Generating SAML2 keypair..."
 if [ ! -f %{__saml2_conf_dir}/dummy.crt -a ! -f %{__saml2_conf_dir}/dummy.pem ]; then
-    openssl req -batch -newkey rsa:2048 -new -x509 -days 3652 -nodes -out %{__conf_dir}/dummy.crt -keyout %{__conf_dir}/dummy.pem
+    openssl req -batch -newkey rsa:2048 -new -x509 -days 3652 -nodes -out %{__saml2_conf_dir}/dummy.crt -keyout %{__saml2_conf_dir}/dummy.pem
 fi
 
 cat <<EOF
@@ -121,11 +121,22 @@ Note: you will need to run this again on next NodeConductor update.
 
     nodeconductor createsuperuser
 
+5. Configure SAML2 details in %{__conf_file}:
+
+    'entityid': ...
+    'assertion_consumer_service': ...
+    'metadata': ...
+
 All done. Happy NodeConducting!
 ------------------------------------------------------------------------
 EOF
 
 %changelog
+* Tue Sep 23 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.2.1-1
+- New upstream release
+- SAML2 keys are generated in the correct dir
+- SAML2 configuration hints are now displayed during install
+
 * Mon Sep 22 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.2.0-1
 - New upstream release
 - Switched to MySQL as default database backend
