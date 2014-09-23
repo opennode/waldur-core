@@ -22,6 +22,7 @@ class FlavorSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
+                      core_serializers.RelatedResourcesFieldMixin,
                       serializers.HyperlinkedModelSerializer):
     flavors = FlavorSerializer(many=True, read_only=True)
 
@@ -31,4 +32,7 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
+        return 'customer',
+
+    def get_related_paths(self):
         return 'customer',

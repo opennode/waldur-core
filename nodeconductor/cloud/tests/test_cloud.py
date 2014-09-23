@@ -102,6 +102,19 @@ class CloudPermissionTest(test.APITransactionTestCase):
         response = self.client.get(self._get_cloud_url(self.managed_cloud))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_user_can_see_clouds_customer_name(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(self._get_cloud_url(self.admined_cloud))
+
+        customer = self.admined_cloud.customer
+
+        self.assertIn('customer', response.data)
+        self.assertEqual(self._get_custmer_url(customer), response.data['customer'])
+
+        self.assertIn('customer_name', response.data)
+        self.assertEqual(customer.name, response.data['customer_name'])
+
     def test_user_cannot_access_cloud_allowed_for_project_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.user)
 
@@ -166,6 +179,9 @@ class CloudPermissionTest(test.APITransactionTestCase):
 
     def _get_flavor_url(self, flavor):
         return 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': flavor.uuid})
+
+    def _get_custmer_url(self, customer):
+        return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
 
     def _get_valid_payload(self, resource):
         return {
