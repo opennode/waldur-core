@@ -23,6 +23,7 @@ install_requires = [
     'django-auth-ldap==1.2.0',
     'django-filter==0.7',
     'djangosaml2>=0.11.0,<0.12',
+    'Celery>=3.1.15,<3.2',
 ]
 
 
