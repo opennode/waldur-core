@@ -4,7 +4,7 @@ Authentication with REST
 
 NodeConductor uses token-based authentication.
 
-In order to authenticate your requests first obtain from any of the supported token backends.
+In order to authenticate your requests first obtain token from any of the supported token backends.
 Then use the token in all the subsequent requests putting it into ``Authorization`` header:
 
 .. code-block:: http
