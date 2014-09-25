@@ -1,11 +1,14 @@
 from __future__ import unicode_literals
 
+import logging
 from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext as _
 from django_fsm import FSMField
@@ -15,6 +18,8 @@ from nodeconductor.cloud import models as cloud_models
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
 
+
+logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible
 class Image(core_models.UuidMixin,
@@ -80,12 +85,44 @@ class Instance(core_models.UuidMixin,
         project_path = 'project'
 
     class States(object):
-        DEFINED = 'd'
-        PROVISIONING = 'p'
-        STARTED = 'r'
-        STOPPED = 's'
+        PROVISIONING_SCHEDULED = 'p'
+        PROVISIONING = 'P'
+
+        ONLINE = '+'
+        OFFLINE = '-'
+
+        STARTING_SCHEDULED = 'a'
+        STARTING = 'A'
+
+        STOPPING_SCHEDULED = 'o'
+        STOPPING = 'O'
+
         ERRED = 'e'
+
+        DELETION_SCHEDULED = 'd'
+        DELETING = 'D'
+
         DELETED = 'x'
+
+        CHOICES = (
+            (PROVISIONING_SCHEDULED, _('Provisioning Scheduled')),
+            (PROVISIONING, _('Provisioning')),
+
+            (ONLINE, _('Online')),
+            (OFFLINE, _('Offline')),
+
+            (STARTING_SCHEDULED, _('Starting Scheduled')),
+            (STARTING, _('Starting')),
+
+            (STOPPING_SCHEDULED, _('Stopping Scheduled')),
+            (STOPPING, _('Stopping')),
+
+            (ERRED, _('Erred')),
+
+            (DELETION_SCHEDULED, _('Deletion Scheduled')),
+            (DELETING, _('Deleting')),
+            (DELETED, _('Deleted')),
+        )
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
@@ -94,23 +131,17 @@ class Instance(core_models.UuidMixin,
     ips = models.CharField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
 
-    STATE_CHOICES = (
-        (States.DEFINED, _('Defined')),
-        (States.PROVISIONING, _('Provisioning')),
-        (States.STARTED, _('Started')),
-        (States.STOPPED, _('Stopped')),
-        (States.ERRED, _('Error')),
-        (States.DELETED, _('Deleted')),
-    )
+    state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES, protected=True)
 
-    state = FSMField(default=States.DEFINED, max_length=1, choices=STATE_CHOICES, protected=True)
-
-    @transition(field=state, source=States.DEFINED, target=States.PROVISIONING)
-    def start_provisioning(self):
-        # Delayed import to avoid circular imports
+    @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
+    def begin_provisioning(self):
         pass
 
-    @transition(field=state, source=States.PROVISIONING, target=States.STOPPED)
+    @transition(field=state, source=States.PROVISIONING, target=States.ONLINE)
+    def set_online(self):
+        pass
+
+    @transition(field=state, source=States.PROVISIONING, target=States.STOPPING_SCHEDULED)
     def stop(self):
         pass
 
@@ -118,7 +149,7 @@ class Instance(core_models.UuidMixin,
         # Only check while trying to provisioning instance,
         # since later the cloud might get removed from this project
         # and the validation will prevent even changing the state.
-        if self.state == self.States.DEFINED:
+        if self.state == self.States.PROVISIONING_SCHEDULED:
             if not self.project.clouds.filter(pk=self.flavor.cloud.pk).exists():
                 raise ValidationError("Flavor is not within project's clouds.")
 
@@ -127,6 +158,16 @@ class Instance(core_models.UuidMixin,
             'name': self.hostname,
             'status': self.get_state_display(),
         }
+
+
+@receiver(post_save, sender=Instance)
+def auto_start_instance(sender, instance=None, created=False, **kwargs):
+    if created:
+        # Importing here to avoid circular imports
+        from nodeconductor.iaas import tasks
+
+        logger.info('Scheduling provisioning instance with uuid %s', instance.uuid)
+        tasks.schedule_provisioning.delay(instance.uuid)
 
 
 class Volume(models.Model):
