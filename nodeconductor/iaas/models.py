@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from decimal import Decimal
 
 from django.conf import settings
+from django.contrib.contenttypes.generic import GenericRelation
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -10,6 +11,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext as _
 from django_fsm import FSMField
 from django_fsm import transition
+from nodeconductor.backup import models as backup_models
 
 from nodeconductor.cloud import models as cloud_models
 from nodeconductor.core import models as core_models

@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 from django.conf import settings
-
 from django.conf.urls import patterns
 from django.conf.urls import include
 from django.conf.urls import url
@@ -9,6 +8,7 @@ from django.contrib import admin
 import permission
 from rest_framework.routers import DefaultRouter
 
+from nodeconductor.backup import urls as backup_urls
 from nodeconductor.cloud import urls as cloud_urls
 from nodeconductor.iaas import urls as iaas_urls
 from nodeconductor.structure import urls as structure_urls
@@ -21,6 +21,7 @@ router = DefaultRouter()
 cloud_urls.register_in(router)
 iaas_urls.register_in(router)
 structure_urls.register_in(router)
+backup_urls.register_in(router)
 
 
 urlpatterns = patterns(

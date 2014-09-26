@@ -23,6 +23,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
 
     'nodeconductor.core',
+    'nodeconductor.backup',
     'nodeconductor.structure',
     'nodeconductor.cloud',
     'nodeconductor.iaas',
