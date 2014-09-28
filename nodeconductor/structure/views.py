@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib import auth
+from django.db.models.query_utils import Q
 import django_filters
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
@@ -127,8 +128,14 @@ class UserViewSet(viewsets.ModelViewSet):
         # a special query for all users with assigned privileges that the current user can remove privileges from
         can_manage = self.request.QUERY_PARAMS.get('can_manage', None)
         if can_manage is not None:
-            queryset = queryset.filter(groups__projectrole__project__roles__permission_group__user=user,
-                                       groups__projectrole__project__roles__role_type=models.ProjectRole.MANAGER).distinct()
+            #XXX: Let the DB cry...
+            queryset = queryset.filter(
+                Q(groups__customerrole__customer__roles__permission_group__user=user,
+                  groups__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
+                |
+                Q(groups__projectrole__project__roles__permission_group__user=user,
+                  groups__projectrole__project__roles__role_type=models.ProjectRole.MANAGER)
+            ).distinct()
 
         return queryset
 
