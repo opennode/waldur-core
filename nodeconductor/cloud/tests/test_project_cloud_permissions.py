@@ -63,7 +63,6 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         self.not_connected_project.add_user(self.users['not_connected'], ProjectRole.ADMINISTRATOR)
         self.not_connected_project.save()
 
-    # Creation tests
     def test_anonymous_user_cannot_grant_cloud_to_project(self):
         response = self.client.post(reverse('projectcloud_membership-list'), self._get_valid_payload())
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

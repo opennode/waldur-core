@@ -26,7 +26,8 @@ class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
         model = models.ProjectGroup
 
 
-class ProjectSerializer(core_serializers.RelatedResourcesFieldMixin,
+class ProjectSerializer(core_serializers.CollectedFieldsMixin,
+                        core_serializers.RelatedResourcesFieldMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
 
@@ -50,7 +51,8 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         return 'customer',
 
 
-class CustomerSerializer(serializers.HyperlinkedModelSerializer):
+class CustomerSerializer(core_serializers.CollectedFieldsMixin,
+                         serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField('get_customer_projects')
     project_groups = serializers.SerializerMethodField('get_customer_project_groups')
 
@@ -58,12 +60,6 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         model = models.Customer
         fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
-
-    # TODO: Move to a separate documented mixin
-    def get_fields(self):
-        fields = super(CustomerSerializer, self).get_fields()
-        pre_serializer_fields.send(sender=self.__class__, fields=fields)
-        return fields
 
     def _get_filtered_data(self, objects, serializer):
         try:
