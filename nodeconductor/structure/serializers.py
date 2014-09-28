@@ -8,7 +8,6 @@ from rest_framework.exceptions import APIException
 from rest_framework.reverse import reverse
 
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models
 from nodeconductor.structure.filters import filter_queryset_for_user
 

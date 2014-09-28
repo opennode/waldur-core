@@ -3,11 +3,10 @@ from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import viewsets as rf_viewsets
 
-
-from nodeconductor.core import viewsets, mixins
-from nodeconductor.structure import filters
 from nodeconductor.cloud import models
 from nodeconductor.cloud import serializers
+from nodeconductor.core import viewsets, mixins
+from nodeconductor.structure import filters
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import models as structure_models
 

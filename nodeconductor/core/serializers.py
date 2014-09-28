@@ -3,8 +3,8 @@ import base64
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework.fields import Field
-from nodeconductor.core.signals import pre_serializer_fields
 
+from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 
@@ -154,7 +154,7 @@ class UnboundSerializerMethodField(Field):
 
 class CollectedFieldsMixin(object):
     """
-    A mixin that allows serializer to send a signal for adding new fields into the rendering.
+    A mixin that allows serializer to send a signal for modifying (e.g. adding) fields into the rendering.
     Useful when you want to enrich output with fields coming from modules that are imported later
     or from plugins.
 
@@ -162,28 +162,28 @@ class CollectedFieldsMixin(object):
 
     Example of signal handler implementation:
 
-    def get_customer_clouds(obj, request):
-        customer_clouds = obj.clouds.all()
-        try:
-            user = request.user
-            customer_clouds = filter_queryset_for_user(customer_clouds, user)
-        except AttributeError:
-            pass
+        def get_customer_clouds(obj, request):
+            customer_clouds = obj.clouds.all()
+            try:
+                user = request.user
+                customer_clouds = filter_queryset_for_user(customer_clouds, user)
+            except AttributeError:
+                pass
 
-        from nodeconductor.cloud.serializers import BasicCloudSerializer
-        serializer_instance = BasicCloudSerializer(customer_clouds, context={'request': request})
+            from nodeconductor.cloud.serializers import BasicCloudSerializer
+            serializer_instance = BasicCloudSerializer(customer_clouds, context={'request': request})
 
-        return serializer_instance.data
+            return serializer_instance.data
 
-    # @receiver(pre_serializer_fields, sender=CustomerSerializer)  # Django 1.7
-    @receiver(pre_serializer_fields)
-    def add_clouds_to_customer(sender, fields, **kwargs):
-        # Note: importing here to avoid circular import hell
-        from nodeconductor.structure.serializers import CustomerSerializer
-        if sender is not CustomerSerializer:
-            return
+        # @receiver(pre_serializer_fields, sender=CustomerSerializer)  # Django 1.7
+        @receiver(pre_serializer_fields)
+        def add_clouds_to_customer(sender, fields, **kwargs):
+            # Note: importing here to avoid circular import hell
+            from nodeconductor.structure.serializers import CustomerSerializer
+            if sender is not CustomerSerializer:
+                return
 
-        fields['clouds'] = UnboundSerializerMethodField(get_customer_clouds)
+            fields['clouds'] = UnboundSerializerMethodField(get_customer_clouds)
 
     """
 

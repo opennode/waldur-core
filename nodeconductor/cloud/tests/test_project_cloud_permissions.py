@@ -45,18 +45,15 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         # a single customer
         self.customer = structure_factories.CustomerFactory()
         self.customer.add_user(self.users['owner'], CustomerRole.OWNER)
-        self.customer.save()
 
         # that has 2 users connected: admin and manager
         self.connected_project = structure_factories.ProjectFactory(customer=self.customer)
         self.connected_project.add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         self.connected_project.add_user(self.users['manager'], ProjectRole.MANAGER)
-        self.connected_project.save()
 
         # has defined a cloud and connected cloud to a project
         self.cloud = factories.CloudFactory(customer=self.customer)
         self.cloud.projects.add(self.connected_project)
-        self.cloud.save()
 
         # the customer also has another project with users but without a permission link
         self.not_connected_project = structure_factories.ProjectFactory(customer=self.customer)
@@ -80,16 +77,19 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_user_cannot_connect_new_cloud_and_project_if_he_is_project_admin(self):
-        user = self.users['admin']
-        self.client.force_authenticate(user=user)
+        for user_role in ['admin', 'manager']:
+            user = self.users[user_role]
+            self.client.force_authenticate(user=user)
 
-        cloud = factories.CloudFactory(customer=self.customer)
-        project = self.connected_project
-        payload = self._get_valid_payload(cloud, project)
+            cloud = factories.CloudFactory(customer=self.customer)
+            project = self.connected_project
+            payload = self._get_valid_payload(cloud, project)
 
-        response = self.client.post(reverse('projectcloud_membership-list'), payload)
-        # the new cloud should not be visible to the user
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            response = self.client.post(reverse('projectcloud_membership-list'), payload)
+            # the new cloud should not be visible to the user
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertDictContainsSubset(
+                        {'cloud': ['Invalid hyperlink - object does not exist.']}, response.data)
 
     def test_user_cannot_revoke_cloud_and_project_permission_if_he_is_project_admin(self):
         user = self.users['admin']
