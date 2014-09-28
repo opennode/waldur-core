@@ -28,6 +28,7 @@ class Cloud(UuidMixin, models.Model):
         )
 
     class Permissions(object):
+        customer_path = 'customer'
         project_path = 'projects'
 
     username = models.CharField(max_length=100, blank=True)

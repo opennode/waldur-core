@@ -36,3 +36,23 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     def get_related_paths(self):
         return 'customer',
+
+
+class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFilteringMixin,
+                                       core_serializers.RelatedResourcesFieldMixin,
+                                       serializers.HyperlinkedModelSerializer):
+
+    class Meta(object):
+        model = models.Cloud.projects.through
+        fields = (
+            'url',
+            'project', 'project_name',
+            'cloud', 'cloud_name',
+        )
+        view_name = 'projectcloud_membership-detail'
+
+    def get_filtered_field_names(self):
+        return 'project', 'cloud'
+
+    def get_related_paths(self):
+        return 'project', 'cloud'

@@ -161,7 +161,6 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
             raise PermissionDenied()
 
 
-
 # XXX: This should be put to models
 filters.set_permissions_for_model(
     User.groups.through,

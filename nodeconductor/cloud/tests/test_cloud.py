@@ -73,6 +73,19 @@ class CloudPermissionTest(test.APITransactionTestCase):
         cloud_url = self._get_cloud_url(self.managed_cloud)
         self.assertIn(cloud_url, [instance['url'] for instance in response.data])
 
+    def test_user_can_list_clouds_of_projects_he_is_customer_owner_of(self):
+        # persist affected objects
+        self.clouds['owned'].save()  # make sure that cloud gets a UUID
+        self.customers['owned'].save()  # make sure that customer link is saved
+
+        self.client.force_authenticate(user=self.users['customer_owner'])
+
+        response = self.client.get(reverse('cloud-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        cloud_url = self._get_cloud_url(self.clouds['owned'])
+        self.assertIn(cloud_url, [instance['url'] for instance in response.data])
+
     def test_user_cannot_list_clouds_of_projects_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.user)
 
