@@ -1,16 +1,14 @@
 from __future__ import unicode_literals
 
-from itertools import chain
-
 from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
-from nodeconductor.cloud.models import Cloud
 
+from nodeconductor.cloud.models import Cloud
+from nodeconductor.cloud.tests import factories
 from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories as structure_factories
-from nodeconductor.cloud.tests import factories
 
 
 # noinspection PyMethodMayBeStatic
