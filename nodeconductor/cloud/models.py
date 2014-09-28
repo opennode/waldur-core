@@ -67,7 +67,7 @@ def get_related_clouds(obj, request):
 
 # @receiver(pre_serializer_fields, sender=CustomerSerializer)
 @receiver(pre_serializer_fields)
-def add_clouds_to_customer(sender, fields, **kwargs):
+def add_clouds_to_related_model(sender, fields, **kwargs):
     # Note: importing here to avoid circular import hell
     from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
 
