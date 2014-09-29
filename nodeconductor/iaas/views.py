@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
+import logging
+from django.http.response import Http404
+from django_fsm import TransitionNotAllowed
 
-from rest_framework import permissions
+from rest_framework import permissions, status
 from rest_framework import mixins
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -14,6 +17,9 @@ from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.structure import filters
 from nodeconductor.structure.filters import filter_queryset_for_user
+
+
+logger = logging.getLogger(__name__)
 
 
 class InstanceViewSet(mixins.CreateModelMixin,
@@ -33,11 +39,46 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         return super(InstanceViewSet, self).get_serializer_class()
 
+    def _schedule_transition(self, request, uuid, operation):
+        # Importing here to avoid circular imports
+        from nodeconductor.iaas import tasks
+
+        instance = filter_queryset_for_user(models.Instance.objects.filter(uuid=uuid), request.user).first()
+
+        if instance is None:
+            raise Http404()
+
+        supported_operations = {
+            # code: (scheduled_celery_task, instance_marker_state)
+            'start': (tasks.schedule_starting, instance.starting_scheduled),
+            'stop': (tasks.schedule_stopping, instance.stopping_scheduled),
+            'destroy': (tasks.schedule_deleting, instance.deletion_scheduled),
+        }
+
+        logger.info('Scheduling provisioning instance with uuid %s', uuid)
+        # schedule a transition task
+        supported_operations[operation][0].delay(uuid)
+        # update instance state to scheduled
+        try:
+            supported_operations[operation][1]()
+            instance.save()
+        except TransitionNotAllowed:
+            return Response({'status': 'Performing %s operation from instance state \'%s\' is not allowed'
+                            % (operation, instance.get_state_display())},
+                            status=status.HTTP_409_CONFLICT)
+
+        return Response({'status': '%s was scheduled' % operation})
+
     @action()
     def stop(self, request, uuid=None):
-        # TODO: schedule stopping of a instance
-        return Response({'status': 'Stopping was scheduled'})
+        return self._schedule_transition(request, uuid, 'stop')
 
+    @action()
+    def start(self, request, uuid=None):
+        return self._schedule_transition(request, uuid, 'start')
+
+    def destroy(self, request, uuid=None):
+        return self._schedule_transition(request, uuid, 'destroy')
 
 
 class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
