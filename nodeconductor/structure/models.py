@@ -53,6 +53,12 @@ class CustomerRole(models.Model):
         (OWNER, _('Owner')),
     )
 
+    ROLE_TO_NAME = {
+        OWNER: 'owner',
+    }
+
+    NAME_TO_ROLE = dict((v, k) for k, v in ROLE_TO_NAME.items())
+
     customer = models.ForeignKey(Customer, related_name='roles')
     role_type = models.SmallIntegerField(choices=TYPE_CHOICES)
     permission_group = models.OneToOneField(Group)
