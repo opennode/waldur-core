@@ -44,11 +44,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
         return queryset
 
-
     def _schedule_transition(self, request, uuid, operation):
         # Importing here to avoid circular imports
         from nodeconductor.iaas import tasks
-
+        # XXX: this should be testing for actions/role pairs as well
         instance = filter_queryset_for_user(models.Instance.objects.filter(uuid=uuid), request.user).first()
 
         if instance is None:
@@ -123,6 +122,11 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
 
     def pre_save(self, key):
         key.user = self.request.user
+
+    def get_queryset(self):
+        queryset = super(SshKeyViewSet, self).get_queryset()
+        user = self.request.user
+        return queryset.filter(user=user)
 
 
 class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
