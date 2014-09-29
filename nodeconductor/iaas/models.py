@@ -128,7 +128,7 @@ class Instance(core_models.UuidMixin,
     template = models.ForeignKey(Template, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
-    ips = models.CharField(max_length=256)
+    ips = SeparatedValuesField(token='.')
     start_time = models.DateTimeField(blank=True, null=True)
 
     state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES, protected=True)
@@ -158,6 +158,30 @@ class Instance(core_models.UuidMixin,
             'name': self.hostname,
             'status': self.get_state_display(),
         }
+
+
+class SeparatedValuesField(models.CharField):
+    def __init__(self, *args, **kwargs):
+        self.token = kwargs.pop('token', ',')
+        super(SeparatedValuesField, self).__init__(*args, **kwargs)
+
+    def to_python(self, value):
+        if not value:
+            return
+        if isinstance(value, list):
+            return value
+
+        return value.split(self.token)
+
+    def get_db_prep_value(self, connection,  value, prepared=False):
+        if not value:
+            return
+        assert(isinstance(value, list) or isinstance(value, tuple))
+        return self.token.join([unicode(s) for s in value])
+
+    def value_to_string(self, obj):
+        value = self._get_val_from_obj(obj)
+        return self.get_db_prep_value(value)
 
 
 # XXX: hotfix till redis is configured on testing infrastructure
