@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 from rest_framework import permissions
 from rest_framework import mixins
 from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 from nodeconductor.cloud.models import Cloud
 from nodeconductor.core import mixins as core_mixins
@@ -30,6 +32,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return serializers.InstanceCreateSerializer
 
         return super(InstanceViewSet, self).get_serializer_class()
+
+    @action()
+    def stop(self, request, uuid=None):
+        # TODO: schedule stopping of a instance
+        return Response({'status': 'Stopping was scheduled'})
+
 
 
 class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
