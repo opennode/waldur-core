@@ -16,12 +16,22 @@ class BackgroundProcessingException(Exception):
     pass
 
 
-def _mock_processing(should_fail=True):
+def _mock_processing(instance_uuid, should_fail=False):
     if should_fail:
         raise BackgroundProcessingException('It\'s not my day')
 
     import time
     time.sleep(10)
+
+    # update some values
+    with transaction.atomic():
+        try:
+            instance = models.Instance.objects.get(uuid=instance_uuid)
+            instance.ips = '1.2.3.4, 10.10.10.10'
+            instance.save()
+        except models.Instance.DoesNotExist:
+            raise BackgroundProcessingException('Error updating VM instance')
+
 
 
 def _schedule_instance_operation(instance_uuid, operation, processing_callback):
@@ -52,7 +62,7 @@ def _schedule_instance_operation(instance_uuid, operation, processing_callback):
             return
 
     try:
-        processing_callback()
+        processing_callback(instance_uuid)
     except BackgroundProcessingException as e:
         with transaction.atomic():
             try:
@@ -87,13 +97,16 @@ def _schedule_instance_operation(instance_uuid, operation, processing_callback):
 def schedule_provisioning(instance_uuid):
     _schedule_instance_operation(instance_uuid, 'provisioning', _mock_processing)
 
+
 @shared_task
 def schedule_stopping(instance_uuid):
     _schedule_instance_operation(instance_uuid, 'stopping', _mock_processing)
 
+
 @shared_task
 def schedule_starting(instance_uuid):
     _schedule_instance_operation(instance_uuid, 'starting', _mock_processing)
+
 
 @shared_task
 def schedule_deleting(instance_uuid):
