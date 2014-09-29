@@ -160,7 +160,8 @@ class Instance(core_models.UuidMixin,
         }
 
 
-@receiver(post_save, sender=Instance)
+# XXX: hotfix till redis is configured on testing infrastructure
+#@receiver(post_save, sender=Instance)
 def auto_start_instance(sender, instance=None, created=False, **kwargs):
     if created:
         # Importing here to avoid circular imports
