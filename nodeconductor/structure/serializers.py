@@ -195,6 +195,7 @@ class NotModifiedPermission(APIException):
     default_detail = 'Permissions were not modified'
 
 
+# TODO: refactor to abstract class, subclass by CustomerPermissions and ProjectPermissions
 class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
                                    serializers.HyperlinkedModelSerializer):
     customer = serializers.HyperlinkedRelatedField(
@@ -224,6 +225,18 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
             'user', 'user_full_name', 'user_native_name',
         )
         view_name = 'customer_permission-detail'
+
+    def restore_object(self, attrs, instance=None):
+        customer = attrs['group.customerrole.customer']
+        group = customer.roles.get(role_type=attrs['role']).permission_group
+        UserGroup = User.groups.through
+        return UserGroup(user=attrs['user'], group=group)
+
+    def save_object(self, obj, **kwargs):
+        try:
+            obj.save()
+        except IntegrityError:
+            raise NotModifiedPermission()
 
     def get_filtered_field_names(self):
         return 'customer',
