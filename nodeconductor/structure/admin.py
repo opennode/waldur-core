@@ -25,6 +25,10 @@ class CloudAdminForm(forms.ModelForm):
 class ProjectAdmin(admin.ModelAdmin):
     form = CloudAdminForm
 
+    list_display = ['name', 'uuid']
+    search_fields = ['name', 'uuid']
+
+
 admin.site.register(models.Customer)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ProjectGroup)
