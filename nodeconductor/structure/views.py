@@ -14,7 +14,7 @@ from nodeconductor.core import mixins
 from nodeconductor.structure import filters
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import ProjectRole, CustomerRole
 
 
 User = auth.get_user_model()
@@ -153,7 +153,7 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
 
     def get_queryset(self):
         queryset = super(ProjectPermissionViewSet, self).get_queryset()
-        queryset = queryset.filter(group__projectrole__isnull=False)  # Only take groups defining project roles
+        queryset = queryset.exclude(group__projectrole=None)
 
         # TODO: refactor against django filtering
         user_uuid = self.request.QUERY_PARAMS.get('user', None)
@@ -164,8 +164,21 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
 
     def pre_save(self, obj):
         super(ProjectPermissionViewSet, self).pre_save(obj)
-        if not obj.group.projectrole.project.roles.filter(permission_group__user=self.request.user, role_type=ProjectRole.MANAGER).exists():
-            raise PermissionDenied()
+        user = self.request.user
+        project = obj.group.projectrole.project
+
+        # check for the user role. Inefficient but more readable
+        is_manager = project.roles.filter(
+            permission_group__user=user, role_type=ProjectRole.MANAGER).exists()
+        if is_manager:
+            return
+
+        is_customer_owner = project.customer.roles.filter(
+            permission_group__user=user, role_type=CustomerRole.OWNER).exists()
+        if is_customer_owner:
+            return
+
+        raise PermissionDenied()
 
 
 # XXX: This should be put to models
