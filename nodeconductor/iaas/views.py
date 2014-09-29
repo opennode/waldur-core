@@ -39,6 +39,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         return super(InstanceViewSet, self).get_serializer_class()
 
+    def get_queryset(self):
+        queryset = super(InstanceViewSet, self).get_queryset()
+        queryset = queryset.exclude(state=models.Instance.States.DELETED)
+        return queryset
+
+
     def _schedule_transition(self, request, uuid, operation):
         # Importing here to avoid circular imports
         from nodeconductor.iaas import tasks
