@@ -36,11 +36,6 @@ class CloudPermissionTest(test.APITransactionTestCase):
             'not_in_project': factories.CloudFactory(),
         }
 
-        # These are not committed to database
-        self.cloud_resources = {
-            'owned': factories.CloudFactory.build(customer=self.customers['owned']),
-        }
-
         self.customers['owned'].add_user(self.users['customer_owner'], CustomerRole.OWNER)
 
         self.projects['admined'].add_user(self.users['project_admin'], ProjectRole.ADMINISTRATOR)
@@ -87,7 +82,6 @@ class CloudPermissionTest(test.APITransactionTestCase):
                 [instance['url'] for instance in response.data],
                 'User (role=none) should not see cloud (type=' + cloud_type + ')',
             )
-
 
     # Direct instance access tests
     def test_anonymous_user_cannot_access_cloud(self):
@@ -144,7 +138,6 @@ class CloudPermissionTest(test.APITransactionTestCase):
                 'User (role=' + user_role + ') should not see cloud (type=not_in_project)',
             )
 
-
     # Nested objects filtration tests
     def test_user_can_see_flavors_within_cloud(self):
         for user_role, cloud_type in {
@@ -175,7 +168,8 @@ class CloudPermissionTest(test.APITransactionTestCase):
     def test_user_can_add_cloud_to_the_customer_he_owns(self):
         self.client.force_authenticate(user=self.users['customer_owner'])
 
-        response = self.client.post(self.cloud_list_url, self._get_valid_payload(self.cloud_resources['owned']))
+        new_cloud = factories.CloudFactory.build(customer=self.customers['owned'])
+        response = self.client.post(self.cloud_list_url, self._get_valid_payload(new_cloud))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_user_cannot_add_cloud_to_the_customer_he_sees_but_doesnt_own(self):
@@ -185,14 +179,15 @@ class CloudPermissionTest(test.APITransactionTestCase):
             }.iteritems():
             self.client.force_authenticate(user=self.users[user_role])
 
-            cloud = factories.CloudFactory.build(customer=self.customers[customer_type])
-            response = self.client.post(self.cloud_list_url, self._get_valid_payload(cloud))
+            new_cloud = factories.CloudFactory.build(customer=self.customers[customer_type])
+            response = self.client.post(self.cloud_list_url, self._get_valid_payload(new_cloud))
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_cannot_add_cloud_to_the_customer_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.users['no_role'])
 
-        response = self.client.post(self.cloud_list_url, self._get_valid_payload(self.cloud_resources['owned']))
+        new_cloud = factories.CloudFactory.build(customer=self.customers['owned'])
+        response = self.client.post(self.cloud_list_url, self._get_valid_payload(new_cloud))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def _get_cloud_url(self, cloud):
