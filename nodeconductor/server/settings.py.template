@@ -211,3 +211,10 @@ SAML_ATTRIBUTE_MAPPING = {
     'omancardTitleFullNameEn': ('full_name', ),
     'omancardTitleFullNameAr': ('native_name', ),
 }
+
+# See http://docs.celeryproject.org/en/latest/getting-started/brokers/index.html#broker-instructions
+# and http://docs.celeryproject.org/en/latest/configuration.html#broker-url
+BROKER_URL = 'redis://localhost'
+
+# See http://docs.celeryproject.org/en/latest/configuration.html#std:setting-CELERY_RESULT_BACKEND
+CELERY_RESULT_BACKEND = 'redis://localhost'
