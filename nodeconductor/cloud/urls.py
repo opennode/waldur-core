@@ -6,6 +6,8 @@ from nodeconductor.cloud import views
 def register_in(router):
     router.register(r'clouds', views.CloudViewSet)
     router.register(r'flavors', views.FlavorViewSet)
+    router.register(r'project-cloud-memberships', views.CloudProjectMembershipViewSet, base_name='projectcloud_membership')
+
 
 
 urlpatterns = patterns(

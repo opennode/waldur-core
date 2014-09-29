@@ -37,7 +37,6 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.users = {
-            # 'owner': factories.UserFactory(),
             'admin': factories.UserFactory(),
             'manager': factories.UserFactory(),
             'admin2': factories.UserFactory(),
@@ -45,11 +44,12 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
             'no_role': factories.UserFactory(),
         }
 
-        # customer = factories.CustomerFactory()
-        # customer.add_user(self.users['owner'], CustomerRole.OWNER)
+        self.customer_owner = factories.UserFactory()
+        self.customer = factories.CustomerFactory()
+        self.customer.add_user(self.customer_owner, CustomerRole.OWNER)
 
         self.projects = {
-            'admin': factories.ProjectFactory(),
+            'admin': factories.ProjectFactory(customer=self.customer),
             'manager': factories.ProjectFactory(),
             'standalone': factories.ProjectFactory(),
         }
@@ -102,7 +102,7 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
                 response = self.client.post(reverse('project_permission-list'), data)
 
                 self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
-                                 '{0} user sees privilege he is not supposed to see: {1}.'
+                                 '{0} user sees privilege he is not supposed to see: {1}. '
                                  'Status code: {2}'.format(login_user, project, response.status_code))
                 self.assertDictContainsSubset(
                     {'project': ['Invalid hyperlink - object does not exist.']}, response.data)
@@ -149,6 +149,27 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
         # TODO: Test for Location header pointing to an existing permission
 
+    def test_user_can_assign_project_roles_in_projects_he_is_owner_of(self):
+        self.client.force_authenticate(user=self.customer_owner)
+
+        user_url = self._get_user_url(self.users['no_role'])
+        project_url = self._get_project_url(self.projects['admin'])
+
+        data = {
+            'project': project_url,
+            'user': user_url,
+            'role': 'manager'
+        }
+
+        response = self.client.post(reverse('project_permission-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # modification of an existing permission has a different status code
+        response = self.client.post(reverse('project_permission-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
+        # TODO: Test for Location header pointing to an existing permission
+
+
     def test_user_cannot_directly_modify_role_of_project_he_is_manager_of(self):
         self.client.force_authenticate(user=self.users['manager'])
 
@@ -172,6 +193,23 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
 
             response = self.client.put(permission_url, data)
             self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_user_can_list_roles_of_projects_he_is_owner_of(self):
+        self.client.force_authenticate(user=self.customer_owner)
+
+        response = self.client.get(reverse('project_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        manager_roles = (role for role in self.all_roles if role.project == 'admin')
+
+        for role in manager_roles:
+            self.assertTrue(
+                self._check_if_present(
+                    self.projects[role.project],
+                    self.users[role.user], role.role, permissions=response.data),
+                'Owner user does not see an existing privilege: {0}'.format(role),
+            )
+
 
     # Administrator tests
     def test_user_can_list_roles_of_projects_he_is_administrator_of(self):
