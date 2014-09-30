@@ -103,8 +103,8 @@ def set_state(model_class, uuid, transition):
 
             entity.save()
     except model_class.DoesNotExist:
-        msg = 'Could not perform %s %s with uuid, %s has gone' %\
-            (logged_operation, entity_name, uuid, entity_name)
+        msg = 'Could not perform %s %s with uuid %s. Instance has gone' %\
+            (logged_operation, entity_name, uuid)
         # There's nothing we can do here to save the state of an entity
         logger.error(msg)
 
@@ -118,7 +118,7 @@ def set_state(model_class, uuid, transition):
         six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
     except TransitionNotAllowed:
         msg = 'Could not perform %s %s with uuid %s, transition not allowed' %\
-              (logged_operation, entity.get_state_display(), uuid)
+              (logged_operation, entity_name, uuid)
         # Leave the entity intact
         logger.error(msg)
         six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
