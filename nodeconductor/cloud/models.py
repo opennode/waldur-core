@@ -46,19 +46,18 @@ class Cloud(UuidMixin, models.Model):
         return self.name
 
 
-def get_related_clouds(obj, request):
+def get_related_clouds(obj, context):
     related_clouds = obj.clouds.all()
 
     try:
-        user = request.user
+        user = context['request'].user
         related_clouds = filter_queryset_for_user(related_clouds, user)
-    except AttributeError:
+    except (KeyError, AttributeError):
         pass
 
     from nodeconductor.cloud.serializers import BasicCloudSerializer
-    serializer_instance = BasicCloudSerializer(related_clouds, context={'request': request})
-
-    return serializer_instance.data
+    serializer = BasicCloudSerializer(context=context)
+    return [serializer.to_native(item) for item in related_clouds.iterator()]
 
 
 # These hacks are necessary for Django <1.7
