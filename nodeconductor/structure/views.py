@@ -21,18 +21,18 @@ User = auth.get_user_model()
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
-    model = models.Customer
-    lookup_field = 'uuid'
+    queryset = models.Customer.objects.all()
     serializer_class = serializers.CustomerSerializer
+    lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    model = models.Project
-    lookup_field = 'uuid'
+    queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
+    lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
@@ -56,9 +56,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
-    model = models.ProjectGroup
-    lookup_field = 'uuid'
+    queryset = models.ProjectGroup.objects.all()
     serializer_class = serializers.ProjectGroupSerializer
+    lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter,)
     # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
 
@@ -68,7 +68,7 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
-    model = models.ProjectGroup.projects.through
+    queryset = models.ProjectGroup.projects.through.objects.all()
     serializer_class = serializers.ProjectGroupMembershipSerializer
     filter_backends = (filters.GenericRoleFilter,)
 
@@ -83,11 +83,20 @@ class UserFilter(django_filters.FilterSet):
     project_group = django_filters.CharFilter(
         name='groups__projectrole__project__project_groups__name',
         distinct=True,
+        lookup_type='icontains',
     )
     project = django_filters.CharFilter(
         name='groups__projectrole__project__name',
         distinct=True,
+        lookup_type='icontains',
     )
+
+    full_name = django_filters.CharFilter(lookup_type='icontains')
+    native_name = django_filters.CharFilter(lookup_type='icontains')
+    organization = django_filters.CharFilter(lookup_type='icontains')
+    job_title = django_filters.CharFilter(lookup_type='icontains')
+    # XXX: temporary. Should be done by a proper search full-text search engine
+    description = django_filters.CharFilter(lookup_type='icontains')
 
     class Meta(object):
         model = User
@@ -102,12 +111,21 @@ class UserFilter(django_filters.FilterSet):
             'project',
             'project_group',
         ]
+        order_by = [
+            'full_name',
+            'native_name',
+            'organization',
+            'email',
+            'phone_number',
+            'description',
+            'job_title',
+        ]
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    model = User
-    lookup_field = 'uuid'
+    queryset = User.objects.all()
     serializer_class = serializers.UserSerializer
+    lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, permissions.IsAdminOrReadOnly)
     filter_class = UserFilter
 
@@ -141,11 +159,11 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
-                                    rf_mixins.RetrieveModelMixin,
-                                    rf_mixins.DestroyModelMixin,
-                                    mixins.ListModelMixin,
-                                    rf_viewsets.GenericViewSet):
-    model = User.groups.through
+                               rf_mixins.RetrieveModelMixin,
+                               rf_mixins.DestroyModelMixin,
+                               mixins.ListModelMixin,
+                               rf_viewsets.GenericViewSet):
+    queryset = User.groups.through.objects.all()
     serializer_class = serializers.ProjectPermissionSerializer
     filter_backends = (filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,
@@ -179,6 +197,33 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
             return
 
         raise PermissionDenied()
+
+
+class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
+                                rf_mixins.RetrieveModelMixin,
+                                rf_mixins.DestroyModelMixin,
+                                mixins.ListModelMixin,
+                                rf_viewsets.GenericViewSet):
+    model = User.groups.through
+    serializer_class = serializers.CustomerPermissionSerializer
+    filter_backends = ()
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
+
+    def get_queryset(self):
+        queryset = super(CustomerPermissionViewSet, self).get_queryset()
+        # TODO: Test for it!
+        # Only take groups defining customer roles
+        queryset = queryset.exclude(group__customerrole=None)
+
+        # TODO: Test for it!
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(
+                group__customerrole__customer__roles__permission_group__user=self.request.user,
+                group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER,
+            ).distinct()
+
+        return queryset
 
 
 # XXX: This should be put to models
