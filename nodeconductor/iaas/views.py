@@ -46,6 +46,7 @@ class InstanceFilter(django_filters.FilterSet):
             'project',
             'project_group',
         ]
+        order_by = fields
 
 
 class InstanceViewSet(mixins.CreateModelMixin,

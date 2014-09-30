@@ -111,6 +111,15 @@ class UserFilter(django_filters.FilterSet):
             'project',
             'project_group',
         ]
+        order_by = [
+            'full_name',
+            'native_name',
+            'organization',
+            'email',
+            'phone_number',
+            'description',
+            'job_title',
+        ]
 
 
 class UserViewSet(viewsets.ModelViewSet):
