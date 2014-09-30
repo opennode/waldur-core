@@ -38,6 +38,7 @@ INSTALLED_APPS = (
     'south',
 
     'permission',
+    'django_fsm',
 )
 
 MIDDLEWARE_CLASSES = (

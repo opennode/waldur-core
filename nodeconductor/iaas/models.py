@@ -131,18 +131,51 @@ class Instance(core_models.UuidMixin,
     ips = models.CharField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
 
-    state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES, protected=True)
+    state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
+                     help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
     @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
-    def begin_provisioning(self):
+    def provisioning(self):
         pass
 
-    @transition(field=state, source=States.PROVISIONING, target=States.ONLINE)
-    def set_online(self):
+    @transition(field=state, source=[States.PROVISIONING, States.STOPPING], target=States.OFFLINE)
+    def offline(self):
         pass
 
-    @transition(field=state, source=States.PROVISIONING, target=States.STOPPING_SCHEDULED)
-    def stop(self):
+    @transition(field=state, source=States.OFFLINE, target=States.STARTING_SCHEDULED)
+    def starting_scheduled(self):
+        pass
+
+    @transition(field=state, source=States.STARTING_SCHEDULED, target=States.STARTING)
+    def starting(self):
+        pass
+
+    @transition(field=state, source=[States.STARTING, States.PROVISIONING], target=States.ONLINE)
+    def online(self):
+        pass
+
+    @transition(field=state, source=States.ONLINE, target=States.STOPPING_SCHEDULED)
+    def stopping_scheduled(self):
+        pass
+
+    @transition(field=state, source=States.STOPPING_SCHEDULED, target=States.STOPPING)
+    def stopping(self):
+        pass
+
+    @transition(field=state, source=States.OFFLINE, target=States.DELETION_SCHEDULED)
+    def deletion_scheduled(self):
+        pass
+
+    @transition(field=state, source=States.DELETION_SCHEDULED, target=States.DELETING)
+    def deleting(self):
+        pass
+
+    @transition(field=state, source=States.DELETING, target=States.DELETED)
+    def deleted(self):
+        pass
+
+    @transition(field=state, source='*', target=States.ERRED)
+    def erred(self):
         pass
 
     def clean(self):
@@ -160,14 +193,12 @@ class Instance(core_models.UuidMixin,
         }
 
 
-# XXX: hotfix till redis is configured on testing infrastructure
-#@receiver(post_save, sender=Instance)
+@receiver(post_save, sender=Instance)
 def auto_start_instance(sender, instance=None, created=False, **kwargs):
     if created:
         # Importing here to avoid circular imports
         from nodeconductor.iaas import tasks
 
-        logger.info('Scheduling provisioning instance with uuid %s', instance.uuid)
         tasks.schedule_provisioning.delay(instance.uuid)
 
 

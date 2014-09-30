@@ -6,10 +6,12 @@ from nodeconductor.iaas import models
 class InstanceAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         if obj:
-            return ['template', 'state', ]
-        else:
-            return ['state', ]
+            return ['template']
+        return []
     ordering = ('hostname',)
+    list_display = ['hostname', 'uuid', 'state', 'project', 'template', 'flavor']
+    search_fields = ['hostname', 'uuid']
+    list_filter = ['state', 'project', 'template']
 
 
 class PurchaseAdmin(admin.ModelAdmin):
