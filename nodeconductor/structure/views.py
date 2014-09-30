@@ -83,18 +83,20 @@ class UserFilter(django_filters.FilterSet):
     project_group = django_filters.CharFilter(
         name='groups__projectrole__project__project_groups__name',
         distinct=True,
+        lookup_type='icontains',
     )
     project = django_filters.CharFilter(
         name='groups__projectrole__project__name',
         distinct=True,
+        lookup_type='icontains',
     )
 
     full_name = django_filters.CharFilter(lookup_type='icontains')
     native_name = django_filters.CharFilter(lookup_type='icontains')
     organization = django_filters.CharFilter(lookup_type='icontains')
     job_title = django_filters.CharFilter(lookup_type='icontains')
-    project = django_filters.CharFilter(lookup_type='icontains')
-    project_group = django_filters.CharFilter(lookup_type='icontains')
+    # XXX: temporary. Should be done by a proper search full-text search engine
+    description = django_filters.CharFilter(lookup_type='icontains')
 
     class Meta(object):
         model = User
