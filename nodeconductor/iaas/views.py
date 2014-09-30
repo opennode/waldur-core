@@ -54,7 +54,10 @@ class InstanceFilter(django_filters.FilterSet):
             'project',
             'project_group',
         ]
-        order_by = fields
+        order_by = [
+            'hostname',
+            'state',
+        ]
 
 
 class InstanceViewSet(mixins.CreateModelMixin,
