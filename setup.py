@@ -14,8 +14,8 @@ tests_requires = [
 
 install_requires = [
     'Django>=1.6.5,<1.7',
-    'djangorestframework>=2.3.12,<2.4.0',
-    'South==0.8.4',
+    'djangorestframework>=2.4.3,<2.5.0',
+    'South==1.0',
     'logan==0.5.9.1',
     'django-fsm==2.2.0',
     'django-uuidfield==0.5.0',
