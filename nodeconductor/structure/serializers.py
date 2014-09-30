@@ -60,15 +60,15 @@ class CustomerSerializer(core_serializers.CollectedFieldsMixin,
         fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
 
-    def _get_filtered_data(self, queryset, serializer_class):
+    def _get_filtered_data(self, objects, serializer):
         try:
             user = self.context['request'].user
-            queryset = filter_queryset_for_user(queryset, user)
         except (KeyError, AttributeError):
-            pass
+            return None
 
-        serializer = serializer_class(context=self.context)
-        return [serializer.to_native(item) for item in queryset.iterator()]
+        queryset = filter_queryset_for_user(objects, user)
+        serializer_instance = serializer(queryset, context={'request': self.context['request']})
+        return serializer_instance.data
 
     def get_customer_projects(self, obj):
         return self._get_filtered_data(obj.projects.all(), BasicProjectSerializer)

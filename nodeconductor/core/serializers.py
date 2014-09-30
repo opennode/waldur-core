@@ -143,7 +143,12 @@ class UnboundSerializerMethodField(Field):
         super(UnboundSerializerMethodField, self).__init__(*args, **kwargs)
 
     def field_to_native(self, obj, field_name):
-        value = self.filter_function(obj, self.context)
+        try:
+            request = self.context['request']
+        except KeyError:
+            return self.to_native(obj)
+
+        value = self.filter_function(obj, request)
         return self.to_native(value)
 
 
