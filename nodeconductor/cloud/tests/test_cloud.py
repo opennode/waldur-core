@@ -13,64 +13,61 @@ class CloudPermissionTest(test.APITransactionTestCase):
     def setUp(self):
         self.customers = {
             'owned': structure_factories.CustomerFactory(),
-            'project_admin': structure_factories.CustomerFactory(),
+            'has_admined_project': structure_factories.CustomerFactory(),
+            'has_managed_project': structure_factories.CustomerFactory(),
         }
 
         self.users = {
             'customer_owner': structure_factories.UserFactory(),
             'project_admin': structure_factories.UserFactory(),
+            'project_manager': structure_factories.UserFactory(),
             'no_role': structure_factories.UserFactory(),
         }
 
         self.projects = {
             'owned': structure_factories.ProjectFactory(customer=self.customers['owned']),
-            'project_admin': structure_factories.ProjectFactory(customer=self.customers['project_admin']),
+            'admined': structure_factories.ProjectFactory(customer=self.customers['has_admined_project']),
+            'managed': structure_factories.ProjectFactory(customer=self.customers['has_managed_project']),
         }
 
         self.clouds = {
-            'owned': factories.CloudFactory.build(customer=self.customers['owned']),  # Note, not committed to db
-            'project_admin': factories.CloudFactory(customer=self.customers['project_admin']),
+            'owned': factories.CloudFactory(customer=self.customers['owned']),
+            'admined': factories.CloudFactory(customer=self.customers['has_admined_project']),
+            'managed': factories.CloudFactory(customer=self.customers['has_managed_project']),
+            'not_in_project': factories.CloudFactory(),
         }
 
         self.customers['owned'].add_user(self.users['customer_owner'], CustomerRole.OWNER)
 
-        self.projects['project_admin'].add_user(self.users['project_admin'], ProjectRole.ADMINISTRATOR)
-        # Deprecated
+        self.projects['admined'].add_user(self.users['project_admin'], ProjectRole.ADMINISTRATOR)
+        self.projects['managed'].add_user(self.users['project_manager'], ProjectRole.MANAGER)
 
-        self.user = structure_factories.UserFactory.create()
+        self.projects['admined'].clouds.add(self.clouds['admined'])
+        self.projects['managed'].clouds.add(self.clouds['managed'])
 
-        managed_project = structure_factories.ProjectFactory()
-
-        self.projects['project_admin'].add_user(self.user, ProjectRole.ADMINISTRATOR)
-        managed_project.add_user(self.user, ProjectRole.MANAGER)
-
-        self.admined_cloud = self.clouds['project_admin']
-        self.managed_cloud = factories.CloudFactory()
-
-        self.projects['project_admin'].clouds.add(self.admined_cloud)
-        managed_project.clouds.add(self.managed_cloud)
+        self.cloud_list_url = reverse('cloud-list')
 
     # List filtration tests
     def test_anonymous_user_cannot_list_clouds(self):
-        response = self.client.get(reverse('cloud-list'))
+        response = self.client.get(self.cloud_list_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_list_clouds_of_projects_he_is_administrator_of(self):
-        self.client.force_authenticate(user=self.user)
+        self.client.force_authenticate(user=self.users['project_admin'])
 
-        response = self.client.get(reverse('cloud-list'))
+        response = self.client.get(self.cloud_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        cloud_url = self._get_cloud_url(self.admined_cloud)
+        cloud_url = self._get_cloud_url(self.clouds['admined'])
         self.assertIn(cloud_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_clouds_of_projects_he_is_manager_of(self):
-        self.client.force_authenticate(user=self.user)
+        self.client.force_authenticate(user=self.users['project_manager'])
 
-        response = self.client.get(reverse('cloud-list'))
+        response = self.client.get(self.cloud_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        cloud_url = self._get_cloud_url(self.managed_cloud)
+        cloud_url = self._get_cloud_url(self.clouds['managed'])
         self.assertIn(cloud_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_clouds_of_projects_he_is_customer_owner_of(self):
@@ -87,40 +84,43 @@ class CloudPermissionTest(test.APITransactionTestCase):
         self.assertIn(cloud_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_clouds_of_projects_he_has_no_role_in(self):
-        self.client.force_authenticate(user=self.user)
+        self.client.force_authenticate(user=self.users['no_role'])
 
-        inaccessible_cloud = factories.CloudFactory()
-
-        response = self.client.get(reverse('cloud-list'))
+        response = self.client.get(self.cloud_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        cloud_url = self._get_cloud_url(inaccessible_cloud)
-        self.assertNotIn(cloud_url, [instance['url'] for instance in response.data])
+        for cloud_type in 'admined', 'managed':
+            cloud_url = self._get_cloud_url(self.clouds[cloud_type])
+            self.assertNotIn(
+                cloud_url,
+                [instance['url'] for instance in response.data],
+                'User (role=none) should not see cloud (type=' + cloud_type + ')',
+            )
 
     # Direct instance access tests
     def test_anonymous_user_cannot_access_cloud(self):
-        cloud = factories.CloudFactory()
-        response = self.client.get(self._get_cloud_url(cloud))
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        for cloud_type in 'admined', 'managed', 'not_in_project':
+            response = self.client.get(self._get_cloud_url(self.clouds[cloud_type]))
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_access_cloud_allowed_for_project_he_is_administrator_of(self):
-        self.client.force_authenticate(user=self.user)
+        self.client.force_authenticate(user=self.users['project_admin'])
 
-        response = self.client.get(self._get_cloud_url(self.admined_cloud))
+        response = self.client.get(self._get_cloud_url(self.clouds['admined']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_access_cloud_allowed_for_project_he_is_manager_of(self):
-        self.client.force_authenticate(user=self.user)
+        self.client.force_authenticate(user=self.users['project_manager'])
 
-        response = self.client.get(self._get_cloud_url(self.managed_cloud))
+        response = self.client.get(self._get_cloud_url(self.clouds['managed']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_see_clouds_customer_name(self):
-        self.client.force_authenticate(user=self.user)
+        self.client.force_authenticate(user=self.users['project_admin'])
 
-        response = self.client.get(self._get_cloud_url(self.admined_cloud))
+        response = self.client.get(self._get_cloud_url(self.clouds['admined']))
 
-        customer = self.admined_cloud.customer
+        customer = self.clouds['admined'].customer
 
         self.assertIn('customer', response.data)
         self.assertEqual(self._get_custmer_url(customer), response.data['customer'])
@@ -129,62 +129,79 @@ class CloudPermissionTest(test.APITransactionTestCase):
         self.assertEqual(customer.name, response.data['customer_name'])
 
     def test_user_cannot_access_cloud_allowed_for_project_he_has_no_role_in(self):
-        self.client.force_authenticate(user=self.user)
+        self.client.force_authenticate(user=self.users['no_role'])
 
-        inaccessible_cloud = factories.CloudFactory()
-        inaccessible_project = structure_factories.ProjectFactory()
-        inaccessible_project.clouds.add(inaccessible_cloud)
-
-        response = self.client.get(self._get_cloud_url(inaccessible_cloud))
-        # 404 is used instead of 403 to hide the fact that the resource exists at all
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        for cloud_type in 'admined', 'managed':
+            response = self.client.get(self._get_cloud_url(self.clouds[cloud_type]))
+            # 404 is used instead of 403 to hide the fact that the resource exists at all
+            self.assertEqual(
+                response.status_code,
+                status.HTTP_404_NOT_FOUND,
+                'User (role=none) should not see cloud (type=' + cloud_type + ')',
+            )
 
     def test_user_cannot_access_cloud_not_allowed_for_any_project(self):
-        self.client.force_authenticate(user=self.user)
+        for user_role in 'customer_owner', 'project_admin', 'project_manager':
+            self.client.force_authenticate(user=self.users[user_role])
 
-        inaccessible_cloud = factories.CloudFactory()
-
-        response = self.client.get(self._get_cloud_url(inaccessible_cloud))
-        # 404 is used instead of 403 to hide the fact that the resource exists at all
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+            response = self.client.get(self._get_cloud_url(self.clouds['not_in_project']))
+            # 404 is used instead of 403 to hide the fact that the resource exists at all
+            self.assertEqual(
+                response.status_code,
+                status.HTTP_404_NOT_FOUND,
+                'User (role=' + user_role + ') should not see cloud (type=not_in_project)',
+            )
 
     # Nested objects filtration tests
     def test_user_can_see_flavors_within_cloud(self):
-        self.client.force_authenticate(user=self.users['project_admin'])
+        for user_role, cloud_type in {
+                'project_admin': 'admined',
+                'project_manager': 'managed',
+            }.iteritems():
+            self.client.force_authenticate(user=self.users[user_role])
 
-        cloud = self.clouds['project_admin']
+            seen_flavor = factories.FlavorFactory(cloud=self.clouds[cloud_type])
 
-        seen_flavor = factories.FlavorFactory(cloud=cloud)
+            response = self.client.get(self._get_cloud_url(self.clouds[cloud_type]))
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        response = self.client.get(self._get_cloud_url(cloud))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertIn(
+                'flavors',
+                response.data,
+                'Cloud (type=' + cloud_type + ') must contain flavor list',
+            )
 
-        self.assertIn('flavors', response.data, 'Cloud must contain flavor list')
-
-        flavor_urls = set([flavor['url'] for flavor in response.data['flavors']])
-        self.assertIn(
-            self._get_flavor_url(seen_flavor), flavor_urls,
-            'User should see flavor',
-        )
+            flavor_urls = set([flavor['url'] for flavor in response.data['flavors']])
+            self.assertIn(
+                self._get_flavor_url(seen_flavor),
+                flavor_urls,
+                'User (role=' + user_role + ') should see flavor',
+            )
 
     # Creation tests
     def test_user_can_add_cloud_to_the_customer_he_owns(self):
         self.client.force_authenticate(user=self.users['customer_owner'])
 
-        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.clouds['owned']))
+        new_cloud = factories.CloudFactory.build(customer=self.customers['owned'])
+        response = self.client.post(self.cloud_list_url, self._get_valid_payload(new_cloud))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_user_cannot_add_cloud_to_the_customer_he_sees_but_doesnt_own(self):
-        self.client.force_authenticate(user=self.users['project_admin'])
+        for user_role, customer_type in {
+                'project_admin': 'has_admined_project',
+                'project_manager': 'has_managed_project',
+            }.iteritems():
+            self.client.force_authenticate(user=self.users[user_role])
 
-        cloud = factories.CloudFactory.build(customer=self.customers['project_admin'])
-        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(cloud))
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            new_cloud = factories.CloudFactory.build(customer=self.customers[customer_type])
+            response = self.client.post(self.cloud_list_url, self._get_valid_payload(new_cloud))
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_cannot_add_cloud_to_the_customer_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.users['no_role'])
 
-        response = self.client.post(reverse('cloud-list'), self._get_valid_payload(self.clouds['owned']))
+        new_cloud = factories.CloudFactory.build(customer=self.customers['owned'])
+        response = self.client.post(self.cloud_list_url, self._get_valid_payload(new_cloud))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def _get_cloud_url(self, cloud):

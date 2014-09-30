@@ -12,7 +12,7 @@ from nodeconductor.structure import models as structure_models
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
-    model = models.Flavor
+    queryset = models.Flavor.objects.all()
     serializer_class = serializers.FlavorSerializer
     lookup_field = 'uuid'
     filter_backends = (structure_filters.GenericRoleFilter,)
@@ -41,7 +41,7 @@ class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
-    model = models.Cloud.projects.through
+    queryset = models.Cloud.projects.through.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
     filter_backends = (filters.GenericRoleFilter,)
 
