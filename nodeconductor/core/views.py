@@ -26,8 +26,8 @@ class ObtainAuthToken(APIView):
     """
     throttle_classes = ()
     permission_classes = ()
+    queryset = Token.objects.all()
     serializer_class = AuthTokenSerializer
-    model = Token
 
     def post(self, request):
         serializer = self.serializer_class(data=request.DATA)
