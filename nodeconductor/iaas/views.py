@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
+import django_filters
 
 from rest_framework import permissions
 from rest_framework import mixins
 from rest_framework import viewsets
+from rest_framework import filters as rf_filter
 
 from nodeconductor.cloud.models import Cloud
 from nodeconductor.core import mixins as core_mixins
@@ -14,6 +16,39 @@ from nodeconductor.structure import filters
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 
+class InstanceFilter(django_filters.FilterSet):
+    project_group = django_filters.CharFilter(
+        name='project__project_groups__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+    project = django_filters.CharFilter(
+        name='project__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
+    customer_name = django_filters.CharFilter(
+        name='project__customer__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
+    hostname = django_filters.CharFilter(lookup_type='icontains')
+    state = django_filters.CharFilter()
+
+    class Meta(object):
+        model = models.Instance
+        fields = [
+            'hostname',
+            'customer_name',
+            'state',
+            'project',
+            'project_group',
+        ]
+        order_by = fields
+
+
 class InstanceViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       core_mixins.ListModelMixin,
@@ -22,8 +57,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     model = models.Instance
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+    filter_class = InstanceFilter
 
     def get_serializer_class(self):
         if self.request.method in ('POST', 'PUT', 'PATCH'):
