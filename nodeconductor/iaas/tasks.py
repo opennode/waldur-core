@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 
 import functools
 import logging
+import sys
 
 from celery import shared_task
 from django_fsm import TransitionNotAllowed
@@ -18,14 +19,9 @@ class StateChangeError(RuntimeError):
     pass
 
 
-# XXX: Deprecated
-class BackgroundProcessingException(Exception):
-    pass
-
-
 def _mock_processing(instance_uuid, should_fail=False):
     if should_fail:
-        raise BackgroundProcessingException('It\'s not my day')
+        raise Exception('It\'s not my day')
 
     import time
     time.sleep(10)
@@ -37,69 +33,10 @@ def _mock_processing(instance_uuid, should_fail=False):
             instance.ips = '1.2.3.4, 10.10.10.10'
             instance.save()
         except models.Instance.DoesNotExist:
-            raise BackgroundProcessingException('Error updating VM instance')
+            raise Exception('Error updating VM instance')
 
 
-# TODO: Convert the code to use @tracked_processing
-def _schedule_instance_operation(instance_uuid, operation, processing_callback):
-    logger.info('About to %s instance with uuid %s' % (operation, instance_uuid))
-    supported_operations = {
-        'provisioning': ('provisioning', 'online'),
-        'deleting': ('deleting', 'deleted'),
-        'starting': ('starting', 'online'),
-        'stopping': ('stopping', 'offline'),
-    }
-
-    with transaction.atomic():
-        try:
-            instance = models.Instance.objects.get(uuid=instance_uuid)
-        except models.Instance.DoesNotExist:
-            logger.error('Could not find instance with uuid %s to schedule %s for' % (instance_uuid, operation))
-            # There's nothing we can do here to save the state of an instance
-            return
-
-        try:
-            # mark start of the transition
-            getattr(instance, supported_operations[operation][0])()
-            instance.save()
-        except TransitionNotAllowed:
-            logger.warn('Transition from state %s using operation %s is not allowed'
-                        % (instance.get_state_display(), operation))
-            # Leave the instance intact
-            return
-
-    try:
-        processing_callback(instance_uuid)
-    except BackgroundProcessingException as e:
-        with transaction.atomic():
-            try:
-                instance = models.Instance.objects.get(uuid=instance_uuid)
-            except models.Instance.DoesNotExist:
-                logger.error('Could not find instance with uuid %s to mark as erred while running %s'
-                             % (instance_uuid, operation))
-                # There's nothing we can do here to save the state of an instance
-                return
-
-            logger.error('Error while performing instance %s operation %s: %s' % (instance_uuid, operation, e))
-            instance.erred()
-            instance.save()
-            return
-
-    # We need to get the fresh instance from db so that presentation layer
-    # property changes would not get lost
-    with transaction.atomic():
-        try:
-            instance = models.Instance.objects.get(uuid=instance_uuid)
-        except models.Instance.DoesNotExist:
-            logger.error('Instance with uuid %s has gone away during %s' % (instance_uuid, operation))
-
-            # There's nothing we can do here to save the state of an instance
-            return
-
-        getattr(instance, supported_operations[operation][1])()
-        instance.save()
-
-
+#TODO: extract to core
 # noinspection PyProtectedMember
 def set_state(model_class, uuid, transition):
     """
@@ -119,6 +56,7 @@ def set_state(model_class, uuid, transition):
         from django.db import
         from nodeconductor.core.models import UuidMixin
 
+
         class Worker(UuidMixin, models.Model):
             state = FSMField(default='idle')
 
@@ -129,6 +67,7 @@ def set_state(model_class, uuid, transition):
         # views.py
         from django.shortcuts import render_to_response
         from . import models
+
 
         def begin_work(worker_uuid):
             try:
@@ -164,23 +103,25 @@ def set_state(model_class, uuid, transition):
 
             entity.save()
     except model_class.DoesNotExist:
+        msg = 'Could not perform %s %s with uuid, %s has gone' %\
+            (logged_operation, entity_name, uuid, entity_name)
         # There's nothing we can do here to save the state of an entity
-        logger.error(
-            'Could not perform %s %s with uuid, %s has gone',
-            logged_operation, entity_name, uuid, entity_name)
-        six.reraise(StateChangeError)
+        logger.error(msg)
+
+        six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
     except DatabaseError:
         # Transaction failed to commit, most likely due to concurrent update
-        logger.exception(
-            'Could not perform %s %s with uuid %s due to concurrent update',
-            logged_operation, entity_name, uuid)
-        six.reraise(StateChangeError)
+        msg = 'Could not perform %s %s with uuid %s due to concurrent update' %\
+              (logged_operation, entity_name, uuid)
+        logger.error(msg)
+
+        six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
     except TransitionNotAllowed:
+        msg = 'Could not perform %s %s with uuid %s, transition not allowed' %\
+              (logged_operation, entity.get_state_display(), uuid)
         # Leave the entity intact
-        logger.exception(
-            'Could not perform %s %s with uuid %s, transition not allowed',
-            logged_operation, entity_name, uuid)
-        six.reraise(StateChangeError)
+        logger.error(msg)
+        six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
 
     # TODO: Emit high level event log entry
     logger.info(
@@ -235,15 +176,18 @@ def schedule_provisioning(instance_uuid):
 
 
 @shared_task
+@tracked_processing(models.Instance, processing_state='stopping', desired_state='offline')
 def schedule_stopping(instance_uuid):
-    _schedule_instance_operation(instance_uuid, 'stopping', _mock_processing)
+    _mock_processing(instance_uuid)
 
 
 @shared_task
+@tracked_processing(models.Instance, processing_state='starting', desired_state='online')
 def schedule_starting(instance_uuid):
-    _schedule_instance_operation(instance_uuid, 'starting', _mock_processing)
+    _mock_processing(instance_uuid)
 
 
 @shared_task
+@tracked_processing(models.Instance, processing_state='deleting', desired_state='deleted')
 def schedule_deleting(instance_uuid):
-    _schedule_instance_operation(instance_uuid, 'deleting', _mock_processing)
+    _mock_processing(instance_uuid)

@@ -55,18 +55,18 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         supported_operations = {
             # code: (scheduled_celery_task, instance_marker_state)
-            'start': (tasks.schedule_starting, instance.starting_scheduled),
-            'stop': (tasks.schedule_stopping, instance.stopping_scheduled),
-            'destroy': (tasks.schedule_deleting, instance.deletion_scheduled),
+            'start': (instance.starting_scheduled, tasks.schedule_starting),
+            'stop': (instance.stopping_scheduled, tasks.schedule_stopping),
+            'destroy': (instance.deletion_scheduled, tasks.schedule_deleting),
         }
 
         logger.info('Scheduling provisioning instance with uuid %s', uuid)
-        # schedule a transition task
-        supported_operations[operation][0].delay(uuid)
-        # update instance state to scheduled
+        processing_task = supported_operations[operation][1]
+        instance_schedule_transition = supported_operations[operation][0]
         try:
-            supported_operations[operation][1]()
+            instance_schedule_transition()
             instance.save()
+            processing_task.delay(uuid)
         except TransitionNotAllowed:
             return Response({'status': 'Performing %s operation from instance state \'%s\' is not allowed'
                             % (operation, instance.get_state_display())},

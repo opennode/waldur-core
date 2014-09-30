@@ -199,7 +199,6 @@ def auto_start_instance(sender, instance=None, created=False, **kwargs):
         # Importing here to avoid circular imports
         from nodeconductor.iaas import tasks
 
-        # tasks.set_state(Instance, instance.uuid, 'schedule_provisioning')
         tasks.schedule_provisioning.delay(instance.uuid)
 
 
