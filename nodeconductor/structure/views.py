@@ -188,6 +188,33 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
         raise PermissionDenied()
 
 
+class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
+                                rf_mixins.RetrieveModelMixin,
+                                rf_mixins.DestroyModelMixin,
+                                mixins.ListModelMixin,
+                                rf_viewsets.GenericViewSet):
+    model = User.groups.through
+    serializer_class = serializers.CustomerPermissionSerializer
+    filter_backends = ()
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
+
+    def get_queryset(self):
+        queryset = super(CustomerPermissionViewSet, self).get_queryset()
+        # TODO: Test for it!
+        # Only take groups defining customer roles
+        queryset = queryset.exclude(group__customerrole=None)
+
+        # TODO: Test for it!
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(
+                group__customerrole__customer__roles__permission_group__user=self.request.user,
+                group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER,
+            ).distinct()
+
+        return queryset
+
+
 # XXX: This should be put to models
 filters.set_permissions_for_model(
     User.groups.through,

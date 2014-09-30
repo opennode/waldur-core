@@ -149,10 +149,27 @@ class ProjectRoleField(serializers.ChoiceField):
             raise ValidationError('Unknown role')
 
 
+class CustomerRoleField(serializers.ChoiceField):
+
+    def field_to_native(self, obj, field_name):
+        if obj is not None:
+            return models.CustomerRole.ROLE_TO_NAME[obj.group.customerrole.role_type]
+
+    def field_from_native(self, data, files, field_name, into):
+        role = data.get('role')
+        if role in models.CustomerRole.NAME_TO_ROLE:
+            into[field_name] = models.CustomerRole.NAME_TO_ROLE[role]
+        else:
+            raise ValidationError('Unknown role')
+
+
 class ProjectPermissionReadSerializer(core_serializers.RelatedResourcesFieldMixin,
                                       serializers.HyperlinkedModelSerializer):
-    user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
-                                               queryset=User.objects.all())
+    user = serializers.HyperlinkedRelatedField(
+        view_name='user-detail',
+        lookup_field='uuid',
+        queryset=User.objects.all(),
+    )
     user_full_name = serializers.Field(source='user.full_name')
     user_native_name = serializers.Field(source='user.native_name')
 
@@ -175,6 +192,53 @@ class ProjectPermissionReadSerializer(core_serializers.RelatedResourcesFieldMixi
 class NotModifiedPermission(APIException):
     status_code = 304
     default_detail = 'Permissions were not modified'
+
+
+# TODO: refactor to abstract class, subclass by CustomerPermissions and ProjectPermissions
+class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
+                                   serializers.HyperlinkedModelSerializer):
+    customer = serializers.HyperlinkedRelatedField(
+        source='group.customerrole.customer',
+        view_name='customer-detail',
+        lookup_field='uuid',
+        queryset=models.Customer.objects.all(),
+    )
+    customer_name = serializers.Field(source='group.customerrole.customer.name')
+
+    user = serializers.HyperlinkedRelatedField(
+        view_name='user-detail',
+        lookup_field='uuid',
+        queryset=User.objects.all(),
+    )
+    user_full_name = serializers.Field(source='user.full_name')
+    user_native_name = serializers.Field(source='user.native_name')
+
+    role = CustomerRoleField(choices=models.CustomerRole.TYPE_CHOICES)
+
+    class Meta(object):
+        model = User.groups.through
+        fields = (
+            'url',
+            'role',
+            'customer', 'customer_name',
+            'user', 'user_full_name', 'user_native_name',
+        )
+        view_name = 'customer_permission-detail'
+
+    def restore_object(self, attrs, instance=None):
+        customer = attrs['group.customerrole.customer']
+        group = customer.roles.get(role_type=attrs['role']).permission_group
+        UserGroup = User.groups.through
+        return UserGroup(user=attrs['user'], group=group)
+
+    def save_object(self, obj, **kwargs):
+        try:
+            obj.save()
+        except IntegrityError:
+            raise NotModifiedPermission()
+
+    def get_filtered_field_names(self):
+        return 'customer',
 
 
 class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
