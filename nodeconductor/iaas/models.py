@@ -15,8 +15,8 @@ from django_fsm import FSMField
 from django_fsm import transition
 
 from nodeconductor.cloud import models as cloud_models
+from nodeconductor.core import fields
 from nodeconductor.core import models as core_models
-from nodeconductor.iaas import fields
 from nodeconductor.structure import models as structure_models
 
 
