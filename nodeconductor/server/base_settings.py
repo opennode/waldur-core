@@ -69,7 +69,8 @@ REST_FRAMEWORK = {
     'PAGINATE_BY': 10
 }
 
-AUTHENTICATION_BACKENDS = (    'django.contrib.auth.backends.ModelBackend',
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
     'permission.backends.PermissionBackend',
     'djangosaml2.backends.Saml2Backend',
 )
