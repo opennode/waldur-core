@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 from django.contrib import auth
-from django.core import validators
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from rest_framework import serializers
