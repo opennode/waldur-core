@@ -54,7 +54,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
                       core_mixins.ListModelMixin,
                       core_mixins.UpdateOnlyModelMixin,
                       viewsets.GenericViewSet):
-    model = models.Instance
+    queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
@@ -98,7 +98,7 @@ class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 
 class SshKeyViewSet(core_viewsets.ModelViewSet):
-    model = core_models.SshPublicKey
+    queryset = core_models.SshPublicKey.objects.all()
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
 
@@ -107,14 +107,14 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
 
 
 class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
-    model = models.Purchase
+    queryset = models.Purchase.objects.all()
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter,)
 
 
 class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
-    model = models.Image
+    queryset = models.Image.objects.all()
     serializer_class = serializers.ImageSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter,)
