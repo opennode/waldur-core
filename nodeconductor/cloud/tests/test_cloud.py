@@ -31,6 +31,7 @@ class CloudPermissionTest(test.APITransactionTestCase):
         }
 
         self.clouds = {
+            'owned': factories.CloudFactory(customer=self.customers['owned']),
             'admined': factories.CloudFactory(customer=self.customers['has_admined_project']),
             'managed': factories.CloudFactory(customer=self.customers['has_managed_project']),
             'not_in_project': factories.CloudFactory(),
