@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 import unittest
 
 from django.core.urlresolvers import reverse
+from django.test import TestCase
 from rest_framework import status
 from rest_framework import test
 
@@ -327,6 +328,24 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertDictContainsSubset({'volume_sizes': ['Enter a whole number.']},
                                       response.data)
 
+    def test_instance_with_valid_ips(self):
+        data = self.get_valid_data()
+        data['ips'] = ['68.180.194.242', '87.248.122.141', '69.147.112.169']
+
+        instance = Instance.objects.create(**data)
+
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_cannot_create_instance_with_invalid_ips(self):
+        data = self.get_valid_data()
+        data['ips'] = '68.180.194.242;adas87.248.122.141,69.147.112.169'
+
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     # Helper methods
     def get_valid_data(self):
         return {
@@ -345,3 +364,31 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
             # Cloud dependent parameters
             'flavor': self._get_flavor_url(self.flavor),
         }
+
+
+class InstanceIPsFieldTest(TestCase):
+    def setUp(self):
+        instance = factories.InstanceFactory()
+
+        self.data = {
+            'hostname': instance.hostname,
+            'description': instance.description,
+            'project': instance.project,
+            'template': instance.template,
+            'flavor': instance.flavor,
+            'ips': ['68.180.194.242', '87.248.122.141', '69.147.112.169']
+        }
+
+    def test_can_create_instance_with_valid_ips(self):
+        Instance.objects.create(**self.data)
+
+    def test_can_create_instance_with_invalid_ips(self):
+        invalid_ips = [
+            ['68.180.194.242,', '87.248.122.141'],
+            ['68-180-194-242,', '1.2.3'],
+            ['68.180.194.242a', '87.248.122.141, 69.147.112.169'],
+        ]
+
+        for ips in invalid_ips:
+            self.data['ips'] = ips
+            Instance.objects.create(**self.data)
