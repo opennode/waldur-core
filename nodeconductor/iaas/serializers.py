@@ -29,7 +29,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     class Meta(object):
         model = models.Instance
         fields = (
-            'url', 'hostname', 'description', 'start_time',
+            'url', 'uuid', 'hostname', 'description', 'start_time',
             'template', 'template_name',
             'cloud', 'cloud_name',
             'flavor', 'flavor_name',
