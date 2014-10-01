@@ -8,21 +8,23 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.2.1
+Version: 0.3.0
 Release: 1
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: logrotate
 Requires: MySQL-python
+Requires: python-celery >= 3.1.15, python-celery < 3.2
 Requires: python-django16 >= 1.6.5
 Requires: python-django-auth-ldap >= 1.2.0
 Requires: python-django-filter = 0.7
 Requires: python-django-fsm = 2.2.0
 Requires: python-django-permission = 0.8.2
 Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework < 2.4.0
-Requires: python-django-saml2
+Requires: python-django-saml2 >= 0.11.0, python-django-saml2 < 0.12
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-logan = 0.5.9.1
+Requires: python-redis = 2.10.3
 Requires: python-south = 0.8.4
 Requires: xmlsec1-openssl
 
@@ -132,6 +134,9 @@ All done. Happy NodeConducting!
 EOF
 
 %changelog
+* Wed Oct 1 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.3.0-1
+- New upstream release
+
 * Tue Sep 23 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.2.1-1
 - New upstream release
 - SAML2 keys are generated in the correct dir
