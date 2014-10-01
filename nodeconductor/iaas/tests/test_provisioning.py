@@ -328,24 +328,6 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertDictContainsSubset({'volume_sizes': ['Enter a whole number.']},
                                       response.data)
 
-    def test_instance_with_valid_ips(self):
-        data = self.get_valid_data()
-        data['ips'] = ['68.180.194.242', '87.248.122.141', '69.147.112.169']
-
-        instance = Instance.objects.create(**data)
-
-        response = self.client.post(self.instance_list_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-    def test_cannot_create_instance_with_invalid_ips(self):
-        data = self.get_valid_data()
-        data['ips'] = '68.180.194.242;adas87.248.122.141,69.147.112.169'
-
-        response = self.client.post(self.instance_list_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
     # Helper methods
     def get_valid_data(self):
         return {
