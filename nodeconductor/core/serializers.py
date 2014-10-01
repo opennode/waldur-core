@@ -52,7 +52,7 @@ class IPsField(serializers.CharField):
     def to_native(self, value):
         value = super(IPsField, self).to_native(value)
         try:
-            ips = value.split(',')
+            ips = [ip.strip() for ip in value.split(',')]
         except ValueError:
             return value
 
