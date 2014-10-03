@@ -65,6 +65,23 @@ DATABASES = {
 
 LOGGING = {
     'version': 1,
+    'formatters': {
+        'request_format': {
+            'format': '%(remote_addr)s %(username)s "%(request_method)s '
+            '%(path_info)s %(server_protocol)s" %(http_user_agent)s '
+            '%(message)s %(asctime)s',
+        },
+    },
+     'filters': {
+        # Populate each log entry with HTTP request information
+        'request': {
+            '()': 'django_requestlogging.logging_filters.RequestFilter',
+        },
+        # Filter out only event (user-facing) logs
+        'event': {
+            '()': 'nodeconductor.core.log.EventLogFilter',
+        }
+    },
     'handlers': {
         # Logging to file
         # (make sure to add 'file' to loggers.django.handlers to enable)
@@ -74,11 +91,19 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.handlers.WatchedFileHandler',
             'filename': '/var/log/nodeconductor/nodeconductor.log',
+            'filters': ['request'],
+        },
+        'file-event': {
+            'level': 'INFO',
+            'class': 'logging.handlers.WatchedFileHandler',
+            'filename': '/var/log/nodeconductor/nodeconductor-event.log',
+            'filters': ['request', 'event'],
         },
         'file_saml2': {
             'level': 'DEBUG',
             'class': 'logging.handlers.WatchedFileHandler',
             'filename': '/var/log/nodeconductor/saml2.log',
+            'filters': ['request'],
         },
 
         # Logging to syslog
@@ -89,10 +114,23 @@ LOGGING = {
            'level': 'INFO',
            'class': 'logging.handlers.SysLogHandler',
         },
+        # log events to syslog
+        'syslog-event': {
+           'level': 'INFO',
+           'class': 'logging.handlers.SysLogHandler',
+           'formatter': 'request_format',
+           'filters': ['request', 'event'],
+        },
     },
     'loggers': {
         'django': {
             'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        # NC events
+        'nodeconductor': {
+            'handlers': ['file-event'],
             'level': 'INFO',
             'propagate': True,
         },
@@ -101,6 +139,7 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
+
     },
 }
 

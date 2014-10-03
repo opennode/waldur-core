@@ -10,9 +10,12 @@ from django_fsm import TransitionNotAllowed
 from django.db import transaction, DatabaseError
 import six
 
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 
+
 logger = logging.getLogger(__name__)
+event_log = EventLoggerAdapter(logger)
 
 
 class StateChangeError(RuntimeError):
@@ -123,9 +126,12 @@ def set_state(model_class, uuid, transition):
         logger.error(msg)
         six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
 
-    # TODO: Emit high level event log entry
     logger.info(
         'Managed to finish %s %s with uuid %s',
+        logged_operation, entity_name, uuid
+    )
+    event_log.info(
+        'Finished %s %s with uuid %s',
         logged_operation, entity_name, uuid
     )
 
