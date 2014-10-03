@@ -92,18 +92,21 @@ LOGGING = {
             'class': 'logging.handlers.WatchedFileHandler',
             'filename': '/var/log/nodeconductor/nodeconductor.log',
             'filters': ['request'],
+            'formatter': 'request_format',
         },
         'file-event': {
             'level': 'INFO',
             'class': 'logging.handlers.WatchedFileHandler',
             'filename': '/var/log/nodeconductor/nodeconductor-event.log',
             'filters': ['request', 'event'],
+            'formatter': 'request_format',
         },
         'file_saml2': {
             'level': 'DEBUG',
             'class': 'logging.handlers.WatchedFileHandler',
             'filename': '/var/log/nodeconductor/saml2.log',
             'filters': ['request'],
+            'formatter': 'request_format',
         },
 
         # Logging to syslog
@@ -113,6 +116,8 @@ LOGGING = {
         'syslog': {
            'level': 'INFO',
            'class': 'logging.handlers.SysLogHandler',
+           'filters': ['request'],
+           'formatter': 'request_format',
         },
         # log events to syslog
         'syslog-event': {
