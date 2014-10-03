@@ -25,6 +25,7 @@ install_requires = [
     'djangosaml2>=0.11.0,<0.12',
     'Celery>=3.1.15,<3.2',
     'redis==2.10.3',
+    'django-requestlogging==1.0.1',
 ]
 
 
