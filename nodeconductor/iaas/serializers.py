@@ -55,7 +55,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Template
         fields = (
-            'url',
+            'url', 'uuid',
             'name', 'description', 'icon_url',
             'os',
             'is_active',
@@ -81,7 +81,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 class SshKeySerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = core_models.SshPublicKey
-        fields = ('url', 'name', 'public_key')
+        fields = ('url', 'uuid', 'name', 'public_key')
         lookup_field = 'uuid'
 
 
@@ -98,7 +98,7 @@ class PurchaseSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedMode
     class Meta(object):
         model = models.Purchase
         fields = (
-            'url', 'date',
+            'url', 'uuid', 'date',
             'user', 'user_full_name', 'user_native_name',
             'customer', 'customer_name',
             'project', 'project_name',
@@ -117,7 +117,7 @@ class ImageSerializer(RelatedResourcesFieldMixin,
     class Meta(object):
         model = models.Image
         fields = (
-            'url', 'name', 'description',
+            'url', 'uuid', 'name', 'description',
             'cloud', 'cloud_name',
             'architecture',
         )
