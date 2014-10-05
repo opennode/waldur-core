@@ -281,7 +281,7 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_user_can_delete_customer_if_he_is_staff(self):
+    def test_user_can_delete_customer_without_associated_project_groups_and_projects_if_he_is_staff(self):
         self.client.force_authenticate(user=self.users['staff'])
 
         response = self.client.delete(self._get_customer_url(self.customers['owner']))
@@ -289,6 +289,31 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
         response = self.client.delete(self._get_customer_url(self.customers['inaccessible']))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_cannot_delete_customer_with_associated_project_groups_if_he_is_staff(self):
+        self.client.force_authenticate(user=self.users['staff'])
+
+        for customer in self.customers.values():
+            factories.ProjectGroupFactory(customer=customer)
+
+            response = self.client.delete(self._get_customer_url(customer))
+
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertDictContainsSubset({'detail': 'Cannot delete customer with existing project_groups'},
+                                          response.data)
+
+    def test_user_cannot_delete_customer_with_associated_projects_if_he_is_staff(self):
+        self.client.force_authenticate(user=self.users['staff'])
+
+        for customer in self.customers.values():
+            factories.ProjectFactory(customer=customer)
+
+            response = self.client.delete(self._get_customer_url(customer))
+
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertDictContainsSubset({'detail': 'Cannot delete customer with existing projects'},
+                                          response.data)
+
 
     # Creation tests
     def test_user_cannot_create_customer_if_he_is_not_staff(self):

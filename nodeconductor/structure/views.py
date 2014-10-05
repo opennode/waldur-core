@@ -28,6 +28,15 @@ class CustomerViewSet(viewsets.ModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
 
+    def pre_delete(self, obj):
+        projects = models.Project.objects.filter(customer=obj).exists()
+        if projects:
+            raise PermissionDenied('Cannot delete customer with existing projects')
+
+        project_groups = models.ProjectGroup.objects.filter(customer=obj).exists()
+        if project_groups:
+            raise PermissionDenied('Cannot delete customer with existing project_groups')
+
 
 class ProjectViewSet(viewsets.ModelViewSet):
     queryset = models.Project.objects.all()
