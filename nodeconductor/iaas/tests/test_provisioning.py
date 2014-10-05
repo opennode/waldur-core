@@ -5,6 +5,7 @@ from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
+from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tests import factories
@@ -326,6 +327,25 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset({'volume_sizes': ['Enter a whole number.']},
                                       response.data)
+
+    # instance ips field tests
+    def test_instance_factory_generates_valid_ips_field(self):
+        instance = factories.InstanceFactory()
+
+        ips = instance.ips
+
+        self.assertTrue(ips_regex.match(ips))
+
+    def test_instance_api_contains_valid_ips_field(self):
+        instance = factories.InstanceFactory()
+        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        response = self.client.get(self._get_instance_url(instance))
+
+        ips = response.data['ips']
+
+        for ip in ips:
+            self.assertTrue(ips_regex.match(ip))
 
     # Helper methods
     def get_valid_data(self):

@@ -13,25 +13,25 @@ tests_requires = [
 ]
 
 install_requires = [
+    'Celery>=3.1.15,<3.2',
     'Django>=1.6.5,<1.7',
-    'djangorestframework>=2.3.12,<2.4.0',
-    'South==0.8.4',
-    'logan==0.5.9.1',
-    'django-fsm==2.2.0',
-    'django-uuidfield==0.5.0',
-    'django-permission==0.8.2',
     'django-auth-ldap==1.2.0',
     'django-filter==0.7',
+    'django-fsm==2.2.0',
+    'django-permission==0.8.2',
+    'django-uuidfield==0.5.0',
+    'djangorestframework>=2.3.12,<2.4.0',
     'djangosaml2>=0.11.0,<0.12',
-    'Celery>=3.1.15,<3.2',
+    'logan==0.5.9.1',
     'redis==2.10.3',
+    'South==0.8.4',
     'django-requestlogging==1.0.1',
 ]
 
 
 setup(
     name='nodeconductor',
-    version='0.2.1',
+    version='0.3.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

@@ -18,7 +18,7 @@ from nodeconductor.core.serializers import AuthTokenSerializer, Saml2ResponseSer
 
 
 logger = logging.getLogger(__name__)
-event_log = EventLoggerAdapter(logger)
+event_logger = EventLoggerAdapter(logger)
 
 
 class ObtainAuthToken(APIView):
@@ -36,7 +36,8 @@ class ObtainAuthToken(APIView):
         if serializer.is_valid():
             user = serializer.object['user']
             token, created = Token.objects.get_or_create(user=user)
-            event_log.info('Generated session token for user %s' % user)
+            event_logger.info('Returning token for successful login of user %s' % user)
+            logger.debug('Returning token for successful login of user %s' % user)
             return Response({'token': token.key})
 
         errors = dict(serializer.errors)
@@ -118,7 +119,7 @@ class Saml2AuthView(APIView):
             create_unknown_user=create_unknown_user,
         )
         if user is None:
-            logger.info('Authenticated with SAML token has failed, user not found')
+            logger.info('Authentication with SAML token has failed, user not found')
             return Response(
                 {'detail': 'SAML2 authentication failed'},
                 status=status.HTTP_401_UNAUTHORIZED
@@ -127,7 +128,7 @@ class Saml2AuthView(APIView):
         post_authenticated.send_robust(sender=user, session_info=session_info)
 
         token, _ = Token.objects.get_or_create(user=user)
-        logger.info('Authenticated with SAML token. Generated token for user %s' % user)
+        logger.info('Authenticated with SAML token. Returning token for successful login of user %s' % user)
         return Response({'token': token.key})
 
 assertion_consumer_service = Saml2AuthView.as_view()

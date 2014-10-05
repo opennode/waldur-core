@@ -15,6 +15,7 @@ from django_fsm import FSMField
 from django_fsm import transition
 
 from nodeconductor.cloud import models as cloud_models
+from nodeconductor.core import fields
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
 
@@ -128,7 +129,7 @@ class Instance(core_models.UuidMixin,
     template = models.ForeignKey(Template, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
-    ips = models.CharField(max_length=256)
+    ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
 
     state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
