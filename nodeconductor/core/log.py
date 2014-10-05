@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import logging
 
@@ -12,7 +12,7 @@ class EventLoggerAdapter(logging.LoggerAdapter):
         super(EventLoggerAdapter, self).__init__(logger, {})
 
     def process(self, msg, kwargs):
-        kwargs["extra"] = {'event': True}
+        kwargs['extra'] = {'event': True}
         return msg, kwargs
 
 
@@ -21,6 +21,4 @@ class EventLogFilter(logging.Filter):
     A filter that allows only event records that have event=True as extra parameter.
     """
     def filter(self, record):
-        if hasattr(record, 'event'):
-            return True
-        return False
+        return hasattr(record, 'event')
