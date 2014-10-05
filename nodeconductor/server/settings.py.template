@@ -39,7 +39,7 @@ DATABASE_MYSQL = {
     'ENGINE': 'django.db.backends.mysql',
     'NAME': 'nodeconductor', # database name
     #'HOST': 'localhost', # default: localhost
-    #'PORT': '3106', # default: 3106
+    #'PORT': '3306', # default: 3306
     'USER': 'nodeconductor',
     'PASSWORD': 'nodeconductor',
 }
@@ -218,3 +218,6 @@ BROKER_URL = 'redis://localhost'
 
 # See http://docs.celeryproject.org/en/latest/configuration.html#std:setting-CELERY_RESULT_BACKEND
 CELERY_RESULT_BACKEND = 'redis://localhost'
+
+# See http://docs.celeryproject.org/en/latest/configuration.html#celery-accept-content
+CELERY_ACCEPT_CONTENT = ['json']
