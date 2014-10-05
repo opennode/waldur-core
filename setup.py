@@ -25,6 +25,7 @@ install_requires = [
     'logan==0.5.9.1',
     'redis==2.10.3',
     'South==0.8.4',
+    'django-requestlogging==1.0.1',
 ]
 
 

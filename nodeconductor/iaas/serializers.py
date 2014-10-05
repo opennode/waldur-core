@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from nodeconductor.core import models as core_models
-from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin
+from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
 from nodeconductor.structure import serializers as structure_serializers
 
@@ -25,6 +25,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
+    ips = IPsField(source='ips', read_only=True)
 
     class Meta(object):
         model = models.Instance
@@ -41,7 +42,6 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'state',
         )
 
-        read_only_fields = ('ips',)
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):

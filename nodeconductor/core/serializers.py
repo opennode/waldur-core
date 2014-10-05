@@ -48,6 +48,21 @@ class Base64Field(serializers.CharField):
         return base64.b64encode(value)
 
 
+class IPsField(serializers.CharField):
+    def to_native(self, value):
+        value = super(IPsField, self).to_native(value)
+        try:
+            ips = [ip.strip() for ip in value.split(',')]
+        except ValueError:
+            return value
+
+        return ips
+
+    def from_native(self, value):
+        value = super(IPsField, self).from_native(value)
+        return ','.join(value)
+
+
 class Saml2ResponseSerializer(serializers.Serializer):
     saml2response = Base64Field(required=True)
 
