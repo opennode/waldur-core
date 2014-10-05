@@ -32,8 +32,10 @@ class CustomerViewSet(viewsets.ModelViewSet):
         projects = models.Project.objects.filter(customer=obj).exists()
         project_groups = models.ProjectGroup.objects.filter(customer=obj).exists()
 
-        if projects or project_groups:
-                    raise PermissionDenied()
+        if projects:
+            raise PermissionDenied('Cannot delete customer with existing projects')
+        elif project_groups:
+            raise PermissionDenied('Cannot delete customer with existing project_groups')
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
