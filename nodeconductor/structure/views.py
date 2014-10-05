@@ -30,11 +30,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     def pre_delete(self, obj):
         projects = models.Project.objects.filter(customer=obj).exists()
-        project_groups = models.ProjectGroup.objects.filter(customer=obj).exists()
-
         if projects:
             raise PermissionDenied('Cannot delete customer with existing projects')
-        elif project_groups:
+
+        project_groups = models.ProjectGroup.objects.filter(customer=obj).exists()
+        if project_groups:
             raise PermissionDenied('Cannot delete customer with existing project_groups')
 
 
