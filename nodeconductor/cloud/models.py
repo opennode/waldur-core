@@ -28,6 +28,7 @@ class Cloud(UuidMixin, models.Model):
         )
 
     class Permissions(object):
+        customer_path = 'customer'
         project_path = 'projects'
 
     username = models.CharField(max_length=100, blank=True)
@@ -45,17 +46,17 @@ class Cloud(UuidMixin, models.Model):
         return self.name
 
 
-def get_customer_clouds(obj, request):
-    customer_clouds = obj.clouds.all()
+def get_related_clouds(obj, request):
+    related_clouds = obj.clouds.all()
 
     try:
         user = request.user
-        customer_clouds = filter_queryset_for_user(customer_clouds, user)
+        related_clouds = filter_queryset_for_user(related_clouds, user)
     except AttributeError:
         pass
 
     from nodeconductor.cloud.serializers import BasicCloudSerializer
-    serializer_instance = BasicCloudSerializer(customer_clouds, context={'request': request})
+    serializer_instance = BasicCloudSerializer(related_clouds, context={'request': request})
 
     return serializer_instance.data
 
@@ -66,14 +67,14 @@ def get_customer_clouds(obj, request):
 
 # @receiver(pre_serializer_fields, sender=CustomerSerializer)
 @receiver(pre_serializer_fields)
-def add_clouds_to_customer(sender, fields, **kwargs):
+def add_clouds_to_related_model(sender, fields, **kwargs):
     # Note: importing here to avoid circular import hell
-    from nodeconductor.structure.serializers import CustomerSerializer
-    if sender is not CustomerSerializer:
+    from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
+
+    if not sender in (CustomerSerializer, ProjectSerializer):
         return
 
-    fields['clouds'] = UnboundSerializerMethodField(get_customer_clouds)
-
+    fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
 
 @python_2_unicode_compatible
 class Flavor(UuidMixin, models.Model):

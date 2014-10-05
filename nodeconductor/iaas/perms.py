@@ -1,4 +1,4 @@
-from nodeconductor.core.permissions import FilteredCollaboratorsPermissionLogic
+from nodeconductor.core.permissions import FilteredCollaboratorsPermissionLogic, StaffPermissionLogic
 from nodeconductor.structure.models import ProjectRole
 
 
@@ -11,4 +11,7 @@ PERMISSION_LOGICS = (
 
         any_permission=True,
     )),
+    ('iaas.Template', StaffPermissionLogic(any_permission=True)),
+    ('iaas.Image', StaffPermissionLogic(any_permission=True)),
+
 )

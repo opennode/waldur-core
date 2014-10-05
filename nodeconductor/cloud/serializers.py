@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.cloud import models
+from nodeconductor.structure.serializers import BasicProjectSerializer
 
 
 class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
@@ -25,10 +26,11 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
                       core_serializers.RelatedResourcesFieldMixin,
                       serializers.HyperlinkedModelSerializer):
     flavors = FlavorSerializer(many=True, read_only=True)
+    projects = BasicProjectSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.Cloud
-        fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors')
+        fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
@@ -36,3 +38,23 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     def get_related_paths(self):
         return 'customer',
+
+
+class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFilteringMixin,
+                                       core_serializers.RelatedResourcesFieldMixin,
+                                       serializers.HyperlinkedModelSerializer):
+
+    class Meta(object):
+        model = models.Cloud.projects.through
+        fields = (
+            'url',
+            'project', 'project_name',
+            'cloud', 'cloud_name',
+        )
+        view_name = 'projectcloud_membership-detail'
+
+    def get_filtered_field_names(self):
+        return 'project', 'cloud'
+
+    def get_related_paths(self):
+        return 'project', 'cloud'

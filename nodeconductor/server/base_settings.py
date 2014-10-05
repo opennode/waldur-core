@@ -38,6 +38,7 @@ INSTALLED_APPS = (
     'south',
 
     'permission',
+    'django_fsm',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -58,8 +59,11 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
-    'DEFAULT_MODEL_SERIALIZER_CLASS': 'rest_framework.serializers.HyperlinkedModelSerializer',
     'DEFAULT_FILTER_BACKENDS': ('rest_framework.filters.DjangoFilterBackend',),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+        'nodeconductor.core.renderers.BrowsableAPIRenderer',
+    ),
     'PAGINATE_BY_PARAM': 'page_size',
     'MAX_PAGINATE_BY': 100,
     'PAGINATE_BY': 10
@@ -106,3 +110,11 @@ NODE_CONDUCTOR = {
 }
 
 SAML_CREATE_UNKNOWN_USER = True
+
+BROKER_URL = 'redis://localhost'
+CELERY_RESULT_BACKEND = 'redis://localhost'
+
+# CELERY_TASK_SERIALIZER = 'json'
+# CELERY_ACCEPT_CONTENT = ['json']
+# CELERY_RESULT_SERIALIZER = 'json'
+

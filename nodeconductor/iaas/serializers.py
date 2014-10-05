@@ -22,14 +22,14 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
 class InstanceSerializer(RelatedResourcesFieldMixin,
                          PermissionFieldFilteringMixin,
                          serializers.HyperlinkedModelSerializer):
-    state = serializers.ChoiceField(choices=models.Instance.STATE_CHOICES, source='get_state_display')
+    state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
 
     class Meta(object):
         model = models.Instance
         fields = (
-            'url', 'hostname', 'description', 'start_time',
+            'url', 'uuid', 'hostname', 'description', 'start_time',
             'template', 'template_name',
             'cloud', 'cloud_name',
             'flavor', 'flavor_name',

@@ -11,7 +11,7 @@ Development Environment Setup
 
 1. Get the code::
 
-    $ git clone git@code.opennodecloud.com:nodeconductor/nodeconductor.git
+    $ git clone https://github.com/opennode/nodeconductor.git
 
 2. Create a virtualenv::
 
@@ -44,9 +44,3 @@ Development Guidelines
     from nodeconductor.bar import foo
     from nodeconductor.foo import bar
     from nodeconductor.foo import baz
-
-Resources
----------
-
-* `Bug Tracker <https://opennode.atlassian.net/browse/DM>`_
-* `Code <https://code.opennodecloud.com/nodeconductor/nodeconductor>`_
