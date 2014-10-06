@@ -14,3 +14,11 @@ class BackupScheduleFactory(factory.DjangoModelFactory):
     is_active = True
     maximal_number_of_backups = 3
     schedule = '*/5 * * * *'
+
+
+class BackupFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.Backup
+
+    schedule = factory.SubFactory(BackupScheduleFactory)
+    backup_source = factory.LazyAttribute(lambda b: b.schedule.backup_source)
