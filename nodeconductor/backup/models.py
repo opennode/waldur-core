@@ -1,12 +1,11 @@
 from __future__ import unicode_literals
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db import models
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.contrib.contenttypes import models as ct_models
 from django.contrib.contenttypes import generic as ct_generic
-from django.db.models import signals
 
 from django_fsm import FSMField, transition
 from croniter.croniter import croniter
@@ -41,21 +40,63 @@ class BackupSchedule(core_models.UuidMixin,
             'schedule': self.schedule,
         }
 
-
-def update_next_trigger_at(sender, instance, **kwargs):
-    prev_instance = BackupSchedule.objects.get(pk=instance.pk)
-    if not prev_instance.is_active and instance.is_active:
+    def _update_next_trigger_at(self):
+        """
+        Defines next backup creation time
+        """
         base_time = timezone.now()
-        instance.next_trigger_at = datetime.fromtimestamp(croniter(instance.schedule, base_time).get_next())
+        self.next_trigger_at = datetime.fromtimestamp(croniter(self.schedule, base_time).get_next())
 
-    # TODO: check if schedule has changed and schedule is_active => lookup next scheduled Backup and cancel it, reschedule
-    # TODO: check if schedule has been deactivated => lookup next scheduled Backup and cancel it
+    def _create_backup(self):
+        """
+        Creates new backup based on schedule and starts backup process
+        """
+        backup = Backup.objects.create(
+            backup_schedule=self,
+            backup_source=self.backup_source,
+            kept_until=datetime.now() + timedelta(days=self.maximal_number_of_backups))
+        backup.start_backup()
+        return backup
 
+    def execute(self):
+        """
+        Creates new backup and deletes existed if maximal_number_of_backups were riched
+        """
+        self._create_backup()
+        backups_count = self.backups.exlude(status__in=[Backup.States.DELETING, Backup.States.DELETED]).count()
+        extra_backups_count = backups_count - self.maximal_number_of_backups
+        if extra_backups_count > 0:
+            for backup in self.backup.order_by('created_at')[:extra_backups_count]:
+                backup.start_delete()
+        self._update_next_trigger_at()
+        self.save()
 
-signals.pre_save.connect(update_next_trigger_at,
-                          sender=BackupSchedule,
-                          weak=False,
-                          dispatch_uid='backup.backup_schedule_calculation')
+    def save(self, *args, **kwargs):
+        """
+            Updates next_trigger_at field if:
+             - instance become active
+             - instance.schedule changed
+             - instance is new
+        """
+        try:
+            prev_instance = BackupSchedule.objects.get(pk=self.pk)
+            if (not prev_instance.is_active and self.is_active or
+                    self.schedule != prev_instance.schedule):
+                self._update_next_trigger_at()
+        except BackupSchedule.DoesNotExist:
+            self._update_next_trigger_at()
+        return super(BackupSchedule, self).save(*args, **kwargs)
+
+    @classmethod
+    def execute_all_schedules(self):
+        """
+        Deletes all expired backups and creates new backups if schedules next_trigger_at time passed
+        """
+        for backup in Backup.objects.filter(kept_until__lt=timezone.now()):
+            backup.start_delete()
+        for schedule in BackupSchedule.objects.filter(is_active=True, next_trigger_at__lt=timezone.now()):
+            schedule.execute()
+
 
 @python_2_unicode_compatible
 class Backup(core_models.UuidMixin,
@@ -127,8 +168,7 @@ class Backup(core_models.UuidMixin,
     @transition(field=state, source=States.RESTORING, target=States.READY, on_error=States.ERRED)
     def verify_restore(self, backup):
         """
-        Restore a defined backup.
-        If 'replace_original' is True, should attempt to rewrite the latest state. False by default.
+        Verify restoration of backup instance
         """
         raise NotImplementedError(
             'Implement restore() for backup strategy implementation')
@@ -148,7 +188,6 @@ class Backup(core_models.UuidMixin,
         """
         raise NotImplementedError(
             'Implement backup() for backup strategy implementation')
-
 
     def __str__(self):
         return '%(uuid)s backup of %(object)s' % {
