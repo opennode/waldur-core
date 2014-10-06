@@ -45,7 +45,7 @@ class BackupSchedule(core_models.UuidMixin,
         Defines next backup creation time
         """
         base_time = timezone.now()
-        self.next_trigger_at = datetime.fromtimestamp(croniter(self.schedule, base_time).get_next())
+        self.next_trigger_at = croniter(self.schedule, base_time).get_next(datetime)
 
     def _create_backup(self):
         """
@@ -54,8 +54,9 @@ class BackupSchedule(core_models.UuidMixin,
         backup = Backup.objects.create(
             backup_schedule=self,
             backup_source=self.backup_source,
-            kept_until=datetime.now() + timedelta(days=self.maximal_number_of_backups))
+            kept_until=timezone.now() + timedelta(days=self.maximal_number_of_backups))
         backup.start_backup()
+        backup.save()
         return backup
 
     def execute(self):
@@ -63,11 +64,12 @@ class BackupSchedule(core_models.UuidMixin,
         Creates new backup and deletes existed if maximal_number_of_backups were riched
         """
         self._create_backup()
-        backups_count = self.backups.exlude(status__in=[Backup.States.DELETING, Backup.States.DELETED]).count()
+        backups_count = self.backups.exclude(state__in=[Backup.States.DELETING, Backup.States.DELETED]).count()
         extra_backups_count = backups_count - self.maximal_number_of_backups
         if extra_backups_count > 0:
-            for backup in self.backup.order_by('created_at')[:extra_backups_count]:
+            for backup in self.backups.order_by('created_at')[:extra_backups_count]:
                 backup.start_delete()
+                backup.save()
         self._update_next_trigger_at()
         self.save()
 
@@ -145,49 +147,43 @@ class Backup(core_models.UuidMixin,
         """
         Create a new backup of the latest state.
         """
-        raise NotImplementedError(
-            'Implement backup() for backup strategy implementation')
+        pass
 
     @transition(field=state, source=States.BACKUPING, target=States.READY, on_error=States.ERRED)
     def verify_backup(self):
         """
-        Create a new backup of the latest state.
+        Verifies new backup creation
         """
-        raise NotImplementedError(
-            'Implement backup() for backup strategy implementation')
+        pass
 
     @transition(field=state, source=States.READY, target=States.RESTORING, on_error=States.ERRED)
-    def start_restore(self, backup, replace_original=False):
+    def start_restore(self, replace_original=False):
         """
         Restore a defined backup.
         If 'replace_original' is True, should attempt to rewrite the latest state. False by default.
         """
-        raise NotImplementedError(
-            'Implement restore() for backup strategy implementation')
+        pass
 
     @transition(field=state, source=States.RESTORING, target=States.READY, on_error=States.ERRED)
-    def verify_restore(self, backup):
+    def verify_restore(self):
         """
         Verify restoration of backup instance
         """
-        raise NotImplementedError(
-            'Implement restore() for backup strategy implementation')
+        pass
 
     @transition(field=state, source=States.READY, target=States.DELETING, on_error=States.ERRED)
-    def start_delete(self, backup):
+    def start_delete(self):
         """
         Delete a specified backup instance
         """
-        raise NotImplementedError(
-            'Implement backup() for backup strategy implementation')
+        pass
 
     @transition(field=state, source=States.DELETING, target=States.READY, on_error=States.ERRED)
-    def verify_delete(self, backup):
+    def verify_delete(self):
         """
         Verify deletion of a backup instance.
         """
-        raise NotImplementedError(
-            'Implement backup() for backup strategy implementation')
+        pass
 
     def __str__(self):
         return '%(uuid)s backup of %(object)s' % {
