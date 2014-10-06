@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin
+from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.iaas import models
 from nodeconductor.structure import serializers as structure_serializers
 
@@ -26,6 +27,9 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
 
+    backups = backup_serializers.BackupSerializer()
+    backup_schedules = backup_serializers.BackupScheduleSerializer()
+
     class Meta(object):
         model = models.Instance
         fields = (
@@ -39,6 +43,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'ips',
             # TODO: add security groups 1:N (source, port, proto, desc, url)
             'state',
+            'backups', 'backup_schedules'
         )
 
         read_only_fields = ('ips',)
