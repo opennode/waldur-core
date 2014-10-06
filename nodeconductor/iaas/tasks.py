@@ -56,7 +56,7 @@ def set_state(model_class, uuid, transition):
 
     .. code-block:: python
         # models.py
-        from django.db import
+        from django.db import models
         from nodeconductor.core.models import UuidMixin
 
 
