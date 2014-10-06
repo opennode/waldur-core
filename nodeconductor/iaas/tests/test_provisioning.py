@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-import unittest
+import unittest2
 
 from django.core.urlresolvers import reverse
 from rest_framework import status
@@ -102,14 +102,14 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         response = self.client.delete(self._get_project_url(factories.InstanceFactory()))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    @unittest.skip('Requires extension via celery test runner')
+    @unittest2.skip('Requires extension via celery test runner')
     def test_user_cannot_delete_instances_of_projects_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.delete(self._get_instance_url(self.admined_instance))
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
-    @unittest.skip('Requires extension via celery test runner')
+    @unittest2.skip('Requires extension via celery test runner')
     def test_user_cannot_delete_instances_of_projects_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 

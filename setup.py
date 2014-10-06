@@ -26,6 +26,7 @@ install_requires = [
     'Celery>=3.1.15,<3.2',
     'redis==2.10.3',
     'croniter==0.3.5',
+    'unittest2==0.5.1',
 ]
 
 
