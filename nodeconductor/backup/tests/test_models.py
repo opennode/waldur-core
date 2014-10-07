@@ -49,3 +49,37 @@ class BackupScheduleTest(TestCase):
             backup_schedule=schedule, state=models.Backup.States.BACKUPING).exists())
         # and schedule time have to be changed
         self.assertGreater(schedule.next_trigger_at, timezone.now())
+
+    def test_save(self):
+        # new schedule
+        schedule = factories.BackupScheduleFactory(next_trigger_at=None)
+        self.assertGreater(schedule.next_trigger_at, timezone.now())
+        # schedule become active
+        schedule.is_active = False
+        schedule.next_trigger_at = None
+        schedule.save()
+        schedule.is_active = True
+        schedule.save()
+        self.assertGreater(schedule.next_trigger_at, timezone.now())
+        # schedule was changed
+        schedule.next_trigger_at = None
+        schedule.schedule = '*/10 * * * *'
+        schedule.save()
+        self.assertGreater(schedule.next_trigger_at, timezone.now())
+
+    def test_execute_all_schedules(self):
+        not_active_schedule = factories.BackupScheduleFactory(is_active=False)
+        schedule_for_execution = factories.BackupScheduleFactory()
+        schedule_for_execution.next_trigger_at = timezone.now() - timedelta(minutes=1)
+        schedule_for_execution.save()
+        future_schedule = factories.BackupScheduleFactory()
+        future_schedule.next_trigger_at = timezone.now() + timedelta(minutes=2)
+        future_schedule.save()
+        expired_backup = factories.BackupFactory(kept_until=timezone.now() - timedelta(minutes=1))
+
+        models.BackupSchedule.execute_all_schedules()
+
+        self.assertEqual(not_active_schedule.backups.count(), 0)
+        self.assertEqual(future_schedule.backups.count(), 0)
+        self.assertEqual(schedule_for_execution.backups.count(), 1)
+        self.assertEqual(models.Backup.objects.get(pk=expired_backup.pk).state, models.Backup.States.DELETING)
