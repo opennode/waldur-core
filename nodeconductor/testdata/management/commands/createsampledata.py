@@ -2,7 +2,7 @@ import random
 import string
 from decimal import Decimal
 
-from django.core.management.base import NoArgsCommand
+from django.core.management.base import BaseCommand
 import sys
 
 from nodeconductor.cloud.models import Cloud
@@ -28,12 +28,28 @@ def random_string(min_length, max_length=None, alphabet=string.ascii_letters, wi
 
 
 # noinspection PyMethodMayBeStatic
-class Command(NoArgsCommand):
-    help = 'Adds some sample data to the database.'
+class Command(BaseCommand):
+    args = '<alice random>'
+    help = """Adds sample data to the database.
 
-    def handle_noargs(self, **options):
-        self.add_sample_data()
+Arguments:
+  alice                 create sample data: users Alice, Bob, etc.
+  random                create random data (can be used multiple times)"""
 
+    def handle(self, *args, **options):
+        if len(args) < 1:
+            self.stdout.write('Missing argument.')
+            return
+
+        for arg in args:
+            if arg == 'alice':
+                self.add_sample_data()
+            elif arg == 'random':
+                self.add_random_data()
+            else:
+                self.stdout.write('Unknown argument: "%s"' % arg)
+
+    def add_random_data(self):
         self.stdout.write('Generating random data...')
         customer1, projects1 = self.create_customer()
         customer2, projects2 = self.create_customer()
