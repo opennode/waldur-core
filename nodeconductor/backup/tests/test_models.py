@@ -69,23 +69,6 @@ class BackupScheduleTest(TestCase):
         schedule.save()
         self.assertGreater(schedule.next_trigger_at, timezone.now())
 
-    def test_execute_all_schedules(self):
-        not_active_schedule = factories.BackupScheduleFactory(is_active=False)
-        schedule_for_execution = factories.BackupScheduleFactory()
-        schedule_for_execution.next_trigger_at = timezone.now() - timedelta(minutes=1)
-        schedule_for_execution.save()
-        future_schedule = factories.BackupScheduleFactory()
-        future_schedule.next_trigger_at = timezone.now() + timedelta(minutes=2)
-        future_schedule.save()
-        expired_backup = factories.BackupFactory(kept_until=timezone.now() - timedelta(minutes=1))
-
-        models.BackupSchedule.execute_all_schedules()
-
-        self.assertEqual(not_active_schedule.backups.count(), 0)
-        self.assertEqual(future_schedule.backups.count(), 0)
-        self.assertEqual(schedule_for_execution.backups.count(), 1)
-        self.assertEqual(models.Backup.objects.get(pk=expired_backup.pk).state, models.Backup.States.DELETING)
-
 
 class BackupTest(TestCase):
 
