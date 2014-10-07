@@ -14,6 +14,16 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import fields as core_fields
 
 
+def get_backupable_models():
+    """
+        Looks throught all project apps and finds non-abstract models,
+        that implement BackupableMixin
+    """
+    for model in models.get_models():
+        if isinstance(model, BackupableMixin):
+            yield model
+
+
 @python_2_unicode_compatible
 class BackupSchedule(core_models.UuidMixin,
                      core_models.DescribableMixin,
@@ -96,6 +106,7 @@ class BackupSchedule(core_models.UuidMixin,
         """
         for backup in Backup.objects.filter(kept_until__lt=timezone.now()):
             backup.start_delete()
+            backup.save()
         for schedule in BackupSchedule.objects.filter(is_active=True, next_trigger_at__lt=timezone.now()):
             schedule.execute()
 
