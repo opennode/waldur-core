@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from datetime import timedelta
-from mock import patch
+from mock import patch, MagicMock
 
 from django.db import IntegrityError
 from django.test import TestCase
@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from nodeconductor.backup.tests import factories
 from nodeconductor.backup import models
+from nodeconductor.backup import tasks
 
 
 class BackupScheduleTest(TestCase):
@@ -48,7 +49,7 @@ class BackupScheduleTest(TestCase):
         self.assertEqual(deleted_backup.state, models.Backup.States.DELETED)
         # new backup have to be created
         self.assertTrue(models.Backup.objects.filter(
-            backup_schedule=schedule, state=models.Backup.States.BACKUPING).exists())
+            backup_schedule=schedule, state=models.Backup.States.BACKING_UP).exists())
         # and schedule time have to be changed
         self.assertGreater(schedule.next_trigger_at, timezone.now())
 
@@ -76,8 +77,12 @@ class BackupTest(TestCase):
 
     class MockedAsyncResult(object):
 
-        def __init__(self, ready):
+        def __call__(self, *args):
+            return self if not self._is_none else None
+
+        def __init__(self, ready, is_none=False):
             self._ready = ready
+            self._is_none = is_none
 
         def ready(self):
             return self._ready
@@ -93,65 +98,56 @@ class BackupTest(TestCase):
         backup.start_backup()
         mocked_task.assert_called_with(backup.backup_source)
         self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
-        self.assertEqual(backup.state, models.Backup.States.BACKUPING)
+        self.assertEqual(backup.state, models.Backup.States.BACKING_UP)
 
-    @patch('nodeconductor.backup.tasks.restore_task.delay', return_value=mocked_task_result)
-    def test_start_restore(self, mocked_task):
+    @patch('nodeconductor.backup.tasks.restoration_task.delay', return_value=mocked_task_result)
+    def test_start_restoration(self, mocked_task):
         backup = factories.BackupFactory()
-        backup.start_restore()
-        mocked_task.assert_called_with(backup.backup_source)
+        backup.start_restoration()
+        mocked_task.assert_called_with(backup.backup_source, replace_original=False)
         self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.RESTORING)
 
-    @patch('nodeconductor.backup.tasks.delete_task.delay', return_value=mocked_task_result)
-    def test_start_delete(self, mocked_task):
+    @patch('nodeconductor.backup.tasks.deletion_task.delay', return_value=mocked_task_result)
+    def test_start_deletion(self, mocked_task):
         backup = factories.BackupFactory()
-        backup.start_delete()
+        backup.start_deletion()
         mocked_task.assert_called_with(backup.backup_source)
         self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.DELETING)
 
-    def test_verify_backup(self):
-        with patch('nodeconductor.backup.tasks.backup_task.AsyncResult',
-                   return_value=self.MockedAsyncResult(True)) as mocked_result:
-            backup = factories.BackupFactory(result_id='result_id', state=models.Backup.States.BACKUPING)
-            backup.verify_backup()
-            self.assertEqual(backup.state, models.Backup.States.READY)
-            mocked_result.assert_called_with(backup.result_id)
+    def test_check_task_result(self):
+        backup = factories.BackupFactory()
+        # result is ready:
+        task = type(str('MockedTask'), (object, ), {'AsyncResult': self.MockedAsyncResult(True)})
+        mocked_func = MagicMock()
+        backup._check_task_result(task, mocked_func)
+        mocked_func.assert_called_with()
+        # result is not ready:
+        task = type(str('MockedTask'), (object, ), {'AsyncResult': self.MockedAsyncResult(False)})
+        mocked_func = MagicMock()
+        backup._check_task_result(task, mocked_func)
+        self.assertFalse(mocked_func.called)
+        # no result:
+        task = type(str('MockedTask'), (object, ), {'AsyncResult': self.MockedAsyncResult(True, is_none=True)})
+        mocked_func = MagicMock()
+        backup._check_task_result(task, mocked_func)
+        self.assertFalse(mocked_func.called)
+        self.assertEqual(backup.state, models.Backup.States.ERRED)
 
-        with patch('nodeconductor.backup.tasks.backup_task.AsyncResult',
-                   return_value=self.MockedAsyncResult(False)) as mocked_result:
-            backup = factories.BackupFactory(result_id='result_id', state=models.Backup.States.BACKUPING)
-            backup.verify_backup()
-            self.assertEqual(backup.state, models.Backup.States.BACKUPING)
-            mocked_result.assert_called_with(backup.result_id)
-
-    def test_verify_restore(self):
-        with patch('nodeconductor.backup.tasks.restore_task.AsyncResult',
-                   return_value=self.MockedAsyncResult(True)) as mocked_result:
-            backup = factories.BackupFactory(result_id='result_id', state=models.Backup.States.RESTORING)
-            backup.verify_restore()
-            self.assertEqual(backup.state, models.Backup.States.READY)
-            mocked_result.assert_called_with(backup.result_id)
-
-        with patch('nodeconductor.backup.tasks.restore_task.AsyncResult',
-                   return_value=self.MockedAsyncResult(False)) as mocked_result:
-            backup = factories.BackupFactory(result_id='result_id', state=models.Backup.States.RESTORING)
-            backup.verify_restore()
-            self.assertEqual(backup.state, models.Backup.States.RESTORING)
-            mocked_result.assert_called_with(backup.result_id)
-
-    def test_verify_delete(self):
-        with patch('nodeconductor.backup.tasks.delete_task.AsyncResult',
-                   return_value=self.MockedAsyncResult(True)) as mocked_result:
-            backup = factories.BackupFactory(result_id='result_id', state=models.Backup.States.DELETING)
-            backup.verify_delete()
-            self.assertEqual(backup.state, models.Backup.States.DELETED)
-            mocked_result.assert_called_with(backup.result_id)
-
-        with patch('nodeconductor.backup.tasks.delete_task.AsyncResult',
-                   return_value=self.MockedAsyncResult(False)) as mocked_result:
-            backup = factories.BackupFactory(result_id='result_id', state=models.Backup.States.DELETING)
-            backup.verify_delete()
-            self.assertEqual(backup.state, models.Backup.States.DELETING)
-            mocked_result.assert_called_with(backup.result_id)
+    def test_pull_current_state(self):
+        # backup
+        backup = factories.BackupFactory(state=models.Backup.States.BACKING_UP)
+        backup._check_task_result = MagicMock()
+        backup.pull_current_state()
+        backup._check_task_result.assert_called_with(tasks.backup_task, backup._confirm_backup)
+        # restoration
+        backup = factories.BackupFactory(state=models.Backup.States.RESTORING)
+        backup._check_task_result = MagicMock()
+        backup.pull_current_state()
+        backup._check_task_result.assert_called_with(tasks.restoration_task, backup._confirm_restoration)
+        # deletion
+        backup = factories.BackupFactory(state=models.Backup.States.DELETING)
+        backup._check_task_result = MagicMock()
+        backup.pull_current_state()
+        backup._check_task_result.assert_called_with(tasks.deletion_task, backup._confirm_deletion)
