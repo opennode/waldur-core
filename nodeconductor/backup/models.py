@@ -98,16 +98,6 @@ class BackupSchedule(core_models.UuidMixin,
             self._update_next_trigger_at()
         return super(BackupSchedule, self).save(*args, **kwargs)
 
-    @classmethod
-    def execute_all_schedules(self):
-        """
-        Deletes all expired backups and creates new backups if schedules next_trigger_at time passed
-        """
-        for backup in Backup.objects.filter(kept_until__lt=timezone.now()):
-            backup.start_delete()
-        for schedule in BackupSchedule.objects.filter(is_active=True, next_trigger_at__lt=timezone.now()):
-            schedule.execute()
-
 
 @python_2_unicode_compatible
 class Backup(core_models.UuidMixin,
@@ -174,8 +164,7 @@ class Backup(core_models.UuidMixin,
         Verifies new backup creation
         """
         result = tasks.backup_task.AsyncResult(self.result_id)
-        print result
-        if result.ready():
+        if result is not None and result.ready():
             self.state = self.States.READY
             self.__save()
 
@@ -196,7 +185,7 @@ class Backup(core_models.UuidMixin,
         Verify restoration of backup instance
         """
         result = tasks.restore_task.AsyncResult(self.result_id)
-        if result.ready():
+        if result is not None and result.ready():
             self.state = self.States.READY
             self.__save()
 
@@ -216,7 +205,7 @@ class Backup(core_models.UuidMixin,
         Verify deletion of a backup instance.
         """
         result = tasks.delete_task.AsyncResult(self.result_id)
-        if result.ready():
+        if result is not None and result.ready():
             self.state = self.States.DELETED
             self.__save()
 
