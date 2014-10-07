@@ -146,9 +146,11 @@ Other use cases are covered with random data.
         users = {}
         for username, user_params in data['users'].items():
             self.stdout.write('Creating user "%s"...' % username)
-            users[username] = User(username=username)
+            users[username], was_created = User.objects.get_or_create(username=username)
+            self.stdout.write('User "%s" %s.' % (username, "created" if was_created else "already exists"))
+
             users[username].set_password(username)
-            if 'is_staff' in user_params and user_params['is_staff']:
+            if not users[username].is_staff and 'is_staff' in user_params and user_params['is_staff']:
                 self.stdout.write('Promoting user "%s" to staff...' % username)
                 yuml += '[User;username:%s;password:%s;is_staff:yes{bg:green}],' % (username, username)
                 users[username].is_staff = True
@@ -156,7 +158,8 @@ Other use cases are covered with random data.
 
         for customer_name, customer_params in data['customers'].items():
             self.stdout.write('Creating customer "%s"...' % customer_name)
-            customer = Customer.objects.create(name=customer_name)
+            customer, was_created = Customer.objects.get_or_create(name=customer_name)
+            self.stdout.write('Customer "%s" %s.' % (customer_name, "created" if was_created else "already exists"))
 
             for username in customer_params['owners']:
                 self.stdout.write('Adding user "%s" as owner of customer "%s"...' % (username, customer_name))
@@ -166,7 +169,8 @@ Other use cases are covered with random data.
             for project_name, project_params in customer_params['projects'].items():
                 self.stdout.write('Creating project "%s" for customer "%s"...' % (project_name, customer_name))
                 yuml += '[Customer;name:%s]-->[Project;name:%s],' % (customer_name, project_name)
-                project = customer.projects.create(name=project_name)
+                project, was_created = customer.projects.get_or_create(name=project_name)
+                self.stdout.write('Project "%s" %s.' % (project_name, "created" if was_created else "already exists"))
 
                 for username in project_params['admins']:
                     self.stdout.write('Adding user "%s" as admin of project "%s"...' % (username, project_name))
