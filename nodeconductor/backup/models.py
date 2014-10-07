@@ -67,7 +67,6 @@ class BackupSchedule(core_models.UuidMixin,
             backup_source=self.backup_source,
             kept_until=timezone.now() + timedelta(days=self.maximal_number_of_backups))
         backup.start_backup()
-        backup.save()
         return backup
 
     def execute(self):
@@ -80,7 +79,6 @@ class BackupSchedule(core_models.UuidMixin,
         if extra_backups_count > 0:
             for backup in self.backups.order_by('created_at')[:extra_backups_count]:
                 backup.start_delete()
-                backup.save()
         self._update_next_trigger_at()
         self.save()
 
@@ -107,7 +105,6 @@ class BackupSchedule(core_models.UuidMixin,
         """
         for backup in Backup.objects.filter(kept_until__lt=timezone.now()):
             backup.start_delete()
-            backup.save()
         for schedule in BackupSchedule.objects.filter(is_active=True, next_trigger_at__lt=timezone.now()):
             schedule.execute()
 
@@ -153,7 +150,7 @@ class Backup(core_models.UuidMixin,
     )
 
     state = FSMField(default=States.READY, max_length=1, choices=STATE_CHOICES)
-    result_id = models.CharField(max_length=63)
+    result_id = models.CharField(max_length=63, null=True)
 
     def __str__(self):
         return '%(uuid)s backup of %(object)s' % {
@@ -161,25 +158,28 @@ class Backup(core_models.UuidMixin,
             'object': self.backup_source,
         }
 
-    @transition(field=state, source=States.READY, target=States.BACKUPING, on_error=States.ERRED)
+    @transition(field=state, source=States.READY, on_error=States.ERRED)
     def start_backup(self):
         """
         Create a new backup of the latest state.
         """
         result = tasks.backup_task.delay(self.backup_source)
         self.result_id = result.id
+        self.state = self.States.BACKUPING
         self.__save()
 
-    @transition(field=state, source=States.BACKUPING, target=States.READY, on_error=States.ERRED)
+    @transition(field=state, source=States.BACKUPING, on_error=States.ERRED)
     def verify_backup(self):
         """
         Verifies new backup creation
         """
         result = tasks.backup_task.AsyncResult(self.result_id)
+        print result
         if result.ready():
+            self.state = self.States.READY
             self.__save()
 
-    @transition(field=state, source=States.READY, target=States.RESTORING, on_error=States.ERRED)
+    @transition(field=state, source=States.READY, on_error=States.ERRED)
     def start_restore(self, replace_original=False):
         """
         Restore a defined backup.
@@ -187,43 +187,50 @@ class Backup(core_models.UuidMixin,
         """
         result = tasks.restore_task.delay(self.backup_source)
         self.result_id = result.id
+        self.state = self.States.RESTORING
         self.__save()
 
-    @transition(field=state, source=States.RESTORING, target=States.READY, on_error=States.ERRED)
+    @transition(field=state, source=States.RESTORING, on_error=States.ERRED)
     def verify_restore(self):
         """
         Verify restoration of backup instance
         """
         result = tasks.restore_task.AsyncResult(self.result_id)
         if result.ready():
+            self.state = self.States.READY
             self.__save()
 
-    @transition(field=state, source=States.READY, target=States.DELETING, on_error=States.ERRED)
+    @transition(field=state, source=States.READY, on_error=States.ERRED)
     def start_delete(self):
         """
         Delete a specified backup instance
         """
         result = tasks.delete_task.delay(self.backup_source)
         self.result_id = result.id
+        self.state = self.States.DELETING
         self.__save()
 
-    @transition(field=state, source=States.DELETING, target=States.READY, on_error=States.ERRED)
+    @transition(field=state, source=States.DELETING, on_error=States.ERRED)
     def verify_delete(self):
         """
         Verify deletion of a backup instance.
         """
         result = tasks.delete_task.AsyncResult(self.result_id)
         if result.ready():
+            self.state = self.States.DELETED
             self.__save()
 
     def __save(self, *args, **kwargs):
-        super(Backup, self).save(*args, **kwargs)
+        return super(Backup, self).save(*args, **kwargs)
 
     def save(self, *args, **kwargs):
+        """
+            Raies IntegrityError if backup is modified
+        """
         if self.pk is not None:
             raise IntegrityError('Backup is unmodified')
         else:
-            super(Backup, self).save(*args, **kwargs)
+            return super(Backup, self).save(*args, **kwargs)
 
 
 class BackupableMixin(models.Model):
