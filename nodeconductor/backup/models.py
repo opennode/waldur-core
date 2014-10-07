@@ -30,7 +30,7 @@ class BackupSchedule(core_models.UuidMixin,
                      core_models.DescribableMixin,
                      models.Model):
     """
-        Model representing a backup schedule for a generic object.
+    Model representing a backup schedule for a generic object.
     """
     # reference to the backed up object
     content_type = models.ForeignKey(ct_models.ContentType)
@@ -65,7 +65,7 @@ class BackupSchedule(core_models.UuidMixin,
         backup = Backup.objects.create(
             backup_schedule=self,
             backup_source=self.backup_source,
-            kept_until=timezone.now() + timedelta(days=self.maximal_number_of_backups))
+            kept_until=timezone.now() + timedelta(days=self.retention_time))
         backup.start_backup()
         return backup
 
@@ -78,16 +78,16 @@ class BackupSchedule(core_models.UuidMixin,
         extra_backups_count = backups_count - self.maximal_number_of_backups
         if extra_backups_count > 0:
             for backup in self.backups.order_by('created_at')[:extra_backups_count]:
-                backup.start_delete()
+                backup.start_deletion()
         self._update_next_trigger_at()
         self.save()
 
     def save(self, *args, **kwargs):
         """
-            Updates next_trigger_at field if:
-             - instance become active
-             - instance.schedule changed
-             - instance is new
+        Updates next_trigger_at field if:
+         - instance become active
+         - instance.schedule changed
+         - instance is new
         """
         try:
             prev_instance = BackupSchedule.objects.get(pk=self.pk)
@@ -104,10 +104,8 @@ class Backup(core_models.UuidMixin,
              core_models.DescribableMixin,
              models.Model):
     """
-        Model representing a single instance of a backup.
+    Model representing a single instance of a backup.
     """
-
-    # TODO: check if possible to prohibit updates
     content_type = models.ForeignKey(ct_models.ContentType)
     object_id = models.PositiveIntegerField()
     backup_source = ct_generic.GenericForeignKey('content_type', 'object_id')
@@ -124,7 +122,7 @@ class Backup(core_models.UuidMixin,
 
     class States(object):
         READY = 'd'
-        BACKUPING = 'p'
+        BACKING_UP = 'p'
         RESTORING = 'r'
         DELETING = 'l'
         ERRED = 'e'
@@ -132,7 +130,7 @@ class Backup(core_models.UuidMixin,
 
     STATE_CHOICES = (
         (States.READY, 'Ready'),
-        (States.BACKUPING, 'Backuping'),
+        (States.BACKING_UP, 'Backing up'),
         (States.RESTORING, 'Restoring'),
         (States.DELETING, 'Deleting'),
         (States.ERRED, 'Erred'),
@@ -148,73 +146,91 @@ class Backup(core_models.UuidMixin,
             'object': self.backup_source,
         }
 
-    @transition(field=state, source=States.READY, on_error=States.ERRED)
     def start_backup(self):
         """
-        Create a new backup of the latest state.
+        Starts celery backup task
         """
+        self.backuping()
         result = tasks.backup_task.delay(self.backup_source)
         self.result_id = result.id
-        self.state = self.States.BACKUPING
         self.__save()
 
-    @transition(field=state, source=States.BACKUPING, on_error=States.ERRED)
-    def verify_backup(self):
+    def start_restoration(self, replace_original=False):
         """
-        Verifies new backup creation
-        """
-        result = tasks.backup_task.AsyncResult(self.result_id)
-        if result is not None and result.ready():
-            self.state = self.States.READY
-            self.__save()
-
-    @transition(field=state, source=States.READY, on_error=States.ERRED)
-    def start_restore(self, replace_original=False):
-        """
-        Restore a defined backup.
+        Starts backup restoration task.
         If 'replace_original' is True, should attempt to rewrite the latest state. False by default.
         """
-        result = tasks.restore_task.delay(self.backup_source)
+        self.starting_restoration()
+        result = tasks.restoration_task.delay(self.backup_source, replace_original=False)
         self.result_id = result.id
-        self.state = self.States.RESTORING
         self.__save()
 
-    @transition(field=state, source=States.RESTORING, on_error=States.ERRED)
-    def verify_restore(self):
+    def start_deletion(self):
         """
-        Verify restoration of backup instance
+        Starts backup deletion task
         """
-        result = tasks.restore_task.AsyncResult(self.result_id)
-        if result is not None and result.ready():
-            self.state = self.States.READY
-            self.__save()
-
-    @transition(field=state, source=States.READY, on_error=States.ERRED)
-    def start_delete(self):
-        """
-        Delete a specified backup instance
-        """
-        result = tasks.delete_task.delay(self.backup_source)
+        self._starting_deletion()
+        result = tasks.deletion_task.delay(self.backup_source)
         self.result_id = result.id
-        self.state = self.States.DELETING
         self.__save()
 
-    @transition(field=state, source=States.DELETING, on_error=States.ERRED)
-    def verify_delete(self):
+    def pull_current_state(self):
         """
-        Verify deletion of a backup instance.
+        Checks is backup task(backing up, restoring or deleting) status.
+        And if task is completed - changes backup status.
         """
-        result = tasks.delete_task.AsyncResult(self.result_id)
-        if result is not None and result.ready():
-            self.state = self.States.DELETED
-            self.__save()
+        if self.state == self.States.BACKING_UP:
+            self._check_task_result(tasks.backup_task, self._confirm_backup)
+        elif self.state == self.States.RESTORING:
+            self._check_task_result(tasks.restoration_task, self._confirm_restoration)
+        elif self.state == self.States.DELETING:
+            self._check_task_result(tasks.deletion_task, self._confirm_deletion)
+        self.__save()
+
+    def _check_task_result(self, task, confirm_function):
+        """
+        Gets task result by its id. If it is ready - executes confirm function
+        """
+        result = task.AsyncResult(self.result_id)
+        if result is None:
+            self.erred()
+        if result.ready():
+            confirm_function()
+
+    @transition(field=state, source=States.READY, target=States.BACKING_UP)
+    def _starting_backup(self):
+        pass
+
+    @transition(field=state, source=States.BACKING_UP, target=States.READY)
+    def _confirm_backup(self):
+        pass
+
+    @transition(field=state, source=States.READY, target=States.RESTORING)
+    def _starting_restoration(self):
+        pass
+
+    @transition(field=state, source=States.RESTORING, target=States.READY)
+    def _confirm_restoration(self):
+        pass
+
+    @transition(field=state, source=States.READY, target=States.DELETING)
+    def _starting_deletion(self):
+        pass
+
+    @transition(field=state, source=States.DELETING, target=States.DELETED)
+    def _confirm_deletion(self):
+        pass
+
+    @transition(field=state, source='*', target=States.ERRED)
+    def _erred(self):
+        pass
 
     def __save(self, *args, **kwargs):
         return super(Backup, self).save(*args, **kwargs)
 
     def save(self, *args, **kwargs):
         """
-            Raies IntegrityError if backup is modified
+        Raises IntegrityError if backup is modified
         """
         if self.pk is not None:
             raise IntegrityError('Backup is unmodified')
@@ -249,7 +265,7 @@ class BackupStrategy(object):
             'Implement backup() that would perform backup of a model.')
 
     @classmethod
-    def restore(self):
+    def restore(self, replace_original):
         raise NotImplementedError(
             'Implement restore() that would perform backup of a model.')
 
