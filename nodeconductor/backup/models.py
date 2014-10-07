@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 from datetime import datetime, timedelta
 
-from django.db import models
+from django.db import models, IntegrityError
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.contrib.contenttypes import models as ct_models
@@ -12,6 +12,7 @@ from croniter.croniter import croniter
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core import fields as core_fields
+from nodeconductor.backup import tasks
 
 
 def get_backupable_models():
@@ -152,20 +153,31 @@ class Backup(core_models.UuidMixin,
     )
 
     state = FSMField(default=States.READY, max_length=1, choices=STATE_CHOICES)
+    result_id = models.CharField(max_length=63)
+
+    def __str__(self):
+        return '%(uuid)s backup of %(object)s' % {
+            'uuid': self.uuid,
+            'object': self.backup_source,
+        }
 
     @transition(field=state, source=States.READY, target=States.BACKUPING, on_error=States.ERRED)
     def start_backup(self):
         """
         Create a new backup of the latest state.
         """
-        pass
+        result = tasks.backup_task.delay(self.backup_source)
+        self.result_id = result.id
+        self.__save()
 
     @transition(field=state, source=States.BACKUPING, target=States.READY, on_error=States.ERRED)
     def verify_backup(self):
         """
         Verifies new backup creation
         """
-        pass
+        result = tasks.backup_task.AsyncResult(self.result_id)
+        if result.ready():
+            self.__save()
 
     @transition(field=state, source=States.READY, target=States.RESTORING, on_error=States.ERRED)
     def start_restore(self, replace_original=False):
@@ -173,34 +185,45 @@ class Backup(core_models.UuidMixin,
         Restore a defined backup.
         If 'replace_original' is True, should attempt to rewrite the latest state. False by default.
         """
-        pass
+        result = tasks.restore_task.delay(self.backup_source)
+        self.result_id = result.id
+        self.__save()
 
     @transition(field=state, source=States.RESTORING, target=States.READY, on_error=States.ERRED)
     def verify_restore(self):
         """
         Verify restoration of backup instance
         """
-        pass
+        result = tasks.restore_task.AsyncResult(self.result_id)
+        if result.ready():
+            self.__save()
 
     @transition(field=state, source=States.READY, target=States.DELETING, on_error=States.ERRED)
     def start_delete(self):
         """
         Delete a specified backup instance
         """
-        pass
+        result = tasks.delete_task.delay(self.backup_source)
+        self.result_id = result.id
+        self.__save()
 
     @transition(field=state, source=States.DELETING, target=States.READY, on_error=States.ERRED)
     def verify_delete(self):
         """
         Verify deletion of a backup instance.
         """
-        pass
+        result = tasks.delete_task.AsyncResult(self.result_id)
+        if result.ready():
+            self.__save()
 
-    def __str__(self):
-        return '%(uuid)s backup of %(object)s' % {
-            'uuid': self.uuid,
-            'object': self.backup_source,
-        }
+    def __save(self, *args, **kwargs):
+        super(Backup, self).save(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            raise IntegrityError('Backup is unmodified')
+        else:
+            super(Backup, self).save(*args, **kwargs)
 
 
 class BackupableMixin(models.Model):
@@ -211,8 +234,8 @@ class BackupableMixin(models.Model):
     class Meta(object):
         abstract = True
 
-    backups = ct_generic.GenericRelation(Backup)
-    backup_schedules = ct_generic.GenericRelation(BackupSchedule)
+    backups = ct_generic.GenericRelation('Backup')
+    backup_schedules = ct_generic.GenericRelation('BackupSchedule')
 
     def get_backup_strategy(self):
         raise NotImplementedError(
