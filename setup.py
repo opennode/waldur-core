@@ -10,6 +10,7 @@ dev_requires = [
 tests_requires = [
     'factory_boy==2.4.1',
     'six>=1.7.3',
+    'mock==1.0.1'
 ]
 
 install_requires = [
