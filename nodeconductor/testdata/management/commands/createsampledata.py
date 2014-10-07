@@ -2,7 +2,7 @@ import random
 import string
 from decimal import Decimal
 
-from django.core.management.base import NoArgsCommand
+from django.core.management.base import BaseCommand
 import sys
 
 from nodeconductor.cloud.models import Cloud
@@ -28,10 +28,29 @@ def random_string(min_length, max_length=None, alphabet=string.ascii_letters, wi
 
 
 # noinspection PyMethodMayBeStatic
-class Command(NoArgsCommand):
-    help = 'Adds some sample data to the database.'
+class Command(BaseCommand):
+    args = '<alice random>'
+    help = """Adds sample data to the database.
 
-    def handle_noargs(self, **options):
+Arguments:
+  alice                 create sample data: users Alice, Bob, etc.
+  random                create random data (can be used multiple times)"""
+
+    def handle(self, *args, **options):
+        if len(args) < 1:
+            self.stdout.write('Missing argument.')
+            return
+
+        for arg in args:
+            if arg == 'alice':
+                self.add_sample_data()
+            elif arg == 'random':
+                self.add_random_data()
+            else:
+                self.stdout.write('Unknown argument: "%s"' % arg)
+
+    def add_random_data(self):
+        self.stdout.write('Generating random data...')
         customer1, projects1 = self.create_customer()
         customer2, projects2 = self.create_customer()
 
@@ -55,6 +74,131 @@ class Command(NoArgsCommand):
 
         # Add more customers
         [self.create_customer() for _ in range(3)]
+
+    def add_sample_data(self):
+        self.stdout.write("""Generating data structures...
+
+    +---------------+    +-----------------+        +------------------+
+    | User          |    | User            |        | User             |
+    | username: Bob |    | username: Alice |        | username: Walter |
+    | password: Bob |    | password: Alice |        | password: Walter |
+    +-------+-------+    +-----+-----+-----+        | is_staff: yes    |
+             \                /       \             +------------------+
+         role:owner          /    role:owner
+               \            /           \ 
+                \     role:owner         \ 
+                 \        /               \ 
+    +-------------+------+----+   +--------+-------------------+
+    | Customer                |   | Customer                   |
+    | name: Ministry of Bells |   | name: Ministry of Whistles |
+    +------------+------------+   +-----+----------------+-----+
+                /                      /                  \ 
+               /                      /                    \ 
+   +----------+------+  +------------+-------+  +-----------+-----------------+
+   | Project         |  | Project            |  | Project                     |
+   | name: bells.org |  | name: whistles.org |  | name: intranet.whistles.org |
+   +--------+-----+--+  +----------+----+----+  +--------+----+---------------+
+           /       \              /      \              /      \ 
+     role:admin     \       role:admin    \       role:admin    \ 
+         /           \          /          \          /          \ 
+        /        role:manager  /       role:manager  /       role:manager
+       /               \      /              \      /              \ 
++-----+-------------+ +-+----+---------+ +----+----+------+ +-------+---------+
+| User              | | User           | | User           | | User            |
+| username: Charlie | | username: Dave | | username: Erin | | username: Frank |
+| password: Charlie | | password: Dave | | password: Erin | | password: Frank |
++-------------------+ +----------------+ +----------------+ +-----------------+
+
+Use cases covered:
+ - Use case 2: User that is admin of a project -- Charlie, Dave, Erin
+ - Use case 3: User that is manager of a project -- Dave, Erin, Frank
+ - Use case 5: User has roles in several projects of the same customer -- Erin
+ - Use case 6: User owns a customer -- Alice, Bob
+ - Use case 9: User has roles in several projects of different customers -- Dave
+
+Other use cases are covered with random data.
+""")
+
+        data = {
+            'users' : {
+                'Alice': {},
+                'Bob': {},
+                'Charlie': {},
+                'Dave': {},
+                'Erin': {},
+                'Frank': {},
+                'Walter': {
+                    'is_staff': True,
+                },
+            },
+            'customers' : {
+                'Ministry of Bells': {
+                    'owners': ['Alice', 'Bob'],
+                    'projects': {
+                        'bells.org': {
+                            'admins': ['Charlie'],
+                            'managers': ['Dave'],
+                        },
+                    },
+                },
+                'Ministry of Whistles': {
+                    'owners': ['Bob'],
+                    'projects': {
+                        'whistles.org': {
+                            'admins': ['Dave'],
+                            'managers': ['Erin'],
+                        },
+                        'intranet.whistles.org': {
+                            'admins': ['Erin'],
+                            'managers': ['Frank'],
+                        },
+                    },
+                },
+            },
+        }
+
+        yuml = 'yUML diagram: http://yuml.me/diagram/class/'
+
+        users = {}
+        for username, user_params in data['users'].items():
+            self.stdout.write('Creating user "%s"...' % username)
+            users[username], was_created = User.objects.get_or_create(username=username)
+            self.stdout.write('User "%s" %s.' % (username, "created" if was_created else "already exists"))
+
+            users[username].set_password(username)
+            if not users[username].is_staff and 'is_staff' in user_params and user_params['is_staff']:
+                self.stdout.write('Promoting user "%s" to staff...' % username)
+                yuml += '[User;username:%s;password:%s;is_staff:yes{bg:green}],' % (username, username)
+                users[username].is_staff = True
+            users[username].save()
+
+        for customer_name, customer_params in data['customers'].items():
+            self.stdout.write('Creating customer "%s"...' % customer_name)
+            customer, was_created = Customer.objects.get_or_create(name=customer_name)
+            self.stdout.write('Customer "%s" %s.' % (customer_name, "created" if was_created else "already exists"))
+
+            for username in customer_params['owners']:
+                self.stdout.write('Adding user "%s" as owner of customer "%s"...' % (username, customer_name))
+                yuml += '[User;username:%s;password:%s]-role:owner->[Customer;name:%s],' % (username, username, customer_name)
+                customer.add_user(users[username], CustomerRole.OWNER)
+
+            for project_name, project_params in customer_params['projects'].items():
+                self.stdout.write('Creating project "%s" for customer "%s"...' % (project_name, customer_name))
+                yuml += '[Customer;name:%s]-->[Project;name:%s],' % (customer_name, project_name)
+                project, was_created = customer.projects.get_or_create(name=project_name)
+                self.stdout.write('Project "%s" %s.' % (project_name, "created" if was_created else "already exists"))
+
+                for username in project_params['admins']:
+                    self.stdout.write('Adding user "%s" as admin of project "%s"...' % (username, project_name))
+                    yuml += '[Project;name:%s]<-role:admin-[User;username:%s;password:%s],' % (project_name, username, username)
+                    project.add_user(users[username], ProjectRole.ADMINISTRATOR)
+
+                for username in project_params['managers']:
+                    self.stdout.write('Adding user "%s" as manager of project "%s"...' % (username, project_name))
+                    yuml += '[Project;name:%s]<-role:manager-[User;username:%s;password:%s],' % (project_name, username, username)
+                    project.add_user(users[username], ProjectRole.MANAGER)
+
+        self.stdout.write(yuml)
 
     def create_cloud(self, customer):
         cloud_name = 'CloudAccount of %s (%s)' % (customer.name, random_string(10, 20, with_spaces=True))

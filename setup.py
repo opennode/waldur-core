@@ -19,13 +19,13 @@ install_requires = [
     'django-filter==0.7',
     'django-fsm==2.2.0',
     'django-permission==0.8.2',
+    'django-requestlogging==1.0.1',
     'django-uuidfield==0.5.0',
     'djangorestframework>=2.3.12,<2.4.0',
     'djangosaml2>=0.11.0,<0.12',
     'logan==0.5.9.1',
     'redis==2.10.3',
     'South==0.8.4',
-    'django-requestlogging==1.0.1',
 ]
 
 
