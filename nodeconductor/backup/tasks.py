@@ -7,10 +7,10 @@ def backup_task(backupable_instance):
 
 
 @shared_task
-def restore_task(backupable_instance):
-    backupable_instance.get_backup_strategy.restore()
+def restoration_task(backupable_instance, replace_original=False):
+    backupable_instance.get_backup_strategy.restore(replace_original)
 
 
 @shared_task
-def delete_task(backupable_instance):
+def deletion_task(backupable_instance):
     backupable_instance.get_backup_strategy.delete()
