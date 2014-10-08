@@ -135,19 +135,19 @@ class BackupTest(TestCase):
         self.assertFalse(mocked_func.called)
         self.assertEqual(backup.state, models.Backup.States.ERRED)
 
-    def test_pull_current_state(self):
+    def test_poll_current_state(self):
         # backup
         backup = factories.BackupFactory(state=models.Backup.States.BACKING_UP)
         backup._check_task_result = MagicMock()
-        backup.pull_current_state()
+        backup.poll_current_state()
         backup._check_task_result.assert_called_with(tasks.backup_task, backup._confirm_backup)
         # restoration
         backup = factories.BackupFactory(state=models.Backup.States.RESTORING)
         backup._check_task_result = MagicMock()
-        backup.pull_current_state()
+        backup.poll_current_state()
         backup._check_task_result.assert_called_with(tasks.restoration_task, backup._confirm_restoration)
         # deletion
         backup = factories.BackupFactory(state=models.Backup.States.DELETING)
         backup._check_task_result = MagicMock()
-        backup.pull_current_state()
+        backup.poll_current_state()
         backup._check_task_result.assert_called_with(tasks.deletion_task, backup._confirm_deletion)
