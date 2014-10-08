@@ -100,12 +100,14 @@ class BackupSchedule(core_models.UuidMixin,
         """
         try:
             prev_instance = BackupSchedule.objects.get(pk=self.pk)
-            if (not prev_instance.is_active and self.is_active or
-                    self.schedule != prev_instance.schedule):
-                self._update_next_trigger_at()
         except BackupSchedule.DoesNotExist:
+            prev_instance = None
+
+        super(BackupSchedule, self).save(*args, **kwargs)
+
+        if prev_instance is None or (not prev_instance.is_active and self.is_active or
+                                     self.schedule != prev_instance.schedule):
             self._update_next_trigger_at()
-        return super(BackupSchedule, self).save(*args, **kwargs)
 
 
 @python_2_unicode_compatible
