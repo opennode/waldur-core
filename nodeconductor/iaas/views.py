@@ -1,9 +1,11 @@
 from __future__ import unicode_literals
+
 import django_filters
 import logging
 from django.http.response import Http404
 from django_fsm import TransitionNotAllowed
 
+from rest_framework import exceptions
 from rest_framework import permissions, status
 from rest_framework import mixins
 from rest_framework import viewsets
@@ -97,6 +99,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
             'start': (instance.starting_scheduled, tasks.schedule_starting),
             'stop': (instance.stopping_scheduled, tasks.schedule_stopping),
             'destroy': (instance.deletion_scheduled, tasks.schedule_deleting),
+            'resize': (instance.resizing_scheduled, tasks.schedule_resizing),
         }
 
         logger.info('Scheduling provisioning instance with uuid %s', uuid)
@@ -123,6 +126,22 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     def destroy(self, request, uuid=None):
         return self._schedule_transition(request, uuid, 'destroy')
+
+    def resize(self, request, uuid=None):
+        return self._schedule_transition(request, uuid, 'resize')
+
+    def pre_save(self, obj):
+        try:
+            old_instance = models.Instance.objects.get(uuid=obj.uuid)
+
+            if old_instance.flavor != obj.flavor:
+                if obj.state != models.Instance.States.OFFLINE:
+                    raise exceptions.PermissionDenied('Instance should be stopped before resizing')
+
+                self.resize(self.request, obj.uuid)
+
+        except models.Instance.DoesNotExist:
+            pass
 
 
 class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):

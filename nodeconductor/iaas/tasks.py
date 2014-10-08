@@ -13,7 +13,6 @@ import six
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 
-
 logger = logging.getLogger(__name__)
 event_log = EventLoggerAdapter(logger)
 
@@ -196,4 +195,9 @@ def schedule_starting(instance_uuid):
 @shared_task
 @tracked_processing(models.Instance, processing_state='deleting', desired_state='deleted')
 def schedule_deleting(instance_uuid):
+    _mock_processing(instance_uuid)
+
+@shared_task
+@tracked_processing(models.Instance, processing_state='resizing', desired_state='resized')
+def schedule_resizing(instance_uuid):
     _mock_processing(instance_uuid)
