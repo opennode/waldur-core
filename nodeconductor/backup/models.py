@@ -69,17 +69,26 @@ class BackupSchedule(core_models.UuidMixin,
         backup.start_backup()
         return backup
 
-    def execute(self):
+    def _delete_extra_backups(self):
         """
-        Creates new backup and deletes existed if maximal_number_of_backups were riched
+        Deletes oldest existed backups if maximal_number_of_backups were riched
         """
-        self._create_backup()
-        backups_count = self.backups.exclude(state__in=[Backup.States.DELETING, Backup.States.DELETED]).count()
+        exclude_states = (Backup.States.DELETING, Backup.States.DELETED, Backup.States.ERRED)
+        backups_count = self.backups.exclude(state__in=exclude_states).count()
         extra_backups_count = backups_count - self.maximal_number_of_backups
         if extra_backups_count > 0:
             for backup in self.backups.order_by('created_at')[:extra_backups_count]:
                 backup.start_deletion()
-        self._update_next_trigger_at()
+
+    def execute(self, manually=False):
+        """
+        Creates new backup, deletes existed if maximal_number_of_backups were
+        riched, calculates new next_trigger_at time.
+        """
+        self._create_backup()
+        self._delete_extra_backups()
+        if not manually:
+            self._update_next_trigger_at()
         self.save()
 
     def save(self, *args, **kwargs):
@@ -150,7 +159,7 @@ class Backup(core_models.UuidMixin,
         """
         Starts celery backup task
         """
-        self.backuping()
+        self._starting_backup()
         result = tasks.backup_task.delay(self.backup_source)
         self.result_id = result.id
         self.__save()
@@ -160,7 +169,7 @@ class Backup(core_models.UuidMixin,
         Starts backup restoration task.
         If 'replace_original' is True, should attempt to rewrite the latest state. False by default.
         """
-        self.starting_restoration()
+        self._starting_restoration()
         result = tasks.restoration_task.delay(self.backup_source, replace_original=False)
         self.result_id = result.id
         self.__save()
@@ -174,10 +183,9 @@ class Backup(core_models.UuidMixin,
         self.result_id = result.id
         self.__save()
 
-    def pull_current_state(self):
+    def poll_current_state(self):
         """
-        Checks is backup task(backing up, restoring or deleting) status.
-        And if task is completed - changes backup status.
+        Checks status of the backup task. Updates the backup state on task completion.
         """
         if self.state == self.States.BACKING_UP:
             self._check_task_result(tasks.backup_task, self._confirm_backup)
@@ -193,8 +201,8 @@ class Backup(core_models.UuidMixin,
         """
         result = task.AsyncResult(self.result_id)
         if result is None:
-            self.erred()
-        if result.ready():
+            self._erred()
+        elif result.ready():
             confirm_function()
 
     @transition(field=state, source=States.READY, target=States.BACKING_UP)
