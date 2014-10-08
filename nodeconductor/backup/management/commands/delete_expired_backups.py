@@ -9,4 +9,4 @@ class Command(NoArgsCommand):
 
     def handle_noargs(self):
         for backup in models.Backup.objects.filter(kept_until__lt=timezone.now()):
-            backup.start_delete()
+            backup.start_deletion()
