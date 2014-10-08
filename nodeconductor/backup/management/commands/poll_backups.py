@@ -8,6 +8,6 @@ class Command(NoArgsCommand):
 
     def handle_noargs(self, **options):
         states = models.Backup.States
-        executing_states = (states.BACKUPING, states.RESTORING, states.DELETING)
+        executing_states = (states.BACKING_UP, states.RESTORING, states.DELETING)
         for backup in models.Backup.objects.filter(state__in=executing_states):
             backup.poll_current_state()
