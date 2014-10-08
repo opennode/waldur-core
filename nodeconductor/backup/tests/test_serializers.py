@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.core.urlresolvers import reverse, resolve
 
 from nodeconductor.backup.tests import factories
-from nodeconductor.backup import serializers, models
+from nodeconductor.backup import serializers, models, backup_registry
 
 
 class RelatedBackupFieldTest(TestCase):
@@ -38,3 +38,24 @@ class RelatedBackupFieldTest(TestCase):
         # url is wrong
         url = 'http://testserver/abrakadabra/'
         self.assertRaises(ObjectDoesNotExist, lambda: self.field.from_native(url))
+
+
+class BackupScheduleSerializerTest(TestCase):
+
+    def test_validate_backup_source(self):
+        # backup_source is unbackupable
+        backup = factories.BackupFactory()
+        backup_url = 'http://testserver' + reverse('backup-detail', args=(backup.uuid, ))
+        backup_schedule_data = {
+            'retention_time': 3,
+            'backup_source': backup_url,
+            'schedule': '*/5 * * * *',
+            'maximal_number_of_backups': 3,
+        }
+        serializer = serializers.BackupScheduleSerializer(data=backup_schedule_data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('backup_source', serializer.errors)
+        # backup_source is backupable
+        backup_registry.BACKUP_REGISTRY = {'Test': 'backup_backup'}
+        serializer = serializers.BackupScheduleSerializer(data=backup_schedule_data)
+        self.assertTrue(serializer.is_valid())
