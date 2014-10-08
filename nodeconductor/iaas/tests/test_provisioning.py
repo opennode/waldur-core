@@ -184,6 +184,119 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         response = self.client.patch(self._get_instance_url(inaccessible_instance), data)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_user_can_change_flavor_of_stopped_instance_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        new_flavor = cloud_factories.FlavorFactory(cloud=self.admined_instance.flavor.cloud)
+
+        data = self._get_valid_payload(self.admined_instance)
+        data['flavor'] = self._get_flavor_url(new_flavor)
+
+        response = self.client.put(self._get_instance_url(self.admined_instance), data)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        changed_instance = Instance.objects.get(pk=self.admined_instance.pk)
+
+        self.assertEqual(changed_instance.flavor, new_flavor)
+
+    def test_user_cannot_change_flavor_of_stopped_instance_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        new_flavor = cloud_factories.FlavorFactory(cloud=self.admined_instance.flavor.cloud)
+
+        data = self._get_valid_payload(self.managed_instance)
+        data['flavor'] = self._get_flavor_url(new_flavor)
+
+        response = self.client.put(self._get_instance_url(self.managed_instance), data)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_cannot_change_flavor_of_offline_instance_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
+        inaccessible_instance = factories.InstanceFactory()
+
+        new_flavor = cloud_factories.FlavorFactory(cloud=inaccessible_instance.flavor.cloud)
+
+        data = self._get_valid_payload(inaccessible_instance)
+        data['flavor'] = self._get_flavor_url(new_flavor)
+
+        response = self.client.put(self._get_instance_url(inaccessible_instance), data)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_user_cannot_change_flavor_of_running_instance_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        forbidden_states = {
+            'starting': Instance.States.STARTING,
+            'stopping': Instance.States.STOPPING,
+            'online': Instance.States.ONLINE,
+        }
+
+        for state in forbidden_states.values():
+            admined_instance = factories.InstanceFactory(state=state)
+
+            admined_instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+            changed_flavor = cloud_factories.FlavorFactory(cloud=admined_instance.flavor.cloud)
+
+            data = self._get_valid_payload(admined_instance)
+            data['flavor'] = self._get_flavor_url(changed_flavor)
+
+            response = self.client.put(self._get_instance_url(admined_instance), data)
+
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertDictContainsSubset({'detail': 'Instance should be stopped before resizing'},
+                                          response.data)
+
+    def test_user_cannot_change_flavor_of_running_instance_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        forbidden_states = {
+            'starting': Instance.States.STARTING,
+            'stopping': Instance.States.STOPPING,
+            'online': Instance.States.ONLINE,
+        }
+
+        for state in forbidden_states.values():
+            managed_instance = factories.InstanceFactory(state=state)
+
+            managed_instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+            changed_flavor = cloud_factories.FlavorFactory(cloud=managed_instance.flavor.cloud)
+
+            data = self._get_valid_payload(managed_instance)
+            data['flavor'] = self._get_flavor_url(changed_flavor)
+
+            response = self.client.put(self._get_instance_url(managed_instance), data)
+
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertDictContainsSubset({'detail': 'Instance should be stopped before resizing'},
+                                          response.data)
+
+    def test_user_cannot_change_flavor_of_running_instance_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
+        forbidden_states = {
+            'starting': Instance.States.STARTING,
+            'stopping': Instance.States.STOPPING,
+            'online': Instance.States.ONLINE,
+        }
+
+        for state in forbidden_states.values():
+            inaccessible_instance = factories.InstanceFactory(state=state)
+
+            changed_flavor = cloud_factories.FlavorFactory(cloud=inaccessible_instance.flavor.cloud)
+
+            data = self._get_valid_payload(inaccessible_instance)
+            data['flavor'] = self._get_flavor_url(changed_flavor)
+
+            response = self.client.put(self._get_instance_url(inaccessible_instance), data)
+
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     # Helpers method
     def _get_valid_payload(self, resource=None):
         resource = resource or factories.InstanceFactory()
