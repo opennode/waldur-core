@@ -65,7 +65,8 @@ class BackupSchedule(core_models.UuidMixin,
         backup = Backup.objects.create(
             backup_schedule=self,
             backup_source=self.backup_source,
-            kept_until=timezone.now() + timedelta(days=self.retention_time))
+            kept_until=timezone.now() + timedelta(days=self.retention_time),
+            description='scheduled backup')
         backup.start_backup()
         return backup
 
@@ -80,15 +81,14 @@ class BackupSchedule(core_models.UuidMixin,
             for backup in self.backups.order_by('created_at')[:extra_backups_count]:
                 backup.start_deletion()
 
-    def execute(self, manually=False):
+    def execute(self):
         """
         Creates new backup, deletes existed if maximal_number_of_backups were
         riched, calculates new next_trigger_at time.
         """
         self._create_backup()
         self._delete_extra_backups()
-        if not manually:
-            self._update_next_trigger_at()
+        self._update_next_trigger_at()
         self.save()
 
     def save(self, *args, **kwargs):
