@@ -62,7 +62,6 @@ class RelatedBackupField(RelatedField):
             raise ValidationError('%s object is unbackupable' % str(obj))
         return obj
 
-    # TODO: define suitable queryset in this method
     # this method tries to initialize queryset based on field.rel.to._default_manager
     # but generic field does not have default manager
     def initialize(self, parent, field_name):
