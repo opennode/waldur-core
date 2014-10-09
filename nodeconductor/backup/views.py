@@ -1,8 +1,8 @@
 from django.shortcuts import get_object_or_404
 
 from rest_framework import permissions as rf_permissions
-from rest_framework import views
 from rest_framework.response import Response
+from rest_framework.decorators import action
 
 from nodeconductor.core import viewsets
 from nodeconductor.backup import models
@@ -27,22 +27,22 @@ class BackupViewSet(viewsets.CreateModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
 
-    def get_object(self):
+    def post_save(self, backup, created):
         """
-        When backup is created manually - it starts backuping
+        Starts backup process if backup was created successfully
         """
-        backup = super(viewsets.CreateModelViewSet, self).get_object()
-        backup.start_backup()
-        return backup
+        if created:
+            backup.start_backup()
 
-
-class BackupOperationView(views.APIView):
-
-    def post(self, request, uuid, action):
+    @action()
+    def restore(self, request, uuid):
         backup = get_object_or_404(models.Backup, uuid=uuid)
-        if action == 'restore':
-            replace_original = request.POST.get('replace_original', False)
-            backup.start_restoration(replace_original=replace_original)
-        elif action == 'delete':
-            backup.start_deletion()
-        return Response({'backup_state': backup.state}, status=200)
+        replace_original = request.POST.get('replace_original', False)
+        backup.start_restoration(replace_original=replace_original)
+        return Response({'status': 'Backup restoration process was started'})
+
+    @action()
+    def delete(self, request, uuid):
+        backup = get_object_or_404(models.Backup, uuid=uuid)
+        backup.start_deletion()
+        return Response({'status': 'Backup deletion process was started'})
