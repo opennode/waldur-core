@@ -23,12 +23,14 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         schedule = get_object_or_404(models.BackupSchedule, uuid=uuid, is_active=False)
         schedule.is_active = True
         schedule.save()
+        return Response({'status': 'BackupSchedule was activated'})
 
     @action()
     def deactivate(self, request, uuid):
         schedule = get_object_or_404(models.BackupSchedule, uuid=uuid, is_active=True)
         schedule.is_active = False
         schedule.save()
+        return Response({'status': 'BackupSchedule was deactivated'})
 
 
 class BackupViewSet(viewsets.CreateModelViewSet):
