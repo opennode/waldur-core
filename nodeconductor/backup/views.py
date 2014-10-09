@@ -11,7 +11,7 @@ from nodeconductor.structure import filters as structure_filters
 
 
 class BackupScheduleViewSet(viewsets.ModelViewSet):
-    queryset = models.Backup.objects.all()
+    queryset = models.BackupSchedule.objects.all()
     serializer_class = serializers.BackupScheduleSerializer
     lookup_field = 'uuid'
     filter_backends = (structure_filters.GenericRoleFilter,)
