@@ -1,4 +1,4 @@
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.core.urlresolvers import reverse, resolve
 
@@ -37,7 +37,7 @@ class RelatedBackupFieldTest(TestCase):
         self.assertEqual(self.field.from_native(backup_url), backup)
         # url is wrong
         url = 'http://testserver/abrakadabra/'
-        self.assertRaises(ObjectDoesNotExist, lambda: self.field.from_native(url))
+        self.assertRaises(ValidationError, lambda: self.field.from_native(url))
 
 
 class BackupScheduleSerializerTest(TestCase):

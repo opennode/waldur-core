@@ -86,7 +86,7 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         }
         response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
         self.assertEqual(response.status_code, 201)
-        backup_schedule = models.Backup.objects.get(object_id=backupable.id)
+        backup_schedule = models.BackupSchedule.objects.get(object_id=backupable.id)
         self.assertEqual(backup_schedule.retention_time, backup_schedule_data['retention_time'])
         self.assertEqual(backup_schedule.maximal_number_of_backups, backup_schedule_data['maximal_number_of_backups'])
         self.assertEqual(backup_schedule.schedule, backup_schedule_data['schedule'])

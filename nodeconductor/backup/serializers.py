@@ -1,4 +1,4 @@
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse, resolve, Resolver404
 
 from rest_framework import serializers
@@ -57,13 +57,18 @@ class RelatedBackupField(RelatedField):
             model = self._get_model_from_resolve_match(match)
             obj = model.objects.get(**match.kwargs)
         except Resolver404:
-            raise ObjectDoesNotExist("Can`t restore object from url: %s" % data)
+            raise ValidationError("Can`t restore object from url: %s" % data)
+        if not obj.__class__ in backup_registry.get_backupable_models():
+            raise ValidationError('%s object is unbackupable' % str(obj))
         return obj
 
+    # TODO: define suitable queryset in this method
     # this method tries to initialize queryset based on field.rel.to._default_manager
     # but generic field does not have default manager
     def initialize(self, parent, field_name):
         super(RelatedField, self).initialize(parent, field_name)
+        model = backup_registry.get_backupable_models()[0]
+        self.queryset = model.objects.all()
 
 
 class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
@@ -71,14 +76,9 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.BackupSchedule
-        fields = ('url', 'description', 'backups', 'retention_time', 'backup_source')
+        fields = ('url', 'description', 'backups', 'retention_time', 'backup_source',
+                  'maximal_number_of_backups', 'schedule')
         lookup_field = 'uuid'
-
-    def validate_backup_source(self, attrs, source):
-        value = attrs[source]
-        if not value.__class__ in backup_registry.get_backupable_models():
-            raise ValidationError('%s object is unbackupable' % str(value))
-        return attrs
 
 
 class BackupSerializer(serializers.HyperlinkedModelSerializer):
