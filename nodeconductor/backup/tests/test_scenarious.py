@@ -90,6 +90,19 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         self.assertEqual(backup_schedule.retention_time, backup_schedule_data['retention_time'])
         self.assertEqual(backup_schedule.maximal_number_of_backups, backup_schedule_data['maximal_number_of_backups'])
         self.assertEqual(backup_schedule.schedule, backup_schedule_data['schedule'])
+        # wrong schedule:
+        backup_schedule_data['schedule'] = 'wrong schedule'
+        response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('schedule', response.content)
+        # wrong backup source:
+        backup_schedule_data['schedule'] = '*/5 * * * *'
+        backup = factories.BackupFactory()
+        unbackupable_url = 'http://testserver' + reverse('backup-detail', args=(backup.uuid, ))
+        backup_schedule_data['backup_source'] = unbackupable_url
+        response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('backup_source', response.content)
 
     def test_schedule_activation_and_deactivation(self):
         schedule = factories.BackupScheduleFactory(is_active=False)
