@@ -196,6 +196,29 @@ class Instance(core_models.UuidMixin,
             'status': self.get_state_display(),
         }
 
+    def get_backup_strategy(self):
+        """
+        Fake backup strategy
+        """
+        import os
+
+        class FakeStrategy(backup_models.BackupStrategy):
+
+            def backup(instance):
+                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(instance.uuid) + '.txt')
+                with open(filename, 'wb+') as f:
+                    f.write('Backing up: %s' % str(instance))
+
+            def restore(instance):
+                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(instance.uuid) + '.txt')
+                with open(filename, 'wb+') as f:
+                    f.write('Restoring: %s' % str(instance))
+
+            def delete(instance):
+                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(instance.uuid) + '.txt')
+                with open(filename, 'wb+') as f:
+                    f.write('Deleting: %s' % str(instance))
+
 
 @receiver(post_save, sender=Instance)
 def auto_start_instance(sender, instance=None, created=False, **kwargs):
