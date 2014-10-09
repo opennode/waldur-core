@@ -14,14 +14,15 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext as _
 from django_fsm import FSMField
 from django_fsm import transition
-from nodeconductor.backup import models as backup_models
 
+from nodeconductor.backup import models as backup_models
 from nodeconductor.cloud import models as cloud_models
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
 
 
 logger = logging.getLogger(__name__)
+
 
 @python_2_unicode_compatible
 class Image(core_models.UuidMixin,
@@ -76,6 +77,7 @@ class Template(core_models.UuidMixin,
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
+               backup_models.BackupableMixin,
                models.Model):
     """
     A generalization of a single virtual machine.

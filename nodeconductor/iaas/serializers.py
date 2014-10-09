@@ -27,8 +27,8 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
 
-    # backups = backup_serializers.BackupSerializer()
-    # backup_schedules = backup_serializers.BackupScheduleSerializer()
+    backups = backup_serializers.BackupSerializer()
+    backup_schedules = backup_serializers.BackupScheduleSerializer()
 
     class Meta(object):
         model = models.Instance
@@ -42,8 +42,8 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'project_groups',
             'ips',
             # TODO: add security groups 1:N (source, port, proto, desc, url)
-            # 'state',
-            # 'backups', 'backup_schedules'
+            'state',
+            'backups', 'backup_schedules'
         )
 
         read_only_fields = ('ips',)
