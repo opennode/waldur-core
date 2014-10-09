@@ -1,8 +1,8 @@
-========================
-Authentication with REST
-========================
 
-NodeConductor uses token-based authentication.
+Authentication
+--------------
+
+NodeConductor uses token-based authentication for REST.
 
 In order to authenticate your requests first obtain token from any of the supported token backends.
 Then use the token in all the subsequent requests putting it into ``Authorization`` header:
@@ -17,7 +17,7 @@ Then use the token in all the subsequent requests putting it into ``Authorizatio
 Supported token backends
 ------------------------
 
-Password based backend
+Password-based backend
 ^^^^^^^^^^^^^^^^^^^^^^
 
 Endpoint url: ``/api-auth/password/``

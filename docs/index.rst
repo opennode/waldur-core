@@ -6,30 +6,34 @@ separation of managed resources (VMs, subnets, applications and more).
 
 Features include:
 
-- support for multiple IaaS backends;
 - flexible user, group and project management;
-- grouping of project resources into environments;
+- delegation of privileges natural for enterprise setups;
+- support for multiple IaaS backends;
 - templates based on configuration management approach;
 - orchestration with SaltStack;
-- used license reporting;
+- support for billing;
+- support for license management.
 
+User guide
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   guide/intro
+
+API
+---
+
+.. toctree::
+   :maxdepth: 1
+
+   api/api
 
 License
 -------
 
 NodeConductor is open-source under Apache v2 license.
-
-Topics
-------
-
-.. toctree::
-   :maxdepth: 2
-
-   structure
-   groups
-   authentication
-   templates
-   orchestration
 
 
 Indices and tables
