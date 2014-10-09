@@ -20,7 +20,7 @@ def _backup_schedule_url(schedule):
     return 'http://testserver' + reverse('backupschedule-detail', args=(str(schedule.uuid), ))
 
 
-class UsageTest(test.APISimpleTestCase):
+class BackupUsageTest(test.APISimpleTestCase):
 
     def setUp(self):
         # only for test lets make backupshedule backupable
@@ -45,3 +45,13 @@ class UsageTest(test.APISimpleTestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.RESTORING)
+
+    def test_backup_delete(self):
+        backup = factories.BackupFactory()
+        url = _backup_url(backup, action='delete')
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.DELETING)
+
+
+
