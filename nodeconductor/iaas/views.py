@@ -65,6 +65,33 @@ class InstanceViewSet(mixins.CreateModelMixin,
                       core_mixins.ListModelMixin,
                       core_mixins.UpdateOnlyModelMixin,
                       viewsets.GenericViewSet):
+    """List of VM instances that are accessible by this user.
+
+    TODO: VM instance definition.
+
+    VM instances are launched in clouds, whereas the instance may belong to one cloud only, and the cloud may have multiple VM instances.
+
+    VM instance may be in one of the following states:
+     - creating
+     - created
+     - starting
+     - started
+     - stopping
+     - stopped
+     - restarting
+     - deleting
+     - deleted
+     - erred
+
+    Staff members can list all available VM instances in any cloud.
+
+    Customer owners can list all VM instances in all the clouds that belong to any of the customers they own.
+
+    Project administrators can list all VM instances, create new instances and start/stop/restart instances in all the clouds that are connected to any of the projects they are administrators in.
+
+    Project managers can list all VM instances in all the clouds that are connected to any of the projects they are managers in.
+    """
+
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
@@ -126,6 +153,23 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
 
 class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
+    """List of VM templates that are accessible by this user.
+
+    VM template is a description of a system installed on VM instances: OS, disk partition etc.
+
+    VM template is not to be confused with VM instance flavor -- template is a definition of a system to be installed (set of software) whereas flavor is a set of virtual hardware parameters.
+
+    VM templates are connected to clouds, whereas the template may belong to one cloud only, and the cloud may have multiple VM templates.
+
+    Staff members can list all available VM templates in any cloud and create new templates.
+
+    Customer owners can list all VM templates in all the clouds that belong to any of the customers they own.
+
+    Project administrators can list all VM templates and create new VM instances using these templates in all the clouds that are connected to any of the projects they are administrators in.
+
+    Project managers can list all VM templates in all the clouds that are connected to any of the projects they are managers in.
+    """
+
     queryset = models.Template.objects.all()
     serializer_class = serializers.TemplateSerializer
     lookup_field = 'uuid'
@@ -155,6 +199,17 @@ class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 
 class SshKeyViewSet(core_viewsets.ModelViewSet):
+    """List of SSH public keys that are accessible by this user.
+
+    SSH public keys are injected to VM instances during creation, so that holder of corresponding SSH private key can log in to that instance.
+
+    SSH public keys are connected to user accounts, whereas the key may belong to one user only, and the user may have multiple SSH keys.
+
+    Users can only access SSH keys connected to their accounts.
+
+    Project administrators can select what SSH key will be injected to VM instance during instance provisioning.
+    """
+
     queryset = core_models.SshPublicKey.objects.all()
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
@@ -169,6 +224,13 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
 
 
 class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
+    """List of operations with VM templates.
+
+    TODO: list supported operation types.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = models.Purchase.objects.all()
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'
@@ -176,6 +238,11 @@ class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 
 class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
+    """TODO: add documentation.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = models.Image.objects.all()
     serializer_class = serializers.ImageSerializer
     lookup_field = 'uuid'

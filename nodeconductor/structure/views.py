@@ -21,6 +21,11 @@ User = auth.get_user_model()
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
+    """TODO: add documentation.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = models.Customer.objects.all()
     serializer_class = serializers.CustomerSerializer
     lookup_field = 'uuid'
@@ -39,6 +44,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
+    """TODO: add documentation.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
@@ -65,6 +75,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
+    """TODO: add documentation.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = models.ProjectGroup.objects.all()
     serializer_class = serializers.ProjectGroupSerializer
     lookup_field = 'uuid'
@@ -77,6 +92,11 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
+    """TODO: add documentation.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = models.ProjectGroup.projects.through.objects.all()
     serializer_class = serializers.ProjectGroupMembershipSerializer
     filter_backends = (filters.GenericRoleFilter,)
@@ -132,6 +152,11 @@ class UserFilter(django_filters.FilterSet):
 
 
 class UserViewSet(viewsets.ModelViewSet):
+    """TODO: add documentation.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = User.objects.all()
     serializer_class = serializers.UserSerializer
     lookup_field = 'uuid'
