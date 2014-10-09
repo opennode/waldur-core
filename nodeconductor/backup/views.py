@@ -18,6 +18,18 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
 
+    @action()
+    def activate(self, request, uuid):
+        schedule = get_object_or_404(models.BackupSchedule, uuid=uuid, is_active=False)
+        schedule.is_active = True
+        schedule.save()
+
+    @action()
+    def deactivate(self, request, uuid):
+        schedule = get_object_or_404(models.BackupSchedule, uuid=uuid, is_active=True)
+        schedule.is_active = False
+        schedule.save()
+
 
 class BackupViewSet(viewsets.CreateModelViewSet):
     queryset = models.Backup.objects.all()
