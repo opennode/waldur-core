@@ -1,10 +1,15 @@
+from __future__ import unicode_literals
+
+import json
+
 from django.core.urlresolvers import reverse
 
 from rest_framework import test
 
-from nodeconductor.backup import models, backup_registry
+from nodeconductor.backup import models, backup_registry, serializers
 from nodeconductor.backup.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.iaas.tests import factories as iaas_factories
 
 
 def _backup_url(backup, action=None):
@@ -28,7 +33,7 @@ def _backup_schedule_list_url():
 class BackupUsageTest(test.APISimpleTestCase):
 
     def setUp(self):
-        # only for test lets make backupshedule backupable
+        # only for test lets make backupschedule backupable
         backup_registry.BACKUP_REGISTRY = {'Schedule': 'backup_backupschedule'}
         self.user = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
         self.client.force_authenticate(user=self.user)
@@ -71,7 +76,7 @@ class BackupUsageTest(test.APISimpleTestCase):
 class BackupScheduleUsageTest(test.APISimpleTestCase):
 
     def setUp(self):
-        # only for test lets make backupshedule backupable
+        # only for test lets make backupschedule backupable
         backup_registry.BACKUP_REGISTRY = {'Schedule': 'backup_backupschedule'}
         self.user = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
         self.client.force_authenticate(user=self.user)
@@ -114,3 +119,67 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         response = self.client.post(_backup_schedule_url(schedule, action='deactivate'))
         self.assertEqual(response.status_code, 200)
         self.assertFalse(models.BackupSchedule.objects.get(pk=schedule.pk).is_active)
+
+
+class BackupListPermissionsTest(test.APISimpleTestCase):
+
+    def setUp(self):
+        backup_registry.BACKUP_REGISTRY = {'Instance': 'iaas_instance'}
+
+    def test_list_permissions(self):
+        instance = iaas_factories.InstanceFactory()
+        backup = factories.BackupFactory(backup_source=instance)
+        user_with_view_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
+        user_without_view_permission = structure_factories.UserFactory.create()
+
+        self.client.force_authenticate(user=user_with_view_permission)
+        response = self.client.get(_backup_list_url())
+        context = json.loads(response.content)
+        expected_results = [backup]
+        self.assertEqual(len(expected_results), len(context))
+        for actual, expected in zip(context, expected_results):
+            self.assertEqual(
+                actual['url'], 'http://testserver' + serializers.BackupSerializer(expected).data['url'])
+
+        self.client.force_authenticate(user=user_without_view_permission)
+        response = self.client.get(_backup_list_url())
+        context = json.loads(response.content)
+        expected_results = []
+        self.assertEqual(len(expected_results), len(context))
+        for actual, expected in zip(context, expected_results):
+            self.assertEqual(
+                actual['url'], 'http://testserver' + serializers.BackupSerializer(expected).data['url'])
+
+
+class BackupPermissionsTest(test.APISimpleTestCase):
+
+    def setUp(self):
+        super(BackupPermissionsTest, self).setUp()
+        self.user_with_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
+        self.user_without_permission = structure_factories.UserFactory.create()
+
+    def get_users_with_permission(self, url, method):
+        return [self.user_with_permission]
+
+    def get_users_without_permissions(self, url, method):
+        return [self.user_without_permission]
+
+    def get_urls_configs(self):
+        backup = factories.BackupFactory(backup_source=iaas_factories.InstanceFactory())
+        return [
+            {'url': _backup_url(backup), 'methods': ['GET']},
+            {'url': _backup_url(backup, action='delete'), 'methods': ['POST']},
+            {'url': _backup_url(backup, action='restore'), 'methods': ['POST']},
+            {'url': _backup_list_url(), 'methods': ['POST']},
+        ]
+
+    def test_permissions(self):
+        for conf in self.get_urls_configs():
+            url = conf['url']
+            methods = conf['methods']
+            for method in methods:
+                response = getattr(self.client, method.lower())(url)
+                for user in self.get_users_with_permission(url, method):
+                    self.assertFalse(response.status_code == 404 or response.status_code == 403)
+                for user in self.get_users_without_permissions(url, method):
+                    self.assertTrue(response.status_code == 404 or response.status_code == 403)
