@@ -204,20 +204,25 @@ class Instance(core_models.UuidMixin,
 
         class FakeStrategy(backup_models.BackupStrategy):
 
-            def backup(instance):
-                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(instance.uuid) + '.txt')
+            @classmethod
+            def backup(cls):
+                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(self.uuid) + '.txt')
                 with open(filename, 'wb+') as f:
-                    f.write('Backing up: %s' % str(instance))
+                    f.write('Backing up: %s' % str(self))
 
-            def restore(instance):
-                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(instance.uuid) + '.txt')
+            @classmethod
+            def restore(cls, replace_original):
+                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(self.uuid) + '.txt')
                 with open(filename, 'wb+') as f:
-                    f.write('Restoring: %s' % str(instance))
+                    f.write('Restoring: %s' % str(self))
 
-            def delete(instance):
-                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(instance.uuid) + '.txt')
+            @classmethod
+            def delete(cls):
+                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(self.uuid) + '.txt')
                 with open(filename, 'wb+') as f:
-                    f.write('Deleting: %s' % str(instance))
+                    f.write('Deleting: %s' % str(self))
+
+        return FakeStrategy
 
 
 @receiver(post_save, sender=Instance)
