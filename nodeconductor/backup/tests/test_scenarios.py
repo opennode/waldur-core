@@ -1,12 +1,10 @@
 from __future__ import unicode_literals
 
-import json
-
 from django.core.urlresolvers import reverse
 
 from rest_framework import test
 
-from nodeconductor.backup import models, backup_registry, serializers
+from nodeconductor.backup import models, backup_registry
 from nodeconductor.backup.tests import factories, helpers
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.iaas.tests import factories as iaas_factories
