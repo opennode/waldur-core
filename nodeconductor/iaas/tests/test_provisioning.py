@@ -192,7 +192,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         data = self._get_valid_payload(self.admined_instance)
         data['flavor'] = self._get_flavor_url(new_flavor)
 
-        response = self.client.put(self._get_instance_url(self.admined_instance), data)
+        response = self.client.post(self._get_instance_url(self.admined_instance) + 'resize/', data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -203,12 +203,12 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_user_cannot_change_flavor_of_stopped_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
-        new_flavor = cloud_factories.FlavorFactory(cloud=self.admined_instance.flavor.cloud)
+        new_flavor = cloud_factories.FlavorFactory(cloud=self.managed_instance.flavor.cloud)
 
         data = self._get_valid_payload(self.managed_instance)
         data['flavor'] = self._get_flavor_url(new_flavor)
 
-        response = self.client.put(self._get_instance_url(self.managed_instance), data)
+        response = self.client.post(self._get_instance_url(self.managed_instance) + 'resize/', data)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -222,7 +222,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         data = self._get_valid_payload(inaccessible_instance)
         data['flavor'] = self._get_flavor_url(new_flavor)
 
-        response = self.client.put(self._get_instance_url(inaccessible_instance), data)
+        response = self.client.post(self._get_instance_url(inaccessible_instance) + 'resize/', data)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -245,11 +245,9 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             data = self._get_valid_payload(admined_instance)
             data['flavor'] = self._get_flavor_url(changed_flavor)
 
-            response = self.client.put(self._get_instance_url(admined_instance), data)
+            response = self.client.post(self._get_instance_url(admined_instance) + 'resize/', data)
 
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-            self.assertDictContainsSubset({'detail': 'Instance should be stopped before resizing'},
-                                          response.data)
 
     def test_user_cannot_change_flavor_of_running_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
@@ -270,11 +268,9 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             data = self._get_valid_payload(managed_instance)
             data['flavor'] = self._get_flavor_url(changed_flavor)
 
-            response = self.client.put(self._get_instance_url(managed_instance), data)
+            response = self.client.post(self._get_instance_url(managed_instance) + 'resize/', data)
 
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-            self.assertDictContainsSubset({'detail': 'Instance should be stopped before resizing'},
-                                          response.data)
 
     def test_user_cannot_change_flavor_of_running_instance_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.user)
@@ -293,7 +289,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             data = self._get_valid_payload(inaccessible_instance)
             data['flavor'] = self._get_flavor_url(changed_flavor)
 
-            response = self.client.put(self._get_instance_url(inaccessible_instance), data)
+            response = self.client.post(self._get_instance_url(inaccessible_instance) + 'resize/', data)
 
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 

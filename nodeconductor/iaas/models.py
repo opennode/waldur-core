@@ -108,8 +108,6 @@ class Instance(core_models.UuidMixin,
         RESIZING_SCHEDULED = 'r'
         RESIZING = 'R'
 
-        RESIZED = 's'
-
         CHOICES = (
             (PROVISIONING_SCHEDULED, _('Provisioning Scheduled')),
             (PROVISIONING, _('Provisioning')),

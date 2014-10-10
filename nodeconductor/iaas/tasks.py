@@ -198,6 +198,13 @@ def schedule_deleting(instance_uuid):
     _mock_processing(instance_uuid)
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='resizing', desired_state='resized')
-def schedule_resizing(instance_uuid):
-    _mock_processing(instance_uuid)
+@tracked_processing(models.Instance, processing_state='resizing', desired_state='offline')
+def schedule_resizing(instance_uuid, new_flavor):
+    with transaction.atomic():
+        try:
+            flavor_uuid = new_flavor.split('/')[-2]
+            instance = models.Instance.objects.get(uuid=instance_uuid)
+            instance.flavor = models.Instance.flavor.objects.get(uuid=flavor_uuid)
+            instance.save()
+        except:
+            raise Exception('Error resizing VM instance')

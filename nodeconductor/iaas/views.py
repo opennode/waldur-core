@@ -85,7 +85,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
         return queryset
 
-    def _schedule_transition(self, request, uuid, operation):
+    def _schedule_transition(self, request, uuid, operation, **kwargs):
         # Importing here to avoid circular imports
         from nodeconductor.iaas import tasks
         # XXX: this should be testing for actions/role pairs as well
@@ -108,7 +108,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         try:
             instance_schedule_transition()
             instance.save()
-            processing_task.delay(uuid)
+            processing_task.delay(uuid, kwargs['new_flavor'])
         except TransitionNotAllowed:
             return Response({'status': 'Performing %s operation from instance state \'%s\' is not allowed'
                             % (operation, instance.get_state_display())},
@@ -127,21 +127,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def destroy(self, request, uuid=None):
         return self._schedule_transition(request, uuid, 'destroy')
 
+    @action()
     def resize(self, request, uuid=None):
-        return self._schedule_transition(request, uuid, 'resize')
-
-    def pre_save(self, obj):
-        try:
-            old_instance = models.Instance.objects.get(uuid=obj.uuid)
-
-            if old_instance.flavor != obj.flavor:
-                if obj.state != models.Instance.States.OFFLINE:
-                    raise exceptions.PermissionDenied('Instance should be stopped before resizing')
-
-                self.resize(self.request, obj.uuid)
-
-        except models.Instance.DoesNotExist:
-            pass
+            flavor_url = request.DATA['flavor']
+            return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_url)
 
 
 class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
