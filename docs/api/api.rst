@@ -3,11 +3,10 @@ Pagination
 
 .. include:: pagination.rst
 
-
 Version
 =======
 
-.. include:: common.rst
+.. include:: version.rst
 
 Authentication
 ==============
@@ -16,12 +15,13 @@ Authentication
 
 Customer management
 ===================
-TODO: customer mgmt APIs
 
+.. include:: customer.rst
 
 Project management
 ==================
-TODO: project and group APIs
+
+.. include:: project.rst
 
 
 User management
@@ -33,7 +33,6 @@ Cloud management
 ================
 
 .. include:: cloud.rst
-
 
 VM instance management
 ======================

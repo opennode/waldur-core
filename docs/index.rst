@@ -14,8 +14,8 @@ Features include:
 - support for billing;
 - support for license management.
 
-User guide
-----------
+Guide
+-----
 
 .. toctree::
    :maxdepth: 1
@@ -29,6 +29,15 @@ API
    :maxdepth: 1
 
    api/api
+
+Developing NC
+-------------
+
+.. toctree::
+   :maxdepth: 1
+
+   developer
+
 
 License
 -------
