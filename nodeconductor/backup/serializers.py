@@ -66,6 +66,8 @@ class RelatedBackupField(RelatedField):
     # but generic field does not have default manager
     def initialize(self, parent, field_name):
         super(RelatedField, self).initialize(parent, field_name)
+        # XXX ideally this queryset has to return all available for generic key instances
+        # Now we just take first backupable model and return all its instances
         model = backup_registry.get_backupable_models()[0]
         self.queryset = model.objects.all()
 
