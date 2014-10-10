@@ -15,18 +15,30 @@ from nodeconductor.core import fields as core_fields
 from nodeconductor.backup import tasks
 
 
-@python_2_unicode_compatible
-class BackupSchedule(core_models.UuidMixin,
-                     core_models.DescribableMixin,
-                     models.Model):
+class BackupSourceAbstractModel(models.Model):
     """
-    Model representing a backup schedule for a generic object.
+    Abstract model with generic key to backup source
     """
     # reference to the backed up object
     content_type = models.ForeignKey(ct_models.ContentType)
     object_id = models.PositiveIntegerField()
     backup_source = ct_generic.GenericForeignKey('content_type', 'object_id')
 
+    class Meta(object):
+        abstract = True
+
+    def user_has_perm_for_backup_source(self, user):
+        permission_name = '%s.add_%s' % (self.content_type.app_label, self.content_type.model)
+        return user.has_perm(permission_name, self.backup_source)
+
+
+@python_2_unicode_compatible
+class BackupSchedule(core_models.UuidMixin,
+                     core_models.DescribableMixin,
+                     BackupSourceAbstractModel):
+    """
+    Model representing a backup schedule for a generic object.
+    """
     # backup specific settings
     retention_time = models.PositiveIntegerField(help_text='Retention time in days')
     maximal_number_of_backups = models.PositiveSmallIntegerField()
@@ -103,14 +115,10 @@ class BackupSchedule(core_models.UuidMixin,
 @python_2_unicode_compatible
 class Backup(core_models.UuidMixin,
              core_models.DescribableMixin,
-             models.Model):
+             BackupSourceAbstractModel):
     """
     Model representing a single instance of a backup.
     """
-    content_type = models.ForeignKey(ct_models.ContentType)
-    object_id = models.PositiveIntegerField()
-    backup_source = ct_generic.GenericForeignKey('content_type', 'object_id')
-
     backup_schedule = models.ForeignKey(BackupSchedule, blank=True, null=True,
                                         on_delete=models.SET_NULL,
                                         related_name='backups')
