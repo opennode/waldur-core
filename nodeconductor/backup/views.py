@@ -41,14 +41,12 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated,)
 
     def pre_save(self, obj):
-        permission_name = '%s.add_%s' % (obj.content_type.app_label, obj.content_type.model)
-        if not self.request.user.has_perm(permission_name, obj.backup_source):
+        if not obj.user_has_perm_for_backup_source(self.request.user):
             raise PermissionDenied()
 
     def _get_backup_schedule(self, user, uuid, is_active):
         schedule = get_object_or_404(models.BackupSchedule, uuid=uuid, is_active=is_active)
-        permission_name = '%s.add_%s' % (schedule.content_type.app_label, schedule.content_type.model)
-        if not user.has_perm(permission_name, schedule.backup_source):
+        if not schedule.user_has_perm_for_backup_source(user):
             raise Http404
         return schedule
 
@@ -75,8 +73,7 @@ class BackupViewSet(viewsets.CreateModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated,)
 
     def pre_save(self, obj):
-        permission_name = '%s.add_%s' % (obj.content_type.app_label, obj.content_type.model)
-        if not self.request.user.has_perm(permission_name, obj.backup_source):
+        if not obj.user_has_perm_for_backup_source(self.request.user):
             raise PermissionDenied()
 
     def post_save(self, backup, created):
@@ -88,8 +85,7 @@ class BackupViewSet(viewsets.CreateModelViewSet):
 
     def _get_backup(self, user, uuid):
         backup = get_object_or_404(models.Backup, uuid=uuid)
-        permission_name = '%s.add_%s' % (backup.content_type.app_label, backup.content_type.model)
-        if not user.has_perm(permission_name, backup.backup_source):
+        if not backup.user_has_perm_for_backup_source(user):
             raise Http404
         return backup
 
