@@ -7,7 +7,7 @@ from django.core.urlresolvers import reverse
 from rest_framework import test
 
 from nodeconductor.backup import models, backup_registry, serializers
-from nodeconductor.backup.tests import factories
+from nodeconductor.backup.tests import factories, helpers
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.iaas.tests import factories as iaas_factories
 
@@ -121,44 +121,39 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         self.assertFalse(models.BackupSchedule.objects.get(pk=schedule.pk).is_active)
 
 
-class BackupListPermissionsTest(test.APISimpleTestCase):
+class BackupListPermissionsTest(helpers.ListPermissionsTest):
+
+    url = _backup_list_url()
 
     def setUp(self):
         backup_registry.BACKUP_REGISTRY = {'Instance': 'iaas_instance'}
 
-    def test_list_permissions(self):
+    def get_users_and_expected_results(self):
         instance = iaas_factories.InstanceFactory()
         backup1 = factories.BackupFactory(backup_source=instance)
         backup2 = factories.BackupFactory(backup_source=instance)
+
         user_with_view_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
         user_without_view_permission = structure_factories.UserFactory.create()
 
-        self.client.force_authenticate(user=user_with_view_permission)
-        response = self.client.get(_backup_list_url())
-        context = json.loads(response.content)
-        expected_results = [backup1, backup2]
-        self.assertEqual(len(expected_results), len(context))
-        for actual, expected in zip(context, expected_results):
-            self.assertEqual(
-                actual['url'], 'http://testserver' + serializers.BackupSerializer(expected).data['url'])
-
-        self.client.force_authenticate(user=user_without_view_permission)
-        response = self.client.get(_backup_list_url())
-        context = json.loads(response.content)
-        expected_results = []
-        self.assertEqual(len(expected_results), len(context))
-        for actual, expected in zip(context, expected_results):
-            self.assertEqual(
-                actual['url'], 'http://testserver' + serializers.BackupSerializer(expected).data['url'])
+        return [
+            {
+                'user': user_with_view_permission,
+                'expected_results': [
+                    {'url': _backup_url(backup1)}, {'url': _backup_url(backup2)}
+                ]
+            },
+            {
+                'user': user_without_view_permission,
+                'expected_results': []
+            },
+        ]
 
 
-class BackupPermissionsTest(test.APISimpleTestCase):
+class BackupPermissionsTest(helpers.PermissionsTest):
 
     def setUp(self):
-        super(BackupPermissionsTest, self).setUp()
-        backup_registry.BACKUP_REGISTRY = {
-            'Instance': 'iaas_instance'
-        }
+        backup_registry.BACKUP_REGISTRY = {'Instance': 'iaas_instance'}
         self.user_with_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
         self.user_without_permission = structure_factories.UserFactory.create()
 
@@ -173,23 +168,72 @@ class BackupPermissionsTest(test.APISimpleTestCase):
         backup = factories.BackupFactory(backup_source=instance)
         yield {'url': _backup_url(backup), 'method': 'GET'}
         yield {'url': _backup_url(backup, action='delete'), 'method': 'POST'}
-        # we need to recreate backup becouse one were deleted
+        # we need to recreate backup because previous one was deleted
         backup = factories.BackupFactory()
         yield {'url': _backup_url(backup, action='restore'), 'method': 'POST'}
         instance_url = 'http://testserver' + reverse('instance-detail', args=(str(instance.uuid),))
         yield {'url': _backup_list_url(), 'method': 'POST',
                'data': {'backup_source': instance_url}}
 
-    def test_permissions(self):
-        for conf in self.get_urls_configs():
-            url, method = conf['url'], conf['method']
-            data = conf['data'] if 'data' in conf else {}
-            for user in self.get_users_with_permission(url, method):
-                self.client.force_authenticate(user=user)
-                response = getattr(self.client, method.lower())(url, data=data)
-                self.assertNotEqual(response.status_code, 404)
-                self.assertNotEqual(response.status_code, 403)
-            for user in self.get_users_without_permissions(url, method):
-                self.client.force_authenticate(user=user)
-                response = getattr(self.client, method.lower())(url, data=data)
-                self.assertTrue(response.status_code == 404 or response.status_code == 403)
+
+class BackupScheduleListPermissionsTest(helpers.ListPermissionsTest):
+
+    url = _backup_schedule_list_url()
+
+    def setUp(self):
+        backup_registry.BACKUP_REGISTRY = {'Instance': 'iaas_instance'}
+
+    def get_users_and_expected_results(self):
+        instance = iaas_factories.InstanceFactory()
+        schedule = factories.BackupScheduleFactory(backup_source=instance)
+
+        user_with_view_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
+        user_without_view_permission = structure_factories.UserFactory.create()
+
+        return [
+            {
+                'user': user_with_view_permission,
+                'expected_results': [
+                    {'url': _backup_schedule_url(schedule)}
+                ]
+            },
+            {
+                'user': user_without_view_permission,
+                'expected_results': []
+            },
+        ]
+
+
+class BackupSchedulePermissionsTest(helpers.PermissionsTest):
+
+    def setUp(self):
+        super(BackupSchedulePermissionsTest, self).setUp()
+        backup_registry.BACKUP_REGISTRY = {
+            'Instance': 'iaas_instance'
+        }
+        self.user_with_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
+        self.user_without_permission = structure_factories.UserFactory.create()
+
+    def get_users_with_permission(self, url, method):
+        return [self.user_with_permission]
+
+    def get_users_without_permissions(self, url, method):
+        return [self.user_without_permission]
+
+    def get_urls_configs(self):
+        instance = iaas_factories.InstanceFactory()
+        schedule = factories.BackupScheduleFactory(backup_source=instance)
+        yield {'url': _backup_schedule_url(schedule), 'method': 'GET'}
+        yield {'url': _backup_schedule_url(schedule, action='deactivate'), 'method': 'POST'}
+        yield {'url': _backup_schedule_url(schedule, action='activate'), 'method': 'POST'}
+        yield {'url': _backup_schedule_url(schedule), 'method': 'PATCH'}
+        yield {'url': _backup_schedule_url(schedule), 'method': 'PUT'}
+        yield {'url': _backup_schedule_url(schedule), 'method': 'DELETE'}
+        instance_url = 'http://testserver' + reverse('instance-detail', args=(str(instance.uuid),))
+        backup_schedule_data = {
+            'retention_time': 3,
+            'backup_source': instance_url,
+            'schedule': '*/5 * * * *',
+            'maximal_number_of_backups': 3,
+        }
+        yield {'url': _backup_list_url(), 'method': 'POST', 'data': backup_schedule_data}
