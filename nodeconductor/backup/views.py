@@ -35,9 +35,8 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
     queryset = models.BackupSchedule.objects.all()
     serializer_class = serializers.BackupScheduleSerializer
     lookup_field = 'uuid'
-    filter_backends = (structure_filters.GenericRoleFilter,)
-    permission_classes = (rf_permissions.IsAuthenticated,
-                          rf_permissions.DjangoObjectPermissions)
+    filter_backends = (BackupPermissionFilter,)
+    permission_classes = (rf_permissions.IsAuthenticated,)
 
     @action()
     def activate(self, request, uuid):
@@ -58,9 +57,8 @@ class BackupViewSet(viewsets.CreateModelViewSet):
     queryset = models.Backup.objects.all()
     serializer_class = serializers.BackupSerializer
     lookup_field = 'uuid'
-    filter_backends = (structure_filters.GenericRoleFilter,)
-    permission_classes = (rf_permissions.IsAuthenticated,
-                          rf_permissions.DjangoObjectPermissions)
+    filter_backends = (BackupPermissionFilter,)
+    permission_classes = (rf_permissions.IsAuthenticated,)
 
     def post_save(self, backup, created):
         """
