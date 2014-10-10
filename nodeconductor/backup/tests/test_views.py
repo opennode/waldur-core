@@ -38,16 +38,17 @@ class BackupViewSetTest(TestCase):
 
     def setUp(self):
         self.view = views.BackupViewSet()
+        self.user = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
 
     def test_restore(self):
         backup = factories.BackupFactory(state=models.Backup.States.READY)
-        request = type(str('MockedRequest'), (object, ), {'POST': {'replace_original': True}})
+        request = type(str('MockedRequest'), (object, ), {'POST': {'replace_original': True}, 'user': self.user})
         response = self.view.restore(request, backup.uuid)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.RESTORING)
 
     def test_delete(self):
-        request = type(str('MockedRequest'), (object, ), {})
+        request = type(str('MockedRequest'), (object, ), {'user': self.user})
         backup = factories.BackupFactory(state=models.Backup.States.READY)
         response = self.view.delete(request, backup.uuid)
         self.assertEqual(response.status_code, 200)
