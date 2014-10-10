@@ -77,20 +77,19 @@ Invalid credentials failure response example:
 SAML-based backend
 ^^^^^^^^^^^^^^^^^^
 
-Endpoint url: ``/api-auth/password/``
+Endpoint url: ``/api-auth/saml2/``
 
 Valid request example:
 
 .. code-block:: http
 
-    POST /api-auth/password/ HTTP/1.1
+    POST /api-auth/saml2/ HTTP/1.1
     Accept: application/json
     Content-Type: application/json
     Host: example.com
 
     {
-        "username": "alice",
-        "password": "$ecr3t"
+        "saml2response": "SAML_PAYLOAD",
     }
 
 Success response example:
@@ -106,7 +105,8 @@ Success response example:
         "token": "c84d653b9ec92c6cbac41c706593e66f567a7fa4"
     }
 
-Field validation failure response example:
+Invalid token can result in a failure like in the example below. In this case please enable/check concrete
+problem in saml2 log file.
 
 .. code-block:: http
 
@@ -115,17 +115,5 @@ Field validation failure response example:
     Content-Type: application/json
 
     {
-        "password": ["This field is required."]
-    }
-
-Invalid credentials failure response example:
-
-.. code-block:: http
-
-    HTTP/1.0 401 UNAUTHORIZED
-    Allow: POST, OPTIONS
-    Content-Type: application/json
-
-    {
-        "detail": "Invalid username/password"
+        "saml2response": ["SAML2 response has errors."]
     }
