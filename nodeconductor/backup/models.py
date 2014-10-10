@@ -15,16 +15,6 @@ from nodeconductor.core import fields as core_fields
 from nodeconductor.backup import tasks
 
 
-def get_backupable_models():
-    """
-        Looks throught all project apps and finds non-abstract models,
-        that implement BackupableMixin
-    """
-    for model in models.get_models():
-        if isinstance(model, BackupableMixin):
-            yield model
-
-
 @python_2_unicode_compatible
 class BackupSchedule(core_models.UuidMixin,
                      core_models.DescribableMixin,
