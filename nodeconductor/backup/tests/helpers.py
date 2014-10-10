@@ -11,6 +11,28 @@ class PermissionsTest(test.APISimpleTestCase):
     Abstract class for permissions tests.
     Methods `get_urls_configs`, `get_users_with_permission`,
     `get_users_without_permissions` have to be overridden.
+
+    Logical example:
+
+    class ExamplePermissionsTest(PermissionsTest):
+
+        def get_users_with_permission(self, url, method):
+            if is_unreachable(url):
+                # no one can has access to unreachable url
+                return []
+            return [user_with_permission]
+
+        def get_users_without_permissions(self, url, method):
+            if is_unreachable(url):
+                # everybody does not have access to to unreachable url
+                return [user_with_permission, user_without_permission]
+            return [user_without_permission]
+
+        def get_urls_configs(self):
+            yield {'url': 'http://testserver/some/url, 'method': 'GET'}
+            yield {'url': 'http://testserver/some/unreachable/url', 'method': 'POST'}
+            ...
+
     """
     class Meta:
         __metaclass__ = abc.ABCMeta
