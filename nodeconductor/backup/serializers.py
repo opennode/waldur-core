@@ -76,7 +76,8 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.BackupSchedule
         fields = ('url', 'description', 'backups', 'retention_time', 'backup_source',
-                  'maximal_number_of_backups', 'schedule')
+                  'maximal_number_of_backups', 'schedule', 'is_active')
+        read_only_fields = ('is_active', )
         lookup_field = 'uuid'
 
 
@@ -85,5 +86,6 @@ class BackupSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Backup
-        fields = ('url', 'description', 'created_at', 'kept_until', 'backup_source')
+        fields = ('url', 'description', 'created_at', 'kept_until', 'backup_source', 'state')
+        read_only_fields = ('state', 'created_at', 'kept_until')
         lookup_field = 'uuid'
