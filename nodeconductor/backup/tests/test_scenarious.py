@@ -128,14 +128,15 @@ class BackupListPermissionsTest(test.APISimpleTestCase):
 
     def test_list_permissions(self):
         instance = iaas_factories.InstanceFactory()
-        backup = factories.BackupFactory(backup_source=instance)
+        backup1 = factories.BackupFactory(backup_source=instance)
+        backup2 = factories.BackupFactory(backup_source=instance)
         user_with_view_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
         user_without_view_permission = structure_factories.UserFactory.create()
 
         self.client.force_authenticate(user=user_with_view_permission)
         response = self.client.get(_backup_list_url())
         context = json.loads(response.content)
-        expected_results = [backup]
+        expected_results = [backup1, backup2]
         self.assertEqual(len(expected_results), len(context))
         for actual, expected in zip(context, expected_results):
             self.assertEqual(
@@ -155,6 +156,9 @@ class BackupPermissionsTest(test.APISimpleTestCase):
 
     def setUp(self):
         super(BackupPermissionsTest, self).setUp()
+        backup_registry.BACKUP_REGISTRY = {
+            'Instance': 'iaas_instance'
+        }
         self.user_with_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
         self.user_without_permission = structure_factories.UserFactory.create()
 
@@ -165,21 +169,27 @@ class BackupPermissionsTest(test.APISimpleTestCase):
         return [self.user_without_permission]
 
     def get_urls_configs(self):
-        backup = factories.BackupFactory(backup_source=iaas_factories.InstanceFactory())
-        return [
-            {'url': _backup_url(backup), 'methods': ['GET']},
-            {'url': _backup_url(backup, action='delete'), 'methods': ['POST']},
-            {'url': _backup_url(backup, action='restore'), 'methods': ['POST']},
-            {'url': _backup_list_url(), 'methods': ['POST']},
-        ]
+        instance = iaas_factories.InstanceFactory()
+        backup = factories.BackupFactory(backup_source=instance)
+        yield {'url': _backup_url(backup), 'method': 'GET'}
+        yield {'url': _backup_url(backup, action='delete'), 'method': 'POST'}
+        # we need to recreate backup becouse one were deleted
+        backup = factories.BackupFactory()
+        yield {'url': _backup_url(backup, action='restore'), 'method': 'POST'}
+        instance_url = 'http://testserver' + reverse('instance-detail', args=(str(instance.uuid),))
+        yield {'url': _backup_list_url(), 'method': 'POST',
+               'data': {'backup_source': instance_url}}
 
     def test_permissions(self):
         for conf in self.get_urls_configs():
-            url = conf['url']
-            methods = conf['methods']
-            for method in methods:
-                response = getattr(self.client, method.lower())(url)
-                for user in self.get_users_with_permission(url, method):
-                    self.assertFalse(response.status_code == 404 or response.status_code == 403)
-                for user in self.get_users_without_permissions(url, method):
-                    self.assertTrue(response.status_code == 404 or response.status_code == 403)
+            url, method = conf['url'], conf['method']
+            data = conf['data'] if 'data' in conf else {}
+            for user in self.get_users_with_permission(url, method):
+                self.client.force_authenticate(user=user)
+                response = getattr(self.client, method.lower())(url, data=data)
+                self.assertNotEqual(response.status_code, 404)
+                self.assertNotEqual(response.status_code, 403)
+            for user in self.get_users_without_permissions(url, method):
+                self.client.force_authenticate(user=user)
+                response = getattr(self.client, method.lower())(url, data=data)
+                self.assertTrue(response.status_code == 404 or response.status_code == 403)
