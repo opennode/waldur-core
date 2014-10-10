@@ -1,12 +1,14 @@
 from __future__ import unicode_literals
 
 from django.db.models import Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.contrib.contenttypes import models as ct_models
 
 from rest_framework import permissions as rf_permissions
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 
 from nodeconductor.core import viewsets
 from nodeconductor.backup import models, serializers, backup_registry
@@ -38,16 +40,28 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
     filter_backends = (BackupPermissionFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,)
 
+    def pre_save(self, obj):
+        permission_name = '%s.add_%s' % (obj.content_type.app_label, obj.content_type.model)
+        if not self.request.user.has_perm(permission_name, obj.backup_source):
+            raise PermissionDenied()
+
+    def _get_backup_schedule(self, user, uuid, is_active):
+        schedule = get_object_or_404(models.BackupSchedule, uuid=uuid, is_active=is_active)
+        permission_name = '%s.add_%s' % (schedule.content_type.app_label, schedule.content_type.model)
+        if not user.has_perm(permission_name, schedule.backup_source):
+            raise Http404
+        return schedule
+
     @action()
     def activate(self, request, uuid):
-        schedule = get_object_or_404(models.BackupSchedule, uuid=uuid, is_active=False)
+        schedule = self._get_backup_schedule(request.user, uuid=uuid, is_active=False)
         schedule.is_active = True
         schedule.save()
         return Response({'status': 'BackupSchedule was activated'})
 
     @action()
     def deactivate(self, request, uuid):
-        schedule = get_object_or_404(models.BackupSchedule, uuid=uuid, is_active=True)
+        schedule = self._get_backup_schedule(request.user, uuid=uuid, is_active=True)
         schedule.is_active = False
         schedule.save()
         return Response({'status': 'BackupSchedule was deactivated'})
@@ -60,6 +74,11 @@ class BackupViewSet(viewsets.CreateModelViewSet):
     filter_backends = (BackupPermissionFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,)
 
+    def pre_save(self, obj):
+        permission_name = '%s.add_%s' % (obj.content_type.app_label, obj.content_type.model)
+        if not self.request.user.has_perm(permission_name, obj.backup_source):
+            raise PermissionDenied()
+
     def post_save(self, backup, created):
         """
         Starts backup process if backup was created successfully
@@ -67,15 +86,22 @@ class BackupViewSet(viewsets.CreateModelViewSet):
         if created:
             backup.start_backup()
 
+    def _get_backup(self, user, uuid):
+        backup = get_object_or_404(models.Backup, uuid=uuid)
+        permission_name = '%s.add_%s' % (backup.content_type.app_label, backup.content_type.model)
+        if not user.has_perm(permission_name, backup.backup_source):
+            raise Http404
+        return backup
+
     @action()
     def restore(self, request, uuid):
-        backup = get_object_or_404(models.Backup, uuid=uuid)
+        backup = self._get_backup(request.user, uuid)
         replace_original = request.POST.get('replace_original', False)
         backup.start_restoration(replace_original=replace_original)
         return Response({'status': 'Backup restoration process was started'})
 
     @action()
     def delete(self, request, uuid):
-        backup = get_object_or_404(models.Backup, uuid=uuid)
+        backup = self._get_backup(request.user, uuid)
         backup.start_deletion()
         return Response({'status': 'Backup deletion process was started'})
