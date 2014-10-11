@@ -26,8 +26,16 @@ Project management
 
 User management
 ===============
-- user details
-- keys
+
+.. include:: user.rst
+
+Key management
+==============
+
+TODO:
+
+- key creation
+- listing user keys
 
 Cloud management
 ================
@@ -37,5 +45,4 @@ Cloud management
 VM instance management
 ======================
 
-- provisioning
-- modification
+.. include:: instance.rst

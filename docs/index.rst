@@ -1,7 +1,7 @@
 Welcome to NodeConductor's documentation!
 =========================================
 
-NodeConductor is a RESTful server for management of the IT infrastructure. It uses a project-based approach for
+NodeConductor is a RESTful server for management of IT infrastructure. It uses a project-based approach for
 separation of managed resources (VMs, subnets, applications and more).
 
 Features include:
