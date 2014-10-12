@@ -11,7 +11,7 @@ conf_dir = os.path.join(os.path.expanduser('~'), '.nodeconductor')
 config = RawConfigParser()
 config.read(os.path.join(conf_dir, 'settings.ini'))
 
-# If thee sections and/or options are not set, these values are used as defaults
+# If these sections and/or options are not set, these values are used as defaults
 config_defaults = {
     'global': {
         'db_backend': 'sqlite3',
@@ -21,12 +21,12 @@ config_defaults = {
         'template_debug': 'false',
     },
     'events': {
-        'log_file': '', # empty to disable
+        'log_file': '',  # empty to disable
         'log_level': 'INFO',
         'syslog': 'false',
     },
     'logging': {
-        'log_file': '', # empty to disable
+        'log_file': '',  # empty to disable
         'log_level': 'INFO',
         'syslog': 'false',
     },
@@ -44,7 +44,7 @@ config_defaults = {
         'debug': 'false',
         'entity_id': 'saml-sp2',
         'key_file': os.path.join(conf_dir, 'dummy.pem'),
-        'log_file': '', # empty to disable
+        'log_file': '',  # empty to disable
         'log_level': 'INFO',
         'metadata_cert': '',
         'metadata_file': os.path.join(conf_dir, 'metadata.xml'),
@@ -300,7 +300,7 @@ SAML_CONFIG = {
     # These following files are dummies
     # They are supposed to be valid, but are not really used.
     # They are only used to make PySAML2 happy.
-    'key_file': '/path/to/key.pem',   # private part
+    'key_file': '/path/to/key.pem',  # private part
     'cert_file': '/path/to/certificate.crt',  # public part
 
     'accepted_time_diff': 120,
