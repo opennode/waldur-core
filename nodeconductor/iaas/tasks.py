@@ -21,6 +21,10 @@ class StateChangeError(RuntimeError):
     pass
 
 
+class ResizingError(ValueError, models.Instance.DoesNotExist):
+    pass
+
+
 def _mock_processing(instance_uuid, should_fail=False):
     if should_fail:
         raise Exception('It\'s not my day')
@@ -182,29 +186,28 @@ def schedule_provisioning(instance_uuid):
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='stopping', desired_state='offline')
-def schedule_stopping(instance_uuid):
+def schedule_stopping(instance_uuid, **kwargs):
     _mock_processing(instance_uuid)
 
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='starting', desired_state='online')
-def schedule_starting(instance_uuid):
+def schedule_starting(instance_uuid, **kwargs):
     _mock_processing(instance_uuid)
 
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='deleting', desired_state='deleted')
-def schedule_deleting(instance_uuid):
+def schedule_deleting(instance_uuid, **kwargs):
     _mock_processing(instance_uuid)
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='resizing', desired_state='offline')
-def schedule_resizing(instance_uuid, new_flavor):
+def schedule_resizing(instance_uuid, **kwargs):
     with transaction.atomic():
         try:
-            flavor_uuid = new_flavor.split('/')[-2]
             instance = models.Instance.objects.get(uuid=instance_uuid)
-            instance.flavor = models.Instance.flavor.objects.get(uuid=flavor_uuid)
+            instance.flavor = models.Instance.flavor.objects.get(uuid=kwargs['new_flavor'])
             instance.save()
-        except:
-            raise Exception('Error resizing VM instance')
+        except ResizingError:
+            logger.exception('Failed to resize instance with uuid %s' % instance_uuid)

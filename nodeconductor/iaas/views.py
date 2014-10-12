@@ -5,7 +5,6 @@ import logging
 from django.http.response import Http404
 from django_fsm import TransitionNotAllowed
 
-from rest_framework import exceptions
 from rest_framework import permissions, status
 from rest_framework import mixins
 from rest_framework import viewsets
@@ -13,7 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import filters as rf_filter
 
-from nodeconductor.cloud.models import Cloud
+from nodeconductor.cloud.models import Cloud, Flavor
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
@@ -108,7 +107,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         try:
             instance_schedule_transition()
             instance.save()
-            processing_task.delay(uuid, kwargs['new_flavor'])
+            processing_task.delay(uuid, **kwargs)
         except TransitionNotAllowed:
             return Response({'status': 'Performing %s operation from instance state \'%s\' is not allowed'
                             % (operation, instance.get_state_display())},
@@ -129,8 +128,22 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     @action()
     def resize(self, request, uuid=None):
-            flavor_url = request.DATA['flavor']
-            return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_url)
+        try:
+            flavor_uuid = request.DATA['flavor']
+            user = request.user
+        except KeyError:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        instance = filter_queryset_for_user(models.Instance.objects.filter(uuid=uuid), user).first()
+        instance_cloud = instance.flavor.cloud
+
+        new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
+
+        if new_flavor.exists():
+                return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_uuid)
+
+        return Response({'status': "Flavor is not within project's clouds."},
+                        status=status.HTTP_400_BAD_REQUEST)
 
 
 class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
