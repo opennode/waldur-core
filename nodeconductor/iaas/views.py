@@ -9,6 +9,7 @@ from rest_framework import permissions, status
 from rest_framework import mixins
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework import filters as rf_filter
 
@@ -20,6 +21,7 @@ from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.structure import filters
 from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.structure.models import ProjectRole
 
 
 logger = logging.getLogger(__name__)
@@ -93,6 +95,11 @@ class InstanceViewSet(mixins.CreateModelMixin,
         if instance is None:
             raise Http404()
 
+        is_admin = instance.project.roles.filter(permission_group__user=request.user,
+                                                 role_type=ProjectRole.ADMINISTRATOR).exists()
+        if not is_admin:
+            raise PermissionDenied()
+
         supported_operations = {
             # code: (scheduled_celery_task, instance_marker_state)
             'start': (instance.starting_scheduled, tasks.schedule_starting),
@@ -129,12 +136,15 @@ class InstanceViewSet(mixins.CreateModelMixin,
     @action()
     def resize(self, request, uuid=None):
         try:
+            instance = models.Instance.objects.get(uuid=uuid)
+        except models.Instance.DoesNotExist:
+            raise Http404()
+
+        try:
             flavor_uuid = request.DATA['flavor']
-            user = request.user
         except KeyError:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
-        instance = filter_queryset_for_user(models.Instance.objects.filter(uuid=uuid), user).first()
         instance_cloud = instance.flavor.cloud
 
         new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
