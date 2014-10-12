@@ -21,7 +21,7 @@ class StateChangeError(RuntimeError):
     pass
 
 
-class ResizingError(ValueError, models.Instance.DoesNotExist):
+class ResizingError(KeyError, models.Instance.DoesNotExist):
     pass
 
 
