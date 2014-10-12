@@ -205,9 +205,6 @@ def schedule_deleting(instance_uuid, **kwargs):
 @tracked_processing(models.Instance, processing_state='resizing', desired_state='offline')
 def schedule_resizing(instance_uuid, **kwargs):
     with transaction.atomic():
-        try:
-            instance = models.Instance.objects.get(uuid=instance_uuid)
-            instance.flavor = models.Instance.flavor.objects.get(uuid=kwargs['new_flavor'])
-            instance.save()
-        except ResizingError:
-            logger.exception('Failed to resize instance with uuid %s' % instance_uuid)
+        instance = models.Instance.objects.get(uuid=instance_uuid)
+        instance.flavor = models.Instance.flavor.objects.get(uuid=kwargs['new_flavor'])
+        instance.save()
