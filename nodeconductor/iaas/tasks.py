@@ -13,12 +13,15 @@ import six
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 
-
 logger = logging.getLogger(__name__)
 event_log = EventLoggerAdapter(logger)
 
 
 class StateChangeError(RuntimeError):
+    pass
+
+
+class ResizingError(KeyError, models.Instance.DoesNotExist):
     pass
 
 
@@ -56,7 +59,7 @@ def set_state(model_class, uuid, transition):
 
     .. code-block:: python
         # models.py
-        from django.db import
+        from django.db import models
         from nodeconductor.core.models import UuidMixin
 
 
@@ -183,17 +186,25 @@ def schedule_provisioning(instance_uuid):
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='stopping', desired_state='offline')
-def schedule_stopping(instance_uuid):
+def schedule_stopping(instance_uuid, **kwargs):
     _mock_processing(instance_uuid)
 
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='starting', desired_state='online')
-def schedule_starting(instance_uuid):
+def schedule_starting(instance_uuid, **kwargs):
     _mock_processing(instance_uuid)
 
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='deleting', desired_state='deleted')
-def schedule_deleting(instance_uuid):
+def schedule_deleting(instance_uuid, **kwargs):
     _mock_processing(instance_uuid)
+
+@shared_task
+@tracked_processing(models.Instance, processing_state='resizing', desired_state='offline')
+def schedule_resizing(instance_uuid, **kwargs):
+    with transaction.atomic():
+        instance = models.Instance.objects.get(uuid=instance_uuid)
+        instance.flavor = models.Instance.flavor.objects.get(uuid=kwargs['new_flavor'])
+        instance.save()
