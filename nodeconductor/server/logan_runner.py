@@ -26,7 +26,7 @@ def generate_settings():
     with open(os.path.join(config_dir, "settings.ini"), 'w+') as f:
         config.write(f)
 
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "settings.py")) as f:
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "settings_ini.py")) as f:
         config_template = f.read()
 
     return config_template

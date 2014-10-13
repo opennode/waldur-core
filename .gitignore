@@ -11,6 +11,8 @@ db.sqlite3
 /.pydevproject
 /.settings
 
+nodeconductor/server/settings.py
+
 # Editor artifacts
 # vim
 *.sw*
