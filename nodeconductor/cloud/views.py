@@ -52,7 +52,7 @@ class CloudViewSet(viewsets.ModelViewSet):
         cloud = get_object_or_404(models.Cloud, uuid=uuid)
         self._check_permission(cloud)
         cloud.sync()
-        return Response({'status': "Cloud synchronization has been started"}, status=200)
+        return Response({'status': "Cloud synchronization was scheduled"}, status=200)
 
 
 class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,

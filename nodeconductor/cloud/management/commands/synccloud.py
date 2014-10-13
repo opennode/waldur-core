@@ -10,7 +10,7 @@ class Command(BaseCommand):
     help = ('Starts clouds synchronization. Usage examples: \n'
             ' manage.py synccloud `cloud_uuid` - synchronizes cloud with given uuid \n'
             ' manage.py synccloud --customer=`customer_uuid` --all - synchronizes '
-            'all clouds, which cusomers uuid == given uuid\n'
+            'all clouds belonging to a customer with a given UUID\n'
             ' manage.py synccloud --all - synchronizes all clouds')
 
     def add_arguments(self, parser):

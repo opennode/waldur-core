@@ -31,7 +31,7 @@ class CloudTest(test.APISimpleTestCase):
             patched_method.assert_called_with()
             self.assertEqual(response.status_code, 200)
 
-    # XXX This method have to moved to cloud permissions test
+    # XXX This method have to be moved to cloud permissions test
     def test_cloud_sync_permission(self):
         user = structure_factories.UserFactory()
         cloud = factories.CloudFactory()
