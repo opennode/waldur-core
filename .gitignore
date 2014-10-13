@@ -10,6 +10,7 @@ db.sqlite3
 /.project
 /.pydevproject
 /.settings
+/.sublime
 
 nodeconductor/server/settings.py
 

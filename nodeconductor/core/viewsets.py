@@ -26,3 +26,13 @@ class ReadOnlyModelViewSet(rf_mixins.RetrieveModelMixin,
     A viewset that provides default `list()` and `retrieve()` actions.
     """
     pass
+
+
+class CreateModelViewSet(rf_mixins.CreateModelMixin,
+                         rf_mixins.RetrieveModelMixin,
+                         mixins.ListModelMixin,
+                         rf_viewsets.GenericViewSet):
+    """
+    A viewset that provides default `create()`, `list()` and `retrieve()` actions.
+    """
+    pass
