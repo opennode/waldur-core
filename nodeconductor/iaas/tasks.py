@@ -11,7 +11,7 @@ from django.db import transaction, DatabaseError
 import six
 
 from nodeconductor.core.log import EventLoggerAdapter
-from nodeconductor.cloud.models import Flavor
+from nodeconductor.cloud import models as cloud_models
 from nodeconductor.iaas import models
 
 logger = logging.getLogger(__name__)
@@ -207,5 +207,5 @@ def schedule_deleting(instance_uuid, **kwargs):
 def schedule_resizing(instance_uuid, **kwargs):
     with transaction.atomic():
         instance = models.Instance.objects.get(uuid=instance_uuid)
-        instance.flavor = Flavor.objects.get(uuid=kwargs['new_flavor'])
+        instance.flavor = cloud_models.Flavor.objects.get(uuid=kwargs['new_flavor'])
         instance.save()
