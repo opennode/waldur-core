@@ -102,10 +102,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         supported_operations = {
             # code: (scheduled_celery_task, instance_marker_state)
-            'start': (instance.starting_scheduled, tasks.schedule_starting),
-            'stop': (instance.stopping_scheduled, tasks.schedule_stopping),
-            'destroy': (instance.deletion_scheduled, tasks.schedule_deleting),
-            'resize': (instance.resizing_scheduled, tasks.schedule_resizing),
+            'start': (instance.schedule_starting, tasks.schedule_starting),
+            'stop': (instance.schedule_stopping, tasks.schedule_stopping),
+            'destroy': (instance.schedule_deletion, tasks.schedule_deleting),
+            'resize': (instance.schedule_resizing, tasks.schedule_resizing),
         }
 
         logger.info('Scheduling provisioning instance with uuid %s', uuid)
@@ -150,7 +150,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
 
         if new_flavor.exists():
-                return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_uuid)
+            return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_uuid)
 
         return Response({'status': "New flavor is not within the same cloud"},
                         status=status.HTTP_400_BAD_REQUEST)
