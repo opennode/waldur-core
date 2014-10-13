@@ -29,7 +29,7 @@ class CloudViewSet(viewsets.ModelViewSet):
     def pre_save(self, cloud):
         super(CloudViewSet, self).pre_save(cloud)
 
-        if not cloud.customer.roles.filter(
+        if not self.request.user.is_staff and not cloud.customer.roles.filter(
                 permission_group__user=self.request.user,
                 role_type=structure_models.CustomerRole.OWNER,
         ).exists():

@@ -13,10 +13,12 @@ from rest_framework.views import APIView
 from saml2.client import Saml2Client
 
 from nodeconductor import __version__
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.serializers import AuthTokenSerializer, Saml2ResponseSerializer
 
 
 logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 
 class ObtainAuthToken(APIView):
@@ -32,7 +34,10 @@ class ObtainAuthToken(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.DATA)
         if serializer.is_valid():
-            token, created = Token.objects.get_or_create(user=serializer.object['user'])
+            user = serializer.object['user']
+            token, created = Token.objects.get_or_create(user=user)
+            event_logger.info('Returning token for successful login of user %s' % user)
+            logger.debug('Returning token for successful login of user %s' % user)
             return Response({'token': token.key})
 
         errors = dict(serializer.errors)
@@ -43,6 +48,7 @@ class ObtainAuthToken(APIView):
         except (KeyError, IndexError):
             pass
 
+        logger.debug('Failed session token retrieval due to %s', errors)
         return Response(errors, status=status.HTTP_401_UNAUTHORIZED)
 
 
@@ -113,6 +119,7 @@ class Saml2AuthView(APIView):
             create_unknown_user=create_unknown_user,
         )
         if user is None:
+            logger.info('Authentication with SAML token has failed, user not found')
             return Response(
                 {'detail': 'SAML2 authentication failed'},
                 status=status.HTTP_401_UNAUTHORIZED
@@ -121,6 +128,7 @@ class Saml2AuthView(APIView):
         post_authenticated.send_robust(sender=user, session_info=session_info)
 
         token, _ = Token.objects.get_or_create(user=user)
+        logger.info('Authenticated with SAML token. Returning token for successful login of user %s' % user)
         return Response({'token': token.key})
 
 assertion_consumer_service = Saml2AuthView.as_view()

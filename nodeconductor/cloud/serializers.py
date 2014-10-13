@@ -18,7 +18,7 @@ class BasicFlavorSerializer(core_serializers.BasicInfoSerializer):
 class FlavorSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Flavor
-        fields = ('url', 'name', 'ram', 'disk', 'cores')
+        fields = ('url', 'uuid', 'name', 'ram', 'disk', 'cores')
         lookup_field = 'uuid'
 
 

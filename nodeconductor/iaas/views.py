@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+
 import django_filters
 import logging
 from django.http.response import Http404
@@ -8,10 +9,11 @@ from rest_framework import permissions, status
 from rest_framework import mixins
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework import filters as rf_filter
 
-from nodeconductor.cloud.models import Cloud
+from nodeconductor.cloud.models import Cloud, Flavor
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
@@ -19,6 +21,7 @@ from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.structure import filters
 from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.structure.models import ProjectRole
 
 
 logger = logging.getLogger(__name__)
@@ -83,7 +86,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
         return queryset
 
-    def _schedule_transition(self, request, uuid, operation):
+    def _schedule_transition(self, request, uuid, operation, **kwargs):
         # Importing here to avoid circular imports
         from nodeconductor.iaas import tasks
         # XXX: this should be testing for actions/role pairs as well
@@ -92,11 +95,17 @@ class InstanceViewSet(mixins.CreateModelMixin,
         if instance is None:
             raise Http404()
 
+        is_admin = instance.project.roles.filter(permission_group__user=request.user,
+                                                 role_type=ProjectRole.ADMINISTRATOR).exists()
+        if not is_admin:
+            raise PermissionDenied()
+
         supported_operations = {
             # code: (scheduled_celery_task, instance_marker_state)
             'start': (instance.starting_scheduled, tasks.schedule_starting),
             'stop': (instance.stopping_scheduled, tasks.schedule_stopping),
             'destroy': (instance.deletion_scheduled, tasks.schedule_deleting),
+            'resize': (instance.resizing_scheduled, tasks.schedule_resizing),
         }
 
         logger.info('Scheduling provisioning instance with uuid %s', uuid)
@@ -105,7 +114,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         try:
             instance_schedule_transition()
             instance.save()
-            processing_task.delay(uuid)
+            processing_task.delay(uuid, **kwargs)
         except TransitionNotAllowed:
             return Response({'status': 'Performing %s operation from instance state \'%s\' is not allowed'
                             % (operation, instance.get_state_display())},
@@ -123,6 +132,28 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     def destroy(self, request, uuid=None):
         return self._schedule_transition(request, uuid, 'destroy')
+
+    @action()
+    def resize(self, request, uuid=None):
+        try:
+            instance = models.Instance.objects.get(uuid=uuid)
+        except models.Instance.DoesNotExist:
+            raise Http404()
+
+        try:
+            flavor_uuid = request.DATA['flavor']
+        except KeyError:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        instance_cloud = instance.flavor.cloud
+
+        new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
+
+        if new_flavor.exists():
+                return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_uuid)
+
+        return Response({'status': "New flavor is not within the same cloud"},
+                        status=status.HTTP_400_BAD_REQUEST)
 
 
 class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):

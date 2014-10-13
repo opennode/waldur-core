@@ -32,7 +32,7 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'name', 'customer', 'customer_name', 'project_groups')
+        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'project_groups')
         lookup_field = 'uuid'
 
     def get_related_paths(self):
@@ -57,7 +57,7 @@ class CustomerSerializer(core_serializers.CollectedFieldsMixin,
 
     class Meta(object):
         model = models.Customer
-        fields = ('url', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
+        fields = ('url', 'uuid', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
         lookup_field = 'uuid'
 
     def _get_filtered_data(self, objects, serializer):
@@ -84,7 +84,7 @@ class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.ProjectGroup
-        fields = ('url', 'name', 'customer', 'customer_name', 'projects')
+        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'projects')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
@@ -218,8 +218,7 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
     class Meta(object):
         model = User.groups.through
         fields = (
-            'url',
-            'role',
+            'url', 'role',
             'customer', 'customer_name',
             'user', 'user_full_name', 'user_native_name',
         )

@@ -17,6 +17,7 @@ from django_fsm import transition
 
 from nodeconductor.backup import models as backup_models
 from nodeconductor.cloud import models as cloud_models
+from nodeconductor.core import fields
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
 
@@ -108,6 +109,9 @@ class Instance(core_models.UuidMixin,
 
         DELETED = 'x'
 
+        RESIZING_SCHEDULED = 'r'
+        RESIZING = 'R'
+
         CHOICES = (
             (PROVISIONING_SCHEDULED, _('Provisioning Scheduled')),
             (PROVISIONING, _('Provisioning')),
@@ -126,13 +130,16 @@ class Instance(core_models.UuidMixin,
             (DELETION_SCHEDULED, _('Deletion Scheduled')),
             (DELETING, _('Deleting')),
             (DELETED, _('Deleted')),
+
+            (RESIZING_SCHEDULED, _('Resizing Scheduled')),
+            (RESIZING, _('Resizing')),
         )
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
-    ips = models.CharField(max_length=256)
+    ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
 
     state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
@@ -176,6 +183,18 @@ class Instance(core_models.UuidMixin,
 
     @transition(field=state, source=States.DELETING, target=States.DELETED)
     def deleted(self):
+        pass
+
+    @transition(field=state, source=States.OFFLINE, target=States.RESIZING_SCHEDULED)
+    def resizing_scheduled(self):
+        pass
+
+    @transition(field=state, source=States.RESIZING_SCHEDULED, target=States.RESIZING)
+    def resizing(self):
+        pass
+
+    @transition(field=state, source=States.RESIZING, target=States.OFFLINE)
+    def resized(self):
         pass
 
     @transition(field=state, source='*', target=States.ERRED)
