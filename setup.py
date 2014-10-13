@@ -10,6 +10,7 @@ dev_requires = [
 tests_requires = [
     'factory_boy==2.4.1',
     'six>=1.7.3',
+    'mock==1.0.1'
 ]
 
 install_requires = [
@@ -25,6 +26,8 @@ install_requires = [
     'djangosaml2>=0.11.0,<0.12',
     'logan==0.5.9.1',
     'redis==2.10.3',
+    'croniter==0.3.5',
+    'unittest2==0.5.1',
     'South==0.8.4',
 ]
 
