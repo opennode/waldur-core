@@ -52,8 +52,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         can_manage = self.request.QUERY_PARAMS.get('can_manage', None)
         if can_manage is not None:
-            queryset = queryset.filter(roles__permission_group__user=user,
-                                       roles__role_type=models.ProjectRole.MANAGER).distinct()
+            #XXX: Let the DB cry...
+            queryset = queryset.filter(
+                Q(customer__roles__permission_group__user=user,
+                  customer__roles__role_type=models.CustomerRole.OWNER)
+                |
+                Q(roles__permission_group__user=user,
+                  roles__role_type=models.ProjectRole.MANAGER)
+            ).distinct()
 
         return queryset
 

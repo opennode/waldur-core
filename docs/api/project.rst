@@ -5,7 +5,10 @@ To get a list of projects, run GET against */api/projects/* as authenticated use
 only see connected projects:
 
 - projects that the user owns as a customer
-- projects where user has a role
+- projects where user has any role
+
+An optional filter **?can_manage** is supported to return a list of projects where current user is manager or a customer
+owner.
 
 Create a new project
 ---------------------
