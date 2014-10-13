@@ -45,6 +45,12 @@ class Cloud(UuidMixin, models.Model):
     def __str__(self):
         return self.name
 
+    def sync(self):
+        """
+        Synchronizes nodeconductor cloud with real cloud account
+        """
+        pass
+
 
 def get_related_clouds(obj, request):
     related_clouds = obj.clouds.all()
@@ -75,6 +81,7 @@ def add_clouds_to_related_model(sender, fields, **kwargs):
         return
 
     fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
+
 
 @python_2_unicode_compatible
 class Flavor(UuidMixin, models.Model):
