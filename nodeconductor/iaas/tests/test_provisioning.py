@@ -185,7 +185,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     @unittest.skip('Requires extension via celery test runner')
-    def test_user_cannot_change_flavor_of_stopped_instance_he_is_manager_of(self):
+    def test_user_can_change_flavor_of_stopped_instance_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
         new_flavor = cloud_factories.FlavorFactory(cloud=self.admined_instance.flavor.cloud)
