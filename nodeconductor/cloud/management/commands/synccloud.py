@@ -53,15 +53,3 @@ class Command(BaseCommand):
                 self._sync_all_clouds(customer)
             else:
                 raise CommandError('Error: Clouds uuids or `--all` option have to be defined')
-
-
-        # for poll_id in options['poll_id']:
-        #     try:
-        #         poll = Poll.objects.get(pk=poll_id)
-        #     except Poll.DoesNotExist:
-        #         raise CommandError('Poll "%s" does not exist' % poll_id)
-
-        #     poll.opened = False
-        #     poll.save()
-
-        #     self.stdout.write('Successfully closed poll "%s"' % poll_id)
