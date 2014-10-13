@@ -21,9 +21,19 @@ User = auth.get_user_model()
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
-    """TODO: add documentation.
+    """List of customers that are accessible by this user.
 
-    TODO: describe permissions for different user types.
+    TODO: Customer definition.
+
+    Customers are connected to users through roles, whereas user may have role "customer owner". Each customer may have multiple owners, and each user may own multiple customers.
+
+    Staff members can list all available customers and create new customers.
+
+    Customer owners can list all customers they own. Customer owners can also create new customers.
+
+    Project administrators can list all the customers that own any of the projects they are administrators in.
+
+    Project managers can list all the customers that own any of the projects they are managers in.
     """
 
     queryset = models.Customer.objects.all()
@@ -44,9 +54,23 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    """TODO: add documentation.
+    """List of projects that are accessible by this user.
 
-    TODO: describe permissions for different user types.
+    TODO: Project definition.
+
+    Projects are connected to customers, whereas the project may belong to one customer only, and the customer may have multiple projects.
+
+    Projects are connected to project groups, whereas the project may belong to multiple project groups, and the project group may contain multiple projects.
+
+    Projects are connected to clouds, whereas the project may contain multiple clouds, and the cloud may belong to multiple projects.
+
+    Staff members can list all available projects of any customer and create new projects.
+
+    Customer owners can list all projects that belong to any of the customers they own. Customer owners can also create projects for the customers they own.
+
+    Project administrators can list all the projects they are administrators in.
+
+    Project managers can list all the projects they are managers in.
     """
 
     queryset = models.Project.objects.all()
@@ -75,7 +99,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
-    """TODO: add documentation.
+    """List of project groups that are accessible by this user.
+
+    TODO: Project group definition.
 
     TODO: describe permissions for different user types.
     """
@@ -92,7 +118,9 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
-    """TODO: add documentation.
+    """List of project groups members that are accessible by this user.
+
+    TODO: Project group membership definition.
 
     TODO: describe permissions for different user types.
     """
@@ -152,7 +180,9 @@ class UserFilter(django_filters.FilterSet):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    """TODO: add documentation.
+    """List of users that are accessible by this user.
+
+    TODO: User definition.
 
     TODO: describe permissions for different user types.
     """

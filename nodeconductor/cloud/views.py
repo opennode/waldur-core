@@ -38,11 +38,11 @@ class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
 class CloudViewSet(viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
 
-    TODO: Cloud definition.
+    Cloud represents an instance of an account in a certain service accessible over APIs, for example OpenStack IaaS instance.
+
+    Clouds are connected to customers, whereas the cloud may belong to one customer only, and the customer may have multiple clouds.
 
     Clouds are connected to projects, whereas the cloud may belong to multiple projects, and the project may contain multiple clouds.
-
-    Clouds are also connected to customers, whereas the cloud may belong to one customer only, and the customer may have multiple clouds.
 
     Staff members can list all available clouds for any project and/or customer and create new clouds.
 
