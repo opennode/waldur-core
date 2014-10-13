@@ -28,7 +28,7 @@ class Command(BaseCommand):
             raise CommandError('No cloud with uuid: %s' % str(uuid))
 
     def _sync_all_clouds(self, customer):
-        clouds = models.Cloud.all()
+        clouds = models.Cloud.objects.all()
         if customer is not None:
             clouds = clouds.filter(customer=customer)
         for cloud in clouds:
