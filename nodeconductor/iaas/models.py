@@ -145,7 +145,7 @@ class Instance(core_models.UuidMixin,
     def begin_provisioning(self):
         pass
 
-    @transition(field=state, source=[States.PROVISIONING, States.STOPPING], target=States.OFFLINE)
+    @transition(field=state, source=[States.PROVISIONING, States.STOPPING, States.RESIZING], target=States.OFFLINE)
     def set_offline(self):
         pass
 
