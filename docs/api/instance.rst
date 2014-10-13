@@ -98,5 +98,5 @@ Valid request example (token is user specific):
     Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
     Host: example.com
 
-NB! Only stopped isntances can be deleted.
+NB! Only stopped instances can be deleted.
 
