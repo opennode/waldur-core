@@ -44,8 +44,8 @@ class CloudViewSet(viewsets.ModelViewSet):
         super(CloudViewSet, self).pre_save(cloud)
         self._check_permission(cloud)
 
-    @action
-    def sync(self, uuid):
+    @action()
+    def sync(self, request, uuid):
         """
         Starts cloud synchronization
         """
