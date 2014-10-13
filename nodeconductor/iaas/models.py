@@ -142,59 +142,59 @@ class Instance(core_models.UuidMixin,
                      help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
     @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
-    def provisioning(self):
+    def begin_provisioning(self):
         pass
 
     @transition(field=state, source=[States.PROVISIONING, States.STOPPING], target=States.OFFLINE)
-    def offline(self):
+    def set_offline(self):
         pass
 
     @transition(field=state, source=States.OFFLINE, target=States.STARTING_SCHEDULED)
-    def starting_scheduled(self):
+    def schedule_starting(self):
         pass
 
     @transition(field=state, source=States.STARTING_SCHEDULED, target=States.STARTING)
-    def starting(self):
+    def begin_starting(self):
         pass
 
     @transition(field=state, source=[States.STARTING, States.PROVISIONING], target=States.ONLINE)
-    def online(self):
+    def set_online(self):
         pass
 
     @transition(field=state, source=States.ONLINE, target=States.STOPPING_SCHEDULED)
-    def stopping_scheduled(self):
+    def schedule_stopping(self):
         pass
 
     @transition(field=state, source=States.STOPPING_SCHEDULED, target=States.STOPPING)
-    def stopping(self):
+    def begin_stopping(self):
         pass
 
     @transition(field=state, source=States.OFFLINE, target=States.DELETION_SCHEDULED)
-    def deletion_scheduled(self):
+    def schedule_deletion(self):
         pass
 
     @transition(field=state, source=States.DELETION_SCHEDULED, target=States.DELETING)
-    def deleting(self):
+    def begin_deleting(self):
         pass
 
     @transition(field=state, source=States.DELETING, target=States.DELETED)
-    def deleted(self):
+    def set_deleted(self):
         pass
 
     @transition(field=state, source=States.OFFLINE, target=States.RESIZING_SCHEDULED)
-    def resizing_scheduled(self):
+    def schedule_resizing(self):
         pass
 
     @transition(field=state, source=States.RESIZING_SCHEDULED, target=States.RESIZING)
-    def resizing(self):
+    def begin_resizing(self):
         pass
 
     @transition(field=state, source=States.RESIZING, target=States.OFFLINE)
-    def resized(self):
+    def set_resized(self):
         pass
 
     @transition(field=state, source='*', target=States.ERRED)
-    def erred(self):
+    def set_erred(self):
         pass
 
     def clean(self):

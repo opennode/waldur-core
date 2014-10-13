@@ -102,10 +102,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         supported_operations = {
             # code: (scheduled_celery_task, instance_marker_state)
-            'start': (instance.starting_scheduled, tasks.schedule_starting),
-            'stop': (instance.stopping_scheduled, tasks.schedule_stopping),
-            'destroy': (instance.deletion_scheduled, tasks.schedule_deleting),
-            'resize': (instance.resizing_scheduled, tasks.schedule_resizing),
+            'start': (instance.schedule_starting, tasks.schedule_starting),
+            'stop': (instance.schedule_stopping, tasks.schedule_stopping),
+            'destroy': (instance.schedule_deletion, tasks.schedule_deleting),
+            'resize': (instance.schedule_resizing, tasks.schedule_resizing),
         }
 
         logger.info('Scheduling provisioning instance with uuid %s', uuid)
