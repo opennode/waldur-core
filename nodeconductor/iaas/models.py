@@ -293,7 +293,9 @@ class InstanceSecurityGroup(core_models.UuidMixin, models.Model):
 
     @property
     def _cloud_security_group(self):
-        return cloud_models.SecurityGroups.groups[self.name]
+        if not hasattr(self, '_security_group'):
+            self._security_group = [g for g in cloud_models.SecurityGroups.groups if g['name'] == self.name][0]
+        return self._security_group
 
     @property
     def protocol(self):
