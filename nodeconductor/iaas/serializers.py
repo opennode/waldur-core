@@ -7,24 +7,28 @@ from nodeconductor.iaas import models
 from nodeconductor.structure import serializers as structure_serializers
 
 
-class InstanceCreateSerializer(PermissionFieldFilteringMixin,
-                               serializers.HyperlinkedModelSerializer):
-    class Meta(object):
-        model = models.Instance
-        fields = ('url', 'hostname', 'description',
-                  'template', 'flavor', 'project')
-        lookup_field = 'uuid'
-        # TODO: Accept ip address count and volumes
-
-    def get_filtered_field_names(self):
-        return 'project', 'flavor'
-
-
 class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
     class Meta(object):
         model = models.InstanceSecurityGroup
         fields = ('name', )
+
+
+class InstanceCreateSerializer(PermissionFieldFilteringMixin,
+                               serializers.HyperlinkedModelSerializer):
+
+    security_groups = InstanceSecurityGroupSerializer(
+        many=True, required=False, allow_add_remove=True, read_only=False)
+
+    class Meta(object):
+        model = models.Instance
+        fields = ('url', 'hostname', 'description',
+                  'template', 'flavor', 'project', 'security_groups')
+        lookup_field = 'uuid'
+        # TODO: Accept ip address count and volumes
+
+    def get_filtered_field_names(self):
+        return 'project', 'flavor'
 
 
 class InstanceSerializer(RelatedResourcesFieldMixin,
@@ -38,7 +42,8 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     backups = backup_serializers.BackupSerializer()
     backup_schedules = backup_serializers.BackupScheduleSerializer()
 
-    security_groups = InstanceSecurityGroupSerializer()
+    security_groups = InstanceSecurityGroupSerializer(
+        many=True, required=False, allow_add_remove=True, read_only=False)
 
     class Meta(object):
         model = models.Instance
