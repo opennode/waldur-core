@@ -20,6 +20,13 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
         return 'project', 'flavor'
 
 
+class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
+
+    class Meta(object):
+        model = models.InstanceSecurityGroup
+        fields = ('name', )
+
+
 class InstanceSerializer(RelatedResourcesFieldMixin,
                          PermissionFieldFilteringMixin,
                          serializers.HyperlinkedModelSerializer):
@@ -31,6 +38,8 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     backups = backup_serializers.BackupSerializer()
     backup_schedules = backup_serializers.BackupScheduleSerializer()
 
+    security_groups = InstanceSecurityGroupSerializer()
+
     class Meta(object):
         model = models.Instance
         fields = (
@@ -40,7 +49,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'flavor', 'flavor_name',
             'project', 'project_name',
             'customer', 'customer_name',
-            'project_groups',
+            'project_groups', 'security_groups',
             'ips',
             # TODO: add security groups 1:N (source, port, proto, desc, url)
             'state',
