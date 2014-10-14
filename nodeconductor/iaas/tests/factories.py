@@ -5,6 +5,7 @@ import factory
 import factory.fuzzy
 
 from nodeconductor.iaas import models
+from nodeconductor.cloud import models as cloud_models
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -54,3 +55,11 @@ class PurchaseFactory(factory.DjangoModelFactory):
     date = factory.LazyAttribute(lambda o: timezone.now())
     user = factory.SubFactory(structure_factories.UserFactory)
     project = factory.SubFactory(structure_factories.ProjectFactory)
+
+
+class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.InstanceSecurityGroup
+
+    instance = factory.SubFactory(InstanceFactory)
+    name = factory.Iterator(cloud_models.SecurityGroups.group_names)
