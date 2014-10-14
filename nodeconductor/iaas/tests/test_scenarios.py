@@ -13,19 +13,19 @@ from nodeconductor.iaas.tests import factories
 from nodeconductor.iaas import models
 
 
-def _flavor_url(self, flavor):
+def _flavor_url(flavor):
     return 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': flavor.uuid})
 
 
-def _project_url(self, project):
+def _project_url(project):
     return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
 
 
-def _template_url(self, template):
+def _template_url(template):
     return 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
 
 
-def _instance_url(self, instance):
+def _instance_url(instance):
     return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
 
 
@@ -66,6 +66,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
                 "ip_range": "0.0.0.0/0"
             },
         ]
+        cloud_models.SecurityGroups.groups_names = [g['name'] for g in cloud_models.SecurityGroups.groups]
         self.user = structure_factories.UserFactory.create()
         self.instance = factories.InstanceFactory()
         self.instance.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
