@@ -76,12 +76,14 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         security_groups = [
             factories.InstanceSecurityGroupFactory(instance=self.instance, name=g['name'])
             for g in cloud_models.SecurityGroups.groups]
-        expected_security_groups = [g.name for g in security_groups]
 
         response = self.client.get(_instance_url(self.instance))
         self.assertEqual(response.status_code, 200)
         context = json.loads(response.content)
-        self.assertSequenceEqual([g['name'] for g in context['security_groups']], expected_security_groups)
+        fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range')
+        for field in fields:
+            expected_security_groups = [getattr(g, field) for g in security_groups]
+            self.assertSequenceEqual([g[field] for g in context['security_groups']], expected_security_groups)
 
     def test_add_instance_with_security_groups(self):
         data = _instance_data(self.instance)
