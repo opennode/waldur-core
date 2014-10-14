@@ -1,11 +1,11 @@
 --- a/nodeconductor/server/logan_runner.py
 +++ b/nodeconductor/server/logan_runner.py
-@@ -48,7 +48,7 @@
+@@ -35,7 +35,7 @@
  def main():
      run_app(
          project='nodeconductor',
--        default_config_path='~/.nodeconductor/nodeconductor.conf.py',
-+        default_config_path='/etc/nodeconductor/settings.py',
+-        default_config_path='~/.nodeconductor/settings.py',
++        default_config_path='/usr/lib/python2.6/site-packages/nodeconductor/server/settings_ini.py',
          default_settings='nodeconductor.server.base_settings',
          settings_initializer=generate_settings,
          settings_envvar='NODECONDUCTOR_CONF',

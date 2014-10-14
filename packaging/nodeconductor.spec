@@ -10,25 +10,27 @@
 
 %define __celeryd_conf_file %{__system_conf_dir}/%{name}-celeryd
 %define __celeryd_init_file %{__init_dir}/%{name}-celeryd
-%define __conf_file %{__conf_dir}/settings.py
+%define __conf_file %{__conf_dir}/settings.ini
 %define __logrotate_conf_file %{__logrotate_dir}/%{name}
 %define __saml2_cert_file %{__saml2_conf_dir}/dummy.crt
 %define __saml2_key_file %{__saml2_conf_dir}/dummy.pem
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.3.0
+Version: 0.4.0
 Release: 1
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: logrotate
 Requires: MySQL-python
 Requires: python-celery >= 3.1.15, python-celery < 3.2
+Requires: python-croniter = 0.3.5
 Requires: python-django16 >= 1.6.5
 Requires: python-django-auth-ldap >= 1.2.0
 Requires: python-django-filter = 0.7
 Requires: python-django-fsm = 2.2.0
 Requires: python-django-permission = 0.8.2
+Requires: python-django-request-logging = 1.0.1
 Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework < 2.4.0
 Requires: python-django-saml2 >= 0.11.0, python-django-saml2 < 0.12
 Requires: python-django-uuidfield = 0.5.0
@@ -42,6 +44,7 @@ Source0: %{name}-%{version}.tar.gz
 Patch0001: 0001-wsgi-default-settings-path.patch
 Patch0002: 0002-logan-runner-default-settings-path.patch
 Patch0003: 0003-celery-default-settings-path.patch
+Patch0004: 0004-default-settings-ini-path.patch
 
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
@@ -57,6 +60,7 @@ NodeConductor is a infrastructure and application management server developed by
 %patch0001 -p1
 %patch0002 -p1
 %patch0003 -p1
+%patch0004 -p1
 
 %build
 python setup.py build
@@ -70,6 +74,7 @@ echo "%{__celeryd_run_dir}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__conf_dir}
 echo "%{__conf_dir}" >> INSTALLED_FILES
+cp packaging%{__conf_file} %{buildroot}%{__conf_file}
 
 mkdir -p %{buildroot}%{__data_dir}/static
 echo "%{__data_dir}" >> INSTALLED_FILES
@@ -95,14 +100,6 @@ echo "%{__celeryd_conf_file}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__work_dir}
 echo "%{__work_dir}" >> INSTALLED_FILES
-
-cp nodeconductor/server/settings.py.template %{buildroot}%{__conf_file}
-sed -i 's,{{ db_file_path }},%{__work_dir}/db.sqlite3,' %{buildroot}%{__conf_file}
-sed -i 's,{{ static_root }},%{__data_dir}/static,' %{buildroot}%{__conf_file}
-sed -i "s#^    'default': DATABASE_NONE#    'default': DATABASE_MYSQL#" %{buildroot}%{__conf_file}
-sed -i "s#^    'attribute_map_dir': '/path/to/attribute-maps',#    'attribute_map_dir': '%{__saml2_conf_dir}/attribute-maps',#" %{buildroot}%{__conf_file}
-sed -i "s#^    'key_file': '/path/to/key.pem',#    'key_file': '%{__saml2_key_file}',#" %{buildroot}%{__conf_file}
-sed -i "s#^    'cert_file': '/path/to/certificate.crt',#    'cert_file': '%{__saml2_cert_file}',#" %{buildroot}%{__conf_file}
 
 cat INSTALLED_FILES | sort | uniq > INSTALLED_FILES_CLEAN
 
@@ -149,27 +146,36 @@ Next steps:
 
 4. Initialize application:
 
-    nodeconductor syncdb --noinput
-    nodeconductor migrate --noinput
+    sudo -u nodeconductor nodeconductor syncdb --noinput
+    sudo -u nodeconductor nodeconductor migrate --noinput
     nodeconductor collectstatic --noinput
 
 Note: you will need to run this again on next NodeConductor update.
 
-5. Create first superuser (if needed and not yet done):
+5. Start task queue backend:
+
+    service nodeconductor-celeryd start
+
+6. Create first superuser (if needed and not yet done):
 
     nodeconductor createsuperuser
 
-6. Configure SAML2 details in %{__conf_file}:
+7. Configure SAML2 details in %{__conf_file}:
 
-    'entityid': ...
-    'assertion_consumer_service': ...
-    'metadata': ...
+    [saml2]
+    entityid = ...
+    acs_url = ...
+    metadata_file = ...
 
 All done. Happy NodeConducting!
 ------------------------------------------------------------------------
 EOF
 
 %changelog
+* Tue Oct 14 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.4.0-1
+- New upstream release
+- New settings file format: .ini instead of .py
+
 * Wed Oct 1 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.3.0-1
 - New upstream release
 - Celery scripts added
