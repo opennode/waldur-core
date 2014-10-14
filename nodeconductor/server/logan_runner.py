@@ -1,35 +1,5 @@
 from logan.runner import run_app
 
-CONFIG_TEMPLATE = """
-# Django settings for nodeconductor project.
-from nodeconductor.server.base_settings import *
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = %(secret_key)r
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-TEMPLATE_DEBUG = True
-
-ALLOWED_HOSTS = ['127.0.0.1']
-
-# Application definition
-
-# Database
-# https://docs.djangoproject.com/en/1.6/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
-}
-STATIC_ROOT = %(static_root)r
-
-"""
-
-
 def generate_settings():
     """
     This command is run when ``default_path`` doesn't exist, or ``init`` is
@@ -39,16 +9,33 @@ def generate_settings():
     import os
     import base64
 
-    return CONFIG_TEMPLATE % {
-        'secret_key': base64.b64encode(os.urandom(32)),
-        'static_root': os.path.join(os.getcwd(), 'static_files')
-    }
+    from ConfigParser import RawConfigParser
+
+    config_dir = os.path.join(os.path.expanduser("~"), ".nodeconductor")
+    os.path.isdir(config_dir) or os.makedirs(config_dir)
+
+    config = RawConfigParser()
+    config.add_section('global')
+    config.set('global', 'debug', 'true')
+    config.set('global', 'secret_key', base64.b64encode(os.urandom(32)))
+    config.set('global', 'static_root', os.path.join(os.getcwd(), 'static_files'))
+    config.set('global', 'template_debug', 'true')
+    config.add_section('logging')
+    config.set('logging', 'log_file', os.path.join(config_dir, 'nodeconductor.log'))
+
+    with open(os.path.join(config_dir, "settings.ini"), 'w+') as f:
+        config.write(f)
+
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "settings_ini.py")) as f:
+        config_template = f.read()
+
+    return config_template
 
 
 def main():
     run_app(
         project='nodeconductor',
-        default_config_path='~/.nodeconductor/nodeconductor.conf.py',
+        default_config_path='~/.nodeconductor/settings.py',
         default_settings='nodeconductor.server.base_settings',
         settings_initializer=generate_settings,
         settings_envvar='NODECONDUCTOR_CONF',
