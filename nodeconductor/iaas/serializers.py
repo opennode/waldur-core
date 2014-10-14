@@ -9,9 +9,14 @@ from nodeconductor.structure import serializers as structure_serializers
 
 class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
+    protocol = serializers.CharField(read_only=True)
+    from_port = serializers.CharField(read_only=True)
+    to_port = serializers.CharField(read_only=True)
+    ip_range = serializers.CharField(read_only=True)
+
     class Meta(object):
         model = models.InstanceSecurityGroup
-        fields = ('name', )
+        fields = ('name', 'protocol')
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,
