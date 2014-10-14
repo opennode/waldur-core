@@ -51,7 +51,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         cloud_models.SecurityGroups.groups = [
             {
                 "name": "test security group1",
-                "description": "test security grou1p description",
+                "description": "test security group1 description",
                 "protocol": "tcp",
                 "from_port": 1,
                 "to_port": 65535,
@@ -59,7 +59,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
             },
             {
                 "name": "test security group2",
-                "description": "test security group description",
+                "description": "test security group2 description",
                 "protocol": "udp",
                 "from_port": 1,
                 "to_port": 65535,
@@ -73,7 +73,9 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.client.force_authenticate(self.user)
 
     def test_groups_list_in_instance_response(self):
-        security_groups = [factories.InstanceSecurityGroupFactory(instance=self.instance) for i in range(5)]
+        security_groups = [
+            factories.InstanceSecurityGroupFactory(instance=self.instance, name=g['name'])
+            for g in cloud_models.SecurityGroups.groups]
         expected_security_groups = [g.name for g in security_groups]
 
         response = self.client.get(_instance_url(self.instance))
