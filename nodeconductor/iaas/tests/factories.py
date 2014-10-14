@@ -62,4 +62,4 @@ class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
         model = models.InstanceSecurityGroup
 
     instance = factory.SubFactory(InstanceFactory)
-    name = factory.Iterator(cloud_models.SecurityGroups.group_names)
+    name = factory.Iterator(cloud_models.SecurityGroups.groups_names)

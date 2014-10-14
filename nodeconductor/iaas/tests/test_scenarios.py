@@ -35,7 +35,7 @@ def _instance_list_url():
 
 def _instance_data(instance=None):
     if instance is None:
-        instance = factories.InstanceFactory
+        instance = factories.InstanceFactory()
     return {
         'hostname': 'test_host',
         'description': 'test description',
@@ -74,16 +74,16 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
 
     def test_groups_list_in_instance_response(self):
         security_groups = [factories.InstanceSecurityGroupFactory(instance=self.instance) for i in range(5)]
-        expcted_security_groups = [g.name for g in security_groups]
+        expected_security_groups = [g.name for g in security_groups]
 
         response = self.client.get(_instance_url(self.instance))
         self.assertEqual(response.status_code, 200)
-        context = json.loads(response.context)
-        self.assertSequenceEqual(context['security_groups'], expcted_security_groups)
+        context = json.loads(response.content)
+        self.assertSequenceEqual([g['name'] for g in context['security_groups']], expected_security_groups)
 
     def test_add_instance_with_security_groups(self):
-        data = _instance_data()
-        data['groups'] = cloud_models.SecurityGroups.groups_names
+        data = _instance_data(self.instance)
+        data['security_groups'] = [{'name': name} for name in cloud_models.SecurityGroups.groups_names]
 
         response = self.client.post(_instance_list_url(), data=data)
         self.assertEqual(response.status_code, 201)
@@ -92,7 +92,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
             [g.name for g in instance.security_groups.all()], cloud_models.SecurityGroups.groups_names)
 
     def test_change_instance_security_groups(self):
-        data = {'groups': cloud_models.SecurityGroups.groups_names}
+        data = {'security_groups': [{'name': name} for name in cloud_models.SecurityGroups.groups_names]}
 
         response = self.client.patch(_instance_url(self.instance), data=data)
         self.assertEqual(response.status_code, 200)
