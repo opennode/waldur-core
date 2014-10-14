@@ -134,9 +134,20 @@ def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
         )
 
 
-class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
+class SecurityGroups(object):
     """
-    A cached information about the Security Group configured in a cloud
+    This class contains list of hard coded openstack security groups.
     """
-    name = models.CharField(max_length=100)
-    cloud = models.ForeignKey(Cloud, related_name='security_groups')
+    groups = [
+        {
+            "name": "test security group",
+            "description": "test security group description",
+            "protocol": "tcp",
+            "from_port": 1,
+            "to_port": 65535,
+            "ip_range": "0.0.0.0/0"
+        }
+    ]
+
+    def groups_names(self):
+        return [g['name'] for g in self.groups]
