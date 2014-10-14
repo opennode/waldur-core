@@ -149,5 +149,4 @@ class SecurityGroups(object):
         }
     ]
 
-    def groups_names(self):
-        return [g['name'] for g in self.groups]
+    groups_names = [g['name'] for g in groups]
