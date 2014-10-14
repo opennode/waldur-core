@@ -7,7 +7,7 @@ from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
-from nodeconductor.core.models import DescribableMixin, UuidMixin
+from nodeconductor.core.models import UuidMixin
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models as structure_models
