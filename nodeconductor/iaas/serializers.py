@@ -16,7 +16,7 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
     class Meta(object):
         model = models.InstanceSecurityGroup
-        fields = ('name', 'protocol')
+        fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range')
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,
