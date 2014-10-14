@@ -140,21 +140,21 @@ LOGGING = {
         # See also: https://docs.python.org/2/library/logging.handlers.html#watchedfilehandler
         'file': {
             'class': 'logging.handlers.WatchedFileHandler',
-            'filename': config.get('logging', 'log_file'),
+            'filename': '/dev/null',
             'filters': ['request'],
             'formatter': 'request_format',
             'level': config.get('logging', 'log_level').upper(),
         },
         'file-event': {
             'class': 'logging.handlers.WatchedFileHandler',
-            'filename': config.get('events', 'log_file'),
+            'filename': '/dev/null',
             'filters': ['request', 'event'],
             'formatter': 'request_format',
             'level': config.get('events', 'log_level').upper(),
         },
         'file-saml2': {
             'class': 'logging.handlers.WatchedFileHandler',
-            'filename': config.get('saml2', 'log_file'),
+            'filename': '/dev/null',
             'filters': ['request'],
             'formatter': 'request_format',
             'level': config.get('saml2', 'log_level').upper(),
@@ -196,18 +196,21 @@ LOGGING = {
 }
 
 if config.get('logging', 'log_file') != '':
+    LOGGING['handlers']['file']['filename'] = config.get('logging', 'log_file')
     LOGGING['loggers']['django']['handlers'].append('file')
 
 if config.getboolean('logging', 'syslog'):
     LOGGING['loggers']['django']['handlers'].append('syslog')
 
 if config.get('events', 'log_file') != '':
+    LOGGING['handlers']['file-event']['filename'] = config.get('events', 'log_file')
     LOGGING['loggers']['nodeconductor']['handlers'].append('file-event')
 
 if config.getboolean('events', 'syslog'):
     LOGGING['loggers']['nodeconductor']['handlers'].append('syslog-event')
 
 if config.get('saml2', 'log_file') != '':
+    LOGGING['handlers']['file-saml2']['filename'] = config.get('saml2', 'log_file')
     LOGGING['loggers']['nodeconductor.core.views']['handlers'].append('file-saml2')
 
 # Static files

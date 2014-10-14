@@ -2,7 +2,7 @@
 #CELERYD_NODES="node1"
 
 # Where to chdir at start. This could be the root of a virtualenv.
-CELERYD_CHDIR="/etc/nodeconductor"
+#CELERYD_CHDIR="venv/nodeconductor"
 
 # Extra arguments
 CELERYD_OPTS="--app=nodeconductor.server"
