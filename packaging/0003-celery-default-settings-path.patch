@@ -5,7 +5,7 @@
  
  # set the default Django settings module for the 'celery' program.
 -os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nodeconductor.server.settings')  # XXX:
-+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')  # XXX:
++os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nodeconductor.server.settings_ini')  # XXX:
  
  app = Celery('nodeconductor')
  
