@@ -1,3 +1,5 @@
+from random import randint
+
 from django.utils import timezone
 import factory
 import factory.fuzzy
@@ -37,9 +39,12 @@ class InstanceFactory(factory.DjangoModelFactory):
     hostname = factory.Sequence(lambda n: 'host%s' % n)
     template = factory.SubFactory(TemplateFactory)
     flavor = factory.SubFactory(cloud_factories.FlavorFactory)
-    project = factory.SubFactory(structure_factories.ProjectFactory, 
+    project = factory.SubFactory(structure_factories.ProjectFactory,
                                  cloud=factory.SelfAttribute('..flavor.cloud'))
     start_time = factory.LazyAttribute(lambda o: timezone.now())
+    ips = factory.LazyAttribute(lambda o: ','.join(
+                                '.'.join('%s' % randint(0, 255) for i in range(4))
+                                for j in range(3)))
 
 
 class PurchaseFactory(factory.DjangoModelFactory):

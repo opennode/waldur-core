@@ -21,6 +21,21 @@ User = auth.get_user_model()
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
+    """List of customers that are accessible by this user.
+
+    TODO: Customer definition.
+
+    Customers are connected to users through roles, whereas user may have role "customer owner". Each customer may have multiple owners, and each user may own multiple customers.
+
+    Staff members can list all available customers and create new customers.
+
+    Customer owners can list all customers they own. Customer owners can also create new customers.
+
+    Project administrators can list all the customers that own any of the projects they are administrators in.
+
+    Project managers can list all the customers that own any of the projects they are managers in.
+    """
+
     queryset = models.Customer.objects.all()
     serializer_class = serializers.CustomerSerializer
     lookup_field = 'uuid'
@@ -28,8 +43,36 @@ class CustomerViewSet(viewsets.ModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
 
+    def pre_delete(self, obj):
+        projects = models.Project.objects.filter(customer=obj).exists()
+        if projects:
+            raise PermissionDenied('Cannot delete customer with existing projects')
+
+        project_groups = models.ProjectGroup.objects.filter(customer=obj).exists()
+        if project_groups:
+            raise PermissionDenied('Cannot delete customer with existing project_groups')
+
 
 class ProjectViewSet(viewsets.ModelViewSet):
+    """List of projects that are accessible by this user.
+
+    TODO: Project definition.
+
+    Projects are connected to customers, whereas the project may belong to one customer only, and the customer may have multiple projects.
+
+    Projects are connected to project groups, whereas the project may belong to multiple project groups, and the project group may contain multiple projects.
+
+    Projects are connected to clouds, whereas the project may contain multiple clouds, and the cloud may belong to multiple projects.
+
+    Staff members can list all available projects of any customer and create new projects.
+
+    Customer owners can list all projects that belong to any of the customers they own. Customer owners can also create projects for the customers they own.
+
+    Project administrators can list all the projects they are administrators in.
+
+    Project managers can list all the projects they are managers in.
+    """
+
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
@@ -43,8 +86,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         can_manage = self.request.QUERY_PARAMS.get('can_manage', None)
         if can_manage is not None:
-            queryset = queryset.filter(roles__permission_group__user=user,
-                                       roles__role_type=models.ProjectRole.MANAGER).distinct()
+            #XXX: Let the DB cry...
+            queryset = queryset.filter(
+                Q(customer__roles__permission_group__user=user,
+                  customer__roles__role_type=models.CustomerRole.OWNER)
+                |
+                Q(roles__permission_group__user=user,
+                  roles__role_type=models.ProjectRole.MANAGER)
+            ).distinct()
 
         return queryset
 
@@ -56,6 +105,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
+    """List of project groups that are accessible by this user.
+
+    TODO: Project group definition.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = models.ProjectGroup.objects.all()
     serializer_class = serializers.ProjectGroupSerializer
     lookup_field = 'uuid'
@@ -68,6 +124,13 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
+    """List of project groups members that are accessible by this user.
+
+    TODO: Project group membership definition.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = models.ProjectGroup.projects.through.objects.all()
     serializer_class = serializers.ProjectGroupMembershipSerializer
     filter_backends = (filters.GenericRoleFilter,)
@@ -123,6 +186,13 @@ class UserFilter(django_filters.FilterSet):
 
 
 class UserViewSet(viewsets.ModelViewSet):
+    """List of users that are accessible by this user.
+
+    TODO: User definition.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = User.objects.all()
     serializer_class = serializers.UserSerializer
     lookup_field = 'uuid'

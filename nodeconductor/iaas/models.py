@@ -4,6 +4,7 @@ import logging
 from decimal import Decimal
 
 from django.conf import settings
+from django.contrib.contenttypes.generic import GenericRelation
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -14,12 +15,15 @@ from django.utils.translation import ugettext as _
 from django_fsm import FSMField
 from django_fsm import transition
 
+from nodeconductor.backup import models as backup_models
 from nodeconductor.cloud import models as cloud_models
+from nodeconductor.core import fields
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
 
 
 logger = logging.getLogger(__name__)
+
 
 @python_2_unicode_compatible
 class Image(core_models.UuidMixin,
@@ -74,6 +78,7 @@ class Template(core_models.UuidMixin,
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
+               backup_models.BackupableMixin,
                models.Model):
     """
     A generalization of a single virtual machine.
@@ -104,6 +109,9 @@ class Instance(core_models.UuidMixin,
 
         DELETED = 'x'
 
+        RESIZING_SCHEDULED = 'r'
+        RESIZING = 'R'
+
         CHOICES = (
             (PROVISIONING_SCHEDULED, _('Provisioning Scheduled')),
             (PROVISIONING, _('Provisioning')),
@@ -122,60 +130,75 @@ class Instance(core_models.UuidMixin,
             (DELETION_SCHEDULED, _('Deletion Scheduled')),
             (DELETING, _('Deleting')),
             (DELETED, _('Deleted')),
+
+            (RESIZING_SCHEDULED, _('Resizing Scheduled')),
+            (RESIZING, _('Resizing')),
         )
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
-    ips = models.CharField(max_length=256)
+    ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
 
     state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
                      help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
     @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
-    def provisioning(self):
+    def begin_provisioning(self):
         pass
 
-    @transition(field=state, source=[States.PROVISIONING, States.STOPPING], target=States.OFFLINE)
-    def offline(self):
+    @transition(field=state, source=[States.PROVISIONING, States.STOPPING, States.RESIZING], target=States.OFFLINE)
+    def set_offline(self):
         pass
 
     @transition(field=state, source=States.OFFLINE, target=States.STARTING_SCHEDULED)
-    def starting_scheduled(self):
+    def schedule_starting(self):
         pass
 
     @transition(field=state, source=States.STARTING_SCHEDULED, target=States.STARTING)
-    def starting(self):
+    def begin_starting(self):
         pass
 
     @transition(field=state, source=[States.STARTING, States.PROVISIONING], target=States.ONLINE)
-    def online(self):
+    def set_online(self):
         pass
 
     @transition(field=state, source=States.ONLINE, target=States.STOPPING_SCHEDULED)
-    def stopping_scheduled(self):
+    def schedule_stopping(self):
         pass
 
     @transition(field=state, source=States.STOPPING_SCHEDULED, target=States.STOPPING)
-    def stopping(self):
+    def begin_stopping(self):
         pass
 
     @transition(field=state, source=States.OFFLINE, target=States.DELETION_SCHEDULED)
-    def deletion_scheduled(self):
+    def schedule_deletion(self):
         pass
 
     @transition(field=state, source=States.DELETION_SCHEDULED, target=States.DELETING)
-    def deleting(self):
+    def begin_deleting(self):
         pass
 
     @transition(field=state, source=States.DELETING, target=States.DELETED)
-    def deleted(self):
+    def set_deleted(self):
+        pass
+
+    @transition(field=state, source=States.OFFLINE, target=States.RESIZING_SCHEDULED)
+    def schedule_resizing(self):
+        pass
+
+    @transition(field=state, source=States.RESIZING_SCHEDULED, target=States.RESIZING)
+    def begin_resizing(self):
+        pass
+
+    @transition(field=state, source=States.RESIZING, target=States.OFFLINE)
+    def set_resized(self):
         pass
 
     @transition(field=state, source='*', target=States.ERRED)
-    def erred(self):
+    def set_erred(self):
         pass
 
     def clean(self):
@@ -191,6 +214,34 @@ class Instance(core_models.UuidMixin,
             'name': self.hostname,
             'status': self.get_state_display(),
         }
+
+    def get_backup_strategy(self):
+        """
+        Fake backup strategy
+        """
+        import os
+
+        class FakeStrategy(backup_models.BackupStrategy):
+
+            @classmethod
+            def backup(cls):
+                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(self.uuid) + '.txt')
+                with open(filename, 'wb+') as f:
+                    f.write('Backing up: %s' % str(self))
+
+            @classmethod
+            def restore(cls, replace_original):
+                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(self.uuid) + '.txt')
+                with open(filename, 'wb+') as f:
+                    f.write('Restoring: %s' % str(self))
+
+            @classmethod
+            def delete(cls):
+                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(self.uuid) + '.txt')
+                with open(filename, 'wb+') as f:
+                    f.write('Deleting: %s' % str(self))
+
+        return FakeStrategy
 
 
 @receiver(post_save, sender=Instance)

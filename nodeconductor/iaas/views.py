@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+
 import django_filters
 import logging
 from django.http.response import Http404
@@ -8,10 +9,11 @@ from rest_framework import permissions, status
 from rest_framework import mixins
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework import filters as rf_filter
 
-from nodeconductor.cloud.models import Cloud
+from nodeconductor.cloud.models import Cloud, Flavor
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
@@ -19,6 +21,7 @@ from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.structure import filters
 from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.structure.models import ProjectRole
 
 
 logger = logging.getLogger(__name__)
@@ -65,6 +68,33 @@ class InstanceViewSet(mixins.CreateModelMixin,
                       core_mixins.ListModelMixin,
                       core_mixins.UpdateOnlyModelMixin,
                       viewsets.GenericViewSet):
+    """List of VM instances that are accessible by this user.
+
+    TODO: VM instance definition.
+
+    VM instances are launched in clouds, whereas the instance may belong to one cloud only, and the cloud may have multiple VM instances.
+
+    VM instance may be in one of the following states:
+     - creating
+     - created
+     - starting
+     - started
+     - stopping
+     - stopped
+     - restarting
+     - deleting
+     - deleted
+     - erred
+
+    Staff members can list all available VM instances in any cloud.
+
+    Customer owners can list all VM instances in all the clouds that belong to any of the customers they own.
+
+    Project administrators can list all VM instances, create new instances and start/stop/restart instances in all the clouds that are connected to any of the projects they are administrators in.
+
+    Project managers can list all VM instances in all the clouds that are connected to any of the projects they are managers in.
+    """
+
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
@@ -83,7 +113,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
         return queryset
 
-    def _schedule_transition(self, request, uuid, operation):
+    def _schedule_transition(self, request, uuid, operation, **kwargs):
         # Importing here to avoid circular imports
         from nodeconductor.iaas import tasks
         # XXX: this should be testing for actions/role pairs as well
@@ -92,11 +122,17 @@ class InstanceViewSet(mixins.CreateModelMixin,
         if instance is None:
             raise Http404()
 
+        is_admin = instance.project.roles.filter(permission_group__user=request.user,
+                                                 role_type=ProjectRole.ADMINISTRATOR).exists()
+        if not is_admin:
+            raise PermissionDenied()
+
         supported_operations = {
             # code: (scheduled_celery_task, instance_marker_state)
-            'start': (instance.starting_scheduled, tasks.schedule_starting),
-            'stop': (instance.stopping_scheduled, tasks.schedule_stopping),
-            'destroy': (instance.deletion_scheduled, tasks.schedule_deleting),
+            'start': (instance.schedule_starting, tasks.schedule_starting),
+            'stop': (instance.schedule_stopping, tasks.schedule_stopping),
+            'destroy': (instance.schedule_deletion, tasks.schedule_deleting),
+            'resize': (instance.schedule_resizing, tasks.schedule_resizing),
         }
 
         logger.info('Scheduling provisioning instance with uuid %s', uuid)
@@ -105,7 +141,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         try:
             instance_schedule_transition()
             instance.save()
-            processing_task.delay(uuid)
+            processing_task.delay(uuid, **kwargs)
         except TransitionNotAllowed:
             return Response({'status': 'Performing %s operation from instance state \'%s\' is not allowed'
                             % (operation, instance.get_state_display())},
@@ -124,8 +160,47 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def destroy(self, request, uuid=None):
         return self._schedule_transition(request, uuid, 'destroy')
 
+    @action()
+    def resize(self, request, uuid=None):
+        try:
+            instance = models.Instance.objects.get(uuid=uuid)
+        except models.Instance.DoesNotExist:
+            raise Http404()
+
+        try:
+            flavor_uuid = request.DATA['flavor']
+        except KeyError:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        instance_cloud = instance.flavor.cloud
+
+        new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
+
+        if new_flavor.exists():
+            return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_uuid)
+
+        return Response({'status': "New flavor is not within the same cloud"},
+                        status=status.HTTP_400_BAD_REQUEST)
+
 
 class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
+    """List of VM templates that are accessible by this user.
+
+    VM template is a description of a system installed on VM instances: OS, disk partition etc.
+
+    VM template is not to be confused with VM instance flavor -- template is a definition of a system to be installed (set of software) whereas flavor is a set of virtual hardware parameters.
+
+    VM templates are connected to clouds, whereas the template may belong to one cloud only, and the cloud may have multiple VM templates.
+
+    Staff members can list all available VM templates in any cloud and create new templates.
+
+    Customer owners can list all VM templates in all the clouds that belong to any of the customers they own.
+
+    Project administrators can list all VM templates and create new VM instances using these templates in all the clouds that are connected to any of the projects they are administrators in.
+
+    Project managers can list all VM templates in all the clouds that are connected to any of the projects they are managers in.
+    """
+
     queryset = models.Template.objects.all()
     serializer_class = serializers.TemplateSerializer
     lookup_field = 'uuid'
@@ -155,6 +230,17 @@ class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 
 class SshKeyViewSet(core_viewsets.ModelViewSet):
+    """List of SSH public keys that are accessible by this user.
+
+    SSH public keys are injected to VM instances during creation, so that holder of corresponding SSH private key can log in to that instance.
+
+    SSH public keys are connected to user accounts, whereas the key may belong to one user only, and the user may have multiple SSH keys.
+
+    Users can only access SSH keys connected to their accounts.
+
+    Project administrators can select what SSH key will be injected to VM instance during instance provisioning.
+    """
+
     queryset = core_models.SshPublicKey.objects.all()
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
@@ -169,6 +255,13 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
 
 
 class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
+    """List of operations with VM templates.
+
+    TODO: list supported operation types.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = models.Purchase.objects.all()
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'
@@ -176,6 +269,11 @@ class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 
 class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
+    """TODO: add documentation.
+
+    TODO: describe permissions for different user types.
+    """
+
     queryset = models.Image.objects.all()
     serializer_class = serializers.ImageSerializer
     lookup_field = 'uuid'

@@ -10,12 +10,19 @@ from django_fsm import TransitionNotAllowed
 from django.db import transaction, DatabaseError
 import six
 
+from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.cloud import models as cloud_models
 from nodeconductor.iaas import models
 
 logger = logging.getLogger(__name__)
+event_log = EventLoggerAdapter(logger)
 
 
 class StateChangeError(RuntimeError):
+    pass
+
+
+class ResizingError(KeyError, models.Instance.DoesNotExist):
     pass
 
 
@@ -53,7 +60,7 @@ def set_state(model_class, uuid, transition):
 
     .. code-block:: python
         # models.py
-        from django.db import
+        from django.db import models
         from nodeconductor.core.models import UuidMixin
 
 
@@ -89,7 +96,7 @@ def set_state(model_class, uuid, transition):
     entity_name = model_class._meta.model_name
 
     logger.info(
-        'About to start %s %s with uuid %s',
+        'About to %s %s with uuid %s',
         logged_operation, entity_name, uuid
     )
 
@@ -103,7 +110,7 @@ def set_state(model_class, uuid, transition):
 
             entity.save()
     except model_class.DoesNotExist:
-        msg = 'Could not perform %s %s with uuid %s. Instance has gone' %\
+        msg = 'Could not %s %s with uuid %s. Instance has gone' %\
             (logged_operation, entity_name, uuid)
         # There's nothing we can do here to save the state of an entity
         logger.error(msg)
@@ -111,26 +118,29 @@ def set_state(model_class, uuid, transition):
         six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
     except DatabaseError:
         # Transaction failed to commit, most likely due to concurrent update
-        msg = 'Could not perform %s %s with uuid %s due to concurrent update' %\
+        msg = 'Could not %s %s with uuid %s due to concurrent update' %\
               (logged_operation, entity_name, uuid)
         logger.error(msg)
 
         six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
     except TransitionNotAllowed:
-        msg = 'Could not perform %s %s with uuid %s, transition not allowed' %\
+        msg = 'Could not %s %s with uuid %s, transition not allowed' %\
               (logged_operation, entity_name, uuid)
         # Leave the entity intact
         logger.error(msg)
         six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
 
-    # TODO: Emit high level event log entry
     logger.info(
-        'Managed to finish %s %s with uuid %s',
+        'Managed to %s %s with uuid %s',
+        logged_operation, entity_name, uuid
+    )
+    event_log.info(
+        'Finished to %s %s with uuid %s',
         logged_operation, entity_name, uuid
     )
 
 
-def tracked_processing(model_class, processing_state, desired_state, error_state='erred'):
+def tracked_processing(model_class, processing_state, desired_state, error_state='set_erred'):
     def decorator(processing_fn):
         @functools.wraps(processing_fn)
         def wrapped(*args, **kwargs):
@@ -154,7 +164,7 @@ def tracked_processing(model_class, processing_state, desired_state, error_state
                 except Exception:
                     # noinspection PyProtectedMember
                     logger.exception(
-                        'Failed to finish %s %s with uuid %s',
+                        'Failed to %s %s with uuid %s',
                         processing_state, model_class._meta.model_name, uuid
                     )
 
@@ -170,24 +180,32 @@ def tracked_processing(model_class, processing_state, desired_state, error_state
 
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='provisioning', desired_state='online')
+@tracked_processing(models.Instance, processing_state='begin_provisioning', desired_state='set_online')
 def schedule_provisioning(instance_uuid):
     _mock_processing(instance_uuid)
 
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='stopping', desired_state='offline')
-def schedule_stopping(instance_uuid):
+@tracked_processing(models.Instance, processing_state='begin_stopping', desired_state='set_offline')
+def schedule_stopping(instance_uuid, **kwargs):
     _mock_processing(instance_uuid)
 
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='starting', desired_state='online')
-def schedule_starting(instance_uuid):
+@tracked_processing(models.Instance, processing_state='begin_starting', desired_state='set_online')
+def schedule_starting(instance_uuid, **kwargs):
     _mock_processing(instance_uuid)
 
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='deleting', desired_state='deleted')
-def schedule_deleting(instance_uuid):
+@tracked_processing(models.Instance, processing_state='begin_deleting', desired_state='set_deleted')
+def schedule_deleting(instance_uuid, **kwargs):
     _mock_processing(instance_uuid)
+
+@shared_task
+@tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
+def schedule_resizing(instance_uuid, **kwargs):
+    with transaction.atomic():
+        instance = models.Instance.objects.get(uuid=instance_uuid)
+        instance.flavor = cloud_models.Flavor.objects.get(uuid=kwargs['new_flavor'])
+        instance.save()

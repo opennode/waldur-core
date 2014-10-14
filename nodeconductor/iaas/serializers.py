@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from nodeconductor.core import models as core_models
-from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin
+from nodeconductor.backup import serializers as backup_serializers
+from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
 from nodeconductor.structure import serializers as structure_serializers
 
@@ -25,6 +26,10 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
+    ips = IPsField(source='ips', read_only=True)
+
+    backups = backup_serializers.BackupSerializer()
+    backup_schedules = backup_serializers.BackupScheduleSerializer()
 
     class Meta(object):
         model = models.Instance
@@ -39,9 +44,9 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'ips',
             # TODO: add security groups 1:N (source, port, proto, desc, url)
             'state',
+            'backups', 'backup_schedules'
         )
 
-        read_only_fields = ('ips',)
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
@@ -55,7 +60,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Template
         fields = (
-            'url',
+            'url', 'uuid',
             'name', 'description', 'icon_url',
             'os',
             'is_active',
@@ -81,7 +86,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 class SshKeySerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = core_models.SshPublicKey
-        fields = ('url', 'name', 'public_key')
+        fields = ('url', 'uuid', 'name', 'public_key')
         lookup_field = 'uuid'
 
 
@@ -98,7 +103,7 @@ class PurchaseSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedMode
     class Meta(object):
         model = models.Purchase
         fields = (
-            'url', 'date',
+            'url', 'uuid', 'date',
             'user', 'user_full_name', 'user_native_name',
             'customer', 'customer_name',
             'project', 'project_name',
@@ -117,7 +122,7 @@ class ImageSerializer(RelatedResourcesFieldMixin,
     class Meta(object):
         model = models.Image
         fields = (
-            'url', 'name', 'description',
+            'url', 'uuid', 'name', 'description',
             'cloud', 'cloud_name',
             'architecture',
         )
