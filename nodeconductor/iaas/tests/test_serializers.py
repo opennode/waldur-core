@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.core.exceptions import ValidationError
+from django.http import Http404
 
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas.tests import factories
@@ -28,7 +29,7 @@ class InstanceCreateSerializerTest(TestCase):
         # wrong public key
         attrs = {'ssh_public_key': factories.SshPublicKeyFactory()}
         attr_name = 'ssh_public_key'
-        self.assertRaises(ValidationError, lambda: self.serializer.validate_ssh_public_key(attrs, attr_name))
+        self.assertRaises(Http404, lambda: self.serializer.validate_ssh_public_key(attrs, attr_name))
         # right public key
         self.serializer.user = attrs['ssh_public_key'].user
         self.serializer.validate_ssh_public_key(attrs, attr_name)
