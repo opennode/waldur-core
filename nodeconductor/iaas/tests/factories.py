@@ -5,6 +5,7 @@ import factory
 import factory.fuzzy
 
 from nodeconductor.iaas import models
+from nodeconductor.core import models as core_models
 from nodeconductor.cloud import models as cloud_models
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.structure.tests import factories as structure_factories
@@ -33,6 +34,15 @@ class TemplateFactory(factory.DjangoModelFactory):
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
 
+class SshPublicKeyFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = core_models.SshPublicKey
+
+    user = factory.SubFactory(structure_factories.UserFactory)
+    name = factory.Sequence(lambda n: 'ssh_public_key%s' % n)
+    public_key = 'som public key'
+
+
 class InstanceFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.Instance
@@ -46,6 +56,7 @@ class InstanceFactory(factory.DjangoModelFactory):
     ips = factory.LazyAttribute(lambda o: ','.join(
                                 '.'.join('%s' % randint(0, 255) for i in range(4))
                                 for j in range(3)))
+    ssh_public_key = factory.SubFactory(SshPublicKeyFactory)
 
 
 class PurchaseFactory(factory.DjangoModelFactory):
