@@ -106,6 +106,14 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         return super(InstanceViewSet, self).get_serializer_class()
 
+    def get_serializer_context(self):
+        """
+        Extra context provided to the serializer class.
+        """
+        context = super(InstanceViewSet, self).get_serializer_context()
+        context['user'] = self.request.user
+        return context
+
     def get_queryset(self):
         queryset = super(InstanceViewSet, self).get_queryset()
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
