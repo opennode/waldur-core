@@ -68,7 +68,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
     ips = IPsField(source='ips', read_only=True)
-
+    ssh_public_key_name = serializers.Field(source='ssh_public_key.name')
     backups = backup_serializers.BackupSerializer()
     backup_schedules = backup_serializers.BackupScheduleSerializer()
 
@@ -83,10 +83,10 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'flavor', 'flavor_name',
             'project', 'project_name',
             'customer', 'customer_name',
-            'ssh_public_key',
-            'project_groups', 'security_groups',
+            'ssh_public_key', 'ssh_public_key_name',
+            'project_groups',
+            'security_groups',
             'ips',
-            # TODO: add security groups 1:N (source, port, proto, desc, url)
             'state',
             'backups', 'backup_schedules'
         )
