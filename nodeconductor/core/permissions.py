@@ -14,7 +14,8 @@ class IsAdminOrReadOnly(BasePermission):
 
 class FilteredCollaboratorsPermissionLogic(PermissionLogic):
     """
-    Permission logic class for collaborators based permission system
+    Permission logic class for collaborators based permission system.
+    For users with is_staff flag everything is allowed.
     """
 
     def __init__(self,
@@ -121,6 +122,10 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
             # Ref: https://code.djangoproject.com/wiki/RowLevelPermissions
             return self.is_permission_allowed(perm)
         elif user_obj.is_active:
+            # if the user is staff, allow everything
+            if user_obj.is_staff:
+                return True
+
             kwargs = {
                 self.collaborators_query: user_obj,
                 'pk': obj.pk,

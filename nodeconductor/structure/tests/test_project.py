@@ -181,6 +181,16 @@ class ProjectManipulationTest(test.APITransactionTestCase):
         response = self.client.delete(self.project_urls['accessible'])
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
+    def test_user_can_delete_project_if_he_is_staff(self):
+        user = factories.UserFactory()
+        user.is_staff = True
+        user.save()
+        self.client.force_authenticate(user=user)
+        project = factories.ProjectFactory()
+        response = self.client.delete(reverse('project-detail',
+                                      kwargs={'uuid': project.uuid}))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
     def test_user_cannot_delete_project_that_does_not_belong_to_owned_customer(self):
         response = self.client.delete(self.project_urls['inaccessible'])
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
