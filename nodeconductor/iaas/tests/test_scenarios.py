@@ -102,3 +102,9 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertSequenceEqual(
             [g.name for g in self.instance.security_groups.all()], cloud_models.SecurityGroups.groups_names)
+
+    def test_security_groups_is_not_required(self):
+        data = _instance_data(self.instance)
+        self.assertNotIn('security_groups', data)
+        response = self.client.post(_instance_list_url(), data=data)
+        self.assertEqual(response.status_code, 201)
