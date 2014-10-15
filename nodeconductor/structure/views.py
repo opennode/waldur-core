@@ -173,6 +173,7 @@ class UserFilter(django_filters.FilterSet):
             'job_title',
             'project',
             'project_group',
+            'username',
         ]
         order_by = [
             'full_name',
@@ -182,6 +183,7 @@ class UserFilter(django_filters.FilterSet):
             'phone_number',
             'description',
             'job_title',
+            'username',
         ]
 
 
