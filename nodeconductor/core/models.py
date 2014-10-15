@@ -154,7 +154,7 @@ class SshPublicKey(UuidMixin, models.Model):
     """
     User public key.
 
-    Used for injection into VMs for remote access. 
+    Used for injection into VMs for remote access.
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_index=True)
     name = models.CharField(max_length=50, blank=True)
