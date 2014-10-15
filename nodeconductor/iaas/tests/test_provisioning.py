@@ -26,6 +26,9 @@ class UrlResolverMixin(object):
     def _get_instance_url(self, instance):
         return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
 
+    def _get_ssh_public_key_url(self, key):
+        return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': key.uuid})
+
 
 class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def setUp(self):
@@ -296,6 +299,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     # Helpers method
     def _get_valid_payload(self, resource=None):
         resource = resource or factories.InstanceFactory()
+        resource.ssh_public_key.user = self.user
+        resource.ssh_public_key.save()
 
         return {
             'hostname': resource.hostname,
@@ -303,6 +308,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'project': self._get_project_url(resource.project),
             'template': self._get_template_url(resource.template),
             'flavor': self._get_flavor_url(resource.flavor),
+            'ssh_public_key': self._get_ssh_public_key_url(resource.ssh_public_key)
         }
 
 # XXX: What should happen to existing instances when their project is removed?
@@ -320,6 +326,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.template = factories.TemplateFactory()
         self.flavor = cloud_factories.FlavorFactory(cloud=cloud)
         self.project = structure_factories.ProjectFactory(cloud=cloud)
+        self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
@@ -473,4 +480,5 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
             # Cloud dependent parameters
             'flavor': self._get_flavor_url(self.flavor),
+            'ssh_public_key': self._get_ssh_public_key_url(self.ssh_public_key)
         }

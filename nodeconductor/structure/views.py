@@ -126,9 +126,9 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_viewsets.GenericViewSet):
     """List of project groups members that are accessible by this user.
 
-    TODO: Project group membership definition.
+    Project group membership expresses projects' links to project group.
 
-    TODO: describe permissions for different user types.
+    Project group membership can be viewed and modified by customer owners and staff users.
     """
 
     queryset = models.ProjectGroup.projects.through.objects.all()

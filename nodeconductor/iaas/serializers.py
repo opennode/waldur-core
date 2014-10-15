@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.http import Http404
 
 from rest_framework import serializers
 
@@ -37,9 +38,13 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = models.Instance
         fields = ('url', 'hostname', 'description',
-                  'template', 'flavor', 'project', 'security_groups')
+                  'template', 'flavor', 'project', 'security_groups', 'ssh_public_key')
         lookup_field = 'uuid'
         # TODO: Accept ip address count and volumes
+
+    def __init__(self, *args, **kwargs):
+        super(InstanceCreateSerializer, self).__init__(*args, **kwargs)
+        self.user = kwargs['context']['user']
 
     def get_filtered_field_names(self):
         return 'project', 'flavor'
@@ -47,6 +52,12 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
     def validate_security_groups(self, attrs, attr_name):
         if attr_name in attrs and attrs[attr_name] is None:
             del attrs[attr_name]
+        return attrs
+
+    def validate_ssh_public_key(self, attrs, attr_name):
+        key = attrs[attr_name]
+        if key.user != self.user:
+            raise Http404
         return attrs
 
 
@@ -72,6 +83,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'flavor', 'flavor_name',
             'project', 'project_name',
             'customer', 'customer_name',
+            'ssh_public_key',
             'project_groups', 'security_groups',
             'ips',
             # TODO: add security groups 1:N (source, port, proto, desc, url)

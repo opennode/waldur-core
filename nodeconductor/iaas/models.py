@@ -4,7 +4,6 @@ import logging
 from decimal import Decimal
 
 from django.conf import settings
-from django.contrib.contenttypes.generic import GenericRelation
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -141,6 +140,7 @@ class Instance(core_models.UuidMixin,
     project = models.ForeignKey(structure_models.Project, related_name='instances')
     ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
+    ssh_public_key = models.ForeignKey(core_models.SshPublicKey, related_name='instances')
 
     state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
                      help_text="WARNING! Should not be changed manually unless you really know what you are doing.")

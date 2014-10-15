@@ -37,6 +37,7 @@ To create a project, client must define:
 - link to the template object;
 - link to the flavor (it _must_ belong to a cloud, which is authorized for usage in the project);
 - link to the project;
+- Link to user's public key;
 - security_groups (optional).
 
 Example of a valid request:
@@ -55,6 +56,7 @@ Example of a valid request:
         "template": "http://example.com/api/iaas-templates/1ee385bc043249498cfeb8c7e3e079f0/",
         "flavor": "http://example.com/api/flavors/c3c546b92845431188636d8f97df223c/",
         "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
+        "ssh_public_key": "http://example.com/api/keys/6fbd6b24246f4fb38715c29bafa2e5e7/",
         "security_groups": [{"name": "security group name 1"}, {"name": security group name 2}]
     }
 
