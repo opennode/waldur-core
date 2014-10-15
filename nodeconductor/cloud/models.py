@@ -7,7 +7,7 @@ from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
-from nodeconductor.core.models import DescribableMixin, UuidMixin
+from nodeconductor.core.models import UuidMixin
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models as structure_models
@@ -134,9 +134,19 @@ def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
         )
 
 
-class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
+class SecurityGroups(object):
     """
-    A cached information about the Security Group configured in a cloud
+    This class contains list of hard coded openstack security groups.
     """
-    name = models.CharField(max_length=100)
-    cloud = models.ForeignKey(Cloud, related_name='security_groups')
+    groups = [
+        {
+            "name": "test security group",
+            "description": "test security group description",
+            "protocol": "tcp",
+            "from_port": 1,
+            "to_port": 65535,
+            "ip_range": "0.0.0.0/0"
+        }
+    ]
+
+    groups_names = [g['name'] for g in groups]

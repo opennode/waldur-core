@@ -74,7 +74,7 @@ class BackupSchedule(core_models.UuidMixin,
 
     def _delete_extra_backups(self):
         """
-        Deletes oldest existed backups if maximal_number_of_backups were riched
+        Deletes oldest existing backups if maximal_number_of_backups was reached
         """
         exclude_states = (Backup.States.DELETING, Backup.States.DELETED, Backup.States.ERRED)
         backups_count = self.backups.exclude(state__in=exclude_states).count()
@@ -85,8 +85,8 @@ class BackupSchedule(core_models.UuidMixin,
 
     def execute(self):
         """
-        Creates new backup, deletes existed if maximal_number_of_backups were
-        riched, calculates new next_trigger_at time.
+        Creates new backup, deletes existing if maximal_number_of_backups was
+        reached, calculates new next_trigger_at time.
         """
         self._create_backup()
         self._delete_extra_backups()

@@ -103,3 +103,9 @@ filters.set_permissions_for_model(
     models.Cloud.projects.through,
     customer_path='cloud__customer',
 )
+
+
+class SecurityGroupsViewSet(rf_viewsets.GenericViewSet):
+
+    def list(self, request, *args, **kwargs):
+        return Response(models.SecurityGroups.groups, status=200)

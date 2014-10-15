@@ -280,3 +280,35 @@ class Purchase(core_models.UuidMixin, models.Model):
             'date': self.date,
         }
 
+
+class InstanceSecurityGroup(core_models.UuidMixin, models.Model):
+    """
+    Cloud security group added to instance
+    """
+    class Permissions(object):
+        project_path = 'instance__project'
+
+    instance = models.ForeignKey(Instance, related_name='security_groups')
+    name = models.CharField(max_length=127)
+
+    @property
+    def _cloud_security_group(self):
+        if not hasattr(self, '_security_group'):
+            self._security_group = [g for g in cloud_models.SecurityGroups.groups if g['name'] == self.name][0]
+        return self._security_group
+
+    @property
+    def protocol(self):
+        return self._cloud_security_group['protocol']
+
+    @property
+    def from_port(self):
+        return self._cloud_security_group['from_port']
+
+    @property
+    def to_port(self):
+        return self._cloud_security_group['to_port']
+
+    @property
+    def ip_range(self):
+        return self._cloud_security_group['ip_range']

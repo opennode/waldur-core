@@ -1,23 +1,53 @@
+from django.core.exceptions import ValidationError
+
 from rest_framework import serializers
 
 from nodeconductor.core import models as core_models
+from nodeconductor.cloud import models as cloud_models
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
 from nodeconductor.structure import serializers as structure_serializers
 
 
+class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
+
+    protocol = serializers.CharField(read_only=True)
+    from_port = serializers.CharField(read_only=True)
+    to_port = serializers.CharField(read_only=True)
+    ip_range = serializers.CharField(read_only=True)
+
+    class Meta(object):
+        model = models.InstanceSecurityGroup
+        fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range')
+
+    def validate_name(self, attrs, attr_name):
+        name = attrs[attr_name]
+        if not name in cloud_models.SecurityGroups.groups_names:
+            raise ValidationError('There is no group with name %s' % name)
+        return attrs
+
+
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,
                                serializers.HyperlinkedModelSerializer):
+
+    security_groups = InstanceSecurityGroupSerializer(
+        many=True, required=False, allow_add_remove=True, read_only=False)
+
     class Meta(object):
         model = models.Instance
         fields = ('url', 'hostname', 'description',
-                  'template', 'flavor', 'project')
+                  'template', 'flavor', 'project', 'security_groups')
         lookup_field = 'uuid'
         # TODO: Accept ip address count and volumes
 
     def get_filtered_field_names(self):
         return 'project', 'flavor'
+
+    def validate_security_groups(self, attrs, attr_name):
+        if attr_name in attrs and attrs[attr_name] is None:
+            del attrs[attr_name]
+        return attrs
 
 
 class InstanceSerializer(RelatedResourcesFieldMixin,
@@ -31,6 +61,8 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     backups = backup_serializers.BackupSerializer()
     backup_schedules = backup_serializers.BackupScheduleSerializer()
 
+    security_groups = InstanceSecurityGroupSerializer(read_only=True)
+
     class Meta(object):
         model = models.Instance
         fields = (
@@ -40,7 +72,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'flavor', 'flavor_name',
             'project', 'project_name',
             'customer', 'customer_name',
-            'project_groups',
+            'project_groups', 'security_groups',
             'ips',
             # TODO: add security groups 1:N (source, port, proto, desc, url)
             'state',

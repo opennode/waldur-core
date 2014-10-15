@@ -1,19 +1,25 @@
 from __future__ import unicode_literals
 
-from mock import patch
+import json
 
 from django.core.urlresolvers import reverse
 
+from mock import patch
 from rest_framework import test
 
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.cloud.tests import factories
+from nodeconductor.cloud import models
 
 
 def _cloud_url(cloud, action=None):
     url = 'http://testserver' + reverse('cloud-detail', args=(str(cloud.uuid), ))
     return url if action is None else url + action + '/'
+
+
+def _security_group_list_url():
+    return 'http://testserver' + reverse('security_group-list')
 
 
 class CloudTest(test.APISimpleTestCase):
@@ -38,3 +44,15 @@ class CloudTest(test.APISimpleTestCase):
         self.client.force_authenticate(user=user)
         response = self.client.post(_cloud_url(cloud, action='sync'))
         self.assertEqual(response.status_code, 403)
+
+
+class SecurityGroupsTest(test.APISimpleTestCase):
+
+    def setUp(self):
+        self.user = structure_factories.UserFactory()
+
+    def test_list_security_groups(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(_security_group_list_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertSequenceEqual(json.loads(response.content), models.SecurityGroups.groups)
