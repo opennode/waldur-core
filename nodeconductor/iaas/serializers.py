@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.http import Http404
 
 from rest_framework import serializers
 
@@ -56,7 +57,7 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
     def validate_ssh_public_key(self, attrs, attr_name):
         key = attrs[attr_name]
         if key.user != self.user:
-            raise ValidationError('Wrong public key')
+            raise Http404
         return attrs
 
 
