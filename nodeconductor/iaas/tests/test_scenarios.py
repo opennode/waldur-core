@@ -33,6 +33,10 @@ def _instance_list_url():
     return 'http://testserver' + reverse('instance-list')
 
 
+def _ssh_public_key_url(key):
+    return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': key.uuid})
+
+
 def _instance_data(instance=None):
     if instance is None:
         instance = factories.InstanceFactory()
@@ -42,6 +46,7 @@ def _instance_data(instance=None):
         'project': _project_url(instance.project),
         'template': _template_url(instance.template),
         'flavor': _flavor_url(instance.flavor),
+        'ssh_public_key': _ssh_public_key_url(instance.ssh_public_key)
     }
 
 
@@ -69,6 +74,8 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         cloud_models.SecurityGroups.groups_names = [g['name'] for g in cloud_models.SecurityGroups.groups]
         self.user = structure_factories.UserFactory.create()
         self.instance = factories.InstanceFactory()
+        self.instance.ssh_public_key.user = self.user
+        self.instance.ssh_public_key.save()
         self.instance.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
         self.client.force_authenticate(self.user)
 
