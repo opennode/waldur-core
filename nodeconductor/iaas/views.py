@@ -70,9 +70,8 @@ class InstanceViewSet(mixins.CreateModelMixin,
                       viewsets.GenericViewSet):
     """List of VM instances that are accessible by this user.
 
-    TODO: VM instance definition.
-
-    VM instances are launched in clouds, whereas the instance may belong to one cloud only, and the cloud may have multiple VM instances.
+    VM instances are launched in clouds, whereas the instance may belong to one cloud only, and the cloud may have
+    multiple VM instances.
 
     VM instance may be in one of the following states:
      - creating
@@ -87,12 +86,11 @@ class InstanceViewSet(mixins.CreateModelMixin,
      - erred
 
     Staff members can list all available VM instances in any cloud.
-
     Customer owners can list all VM instances in all the clouds that belong to any of the customers they own.
-
-    Project administrators can list all VM instances, create new instances and start/stop/restart instances in all the clouds that are connected to any of the projects they are administrators in.
-
-    Project managers can list all VM instances in all the clouds that are connected to any of the projects they are managers in.
+    Project administrators can list all VM instances, create new instances and start/stop/restart instances in all the
+    clouds that are connected to any of the projects they are administrators in.
+    Project managers can list all VM instances in all the clouds that are connected to any of the projects they are
+    managers in.
     """
 
     queryset = models.Instance.objects.all()
