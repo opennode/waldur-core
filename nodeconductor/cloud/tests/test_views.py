@@ -33,6 +33,13 @@ class CloudViewSetTest(TestCase):
         response = self.view.sync(request=mocked_request, uuid=cloud.uuid)
         self.assertEqual(response.status_code, 200)
 
+    def test_get_serializer_context(self):
+        user = structure_factories.UserFactory()
+        mocked_request = type(str('MockedRequest'), (object,), {'user': user})
+        self.view.request = mocked_request
+        self.view.format_kwarg = None
+        self.assertEqual(self.view.get_serializer_context()['user'], user)
+
 
 class SecurityGroupsViewSetTest(TestCase):
 
