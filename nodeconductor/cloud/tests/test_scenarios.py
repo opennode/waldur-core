@@ -45,6 +45,39 @@ class CloudTest(test.APISimpleTestCase):
         response = self.client.post(_cloud_url(cloud, action='sync'))
         self.assertEqual(response.status_code, 403)
 
+    def test_cloud_visible_fields(self):
+        """
+        Tests that customer owner is able to see all fields, project admin and manager - only url, uuid and name
+        """
+        admin = structure_factories.UserFactory()
+        manager = structure_factories.UserFactory()
+        project = structure_factories.ProjectFactory(customer=self.customer)
+        project.add_user(admin, structure_models.ProjectRole.ADMINISTRATOR)
+        project.add_user(manager, structure_models.ProjectRole.MANAGER)
+        cloud = factories.CloudFactory(customer=self.customer)
+        cloud.projects.add(project)
+
+        # admin
+        self.client.force_authenticate(user=admin)
+        response = self.client.get(_cloud_url(cloud))
+        self.assertEqual(response.status_code, 200)
+        context = json.loads(response.content)
+        self.assertEqual(context.keys(), ['url', 'uuid', 'name'])
+
+        # manager
+        self.client.force_authenticate(user=admin)
+        response = self.client.get(_cloud_url(cloud))
+        self.assertEqual(response.status_code, 200)
+        context = json.loads(response.content)
+        self.assertEqual(context.keys(), ['url', 'uuid', 'name'])
+
+        # customer owner
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.get(_cloud_url(cloud))
+        self.assertEqual(response.status_code, 200)
+        context = json.loads(response.content)
+        self.assertGreater(len(context.keys()), len(['url', 'uuid', 'name']))
+
 
 class SecurityGroupsTest(test.APISimpleTestCase):
 
