@@ -179,3 +179,12 @@ class NetworkSegment(models.Model):
     netmask = models.PositiveIntegerField(null=False)
     vlan = models.PositiveIntegerField(null=False)
     project = models.ForeignKey(Project, related_name='segments')
+
+
+class ResourceQuota(models.Model):
+    """ Project or user memory and CPU quotas """
+
+    vcpu = models.PositiveIntegerField(help_text=_('Available CPUs'))
+    ram = models.FloatField(help_text=_('Maximum available RAM size in GB'))
+    storage = models.FloatField(help_text=_('Maximum available storage size in GB'))
+    backup = models.FloatField(help_text=_('Maximum available storage size for backups in GB'))
