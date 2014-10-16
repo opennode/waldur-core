@@ -62,7 +62,10 @@ class ResourceQuotasTest(test.APISimpleTestCase):
             self.assertEquals(getattr(expected_quota, field), context['resource_quota'][field])
 
     def test_quota_creation_with_project(self):
-        data = _project_data(self.project)
+        customer = factories.CustomerFactory()
+        customer.add_user(self.user, models.CustomerRole.OWNER)
+        project = factories.ProjectFactory(customer=customer)
+        data = _project_data(project)
         data['resource_quota'] = _resource_quota_data()
 
         response = self.client.post(_project_list_url(), data=data)
