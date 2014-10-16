@@ -49,7 +49,7 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
 class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                               serializers.HyperlinkedModelSerializer):
 
-    resource_quota = ResourceQuotaSerializer()
+    resource_quota = ResourceQuotaSerializer(required=False)
 
     class Meta(object):
         model = models.Project
