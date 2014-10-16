@@ -64,3 +64,13 @@ class ProjectGroupFactory(factory.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: 'Proj Grp %s' % n)
     customer = factory.SubFactory(CustomerFactory)
+
+
+class ResourceQuotaFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.ResourceQuota
+
+    cpu = factory.Iterator([1, 2, 3, 4])
+    ram = factory.Iterator([1.0, 2.0, 3.0, 4.0])
+    storage = factory.fuzzy.FuzzyFloat(10.0, 50.0)
+    backup = factory.fuzzy.FuzzyFloat(20.0, 150.0)
