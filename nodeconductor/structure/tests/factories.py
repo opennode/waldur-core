@@ -2,7 +2,9 @@
 from __future__ import unicode_literals
 
 import django.contrib.auth
+
 import factory
+import factory.fuzzy
 
 from nodeconductor.structure import models
 
@@ -70,7 +72,7 @@ class ResourceQuotaFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.ResourceQuota
 
-    cpu = factory.Iterator([1, 2, 3, 4])
+    vcpu = factory.Iterator([1, 2, 3, 4])
     ram = factory.Iterator([1.0, 2.0, 3.0, 4.0])
     storage = factory.fuzzy.FuzzyFloat(10.0, 50.0)
     backup = factory.fuzzy.FuzzyFloat(20.0, 150.0)

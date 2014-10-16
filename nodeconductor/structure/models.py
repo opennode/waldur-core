@@ -125,7 +125,7 @@ class Project(UuidMixin, models.Model):
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='projects')
-    resource_quota = models.OneToOneField(ResourceQuota, related_name='project', required=False)
+    resource_quota = models.OneToOneField(ResourceQuota, related_name='project', null=True)
 
     def add_user(self, user, role_type):
         role = self.roles.get(role_type=role_type)
