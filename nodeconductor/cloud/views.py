@@ -74,6 +74,17 @@ class CloudViewSet(viewsets.ModelViewSet):
         ).exists():
             raise exceptions.PermissionDenied()
 
+    def get_serializer_class(self):
+        return serializers.CloudSerializer
+
+    def get_serializer_context(self):
+        """
+        Extra context provided to the serializer class.
+        """
+        context = super(CloudViewSet, self).get_serializer_context()
+        context['user'] = self.request.user
+        return context
+
     def pre_save(self, cloud):
         super(CloudViewSet, self).pre_save(cloud)
         self._check_permission(cloud)
