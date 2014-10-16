@@ -50,7 +50,7 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
             'manager': factories.ProjectFactory(),
             'inaccessible': factories.ProjectFactory(),
         }
-        
+
         self.projects['admin'].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         self.projects['manager'].add_user(self.users['manager'], ProjectRole.MANAGER)
 
