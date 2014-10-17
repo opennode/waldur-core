@@ -83,7 +83,7 @@ class CloudTest(test.APISimpleTestCase):
         self.assertGreater(len(context.keys()), len(serializers.CloudSerializer.public_fields))
 
         # customer is manager too
-        project.add_user(manager, structure_models.ProjectRole.MANAGER)
+        project.add_user(self.owner, structure_models.ProjectRole.MANAGER)
         response = self.client.get(_cloud_url(cloud))
         self.assertEqual(response.status_code, 200)
         context = json.loads(response.content)
