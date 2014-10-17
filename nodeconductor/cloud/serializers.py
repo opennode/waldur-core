@@ -1,3 +1,5 @@
+from django.core.paginator import Page
+
 from rest_framework import serializers
 
 from nodeconductor.core import serializers as core_serializers
@@ -31,28 +33,31 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Cloud
-        fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
+        fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects', 'username')
         lookup_field = 'uuid'
 
-    public_fields = ('uuid', 'url', 'name')
+    public_fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs['context'].get('user', None)
         super(CloudSerializer, self).__init__(*args, **kwargs)
-
-    def get_fields(self):
-        fields = super(CloudSerializer, self).get_fields()
-        is_customer_owner = self.object.customer.roles.filter(
-            permission_group__user=self.user, role_type=structure_models.CustomerRole.OWNER).exists()
-        if self.user is not None and not self.user.is_superuser and not is_customer_owner:
-            return dict((key, value) for key, value in fields.iteritems() if key in self.public_fields)
-        return fields
 
     def get_filtered_field_names(self):
         return 'customer',
 
     def get_related_paths(self):
         return 'customer',
+
+    def to_native(self, obj):
+        """
+        Serializer returns only public fields for non-customer owner
+        """
+        native = super(CloudSerializer, self).to_native(obj)
+        is_customer_owner = obj.customer.roles.filter(
+            permission_group__user=self.user, role_type=structure_models.CustomerRole.OWNER).exists()
+        if self.user is not None and not self.user.is_superuser and not is_customer_owner:
+            return dict((key, value) for key, value in native.iteritems() if key in self.public_fields)
+        return native
 
 
 class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFilteringMixin,
