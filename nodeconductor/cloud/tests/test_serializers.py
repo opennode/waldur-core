@@ -8,7 +8,7 @@ from nodeconductor.structure import models as structure_models
 
 class CloudSerializerTest(TestCase):
 
-    def test_get_fields(self):
+    def test_to_native(self):
         customer = structure_factories.CustomerFactory()
         owner = structure_factories.UserFactory()
         customer.add_user(owner, structure_models.CustomerRole.OWNER)
@@ -19,7 +19,7 @@ class CloudSerializerTest(TestCase):
         cloud.projects.add(project)
 
         serializer = serializers.CloudSerializer(cloud, context={'user': admin})
-        self.assertEqual(len(serializer.public_fields), len(serializer.get_fields()))
+        self.assertEqual(len(serializer.to_native(cloud)), len(serializer.public_fields))
 
         serializer = serializers.CloudSerializer(cloud, context={'user': owner})
-        self.assertGreater(len(serializer.get_fields()), len(serializer.public_fields))
+        self.assertGreater(len(serializer.to_native(cloud)), len(serializer.public_fields))
