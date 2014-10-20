@@ -85,9 +85,10 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
 
 class BackupSerializer(serializers.HyperlinkedModelSerializer):
     backup_source = RelatedBackupField()
+    state = serializers.ChoiceField(choices=models.Backup.STATE_CHOICES, source='get_state_display', read_only=True)
 
     class Meta(object):
         model = models.Backup
         fields = ('url', 'description', 'created_at', 'kept_until', 'backup_source', 'state')
-        read_only_fields = ('state', 'created_at', 'kept_until')
+        read_only_fields = ('created_at', 'kept_until')
         lookup_field = 'uuid'
