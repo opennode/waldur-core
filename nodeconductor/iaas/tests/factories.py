@@ -34,6 +34,17 @@ class TemplateFactory(factory.DjangoModelFactory):
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
 
+class LicenseFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.License
+
+    name = factory.Sequence(lambda n: 'License%s' % n)
+    type = factory.Sequence(lambda n: 'LicenseType%s' % n)
+    service_type = models.License.Services.IAAS
+    setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
+    monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
+
+
 class SshPublicKeyFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = core_models.SshPublicKey
