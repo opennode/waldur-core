@@ -86,6 +86,7 @@ class License(models.Model):
     type = models.CharField(max_length=127)
     templates = models.ManyToManyField(Template, related_name='licenses')
     service_type = models.CharField(
+        max_length=10,
         choices=[(o.lower(), getattr(Services, o)) for o in dir(Services) if not o.startswith('__')])
     setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
                                     validators=[MinValueValidator(Decimal('0.1')),
@@ -99,13 +100,13 @@ class License(models.Model):
 
     @property
     def projects(self):
-        return structure_models.Project.object.filter(
-            instances__template__in=self.templates).values_list('name', flat=True)
+        return structure_models.Project.objects.filter(
+            instances__template__in=[t.id for t in self.templates.all()]).values_list('name', flat=True)
 
     @property
     def projects_groups(self):
-        return structure_models.ProjectGroup.object.filter(
-            projects__instances__template__in=self.templates).values_list('name', flat=True)
+        return structure_models.ProjectGroup.objects.filter(
+            projects__instances__template__in=[t.id for t in self.templates.all()]).values_list('name', flat=True)
 
 
 @python_2_unicode_compatible
