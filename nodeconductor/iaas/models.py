@@ -101,12 +101,12 @@ class License(models.Model):
     @property
     def projects(self):
         return structure_models.Project.objects.filter(
-            instances__template__in=[t.id for t in self.templates.all()]).values_list('name', flat=True)
+            clouds__images__template__in=[t.id for t in self.templates.all()]).values_list('name', flat=True)
 
     @property
     def projects_groups(self):
         return structure_models.ProjectGroup.objects.filter(
-            projects__instances__template__in=[t.id for t in self.templates.all()]).values_list('name', flat=True)
+            projects__clouds__images__template__in=[t.id for t in self.templates.all()]).values_list('name', flat=True)
 
 
 @python_2_unicode_compatible
