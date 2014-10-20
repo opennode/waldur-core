@@ -16,7 +16,7 @@ Permissions
 +++++++++++
 Staff user can create licenses and link them to templates.
 
-Customer owner, project admin and manager can information about license instances connected with vm instances and
+Customer owner, project admin and manager can query information about license instances connected with vm instances and
 templates.
 
 Summary queries
