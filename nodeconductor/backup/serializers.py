@@ -79,7 +79,7 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
         model = models.BackupSchedule
         fields = ('url', 'description', 'backups', 'retention_time', 'backup_source',
                   'maximal_number_of_backups', 'schedule', 'is_active')
-        read_only_fields = ('is_active', )
+        read_only_fields = ('is_active', 'backups')
         lookup_field = 'uuid'
 
 
