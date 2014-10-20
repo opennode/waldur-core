@@ -32,10 +32,7 @@ User management
 Key management
 ==============
 
-TODO:
-
-- key creation
-- listing user keys
+.. include:: key.rst
 
 Cloud management
 ================
