@@ -10,7 +10,7 @@ only see connected customers:
 Create a new customer
 ---------------------
 
-A new customer can only be created users with staff privilege (is_staff=True). Example of a valid request:
+A new customer can only be created by users with staff privilege (is_staff=True). Example of a valid request:
 
 .. code-block:: http
 
