@@ -29,6 +29,5 @@ is below:
     Project manager
       A non-technical project role with access to user management, accounting, billing and reporting.
 
-
     Project group
-      Projects can be grouped together for convinience, e.g. development environments can be grouped together.
+      Projects can be grouped together for convenience, e.g. development environments can be grouped together.
