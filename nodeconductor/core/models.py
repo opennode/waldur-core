@@ -26,7 +26,7 @@ class DescribableMixin(models.Model):
     class Meta(object):
         abstract = True
 
-    description = models.CharField(_('description'), max_length=200, blank=True, null=True)
+    description = models.CharField(_('description'), max_length=500, blank=True, null=True)
 
 
 class UiDescribableMixin(DescribableMixin):
