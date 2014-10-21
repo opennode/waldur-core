@@ -23,8 +23,9 @@ def _project_url(project):
     return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
 
 
-def _template_url(template):
-    return 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
+def _template_url(template, action=None):
+    url = 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
+    return url if action is None else url + action + '/'
 
 
 def _instance_url(instance):
@@ -208,6 +209,22 @@ class LicenseTest(test.APISimpleTestCase):
         self.assertIn('licenses', context)
         self.assertEqual(context['licenses'][0]['name'], self.license.name)
 
+    def test_add_license_to_template(self):
+        self.client.force_authenticate(self.staff)
+
+        data = {'licenses': []}
+        response = self.client.post(_template_url(self.template, action='licenses'), data=data)
+        self.assertEqual(response.status_code, 200)
+        self.template = models.Template.objects.get(pk=self.template.pk)
+        self.assertEqual(self.template.licenses.count(), 0)
+
+        data = {'licenses': [str(self.license.uuid)]}
+        response = self.client.post(_template_url(self.template, action='licenses'), data=data)
+        self.assertEqual(response.status_code, 200)
+        self.template = models.Template.objects.get(pk=self.template.pk)
+        self.assertEqual(self.template.licenses.count(), 1)
+        self.assertEqual(self.template.licenses.all()[0], self.license)
+
 
 class LicensePermissionsTest(helpers.PermissionsTest):
 
@@ -241,6 +258,8 @@ class LicensePermissionsTest(helpers.PermissionsTest):
         yield {'url': _license_url(license), 'method': 'GET'}
         yield {'url': _license_url(license), 'method': 'PATCH'}
         yield {'url': _license_url(license), 'method': 'DELETE'}
+        template = factories.TemplateFactory()
+        yield {'url': _template_url(template, action='licenses'), 'method': 'POST'}
 
     def get_users_with_permission(self, url, method):
         """
