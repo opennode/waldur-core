@@ -27,8 +27,8 @@ class LicenseTest(TestCase):
 
     def test_projects(self):
         structure_factories.ProjectFactory()
-        self.assertSequenceEqual(self.license.projects, [self.project.name])
+        self.assertSequenceEqual(self.license.projects, [self.project])
 
     def test_projects_groups(self):
         structure_factories.ProjectGroupFactory()
-        self.assertSequenceEqual(self.license.projects_groups, [self.project_group.name])
+        self.assertSequenceEqual(self.license.projects_groups, [self.project_group])

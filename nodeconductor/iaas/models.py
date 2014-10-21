@@ -75,7 +75,7 @@ class Template(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class License(models.Model):
+class License(core_models.UuidMixin, models.Model):
     class Services():
         IAAS = 'IaaS'
         PAAS = 'PaaS'
@@ -83,11 +83,11 @@ class License(models.Model):
         BPAAS = 'BPaaS'
 
     name = models.CharField(max_length=255)
-    type = models.CharField(max_length=127)
+    license_type = models.CharField(max_length=127)
     templates = models.ManyToManyField(Template, related_name='licenses')
     service_type = models.CharField(
         max_length=10,
-        choices=[(o.lower(), getattr(Services, o)) for o in dir(Services) if not o.startswith('__')])
+        choices=[(getattr(Services, o), getattr(Services, o)) for o in dir(Services) if not o.startswith('__')])
     setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
                                     validators=[MinValueValidator(Decimal('0.1')),
                                                 MaxValueValidator(Decimal('1000.0'))])
@@ -96,17 +96,17 @@ class License(models.Model):
                                                   MaxValueValidator(Decimal('1000.0'))])
 
     def __str__(self):
-        return '%s - %s' % (self.type, self.name)
+        return '%s - %s' % (self.license_type, self.name)
 
     @property
     def projects(self):
         return structure_models.Project.objects.filter(
-            clouds__images__template__in=[t.id for t in self.templates.all()]).values_list('name', flat=True)
+            clouds__images__template__in=[t.id for t in self.templates.all()])
 
     @property
     def projects_groups(self):
         return structure_models.ProjectGroup.objects.filter(
-            projects__clouds__images__template__in=[t.id for t in self.templates.all()]).values_list('name', flat=True)
+            projects__clouds__images__template__in=[t.id for t in self.templates.all()])
 
 
 @python_2_unicode_compatible
