@@ -17,7 +17,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.4.0
+Version: 0.5.0
 Release: 1
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -172,6 +172,9 @@ All done. Happy NodeConducting!
 EOF
 
 %changelog
+* Tue Oct 21 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.5.0-1
+- New upstream release
+
 * Tue Oct 14 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.4.0-1
 - New upstream release
 - New settings file format: .ini instead of .py
