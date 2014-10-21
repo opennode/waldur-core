@@ -1,9 +1,7 @@
 from __future__ import unicode_literals
 
-import django_filters
 import logging
-from django.http.response import Http404
-from django_fsm import TransitionNotAllowed
+from django.http import Http404
 
 from rest_framework import permissions, status
 from rest_framework import mixins
@@ -12,6 +10,8 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework import filters as rf_filter
+import django_filters
+from django_fsm import TransitionNotAllowed
 
 from nodeconductor.cloud.models import Cloud, Flavor
 from nodeconductor.core import mixins as core_mixins
@@ -284,3 +284,26 @@ class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.ImageSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter,)
+
+
+class LicenseViewSet(core_viewsets.ModelViewSet):
+    """
+    TODO: add documentation
+    """
+
+    queryset = models.License.objects.all()
+    serializer_class = serializers.LicenseSerializer
+    lookup_field = 'uuid'
+
+    def get_queryset(self):
+        queryset = super(LicenseViewSet, self).get_queryset()
+        if not self.request.user.is_staff:
+            raise Http404
+
+        if 'customer' in self.request.QUERY_PARAMS:
+            customer_uuid = self.request.QUERY_PARAMS['customer']
+            customer_templates_ids = models.Template.objects.filter(
+                images__cloud__projects__customer__uuid=customer_uuid).values_list('id', flat=True)
+            queryset = queryset.filter(templates__in=customer_templates_ids)
+
+        return queryset
