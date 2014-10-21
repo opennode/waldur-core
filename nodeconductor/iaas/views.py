@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import logging
 from django.http import Http404
+from django.shortcuts import get_object_or_404
 
 from rest_framework import permissions, status
 from rest_framework import mixins
@@ -205,6 +206,9 @@ class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
     Project administrators can list all VM templates and create new VM instances using these templates in all the clouds that are connected to any of the projects they are administrators in.
 
     Project managers can list all VM templates in all the clouds that are connected to any of the projects they are managers in.
+
+    Staff members can add licenses to template by sending POST request with list of licenses uuids.
+    Example POST data: {'licenses': [license1_uuid, licenses2_uuid ...]}
     """
 
     queryset = models.Template.objects.all()
@@ -233,6 +237,24 @@ class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
                 queryset = queryset.filter(images__cloud=cloud)
 
         return queryset
+
+    @action()
+    def licenses(self, request, uuid):
+        if not request.user.is_staff:
+            raise Http404
+        template = get_object_or_404(models.Template, uuid=uuid)
+        licenses = request.DATA.get('licenses', [])
+        template.licenses.through.objects.all().delete()
+        errors = []
+        for license_uuid in licenses:
+            try:
+                template.licenses.add(models.License.objects.get(uuid=license_uuid))
+            except models.License.DoesNotExist:
+                errors.append('License with uuid %s does not exist' % license_uuid)
+        if errors:
+            return Response({'errors': errors}, status=400)
+        else:
+            return Response({'status': 'template licenses have been successfully changed'})
 
 
 class SshKeyViewSet(core_viewsets.ModelViewSet):
@@ -290,7 +312,7 @@ class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
 class LicenseViewSet(core_viewsets.ModelViewSet):
     """
     Every template is potential connected to one or more consumed licenses.
-    LicenseTemplate is defined as an abstract consumable.
+    License is defined as an abstract consumable.
 
     Only staff can view all licenses, edit and delete them.
 
