@@ -261,7 +261,8 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
 
 
 class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
-    """List of operations with VM templates.
+    """
+    List of operations with VM templates.
 
     TODO: list supported operation types.
 
@@ -288,11 +289,18 @@ class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 class LicenseViewSet(core_viewsets.ModelViewSet):
     """
-    TODO: add documentation
-    """
+    Every template is potential connected to one or more consumed licenses.
+    LicenseTemplate is defined as an abstract consumable.
 
+    Only staff can view all licenses, edit and delete them.
+
+    Customer owners, managers and administrators can view license only with templates
+
+    Add customer uuid as `customer` GET parameter to filter licenses for customer
+    """
     queryset = models.License.objects.all()
     serializer_class = serializers.LicenseSerializer
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     lookup_field = 'uuid'
 
     def get_queryset(self):
