@@ -9,8 +9,10 @@ from rest_framework import test
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.cloud import models as cloud_models
+from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories
 from nodeconductor.iaas import models
+from nodeconductor.core.tests import helpers
 
 
 def _flavor_url(flavor):
@@ -35,6 +37,14 @@ def _instance_list_url():
 
 def _ssh_public_key_url(key):
     return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': key.uuid})
+
+
+def _license_url(license):
+    return 'http://testserver' + reverse('license-detail', kwargs={'uuid': license.uuid})
+
+
+def _license_list_url():
+    return 'http://testserver' + reverse('license-list')
 
 
 def _instance_data(instance=None):
@@ -115,3 +125,131 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.assertNotIn('security_groups', data)
         response = self.client.post(_instance_list_url(), data=data)
         self.assertEqual(response.status_code, 201)
+
+
+class LicenseTest(test.APISimpleTestCase):
+
+    def setUp(self):
+        # project, customer and project_group
+        self.customer = structure_factories.CustomerFactory()
+        self.project = structure_factories.ProjectFactory(customer=self.customer)
+        self.project_group = structure_factories.ProjectGroupFactory()
+        self.project_group.projects.add(self.project)
+        # cloud and template
+        self.cloud = cloud_factories.CloudFactory()
+        self.cloud.projects.add(self.project)
+        self.template = factories.TemplateFactory()
+        factories.ImageFactory(cloud=self.cloud, template=self.template)
+        # license
+        self.license = factories.LicenseFactory()
+        self.license.templates.add(self.template)
+        self.staff = structure_factories.UserFactory(is_superuser=True, is_staff=True)
+        self.manager = structure_factories.UserFactory()
+        self.project.add_user(self.manager, structure_models.ProjectRole.MANAGER)
+
+    def test_projects_in_license_response(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(_license_url(self.license))
+        self.assertEqual(response.status_code, 200)
+        context = json.loads(response.content)
+        self.assertSequenceEqual(
+            [p['name'] for p in context['projects']], [p.name for p in self.license.projects])
+        self.assertSequenceEqual(
+            [p['name'] for p in context['projects_groups']], [p.name for p in self.license.projects_groups])
+
+    def test_licenses_list(self):
+        # another license:
+        factories.LicenseFactory()
+        # as staff without filter
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(_license_list_url())
+        self.assertEqual(response.status_code, 200)
+        context = json.loads(response.content)
+        self.assertSequenceEqual([c['uuid'] for c in context], [str(l.uuid) for l in models.License.objects.all()])
+        # as staff with filter
+        response = self.client.get(_license_list_url(), {'customer': self.customer.uuid})
+        context = json.loads(response.content)
+        self.assertEqual(len(context), 1)
+        self.assertEqual(context[0]['uuid'], str(self.license.uuid))
+
+    def test_license_creation(self):
+        data = {
+            'name': "license",
+            'license_type': 'license type',
+            'service_type': models.License.Services.IAAS,
+            'setup_fee': 10,
+            'monthly_fee': 10
+        }
+        self.client.force_authenticate(self.staff)
+        response = self.client.post(_license_list_url(), data=data)
+        self.assertEqual(response.status_code, 201)
+        license = models.License.objects.get(name=data['name'])
+        for key, value in data.iteritems():
+            self.assertEqual(value, getattr(license, key))
+
+    def test_license_edit(self):
+        data = {'name': 'new_name'}
+        self.client.force_authenticate(self.staff)
+        response = self.client.patch(_license_url(self.license), data=data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data['name'], models.License.objects.get(pk=self.license.pk).name)
+
+    def test_license_delete(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.delete(_license_url(self.license))
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(models.License.objects.filter(pk=self.license.pk).exists())
+
+    def test_manager_see_template_licenses(self):
+        self.client.force_authenticate(self.manager)
+        response = self.client.get(_template_url(self.template))
+        self.assertEqual(response.status_code, 200)
+        context = json.loads(response.content)
+        self.assertIn('licenses', context)
+        self.assertEqual(context['licenses'][0]['name'], self.license.name)
+
+
+class LicensePermissionsTest(helpers.PermissionsTest):
+
+    def setUp(self):
+        # project, customer and project_group
+        self.customer = structure_factories.CustomerFactory()
+        self.project = structure_factories.ProjectFactory(customer=self.customer)
+        self.project_group = structure_factories.ProjectGroupFactory()
+        self.project_group.projects.add(self.project)
+        # cloud and template
+        self.cloud = cloud_factories.CloudFactory()
+        self.cloud.projects.add(self.project)
+        template = factories.TemplateFactory()
+        factories.ImageFactory(cloud=self.cloud, template=template)
+        # license
+        self.license = factories.LicenseFactory()
+        self.license.templates.add(template)
+        # users
+        self.staff = structure_factories.UserFactory(username='staff', is_superuser=True, is_staff=True)
+        self.manager = structure_factories.UserFactory(username='manager')
+        self.project.add_user(self.manager, structure_models.ProjectRole.MANAGER)
+        self.administrator = structure_factories.UserFactory(username='administrator')
+        self.project.add_user(self.administrator, structure_models.ProjectRole.ADMINISTRATOR)
+        self.owner = structure_factories.UserFactory(username='owner')
+        self.customer.add_user(self.owner, structure_models.CustomerRole.OWNER)
+
+    def get_urls_configs(self):
+        yield {'url': _license_list_url(), 'method': 'GET'}
+        yield {'url': _license_list_url(), 'method': 'POST'}
+        license = factories.LicenseFactory()
+        yield {'url': _license_url(license), 'method': 'GET'}
+        yield {'url': _license_url(license), 'method': 'PATCH'}
+        yield {'url': _license_url(license), 'method': 'DELETE'}
+
+    def get_users_with_permission(self, url, method):
+        """
+        Returns list of users which can access given url with given method
+        """
+        return [self.staff]
+
+    def get_users_without_permissions(self, url, method):
+        """
+        Returns list of users which can not access given url with given method
+        """
+        return [self.owner, self.manager, self.administrator]
