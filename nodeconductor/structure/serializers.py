@@ -25,14 +25,21 @@ class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
         model = models.ProjectGroup
 
 
+class ResourceQuotaSerializer(serializers.ModelSerializer):
+    class Meta(object):
+        model = models.ResourceQuota
+        fields = ('vcpu', 'ram', 'storage', 'backup')
+
+
 class ProjectSerializer(core_serializers.CollectedFieldsMixin,
                         core_serializers.RelatedResourcesFieldMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
+    resource_quota = ResourceQuotaSerializer(read_only=True)
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'project_groups')
+        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'project_groups', 'resource_quota')
         lookup_field = 'uuid'
 
     def get_related_paths(self):
@@ -41,9 +48,12 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
 
 class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                               serializers.HyperlinkedModelSerializer):
+
+    resource_quota = ResourceQuotaSerializer(required=False)
+
     class Meta(object):
         model = models.Project
-        fields = ('url', 'name', 'customer')
+        fields = ('url', 'name', 'customer', 'resource_quota')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):

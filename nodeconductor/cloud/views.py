@@ -74,6 +74,17 @@ class CloudViewSet(viewsets.ModelViewSet):
         ).exists():
             raise exceptions.PermissionDenied()
 
+    def get_serializer_class(self):
+        return serializers.CloudSerializer
+
+    def get_serializer_context(self):
+        """
+        Extra context provided to the serializer class.
+        """
+        context = super(CloudViewSet, self).get_serializer_context()
+        context['user'] = self.request.user
+        return context
+
     def pre_save(self, cloud):
         super(CloudViewSet, self).pre_save(cloud)
         self._check_permission(cloud)
@@ -103,3 +114,9 @@ filters.set_permissions_for_model(
     models.Cloud.projects.through,
     customer_path='cloud__customer',
 )
+
+
+class SecurityGroupsViewSet(rf_viewsets.GenericViewSet):
+
+    def list(self, request, *args, **kwargs):
+        return Response(models.SecurityGroups.groups, status=200)

@@ -50,7 +50,7 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
             'manager': factories.ProjectFactory(),
             'inaccessible': factories.ProjectFactory(),
         }
-        
+
         self.projects['admin'].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         self.projects['manager'].add_user(self.users['manager'], ProjectRole.MANAGER)
 
@@ -179,6 +179,16 @@ class ProjectManipulationTest(test.APITransactionTestCase):
 
     def test_user_can_delete_project_belonging_to_the_customer_he_owns(self):
         response = self.client.delete(self.project_urls['accessible'])
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_can_delete_project_if_he_is_staff(self):
+        user = factories.UserFactory()
+        user.is_staff = True
+        user.save()
+        self.client.force_authenticate(user=user)
+        project = factories.ProjectFactory()
+        response = self.client.delete(reverse('project-detail',
+                                      kwargs={'uuid': project.uuid}))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_user_cannot_delete_project_that_does_not_belong_to_owned_customer(self):

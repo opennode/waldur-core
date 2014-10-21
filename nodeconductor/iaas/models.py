@@ -4,7 +4,6 @@ import logging
 from decimal import Decimal
 
 from django.conf import settings
-from django.contrib.contenttypes.generic import GenericRelation
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -141,6 +140,7 @@ class Instance(core_models.UuidMixin,
     project = models.ForeignKey(structure_models.Project, related_name='instances')
     ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
+    ssh_public_key = models.ForeignKey(core_models.SshPublicKey, related_name='instances')
 
     state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
                      help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
@@ -280,3 +280,35 @@ class Purchase(core_models.UuidMixin, models.Model):
             'date': self.date,
         }
 
+
+class InstanceSecurityGroup(core_models.UuidMixin, models.Model):
+    """
+    Cloud security group added to instance
+    """
+    class Permissions(object):
+        project_path = 'instance__project'
+
+    instance = models.ForeignKey(Instance, related_name='security_groups')
+    name = models.CharField(max_length=127)
+
+    @property
+    def _cloud_security_group(self):
+        if not hasattr(self, '_security_group'):
+            self._security_group = [g for g in cloud_models.SecurityGroups.groups if g['name'] == self.name][0]
+        return self._security_group
+
+    @property
+    def protocol(self):
+        return self._cloud_security_group['protocol']
+
+    @property
+    def from_port(self):
+        return self._cloud_security_group['from_port']
+
+    @property
+    def to_port(self):
+        return self._cloud_security_group['to_port']
+
+    @property
+    def ip_range(self):
+        return self._cloud_security_group['ip_range']

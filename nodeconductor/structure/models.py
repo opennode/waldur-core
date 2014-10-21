@@ -7,7 +7,7 @@ from django.db.models import signals
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
-from nodeconductor.core.models import UuidMixin
+from nodeconductor.core.models import UuidMixin, DescribableMixin
 
 
 @python_2_unicode_compatible
@@ -108,14 +108,24 @@ class ProjectRole(UuidMixin, models.Model):
         return self.get_role_type_display()
 
 
+class ResourceQuota(models.Model):
+    """ Project or user memory and CPU quotas """
+
+    vcpu = models.PositiveIntegerField(help_text=_('Available CPUs'))
+    ram = models.FloatField(help_text=_('Maximum available RAM size in GB'))
+    storage = models.FloatField(help_text=_('Maximum available storage size in GB'))
+    backup = models.FloatField(help_text=_('Maximum available storage size for backups in GB'))
+
+
 @python_2_unicode_compatible
-class Project(UuidMixin, models.Model):
+class Project(DescribableMixin, UuidMixin, models.Model):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='projects')
+    resource_quota = models.OneToOneField(ResourceQuota, related_name='project', null=True)
 
     def add_user(self, user, role_type):
         role = self.roles.get(role_type=role_type)
@@ -154,7 +164,7 @@ signals.post_save.connect(create_project_roles,
 
 
 @python_2_unicode_compatible
-class ProjectGroup(UuidMixin, models.Model):
+class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
     """
     Project groups are means to organize customer's projects into arbitrary sets.
     """

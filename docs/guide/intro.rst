@@ -18,3 +18,4 @@ To install NodeConductor on RHEL6-compatible operating systems (CentOS6, Scienti
 
 .. include:: structure.rst
 .. include:: groups.rst
+.. include:: license.rst
