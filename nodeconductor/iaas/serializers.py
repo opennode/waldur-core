@@ -100,7 +100,27 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
         return 'flavor.cloud', 'template', 'project', 'flavor', 'project.customer'
 
 
+class LicenseSerializer(serializers.HyperlinkedModelSerializer):
+
+    projects_groups = structure_serializers.BasicProjectGroupSerializer(
+        source='projects_groups', many=True, read_only=True)
+
+    projects = structure_serializers.BasicProjectSerializer(
+        source='projects', many=True, read_only=True)
+
+    class Meta(object):
+        model = models.License
+        fields = (
+            'url', 'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
+            'projects', 'projects_groups',
+        )
+        lookup_field = 'uuid'
+
+
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
+
+    licenses = LicenseSerializer()
+
     class Meta(object):
         model = models.Template
         fields = (
@@ -110,6 +130,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'is_active',
             'setup_fee',
             'monthly_fee',
+            'licenses'
         )
         lookup_field = 'uuid'
 
