@@ -190,7 +190,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
                         status=status.HTTP_400_BAD_REQUEST)
 
 
-class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
+class TemplateViewSet(core_viewsets.UpdateModelViewSet):
     """List of VM templates that are accessible by this user.
 
     VM template is a description of a system installed on VM instances: OS, disk partition etc.
@@ -213,7 +213,14 @@ class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
 
     queryset = models.Template.objects.all()
     serializer_class = serializers.TemplateSerializer
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     lookup_field = 'uuid'
+
+    def get_serializer_class(self):
+        if self.request.method in ('POST', 'PUT', 'PATCH'):
+            return serializers.TemplateCreateSerializer
+
+        return super(TemplateViewSet, self).get_serializer_class()
 
     def get_queryset(self):
         queryset = super(TemplateViewSet, self).get_queryset()
@@ -237,24 +244,6 @@ class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
                 queryset = queryset.filter(images__cloud=cloud)
 
         return queryset
-
-    @action()
-    def licenses(self, request, uuid):
-        if not request.user.is_staff:
-            raise Http404
-        template = get_object_or_404(models.Template, uuid=uuid)
-        licenses = request.DATA.get('licenses', [])
-        template.licenses.through.objects.all().delete()
-        errors = []
-        for license_uuid in licenses:
-            try:
-                template.licenses.add(models.License.objects.get(uuid=license_uuid))
-            except models.License.DoesNotExist:
-                errors.append('License with uuid %s does not exist' % license_uuid)
-        if errors:
-            return Response({'errors': errors}, status=400)
-        else:
-            return Response({'status': 'template licenses have been successfully changed'})
 
 
 class SshKeyViewSet(core_viewsets.ModelViewSet):
