@@ -4,6 +4,9 @@ Key list
 To get a list of SSH keys, run GET against */api/keys/* as authenticated user.
 Note that user can see only keys that he owns.
 
+- Keys are injected to instances during creation. The owner of the key can log in to that instance.
+- Project administrators can select what key will be injected to instance during instance provisioning.
+
 Create a new key
 ----------------
 
