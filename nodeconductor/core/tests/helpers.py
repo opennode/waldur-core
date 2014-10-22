@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import json
 
-from rest_framework import test
+from rest_framework import test, status
 
 
 class PermissionsTest(test.APISimpleTestCase):
@@ -41,7 +41,7 @@ class PermissionsTest(test.APISimpleTestCase):
         Each url config is dictionary with such keys:
          - url: url itself
          - method: request method
-         - data: data which will be send in request
+         - data: data which will be sent in request
         url config example:
         {
             'url': 'http://testserver/api/backup/',
@@ -53,19 +53,19 @@ class PermissionsTest(test.APISimpleTestCase):
 
     def get_users_with_permission(self, url, method):
         """
-        Returns list of users which can access given url with given method
+        Return list of users which can access given url with given method
         """
         raise NotImplementedError()
 
     def get_users_without_permissions(self, url, method):
         """
-        Returns list of users which can not access given url with given method
+        Return list of users which can not access given url with given method
         """
         raise NotImplementedError()
 
     def test_permissions(self):
         """
-        Goes through all url configs ands checks that user with permissions
+        Go through all url configs ands checks that user with permissions
         can request them and users without - can't
         """
         for conf in self.get_urls_configs():
@@ -76,7 +76,7 @@ class PermissionsTest(test.APISimpleTestCase):
                 self.client.force_authenticate(user=user)
                 response = getattr(self.client, method.lower())(url, data=data)
                 self.assertFalse(
-                    response.status_code == 404 or response.status_code == 403,
+                    response.status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND),
                     'Error. User %s can not reach url: %s (method:%s). (Response status code %s)'
                     % (user, url, method, response.status_code))
 
@@ -84,7 +84,7 @@ class PermissionsTest(test.APISimpleTestCase):
                 self.client.force_authenticate(user=user)
                 response = getattr(self.client, method.lower())(url, data=data)
                 self.assertTrue(
-                    response.status_code == 404 or response.status_code == 403,
+                    response.status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND),
                     'Error. User %s can reach url: %s (method:%s). (Response status code %s)'
                     % (user, url, method, response.status_code))
 
