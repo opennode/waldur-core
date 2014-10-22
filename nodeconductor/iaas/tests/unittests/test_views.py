@@ -1,9 +1,8 @@
 from django.test import TestCase
-from django.http import Http404
 
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.iaas.tests import factories
-from nodeconductor.iaas import views, models
+from nodeconductor.iaas import views
 from nodeconductor.cloud.tests import factories as cloud_factories
 
 
