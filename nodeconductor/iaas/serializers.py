@@ -148,6 +148,14 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
 
+class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
+
+    class Meta(object):
+        model = models.Template
+        fields = ('url', 'uuid', 'licenses')
+        lookup_field = 'uuid'
+
+
 class SshKeySerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = core_models.SshPublicKey
