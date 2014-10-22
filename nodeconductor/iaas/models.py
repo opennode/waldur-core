@@ -99,15 +99,13 @@ class License(core_models.UuidMixin, models.Model):
     def __str__(self):
         return '%s - %s' % (self.license_type, self.name)
 
-    @property
-    def projects(self):
+    def get_projects(self):
         return structure_models.Project.objects.filter(
-            clouds__images__template__in=[t.id for t in self.templates.all()])
+            clouds__images__template__licenses=self)
 
-    @property
-    def projects_groups(self):
+    def get_projects_groups(self):
         return structure_models.ProjectGroup.objects.filter(
-            projects__clouds__images__template__in=[t.id for t in self.templates.all()])
+            projects__clouds__images__template__licenses=self)
 
 
 @python_2_unicode_compatible
