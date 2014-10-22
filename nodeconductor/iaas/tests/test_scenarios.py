@@ -139,7 +139,7 @@ class LicenseTest(test.APISimpleTestCase):
         # cloud and template
         self.cloud = cloud_factories.CloudFactory()
         self.cloud.projects.add(self.project)
-        self.template = factories.TemplateFactory()
+        self.template = factories.TemplateFactory(os='OS')
         factories.ImageFactory(cloud=self.cloud, template=self.template)
         # license
         self.license = factories.LicenseFactory()
@@ -213,13 +213,13 @@ class LicenseTest(test.APISimpleTestCase):
         self.client.force_authenticate(self.staff)
 
         data = {'licenses': []}
-        response = self.client.post(_template_url(self.template, action='licenses'), data=data)
+        response = self.client.patch(_template_url(self.template), data=data)
         self.assertEqual(response.status_code, 200)
         self.template = models.Template.objects.get(pk=self.template.pk)
         self.assertEqual(self.template.licenses.count(), 0)
 
-        data = {'licenses': [str(self.license.uuid)]}
-        response = self.client.post(_template_url(self.template, action='licenses'), data=data)
+        data = {'licenses': [_license_url(self.license)]}
+        response = self.client.patch(_template_url(self.template), data=data)
         self.assertEqual(response.status_code, 200)
         self.template = models.Template.objects.get(pk=self.template.pk)
         self.assertEqual(self.template.licenses.count(), 1)
@@ -259,7 +259,7 @@ class LicensePermissionsTest(helpers.PermissionsTest):
         yield {'url': _license_url(license), 'method': 'PATCH'}
         yield {'url': _license_url(license), 'method': 'DELETE'}
         template = factories.TemplateFactory()
-        yield {'url': _template_url(template, action='licenses'), 'method': 'POST'}
+        yield {'url': _template_url(template), 'method': 'PATCH'}
 
     def get_users_with_permission(self, url, method):
         """
