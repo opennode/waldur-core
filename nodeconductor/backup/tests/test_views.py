@@ -42,7 +42,7 @@ class BackupViewSetTest(TestCase):
 
     def test_restore(self):
         backup = factories.BackupFactory(state=models.Backup.States.READY)
-        request = type(str('MockedRequest'), (object, ), {'POST': {'replace_original': True}, 'user': self.user})
+        request = type(str('MockedRequest'), (object, ), {'DATA': {'replace_original': True}, 'user': self.user})
         response = self.view.restore(request, backup.uuid)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.RESTORING)

@@ -82,12 +82,13 @@ class License(core_models.UuidMixin, models.Model):
         SAAS = 'SaaS'
         BPAAS = 'BPaaS'
 
+    SERVICE_TYPES = (
+        (Services.IAAS, 'IaaS'), (Services.PAAS, 'PaaS'), (Services.SAAS, 'SaaS'), (Services.BPAAS, 'BPaaS'))
+
     name = models.CharField(max_length=255)
     license_type = models.CharField(max_length=127)
     templates = models.ManyToManyField(Template, related_name='licenses')
-    service_type = models.CharField(
-        max_length=10,
-        choices=[(getattr(Services, o), getattr(Services, o)) for o in dir(Services) if not o.startswith('__')])
+    service_type = models.CharField(max_length=10, choices=SERVICE_TYPES)
     setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
                                     validators=[MinValueValidator(Decimal('0.1')),
                                                 MaxValueValidator(Decimal('1000.0'))])

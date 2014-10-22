@@ -322,13 +322,11 @@ class LicenseViewSet(core_viewsets.ModelViewSet):
     """
     queryset = models.License.objects.all()
     serializer_class = serializers.LicenseSerializer
-    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+    permission_classes = (permissions.IsAdminUser,)
     lookup_field = 'uuid'
 
     def get_queryset(self):
         queryset = super(LicenseViewSet, self).get_queryset()
-        if not self.request.user.is_staff:
-            raise Http404
 
         if 'customer' in self.request.QUERY_PARAMS:
             customer_uuid = self.request.QUERY_PARAMS['customer']

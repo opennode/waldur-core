@@ -56,9 +56,6 @@ class LicenseViewSetTest(TestCase):
         self.view.request = mocked_request
         queryset = self.view.get_queryset()
         self.assertSequenceEqual(list(queryset), [])
-        # user is not staff
-        mocked_request.user = structure_factories.UserFactory()
-        self.assertRaises(Http404, lambda: self.view.get_queryset())
 
 
 class TemplateViewSetTest(TestCase):
