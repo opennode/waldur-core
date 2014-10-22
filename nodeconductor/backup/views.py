@@ -92,7 +92,7 @@ class BackupViewSet(viewsets.CreateModelViewSet):
     @action()
     def restore(self, request, uuid):
         backup = self._get_backup(request.user, uuid)
-        replace_original = request.POST.get('replace_original', False)
+        replace_original = request.DATA.get('replace_original', False)
         backup.start_restoration(replace_original=replace_original)
         return Response({'status': 'Backup restoration process was started'})
 
