@@ -27,10 +27,14 @@ class RelatedBackupField(RelatedField):
 
     def to_native(self, obj):
         """
-        Serialize any object to his url representation
+        Serializes any object to his url representation
         """
         kwargs = {self.lookup_field: getattr(obj, self.lookup_field)}
-        return reverse(self._get_url(obj), kwargs=kwargs)
+        try:
+            request = self.context['request']
+        except AttributeError:
+            raise AttributeError('RelatedBackupField have to be initialized with `request` in context')
+        return request.build_absolute_uri(reverse(self._get_url(obj), kwargs=kwargs))
 
     def _format_url(self, url):
         """
