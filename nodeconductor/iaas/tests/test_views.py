@@ -56,31 +56,3 @@ class LicenseViewSetTest(TestCase):
         self.view.request = mocked_request
         queryset = self.view.get_queryset()
         self.assertSequenceEqual(list(queryset), [])
-
-
-class TemplateViewSetTest(TestCase):
-
-    def setUp(self):
-        self.view = views.TemplateViewSet()
-
-    def test_licenses(self):
-        template = factories.TemplateFactory()
-        # as regular user:
-        user = structure_factories.UserFactory()
-        mocked_request = type(str('MockedRequest'), (object,), {'user': user, 'DATA': {}})
-        self.assertRaises(Http404, lambda: self.view.licenses(mocked_request, str(template.uuid)))
-        # as staff:
-        staff = structure_factories.UserFactory(is_staff=True)
-        mocked_request.user = staff
-        # add licenses to template:
-        licenses = [factories.LicenseFactory() for i in range(5)]
-        mocked_request.DATA['licenses'] = [str(l.uuid) for l in licenses]
-        self.view.licenses(mocked_request, str(template.uuid))
-        template = models.Template.objects.get(pk=template.pk)
-        self.assertSequenceEqual(template.licenses.all(), licenses)
-        # remove licenses from template:
-        licenses = licenses[:1]
-        mocked_request.DATA['licenses'] = [str(l.uuid) for l in licenses]
-        self.view.licenses(mocked_request, str(template.uuid))
-        template = models.Template.objects.get(pk=template.pk)
-        self.assertSequenceEqual(template.licenses.all(), licenses)
