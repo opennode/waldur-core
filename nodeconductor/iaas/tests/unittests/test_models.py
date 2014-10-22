@@ -25,10 +25,10 @@ class LicenseTest(TestCase):
         self.cloud.projects.add(self.project)
         self.image = factories.ImageFactory(cloud=self.cloud, template=self.template)
 
-    def test_projects(self):
+    def test_get_projects(self):
         structure_factories.ProjectFactory()
-        self.assertSequenceEqual(self.license.projects, [self.project])
+        self.assertSequenceEqual(self.license.get_projects(), [self.project])
 
-    def test_projects_groups(self):
+    def test_get_projects_groups(self):
         structure_factories.ProjectGroupFactory()
-        self.assertSequenceEqual(self.license.projects_groups, [self.project_group])
+        self.assertSequenceEqual(self.license.get_projects_groups(), [self.project_group])
