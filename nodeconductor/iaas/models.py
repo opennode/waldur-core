@@ -291,24 +291,57 @@ class InstanceSecurityGroup(core_models.UuidMixin, models.Model):
     instance = models.ForeignKey(Instance, related_name='security_groups')
     name = models.CharField(max_length=127)
 
-    @property
-    def _cloud_security_group(self):
-        if not hasattr(self, '_security_group'):
-            self._security_group = [g for g in cloud_models.SecurityGroups.groups if g['name'] == self.name][0]
-        return self._security_group
+    def get_cloud_security_group(self):
+        cloud_security_group = cloud_models.SecurityGroup.objects.filter(name=self.name).first()
 
-    @property
-    def protocol(self):
-        return self._cloud_security_group['protocol']
+        return cloud_security_group
 
-    @property
-    def from_port(self):
-        return self._cloud_security_group['from_port']
+    def get_protocol(self):
+        cloud_security_group = self.get_cloud_security_group()
 
-    @property
-    def to_port(self):
-        return self._cloud_security_group['to_port']
+        try:
+            protocol = cloud_security_group.get('protocol')
+        except cloud_models.SecurityGroup.DoesNotExist:
+            return None
 
-    @property
-    def ip_range(self):
-        return self._cloud_security_group['ip_range']
+        return protocol
+
+    def get_from_port(self):
+        cloud_security_group = self.get_cloud_security_group()
+
+        try:
+            from_port = cloud_security_group.get('from_port')
+        except cloud_models.SecurityGroup.DoesNotExist:
+            return None
+
+        return from_port
+
+    def get_to_port(self):
+        cloud_security_group = self.get_cloud_security_group()
+
+        try:
+            to_port = cloud_security_group.get('to_port')
+        except cloud_models.SecurityGroup.DoesNotExist:
+            return None
+
+        return to_port
+
+    def get_ip_range(self):
+        cloud_security_group = self.get_cloud_security_group()
+
+        try:
+            ip_range = cloud_security_group.get('ip_range')
+        except cloud_models.SecurityGroup.DoesNotExist:
+            return None
+
+        return ip_range
+
+    def get_netmask(self):
+        cloud_security_group = self.get_cloud_security_group()
+
+        try:
+            netmask = cloud_security_group.get('netmask')
+        except cloud_models.SecurityGroup.DoesNotExist:
+            return None
+
+        return netmask

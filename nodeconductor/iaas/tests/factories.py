@@ -77,4 +77,5 @@ class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
         model = models.InstanceSecurityGroup
 
     instance = factory.SubFactory(InstanceFactory)
-    name = factory.Iterator(cloud_models.SecurityGroups.groups_names)
+    cloud_security_group = factory.SubFactory(cloud_factories.SecurityGroupFactory)
+    name = factory.LazyAttribute(lambda o: o.cloud_security_group.name)

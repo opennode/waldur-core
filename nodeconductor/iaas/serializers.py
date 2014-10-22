@@ -24,7 +24,9 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
     def validate_name(self, attrs, attr_name):
         name = attrs[attr_name]
-        if not name in cloud_models.SecurityGroups.groups_names:
+        cloud_security_group = cloud_models.SecurityGroup.objects.filter(name=name)
+
+        if not cloud_security_group.exists():
             raise ValidationError('There is no group with name %s' % name)
         return attrs
 
