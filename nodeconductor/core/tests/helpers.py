@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import abc
 import json
 
 from rest_framework import test
@@ -9,6 +8,7 @@ from rest_framework import test
 class PermissionsTest(test.APISimpleTestCase):
     """
     Abstract class for permissions tests.
+
     Methods `get_urls_configs`, `get_users_with_permission`,
     `get_users_without_permissions` have to be overridden.
 
@@ -32,15 +32,12 @@ class PermissionsTest(test.APISimpleTestCase):
             yield {'url': 'http://testserver/some/url, 'method': 'GET'}
             yield {'url': 'http://testserver/some/unreachable/url', 'method': 'POST'}
             ...
-
     """
-    class Meta:
-        __metaclass__ = abc.ABCMeta
 
-    @abc.abstractmethod
     def get_urls_configs(self):
         """
         Return list or generator of url configs.
+
         Each url config is dictionary with such keys:
          - url: url itself
          - method: request method
@@ -52,21 +49,19 @@ class PermissionsTest(test.APISimpleTestCase):
             'data': {'backup_source': 'backup/source/url'}
         }
         """
-        pass
+        raise NotImplementedError()
 
-    @abc.abstractmethod
     def get_users_with_permission(self, url, method):
         """
         Returns list of users which can access given url with given method
         """
-        pass
+        raise NotImplementedError()
 
-    @abc.abstractmethod
     def get_users_without_permissions(self, url, method):
         """
         Returns list of users which can not access given url with given method
         """
-        pass
+        raise NotImplementedError()
 
     def test_permissions(self):
         """
@@ -97,18 +92,15 @@ class PermissionsTest(test.APISimpleTestCase):
 class ListPermissionsTest(test.APISimpleTestCase):
     """
     Abstract class that tests what objects user receive in list.
+
     Method `get_users_and_expected_results` has to be overridden.
     Field `url` have to be defined as class attribute or property.
     """
     url = None
 
-    class Meta:
-        __metaclass__ = abc.ABCMeta
-
-    @abc.abstractmethod
     def get_users_and_expected_results(self):
         """
-        Returns list or generator of dictionaries with such keys:
+        Return list or generator of dictionaries with such keys:
          - user - user which we want to test
          - expected_results - list of dictionaries with fields which user has
                               to receive as answer from server
