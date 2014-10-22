@@ -116,7 +116,7 @@ filters.set_permissions_for_model(
 )
 
 
-class SecurityGroupsViewSet(rf_viewsets.GenericViewSet):
-
-    def list(self, request, *args, **kwargs):
-        return Response(models.SecurityGroups.groups, status=200)
+class SecurityGroupViewSet(rf_viewsets.ReadOnlyModelViewSet):
+    queryset = models.SecurityGroup.objects.all()
+    serializer_class = serializers.SecurityGroupSerializer
+    lookup_field = 'uuid'

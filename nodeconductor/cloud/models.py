@@ -1,13 +1,14 @@
 from __future__ import unicode_literals
+from django.core.exceptions import ValidationError
 
-from django.core.validators import URLValidator
+from django.core.validators import URLValidator, MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
-from nodeconductor.core.models import UuidMixin
+from nodeconductor.core.models import UuidMixin, DescribableMixin
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models as structure_models
@@ -134,19 +135,27 @@ def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
         )
 
 
-class SecurityGroups(object):
+class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
     """
-    This class contains list of hard coded openstack security groups.
+    This class contains openstack security groups.
     """
-    groups = [
-        {
-            "name": "test security group",
-            "description": "test security group description",
-            "protocol": "tcp",
-            "from_port": 1,
-            "to_port": 65535,
-            "ip_range": "0.0.0.0/0"
-        }
-    ]
 
-    groups_names = [g['name'] for g in groups]
+    tcp = 1
+    udp = 0
+
+    PROTOCOL_CHOICES = (
+        (tcp, _('tcp')),
+        (udp, _('udp')),
+    )
+
+    name = models.CharField(max_length=127)
+    protocol = models.SmallIntegerField(max_length=3, choices=PROTOCOL_CHOICES)
+    from_port = models.IntegerField(validators=[MaxValueValidator(65535),
+                                                MinValueValidator(1)])
+    to_port = models.IntegerField(validators=[MaxValueValidator(65535),
+                                              MinValueValidator(1)])
+    ip_range = models.IPAddressField()
+    netmask = models.PositiveIntegerField(null=False)
+
+    def __str__(self):
+        return self.name

@@ -99,4 +99,3 @@ class SecurityGroupsTest(test.APISimpleTestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(_security_group_list_url())
         self.assertEqual(response.status_code, 200)
-        self.assertSequenceEqual(json.loads(response.content), models.SecurityGroups.groups)

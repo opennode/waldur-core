@@ -78,3 +78,9 @@ class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFiltering
 
     def get_related_paths(self):
         return 'project', 'cloud'
+
+
+class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = models.SecurityGroup
+        lookup_field = 'uuid'

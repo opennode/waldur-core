@@ -15,5 +15,5 @@ class CloudAdmin(admin.ModelAdmin):
     list_display = ('name', 'customer')
     ordering = ('name', 'customer')
 
-
 admin.site.register(models.Cloud, CloudAdmin)
+admin.site.register(models.SecurityGroup)
