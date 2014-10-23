@@ -36,11 +36,11 @@ class TemplateFactory(factory.DjangoModelFactory):
 
 class TemplateLicenseFactory(factory.DjangoModelFactory):
     class Meta(object):
-        model = models.License
+        model = models.TemplateLicense
 
     name = factory.Sequence(lambda n: 'License%s' % n)
     license_type = factory.Sequence(lambda n: 'LicenseType%s' % n)
-    service_type = models.License.Services.IAAS
+    service_type = models.TemplateLicense.Services.IAAS
     setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
@@ -79,7 +79,7 @@ class InstanceLicenseFactory(factory.DjangoModelFactory):
         model = models.InstanceLicense
 
     instance = factory.SubFactory(InstanceFactory)
-    template_license = factory.SubFactory(TemplateFactory)
+    template_license = factory.SubFactory(TemplateLicenseFactory)
     setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 

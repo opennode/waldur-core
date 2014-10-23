@@ -22,7 +22,7 @@ class InstanceViewSetTest(TestCase):
 class LicenseViewSetTest(TestCase):
 
     def setUp(self):
-        self.view = views.LicenseViewSet()
+        self.view = views.TemplateLicenseViewSet()
 
     def test_get_queryset(self):
         # project and customer
@@ -34,9 +34,9 @@ class LicenseViewSetTest(TestCase):
         template = factories.TemplateFactory()
         factories.ImageFactory(cloud=cloud, template=template)
         # license
-        license = factories.LicenseFactory()
+        license = factories.TemplateLicenseFactory()
         license.templates.add(template)
-        other_license = factories.LicenseFactory()
+        other_license = factories.TemplateLicenseFactory()
         other_customer = structure_factories.CustomerFactory()
 
         user = structure_factories.UserFactory(is_staff=True, is_superuser=True)

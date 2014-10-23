@@ -297,7 +297,7 @@ class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
     filter_backends = (filters.GenericRoleFilter,)
 
 
-class LicenseViewSet(core_viewsets.ModelViewSet):
+class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
     """
     Every template is potentially connected to zero or more consumed licenses.
     License is defined as an abstract consumable.
@@ -308,13 +308,13 @@ class LicenseViewSet(core_viewsets.ModelViewSet):
 
     Add customer uuid as `customer` GET parameter to filter licenses for customer
     """
-    queryset = models.License.objects.all()
-    serializer_class = serializers.LicenseSerializer
+    queryset = models.TemplateLicense.objects.all()
+    serializer_class = serializers.TemplateLicenseSerializer
     permission_classes = (permissions.IsAdminUser,)
     lookup_field = 'uuid'
 
     def get_queryset(self):
-        queryset = super(LicenseViewSet, self).get_queryset()
+        queryset = super(TemplateLicenseViewSet, self).get_queryset()
 
         if 'customer' in self.request.QUERY_PARAMS:
             customer_uuid = self.request.QUERY_PARAMS['customer']

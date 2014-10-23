@@ -13,6 +13,6 @@ PERMISSION_LOGICS = (
     )),
     ('iaas.Template', StaffPermissionLogic(any_permission=True)),
     ('iaas.Image', StaffPermissionLogic(any_permission=True)),
-    ('iaas.License', StaffPermissionLogic(any_permission=True)),
+    ('iaas.TemplateLicense', StaffPermissionLogic(any_permission=True)),
 
 )

@@ -13,7 +13,7 @@ class LicenseTest(TestCase):
         license, template, instance, project and project role.
         """
         # license and template
-        self.license = factories.LicenseFactory()
+        self.license = factories.TemplateLicenseFactory()
         self.template = factories.TemplateFactory()
         self.license.templates.add(self.template)
         # project and project group

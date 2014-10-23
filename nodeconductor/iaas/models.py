@@ -247,7 +247,7 @@ class Instance(core_models.UuidMixin,
         """
         Create new instance licenses from template licenses
         """
-        for template_license in self.template.template_licenses:
+        for template_license in self.template.template_licenses.all():
             InstanceLicense.objects.create(
                 instance=self,
                 template_license=template_license,
@@ -298,11 +298,11 @@ class TemplateLicense(core_models.UuidMixin, models.Model):
 
     def get_projects(self):
         return structure_models.Project.objects.filter(
-            clouds__images__template__licenses=self)
+            clouds__images__template__template_licenses=self)
 
     def get_projects_groups(self):
         return structure_models.ProjectGroup.objects.filter(
-            projects__clouds__images__template__licenses=self)
+            projects__clouds__images__template__template_licenses=self)
 
 
 @python_2_unicode_compatible
@@ -315,6 +315,9 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
     monthly_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
                                       validators=[MinValueValidator(Decimal('0.1')),
                                                   MaxValueValidator(Decimal('1000.0'))])
+
+    def __str__(self):
+        return 'License: %s for %s' % (self.template_license, self.instance)
 
 
 class Volume(models.Model):

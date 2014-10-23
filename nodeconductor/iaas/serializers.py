@@ -60,6 +60,20 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
         return attrs
 
 
+class InstanceLicenseSerializer(serializers.HyperlinkedModelSerializer):
+
+    name = serializers.Field(source='template_license.name')
+    license_type = serializers.Field(source='template_license.license_type')
+    service_type = serializers.Field(source='template_license.service_type')
+
+    class Meta(object):
+        model = models.InstanceLicense
+        fields = (
+            'url', 'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
+        )
+        lookup_field = 'uuid'
+
+
 class InstanceSerializer(RelatedResourcesFieldMixin,
                          PermissionFieldFilteringMixin,
                          serializers.HyperlinkedModelSerializer):
@@ -72,6 +86,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     backup_schedules = backup_serializers.BackupScheduleSerializer()
 
     security_groups = InstanceSecurityGroupSerializer(read_only=True)
+    instance_licenses = InstanceLicenseSerializer(read_only=True)
 
     class Meta(object):
         model = models.Instance
@@ -88,6 +103,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'ips',
             'state',
             'backups', 'backup_schedules',
+            'instance_licenses'
         )
 
         lookup_field = 'uuid'
@@ -99,7 +115,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
         return 'flavor.cloud', 'template', 'project', 'flavor', 'project.customer'
 
 
-class LicenseSerializer(serializers.HyperlinkedModelSerializer):
+class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
 
     projects_groups = structure_serializers.BasicProjectGroupSerializer(
         source='get_projects_groups', many=True, read_only=True)
@@ -108,7 +124,7 @@ class LicenseSerializer(serializers.HyperlinkedModelSerializer):
         source='get_projects', many=True, read_only=True)
 
     class Meta(object):
-        model = models.License
+        model = models.TemplateLicense
         fields = (
             'url', 'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
             'projects', 'projects_groups',
@@ -118,7 +134,7 @@ class LicenseSerializer(serializers.HyperlinkedModelSerializer):
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 
-    licenses = LicenseSerializer()
+    template_licenses = TemplateLicenseSerializer()
 
     class Meta(object):
         model = models.Template
@@ -129,7 +145,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'is_active',
             'setup_fee',
             'monthly_fee',
-            'licenses',
+            'template_licenses',
         )
         lookup_field = 'uuid'
 
@@ -151,7 +167,7 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Template
-        fields = ('url', 'uuid', 'licenses',)
+        fields = ('url', 'uuid', 'template_licenses',)
         lookup_field = 'uuid'
 
 
