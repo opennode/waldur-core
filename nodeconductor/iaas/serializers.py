@@ -102,10 +102,10 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
 class LicenseSerializer(serializers.HyperlinkedModelSerializer):
 
     projects_groups = structure_serializers.BasicProjectGroupSerializer(
-        source='projects_groups', many=True, read_only=True)
+        source='get_projects_groups', many=True, read_only=True)
 
     projects = structure_serializers.BasicProjectSerializer(
-        source='projects', many=True, read_only=True)
+        source='get_projects', many=True, read_only=True)
 
     class Meta(object):
         model = models.License
