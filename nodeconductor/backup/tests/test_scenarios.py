@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
-
+from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.backup import models, backup_registry
@@ -45,7 +45,7 @@ class BackupUsageTest(test.APISimpleTestCase):
         }
         url = _backup_list_url()
         response = self.client.post(url, data=backup_data)
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         backup = models.Backup.objects.get(object_id=backupable.id)
         self.assertEqual(backup.state, models.Backup.States.BACKING_UP)
         # fail:
@@ -54,21 +54,21 @@ class BackupUsageTest(test.APISimpleTestCase):
         }
         url = _backup_list_url()
         response = self.client.post(url, data=backup_data)
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('backup_source', response.content)
 
     def test_backup_restore(self):
         backup = factories.BackupFactory()
         url = _backup_url(backup, action='restore')
         response = self.client.post(url)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.RESTORING)
 
     def test_backup_delete(self):
         backup = factories.BackupFactory()
         url = _backup_url(backup, action='delete')
         response = self.client.post(url)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.DELETING)
 
 
@@ -89,7 +89,7 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
             'maximal_number_of_backups': 3,
         }
         response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         backup_schedule = models.BackupSchedule.objects.get(object_id=backupable.id)
         self.assertEqual(backup_schedule.retention_time, backup_schedule_data['retention_time'])
         self.assertEqual(backup_schedule.maximal_number_of_backups, backup_schedule_data['maximal_number_of_backups'])
@@ -97,7 +97,7 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         # wrong schedule:
         backup_schedule_data['schedule'] = 'wrong schedule'
         response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('schedule', response.content)
         # wrong backup source:
         backup_schedule_data['schedule'] = '*/5 * * * *'
@@ -105,18 +105,18 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         unbackupable_url = 'http://testserver' + reverse('backup-detail', args=(backup.uuid, ))
         backup_schedule_data['backup_source'] = unbackupable_url
         response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('backup_source', response.content)
 
     def test_schedule_activation_and_deactivation(self):
         schedule = factories.BackupScheduleFactory(is_active=False)
         # activate
         response = self.client.post(_backup_schedule_url(schedule, action='activate'))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(models.BackupSchedule.objects.get(pk=schedule.pk).is_active)
         # deactivate
         response = self.client.post(_backup_schedule_url(schedule, action='deactivate'))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(models.BackupSchedule.objects.get(pk=schedule.pk).is_active)
 
 

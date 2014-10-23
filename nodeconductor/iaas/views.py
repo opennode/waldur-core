@@ -1,9 +1,10 @@
 from __future__ import unicode_literals
 
 import logging
-from django.http import Http404
-from django.shortcuts import get_object_or_404
 
+from django.http import Http404
+import django_filters
+from django_fsm import TransitionNotAllowed
 from rest_framework import permissions, status
 from rest_framework import mixins
 from rest_framework import viewsets
@@ -11,8 +12,6 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework import filters as rf_filter
-import django_filters
-from django_fsm import TransitionNotAllowed
 
 from nodeconductor.cloud.models import Cloud, Flavor
 from nodeconductor.core import mixins as core_mixins
@@ -300,7 +299,7 @@ class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 class LicenseViewSet(core_viewsets.ModelViewSet):
     """
-    Every template is potential connected to one or more consumed licenses.
+    Every template is potentially connected to one or more consumed licenses.
     License is defined as an abstract consumable.
 
     Only staff can view all licenses, edit and delete them.

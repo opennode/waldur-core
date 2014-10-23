@@ -1,8 +1,8 @@
 from django.test import TestCase
 
+from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
-from nodeconductor.cloud.tests import factories as cloud_factories
 
 
 class LicenseTest(TestCase):

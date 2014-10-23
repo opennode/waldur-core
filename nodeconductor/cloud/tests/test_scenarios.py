@@ -1,10 +1,8 @@
 from __future__ import unicode_literals
 
-import json
-
 from django.core.urlresolvers import reverse
-
 from mock import patch
+from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.structure.tests import factories as structure_factories
@@ -35,7 +33,7 @@ class CloudTest(test.APISimpleTestCase):
         with patch('nodeconductor.cloud.models.Cloud.sync') as patched_method:
             response = self.client.post(_cloud_url(cloud, action='sync'))
             patched_method.assert_called_with()
-            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     # XXX This method have to be moved to cloud permissions test
     def test_cloud_sync_permission(self):
@@ -43,7 +41,7 @@ class CloudTest(test.APISimpleTestCase):
         cloud = factories.CloudFactory()
         self.client.force_authenticate(user=user)
         response = self.client.post(_cloud_url(cloud, action='sync'))
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_cloud_visible_fields(self):
         """
@@ -60,34 +58,30 @@ class CloudTest(test.APISimpleTestCase):
         # admin
         self.client.force_authenticate(user=admin)
         response = self.client.get(_cloud_url(cloud))
-        self.assertEqual(response.status_code, 200)
-        context = json.loads(response.content)
-        self.assertEqual(len(context.keys()), len(serializers.CloudSerializer.public_fields))
-        for key in context.keys():
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data.keys()), len(serializers.CloudSerializer.public_fields))
+        for key in response.data.keys():
             self.assertIn(key, serializers.CloudSerializer.public_fields)
 
         # manager
         self.client.force_authenticate(user=admin)
         response = self.client.get(_cloud_url(cloud))
-        self.assertEqual(response.status_code, 200)
-        context = json.loads(response.content)
-        self.assertEqual(len(context.keys()), len(serializers.CloudSerializer.public_fields))
-        for key in context.keys():
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data.keys()), len(serializers.CloudSerializer.public_fields))
+        for key in response.data.keys():
             self.assertIn(key, serializers.CloudSerializer.public_fields)
 
         # customer owner
         self.client.force_authenticate(user=self.owner)
         response = self.client.get(_cloud_url(cloud))
-        self.assertEqual(response.status_code, 200)
-        context = json.loads(response.content)
-        self.assertGreater(len(context.keys()), len(serializers.CloudSerializer.public_fields))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreater(len(response.data.keys()), len(serializers.CloudSerializer.public_fields))
 
         # customer is manager too
         project.add_user(self.owner, structure_models.ProjectRole.MANAGER)
         response = self.client.get(_cloud_url(cloud))
-        self.assertEqual(response.status_code, 200)
-        context = json.loads(response.content)
-        self.assertGreater(len(context.keys()), len(serializers.CloudSerializer.public_fields))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreater(len(response.data.keys()), len(serializers.CloudSerializer.public_fields))
 
 
 class SecurityGroupsTest(test.APISimpleTestCase):
@@ -98,5 +92,5 @@ class SecurityGroupsTest(test.APISimpleTestCase):
     def test_list_security_groups(self):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(_security_group_list_url())
-        self.assertEqual(response.status_code, 200)
-        self.assertSequenceEqual(json.loads(response.content), models.SecurityGroups.groups)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertSequenceEqual(response.data, models.SecurityGroups.groups)

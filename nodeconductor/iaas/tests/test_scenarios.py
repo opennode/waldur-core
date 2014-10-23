@@ -1,18 +1,16 @@
 from __future__ import unicode_literals
 
-import json
-
 from django.core.urlresolvers import reverse
-
 from rest_framework import test
+from rest_framework import status
 
-from nodeconductor.structure.tests import factories as structure_factories
-from nodeconductor.structure import models as structure_models
 from nodeconductor.cloud import models as cloud_models
 from nodeconductor.cloud.tests import factories as cloud_factories
-from nodeconductor.iaas.tests import factories
-from nodeconductor.iaas import models
 from nodeconductor.core.tests import helpers
+from nodeconductor.iaas import models
+from nodeconductor.iaas.tests import factories
+from nodeconductor.structure import models as structure_models
+from nodeconductor.structure.tests import factories as structure_factories
 
 
 def _flavor_url(flavor):
@@ -96,19 +94,18 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
             for g in cloud_models.SecurityGroups.groups]
 
         response = self.client.get(_instance_url(self.instance))
-        self.assertEqual(response.status_code, 200)
-        context = json.loads(response.content)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range')
         for field in fields:
             expected_security_groups = [getattr(g, field) for g in security_groups]
-            self.assertSequenceEqual([g[field] for g in context['security_groups']], expected_security_groups)
+            self.assertSequenceEqual([g[field] for g in response.data['security_groups']], expected_security_groups)
 
     def test_add_instance_with_security_groups(self):
         data = _instance_data(self.instance)
         data['security_groups'] = [{'name': name} for name in cloud_models.SecurityGroups.groups_names]
 
         response = self.client.post(_instance_list_url(), data=data)
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         instance = models.Instance.objects.get(hostname=data['hostname'])
         self.assertSequenceEqual(
             [g.name for g in instance.security_groups.all()], cloud_models.SecurityGroups.groups_names)
@@ -117,7 +114,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         data = {'security_groups': [{'name': name} for name in cloud_models.SecurityGroups.groups_names]}
 
         response = self.client.patch(_instance_url(self.instance), data=data)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertSequenceEqual(
             [g.name for g in self.instance.security_groups.all()], cloud_models.SecurityGroups.groups_names)
 
@@ -125,7 +122,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         data = _instance_data(self.instance)
         self.assertNotIn('security_groups', data)
         response = self.client.post(_instance_list_url(), data=data)
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
 
 class LicenseTest(test.APISimpleTestCase):
@@ -151,12 +148,11 @@ class LicenseTest(test.APISimpleTestCase):
     def test_projects_in_license_response(self):
         self.client.force_authenticate(self.staff)
         response = self.client.get(_license_url(self.license))
-        self.assertEqual(response.status_code, 200)
-        context = json.loads(response.content)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertSequenceEqual(
-            [p['name'] for p in context['projects']], [p.name for p in self.license.projects])
+            [p['name'] for p in response.data['projects']], [p.name for p in self.license.projects])
         self.assertSequenceEqual(
-            [p['name'] for p in context['projects_groups']], [p.name for p in self.license.projects_groups])
+            [p['name'] for p in response.data['projects_groups']], [p.name for p in self.license.projects_groups])
 
     def test_licenses_list(self):
         # another license:
@@ -164,14 +160,13 @@ class LicenseTest(test.APISimpleTestCase):
         # as staff without filter
         self.client.force_authenticate(self.staff)
         response = self.client.get(_license_list_url())
-        self.assertEqual(response.status_code, 200)
-        context = json.loads(response.content)
-        self.assertSequenceEqual([c['uuid'] for c in context], [str(l.uuid) for l in models.License.objects.all()])
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertSequenceEqual(
+            [c['uuid'] for c in response.data], [str(l.uuid) for l in models.License.objects.all()])
         # as staff with filter
         response = self.client.get(_license_list_url(), {'customer': self.customer.uuid})
-        context = json.loads(response.content)
-        self.assertEqual(len(context), 1)
-        self.assertEqual(context[0]['uuid'], str(self.license.uuid))
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['uuid'], str(self.license.uuid))
 
     def test_license_creation(self):
         data = {
@@ -183,7 +178,7 @@ class LicenseTest(test.APISimpleTestCase):
         }
         self.client.force_authenticate(self.staff)
         response = self.client.post(_license_list_url(), data=data)
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         license = models.License.objects.get(name=data['name'])
         for key, value in data.iteritems():
             self.assertEqual(value, getattr(license, key))
@@ -192,35 +187,34 @@ class LicenseTest(test.APISimpleTestCase):
         data = {'name': 'new_name'}
         self.client.force_authenticate(self.staff)
         response = self.client.patch(_license_url(self.license), data=data)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(data['name'], models.License.objects.get(pk=self.license.pk).name)
 
     def test_license_delete(self):
         self.client.force_authenticate(self.staff)
         response = self.client.delete(_license_url(self.license))
-        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(models.License.objects.filter(pk=self.license.pk).exists())
 
     def test_manager_see_template_licenses(self):
         self.client.force_authenticate(self.manager)
         response = self.client.get(_template_url(self.template))
-        self.assertEqual(response.status_code, 200)
-        context = json.loads(response.content)
-        self.assertIn('licenses', context)
-        self.assertEqual(context['licenses'][0]['name'], self.license.name)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('licenses', response.data)
+        self.assertEqual(response.data['licenses'][0]['name'], self.license.name)
 
     def test_add_license_to_template(self):
         self.client.force_authenticate(self.staff)
 
         data = {'licenses': []}
         response = self.client.patch(_template_url(self.template), data=data)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.template = models.Template.objects.get(pk=self.template.pk)
         self.assertEqual(self.template.licenses.count(), 0)
 
         data = {'licenses': [_license_url(self.license)]}
         response = self.client.patch(_template_url(self.template), data=data)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.template = models.Template.objects.get(pk=self.template.pk)
         self.assertEqual(self.template.licenses.count(), 1)
         self.assertEqual(self.template.licenses.all()[0], self.license)
