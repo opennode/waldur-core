@@ -316,6 +316,9 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
                                       validators=[MinValueValidator(Decimal('0.1')),
                                                   MaxValueValidator(Decimal('1000.0'))])
 
+    class Permissions():
+        project_path = 'instance__project'
+
     def __str__(self):
         return 'License: %s for %s' % (self.template_license, self.instance)
 
