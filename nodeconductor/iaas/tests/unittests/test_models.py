@@ -32,3 +32,17 @@ class LicenseTest(TestCase):
     def test_get_projects_groups(self):
         structure_factories.ProjectGroupFactory()
         self.assertSequenceEqual(self.license.get_projects_groups(), [self.project_group])
+
+
+class InstanceTest(TestCase):
+
+    def test_init_instance_licenses(self):
+        template = factories.TemplateFactory()
+        template_license = factories.TemplateLicenseFactory()
+        template.template_licenses.add(template_license)
+        instance = factories.InstanceFactory(template=template)
+        self.assertEqual(instance.instance_licenses.count(), 1)
+        instance_license = instance.instance_licenses.all()[0]
+        self.assertEqual(instance_license.template_license, template_license)
+        self.assertEqual(instance_license.setup_fee, template_license.setup_fee)
+        self.assertEqual(instance_license.monthly_fee, template_license.monthly_fee)
