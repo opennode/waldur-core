@@ -34,7 +34,7 @@ class TemplateFactory(factory.DjangoModelFactory):
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
 
-class LicenseFactory(factory.DjangoModelFactory):
+class TemplateLicenseFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.License
 
@@ -72,6 +72,16 @@ class InstanceFactory(factory.DjangoModelFactory):
                                 '.'.join('%s' % randint(0, 255) for i in range(4))
                                 for j in range(3)))
     ssh_public_key = factory.SubFactory(SshPublicKeyFactory)
+
+
+class InstanceLicenseFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.InstanceLicense
+
+    instance = factory.SubFactory(InstanceFactory)
+    template_license = factory.SubFactory(TemplateFactory)
+    setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
+    monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
 
 class PurchaseFactory(factory.DjangoModelFactory):
