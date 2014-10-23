@@ -2,16 +2,17 @@ from __future__ import unicode_literals
 
 import logging
 
+from django.db import models as django_models
 from django.http import Http404
 import django_filters
 from django_fsm import TransitionNotAllowed
-from rest_framework import permissions, status
+from rest_framework import filters as rf_filter
 from rest_framework import mixins
+from rest_framework import permissions, status
 from rest_framework import viewsets
-from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from rest_framework import filters as rf_filter
+from rest_framework_extensions.decorators import action, link
 
 from nodeconductor.cloud.models import Cloud, Flavor
 from nodeconductor.core import mixins as core_mixins
@@ -310,10 +311,13 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
     """
     queryset = models.TemplateLicense.objects.all()
     serializer_class = serializers.TemplateLicenseSerializer
-    permission_classes = (permissions.IsAdminUser,)
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     lookup_field = 'uuid'
 
     def get_queryset(self):
+        if not self.request.user.is_staff:
+            raise Http404
+
         queryset = super(TemplateLicenseViewSet, self).get_queryset()
 
         if 'customer' in self.request.QUERY_PARAMS:
@@ -323,3 +327,25 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
             queryset = queryset.filter(templates__in=customer_templates_ids)
 
         return queryset
+
+    @link(is_for_list=True)
+    def stats(self, request):
+        aggregate = self.request.QUERY_PARAMS.get('aggregate', 'name')
+        if aggregate == 'project_name':
+            aggregate_field = 'instance__project__name'
+        elif aggregate == 'project_group':
+            aggregate_field = 'instance__project__project_groups__name'
+        elif aggregate == 'license_type':
+            aggregate_field = 'template_license__license_type'
+        else:
+            aggregate_field = 'template_license__name'
+
+        queryset = filters.filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
+        queryset = queryset.values(aggregate_field).annotate(count=django_models.Count('id'))
+
+        # This hack can be removed when https://code.djangoproject.com/ticket/16735 will be closed
+        for d in queryset:
+            d[aggregate] = d[aggregate_field]
+            del d[aggregate_field]
+
+        return Response(queryset)
