@@ -87,7 +87,7 @@ Example of a valid response:
         "project": "http://example.com/api/projects/5571948e218949bb9474fb868c366e8c/",
         "project_name": "Project1",
         "customer": "http://example.com/api/customers/4648d37d23ca434bb8cb88b6defc3d20/",
-        "customer_name: "Customer1",
+        "customer_name": "Customer1",
         "ssh_public_key": "http://example.com/api/keys/e49f536565e646f9a4a6b2dbd57fad37/",
         "ssh_public_key_name": "ssh_public_key1",
         "project_groups": [],
