@@ -466,6 +466,24 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         for ip in ips:
             self.assertTrue(ips_regex.match(ip))
 
+    def test_instance_licenses_added_on_instance_creation(self):
+        template_license = factories.TemplateLicenseFactory()
+        self.template.template_licenses.add(template_license)
+
+        response = self.client.post(self.instance_list_url, self.get_valid_data())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(template_license.instance_licenses.count(), 1)
+
+    def test_instance_licenses_exist_in_instance_retreive_request(self):
+        instance = factories.InstanceFactory()
+        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        instance_license = factories.InstanceLicenseFactory(instance=instance)
+
+        response = self.client.get(self._get_instance_url(instance))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('instance_licenses', response.data)
+        self.assertEqual(response.data['instance_licenses'][0]['name'], instance_license.template_license.name)
+
     # Helper methods
     def get_valid_data(self):
         return {
@@ -486,8 +504,8 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
             'ssh_public_key': self._get_ssh_public_key_url(self.ssh_public_key)
         }
 
-# XXX: all this `url-methods` have to be moved to one place after tests refactoring
 
+# XXX: all this `url-methods` have to be moved to one place after tests refactoring
 
 def _flavor_url(flavor):
     return 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': flavor.uuid})
@@ -512,14 +530,6 @@ def _instance_list_url():
 
 def _ssh_public_key_url(key):
     return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': key.uuid})
-
-
-def _license_url(license):
-    return 'http://testserver' + reverse('license-detail', kwargs={'uuid': license.uuid})
-
-
-def _license_list_url():
-    return 'http://testserver' + reverse('license-list')
 
 
 def _instance_data(instance=None):

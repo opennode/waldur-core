@@ -60,7 +60,7 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
         return attrs
 
 
-class InstanceLicenseSerializer(serializers.HyperlinkedModelSerializer):
+class InstanceLicenseSerializer(serializers.ModelSerializer):
 
     name = serializers.Field(source='template_license.name')
     license_type = serializers.Field(source='template_license.license_type')
@@ -69,7 +69,7 @@ class InstanceLicenseSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.InstanceLicense
         fields = (
-            'url', 'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
+            'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
         )
         lookup_field = 'uuid'
 
