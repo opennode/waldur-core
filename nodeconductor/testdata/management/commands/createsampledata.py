@@ -78,20 +78,26 @@ Arguments:
     def add_sample_data(self):
         self.stdout.write("""Generating data structures...
 
-    +---------------+    +-----------------+        +------------------+
-    | User          |    | User            |        | User             |
-    | username: Bob |    | username: Alice |        | username: Walter |
-    | password: Bob |    | password: Alice |        | password: Walter |
-    +-------+-------+    +-----+-----+-----+        | is_staff: yes    |
-             \                /       \             +------------------+
-         role:owner          /    role:owner
-               \            /           \ 
-                \     role:owner         \ 
-                 \        /               \ 
-    +-------------+------+----+   +--------+-------------------+
++---------------+  +-----------------+  +------------------+  +---------------+
+| User          |  | User            |  | User             |  | User          |
+| username: Bob |  | username: Alice |  | username: Walter |  | username: Zed |
+| password: Bob |  | password: Alice |  | password: Walter |  | password: Zed |
++-------+-------+  +-----+-----+-----+  | is_staff: yes    |  | (no roles)    |
+         \              /       \       +------------------+  +---------------+
+     role:owner        /    role:owner
+           \          /           \ 
+            \   role:owner         \ 
+             \      /               \ 
+    +---------+----+----------+   +--+-------------------------+
     | Customer                |   | Customer                   |
     | name: Ministry of Bells |   | name: Ministry of Whistles |
-    +------------+------------+   +-----+----------------+-----+
+    +------------+------------+   +----------+-----------------+
+                 |                            \ 
+                 |                             \ 
+      +----------+---------+         +----------+------------+
+      | Project Group      |         | Project Group         |
+      | name: Bells Portal |         | name: Whistles Portal |
+      +----------+---------+         +--+----------------+---+
                 /                      /                  \ 
                /                      /                    \ 
    +----------+------+  +------------+-------+  +-----------+-----------------+
@@ -114,7 +120,10 @@ Use cases covered:
  - Use case 3: User that is manager of a project -- Dave, Erin, Frank
  - Use case 5: User has roles in several projects of the same customer -- Erin
  - Use case 6: User owns a customer -- Alice, Bob
+ - Use case 7: Project group contains several projects -- Whistles Portal
  - Use case 9: User has roles in several projects of different customers -- Dave
+ - Use case 12: User has no roles at all -- Zed
+
 
 Other use cases are covered with random data.
 """)
@@ -129,28 +138,37 @@ Other use cases are covered with random data.
                 'Frank': {},
                 'Walter': {
                     'is_staff': True,
-                },
+                 },
+                'Zed': {},
             },
             'customers' : {
                 'Ministry of Bells': {
                     'owners': ['Alice', 'Bob'],
-                    'projects': {
-                        'bells.org': {
-                            'admins': ['Charlie'],
-                            'managers': ['Dave'],
+                    'project_groups': {
+                        'Bells Portal': {
+                            'projects': {
+                                'bells.org': {
+                                    'admins': ['Charlie'],
+                                    'managers': ['Dave'],
+                                },
+                            },
                         },
                     },
                 },
                 'Ministry of Whistles': {
                     'owners': ['Bob'],
-                    'projects': {
-                        'whistles.org': {
-                            'admins': ['Dave'],
-                            'managers': ['Erin'],
-                        },
-                        'intranet.whistles.org': {
-                            'admins': ['Erin'],
-                            'managers': ['Frank'],
+                    'project_groups': {
+                        'Whistles Portal': {
+                            'projects': {
+                                'whistles.org': {
+                                    'admins': ['Dave'],
+                                    'managers': ['Erin'],
+                                },
+                                'intranet.whistles.org': {
+                                    'admins': ['Erin'],
+                                    'managers': ['Frank'],
+                                },
+                            },
                         },
                     },
                 },
@@ -168,9 +186,13 @@ Other use cases are covered with random data.
             users[username].set_password(username)
             if not users[username].is_staff and 'is_staff' in user_params and user_params['is_staff']:
                 self.stdout.write('Promoting user "%s" to staff...' % username)
-                yuml += '[User;username:%s;password:%s;is_staff:yes{bg:green}],' % (username, username)
                 users[username].is_staff = True
             users[username].save()
+
+            if users[username].is_staff:
+                yuml += '[User;username:%s;password:%s;is_staff:yes{bg:green}],' % (username, username)
+            else:
+                yuml += '[User;username:%s;password:%s],' % (username, username)
 
         for customer_name, customer_params in data['customers'].items():
             self.stdout.write('Creating customer "%s"...' % customer_name)
@@ -179,24 +201,31 @@ Other use cases are covered with random data.
 
             for username in customer_params['owners']:
                 self.stdout.write('Adding user "%s" as owner of customer "%s"...' % (username, customer_name))
-                yuml += '[User;username:%s;password:%s]-role:owner->[Customer;name:%s],' % (username, username, customer_name)
                 customer.add_user(users[username], CustomerRole.OWNER)
+                yuml += '[User;username:%s;password:%s]-role:owner->[Customer;name:%s],' % (username, username, customer_name)
 
-            for project_name, project_params in customer_params['projects'].items():
-                self.stdout.write('Creating project "%s" for customer "%s"...' % (project_name, customer_name))
-                yuml += '[Customer;name:%s]-->[Project;name:%s],' % (customer_name, project_name)
-                project, was_created = customer.projects.get_or_create(name=project_name)
-                self.stdout.write('Project "%s" %s.' % (project_name, "created" if was_created else "already exists"))
+            for project_group_name, project_group_params in customer_params['project_groups'].items():
+                self.stdout.write('Creating project group "%s" for customer "%s"...' % (project_group_name, customer_name))
+                project_group, was_created = customer.project_groups.get_or_create(name=project_group_name)
+                self.stdout.write('Project Group "%s" %s.' % (project_group_name, "created" if was_created else "already exists"))
+                yuml += '[Customer;name:%s]-->[Project Group;name:%s],' % (customer_name, project_group_name)
 
-                for username in project_params['admins']:
-                    self.stdout.write('Adding user "%s" as admin of project "%s"...' % (username, project_name))
-                    yuml += '[Project;name:%s]<-role:admin-[User;username:%s;password:%s],' % (project_name, username, username)
-                    project.add_user(users[username], ProjectRole.ADMINISTRATOR)
+                for project_name, project_params in project_group_params['projects'].items():
+                    self.stdout.write('Creating project "%s" in project group "%s"...' % (project_name, project_group_name))
+                    project, was_created = customer.projects.get_or_create(name=project_name)
+                    project_group.projects.add(project)
+                    self.stdout.write('Project "%s" %s.' % (project_name, "created" if was_created else "already exists"))
+                    yuml += '[Project Group;name:%s]-->[Project;name:%s],' % (project_group_name, project_name)
 
-                for username in project_params['managers']:
-                    self.stdout.write('Adding user "%s" as manager of project "%s"...' % (username, project_name))
-                    yuml += '[Project;name:%s]<-role:manager-[User;username:%s;password:%s],' % (project_name, username, username)
-                    project.add_user(users[username], ProjectRole.MANAGER)
+                    for username in project_params['admins']:
+                        self.stdout.write('Adding user "%s" as admin of project "%s"...' % (username, project_name))
+                        project.add_user(users[username], ProjectRole.ADMINISTRATOR)
+                        yuml += '[Project;name:%s]<-role:admin-[User;username:%s;password:%s],' % (project_name, username, username)
+
+                    for username in project_params['managers']:
+                        self.stdout.write('Adding user "%s" as manager of project "%s"...' % (username, project_name))
+                        project.add_user(users[username], ProjectRole.MANAGER)
+                        yuml += '[Project;name:%s]<-role:manager-[User;username:%s;password:%s],' % (project_name, username, username)
 
         self.stdout.write(yuml)
 
