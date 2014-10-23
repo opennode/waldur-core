@@ -70,9 +70,10 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
         response = self.client.get(_license_url(self.license))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertItemsEqual(
-            [p['name'] for p in response.data['projects']], [p.name for p in self.license.projects])
+            [p['name'] for p in response.data['projects']], [p.name for p in self.license.get_projects()])
         self.assertItemsEqual(
-            [p['name'] for p in response.data['projects_groups']], [p.name for p in self.license.projects_groups])
+            [p['name'] for p in response.data['projects_groups']],
+            [p.name for p in self.license.get_projects_groups()])
 
     def test_licenses_list(self):
         # another license:

@@ -299,7 +299,7 @@ class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 class LicenseViewSet(core_viewsets.ModelViewSet):
     """
-    Every template is potentially connected to one or more consumed licenses.
+    Every template is potentially connected to zero or more consumed licenses.
     License is defined as an abstract consumable.
 
     Only staff can view all licenses, edit and delete them.
