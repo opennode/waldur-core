@@ -219,7 +219,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             response = self.client.get(self._get_customer_url(customer))
             owners = set(c['url'] for c in response.data['owners'])
             user_url = self._get_user_url(self.users['owner'])
-            self.assertIn(user_url, owners)
+            self.assertItemsEqual([user_url], owners)
 
     def test_user_cannot_access_customers_he_is_not_owner_of(self):
         self.client.force_authenticate(user=self.users['not_owner'])
