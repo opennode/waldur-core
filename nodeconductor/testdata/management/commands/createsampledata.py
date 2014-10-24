@@ -85,30 +85,30 @@ Arguments:
 +-------+-------+  +-----+-----+-----+  | is_staff: yes    |  | (no roles)    |
          \              /       \       +------------------+  +---------------+
      role:owner        /    role:owner
-           \          /           \
-            \   role:owner         \
-             \      /               \
+           \          /           \\
+            \   role:owner         \\
+             \      /               \\
     +---------+----+----------+   +--+-------------------------+
     | Customer                |   | Customer                   |
     | name: Ministry of Bells |   | name: Ministry of Whistles |
     +------------+------------+   +----------+-----------------+
-                 |                            \
-                 |                             \
+                 |                            \\
+                 |                             \\
       +----------+---------+         +----------+------------+
       | Project Group      |         | Project Group         |
       | name: Bells Portal |         | name: Whistles Portal |
       +----------+---------+         +--+----------------+---+
-                /                      /                  \
-               /                      /                    \
+                /                      /                  \\
+               /                      /                    \\
    +----------+------+  +------------+-------+  +-----------+-----------------+
    | Project         |  | Project            |  | Project                     |
    | name: bells.org |  | name: whistles.org |  | name: intranet.whistles.org |
    +--------+-----+--+  +----------+----+----+  +--------+----+---------------+
-           /       \              /      \              /      \
-     role:admin     \       role:admin    \       role:admin    \
-         /           \          /          \          /          \
+           /       \              /      \              /      \\
+     role:admin     \       role:admin    \       role:admin    \\
+         /           \          /          \          /          \\
         /        role:manager  /       role:manager  /       role:manager
-       /               \      /              \      /              \
+       /               \      /              \      /              \\
 +-----+-------------+ +-+----+---------+ +----+----+------+ +-------+---------+
 | User              | | User           | | User           | | User            |
 | username: Charlie | | username: Dave | | username: Erin | | username: Frank |
