@@ -35,6 +35,9 @@ class Customer(UuidMixin, models.Model):
             for group in groups.iterator():
                 group.user_set.remove(user)
 
+    def get_owners(self):
+        return self.roles.get(role_type=CustomerRole.OWNER).permission_group.user_set
+
     def __str__(self):
         return '%(name)s (%(abbreviation)s)' % {
             'name': self.name,
