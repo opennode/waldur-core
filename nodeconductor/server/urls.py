@@ -6,8 +6,8 @@ from django.conf.urls import include
 from django.conf.urls import url
 from django.contrib import admin
 import permission
-from rest_framework_extensions.routers import ExtendedDefaultRouter as DefaultRouter
 
+from nodeconductor.core.routers import SortedDefaultRouter as DefaultRouter
 from nodeconductor.backup import urls as backup_urls
 from nodeconductor.cloud import urls as cloud_urls
 from nodeconductor.iaas import urls as iaas_urls
