@@ -19,11 +19,15 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 Instance status
 ---------------
 
-Each instance has a **status** field that defines its current state. Instance has a FSM that defines possible
+Each instance has a **state** field that defines its current operational state. Instance has a FSM that defines possible
 state transitions. If a request is made to perform an operation on instance in incorrect state, a validation
 error will be returned.
 
-The UI can poll for status updates to provide feedback after submitting one of the longer running operations.
+The UI can poll for updates to provide feedback after submitting one of the longer running operations.
+
+A graph of possible state transitions is shown below.
+
+.. image:: ../images/instance-states.png
 
 Create a new instance
 ---------------------
