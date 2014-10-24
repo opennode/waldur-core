@@ -52,6 +52,9 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
         """
         Serializer returns only public fields for non-customer owner
         """
+        # a workaround for DRF's webui bug
+        if obj is None:
+            return
         native = super(CloudSerializer, self).to_native(obj)
         is_customer_owner = obj.customer.roles.filter(
             permission_group__user=self.user, role_type=structure_models.CustomerRole.OWNER).exists()

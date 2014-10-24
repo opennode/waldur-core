@@ -15,6 +15,13 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 User = auth.get_user_model()
 
 
+class BasicUserSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = User
+        fields = ('url', 'uuid', 'username', 'full_name', 'native_name',)
+        lookup_field = 'uuid'
+
+
 class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.Project
@@ -64,10 +71,11 @@ class CustomerSerializer(core_serializers.CollectedFieldsMixin,
                          serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField('get_customer_projects')
     project_groups = serializers.SerializerMethodField('get_customer_project_groups')
+    owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
 
     class Meta(object):
         model = models.Customer
-        fields = ('url', 'uuid', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups')
+        fields = ('url', 'uuid', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups', 'owners')
         lookup_field = 'uuid'
 
     def _get_filtered_data(self, objects, serializer):

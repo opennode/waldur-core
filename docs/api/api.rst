@@ -46,3 +46,13 @@ VM instance management
 ======================
 
 .. include:: instance.rst
+
+Backup management
+=================
+
+.. include:: backup.rst
+
+License management
+==================
+
+.. include:: licenses.rst

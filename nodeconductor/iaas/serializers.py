@@ -1,11 +1,10 @@
 from django.core.exceptions import ValidationError
 from django.http import Http404
-
 from rest_framework import serializers
 
-from nodeconductor.core import models as core_models
-from nodeconductor.cloud import models as cloud_models
 from nodeconductor.backup import serializers as backup_serializers
+from nodeconductor.cloud import models as cloud_models
+from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
 from nodeconductor.structure import serializers as structure_serializers
@@ -63,6 +62,20 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
         return attrs
 
 
+class InstanceLicenseSerializer(serializers.ModelSerializer):
+
+    name = serializers.Field(source='template_license.name')
+    license_type = serializers.Field(source='template_license.license_type')
+    service_type = serializers.Field(source='template_license.service_type')
+
+    class Meta(object):
+        model = models.InstanceLicense
+        fields = (
+            'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
+        )
+        lookup_field = 'uuid'
+
+
 class InstanceSerializer(RelatedResourcesFieldMixin,
                          PermissionFieldFilteringMixin,
                          serializers.HyperlinkedModelSerializer):
@@ -75,6 +88,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     backup_schedules = backup_serializers.BackupScheduleSerializer()
 
     security_groups = InstanceSecurityGroupSerializer(read_only=True)
+    instance_licenses = InstanceLicenseSerializer(read_only=True)
 
     class Meta(object):
         model = models.Instance
@@ -90,7 +104,8 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'security_groups',
             'ips',
             'state',
-            'backups', 'backup_schedules'
+            'backups', 'backup_schedules',
+            'instance_licenses'
         )
 
         lookup_field = 'uuid'
@@ -102,7 +117,27 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
         return 'flavor.cloud', 'template', 'project', 'flavor', 'project.customer'
 
 
+class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
+
+    projects_groups = structure_serializers.BasicProjectGroupSerializer(
+        source='get_projects_groups', many=True, read_only=True)
+
+    projects = structure_serializers.BasicProjectSerializer(
+        source='get_projects', many=True, read_only=True)
+
+    class Meta(object):
+        model = models.TemplateLicense
+        fields = (
+            'url', 'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
+            'projects', 'projects_groups',
+        )
+        lookup_field = 'uuid'
+
+
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
+
+    template_licenses = TemplateLicenseSerializer()
+
     class Meta(object):
         model = models.Template
         fields = (
@@ -112,6 +147,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'is_active',
             'setup_fee',
             'monthly_fee',
+            'template_licenses',
         )
         lookup_field = 'uuid'
 
@@ -129,10 +165,18 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
 
+class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
+
+    class Meta(object):
+        model = models.Template
+        fields = ('url', 'uuid', 'template_licenses',)
+        lookup_field = 'uuid'
+
+
 class SshKeySerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = core_models.SshPublicKey
-        fields = ('url', 'uuid', 'name', 'public_key')
+        fields = ('url', 'uuid', 'name', 'public_key',)
         lookup_field = 'uuid'
 
 
