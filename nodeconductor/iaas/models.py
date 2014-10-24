@@ -273,7 +273,7 @@ def auto_start_instance(sender, instance=None, created=False, **kwargs):
 
 @python_2_unicode_compatible
 class TemplateLicense(core_models.UuidMixin, models.Model):
-    class Services():
+    class Services(object):
         IAAS = 'IaaS'
         PAAS = 'PaaS'
         SAAS = 'SaaS'
@@ -316,7 +316,7 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
                                       validators=[MinValueValidator(Decimal('0.1')),
                                                   MaxValueValidator(Decimal('1000.0'))])
 
-    class Permissions():
+    class Permissions(object):
         project_path = 'instance__project'
 
     def __str__(self):
