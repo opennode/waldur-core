@@ -85,21 +85,21 @@ Arguments:
 +-------+-------+  +-----+-----+-----+  | is_staff: yes    |  | (no roles)    |
          \              /       \       +------------------+  +---------------+
      role:owner        /    role:owner
-           \          /           \ 
-            \   role:owner         \ 
-             \      /               \ 
+           \          /           \
+            \   role:owner         \
+             \      /               \
     +---------+----+----------+   +--+-------------------------+
     | Customer                |   | Customer                   |
     | name: Ministry of Bells |   | name: Ministry of Whistles |
     +------------+------------+   +----------+-----------------+
-                 |                            \ 
-                 |                             \ 
+                 |                            \
+                 |                             \
       +----------+---------+         +----------+------------+
       | Project Group      |         | Project Group         |
       | name: Bells Portal |         | name: Whistles Portal |
       +----------+---------+         +--+----------------+---+
-                /                      /                  \ 
-               /                      /                    \ 
+                /                      /                  \
+               /                      /                    \
    +----------+------+  +------------+-------+  +-----------+-----------------+
    | Project         |  | Project            |  | Project                     |
    | name: bells.org |  | name: whistles.org |  | name: intranet.whistles.org |
@@ -273,7 +273,7 @@ Other use cases are covered with random data.
 
         # add template licenses:
         license1 = TemplateLicense.objects.create(
-            name='CentOS license',
+            name='Redhat 6 license',
             license_type='RHEL6',
             service_type='IaaS',
             setup_fee=10,
