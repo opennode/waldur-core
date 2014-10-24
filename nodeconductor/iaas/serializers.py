@@ -12,10 +12,11 @@ from nodeconductor.structure import serializers as structure_serializers
 
 class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
-    protocol = serializers.CharField(read_only=True)
-    from_port = serializers.CharField(read_only=True)
-    to_port = serializers.CharField(read_only=True)
-    ip_range = serializers.CharField(read_only=True)
+    protocol = serializers.Field(source='cloud_security_group.protocol',)
+    from_port = serializers.Field(source='cloud_security_group.from_port')
+    to_port = serializers.Field(source='cloud_security_group.to_port')
+    ip_range = serializers.Field(source='cloud_security_group.ip_range')
+    netmask = serializers.Field(source='cloud_security_group.netmask')
 
     class Meta(object):
         model = models.InstanceSecurityGroup

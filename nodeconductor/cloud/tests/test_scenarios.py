@@ -92,5 +92,5 @@ class SecurityGroupsTest(test.APISimpleTestCase):
     def test_list_security_groups(self):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(_security_group_list_url())
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertSequenceEqual(response.data, models.SecurityGroups.groups)

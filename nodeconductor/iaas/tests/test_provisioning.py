@@ -548,25 +548,9 @@ def _instance_data(instance=None):
 class InstanceSecurityGroupsTest(test.APISimpleTestCase):
 
     def setUp(self):
-        cloud_models.SecurityGroups.groups = [
-            {
-                "name": "test security group1",
-                "description": "test security group1 description",
-                "protocol": "tcp",
-                "from_port": 1,
-                "to_port": 65535,
-                "ip_range": "0.0.0.0/0"
-            },
-            {
-                "name": "test security group2",
-                "description": "test security group2 description",
-                "protocol": "udp",
-                "from_port": 1,
-                "to_port": 65535,
-                "ip_range": "0.0.0.0/0"
-            },
-        ]
-        cloud_models.SecurityGroups.groups_names = [g['name'] for g in cloud_models.SecurityGroups.groups]
+        security_groups = cloud_factories.SecurityGroupFactory.create_batch(2)
+        self.groups_names = [g.name for g in security_groups]
+
         self.user = structure_factories.UserFactory.create()
         self.instance = factories.InstanceFactory()
         self.instance.ssh_public_key.user = self.user
@@ -575,34 +559,33 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.client.force_authenticate(self.user)
 
     def test_groups_list_in_instance_response(self):
-        security_groups = [
-            factories.InstanceSecurityGroupFactory(instance=self.instance, name=g['name'])
-            for g in cloud_models.SecurityGroups.groups]
+        security_groups = factories.InstanceSecurityGroupFactory.create_batch(2, instance=self.instance)
+        cloud_security_groups = [g.cloud_security_group for g in security_groups]
 
         response = self.client.get(_instance_url(self.instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range')
         for field in fields:
-            expected_security_groups = [getattr(g, field) for g in security_groups]
+            expected_security_groups = [getattr(g, field) for g in cloud_security_groups]
             self.assertItemsEqual([g[field] for g in response.data['security_groups']], expected_security_groups)
 
     def test_add_instance_with_security_groups(self):
         data = _instance_data(self.instance)
-        data['security_groups'] = [{'name': name} for name in cloud_models.SecurityGroups.groups_names]
+        data['security_groups'] = [{'name': name} for name in self.groups_names]
 
         response = self.client.post(_instance_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         instance = models.Instance.objects.get(hostname=data['hostname'])
         self.assertItemsEqual(
-            [g.name for g in instance.security_groups.all()], cloud_models.SecurityGroups.groups_names)
+            [g.name for g in instance.security_groups.all()], [name for name in self.groups_names])
 
     def test_change_instance_security_groups(self):
-        data = {'security_groups': [{'name': name} for name in cloud_models.SecurityGroups.groups_names]}
+        data = {'security_groups': [{'name': name} for name in self.groups_names]}
 
         response = self.client.patch(_instance_url(self.instance), data=data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertItemsEqual(
-            [g.name for g in self.instance.security_groups.all()], cloud_models.SecurityGroups.groups_names)
+            [g.name for g in self.instance.security_groups.all()], self.groups_names)
 
     def test_security_groups_is_not_required(self):
         data = _instance_data(self.instance)
