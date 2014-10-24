@@ -31,6 +31,30 @@ Example of a valid request:
 Update existing template license
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Example of a valid request:
+
+.. code-block:: http
+
+    PUT /api/template-licenses/6c9b01c251c24174a6691a1f894fae31/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "name": "new license",
+        "license_type": "new license type",
+        "service_type": models.TemplateLicense.Services.IAAS,
+        "setup_fee": 10,
+        "monthly_fee": 10
+    }
+
+
+Partial update existing template license
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Example of a valid request:
+
 .. code-block:: http
 
     PATCH /api/template-licenses/6c9b01c251c24174a6691a1f894fae31/ HTTP/1.1
