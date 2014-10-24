@@ -14,7 +14,6 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - state
 - project
 - project_group
-- security_groups
 
 
 Instance status
