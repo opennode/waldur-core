@@ -9,6 +9,7 @@ def register_in(router):
     router.register(r'keys', views.SshKeyViewSet)
     router.register(r'purchases', views.PurchaseViewSet)
     router.register(r'images', views.ImageViewSet)
+    router.register(r'template-licenses', views.TemplateLicenseViewSet)
 
 urlpatterns = patterns(
     '',

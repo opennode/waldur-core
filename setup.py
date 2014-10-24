@@ -26,6 +26,7 @@ install_requires = [
     'django-uuidfield==0.5.0',
     'djangorestframework>=2.3.12,<2.4.0',
     'djangosaml2>=0.11.0,<0.12',
+    'drf-extensions==0.2.6',
     'logan==0.5.9.1',
     'redis==2.10.3',
     'South==0.8.4',

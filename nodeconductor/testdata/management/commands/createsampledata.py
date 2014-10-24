@@ -7,7 +7,7 @@ import sys
 
 from nodeconductor.cloud.models import Cloud
 from nodeconductor.core.models import User
-from nodeconductor.iaas.models import Template
+from nodeconductor.iaas.models import Template, TemplateLicense
 from nodeconductor.structure.models import *
 
 
@@ -85,30 +85,30 @@ Arguments:
 +-------+-------+  +-----+-----+-----+  | is_staff: yes    |  | (no roles)    |
          \              /       \       +------------------+  +---------------+
      role:owner        /    role:owner
-           \          /           \ 
-            \   role:owner         \ 
-             \      /               \ 
+           \          /           \
+            \   role:owner         \
+             \      /               \
     +---------+----+----------+   +--+-------------------------+
     | Customer                |   | Customer                   |
     | name: Ministry of Bells |   | name: Ministry of Whistles |
     +------------+------------+   +----------+-----------------+
-                 |                            \ 
-                 |                             \ 
+                 |                            \
+                 |                             \
       +----------+---------+         +----------+------------+
       | Project Group      |         | Project Group         |
       | name: Bells Portal |         | name: Whistles Portal |
       +----------+---------+         +--+----------------+---+
-                /                      /                  \ 
-               /                      /                    \ 
+                /                      /                  \
+               /                      /                    \
    +----------+------+  +------------+-------+  +-----------+-----------------+
    | Project         |  | Project            |  | Project                     |
    | name: bells.org |  | name: whistles.org |  | name: intranet.whistles.org |
    +--------+-----+--+  +----------+----+----+  +--------+----+---------------+
-           /       \              /      \              /      \ 
-     role:admin     \       role:admin    \       role:admin    \ 
-         /           \          /          \          /          \ 
+           /       \              /      \              /      \
+     role:admin     \       role:admin    \       role:admin    \
+         /           \          /          \          /          \
         /        role:manager  /       role:manager  /       role:manager
-       /               \      /              \      /              \ 
+       /               \      /              \      /              \
 +-----+-------------+ +-+----+---------+ +----+----+------+ +-------+---------+
 | User              | | User           | | User           | | User            |
 | username: Charlie | | username: Dave | | username: Erin | | username: Frank |
@@ -270,6 +270,24 @@ Other use cases are covered with random data.
             setup_fee=Decimal(str(random.random() * 100.0)),
             monthly_fee=Decimal(str(random.random() * 100.0)),
         )
+
+        # add template licenses:
+        license1 = TemplateLicense.objects.create(
+            name='Redhat 6 license',
+            license_type='RHEL6',
+            service_type='IaaS',
+            setup_fee=10,
+            monthly_fee=5
+        )
+        license2 = TemplateLicense.objects.create(
+            name='Windows server license',
+            license_type='Windows 2012 Server',
+            service_type='IaaS',
+            setup_fee=20,
+            monthly_fee=8)
+        template1.template_licenses.add(license1)
+        template1.template_licenses.add(license2)
+        template2.template_licenses.add(license1)
 
         # add images
         cloud.images.create(

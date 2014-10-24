@@ -243,6 +243,24 @@ class Instance(core_models.UuidMixin,
 
         return FakeStrategy
 
+    def _init_instance_licenses(self):
+        """
+        Create new instance licenses from template licenses
+        """
+        for template_license in self.template.template_licenses.all():
+            InstanceLicense.objects.create(
+                instance=self,
+                template_license=template_license,
+                setup_fee=template_license.setup_fee,
+                monthly_fee=template_license.monthly_fee,
+            )
+
+    def save(self, *args, **kwargs):
+        created = self.pk is None
+        super(Instance, self).save(*args, **kwargs)
+        if created:
+            self._init_instance_licenses()
+
 
 @receiver(post_save, sender=Instance)
 def auto_start_instance(sender, instance=None, created=False, **kwargs):
@@ -251,6 +269,58 @@ def auto_start_instance(sender, instance=None, created=False, **kwargs):
         from nodeconductor.iaas import tasks
 
         tasks.schedule_provisioning.delay(instance.uuid)
+
+
+@python_2_unicode_compatible
+class TemplateLicense(core_models.UuidMixin, models.Model):
+    class Services(object):
+        IAAS = 'IaaS'
+        PAAS = 'PaaS'
+        SAAS = 'SaaS'
+        BPAAS = 'BPaaS'
+
+    SERVICE_TYPES = (
+        (Services.IAAS, 'IaaS'), (Services.PAAS, 'PaaS'), (Services.SAAS, 'SaaS'), (Services.BPAAS, 'BPaaS'))
+
+    name = models.CharField(max_length=255)
+    license_type = models.CharField(max_length=127)
+    templates = models.ManyToManyField(Template, related_name='template_licenses')
+    service_type = models.CharField(max_length=10, choices=SERVICE_TYPES)
+    setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
+                                    validators=[MinValueValidator(Decimal('0.1')),
+                                                MaxValueValidator(Decimal('1000.0'))])
+    monthly_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
+                                      validators=[MinValueValidator(Decimal('0.1')),
+                                                  MaxValueValidator(Decimal('1000.0'))])
+
+    def __str__(self):
+        return '%s - %s' % (self.license_type, self.name)
+
+    def get_projects(self):
+        return structure_models.Project.objects.filter(
+            clouds__images__template__template_licenses=self)
+
+    def get_projects_groups(self):
+        return structure_models.ProjectGroup.objects.filter(
+            projects__clouds__images__template__template_licenses=self)
+
+
+@python_2_unicode_compatible
+class InstanceLicense(core_models.UuidMixin, models.Model):
+    template_license = models.ForeignKey(TemplateLicense, related_name='instance_licenses')
+    instance = models.ForeignKey(Instance, related_name='instance_licenses')
+    setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
+                                    validators=[MinValueValidator(Decimal('0.1')),
+                                                MaxValueValidator(Decimal('1000.0'))])
+    monthly_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
+                                      validators=[MinValueValidator(Decimal('0.1')),
+                                                  MaxValueValidator(Decimal('1000.0'))])
+
+    class Permissions(object):
+        project_path = 'instance__project'
+
+    def __str__(self):
+        return 'License: %s for %s' % (self.template_license, self.instance)
 
 
 class Volume(models.Model):
