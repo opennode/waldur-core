@@ -108,12 +108,26 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
         for key, value in data.iteritems():
             self.assertEqual(value, getattr(license, key))
 
-    def test_license_edit(self):
+    def test_license_partial_update(self):
         data = {'name': 'new_name'}
         self.client.force_authenticate(self.staff)
         response = self.client.patch(_template_license_url(self.license), data=data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(data['name'], models.TemplateLicense.objects.get(pk=self.license.pk).name)
+
+    def test_license_update(self):
+        data = {
+            'name': "new license",
+            'license_type': 'new license type',
+            'service_type': models.TemplateLicense.Services.IAAS,
+            'setup_fee': 10,
+            'monthly_fee': 10
+        }
+        self.client.force_authenticate(self.staff)
+        response = self.client.put(_template_license_url(self.license), data=data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(data['name'], models.TemplateLicense.objects.get(pk=self.license.pk).name)
+        self.assertEqual(data['license_type'], models.TemplateLicense.objects.get(pk=self.license.pk).license_type)
 
     def test_license_delete(self):
         self.client.force_authenticate(self.staff)
