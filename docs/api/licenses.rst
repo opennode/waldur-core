@@ -7,7 +7,7 @@ Every template is potentially connected to zero or more template licenses.
 Templates Instances is available only for administrators.
 
 Create new template license
----------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Example of a valid request:
 
@@ -29,7 +29,7 @@ Example of a valid request:
 
 
 Update existing template license
---------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: http
 
@@ -43,7 +43,7 @@ Update existing template license
 
 
 Delete template license
------------------------
+^^^^^^^^^^^^^^^^^^^^^^^
 
 Example of a valid request:
 
@@ -55,8 +55,28 @@ Example of a valid request:
 
 
 Template licenses list
-----------------------
+^^^^^^^^^^^^^^^^^^^^^^
 
 Template licenses can be filtered by customers, customer uuid have to be sent as GET parameter
 
 
+
+Instance licenses
+-----------------
+
+Instance licenses automatically appears on new instance creation.
+All licenses from new instance template are copied and attached to instance as Instance licenses.
+Instance licenses are returned as instance field "instance_licenses".
+
+Instance licenses statistics
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is possible to issue queries to NC to get aggregate statistics about instance licenses.
+Query is done against /api/template-licenses/stats/ endpoint. Queries can be run by all users with a answers scoped by their visibility permissions for instances. By default queries is aggregated by license name.
+
+Supported aggregate queries are:
+
+    - ?aggregate=project_name  -  by project names, result example: [{'project_name': 'project_1', 'count': 3}, ..];
+    - ?aggregate=project_group  -  by project groups, result example: [{'project_group': 'proejct_group1', 'count': 2}, ..];
+    - ?aggregate=license_type  - by license type, result example: [{'license_type': 'license_type1', 'count': 2}, ..];
+    - no parameter  - by license name, result example: [{'name': 'license_name1', 'count': 4}, ..];
