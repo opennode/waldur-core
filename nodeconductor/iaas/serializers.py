@@ -12,7 +12,7 @@ from nodeconductor.structure import serializers as structure_serializers
 
 class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
-    protocol = serializers.Field(source='cloud_security_group.protocol',)
+    protocol = serializers.Field(source='cloud_security_group.protocol')
     from_port = serializers.Field(source='cloud_security_group.from_port')
     to_port = serializers.Field(source='cloud_security_group.to_port')
     ip_range = serializers.Field(source='cloud_security_group.ip_range')
@@ -20,7 +20,7 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
     class Meta(object):
         model = models.InstanceSecurityGroup
-        fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range')
+        fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range', 'netmask')
 
     def validate_name(self, attrs, attr_name):
         name = attrs[attr_name]

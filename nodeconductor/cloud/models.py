@@ -149,7 +149,7 @@ class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
     )
 
     name = models.CharField(max_length=127)
-    protocol = models.SmallIntegerField(max_length=3, choices=PROTOCOL_CHOICES)
+    protocol = models.SmallIntegerField(choices=PROTOCOL_CHOICES)
     from_port = models.IntegerField(validators=[MaxValueValidator(65535),
                                                 MinValueValidator(1)])
     to_port = models.IntegerField(validators=[MaxValueValidator(65535),

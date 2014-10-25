@@ -358,6 +358,6 @@ class InstanceSecurityGroup(core_models.UuidMixin, models.Model):
     class Permissions(object):
         project_path = 'instance__project'
 
-    instance = models.ForeignKey(Instance, related_name='security_groups')
     name = models.CharField(max_length=127)
+    instance = models.ForeignKey(Instance, related_name='security_groups')
     cloud_security_group = models.ForeignKey(cloud_models.SecurityGroup, related_name='instance_groups')

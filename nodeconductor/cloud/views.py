@@ -116,7 +116,7 @@ filters.set_permissions_for_model(
 )
 
 
-class SecurityGroupViewSet(rf_viewsets.ReadOnlyModelViewSet):
+class SecurityGroupViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.SecurityGroup.objects.all()
     serializer_class = serializers.SecurityGroupSerializer
     lookup_field = 'uuid'

@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 import sys
 
-from nodeconductor.cloud.models import Cloud
+from nodeconductor.cloud.models import Cloud, SecurityGroup
 from nodeconductor.core.models import User
 from nodeconductor.iaas.models import Template, TemplateLicense
 from nodeconductor.structure.models import *
@@ -306,6 +306,26 @@ Other use cases are covered with random data.
             name='Windows XP backup',
             architecture=1,
             description='A backup image of WinXP',
+        )
+
+        # add security groups
+        SecurityGroup.objects.create(
+            name=random_string(5, 10),
+            description='Openstack security group',
+            protocol=0,
+            from_port=22,
+            to_port=22,
+            ip_range='10.2.6.%d' % random.randint(0, 255),
+            netmask=24
+        )
+
+        SecurityGroup.objects.create(
+            name=random_string(5, 10),
+            protocol=1,
+            from_port=22,
+            to_port=22,
+            ip_range='10.2.3.%d' % random.randint(0, 255),
+            netmask=24
         )
 
     def create_customer(self):

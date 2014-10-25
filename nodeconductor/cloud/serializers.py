@@ -86,4 +86,7 @@ class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFiltering
 class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.SecurityGroup
+        fields = ('url', 'uuid', 'name', 'description', 'protocol',
+                  'from_port', 'to_port', 'ip_range', 'netmask')
         lookup_field = 'uuid'
+        view_name = 'security_group-detail'
