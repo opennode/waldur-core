@@ -20,6 +20,10 @@ def _security_group_list_url():
     return 'http://testserver' + reverse('security_group-list')
 
 
+def _security_group_detail_url(security_group):
+    return 'http://testserver' + reverse('security_group-detail', args=(str(security_group.uuid), ))
+
+
 class CloudTest(test.APISimpleTestCase):
 
     def setUp(self):
@@ -84,13 +88,50 @@ class CloudTest(test.APISimpleTestCase):
         self.assertGreater(len(response.data.keys()), len(serializers.CloudSerializer.public_fields))
 
 
-class SecurityGroupsTest(test.APISimpleTestCase):
+class SecurityGroupTest(test.APISimpleTestCase):
 
     def setUp(self):
         self.user = structure_factories.UserFactory()
+        self.security_group = factories.SecurityGroupFactory()
 
-    def test_list_security_groups(self):
-        self.client.force_authenticate(user=self.user)
+    def test_anonymous_user_cannot_list_security_groups(self):
         response = self.client.get(_security_group_list_url())
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_authenticated_user_can_list_security_groups(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(_security_group_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_authenticated_user_can_access_security_groups(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(_security_group_detail_url(self.security_group))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_cannot_create_security_groups(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(_security_group_list_url(), self._valid_data())
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_user_cannot_change_security_group(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(_security_group_list_url())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.post(_security_group_detail_url(self.security_group), self._valid_data())
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    # Helper methods
+    def _valid_data(self):
+        return {
+            'name': 'default',
+            'protocol': 'tcp',
+            'to_port': 22,
+            'from_port': 22,
+            'ip_range': '10.2.3.192',
+            'netmask': 24
+        }
