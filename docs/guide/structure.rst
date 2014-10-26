@@ -2,7 +2,7 @@ Customers, Projects and Users
 -----------------------------
 
 NodeConductor is a service for sharing resources across projects. It is based on the delegation model where a customer
-can allocate certain users to perform tecnical or non-technical actions in the projects. A more detailed definition
+can allocate certain users to perform technical or non-technical actions in the projects. A more detailed definition
 is below:
 
 .. glossary::
@@ -15,7 +15,7 @@ is below:
       A standalone entity. Represents a company or a department.
 
     Customer owner
-      A role of the user that allows her to represent a corresponding customer. In this role, a user cancreate new
+      A role of the user that allows her to represent a corresponding customer. In this role, a user can create new
       projects, register resources, as well as allocate them to the projects.
 
     Project
@@ -31,4 +31,4 @@ is below:
 
 
     Project group
-      Projects can be grouped together for convinience, e.g. development environments can be grouped together.
+      Projects can be grouped together for convenience, e.g. development environments can be grouped together.
