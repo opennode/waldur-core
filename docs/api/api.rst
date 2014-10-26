@@ -23,6 +23,10 @@ Project management
 
 .. include:: project.rst
 
+Project quotas management
+=========================
+
+.. include:: project_quotas.rst
 
 User management
 ===============
