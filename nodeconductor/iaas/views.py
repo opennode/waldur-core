@@ -1,17 +1,18 @@
 from __future__ import unicode_literals
 
-import django_filters
 import logging
-from django.http.response import Http404
-from django_fsm import TransitionNotAllowed
 
-from rest_framework import permissions, status
+from django.db import models as django_models
+from django.http import Http404
+import django_filters
+from django_fsm import TransitionNotAllowed
+from rest_framework import filters as rf_filter
 from rest_framework import mixins
+from rest_framework import permissions, status
 from rest_framework import viewsets
-from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from rest_framework import filters as rf_filter
+from rest_framework_extensions.decorators import action, link
 
 from nodeconductor.cloud.models import Cloud, Flavor
 from nodeconductor.core import mixins as core_mixins
@@ -189,7 +190,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
                         status=status.HTTP_400_BAD_REQUEST)
 
 
-class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
+class TemplateViewSet(core_viewsets.UpdateModelViewSet):
     """List of VM templates that are accessible by this user.
 
     VM template is a description of a system installed on VM instances: OS, disk partition etc.
@@ -205,11 +206,21 @@ class TemplateViewSet(core_viewsets.ReadOnlyModelViewSet):
     Project administrators can list all VM templates and create new VM instances using these templates in all the clouds that are connected to any of the projects they are administrators in.
 
     Project managers can list all VM templates in all the clouds that are connected to any of the projects they are managers in.
+
+    Staff members can add licenses to template by sending POST request with list of licenses uuids.
+    Example POST data: {'licenses': [license1_uuid, licenses2_uuid ...]}
     """
 
     queryset = models.Template.objects.all()
     serializer_class = serializers.TemplateSerializer
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     lookup_field = 'uuid'
+
+    def get_serializer_class(self):
+        if self.request.method in ('POST', 'PUT', 'PATCH'):
+            return serializers.TemplateCreateSerializer
+
+        return super(TemplateViewSet, self).get_serializer_class()
 
     def get_queryset(self):
         queryset = super(TemplateViewSet, self).get_queryset()
@@ -261,7 +272,8 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
 
 
 class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
-    """List of operations with VM templates.
+    """
+    List of operations with VM templates.
 
     TODO: list supported operation types.
 
@@ -284,3 +296,56 @@ class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.ImageSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter,)
+
+
+class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
+    """
+    Every template is potentially connected to zero or more consumed licenses.
+    License is defined as an abstract consumable.
+
+    Only staff can view all licenses, edit and delete them.
+
+    Customer owners, managers and administrators can view license only with templates
+
+    Add customer uuid as `customer` GET parameter to filter licenses for customer
+    """
+    queryset = models.TemplateLicense.objects.all()
+    serializer_class = serializers.TemplateLicenseSerializer
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+    lookup_field = 'uuid'
+
+    def get_queryset(self):
+        if not self.request.user.is_staff:
+            raise Http404
+
+        queryset = super(TemplateLicenseViewSet, self).get_queryset()
+
+        if 'customer' in self.request.QUERY_PARAMS:
+            customer_uuid = self.request.QUERY_PARAMS['customer']
+            customer_templates_ids = models.Template.objects.filter(
+                images__cloud__projects__customer__uuid=customer_uuid).values_list('id', flat=True)
+            queryset = queryset.filter(templates__in=customer_templates_ids)
+
+        return queryset
+
+    @link(is_for_list=True)
+    def stats(self, request):
+        aggregate = self.request.QUERY_PARAMS.get('aggregate', 'name')
+        if aggregate == 'project_name':
+            aggregate_field = 'instance__project__name'
+        elif aggregate == 'project_group':
+            aggregate_field = 'instance__project__project_groups__name'
+        elif aggregate == 'license_type':
+            aggregate_field = 'template_license__license_type'
+        else:
+            aggregate_field = 'template_license__name'
+
+        queryset = filters.filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
+        queryset = queryset.values(aggregate_field).annotate(count=django_models.Count('id'))
+
+        # This hack can be removed when https://code.djangoproject.com/ticket/16735 will be closed
+        for d in queryset:
+            d[aggregate] = d[aggregate_field]
+            del d[aggregate_field]
+
+        return Response(queryset)

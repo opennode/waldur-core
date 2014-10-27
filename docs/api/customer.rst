@@ -24,7 +24,7 @@ Project managers can list all the customers that own any of the projects they ar
 Create a new customer
 ---------------------
 
-A new customer can only be created users with staff privilege (is_staff=True). Example of a valid request:
+A new customer can only be created by users with staff privilege (is_staff=True). Example of a valid request:
 
 .. code-block:: http
 

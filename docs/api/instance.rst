@@ -14,7 +14,6 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - state
 - project
 - project_group
-- security_groups
 
 
 Instance status
@@ -33,15 +32,15 @@ A graph of possible state transitions is shown below.
 Create a new instance
 ---------------------
 
-A new project can be created by users with project administrator role or with staff privilege (is_staff=True).
-To create a project, client must define:
+A new instance can be created by users with project administrator role or with staff privilege (is_staff=True).
+To create a instance, client must define:
 
 - hostname;
 - description (optional);
 - link to the template object;
 - link to the flavor (it _must_ belong to a cloud, which is authorized for usage in the project);
 - link to the project;
-- Link to user's public key;
+- link to user's public key (it must belong to a user, who will be able to log in to the instance);
 - security_groups (optional).
 
 Example of a valid request:
@@ -63,9 +62,6 @@ Example of a valid request:
         "ssh_public_key": "http://example.com/api/keys/6fbd6b24246f4fb38715c29bafa2e5e7/",
         "security_groups": [{"name": "security group name 1"}, {"name": security group name 2}]
     }
-
-
-
 
 Stopping/starting an instance
 -----------------------------

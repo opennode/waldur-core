@@ -13,7 +13,8 @@ owner.
 Create a new project
 ---------------------
 
-A new project can be created by users with staff privilege (is_staff=True) or customer owners. Example of a valid request:
+A new project can be created by users with staff privilege (is_staff=True) or customer owners.
+Project resource quota is optional. Example of a valid request:
 
 .. code-block:: http
 
@@ -26,6 +27,12 @@ A new project can be created by users with staff privilege (is_staff=True) or cu
     {
         "name": "Project A",
         "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
+        "resource_quota": {
+                "vcpu": 2,
+                "ram": 2.0,
+                "storage": 36.15540199549969,
+                "backup": 113.5527366632655
+            },
     }
 
 
@@ -75,6 +82,12 @@ Response will contain a list of project users and their brief data:
             "user": "http://example.com/api/users/14471861a30d4293b7ef49340fc3080e/",
             "user_full_name": "",
             "user_native_name": ""
+            "resource_quota": {
+                "vcpu": 2,
+                "ram": 2.0,
+                "storage": 36.15540199549969,
+                "backup": 113.5527366632655
+            },
         },
         {
             "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
@@ -84,6 +97,12 @@ Response will contain a list of project users and their brief data:
             "user": "http://example.com/api/users/8f96d098e60642baa809707a8b118631/",
             "user_full_name": "",
             "user_native_name": ""
+            "resource_quota": {
+                "vcpu": 4,
+                "ram": 4.0,
+                "storage": 19.58190256910468,
+                "backup": 144.89305168268402
+            },
         }
     ]
 

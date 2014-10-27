@@ -36,3 +36,14 @@ class CreateModelViewSet(rf_mixins.CreateModelMixin,
     A viewset that provides default `create()`, `list()` and `retrieve()` actions.
     """
     pass
+
+
+class UpdateModelViewSet(rf_mixins.RetrieveModelMixin,
+                         mixins.UpdateOnlyModelMixin,
+                         mixins.ListModelMixin,
+                         rf_viewsets.GenericViewSet):
+    """
+    A viewset that provides default `retrieve()`, `update()`,
+    `partial_update()`, and `list()` actions.
+    """
+    pass

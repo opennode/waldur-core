@@ -2,9 +2,9 @@ from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.http import Http404
 
+from nodeconductor.cloud import models as cloud_models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas.tests import factories
-from nodeconductor.cloud import models as cloud_models
 from nodeconductor.structure.tests import factories as structure_factories
 
 
