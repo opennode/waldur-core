@@ -102,18 +102,14 @@ class CloudViewSet(viewsets.ModelViewSet):
 
 class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.RetrieveModelMixin,
-                                    rf_mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
-    queryset = models.Cloud.projects.through.objects.all()
+    queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
     filter_backends = (filters.GenericRoleFilter,)
 
-# XXX: This should be put to models
-filters.set_permissions_for_model(
-    models.Cloud.projects.through,
-    customer_path='cloud__customer',
-)
+    def create(self):
+        pass
 
 
 class SecurityGroupsViewSet(rf_viewsets.GenericViewSet):
