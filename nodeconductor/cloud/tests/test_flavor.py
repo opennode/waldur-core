@@ -27,21 +27,21 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
             'manager': structure_factories.UserFactory(),
             'no_role': structure_factories.UserFactory(),
         }
-        
+
         self.flavors = {
             'admin': factories.FlavorFactory(),
             'manager': factories.FlavorFactory(),
             'inaccessible': factories.FlavorFactory(),
         }
-        
+
         admined_project = structure_factories.ProjectFactory()
         managed_project = structure_factories.ProjectFactory()
 
         admined_project.add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         managed_project.add_user(self.users['manager'], ProjectRole.MANAGER)
 
-        admined_project.clouds.add(self.flavors['admin'].cloud)
-        managed_project.clouds.add(self.flavors['manager'].cloud)
+        factories.CloudProjectMembershipFactory(cloud=self.flavors['admin'].cloud, project=admined_project)
+        factories.CloudProjectMembershipFactory(cloud=self.flavors['manager'].cloud, project=managed_project)
 
     # List filtration tests
     def test_anonymous_user_cannot_list_flavors(self):
@@ -68,7 +68,8 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
 
     def test_user_cannot_list_flavors_of_projects_he_has_no_role_in(self):
         inaccessible_project = structure_factories.ProjectFactory()
-        inaccessible_project.clouds.add(self.flavors['inaccessible'].cloud)
+        factories.CloudProjectMembershipFactory(
+            project=inaccessible_project, cloud=self.flavors['inaccessible'].cloud)
 
         for user_role, flavor in self.forbidden_combinations:
             self._ensure_list_access_forbidden(user_role, flavor)
@@ -97,7 +98,8 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
 
     def test_user_cannot_access_flavor_allowed_for_project_he_has_no_role_in(self):
         inaccessible_project = structure_factories.ProjectFactory()
-        inaccessible_project.clouds.add(self.flavors['inaccessible'].cloud)
+        factories.CloudProjectMembershipFactory(
+            cloud=self.flavors['inaccessible'].cloud, project=inaccessible_project)
 
         for user_role, flavor in self.forbidden_combinations:
             self._ensure_direct_access_forbidden(user_role, flavor)

@@ -22,9 +22,8 @@ class UrlResolverMixin(object):
     def _get_cloud_url(self, project):
         return 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': project.uuid})
 
-
     def _get_membership_url(self, membership):
-        return 'http://testserver' + reverse('projectcloud_membership-detail', kwargs={'pk': membership.pk})
+        return 'http://testserver' + reverse('cloudproject_membership-detail', kwargs={'pk': membership.pk})
 
 
 ProjectCloudMembership = Cloud.projects.through
@@ -51,7 +50,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
 
         # has defined a cloud and connected cloud to a project
         self.cloud = factories.CloudFactory(customer=self.customer)
-        self.cloud.projects.add(self.connected_project)
+        factories.CloudProjectMembershipFactory(project=self.connected_project, cloud=self.cloud)
 
         # the customer also has another project with users but without a permission link
         self.not_connected_project = structure_factories.ProjectFactory(customer=self.customer)
@@ -59,7 +58,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         self.not_connected_project.save()
 
     def test_anonymous_user_cannot_grant_cloud_to_project(self):
-        response = self.client.post(reverse('projectcloud_membership-list'), self._get_valid_payload())
+        response = self.client.post(reverse('cloudproject_membership-list'), self._get_valid_payload())
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_connect_cloud_and_project_he_owns(self):
@@ -71,7 +70,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
 
         payload = self._get_valid_payload(cloud, project)
 
-        response = self.client.post(reverse('projectcloud_membership-list'), payload)
+        response = self.client.post(reverse('cloudproject_membership-list'), payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_user_cannot_connect_new_cloud_and_project_if_he_is_project_admin(self):
@@ -83,11 +82,11 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
             project = self.connected_project
             payload = self._get_valid_payload(cloud, project)
 
-            response = self.client.post(reverse('projectcloud_membership-list'), payload)
+            response = self.client.post(reverse('cloudproject_membership-list'), payload)
             # the new cloud should not be visible to the user
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertDictContainsSubset(
-                        {'cloud': ['Invalid hyperlink - object does not exist.']}, response.data)
+                {'cloud': ['Invalid hyperlink - object does not exist.']}, response.data)
 
     def test_user_cannot_revoke_cloud_and_project_permission_if_he_is_project_admin(self):
         user = self.users['admin']

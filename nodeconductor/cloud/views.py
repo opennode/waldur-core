@@ -102,11 +102,13 @@ class CloudViewSet(viewsets.ModelViewSet):
 
 class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.RetrieveModelMixin,
+                                    rf_mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
     filter_backends = (filters.GenericRoleFilter,)
+    permission = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
 
     def create(self):
         pass

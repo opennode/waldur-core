@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import factory
 
 from nodeconductor.cloud import models
@@ -24,10 +26,10 @@ class FlavorFactory(factory.DjangoModelFactory):
     disk = 10
 
 
-class CloudProjectMembership(factory.DjangoModelFactory):
+class CloudProjectMembershipFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.CloudProjectMembership
 
     cloud = factory.SubFactory(CloudFactory)
     project = factory.SubFactory(structure_factories.ProjectFactory)
-    tenant_uuid = factory.Sequence(lambda n: 'tenant%s' % n)
+    tenant_uuid = factory.Sequence(lambda n: uuid4())
