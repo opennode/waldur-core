@@ -1,16 +1,14 @@
 from django.shortcuts import get_object_or_404
 
-from rest_framework import exceptions
+from rest_framework import exceptions, status
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import viewsets as rf_viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from nodeconductor.cloud import models
-from nodeconductor.cloud import serializers
+from nodeconductor.cloud import models, serializers, tasks
 from nodeconductor.core import viewsets, mixins
-from nodeconductor.structure import filters
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import models as structure_models
 
@@ -107,11 +105,22 @@ class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_viewsets.GenericViewSet):
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
-    filter_backends = (filters.GenericRoleFilter,)
+    filter_backends = (structure_filters.GenericRoleFilter,)
     permission = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
 
-    def create(self):
-        pass
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+
+        if serializer.is_valid():
+            self.pre_save(serializer.object)
+            self.object = serializer.object
+            tasks.connect_project_to_cloud.delay(cloud=self.object.cloud, project=self.object.project)
+            self.post_save(self.object, created=True)
+            headers = self.get_success_headers(serializer.data)
+            return Response({'status': 'connection has been started successfully'}, status=status.HTTP_200_OK,
+                            headers=headers)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class SecurityGroupsViewSet(rf_viewsets.GenericViewSet):
