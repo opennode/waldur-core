@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from django.core.urlresolvers import reverse
 import factory
 
 from nodeconductor.cloud import models
@@ -33,3 +34,13 @@ class CloudProjectMembershipFactory(factory.DjangoModelFactory):
     cloud = factory.SubFactory(CloudFactory)
     project = factory.SubFactory(structure_factories.ProjectFactory)
     tenant_uuid = factory.Sequence(lambda n: uuid4())
+
+    @classmethod
+    def get_url(cls, membership=None):
+        if membership is None:
+            membership = CloudProjectMembershipFactory()
+        return 'http://testserver' + reverse('cloudproject_membership-detail', kwargs={'pk': membership.pk})
+
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('cloudproject_membership-list')
