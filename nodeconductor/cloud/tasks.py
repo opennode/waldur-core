@@ -14,5 +14,5 @@ def connect_project_to_cloud(cloud, project):
     """
     keystone = client.Client(cloud.username, cloud.password, ADMIN_TENANT, auth_url=cloud.auth_url)
     tenant = keystone.tenants.create(tenant_name=project.name, description=project.description, enabled=True)
-    models.CloudProjectMembership.objectes.create(
+    models.CloudProjectMembership.objects.create(
         cloud=cloud, project=project, tenant_uuid=tenant.id)
