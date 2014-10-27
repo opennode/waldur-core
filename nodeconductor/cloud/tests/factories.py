@@ -1,7 +1,7 @@
 import factory
 
 from nodeconductor.cloud import models
-from nodeconductor.structure.tests.factories import CustomerFactory
+from nodeconductor.structure.tests import factories as structure_factories
 
 
 class CloudFactory(factory.DjangoModelFactory):
@@ -9,7 +9,7 @@ class CloudFactory(factory.DjangoModelFactory):
         model = models.Cloud
 
     name = factory.Sequence(lambda n: 'cloud%s' % n)
-    customer = factory.SubFactory(CustomerFactory)
+    customer = factory.SubFactory(structure_factories.CustomerFactory)
 
 
 class FlavorFactory(factory.DjangoModelFactory):
@@ -22,3 +22,12 @@ class FlavorFactory(factory.DjangoModelFactory):
     cores = 4
     ram = 2.0
     disk = 10
+
+
+class CloudProjectMembership(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.CloudProjectMembership
+
+    cloud = factory.SubFactory(CloudFactory)
+    project = factory.SubFactory(structure_factories.ProjectFactory)
+    tenant_uuid = factory.Sequence(lambda n: 'tenant%s' % n)
