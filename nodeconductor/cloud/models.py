@@ -6,6 +6,7 @@ from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from uuidfield import UUIDField
 
 from nodeconductor.core.models import UuidMixin
 from nodeconductor.core.serializers import UnboundSerializerMethodField
@@ -36,7 +37,8 @@ class Cloud(UuidMixin, models.Model):
 
     name = models.CharField(max_length=100)
     customer = models.ForeignKey(structure_models.Customer, related_name='clouds')
-    projects = models.ManyToManyField(structure_models.Project, related_name='clouds')
+    projects = models.ManyToManyField(
+        structure_models.Project, related_name='clouds', through='CloudProjectMembership')
 
     unscoped_token = models.TextField(blank=True)
     scoped_token = models.TextField(blank=True)
@@ -81,6 +83,19 @@ def add_clouds_to_related_model(sender, fields, **kwargs):
         return
 
     fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
+
+
+class CloudProjectMembership(UuidMixin, models.Model):
+    """
+    This model represents many to many relationships between project and cloud
+    """
+    cloud = models.ForeignKey(Cloud)
+    project = models.ForeignKey(structure_models.Project)
+    tenant_uuid = UUIDField(unique=True)
+
+    class Permissions(object):
+        customer_path = 'cloud__customer'
+        project_path = 'project'
 
 
 @python_2_unicode_compatible
