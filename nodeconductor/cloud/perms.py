@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from django.contrib.auth import get_user_model
 
-from nodeconductor.core.permissions import FilteredCollaboratorsPermissionLogic
+from nodeconductor.core.permissions import FilteredCollaboratorsPermissionLogic, StaffPermissionLogic
 from nodeconductor.structure.models import CustomerRole
 
 
@@ -18,4 +18,5 @@ PERMISSION_LOGICS = (
 
         any_permission=True,
     )),
+    ('cloud.Flavor', StaffPermissionLogic(any_permission=True)),
 )
