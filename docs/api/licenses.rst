@@ -94,7 +94,7 @@ Instance licenses statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 It is possible to issue queries to NodeConductor to get aggregate statistics about instance licenses.
-Query is done against **/api/template-licenses/stats/** endpoint. Queries can be run by all users with a
+Query is done against **/api/template-licenses/stats/** endpoint. Queries can be run by all users with
 answers scoped by their visibility permissions of instances. By default queries are aggregated by license name.
 
 Supported aggregate queries are:
