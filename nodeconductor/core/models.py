@@ -158,7 +158,31 @@ class SshPublicKey(UuidMixin, models.Model):
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_index=True)
     name = models.CharField(max_length=50, blank=True)
+    fingerprint = models.CharField(max_length=47)  # In ideal world should be unique
     public_key = models.TextField(max_length=2000)
+
+    class Meta(object):
+        unique_together = ('user', 'name')
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        def get_fingerprint(public_key):
+            # How to get fingerprint from ssh key:
+            # http://stackoverflow.com/a/6682934/175349
+            # http://www.ietf.org/rfc/rfc4716.txt Section 4.
+            import base64
+            import hashlib
+
+            key_body = base64.b64decode(public_key.strip().split()[1].encode('ascii'))
+            fp_plain = hashlib.md5(key_body).hexdigest()
+            return ':'.join(a + b for a, b in zip(fp_plain[::2], fp_plain[1::2]))
+
+        # Fingerprint is always set based on public_key
+        self.fingerprint = get_fingerprint(self.public_key)
+
+        if update_fields and 'public_key' in update_fields and 'fingerprint' not in update_fields:
+            update_fields.append('fingerprint')
+
+        super(SshPublicKey, self).save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
         return self.name
