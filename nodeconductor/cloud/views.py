@@ -103,10 +103,17 @@ class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
+    """
+    List of project-cloud connections
+
+    Staff and customer owners can add/delete new connections
+
+    Managers and administrators can view connections
+    """
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
     filter_backends = (structure_filters.GenericRoleFilter,)
-    permission = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.DATA, files=request.FILES)

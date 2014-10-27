@@ -106,7 +106,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
                 {'cloud': ['Invalid hyperlink - object does not exist.']}, response.data)
 
     def test_user_cannot_revoke_cloud_and_project_permission_if_he_is_project_admin(self):
-        user = self.users['admin']
+        user = self.users['manager']
         self.client.force_authenticate(user=user)
 
         project = self.connected_project
@@ -115,7 +115,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
 
         url = factories.CloudProjectMembershipFactory.get_url(membership)
         response = self.client.delete(url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def _get_valid_payload(self, cloud=None, project=None):
         cloud = cloud or factories.CloudFactory()
