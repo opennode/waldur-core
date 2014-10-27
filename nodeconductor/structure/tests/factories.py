@@ -48,17 +48,6 @@ class ProjectFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'Proj%s' % n)
     customer = factory.SubFactory(CustomerFactory)
 
-    @factory.post_generation
-    def cloud(self, create, extracted, **kwargs):
-        if create and extracted:
-            self.clouds.add(extracted)
-
-    @factory.post_generation
-    def clouds(self, create, extracted, **kwargs):
-        if create and extracted:
-            for cloud in extracted:
-                self.clouds.add(cloud)
-
 
 class ProjectGroupFactory(factory.DjangoModelFactory):
     class Meta(object):
