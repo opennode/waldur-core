@@ -23,6 +23,10 @@ Project management
 
 .. include:: project.rst
 
+Project quotas management
+=========================
+
+.. include:: project_quotas.rst
 
 User management
 ===============
@@ -32,10 +36,7 @@ User management
 Key management
 ==============
 
-TODO:
-
-- key creation
-- listing user keys
+.. include:: key.rst
 
 Cloud management
 ================
