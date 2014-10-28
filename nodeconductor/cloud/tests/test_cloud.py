@@ -204,6 +204,29 @@ class CloudPermissionTest(test.APITransactionTestCase):
         response = self.client.post(self.cloud_list_url, self._get_valid_payload(new_cloud))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    # OpenStack backend related tests
+    def test_user_cannot_create_cloud_with_auth_url_not_listed_in_settings(self):
+        self.client.force_authenticate(user=self.users['customer_owner'])
+
+        test_credentials = {
+            'http://another.example.com': {
+                'username': 'admin',
+                'password': 'password',
+            },
+        }
+
+        with self.settings(OPENSTACK_CREDENTIALS=test_credentials):
+            new_cloud = factories.CloudFactory.build(customer=self.customers['owned'])
+            response = self.client.post(self.cloud_list_url, self._get_valid_payload(new_cloud))
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertDictContainsSubset(
+                {'auth_url': ['http://another.example.com is not known OpenStack installation.']}, response.data)
+
+    def test_user_can_create_cloud_with_auth_url_listed_in_settings(self):
+        new_cloud = factories.CloudFactory.build(customer=self.customers['owned'])
+        response = self.client.post(self.cloud_list_url, self._get_valid_payload(new_cloud))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     def _get_cloud_url(self, cloud):
         return 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': cloud.uuid})
 
@@ -217,4 +240,5 @@ class CloudPermissionTest(test.APITransactionTestCase):
         return {
             'name': resource.name,
             'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
+            'auth_url': 'http://example.com:5000/v2',
         }

@@ -14,3 +14,10 @@ DATABASES = {
         'NAME': ':memory:',
     }
 }
+
+OPENSTACK_CREDENTIALS = {
+    'http://example.com:5000/v2': {
+        'username': 'admin',
+        'password': 'password',
+    },
+}

@@ -10,7 +10,7 @@ class TestTasks(TestCase):
 
     def test_connect_project_to_cloud_success(self):
         membership = factories.CloudProjectMembershipFactory()
-        with patch('nodeconductor.cloud.models.client.Client', return_value=helpers.KeystoneMockedClient):
+        with patch('nodeconductor.cloud.models.keystone_client.Client', return_value=helpers.KeystoneMockedClient):
             tasks.create_backend_membership(membership)
             self.assertEqual(
                 models.CloudProjectMembership.objects.get(pk=membership.pk).state,
@@ -18,7 +18,7 @@ class TestTasks(TestCase):
 
     def test_connect_project_to_cloud_error(self):
         membership = factories.CloudProjectMembershipFactory()
-        with patch('nodeconductor.cloud.models.client.Client', side_effect=ClientException()):
+        with patch('nodeconductor.cloud.models.keystone_client.Client', side_effect=ClientException()):
             tasks.create_backend_membership(membership)
             self.assertEqual(
                 models.CloudProjectMembership.objects.get(pk=membership.pk).state,
