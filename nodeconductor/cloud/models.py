@@ -140,8 +140,8 @@ class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
     This class contains openstack security groups.
     """
 
-    tcp = 1
-    udp = 0
+    tcp = 'tcp'
+    udp = 'udp'
 
     PROTOCOL_CHOICES = (
         (tcp, _('tcp')),
@@ -149,7 +149,7 @@ class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
     )
 
     name = models.CharField(max_length=127)
-    protocol = models.SmallIntegerField(choices=PROTOCOL_CHOICES)
+    protocol = models.CharField(max_length=3, choices=PROTOCOL_CHOICES)
     from_port = models.IntegerField(validators=[MaxValueValidator(65535),
                                                 MinValueValidator(1)])
     to_port = models.IntegerField(validators=[MaxValueValidator(65535),

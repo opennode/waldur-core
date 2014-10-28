@@ -312,7 +312,7 @@ Other use cases are covered with random data.
         SecurityGroup.objects.create(
             name=random_string(5, 10),
             description='Openstack security group',
-            protocol=0,
+            protocol='tcp',
             from_port=22,
             to_port=22,
             ip_range='10.2.6.%d' % random.randint(0, 255),
@@ -321,7 +321,7 @@ Other use cases are covered with random data.
 
         SecurityGroup.objects.create(
             name=random_string(5, 10),
-            protocol=1,
+            protocol='udp',
             from_port=22,
             to_port=22,
             ip_range='10.2.3.%d' % random.randint(0, 255),

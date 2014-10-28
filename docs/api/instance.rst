@@ -63,7 +63,7 @@ Example of a valid request:
         "security_groups": {
             "url": "http://example.com/api/security-groups/16c55dad9b3048db8dd60e89bd4d85bc/",
             "name": "global_http",
-            "protocol": 1,
+            "protocol": "tcp",
             "from_port": 80,
             "to_port": 80,
             "ip_range": "0.0.0.0",

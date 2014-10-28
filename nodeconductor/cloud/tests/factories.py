@@ -32,7 +32,7 @@ class SecurityGroupFactory(factory.DjangoModelFactory):
         model = models.SecurityGroup
 
     name = factory.Sequence(lambda n: 'group%s' % n)
-    protocol = factory.Iterator(models.SecurityGroup.PROTOCOL_CHOICES, getter=lambda c: c[0])
+    protocol = models.SecurityGroup.tcp
     from_port = factory.fuzzy.FuzzyInteger(1, 65535)
     to_port = factory.fuzzy.FuzzyInteger(1, 65535)
     ip_range = factory.LazyAttribute(lambda o: '.'.join('%s' % randint(1, 255) for i in range(4)))
