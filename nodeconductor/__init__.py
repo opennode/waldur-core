@@ -2,6 +2,29 @@
 # to keep the namespace clean: only __version__ is going to be exposed.
 
 
+# https://gist.github.com/edufelipe/1027906
+def _check_output(*popenargs, **kwargs):
+    r"""Run command with arguments and return its output as a byte string.
+
+    Backported from Python 2.7 as it's implemented as pure python on stdlib.
+
+    >>> _check_output(['/usr/bin/python', '--version'])
+    Python 2.6.2
+    """
+    import subprocess
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    output, unused_err = process.communicate()
+    retcode = process.poll()
+    if retcode:
+        cmd = kwargs.get("args")
+        if cmd is None:
+            cmd = popenargs[0]
+        error = subprocess.CalledProcessError(retcode, cmd)
+        error.output = output
+        raise error
+    return output
+
+
 def _get_version():
     import pkg_resources
 
@@ -19,7 +42,7 @@ def _get_version():
 
         try:
             with open(os.devnull, 'w') as DEV_NULL:
-                description = subprocess.check_output(
+                description = _check_output(
                     ['git', 'describe', '--tags', '--dirty=.dirty'],
                     cwd=repo_dir, stderr=DEV_NULL
                 ).strip()

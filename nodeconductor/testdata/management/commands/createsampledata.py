@@ -3,11 +3,11 @@ import string
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
-import sys
+from django.utils import timezone
 
 from nodeconductor.cloud.models import Cloud
-from nodeconductor.core.models import User
-from nodeconductor.iaas.models import Template
+from nodeconductor.core.models import User, SshPublicKey
+from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
 from nodeconductor.structure.models import *
 
 
@@ -78,31 +78,37 @@ Arguments:
     def add_sample_data(self):
         self.stdout.write("""Generating data structures...
 
-    +---------------+    +-----------------+        +------------------+
-    | User          |    | User            |        | User             |
-    | username: Bob |    | username: Alice |        | username: Walter |
-    | password: Bob |    | password: Alice |        | password: Walter |
-    +-------+-------+    +-----+-----+-----+        | is_staff: yes    |
-             \                /       \             +------------------+
-         role:owner          /    role:owner
-               \            /           \ 
-                \     role:owner         \ 
-                 \        /               \ 
-    +-------------+------+----+   +--------+-------------------+
++---------------+  +-----------------+  +------------------+  +---------------+
+| User          |  | User            |  | User             |  | User          |
+| username: Bob |  | username: Alice |  | username: Walter |  | username: Zed |
+| password: Bob |  | password: Alice |  | password: Walter |  | password: Zed |
++-------+-------+  +-----+-----+-----+  | is_staff: yes    |  | (no roles)    |
+         \              /       \       +------------------+  +---------------+
+     role:owner        /    role:owner
+           \          /           \\
+            \   role:owner         \\
+             \      /               \\
+    +---------+----+----------+   +--+-------------------------+
     | Customer                |   | Customer                   |
     | name: Ministry of Bells |   | name: Ministry of Whistles |
-    +------------+------------+   +-----+----------------+-----+
-                /                      /                  \ 
-               /                      /                    \ 
+    +------------+------------+   +----------+-----------------+
+                 |                            \\
+                 |                             \\
+      +----------+---------+         +----------+------------+
+      | Project Group      |         | Project Group         |
+      | name: Bells Portal |         | name: Whistles Portal |
+      +----------+---------+         +--+----------------+---+
+                /                      /                  \\
+               /                      /                    \\
    +----------+------+  +------------+-------+  +-----------+-----------------+
    | Project         |  | Project            |  | Project                     |
    | name: bells.org |  | name: whistles.org |  | name: intranet.whistles.org |
    +--------+-----+--+  +----------+----+----+  +--------+----+---------------+
-           /       \              /      \              /      \ 
-     role:admin     \       role:admin    \       role:admin    \ 
-         /           \          /          \          /          \ 
+           /       \              /      \              /      \\
+     role:admin     \       role:admin    \       role:admin    \\
+         /           \          /          \          /          \\
         /        role:manager  /       role:manager  /       role:manager
-       /               \      /              \      /              \ 
+       /               \      /              \      /              \\
 +-----+-------------+ +-+----+---------+ +----+----+------+ +-------+---------+
 | User              | | User           | | User           | | User            |
 | username: Charlie | | username: Dave | | username: Erin | | username: Frank |
@@ -114,7 +120,10 @@ Use cases covered:
  - Use case 3: User that is manager of a project -- Dave, Erin, Frank
  - Use case 5: User has roles in several projects of the same customer -- Erin
  - Use case 6: User owns a customer -- Alice, Bob
+ - Use case 7: Project group contains several projects -- Whistles Portal
  - Use case 9: User has roles in several projects of different customers -- Dave
+ - Use case 12: User has no roles at all -- Zed
+
 
 Other use cases are covered with random data.
 """)
@@ -129,28 +138,37 @@ Other use cases are covered with random data.
                 'Frank': {},
                 'Walter': {
                     'is_staff': True,
-                },
+                 },
+                'Zed': {},
             },
             'customers' : {
                 'Ministry of Bells': {
                     'owners': ['Alice', 'Bob'],
-                    'projects': {
-                        'bells.org': {
-                            'admins': ['Charlie'],
-                            'managers': ['Dave'],
+                    'project_groups': {
+                        'Bells Portal': {
+                            'projects': {
+                                'bells.org': {
+                                    'admins': ['Charlie'],
+                                    'managers': ['Dave'],
+                                },
+                            },
                         },
                     },
                 },
                 'Ministry of Whistles': {
                     'owners': ['Bob'],
-                    'projects': {
-                        'whistles.org': {
-                            'admins': ['Dave'],
-                            'managers': ['Erin'],
-                        },
-                        'intranet.whistles.org': {
-                            'admins': ['Erin'],
-                            'managers': ['Frank'],
+                    'project_groups': {
+                        'Whistles Portal': {
+                            'projects': {
+                                'whistles.org': {
+                                    'admins': ['Dave'],
+                                    'managers': ['Erin'],
+                                },
+                                'intranet.whistles.org': {
+                                    'admins': ['Erin'],
+                                    'managers': ['Frank'],
+                                },
+                            },
                         },
                     },
                 },
@@ -168,9 +186,13 @@ Other use cases are covered with random data.
             users[username].set_password(username)
             if not users[username].is_staff and 'is_staff' in user_params and user_params['is_staff']:
                 self.stdout.write('Promoting user "%s" to staff...' % username)
-                yuml += '[User;username:%s;password:%s;is_staff:yes{bg:green}],' % (username, username)
                 users[username].is_staff = True
             users[username].save()
+
+            if users[username].is_staff:
+                yuml += '[User;username:%s;password:%s;is_staff:yes{bg:green}],' % (username, username)
+            else:
+                yuml += '[User;username:%s;password:%s],' % (username, username)
 
         for customer_name, customer_params in data['customers'].items():
             self.stdout.write('Creating customer "%s"...' % customer_name)
@@ -179,24 +201,31 @@ Other use cases are covered with random data.
 
             for username in customer_params['owners']:
                 self.stdout.write('Adding user "%s" as owner of customer "%s"...' % (username, customer_name))
-                yuml += '[User;username:%s;password:%s]-role:owner->[Customer;name:%s],' % (username, username, customer_name)
                 customer.add_user(users[username], CustomerRole.OWNER)
+                yuml += '[User;username:%s;password:%s]-role:owner->[Customer;name:%s],' % (username, username, customer_name)
 
-            for project_name, project_params in customer_params['projects'].items():
-                self.stdout.write('Creating project "%s" for customer "%s"...' % (project_name, customer_name))
-                yuml += '[Customer;name:%s]-->[Project;name:%s],' % (customer_name, project_name)
-                project, was_created = customer.projects.get_or_create(name=project_name)
-                self.stdout.write('Project "%s" %s.' % (project_name, "created" if was_created else "already exists"))
+            for project_group_name, project_group_params in customer_params['project_groups'].items():
+                self.stdout.write('Creating project group "%s" for customer "%s"...' % (project_group_name, customer_name))
+                project_group, was_created = customer.project_groups.get_or_create(name=project_group_name)
+                self.stdout.write('Project Group "%s" %s.' % (project_group_name, "created" if was_created else "already exists"))
+                yuml += '[Customer;name:%s]-->[Project Group;name:%s],' % (customer_name, project_group_name)
 
-                for username in project_params['admins']:
-                    self.stdout.write('Adding user "%s" as admin of project "%s"...' % (username, project_name))
-                    yuml += '[Project;name:%s]<-role:admin-[User;username:%s;password:%s],' % (project_name, username, username)
-                    project.add_user(users[username], ProjectRole.ADMINISTRATOR)
+                for project_name, project_params in project_group_params['projects'].items():
+                    self.stdout.write('Creating project "%s" in project group "%s"...' % (project_name, project_group_name))
+                    project, was_created = customer.projects.get_or_create(name=project_name)
+                    project_group.projects.add(project)
+                    self.stdout.write('Project "%s" %s.' % (project_name, "created" if was_created else "already exists"))
+                    yuml += '[Project Group;name:%s]-->[Project;name:%s],' % (project_group_name, project_name)
 
-                for username in project_params['managers']:
-                    self.stdout.write('Adding user "%s" as manager of project "%s"...' % (username, project_name))
-                    yuml += '[Project;name:%s]<-role:manager-[User;username:%s;password:%s],' % (project_name, username, username)
-                    project.add_user(users[username], ProjectRole.MANAGER)
+                    for username in project_params['admins']:
+                        self.stdout.write('Adding user "%s" as admin of project "%s"...' % (username, project_name))
+                        project.add_user(users[username], ProjectRole.ADMINISTRATOR)
+                        yuml += '[Project;name:%s]<-role:admin-[User;username:%s;password:%s],' % (project_name, username, username)
+
+                    for username in project_params['managers']:
+                        self.stdout.write('Adding user "%s" as manager of project "%s"...' % (username, project_name))
+                        project.add_user(users[username], ProjectRole.MANAGER)
+                        yuml += '[Project;name:%s]<-role:manager-[User;username:%s;password:%s],' % (project_name, username, username)
 
         self.stdout.write(yuml)
 
@@ -242,6 +271,24 @@ Other use cases are covered with random data.
             monthly_fee=Decimal(str(random.random() * 100.0)),
         )
 
+        # add template licenses:
+        license1 = TemplateLicense.objects.create(
+            name='Redhat 6 license',
+            license_type='RHEL6',
+            service_type='IaaS',
+            setup_fee=10,
+            monthly_fee=5
+        )
+        license2 = TemplateLicense.objects.create(
+            name='Windows server license',
+            license_type='Windows 2012 Server',
+            service_type='IaaS',
+            setup_fee=20,
+            monthly_fee=8)
+        template1.template_licenses.add(license1)
+        template1.template_licenses.add(license2)
+        template2.template_licenses.add(license1)
+
         # add images
         cloud.images.create(
             name='CentOS 6',
@@ -260,6 +307,7 @@ Other use cases are covered with random data.
             architecture=1,
             description='A backup image of WinXP',
         )
+        return cloud
 
     def create_customer(self):
         customer_name = 'Customer %s' % random_string(3, 7)
@@ -276,12 +324,15 @@ Other use cases are covered with random data.
             self.create_project(customer),
         ]
 
-        self.create_cloud(customer)
+        cloud = self.create_cloud(customer)
 
         # Use Case 5: User has roles in several projects of the same customer
         user1 = self.create_user()
         projects[0].add_user(user1, ProjectRole.MANAGER)
         projects[1].add_user(user1, ProjectRole.ADMINISTRATOR)
+
+        self.create_instance(user1, projects[0], cloud.flavors.all()[0], cloud.images.all()[0].template)
+        self.create_instance(user1, projects[1], cloud.flavors.all()[1], cloud.images.all()[1].template)
 
         # Use Case 6: User owns a customer
         user2 = self.create_user()
@@ -319,6 +370,11 @@ Other use cases are covered with random data.
         # Use Case 3: User that is manager of a project
         project.add_user(self.create_user(), ProjectRole.MANAGER)
 
+        # Adding quota to project:
+        print 'Creating quota for project %s' % project
+        project.quota = ResourceQuota.objects.create(vcpu=2, ram=2, storage=10, backup=20)
+        project.save()
+
         return project
 
     def create_user(self):
@@ -339,3 +395,26 @@ Other use cases are covered with random data.
         user.set_password(username)
         user.save()
         return user
+
+    def create_instance(self, user, project, flavor, template):
+        ips = ','.join('.'.join('%s' % random.randint(0, 255) for i in range(4)) for j in range(3))
+        ssh_public_key = SshPublicKey.objects.create(
+            user=user,
+            name="public key",
+            public_key=("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28"
+                        "TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY"
+                        "dknWoMoArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9du"
+                        "D2C05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
+                        "vEAFdOJcqjyyH4FOGYa8usP1 test")
+        )
+        print 'Creating instance for project %s' % project
+        instance = Instance.objects.create(
+            hostname='host',
+            project=project,
+            flavor=flavor,
+            template=template,
+            ips=ips,
+            start_time=timezone.now(),
+            ssh_public_key=ssh_public_key,
+        )
+        InstanceSecurityGroup.objects.create(name='security group', instance=instance)

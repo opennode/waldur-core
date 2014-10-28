@@ -7,10 +7,24 @@ only see connected customers:
 - customers that the user owns
 - customers that have a project where user has a role
 
+Customer permissions
+--------------------
+
+Customers are connected to users through roles, whereas user may have role "customer owner". Each customer may have multiple owners, and each user may own multiple customers.
+
+Staff members can list all available customers and create new customers.
+
+Customer owners can list all customers they own. Customer owners can also create new customers.
+
+Project administrators can list all the customers that own any of the projects they are administrators in.
+
+Project managers can list all the customers that own any of the projects they are managers in.
+
+
 Create a new customer
 ---------------------
 
-A new customer can only be created users with staff privilege (is_staff=True). Example of a valid request:
+A new customer can only be created by users with staff privilege (is_staff=True). Example of a valid request:
 
 .. code-block:: http
 

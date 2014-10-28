@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.core.urlresolvers import reverse, resolve
+from django.test.client import RequestFactory
 
 from nodeconductor.backup.tests import factories
 from nodeconductor.backup import serializers, models, backup_registry
@@ -17,7 +18,9 @@ class RelatedBackupFieldTest(TestCase):
 
     def test_to_native(self):
         backup = factories.BackupFactory()
-        expected_url = reverse('backup-detail', args=(backup.uuid, ))
+        expected_url = 'http://testserver' + reverse('backup-detail', args=(backup.uuid, ))
+        mocked_request = RequestFactory().get(reverse('backup-detail', args=(backup.uuid, )))
+        self.field.context = {'request': mocked_request}
         self.assertEqual(self.field.to_native(backup), expected_url)
 
     def test_format_url(self):
