@@ -30,7 +30,7 @@ class LicenseViewSetTest(TestCase):
         project = structure_factories.ProjectFactory(customer=customer)
         # cloud and template
         cloud = cloud_factories.CloudFactory()
-        cloud.projects.add(project)
+        cloud_factories.CloudProjectMembershipFactory(cloud=cloud, project=project)
         template = factories.TemplateFactory()
         factories.ImageFactory(cloud=cloud, template=template)
         # license

@@ -28,6 +28,7 @@ install_requires = [
     'djangosaml2>=0.11.0,<0.12',
     'drf-extensions==0.2.6',
     'logan==0.5.9.1',
+    'python-keystoneclient==0.11.1',
     'redis==2.10.3',
     'South==0.8.4',
 ]

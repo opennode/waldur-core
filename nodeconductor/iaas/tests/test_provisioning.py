@@ -328,7 +328,8 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.template = factories.TemplateFactory()
         self.flavor = cloud_factories.FlavorFactory(cloud=cloud)
-        self.project = structure_factories.ProjectFactory(cloud=cloud)
+        self.project = structure_factories.ProjectFactory()
+        cloud_factories.CloudProjectMembershipFactory(cloud=cloud, project=self.project)
         self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
@@ -376,8 +377,8 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         data = self.get_valid_data()
 
         another_flavor = cloud_factories.FlavorFactory()
-        another_project = structure_factories.ProjectFactory(
-            cloud=another_flavor.cloud)
+        another_project = structure_factories.ProjectFactory()
+        cloud_factories.CloudProjectMembershipFactory(project=another_project, cloud=another_flavor.cloud)
 
         another_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 

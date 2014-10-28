@@ -22,7 +22,7 @@ class LicenseTest(TestCase):
         self.project_group.projects.add(self.project)
         # cloud and image
         self.cloud = cloud_factories.CloudFactory()
-        self.cloud.projects.add(self.project)
+        cloud_factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
         self.image = factories.ImageFactory(cloud=self.cloud, template=self.template)
 
     def test_get_projects(self):

@@ -42,8 +42,8 @@ class CloudPermissionTest(test.APITransactionTestCase):
         self.projects['admined'].add_user(self.users['project_admin'], ProjectRole.ADMINISTRATOR)
         self.projects['managed'].add_user(self.users['project_manager'], ProjectRole.MANAGER)
 
-        self.projects['admined'].clouds.add(self.clouds['admined'])
-        self.projects['managed'].clouds.add(self.clouds['managed'])
+        factories.CloudProjectMembershipFactory(cloud=self.clouds['admined'], project=self.projects['admined'])
+        factories.CloudProjectMembershipFactory(cloud=self.clouds['managed'], project=self.projects['managed'])
 
         self.cloud_list_url = reverse('cloud-list')
 

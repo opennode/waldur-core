@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
+from mock import patch
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.cloud.models import Cloud
+from nodeconductor.cloud import models
 from nodeconductor.cloud.tests import factories
 from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.models import ProjectRole
@@ -13,22 +14,40 @@ from nodeconductor.structure.tests import factories as structure_factories
 
 # noinspection PyMethodMayBeStatic
 class UrlResolverMixin(object):
-    def _get_customer_url(self, customer):
-        return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
 
     def _get_project_url(self, project):
         return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
 
-    def _get_cloud_url(self, project):
-        return 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': project.uuid})
+    def _get_cloud_url(self, cloud):
+        return 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': cloud.uuid})
 
 
-    def _get_membership_url(self, membership):
-        return 'http://testserver' + reverse('projectcloud_membership-detail', kwargs={'pk': membership.pk})
+class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTestCase):
+
+    def setUp(self):
+        self.owner = structure_factories.UserFactory(is_staff=True, is_superuser=True)
+        self.customer = structure_factories.CustomerFactory()
+        self.customer.add_user(self.owner, CustomerRole.OWNER)
+
+        self.project = structure_factories.ProjectFactory(customer=self.customer)
+        self.cloud = factories.CloudFactory(customer=self.customer)
+
+    def test_memebership_creation(self):
+        self.client.force_authenticate(self.owner)
+        url = factories.CloudProjectMembershipFactory.get_list_url()
+        data = {
+            'cloud': self._get_cloud_url(self.cloud),
+            'project': self._get_project_url(self.project)
+        }
+
+        with patch('nodeconductor.cloud.tasks.create_backend_membership.delay') as mocked_task:
+            response = self.client.post(url, data)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            membership = models.CloudProjectMembership.objects.get(project=self.project, cloud=self.cloud)
+            mocked_task.assert_called_with(membership)
 
 
-ProjectCloudMembership = Cloud.projects.through
-
+# XXX: this have to be reworked to permissions test
 
 class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def setUp(self):
@@ -51,7 +70,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
 
         # has defined a cloud and connected cloud to a project
         self.cloud = factories.CloudFactory(customer=self.customer)
-        self.cloud.projects.add(self.connected_project)
+        factories.CloudProjectMembershipFactory(project=self.connected_project, cloud=self.cloud)
 
         # the customer also has another project with users but without a permission link
         self.not_connected_project = structure_factories.ProjectFactory(customer=self.customer)
@@ -59,7 +78,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         self.not_connected_project.save()
 
     def test_anonymous_user_cannot_grant_cloud_to_project(self):
-        response = self.client.post(reverse('projectcloud_membership-list'), self._get_valid_payload())
+        response = self.client.post(reverse('cloudproject_membership-list'), self._get_valid_payload())
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_connect_cloud_and_project_he_owns(self):
@@ -71,7 +90,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
 
         payload = self._get_valid_payload(cloud, project)
 
-        response = self.client.post(reverse('projectcloud_membership-list'), payload)
+        response = self.client.post(reverse('cloudproject_membership-list'), payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_user_cannot_connect_new_cloud_and_project_if_he_is_project_admin(self):
@@ -83,22 +102,23 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
             project = self.connected_project
             payload = self._get_valid_payload(cloud, project)
 
-            response = self.client.post(reverse('projectcloud_membership-list'), payload)
+            response = self.client.post(reverse('cloudproject_membership-list'), payload)
             # the new cloud should not be visible to the user
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertDictContainsSubset(
-                        {'cloud': ['Invalid hyperlink - object does not exist.']}, response.data)
+                {'cloud': ['Invalid hyperlink - object does not exist.']}, response.data)
 
     def test_user_cannot_revoke_cloud_and_project_permission_if_he_is_project_admin(self):
-        user = self.users['admin']
+        user = self.users['manager']
         self.client.force_authenticate(user=user)
 
         project = self.connected_project
         cloud = self.cloud
-        membership = ProjectCloudMembership.objects.get(project=project, cloud=cloud)
+        membership = factories.CloudProjectMembershipFactory(project=project, cloud=cloud)
 
-        response = self.client.delete(self._get_membership_url(membership))
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        url = factories.CloudProjectMembershipFactory.get_url(membership)
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def _get_valid_payload(self, cloud=None, project=None):
         cloud = cloud or factories.CloudFactory()
