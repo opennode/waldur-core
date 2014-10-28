@@ -29,12 +29,30 @@ To register permissions for the through-models, one can use a convenience functi
     )
 
 
-
 Permissions for creation/deletion/update
 ----------------------------------------
 
-TODO: https://pypi.python.org/pypi/django-permission/
+CRU permissions are implemented using django-permission_ . Filters for allowered modifiers are defined in **perms.py**
+in each of the applications.
 
 Advanced validation for CRUD
 ----------------------------
-TODO: pre_save/pre_delete/...
+
+If validation logic is based on the payload of request (not user role/endpoint), pre_save/pre_delete methods of a
+ViewSet should be used.
+
+.. _django-permission: https://pypi.python.org/pypi/django-permission/
+
+
+Asynchronous entities
+=====================
+
+Asynchronous entities are those representing managed service or object outside of NodeConductor. Creation and
+modification of such services cannot be done within a single transaction and typically is triggering a background
+job. For example, creation of a new virtual machine or adding a new cloud to a project.
+
+For such entities, approach is to:
+
+- first create an instance in NodeConductor DB;
+- schedule a background job passing instance id as a parameter;
+- job updates instance's status as it progresses.
