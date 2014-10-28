@@ -9,6 +9,7 @@ from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField, transition
+from keystoneclient.exceptions import CertificateConfigError, CMSError, ClientException
 from keystoneclient.v2_0 import client
 from uuidfield import UUIDField
 
@@ -137,7 +138,7 @@ class CloudProjectMembership(models.Model):
                 tenant_name=self.project.name, description=self.project.description, enabled=True)
             self.tenant_uuid = tenant.id
             self._set_ready()
-        except Exception as e:
+        except (ClientException, CertificateConfigError, CMSError) as e:
             logger.exception('Failed to create CloudProjectMembership with id %s. %s', self.id, str(e))
             self._set_erred()
         self.save()

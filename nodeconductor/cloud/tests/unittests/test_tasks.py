@@ -1,4 +1,5 @@
 from django.test import TestCase
+from keystoneclient.exceptions import ClientException
 from mock import patch
 
 from nodeconductor.cloud import models, tasks
@@ -17,7 +18,7 @@ class TestTasks(TestCase):
 
     def test_connect_project_to_cloud_error(self):
         membership = factories.CloudProjectMembershipFactory()
-        with patch('nodeconductor.cloud.models.client.Client', side_effect=Exception()):
+        with patch('nodeconductor.cloud.models.client.Client', side_effect=ClientException()):
             tasks.create_backend_membership(membership)
             self.assertEqual(
                 models.CloudProjectMembership.objects.get(pk=membership.pk).state,
