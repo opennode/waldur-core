@@ -116,11 +116,11 @@ class CloudProjectMembership(models.Model):
         customer_path = 'cloud__customer'
         project_path = 'project'
 
-    @transition(field=state, source=States.CREATING, target=States.OFFLINE)
+    @transition(field=state, source=States.CREATING, target=States.READY)
     def _set_ready(self):
         pass
 
-    @transition(field=state, source=States.OFFLINE, target=States.STARTING_SCHEDULED)
+    @transition(field=state, source=States.CREATING, target=States.ERRED)
     def _set_erred(self):
         pass
 
