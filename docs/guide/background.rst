@@ -8,6 +8,7 @@ Redis_ backend - Redis server **must be** running for requests triggering backgr
 If you are developing on OS X and have brew installed:
 
 .. code-block:: bash
+
   brew install redis-server
   redis-server
 
