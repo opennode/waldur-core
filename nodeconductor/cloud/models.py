@@ -1,11 +1,15 @@
 from __future__ import unicode_literals
 
+import logging
+
 from django.core.validators import URLValidator
 from django.db import models
 from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from django_fsm import FSMField, transition
+from keystoneclient.v2_0 import client
 from uuidfield import UUIDField
 
 from nodeconductor.core.models import UuidMixin
@@ -13,6 +17,9 @@ from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.filters import filter_queryset_for_user
+
+
+logger = logging.getLogger(__name__)
 
 
 @python_2_unicode_compatible
@@ -85,17 +92,55 @@ def add_clouds_to_related_model(sender, fields, **kwargs):
     fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
 
 
-class CloudProjectMembership(UuidMixin, models.Model):
+class CloudProjectMembership(models.Model):
     """
     This model represents many to many relationships between project and cloud
     """
+    class States(object):
+        CREATING = 'c'
+        READY = 'r'
+        ERRED = 'e'
+
+        CHOICES = (
+            (CREATING, 'Creating'),
+            (READY, 'Ready'),
+            (ERRED, 'Erred'),
+        )
+
     cloud = models.ForeignKey(Cloud)
     project = models.ForeignKey(structure_models.Project)
-    tenant_uuid = UUIDField(unique=True)
+    tenant_uuid = UUIDField(unique=True, null=True)
+    state = FSMField(default=States.CREATING, max_length=1, choices=States.CHOICES)
 
     class Permissions(object):
         customer_path = 'cloud__customer'
         project_path = 'project'
+
+    @transition(field=state, source=States.CREATING, target=States.OFFLINE)
+    def _set_ready(self):
+        pass
+
+    @transition(field=state, source=States.OFFLINE, target=States.STARTING_SCHEDULED)
+    def _set_erred(self):
+        pass
+
+    def create_in_backend(self):
+        """
+        Create new tenant and store its uuid in tenant_uuid field
+        """
+        # XXX: this have to be moved to settings or implemented in other way
+        ADMIN_TENANT = 'admin'
+        try:
+            keystone = client.Client(
+                self.cloud.username, self.cloud.password, ADMIN_TENANT, auth_url=self.cloud.auth_url)
+            tenant = keystone.tenants.create(
+                tenant_name=self.project.name, description=self.project.description, enabled=True)
+            self.tenant_uuid = tenant.id
+            self._set_ready()
+        except Exception as e:
+            logger.exception('Failed to create CloudProjectMembership with id %s. %s', self.id, str(e))
+            self._set_erred()
+        self.save()
 
 
 @python_2_unicode_compatible
