@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404
 
-from rest_framework import exceptions, status
+from rest_framework import exceptions
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import viewsets as rf_viewsets
@@ -115,8 +115,9 @@ class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
     filter_backends = (structure_filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
 
-    def post_save(self, membership):
-        tasks.create_backend_membership.delay(membership)
+    def post_save(self, membership, created):
+        if created:
+            tasks.create_backend_membership.delay(membership)
 
 
 class SecurityGroupsViewSet(rf_viewsets.GenericViewSet):
