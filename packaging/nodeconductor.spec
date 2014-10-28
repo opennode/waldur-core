@@ -17,7 +17,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.6.0
+Version: 0.6.1
 Release: 1
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -173,6 +173,9 @@ All done. Happy NodeConducting!
 EOF
 
 %changelog
+* Tue Oct 28 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.6.1-1
+- New upstream hotfix release
+
 * Tue Oct 28 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.6.0-1
 - New upstream release
 
