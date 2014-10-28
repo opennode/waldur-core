@@ -578,11 +578,22 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         response = self.client.post(_instance_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_change_instance_security_groups(self):
+    def test_change_instance_security_groups_single_field(self):
         data = {'security_groups': [self._get_valid_paylpad(g.security_group)
                                     for g in self.instance_security_groups]}
 
         response = self.client.patch(_instance_url(self.instance), data=data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_change_instance_security_groups(self):
+        response = self.client.get(_instance_url(self.instance))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = _instance_data(self.instance)
+        data['security_groups'] = [self._get_valid_paylpad(g.security_group)
+                                   for g in self.instance_security_groups]
+
+        response = self.client.put(_instance_url(self.instance), data=data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_security_groups_is_not_required(self):
