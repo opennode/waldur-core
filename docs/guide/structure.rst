@@ -32,7 +32,7 @@ is below:
       Limited access to project management and billing.
 
     Resource
-      A resource is a provisioned entitiy of a cloud, for example, a VM in OpenStack or AWS, or a repository in Github.
+      A resource is a provisioned entity of a cloud, for example, a VM in OpenStack or AWS, or a repository in Github.
       Each resource belongs to a particular project.
 
     Project group
