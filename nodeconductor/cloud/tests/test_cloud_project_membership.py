@@ -5,6 +5,7 @@ from mock import patch
 from rest_framework import status
 from rest_framework import test
 
+from nodeconductor.cloud import models
 from nodeconductor.cloud.tests import factories
 from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.models import ProjectRole
@@ -17,14 +18,14 @@ class UrlResolverMixin(object):
     def _get_project_url(self, project):
         return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
 
-    def _get_cloud_url(self, project):
-        return 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': project.uuid})
+    def _get_cloud_url(self, cloud):
+        return 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': cloud.uuid})
 
 
 class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTestCase):
 
     def setUp(self):
-        self.owner = structure_factories.UserFactory()
+        self.owner = structure_factories.UserFactory(is_staff=True, is_superuser=True)
         self.customer = structure_factories.CustomerFactory()
         self.customer.add_user(self.owner, CustomerRole.OWNER)
 
@@ -38,10 +39,12 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
             'cloud': self._get_cloud_url(self.cloud),
             'project': self._get_project_url(self.project)
         }
-        with patch('nodeconductor.cloud.tasks.connect_project_to_cloud.delay') as mocked_task:
+
+        with patch('nodeconductor.cloud.tasks.create_backend_membership.delay') as mocked_task:
             response = self.client.post(url, data)
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-            mocked_task.assert_called_with(cloud=self.cloud, project=self.project)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            membership = models.CloudProjectMembership.objects.get(project=self.project, cloud=self.cloud)
+            mocked_task.assert_called_with(membership)
 
 
 # XXX: this have to be reworked to permissions test
@@ -88,7 +91,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         payload = self._get_valid_payload(cloud, project)
 
         response = self.client.post(reverse('cloudproject_membership-list'), payload)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_user_cannot_connect_new_cloud_and_project_if_he_is_project_admin(self):
         for user_role in ['admin', 'manager']:

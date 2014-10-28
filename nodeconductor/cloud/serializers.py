@@ -74,6 +74,7 @@ class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFiltering
             'project', 'project_name',
             'cloud', 'cloud_name',
         )
+        view_name = 'cloudproject_membership-detail'
 
     def get_filtered_field_names(self):
         return 'project', 'cloud'
