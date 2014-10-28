@@ -37,14 +37,3 @@ class InstanceCreateSerializerTest(TestCase):
         self.serializer.validate_ssh_public_key(attrs, attr_name)
         self.assertIn(attr_name, attrs)
 
-
-class InstanceSecurityGroupSerializerTest(TestCase):
-
-    def setUp(self):
-        self.serializer = serializers.InstanceSecurityGroupSerializer()
-
-    def test_validate_name(self):
-        # if security groups is not in cloud security groups list - ValidationError have to be raised
-        attrs = {'security_groups': [{'name': 'some_random_name'}]}
-        attr_name = 'security_groups'
-        self.assertRaises(ValidationError, lambda: self.serializer.validate_name(attrs, attr_name))
