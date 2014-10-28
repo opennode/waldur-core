@@ -115,19 +115,8 @@ class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
     filter_backends = (structure_filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
-
-        if serializer.is_valid():
-            self.pre_save(serializer.object)
-            self.object = serializer.object
-            tasks.connect_project_to_cloud.delay(cloud=self.object.cloud, project=self.object.project)
-            self.post_save(self.object, created=True)
-            headers = self.get_success_headers(serializer.data)
-            return Response({'status': 'connection has been started successfully'}, status=status.HTTP_200_OK,
-                            headers=headers)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def post_save(self, membership):
+        tasks.create_backend_membership.delay(membership)
 
 
 class SecurityGroupsViewSet(rf_viewsets.GenericViewSet):
