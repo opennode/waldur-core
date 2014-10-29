@@ -38,10 +38,6 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     public_fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
 
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs['context'].get('user', None)
-        super(CloudSerializer, self).__init__(*args, **kwargs)
-
     def get_filtered_field_names(self):
         return 'customer',
 
@@ -49,17 +45,23 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
         return 'customer',
 
     def to_native(self, obj):
-        """
-        Serializer returns only public fields for non-customer owner
-        """
         # a workaround for DRF's webui bug
         if obj is None:
             return
+
         native = super(CloudSerializer, self).to_native(obj)
-        is_customer_owner = obj.customer.roles.filter(
-            permission_group__user=self.user, role_type=structure_models.CustomerRole.OWNER).exists()
-        if self.user is not None and not self.user.is_superuser and not is_customer_owner:
-            return dict((key, value) for key, value in native.iteritems() if key in self.public_fields)
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return native
+
+        if not user.is_superuser:
+            is_customer_owner = obj.customer.roles.filter(
+                permission_group__user=user, role_type=structure_models.CustomerRole.OWNER).exists()
+            if not is_customer_owner:
+                for field_name in native:
+                    if field_name not in self.public_fields:
+                        del native[field_name]
         return native
 
 
