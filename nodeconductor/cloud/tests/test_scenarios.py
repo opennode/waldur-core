@@ -8,7 +8,7 @@ from rest_framework import test
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.cloud.tests import factories
-from nodeconductor.cloud import models, serializers
+from nodeconductor.cloud import serializers
 
 
 def _cloud_url(cloud, action=None):
@@ -39,6 +39,8 @@ class CloudTest(test.APISimpleTestCase):
         self.cloud = factories.CloudFactory(customer=self.customer)
         factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
 
+        self.expected_public_fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
+
     def test_cloud_sync(self):
         cloud = factories.CloudFactory(customer=self.customer)
         self.client.force_authenticate(user=self.owner)
@@ -59,13 +61,13 @@ class CloudTest(test.APISimpleTestCase):
         self.client.force_authenticate(user=self.admin)
         response = self.client.get(_cloud_url(self.cloud))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertItemsEqual(response.data.keys(), serializers.CloudSerializer.public_fields)
+        self.assertItemsEqual(response.data.keys(), self.expected_public_fields)
 
     def test_manager_can_view_only_cloud_public_fields(self):
         self.client.force_authenticate(user=self.manager)
         response = self.client.get(_cloud_url(self.cloud))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertItemsEqual(response.data.keys(), serializers.CloudSerializer.public_fields)
+        self.assertItemsEqual(response.data.keys(), self.expected_public_fields)
 
     def test_custmer_owner_can_view_all_cloud_fields(self):
         self.client.force_authenticate(user=self.owner)
