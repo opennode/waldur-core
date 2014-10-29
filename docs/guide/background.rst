@@ -12,8 +12,7 @@ If you are developing on OS X and have brew installed:
   brew install redis-server
   redis-server
 
-Please see Redis docs for installation on other platforms. Installation of NC with RPMs will automatically install
-and configure proper version of Redis.
+Please see Redis docs for installation on other platforms.
 
 .. _Celery: http://celery.readthedocs.org/
 .. _Redis: http://redis.io/
