@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
-import unittest2
 
 from django.core.urlresolvers import reverse
+from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
 
@@ -109,14 +109,14 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         response = self.client.delete(self._get_project_url(factories.InstanceFactory()))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    @unittest2.skip('Requires extension via celery test runner')
+    @unittest.skip('Requires extension via celery test runner')
     def test_user_cannot_delete_instances_of_projects_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.delete(self._get_instance_url(self.admined_instance))
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
-    @unittest2.skip('Requires extension via celery test runner')
+    @unittest.skip('Requires extension via celery test runner')
     def test_user_cannot_delete_instances_of_projects_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
@@ -190,7 +190,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         response = self.client.patch(self._get_instance_url(inaccessible_instance), data)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    @unittest2.skip('Requires extension via celery test runner')
+    @unittest.skip('Requires extension via celery test runner')
     def test_user_cannot_change_flavor_of_stopped_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
@@ -206,7 +206,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(changed_instance.flavor, new_flavor)
 
-    @unittest2.skip('Requires extension via celery test runner')
+    @unittest.skip('Requires extension via celery test runner')
     def test_user_cannot_change_flavor_of_stopped_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
@@ -218,7 +218,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @unittest2.skip('Requires extension via celery test runner')
+    @unittest.skip('Requires extension via celery test runner')
     def test_user_cannot_change_flavor_of_offline_instance_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.user)
 
@@ -232,7 +232,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    @unittest2.skip('Requires extension via celery test runner')
+    @unittest.skip('Requires extension via celery test runner')
     def test_user_cannot_change_flavor_of_running_instance_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
@@ -255,7 +255,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @unittest2.skip('Requires extension via celery test runner')
+    @unittest.skip('Requires extension via celery test runner')
     def test_user_cannot_change_flavor_of_running_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
@@ -278,7 +278,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @unittest2.skip('Requires extension via celery test runner')
+    @unittest.skip('Requires extension via celery test runner')
     def test_user_cannot_change_flavor_of_running_instance_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.user)
 
