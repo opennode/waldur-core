@@ -38,24 +38,6 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     public_fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
 
-    # def get_fields(self):
-    #     """
-    #     Serializer returns only public fields for non-customer owner
-    #     """
-    #     fields = super(CloudSerializer, self).get_fields()
-    #     user = self.context['request'].user
-    #     cloud = self.object
-    #     if isinstance(cloud, Page):
-    #         print list(cloud)
-
-    #     is_customer_owner = self.object.customer.roles.filter(
-    #         permission_group__user=user, role_type=structure_models.CustomerRole.OWNER).exists()
-    #     if not self.user.is_superuser and not is_customer_owner:
-    #         for field_name in fields:
-    #             if field_name not in self.public_fields:
-    #                 del fields[field_name]
-    #     return fields
-
     def get_filtered_field_names(self):
         return 'customer',
 
