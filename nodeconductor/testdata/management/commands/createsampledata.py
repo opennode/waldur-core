@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.cloud.models import Cloud
+from nodeconductor.cloud.models import Cloud, CloudProjectMembership
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
 from nodeconductor.structure.models import *
@@ -238,7 +238,9 @@ Other use cases are covered with random data.
             name=cloud_name,
             auth_url='http://%s.com' % random_string(10, 12, with_spaces=True),
         )
-        cloud.projects.add(*list(customer.projects.all()))
+
+        for project in customer.projects.all():
+            CloudProjectMembership(cloud=cloud, project=project)
 
         # add flavors
         cloud.flavors.create(
@@ -417,4 +419,4 @@ Other use cases are covered with random data.
             start_time=timezone.now(),
             ssh_public_key=ssh_public_key,
         )
-        InstanceSecurityGroup.objects.create(name='security group', instance=instance)
+        InstanceSecurityGroup.objects.create(name='test security group', instance=instance)

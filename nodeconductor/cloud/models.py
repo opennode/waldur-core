@@ -6,6 +6,8 @@ from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from django_fsm import FSMField, transition
+from uuidfield import UUIDField
 
 from nodeconductor.core.models import UuidMixin
 from nodeconductor.core.serializers import UnboundSerializerMethodField
@@ -81,6 +83,57 @@ def add_clouds_to_related_model(sender, fields, **kwargs):
         return
 
     fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
+
+
+class CloudProjectMembership(models.Model):
+    """
+    This model represents many to many relationships between project and cloud
+    """
+    class States(object):
+        CREATING = 'c'
+        READY = 'r'
+        ERRED = 'e'
+
+        CHOICES = (
+            (CREATING, 'Creating'),
+            (READY, 'Ready'),
+            (ERRED, 'Erred'),
+        )
+
+    cloud = models.ForeignKey(Cloud)
+    project = models.ForeignKey(structure_models.Project)
+    tenant_uuid = UUIDField(unique=True, null=True)
+    state = FSMField(default=States.CREATING, max_length=1, choices=States.CHOICES)
+
+    class Permissions(object):
+        customer_path = 'cloud__customer'
+        project_path = 'project'
+
+    @transition(field=state, source=States.CREATING, target=States.READY)
+    def _set_ready(self):
+        pass
+
+    @transition(field=state, source=States.CREATING, target=States.ERRED)
+    def _set_erred(self):
+        pass
+
+    def create_in_backend(self):
+        """
+        Create new tenant and store its uuid in tenant_uuid field
+        """
+        # XXX: this have to be moved to settings or implemented in other way
+        ADMIN_TENANT = 'admin'
+        try:
+            keystone = client.Client(
+                self.cloud.username, self.cloud.password, ADMIN_TENANT, auth_url=self.cloud.auth_url)
+            tenant = keystone.tenants.create(
+                tenant_name=self.project.name, description=self.project.description, enabled=True)
+            self.tenant_uuid = tenant.id
+            self._set_ready()
+        except (ClientException, CertificateConfigError, CMSError) as e:
+            logger.exception('Failed to create CloudProjectMembership with id %s. %s', self.id, str(e))
+            self._set_erred()
+        self.save()
 
 
 @python_2_unicode_compatible
