@@ -48,14 +48,20 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
         # a workaround for DRF's webui bug
         if obj is None:
             return
+
         native = super(CloudSerializer, self).to_native(obj)
-        user = self.context['request'].user
-        is_customer_owner = obj.customer.roles.filter(
-            permission_group__user=user, role_type=structure_models.CustomerRole.OWNER).exists()
-        if user is not None and not user.is_superuser and not is_customer_owner:
-            for field_name in native:
-                if field_name not in self.public_fields:
-                    del native[field_name]
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return native
+
+        if not user.is_superuser:
+            is_customer_owner = obj.customer.roles.filter(
+                permission_group__user=user, role_type=structure_models.CustomerRole.OWNER).exists()
+            if not is_customer_owner:
+                for field_name in native:
+                    if field_name not in self.public_fields:
+                        del native[field_name]
         return native
 
 
