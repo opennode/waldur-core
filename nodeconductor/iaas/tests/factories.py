@@ -6,7 +6,6 @@ import factory.fuzzy
 
 from nodeconductor.iaas import models
 from nodeconductor.core import models as core_models
-from nodeconductor.cloud import models as cloud_models
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -102,4 +101,4 @@ class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
         model = models.InstanceSecurityGroup
 
     instance = factory.SubFactory(InstanceFactory)
-    name = factory.Iterator(cloud_models.SecurityGroups.groups_names)
+    security_group = factory.SubFactory(cloud_factories.SecurityGroupFactory)

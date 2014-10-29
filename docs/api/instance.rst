@@ -60,7 +60,15 @@ Example of a valid request:
         "flavor": "http://example.com/api/flavors/c3c546b92845431188636d8f97df223c/",
         "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
         "ssh_public_key": "http://example.com/api/keys/6fbd6b24246f4fb38715c29bafa2e5e7/",
-        "security_groups": [{"name": "security group name 1"}, {"name": security group name 2}]
+        "security_groups": {
+            "url": "http://example.com/api/security-groups/16c55dad9b3048db8dd60e89bd4d85bc/",
+            "name": "global_http",
+            "protocol": "tcp",
+            "from_port": 80,
+            "to_port": 80,
+            "ip_range": "0.0.0.0",
+            "netmask": 0
+        },
     }
 
 Stopping/starting an instance

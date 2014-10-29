@@ -1,9 +1,7 @@
-from django.core.exceptions import ValidationError
 from django.http import Http404
 from rest_framework import serializers
 
 from nodeconductor.backup import serializers as backup_serializers
-from nodeconductor.cloud import models as cloud_models
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
@@ -12,20 +10,23 @@ from nodeconductor.structure import serializers as structure_serializers
 
 class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
-    protocol = serializers.CharField(read_only=True)
-    from_port = serializers.CharField(read_only=True)
-    to_port = serializers.CharField(read_only=True)
-    ip_range = serializers.CharField(read_only=True)
+    security_group = serializers.HyperlinkedRelatedField(
+        source='security_group',
+        view_name='security_group-detail',
+        lookup_field='uuid',
+    )
+    name = serializers.Field(source='security_group.name')
+    protocol = serializers.Field(source='security_group.protocol')
+    from_port = serializers.Field(source='security_group.from_port')
+    to_port = serializers.Field(source='security_group.to_port')
+    ip_range = serializers.Field(source='security_group.ip_range')
+    netmask = serializers.Field(source='security_group.netmask')
 
     class Meta(object):
         model = models.InstanceSecurityGroup
-        fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range')
-
-    def validate_name(self, attrs, attr_name):
-        name = attrs[attr_name]
-        if not name in cloud_models.SecurityGroups.groups_names:
-            raise ValidationError('There is no group with name %s' % name)
-        return attrs
+        fields = ('security_group', 'name', 'protocol', 'from_port', 'to_port',
+                  'ip_range', 'netmask',)
+        lookup_field = 'uuid'
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,

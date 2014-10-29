@@ -9,7 +9,7 @@ License instance
 Each license can have a type defined by the enum in DB.
 Each license supports fees in currency fields: one-time free and monthly fee.
 
-When a VM instance is created from a template, corresponing license instances are created and connected with Instance.
+When a VM instance is created from a template, corresponding license instances are created and connected with Instance.
 
 
 Permissions

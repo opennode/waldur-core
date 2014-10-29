@@ -243,6 +243,9 @@ class Instance(core_models.UuidMixin,
 
         return FakeStrategy
 
+    def get_instance_security_groups(self):
+        return InstanceSecurityGroup.objects.filter(instance=self)
+
     def _init_instance_licenses(self):
         """
         Create new instance licenses from template licenses
@@ -359,26 +362,4 @@ class InstanceSecurityGroup(core_models.UuidMixin, models.Model):
         project_path = 'instance__project'
 
     instance = models.ForeignKey(Instance, related_name='security_groups')
-    name = models.CharField(max_length=127)
-
-    @property
-    def _cloud_security_group(self):
-        if not hasattr(self, '_security_group'):
-            self._security_group = [g for g in cloud_models.SecurityGroups.groups if g['name'] == self.name][0]
-        return self._security_group
-
-    @property
-    def protocol(self):
-        return self._cloud_security_group['protocol']
-
-    @property
-    def from_port(self):
-        return self._cloud_security_group['from_port']
-
-    @property
-    def to_port(self):
-        return self._cloud_security_group['to_port']
-
-    @property
-    def ip_range(self):
-        return self._cloud_security_group['ip_range']
+    security_group = models.ForeignKey(cloud_models.SecurityGroup, related_name='instance_groups')
