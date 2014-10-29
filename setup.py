@@ -11,7 +11,6 @@ tests_requires = [
     'factory_boy==2.4.1',
     'mock==1.0.1',
     'six>=1.7.3',
-    'unittest2==0.5.1',
 ]
 
 install_requires = [
@@ -28,6 +27,7 @@ install_requires = [
     'djangosaml2>=0.11.0,<0.12',
     'drf-extensions==0.2.6',
     'logan==0.5.9.1',
+    'python-keystoneclient>=0.9',
     'redis==2.10.3',
     'South==0.8.4',
 ]
@@ -35,7 +35,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.6.0',
+    version='0.6.1',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

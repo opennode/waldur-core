@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.cloud.models import Cloud, SecurityGroup
+from nodeconductor.cloud.models import Cloud, CloudProjectMembership, SecurityGroup
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
 from nodeconductor.structure.models import *
@@ -238,7 +238,9 @@ Other use cases are covered with random data.
             name=cloud_name,
             auth_url='http://%s.com' % random_string(10, 12, with_spaces=True),
         )
-        cloud.projects.add(*list(customer.projects.all()))
+
+        for project in customer.projects.all():
+            CloudProjectMembership(cloud=cloud, project=project)
 
         # add flavors
         cloud.flavors.create(
@@ -352,8 +354,8 @@ Other use cases are covered with random data.
         projects[0].add_user(user1, ProjectRole.MANAGER)
         projects[1].add_user(user1, ProjectRole.ADMINISTRATOR)
 
-        self.create_instance(user1, projects[0], cloud.flavors.all()[0], cloud.images.all()[0].template)
-        self.create_instance(user1, projects[1], cloud.flavors.all()[1], cloud.images.all()[1].template)
+        self.create_instance(user1, projects[0], cloud.flavors.all()[0], cloud.images.filter(template__isnull=False)[0].template)
+        self.create_instance(user1, projects[1], cloud.flavors.all()[1], cloud.images.filter(template__isnull=False)[1].template)
 
         # Use Case 6: User owns a customer
         user2 = self.create_user()
@@ -426,7 +428,7 @@ Other use cases are covered with random data.
                         "TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY"
                         "dknWoMoArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9du"
                         "D2C05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
-                        "vEAFdOJcqjyyH4FOGYa8usP1 test")
+                        "vEAFdOJcqjyyH4FOGYa8usP1 test"),
         )
         print 'Creating instance for project %s' % project
         instance = Instance.objects.create(
@@ -438,4 +440,4 @@ Other use cases are covered with random data.
             start_time=timezone.now(),
             ssh_public_key=ssh_public_key,
         )
-        InstanceSecurityGroup.objects.create(name='security group', instance=instance)
+        InstanceSecurityGroup.objects.create(name='test security group', instance=instance)

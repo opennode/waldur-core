@@ -57,7 +57,7 @@ class CloudTest(test.APISimpleTestCase):
         project.add_user(admin, structure_models.ProjectRole.ADMINISTRATOR)
         project.add_user(manager, structure_models.ProjectRole.MANAGER)
         cloud = factories.CloudFactory(customer=self.customer)
-        cloud.projects.add(project)
+        factories.CloudProjectMembershipFactory(cloud=cloud, project=project)
 
         # admin
         self.client.force_authenticate(user=admin)

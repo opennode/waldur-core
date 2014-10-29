@@ -68,13 +68,13 @@ class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFiltering
                                        serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
-        model = models.Cloud.projects.through
+        model = models.CloudProjectMembership
         fields = (
             'url',
             'project', 'project_name',
             'cloud', 'cloud_name',
         )
-        view_name = 'projectcloud_membership-detail'
+        view_name = 'cloudproject_membership-detail'
 
     def get_filtered_field_names(self):
         return 'project', 'cloud'

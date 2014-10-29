@@ -42,8 +42,8 @@ class CustomerAddendumApiPermissionTest(UrlResolverMixin, test.APITransactionTes
         self.projects['admin'].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         self.projects['manager'].add_user(self.users['manager'], ProjectRole.MANAGER)
 
-        self.projects['admin'].clouds.add(self.clouds['admin'])
-        self.projects['manager'].clouds.add(self.clouds['manager'])
+        factories.CloudProjectMembershipFactory(project=self.projects['admin'], cloud=self.clouds['admin'])
+        factories.CloudProjectMembershipFactory(project=self.projects['manager'], cloud=self.clouds['manager'])
 
     # Nested objects filtration tests
     def test_user_can_see_cloud_he_has_access_to_within_customer(self):

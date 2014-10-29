@@ -16,7 +16,7 @@ class CloudSerializerTest(TestCase):
         project = structure_factories.ProjectFactory(customer=customer)
         project.add_user(admin, structure_models.ProjectRole.ADMINISTRATOR)
         cloud = factories.CloudFactory(customer=customer)
-        cloud.projects.add(project)
+        factories.CloudProjectMembershipFactory(project=project, cloud=cloud)
 
         serializer = serializers.CloudSerializer(cloud, context={'user': admin})
         self.assertEqual(len(serializer.to_native(cloud)), len(serializer.public_fields))
