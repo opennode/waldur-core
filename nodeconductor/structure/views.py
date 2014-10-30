@@ -291,8 +291,10 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
         # TODO: Test for it!
         if not self.request.user.is_staff:
             queryset = queryset.filter(
-                group__customerrole__customer__roles__permission_group__user=self.request.user,
-                group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER,
+                Q(group__customerrole__customer__roles__permission_group__user=self.request.user,
+                  group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
+                |
+                Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user)
             ).distinct()
 
         return queryset
