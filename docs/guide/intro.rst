@@ -9,7 +9,7 @@ To install NodeConductor on RHEL6-compatible operating systems (CentOS 6, Scient
     rpm --import http://opennodecloud.com/CentOS/6/RPM-GPG-KEY-OpenNode
 
     # Some dependencies are taken from EPEL repository
-    rpm -Uvh http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm
+    rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
 
     # To serve via WSGI using Apache HTTPd (recommended for production environments)
     yum install nodeconductor-wsgi
