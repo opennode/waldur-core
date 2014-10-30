@@ -12,9 +12,10 @@ in LDAP groups and in configured Django groups. A typical scenario for that dele
 to a single component (LDAP) in the system.
 
 For the moment, it is done by:
+
 - configuring LDAP access from NodeConductor
-- creating a new
-*nodeconductor.ldapsync.models.LdapToGroup* instance and specifying LDAP group name and the target Django group.
+- creating a new *nodeconductor.ldapsync.models.LdapToGroup* instance
+  and specifying LDAP group name and the target Django group
 
 To enable LDAP support, please update `settings.py` (probably located in /etc/nodeconductor/ if installed from RPMs)
 to enable LDAPBackend:
