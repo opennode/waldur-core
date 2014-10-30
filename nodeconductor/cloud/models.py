@@ -29,9 +29,12 @@ logger = logging.getLogger(__name__)
 
 
 def validate_known_keystone_urls(value):
-    known_urls = settings.get('OPENSTACK_CREDENTIALS', {})
+    nc_settings = getattr(settings, 'NODE_CONDUCTOR', {})
+    openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
+    known_urls = [openstack['keystone_url'] for openstack in openstacks]
+
     if value not in known_urls:
-        raise ValidationError('%s is not known OpenStack installation')
+        raise ValidationError('%s is not a known OpenStack deployment.' % value)
 
 
 @python_2_unicode_compatible
@@ -161,25 +164,42 @@ class CloudProjectMembership(models.Model):
         """
         Create new tenant and store its uuid in tenant_uuid field
         """
-        # XXX: this have to be moved to settings or implemented in other way
-        # TODO: Lookup admin account in settings based on auth_url
+        nc_settings = getattr(settings, 'NODE_CONDUCTOR', {})
+        openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
 
-
-        # Case 1: url, user, pass all filled, url is unknown
-        # Try to get tenant list, 400 BAD REQUEST if failed
-
-        ADMIN_TENANT = 'admin'
         try:
-            keystone = keystone_client.Client(
-                self.cloud.username, self.cloud.password, ADMIN_TENANT, auth_url=self.cloud.auth_url)
+            openstack = next(o for o in openstacks if o['keystone_url'] == self.cloud.auth_url)
 
+            keystone = keystone_client.Client(
+                username=openstack['username'],
+                password=openstack['password'],
+                tenant_name=openstack['tenant'],
+                auth_url=openstack['keystone_url'],
+            )
+
+            tenant_name = '{0}-{1}'.format(self.project.uuid.hex, self.project.name)
+            logging.info('Creating tenant %s', tenant_name)
             tenant = keystone.tenants.create(
-                tenant_name=self.project.name, description=self.project.description, enabled=True)
+                tenant_name=tenant_name,
+                description=self.project.description,
+                enabled=True,
+            )
+
+            logging.info('Assigning admin role to user %s within tenant %s', self.cloud.username, tenant_name)
+            admin_user = keystone.users.find(name=self.cloud.username)
+            admin_role = keystone.roles.find(name='admin')
+
+            keystone.users.role_manager.add_user_role(
+                user=admin_user.id,
+                role=admin_role.id,
+                tenant=tenant.id,
+            )
+
             self.tenant_uuid = tenant.id
             self._set_ready()
-        # FIXME: Account for auth errors as well
-        except (ClientException, CertificateConfigError, CMSError) as e:
-            logger.exception('Failed to create CloudProjectMembership with id %s. %s', self.id, str(e))
+            logging.info('Successfully synchronized CloudProjectMembership with id %s', self.id)
+        except (ClientException, CertificateConfigError, CMSError, StopIteration):
+            logger.exception('Failed to synchronize CloudProjectMembership with id %s', self.id)
             self._set_erred()
         self.save()
 

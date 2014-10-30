@@ -15,9 +15,13 @@ DATABASES = {
     }
 }
 
-OPENSTACK_CREDENTIALS = {
-    'http://example.com:5000/v2': {
-        'username': 'admin',
-        'password': 'password',
-    },
+NODE_CONDUCTOR = {
+    'OPENSTACK_CREDENTIALS': (
+        {
+            'keystone_url': 'http://example.com:5000/v2',
+            'username': 'admin',
+            'password': 'password',
+            'tenant': 'admin',
+        },
+    ),
 }

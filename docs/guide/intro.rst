@@ -17,6 +17,7 @@ To install NodeConductor on RHEL6-compatible operating systems (CentOS 6, Scient
     # To run standalone (recommended for development environments)
     yum install nodeconductor
 
+.. include:: configuration.rst
 .. include:: background.rst
 .. include:: fsm.rst
 .. include:: structure.rst

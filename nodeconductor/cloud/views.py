@@ -1,4 +1,11 @@
+from __future__ import unicode_literals
+
+import logging
+
+from django.conf import settings
 from django.shortcuts import get_object_or_404
+from keystoneclient.v2_0 import client as keystone_client
+from keystoneclient.exceptions import CertificateConfigError, CMSError, ClientException
 
 from rest_framework import exceptions
 from rest_framework import mixins as rf_mixins
@@ -9,8 +16,12 @@ from rest_framework.response import Response
 
 from nodeconductor.cloud import models, serializers, tasks
 from nodeconductor.core import viewsets, mixins
+from nodeconductor.core.exceptions import ServiceUnavailableError
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import models as structure_models
+
+
+logger = logging.getLogger(__name__)
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -75,6 +86,46 @@ class CloudViewSet(viewsets.ModelViewSet):
     def pre_save(self, cloud):
         super(CloudViewSet, self).pre_save(cloud)
         self._check_permission(cloud)
+
+        # Generate cloud uuid in advance
+        import uuid
+        cloud.uuid = uuid.uuid4()
+
+        # Here comes backend specific part, move to corresponding backend
+        # Create user in keystone and populate username, password fields
+        cloud.username = '{0}-{1}'.format(cloud.uuid.hex, cloud.name)
+
+        from django.contrib.auth import get_user_model
+        cloud.password = get_user_model().objects.make_random_password()
+
+        nc_settings = getattr(settings, 'NODE_CONDUCTOR', {})
+        openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
+
+        try:
+            openstack = next(o for o in openstacks if o['keystone_url'] == cloud.auth_url)
+
+            keystone = keystone_client.Client(
+                username=openstack['username'],
+                password=openstack['password'],
+                tenant_name=openstack['tenant'],
+                auth_url=openstack['keystone_url'],
+            )
+
+            logging.info('Creating keystone user %s', cloud.username)
+            keystone.users.create(
+                name=cloud.username,
+                password=cloud.password,
+            )
+            logging.info('Successfully created keystone user %s', cloud.username)
+        except (ClientException, CertificateConfigError, CMSError, StopIteration):
+            logger.exception('Failed to create keystone user %s', cloud.username)
+            raise ServiceUnavailableError(detail='Error talking to OpenStack backend')
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return serializers.CloudCreateSerializer
+
+        return super(CloudViewSet, self).get_serializer_class()
 
     @action()
     def sync(self, request, uuid):

@@ -1,11 +1,9 @@
-from django.core.paginator import Page
-
 from rest_framework import serializers
 
-from nodeconductor.core import serializers as core_serializers
 from nodeconductor.cloud import models
-from nodeconductor.structure.serializers import BasicProjectSerializer
+from nodeconductor.core import serializers as core_serializers
 from nodeconductor.structure import models as structure_models
+from nodeconductor.structure.serializers import BasicProjectSerializer
 
 
 class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
@@ -23,6 +21,18 @@ class FlavorSerializer(serializers.HyperlinkedModelSerializer):
         model = models.Flavor
         fields = ('url', 'uuid', 'name', 'ram', 'disk', 'cores')
         lookup_field = 'uuid'
+
+
+class CloudCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
+                            serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = models.Cloud
+        fields = ('uuid', 'url', 'name', 'customer', 'auth_url')
+
+        lookup_field = 'uuid'
+
+    def get_filtered_field_names(self):
+        return 'customer',
 
 
 class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
