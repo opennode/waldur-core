@@ -29,7 +29,7 @@ def _backup_schedule_list_url():
     return 'http://testserver' + reverse('backupschedule-list')
 
 
-class BackupUsageTest(test.APISimpleTestCase):
+class BackupUsageTest(test.APITransactionTestCase):
 
     def setUp(self):
         # only for test lets make backupschedule backupable
