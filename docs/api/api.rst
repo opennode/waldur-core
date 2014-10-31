@@ -62,3 +62,9 @@ Security group management
 =========================
 
 .. include:: security_group.rst
+
+
+Services
+========
+
+.. include:: services.rst
