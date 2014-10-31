@@ -88,6 +88,8 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
 
     security_groups = InstanceSecurityGroupSerializer(read_only=True)
     instance_licenses = InstanceLicenseSerializer(read_only=True)
+    # special field for customer
+    customer_abbreviation = serializers.Field(source='project.customer.abbreviation')
 
     class Meta(object):
         model = models.Instance
@@ -97,7 +99,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'cloud', 'cloud_name',
             'flavor', 'flavor_name',
             'project', 'project_name',
-            'customer', 'customer_name',
+            'customer', 'customer_name', 'customer_abbreviation',
             'ssh_public_key', 'ssh_public_key_name',
             'project_groups',
             'security_groups',

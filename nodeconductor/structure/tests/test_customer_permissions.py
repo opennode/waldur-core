@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework import test
 from rest_framework.reverse import reverse
 
-from nodeconductor.structure.models import CustomerRole
+from nodeconductor.structure.models import CustomerRole, ProjectRole
 from nodeconductor.structure.tests import factories
 
 User = get_user_model()
@@ -85,6 +85,25 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
                     role_url, urls,
                     '{0} user does not see privilege he is supposed to see: {1}'.format(login_user, role),
                 )
+
+    def test_user_can_list_roles_within_customer_if_he_has_admin_role_in_a_project_owned_by_that_customer(self):
+        admin_user = factories.UserFactory()
+        project = factories.ProjectFactory(customer=self.customers['first'])
+        project.add_user(admin_user, ProjectRole.ADMINISTRATOR)
+
+        self.client.force_authenticate(user=admin_user)
+
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        role_url = self._get_permission_url('first', 'first', 'owner')
+
+        urls = set([role['url'] for role in response.data])
+
+        self.assertIn(
+            role_url, urls,
+            '{0} user does not see privilege he is supposed to see: {1}'.format(admin_user, role_url),
+        )
 
     # Helper methods
     def _get_permission_url(self, user, customer, role):

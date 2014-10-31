@@ -14,3 +14,11 @@ DATABASES = {
         'NAME': ':memory:',
     }
 }
+
+INSTALLED_APPS += (
+    'kombu.transport.django',  # Needed for broker backend
+    'djcelery',  # Needed for result backend
+)
+
+BROKER_URL = 'django://'
+CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
