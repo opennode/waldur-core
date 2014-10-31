@@ -224,3 +224,34 @@ class ImageSerializer(RelatedResourcesFieldMixin,
 
     def get_related_paths(self):
         return 'cloud',
+
+
+# XXX: this serializer have to be removed after haystack implementation
+class ServiceSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
+
+    agreed_sla = serializers.SerializerMethodField('get_agreed_sla')
+    actual_sla = serializers.SerializerMethodField('get_actual_sla')
+    service_type = serializers.SerializerMethodField('get_service_type')
+    project_groups = structure_serializers.BasicProjectGroupSerializer(
+        source='project.project_groups', many=True, read_only=True)
+    name = serializers.Field(source="hostname")
+
+    class Meta(object):
+        model = models.Instance
+        fields = (
+            'url', 'project_name', 'name', 'project_groups', 'agreed_sla', 'actual_sla',
+        )
+        view_name = 'service-detail'
+        lookup_field = 'uuid'
+
+    def get_related_paths(self):
+        return 'project',
+
+    def get_agreed_sla(self, obj):
+        return 100
+
+    def get_actual_sla(self, obj):
+        return 97
+
+    def get_service_type(self, obj):
+        return 'IaaS'
