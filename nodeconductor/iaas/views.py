@@ -349,3 +349,12 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
             del d[aggregate_field]
 
         return Response(queryset)
+
+
+# XXX: This view has to be rewritten or removed after haystack implementation
+class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
+
+    queryset = models.Instance.objects.all()
+    serializer_class = serializers.ServiceSerializer
+    lookup_field = 'uuid'
+    filter_backends = (filters.GenericRoleFilter,)
