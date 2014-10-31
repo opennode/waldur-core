@@ -234,11 +234,12 @@ class ServiceSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModel
     service_type = serializers.SerializerMethodField('get_service_type')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
+    name = serializers.Field(source="hostname")
 
     class Meta(object):
         model = models.Instance
         fields = (
-            'url', 'project_name', 'hostname', 'project_groups', 'agreed_sla', 'actual_sla',
+            'url', 'project_name', 'name', 'project_groups', 'agreed_sla', 'actual_sla',
         )
         view_name = 'service-detail'
         lookup_field = 'uuid'

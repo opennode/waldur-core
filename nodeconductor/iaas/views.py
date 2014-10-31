@@ -351,10 +351,36 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
         return Response(queryset)
 
 
+class ServiceFilter(django_filters.FilterSet):
+    project_groups = django_filters.CharFilter(
+        name='project__project_groups__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+    project_name = django_filters.CharFilter(
+        name='project__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
+    name = django_filters.CharFilter(name='hostname', lookup_type='icontains')
+    agreed_sla = django_filters.NumberFilter()
+    actual_sla = django_filters.NumberFilter()
+
+    class Meta(object):
+        model = models.Instance
+        fields = [
+            'project_name',
+            'name',
+            'project_groups',
+        ]
+
+
 # XXX: This view has to be rewritten or removed after haystack implementation
 class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
 
     queryset = models.Instance.objects.all()
     serializer_class = serializers.ServiceSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
+    filter_class = ServiceFilter
