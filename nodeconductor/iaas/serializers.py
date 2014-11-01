@@ -81,7 +81,8 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
-    ips = IPsField(source='ips', read_only=True)
+    external_ips = IPsField(source='external_ips', read_only=True)
+    internal_ips = IPsField(source='internal_ips', read_only=True)
     ssh_public_key_name = serializers.Field(source='ssh_public_key.name')
     backups = backup_serializers.BackupSerializer()
     backup_schedules = backup_serializers.BackupScheduleSerializer()
@@ -103,7 +104,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'ssh_public_key', 'ssh_public_key_name',
             'project_groups',
             'security_groups',
-            'ips',
+            'external_ips', 'internal_ips',
             'state',
             'backups', 'backup_schedules',
             'instance_licenses'
