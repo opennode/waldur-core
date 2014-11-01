@@ -271,6 +271,34 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
         raise PermissionDenied()
 
 
+class CustomerPermissionFilter(django_filters.FilterSet):
+    customer = django_filters.CharFilter(
+        name='group__customerrole__customer__uuid',
+        lookup_type='icontaints',
+    )
+    username = django_filters.CharFilter(
+        name='user__username',
+        lookup_type='icontaints',
+    )
+    full_name = django_filters.CharFilter(
+        name='user__full_name',
+        lookup_type='icontaints',
+    )
+    native_name = django_filters.CharFilter(
+        name='user__native_name',
+        lookup_type='icontaints',
+    )
+
+    class Meta(object):
+        model = User.groups.through
+        fields = [
+            'customer',
+            'username',
+            'full_name',
+            'native_name',
+        ]
+
+
 class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                                 rf_mixins.RetrieveModelMixin,
                                 rf_mixins.DestroyModelMixin,
@@ -281,6 +309,7 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
     filter_backends = ()
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
+    filter_class = CustomerPermissionFilter
 
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
@@ -296,6 +325,10 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                 |
                 Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user)
             ).distinct()
+        elif self.request.QUERY_PARAMS:
+            queryset = queryset.filter(
+                group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER
+            )
 
         return queryset
 
