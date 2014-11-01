@@ -62,7 +62,7 @@ Example of a valid request:
         "flavor": "http://example.com/api/flavors/c3c546b92845431188636d8f97df223c/",
         "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
         "ssh_public_key": "http://example.com/api/keys/6fbd6b24246f4fb38715c29bafa2e5e7/",
-        "internal_ips": "85.242.22.8,126.109.216.75,36.150.162.2",
+        "internal_ips": "10.242.22.8,172.18.216.75,192.168.162.2",
         "external ips": "131.107.140.29,216.21.127.62,210.143.155.57",
         "security_groups": {
             "url": "http://example.com/api/security-groups/16c55dad9b3048db8dd60e89bd4d85bc/",

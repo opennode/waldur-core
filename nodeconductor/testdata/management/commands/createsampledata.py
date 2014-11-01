@@ -422,7 +422,7 @@ Other use cases are covered with random data.
         return user
 
     def create_instance(self, user, project, flavor, template, security_group):
-        internal_ips = ','.join('.'.join('%s' % random.randint(0, 255) for _ in range(4)) for _ in range(3))
+        internal_ips = ','.join('10.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3)) for _ in range(3))
         external_ips = ','.join('.'.join('%s' % random.randint(0, 255) for _ in range(4)) for _ in range(3))
         ssh_public_key = SshPublicKey.objects.create(
             user=user,

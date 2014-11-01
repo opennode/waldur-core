@@ -67,8 +67,8 @@ class InstanceFactory(factory.DjangoModelFactory):
     start_time = factory.LazyAttribute(lambda o: timezone.now())
     external_ips = factory.LazyAttribute(lambda o: ','.join('.'.join(
         '%s' % randint(0, 255) for _ in range(4)) for _ in range(3)))
-    internal_ips = factory.LazyAttribute(lambda o: ','.join('.'.join(
-        '%s' % randint(0, 255) for _ in range(4)) for _ in range(3)))
+    internal_ips = factory.LazyAttribute(lambda o: ','.join(
+        '10.%s' % '.'.join('%s' % randint(0, 255) for _ in range(3)) for _ in range(3)))
     ssh_public_key = factory.SubFactory(SshPublicKeyFactory)
 
     @factory.lazy_attribute
