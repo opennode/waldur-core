@@ -113,3 +113,104 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             group__customerrole__customer=self.customers[customer],
         )
         return 'http://testserver' + reverse('customer_permission-detail', kwargs={'pk': permission.pk})
+
+
+class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
+    def setUp(self):
+        staff_user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff_user)
+
+        self.users = {
+            'first': factories.UserFactory(),
+            'second': factories.UserFactory(),
+        }
+
+        self.customers = {
+            'first': factories.CustomerFactory(),
+            'second': factories.CustomerFactory(),
+        }
+
+        for customer in self.customers:
+            self.customers[customer].add_user(self.users['first'], CustomerRole.OWNER)
+            self.customers[customer].add_user(self.users['second'], CustomerRole.OWNER)
+
+    def test_can_filter_roles_within_customer_by_customer_uuid(self):
+        user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=user)
+
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for customer in self.customers:
+            query = '?customer=%s' % self.customers[customer].uuid
+
+            response = self.client.get(reverse('customer_permission-list') + query)
+
+            customer_url = self._get_customer_url(self.customers[customer])
+            fields = ('url', 'user_full_name', 'user_native_name', 'user_username')
+
+            for p in response.data:
+                self.assertEqual(customer_url, p['customer'])
+                for field in fields:
+                    self.assertIn(field, p)
+
+    def test_can_filter_roles_within_customer_by_username(self):
+        user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=user)
+
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for user in self.users:
+            query = '?username=%s' % self.users[user].username
+
+            response = self.client.get(reverse('customer_permission-list') + query)
+
+            fields = ('url', 'user_full_name', 'user_native_name', 'user_username')
+
+            for p in response.data:
+                self.assertEqual(self.users[user].username, p['user_username'])
+                for field in fields:
+                    self.assertIn(field, p)
+
+    def test_can_filter_roles_within_customer_by_native_name(self):
+        user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=user)
+
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for user in self.users:
+            query = '?native_name=%s' % self.users[user].native_name
+
+            response = self.client.get(reverse('customer_permission-list') + query)
+
+            fields = ('url', 'user_full_name', 'user_native_name', 'user_username')
+
+            for p in response.data:
+                self.assertEqual(self.users[user].native_name, p['user_native_name'])
+                for field in fields:
+                    self.assertIn(field, p)
+
+    def test_can_filter_roles_within_customer_by_full_name(self):
+        user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=user)
+
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for user in self.users:
+            query = '?full_name=%s' % self.users[user].full_name
+
+            response = self.client.get(reverse('customer_permission-list') + query)
+
+            fields = ('url', 'user_full_name', 'user_native_name', 'user_username')
+
+            for p in response.data:
+                self.assertEqual(self.users[user].full_name, p['user_full_name'])
+                for field in fields:
+                    self.assertIn(field, p)
+
+    # Helper methods
+    def _get_customer_url(self, customer):
+        return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})

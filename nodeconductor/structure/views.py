@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.contrib import auth
 from django.db.models.query_utils import Q
 import django_filters
+from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import viewsets as rf_viewsets
@@ -274,19 +275,15 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
 class CustomerPermissionFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='group__customerrole__customer__uuid',
-        lookup_type='icontaints',
     )
     username = django_filters.CharFilter(
         name='user__username',
-        lookup_type='icontaints',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
-        lookup_type='icontaints',
     )
     native_name = django_filters.CharFilter(
         name='user__native_name',
-        lookup_type='icontaints',
     )
 
     class Meta(object):
@@ -306,7 +303,7 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                                 rf_viewsets.GenericViewSet):
     model = User.groups.through
     serializer_class = serializers.CustomerPermissionSerializer
-    filter_backends = ()
+    filter_backends = (rf_filter.DjangoFilterBackend,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
     filter_class = CustomerPermissionFilter
@@ -325,10 +322,6 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                 |
                 Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user)
             ).distinct()
-        elif self.request.QUERY_PARAMS:
-            queryset = queryset.filter(
-                group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER
-            )
 
         return queryset
 
