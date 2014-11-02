@@ -42,7 +42,11 @@ Example of a created backup representation:
         "created_at": "2014-10-19T20:43:37.370Z",
         "kept_until": null,
         "state": "Backing up"
+        "backup_schedule": "http://example.com/api/backup-schedules/075c3525b9af42e08f54c3ccf87e998a/"
     }
+
+Please note, that backups can be both manual and automatic, triggered by the schedule.
+In the first case, **backup_schedule** field will be **null**, in the latter - contain a link to the schedule.
 
 Backup has a state, currently supported states are:
 
