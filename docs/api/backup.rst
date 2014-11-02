@@ -81,3 +81,12 @@ for triggering the next backups.
 - **retention time** is a duration in days during which backup is preserved.
 - **maximal_number_of_backups** is a maximal number of active backups connected to this schedule.
 - **schedule** is a backup schedule defined in a cron format.
+
+Activating/deactivating a schedule
+----------------------------------
+
+A schedule can be it two states: active or not. Non-active states are not used for scheduling the new tasks.
+
+To activate a backup schedule, issue POST request to **/api/backup-schedules/<UUID>/activate/**.
+
+To deactivate a backup schedule, issue POST request to **/api/backup-schedules/<UUID>/deactivate/**.
