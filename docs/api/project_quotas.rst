@@ -20,7 +20,7 @@ Example of a valid request (token is user specific):
                 "vcpu": 2,
                 "ram": 2.0,
                 "storage": 36.15540199549969,
-                "backup": 113.5527366632655
+                "max_instances": 10
             },
     }
 
@@ -44,7 +44,7 @@ Example of a valid request (token is user specific):
                 "vcpu": 2,
                 "ram": 2.0,
                 "storage": 36.15540199549969,
-                "backup": 113.5527366632655
+                "max_instances": 11
             },
     }
 
@@ -66,6 +66,6 @@ specifying name, customer and quota:
                 "vcpu": 2,
                 "ram": 2.0,
                 "storage": 36.15540199549969,
-                "backup": 113.5527366632655
+                "max_instances": 11
             },
     }
