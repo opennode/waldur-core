@@ -64,4 +64,4 @@ class ResourceQuotaFactory(factory.DjangoModelFactory):
     vcpu = factory.Iterator([1, 2, 3, 4])
     ram = factory.Iterator([1.0, 2.0, 3.0, 4.0])
     storage = factory.fuzzy.FuzzyFloat(10.0, 50.0)
-    backup = factory.fuzzy.FuzzyFloat(20.0, 150.0)
+    max_instances = factory.Iterator([1, 2, 3, 4])

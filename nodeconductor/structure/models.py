@@ -116,8 +116,8 @@ class ResourceQuota(models.Model):
 
     vcpu = models.PositiveIntegerField(help_text=_('Available CPUs'))
     ram = models.FloatField(help_text=_('Maximum available RAM size in GB'))
-    storage = models.FloatField(help_text=_('Maximum available storage size in GB'))
-    backup = models.FloatField(help_text=_('Maximum available storage size for backups in GB'))
+    storage = models.FloatField(help_text=_('Maximum available storage size in GB (incl. backup)'))
+    max_instances = models.PositiveIntegerField(help_text=_('Maximum number of running instances'))
 
 
 @python_2_unicode_compatible
