@@ -4,7 +4,7 @@ NodeConductor
 Requirements
 ------------
 
-* Python 2.6+ (Python 3 not supported)
+* Python 2.6+ (Python 3 is not supported)
 
 Development Environment Setup
 -----------------------------
@@ -16,11 +16,15 @@ Ubuntu: ``gcc libldap2-dev libsasl2-dev python-dev``)
 
 **NodeConductor installation**
 
-1. Get the code::
+1. Get the code:
+
+.. code-block:: bash
 
     git clone https://github.com/opennode/nodeconductor.git
 
-2. Create a virtualenv::
+2. Create a virtualenv:
+
+.. code-block:: bash
 
     cd nodeconductor
     virtualenv venv
@@ -35,23 +39,29 @@ Ubuntu: ``gcc libldap2-dev libsasl2-dev python-dev``)
     yum install python-keystoneclient
     virtualenv --system-site-packages venv
 
-3. Install nodeconductor in development mode along with dependencies::
+3. Install nodeconductor in development mode along with dependencies:
+
+.. code-block:: bash
 
     venv/bin/python setup.py develop
 
-4. Create settings file -- settings files will be created in
-``~/.nodeconductor`` directory::
+4. Create settings file -- settings files will be created in ``~/.nodeconductor`` directory:
+
+.. code-block:: bash
 
     venv/bin/nodeconductor init
 
-5. Initialise database -- SQLite3 database will be created in
-``~/.nodeconductor/db.sqlite`` unless specified otherwise in settings files::
+
+5. Initialise database -- SQLite3 database will be created in ``~/.nodeconductor/db.sqlite`` unless specified otherwise in settings files:
+
+.. code-block:: bash
 
     venv/bin/nodeconductor syncdb --noinput
     venv/bin/nodeconductor migrate --noinput
 
-6. Collect static data -- static files will be copied to ``static_files`` in the
-same directory::
+6. Collect static data -- static files will be copied to ``static_files`` in the same directory:
+
+.. code-block:: bash
 
     venv/bin/nodeconductor collectstatic --noinput
 
@@ -64,6 +74,7 @@ Development Guidelines
 4. Use absolute imports, each import on its own line. Keep imports sorted:
 
   .. code:: python
+
     from nodeconductor.bar import foo
     from nodeconductor.foo import bar
     from nodeconductor.foo import baz
