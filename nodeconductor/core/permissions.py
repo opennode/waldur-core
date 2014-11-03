@@ -255,6 +255,16 @@ class StaffPermissionLogic(PermissionLogic):
         return False
 
 
+def detect_group_type(permission_group):
+    perm_group = permission_group.group
+    if hasattr(perm_group, 'projectrole'):
+        return 'project'
+    elif hasattr(perm_group, 'customerrole'):
+        return 'customer'
+    elif hasattr(perm_group, 'projectgrouprole'):
+        return 'project_group'
+
+
 class TypedCollaboratorsPermissionLogic(PermissionLogic):
     """
     Permission logic that supports definition of several user groups based on the type of the
@@ -263,9 +273,9 @@ class TypedCollaboratorsPermissionLogic(PermissionLogic):
     For example, it is useful for cases when an object can be accessed either by project administrators or
     by customer owners.
     """
-    def __init__(self, type_to_permission_loggic_mapping, discriminator_function):
+    def __init__(self, type_to_permission_loggic_mapping, discriminator_function=None):
         self.type_to_permission_loggic_mapping = type_to_permission_loggic_mapping
-        self.discriminator_function = discriminator_function
+        self.discriminator_function = discriminator_function or detect_group_type
 
     def has_perm(self, user_obj, perm, obj=None):
         if not user_obj.is_authenticated():

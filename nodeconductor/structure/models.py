@@ -15,6 +15,7 @@ class Customer(UuidMixin, models.Model):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
+        project_group_path = 'project_groups'
 
     name = models.CharField(max_length=160)
     abbreviation = models.CharField(max_length=8)
@@ -125,6 +126,7 @@ class Project(DescribableMixin, UuidMixin, models.Model):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
+        project_group_path = 'project_groups'
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='projects')
@@ -184,6 +186,25 @@ class ProjectGroupRole(UuidMixin, models.Model):
     def __str__(self):
         return self.get_role_type_display()
 
+
+@python_2_unicode_compatible
+class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
+    """
+    Project groups are means to organize customer's projects into arbitrary sets.
+    """
+    class Permissions(object):
+        customer_path = 'customer'
+        project_path = 'projects'
+        project_group_path = 'self'
+
+    name = models.CharField(max_length=80)
+    customer = models.ForeignKey(Customer, related_name='project_groups')
+    projects = models.ManyToManyField(Project,
+                                      related_name='project_groups')
+
+    def __str__(self):
+        return self.name
+
     def add_user(self, user, role_type):
         role = self.roles.get(role_type=role_type)
         role.permission_group.user_set.add(user)
@@ -199,22 +220,16 @@ class ProjectGroupRole(UuidMixin, models.Model):
                 group.user_set.remove(user)
 
 
-@python_2_unicode_compatible
-class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
-    """
-    Project groups are means to organize customer's projects into arbitrary sets.
-    """
-    class Permissions(object):
-        customer_path = 'customer'
-        project_path = 'projects'
+def create_project_group_roles(sender, instance, created, **kwargs):
+    if created:
+        with transaction.atomic():
+            mgr_group = Group.objects.create(name='Role: {0} group mgr'.format(instance.uuid))
+            instance.roles.create(role_type=ProjectGroupRole.MANAGER, permission_group=mgr_group)
 
-    name = models.CharField(max_length=80)
-    customer = models.ForeignKey(Customer, related_name='project_groups')
-    projects = models.ManyToManyField(Project,
-                                      related_name='project_groups')
-
-    def __str__(self):
-        return self.name
+signals.post_save.connect(create_project_group_roles,
+                          sender=ProjectGroup,
+                          weak=False,
+                          dispatch_uid='structure.project_group_roles_bootstrap')
 
 
 class NetworkSegment(models.Model):

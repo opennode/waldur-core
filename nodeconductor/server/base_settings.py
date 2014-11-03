@@ -109,7 +109,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 NODE_CONDUCTOR = {
-    'FILTERED_RELATIONS': ('customer', 'project'),
+    'FILTERED_RELATIONS': ('customer', 'project', 'project_group'),
 }
 
 SAML_CREATE_UNKNOWN_USER = True
