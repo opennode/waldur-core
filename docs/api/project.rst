@@ -11,7 +11,7 @@ An optional filter **?can_manage** is supported to return a list of projects whe
 owner.
 
 Create a new project
----------------------
+--------------------
 
 A new project can be created by users with staff privilege (is_staff=True) or customer owners.
 Project resource quota is optional. Example of a valid request:
@@ -30,14 +30,14 @@ Project resource quota is optional. Example of a valid request:
         "resource_quota": {
                 "vcpu": 2,
                 "ram": 2.0,
-                "storage": 36.15540199549969,
-                "backup": 113.5527366632655
+                "storage": 36.15,
+                "max_instances": 11
             },
     }
 
 
 Deletion of a project
-----------------------
+---------------------
 
 Deletion of a project is done through sending a DELETE request to the project instance URI.
 Valid request example (token is user specific):
@@ -85,8 +85,8 @@ Response will contain a list of project users and their brief data:
             "resource_quota": {
                 "vcpu": 2,
                 "ram": 2.0,
-                "storage": 36.15540199549969,
-                "backup": 113.5527366632655
+                "storage": 36.15,
+                "max_instances": 11
             },
         },
         {
@@ -98,10 +98,10 @@ Response will contain a list of project users and their brief data:
             "user_full_name": "",
             "user_native_name": ""
             "resource_quota": {
-                "vcpu": 4,
-                "ram": 4.0,
-                "storage": 19.58190256910468,
-                "backup": 144.89305168268402
+                "vcpu": 2,
+                "ram": 2.0,
+                "storage": 36.15,
+                "max_instances": 11
             },
         }
     ]
