@@ -321,6 +321,8 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                   group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
                 |
                 Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user)
+                |
+                Q(group__customerrole__customer__project_groups__roles__permission_group__user=self.request.user)
             ).distinct()
 
         return queryset
