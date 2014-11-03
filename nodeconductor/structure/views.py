@@ -23,7 +23,7 @@ User = auth.get_user_model()
 
 class CustomerViewSet(viewsets.ModelViewSet):
     """List of customers that are accessible by this user.
-    http://nodeconductor.readthedocs.org/en/latest/api/api.html#customer
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#customer-management
 
     TODO: Customer definition.
     """
