@@ -1,3 +1,8 @@
+VM template is a description of a system installed on VM instances: OS, disk partition etc.
+
+VM template is not to be confused with VM instance flavor -- template is a definition of a system to be installed
+(set of software) whereas flavor is a set of virtual hardware parameters.
+
 IaaS Template list
 ------------------
 
@@ -8,6 +13,15 @@ A user with staff role will be able to see all of the templates, non-staff user 
 An optional filter **?cloud=<CLOUD_UUID>** can be used - if defined, only templates that can be instantiated
 on a defined cloud are shown.
 
+IaaS Template permissions
+-------------------------
+
+- VM templates are connected to clouds, whereas the template may belong to one cloud only, and the cloud may have multiple VM templates.
+- Staff members can list all available VM templates in any cloud and create new templates.
+- Customer owners can list all VM templates in all the clouds that belong to any of the customers they own.
+- Project administrators can list all VM templates and create new VM instances using these templates in all the clouds that are connected to any of the projects they are administrators in.
+- Project managers can list all VM templates in all the clouds that are connected to any of the projects they are managers in.
+- Staff members can add licenses to template by sending POST request with list of licenses uuids.
 
 Create a new template
 ---------------------

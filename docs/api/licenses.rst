@@ -6,6 +6,8 @@ Every template is potentially connected to zero or more template licenses.
 
 Management of the templates license instances is available only for staff users.
 
+Customer owners, managers and administrators can view license only with templates.
+
 Create new template license
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

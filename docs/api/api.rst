@@ -43,6 +43,11 @@ Cloud management
 
 .. include:: cloud.rst
 
+Flavor management
+================
+
+.. include:: flavor.rst
+
 Templates
 =========
 

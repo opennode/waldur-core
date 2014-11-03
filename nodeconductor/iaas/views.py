@@ -70,28 +70,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
                       core_mixins.UpdateOnlyModelMixin,
                       viewsets.GenericViewSet):
     """List of VM instances that are accessible by this user.
-
-    VM instances are launched in clouds, whereas the instance may belong to one cloud only, and the cloud may have
-    multiple VM instances.
-
-    VM instance may be in one of the following states:
-     - creating
-     - created
-     - starting
-     - started
-     - stopping
-     - stopped
-     - restarting
-     - deleting
-     - deleted
-     - erred
-
-    Staff members can list all available VM instances in any cloud.
-    Customer owners can list all VM instances in all the clouds that belong to any of the customers they own.
-    Project administrators can list all VM instances, create new instances and start/stop/restart instances in all the
-    clouds that are connected to any of the projects they are administrators in.
-    Project managers can list all VM instances in all the clouds that are connected to any of the projects they are
-    managers in.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#instance-model
     """
 
     queryset = models.Instance.objects.all()
@@ -249,13 +228,7 @@ class TemplateViewSet(core_viewsets.ModelViewSet):
 class SshKeyViewSet(core_viewsets.ModelViewSet):
     """List of SSH public keys that are accessible by this user.
 
-    SSH public keys are injected to VM instances during creation, so that holder of corresponding SSH private key can log in to that instance.
 
-    SSH public keys are connected to user accounts, whereas the key may belong to one user only, and the user may have multiple SSH keys.
-
-    Users can only access SSH keys connected to their accounts.
-
-    Project administrators can select what SSH key will be injected to VM instance during instance provisioning.
     """
 
     queryset = core_models.SshPublicKey.objects.all()
