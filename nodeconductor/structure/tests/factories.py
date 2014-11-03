@@ -16,8 +16,8 @@ class UserFactory(factory.DjangoModelFactory):
     username = factory.Sequence(lambda n: 'john%s' % n)
     civil_number = factory.Sequence(lambda n: '%08d' % n)
     email = factory.LazyAttribute(lambda o: '%s@example.org' % o.username)
-    full_name = 'John Doe'
-    native_name = 'Jöhn Dõe'
+    full_name = factory.Sequence(lambda n: 'John Doe%s' % n)
+    native_name = factory.Sequence(lambda n: 'Jöhn Dõe%s' % n)
     is_staff = False
     is_active = True
     is_superuser = False
