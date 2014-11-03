@@ -113,3 +113,108 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             group__customerrole__customer=self.customers[customer],
         )
         return 'http://testserver' + reverse('customer_permission-detail', kwargs={'pk': permission.pk})
+
+
+class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
+    def setUp(self):
+        staff_user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff_user)
+
+        self.users = {
+            'first': factories.UserFactory(),
+            'second': factories.UserFactory(),
+        }
+
+        self.customers = {
+            'first': factories.CustomerFactory(),
+            'second': factories.CustomerFactory(),
+        }
+
+        for customer in self.customers:
+            self.customers[customer].add_user(self.users['first'], CustomerRole.OWNER)
+            self.customers[customer].add_user(self.users['second'], CustomerRole.OWNER)
+
+    def test_staff_user_can_filter_roles_within_customer_by_customer_uuid(self):
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for customer in self.customers:
+            query = '?customer=%s' % self.customers[customer].uuid
+
+            response = self.client.get(reverse('customer_permission-list') + query)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+            customer_url = self._get_customer_url(self.customers[customer])
+
+            for permission in response.data:
+                self.assertEqual(customer_url, permission['customer'])
+
+    def test_staff_user_can_filter_roles_within_customer_by_username(self):
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for user in self.users:
+            self._ensure_matching_entries_in('username', self.users[user].username)
+            self._ensure_non_matching_entries_not_in('username', self.users[user].username)
+
+    def test_staff_user_can_filter_roles_within_customer_by_native_name(self):
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for user in self.users:
+            self._ensure_matching_entries_in('native_name', self.users[user].native_name)
+            self._ensure_non_matching_entries_not_in('native_name', self.users[user].native_name)
+
+    def test_staff_user_can_filter_roles_within_customer_by_full_name(self):
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for user in self.users:
+            self._ensure_matching_entries_in('full_name', self.users[user].full_name)
+            self._ensure_non_matching_entries_not_in('full_name', self.users[user].full_name)
+
+    def test_staff_user_can_see_required_fields_in_filtration_response(self):
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for customer in self.customers:
+            query = '?customer=%s' % self.customers[customer].uuid
+
+            response = self.client.get(reverse('customer_permission-list') + query)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+            required_fields = ('url', 'user_native_name', 'user_full_name', 'user_username')
+
+            for permission in response.data:
+                for field in required_fields:
+                    self.assertIn(field, permission)
+
+    # Helper methods
+    def _ensure_matching_entries_in(self, field, value):
+        query = '?%s=%s' % (field, value)
+
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.get(reverse('customer_permission-list') + query)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for permission in response.data:
+                self.assertEqual(value, permission['user_' + field])
+
+    def _ensure_non_matching_entries_not_in(self, field, value):
+        user = factories.UserFactory()
+
+        customer = factories.CustomerFactory()
+        customer.add_user(user, CustomerRole.OWNER)
+
+        query = '?%s=%s' % (field, getattr(user, field))
+
+        response = self.client.get(reverse('customer_permission-list') + query)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for permission in response.data:
+                self.assertNotEqual(value, permission['user_' + field])
+
+    def _get_customer_url(self, customer):
+        return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})

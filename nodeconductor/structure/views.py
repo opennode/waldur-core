@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.contrib import auth
 from django.db.models.query_utils import Q
 import django_filters
+from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import viewsets as rf_viewsets
@@ -271,6 +272,30 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
         raise PermissionDenied()
 
 
+class CustomerPermissionFilter(django_filters.FilterSet):
+    customer = django_filters.CharFilter(
+        name='group__customerrole__customer__uuid',
+    )
+    username = django_filters.CharFilter(
+        name='user__username',
+    )
+    full_name = django_filters.CharFilter(
+        name='user__full_name',
+    )
+    native_name = django_filters.CharFilter(
+        name='user__native_name',
+    )
+
+    class Meta(object):
+        model = User.groups.through
+        fields = [
+            'customer',
+            'username',
+            'full_name',
+            'native_name',
+        ]
+
+
 class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                                 rf_mixins.RetrieveModelMixin,
                                 rf_mixins.DestroyModelMixin,
@@ -278,9 +303,10 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                                 rf_viewsets.GenericViewSet):
     model = User.groups.through
     serializer_class = serializers.CustomerPermissionSerializer
-    filter_backends = ()
+    filter_backends = (rf_filter.DjangoFilterBackend,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
+    filter_class = CustomerPermissionFilter
 
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
