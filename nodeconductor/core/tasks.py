@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import functools
 import logging
-import sys
 
 from django.db import transaction, DatabaseError
 from django.utils import six
@@ -19,7 +18,7 @@ class StateChangeError(RuntimeError):
 
 
 # noinspection PyProtectedMember
-def set_state(model_class, uuid, transition):
+def set_state(model_class, uuid_or_pk, transition):
     """
     Atomically change state of a model_class instance.
 
@@ -60,8 +59,7 @@ def set_state(model_class, uuid, transition):
 
     :param model_class: model class of an instance to change state
     :type model_class: django.db.models.Model
-    :param uuid: identifier of the model_class instance
-    :type uuid: str
+    :param uuid_or_pk: identifier of the model_class instance
     :param transition: name of model's method to trigger transition
     :type transition: str
     :raises: StateChangeError
@@ -70,13 +68,17 @@ def set_state(model_class, uuid, transition):
     entity_name = model_class._meta.model_name
 
     logger.info(
-        'About to %s %s with uuid %s',
-        logged_operation, entity_name, uuid
+        'About to %s %s with id %s',
+        logged_operation, entity_name, uuid_or_pk
     )
 
     try:
         with transaction.atomic():
-            entity = model_class._default_manager.get(uuid=uuid)
+            if 'uuid' in model_class._meta.get_all_field_names():
+                kwargs = {'uuid': uuid_or_pk}
+            else:
+                kwargs = {'pk': uuid_or_pk}
+            entity = model_class._default_manager.get(**kwargs)
 
             # TODO: Make sure that the transition method actually exists
             transition = getattr(entity, transition)
@@ -84,33 +86,33 @@ def set_state(model_class, uuid, transition):
 
             entity.save()
     except model_class.DoesNotExist:
-        msg = 'Could not %s %s with uuid %s. Instance has gone' %\
-            (logged_operation, entity_name, uuid)
         # There's nothing we can do here to save the state of an entity
-        logger.error(msg)
+        logger.error(
+            'Could not %s %s with id %s. Instance has gone',
+            (logged_operation, entity_name, uuid_or_pk))
 
-        six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
+        six.reraise(StateChangeError, StateChangeError())
     except DatabaseError:
         # Transaction failed to commit, most likely due to concurrent update
-        msg = 'Could not %s %s with uuid %s due to concurrent update' %\
-              (logged_operation, entity_name, uuid)
-        logger.error(msg)
+        logger.error(
+            'Could not %s %s with id %s due to concurrent update',
+            (logged_operation, entity_name, uuid_or_pk))
 
-        six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
+        six.reraise(StateChangeError, StateChangeError())
     except TransitionNotAllowed:
-        msg = 'Could not %s %s with uuid %s, transition not allowed' %\
-              (logged_operation, entity_name, uuid)
         # Leave the entity intact
-        logger.error(msg)
-        six.reraise(StateChangeError, StateChangeError(msg), sys.exc_info()[2])
+        logger.error(
+            'Could not %s %s with id %s, transition not allowed',
+            (logged_operation, entity_name, uuid_or_pk))
+        six.reraise(StateChangeError, StateChangeError())
 
     logger.info(
-        'Managed to %s %s with uuid %s',
-        logged_operation, entity_name, uuid
+        'Managed to %s %s with id %s',
+        logged_operation, entity_name, uuid_or_pk
     )
     event_log.info(
-        'Finished to %s %s with uuid %s',
-        logged_operation, entity_name, uuid
+        'Finished to %s %s with id %s',
+        logged_operation, entity_name, uuid_or_pk
     )
 
 
@@ -119,12 +121,9 @@ def tracked_processing(model_class, processing_state, desired_state, error_state
         @functools.wraps(processing_fn)
         def wrapped(*args, **kwargs):
             # XXX: This is very fragile :(
-            try:
-                uuid = kwargs['uuid']
-            except KeyError:
-                uuid = args[0]
+            uuid_or_pk = args[0]
 
-            set_entity_state = functools.partial(set_state, model_class, uuid)
+            set_entity_state = functools.partial(set_state, model_class, uuid_or_pk)
 
             try:
                 set_entity_state(processing_state)
@@ -138,8 +137,8 @@ def tracked_processing(model_class, processing_state, desired_state, error_state
                 except Exception:
                     # noinspection PyProtectedMember
                     logger.exception(
-                        'Failed to %s %s with uuid %s',
-                        processing_state, model_class._meta.model_name, uuid
+                        'Failed to %s %s with id %s',
+                        processing_state, model_class._meta.model_name, uuid_or_pk
                     )
 
                     set_entity_state(error_state)
