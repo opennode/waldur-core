@@ -1,7 +1,7 @@
-Create a new project quotas
----------------------------
+Create a new project quota
+--------------------------
 
-A new project quotas can be created within project by users with staff privilege (is_staff=True) or customer owners.
+A new project quota can be created within project by users with staff privilege (is_staff=True) or customer owners.
 
 Example of a valid request (token is user specific):
 
@@ -20,14 +20,14 @@ Example of a valid request (token is user specific):
                 "vcpu": 2,
                 "ram": 2.0,
                 "storage": 36.15540199549969,
-                "backup": 113.5527366632655
+                "max_instances": 10
             },
     }
 
-Managing project quotas
------------------------
+Managing project quota
+----------------------
 
-Project quotas of the existing project can be changed by users with staff privilege (is_staff=True) or customer owners.
+Quota of the existing project can be changed by users with staff privilege (is_staff=True) or customer owners.
 
 Example of a valid request (token is user specific):
 
@@ -44,12 +44,12 @@ Example of a valid request (token is user specific):
                 "vcpu": 2,
                 "ram": 2.0,
                 "storage": 36.15540199549969,
-                "backup": 113.5527366632655
+                "max_instances": 11
             },
     }
 
-To fully update quotas of the existing project, PUT a new project quotas to the project's url
-specifying name, customer and quotas:
+To fully update quota of the existing project, PUT a new quota to the project's url
+specifying name, customer and quota:
 
 .. code-block:: http
 
@@ -66,6 +66,6 @@ specifying name, customer and quotas:
                 "vcpu": 2,
                 "ram": 2.0,
                 "storage": 36.15540199549969,
-                "backup": 113.5527366632655
+                "max_instances": 11
             },
     }

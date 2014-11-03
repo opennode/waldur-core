@@ -446,23 +446,41 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertDictContainsSubset({'volume_sizes': ['Enter a whole number.']},
                                       response.data)
 
-    # instance ips field tests
-    def test_instance_factory_generates_valid_ips_field(self):
+    # instance external and internal ips fields tests
+    def test_instance_factory_generates_valid_internal_ips_field(self):
         instance = factories.InstanceFactory()
 
-        ips = instance.ips
+        internal_ips = instance.internal_ips
 
-        self.assertTrue(ips_regex.match(ips))
+        self.assertTrue(ips_regex.match(internal_ips))
 
-    def test_instance_api_contains_valid_ips_field(self):
+    def test_instance_factory_generates_valid_external_ips_field(self):
+        instance = factories.InstanceFactory()
+
+        external_ips = instance.internal_ips
+
+        self.assertTrue(ips_regex.match(external_ips))
+
+    def test_instance_api_contains_valid_external_ips_field(self):
         instance = factories.InstanceFactory()
         instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         response = self.client.get(self._get_instance_url(instance))
 
-        ips = response.data['ips']
+        external_ips = response.data['external_ips']
 
-        for ip in ips:
+        for ip in external_ips:
+            self.assertTrue(ips_regex.match(ip))
+
+    def test_instance_api_contains_valid_internal_ips_field(self):
+        instance = factories.InstanceFactory()
+        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        response = self.client.get(self._get_instance_url(instance))
+
+        internal_ips = response.data['internal_ips']
+
+        for ip in internal_ips:
             self.assertTrue(ips_regex.match(ip))
 
     def test_instance_licenses_added_on_instance_creation(self):

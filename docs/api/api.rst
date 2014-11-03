@@ -23,8 +23,8 @@ Project management
 
 .. include:: project.rst
 
-Project quotas management
-=========================
+Project quota management
+========================
 
 .. include:: project_quotas.rst
 
@@ -62,3 +62,9 @@ Security group management
 =========================
 
 .. include:: security_group.rst
+
+
+Services
+========
+
+.. include:: services.rst

@@ -30,7 +30,8 @@ def _mock_processing(instance_uuid, should_fail=False):
     with transaction.atomic():
         try:
             instance = models.Instance.objects.get(uuid=instance_uuid)
-            instance.ips = '1.2.3.4, 10.10.10.10'
+            instance.internal_ips = '10.10.10.10,192.168.18.3'
+            instance.external_ips = '1.2.3.4,131.107.140.29'
             instance.save()
         except models.Instance.DoesNotExist:
             raise Exception('Error updating VM instance')

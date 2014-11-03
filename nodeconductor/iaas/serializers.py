@@ -81,13 +81,16 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
-    ips = IPsField(source='ips', read_only=True)
+    external_ips = IPsField(source='external_ips', read_only=True)
+    internal_ips = IPsField(source='internal_ips', read_only=True)
     ssh_public_key_name = serializers.Field(source='ssh_public_key.name')
     backups = backup_serializers.BackupSerializer()
     backup_schedules = backup_serializers.BackupScheduleSerializer()
 
     security_groups = InstanceSecurityGroupSerializer(read_only=True)
     instance_licenses = InstanceLicenseSerializer(read_only=True)
+    # special field for customer
+    customer_abbreviation = serializers.Field(source='project.customer.abbreviation')
 
     class Meta(object):
         model = models.Instance
@@ -97,11 +100,11 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'cloud', 'cloud_name',
             'flavor', 'flavor_name',
             'project', 'project_name',
-            'customer', 'customer_name',
+            'customer', 'customer_name', 'customer_abbreviation',
             'ssh_public_key', 'ssh_public_key_name',
             'project_groups',
             'security_groups',
-            'ips',
+            'external_ips', 'internal_ips',
             'state',
             'backups', 'backup_schedules',
             'instance_licenses'
@@ -223,3 +226,34 @@ class ImageSerializer(RelatedResourcesFieldMixin,
 
     def get_related_paths(self):
         return 'cloud',
+
+
+# XXX: this serializer have to be removed after haystack implementation
+class ServiceSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
+
+    agreed_sla = serializers.SerializerMethodField('get_agreed_sla')
+    actual_sla = serializers.SerializerMethodField('get_actual_sla')
+    service_type = serializers.SerializerMethodField('get_service_type')
+    project_groups = structure_serializers.BasicProjectGroupSerializer(
+        source='project.project_groups', many=True, read_only=True)
+    name = serializers.Field(source="hostname")
+
+    class Meta(object):
+        model = models.Instance
+        fields = (
+            'url', 'project_name', 'name', 'project_groups', 'agreed_sla', 'actual_sla',
+        )
+        view_name = 'service-detail'
+        lookup_field = 'uuid'
+
+    def get_related_paths(self):
+        return 'project',
+
+    def get_agreed_sla(self, obj):
+        return 100
+
+    def get_actual_sla(self, obj):
+        return 97
+
+    def get_service_type(self, obj):
+        return 'IaaS'

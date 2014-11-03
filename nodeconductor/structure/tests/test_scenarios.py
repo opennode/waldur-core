@@ -27,7 +27,7 @@ def _resource_quota_data(quota=None):
         'vcpu': str(quota.vcpu),
         'ram': str(quota.ram),
         'storage': str(quota.storage),
-        'backup': str(quota.backup)
+        'max_instances': str(quota.max_instances)
     }
 
 
@@ -57,7 +57,7 @@ class ResourceQuotasTest(test.APISimpleTestCase):
 
         self.assertEqual(response.status_code, 200)
         context = json.loads(response.content)
-        fields = ('vcpu', 'ram', 'storage', 'backup')
+        fields = ('vcpu', 'ram', 'storage', 'max_instances')
         for field in fields:
             self.assertEquals(getattr(expected_quota, field), context['resource_quota'][field])
 
@@ -71,18 +71,18 @@ class ResourceQuotasTest(test.APISimpleTestCase):
         response = self.client.post(_project_list_url(), data=data)
         self.assertEqual(response.status_code, 201)
         context = json.loads(response.content)
-        fields = ('vcpu', 'ram', 'storage', 'backup')
+        fields = ('vcpu', 'ram', 'storage', 'max_instances')
         for field in fields:
             self.assertEquals(data['resource_quota'][field], str(context['resource_quota'][field]))
 
     def test_project_resource_quota_change(self):
-        self.user.is_superuser = True
+        self.user.is_staff = True
         self.user.save()
         data = {'resource_quota': _resource_quota_data()}
 
         response = self.client.patch(_project_url(self.project), data=data)
         self.assertEqual(response.status_code, 200)
         project = models.Project.objects.get(pk=self.project.pk)
-        fields = ('vcpu', 'ram', 'storage', 'backup')
+        fields = ('vcpu', 'ram', 'storage', 'max_instances')
         for field in fields:
             self.assertEquals(data['resource_quota'][field], str(getattr(project.resource_quota, field)))
