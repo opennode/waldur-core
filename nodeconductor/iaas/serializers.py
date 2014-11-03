@@ -171,7 +171,15 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Template
-        fields = ('url', 'uuid', 'template_licenses',)
+        fields = (
+            'url', 'uuid',
+            'name', 'description', 'icon_url',
+            'os',
+            'is_active',
+            'setup_fee',
+            'monthly_fee',
+            'template_licenses',
+        )
         lookup_field = 'uuid'
 
 

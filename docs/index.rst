@@ -31,8 +31,8 @@ API
 
    api/api
 
-Developing NC
--------------
+Developing NodeConductor
+------------------------
 
 .. toctree::
    :maxdepth: 1

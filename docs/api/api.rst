@@ -43,6 +43,11 @@ Cloud management
 
 .. include:: cloud.rst
 
+Templates
+=========
+
+.. include:: template.rst
+
 VM instance management
 ======================
 
@@ -62,7 +67,6 @@ Security group management
 =========================
 
 .. include:: security_group.rst
-
 
 Services
 ========
