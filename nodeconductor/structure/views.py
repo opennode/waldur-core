@@ -23,18 +23,7 @@ User = auth.get_user_model()
 
 class CustomerViewSet(viewsets.ModelViewSet):
     """List of customers that are accessible by this user.
-
-    TODO: Customer definition.
-
-    Customers are connected to users through roles, whereas user may have role "customer owner". Each customer may have multiple owners, and each user may own multiple customers.
-
-    Staff members can list all available customers and create new customers.
-
-    Customer owners can list all customers they own. Customer owners can also create new customers.
-
-    Project administrators can list all the customers that own any of the projects they are administrators in.
-
-    Project managers can list all the customers that own any of the projects they are managers in.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#customer-management
     """
 
     queryset = models.Customer.objects.all()
@@ -56,22 +45,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
 class ProjectViewSet(viewsets.ModelViewSet):
     """List of projects that are accessible by this user.
-
-    TODO: Project definition.
-
-    Projects are connected to customers, whereas the project may belong to one customer only, and the customer may have multiple projects.
-
-    Projects are connected to project groups, whereas the project may belong to multiple project groups, and the project group may contain multiple projects.
-
-    Projects are connected to clouds, whereas the project may contain multiple clouds, and the cloud may belong to multiple projects.
-
-    Staff members can list all available projects of any customer and create new projects.
-
-    Customer owners can list all projects that belong to any of the customers they own. Customer owners can also create projects for the customers they own.
-
-    Project administrators can list all the projects they are administrators in.
-
-    Project managers can list all the projects they are managers in.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#project-management
     """
 
     queryset = models.Project.objects.all()
@@ -126,10 +100,7 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
     """List of project groups members that are accessible by this user.
-
-    Project group membership expresses projects' links to project group.
-
-    Project group membership can be viewed and modified by customer owners and staff users.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#managing-project-roles
     """
 
     queryset = models.ProjectGroup.projects.through.objects.all()
