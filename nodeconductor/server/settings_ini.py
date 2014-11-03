@@ -163,12 +163,14 @@ LOGGING = {
         # Logging to syslog
         # See also: https://docs.python.org/2/library/logging.handlers.html#sysloghandler
         'syslog': {
+            'address': '/dev/log',
             'class': 'logging.handlers.SysLogHandler',
             'filters': ['request'],
             'formatter': 'request_format',
             'level': config.get('logging', 'log_level').upper(),
         },
         'syslog-event': {
+            'address': '/dev/log',
             'class': 'logging.handlers.SysLogHandler',
             'filters': ['request'],
             'formatter': 'request_format',

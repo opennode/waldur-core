@@ -253,3 +253,48 @@ class StaffPermissionLogic(PermissionLogic):
                         perm == delete_permission):
                     return True
         return False
+
+
+class TypedCollaboratorsPermissionLogic(PermissionLogic):
+    """
+    Permission logic that supports definition of several user groups based on the type of the
+    checked object.
+
+    For example, it is useful for cases when an object can be accessed either by project administrators or
+    by customer owners.
+    """
+    def __init__(self, type_to_permission_loggic_mapping, discriminator_function):
+        self.type_to_permission_loggic_mapping = type_to_permission_loggic_mapping
+        self.discriminator_function = discriminator_function
+
+    def has_perm(self, user_obj, perm, obj=None):
+        if not user_obj.is_authenticated():
+            return False
+
+        # always true for creation
+        if obj is None:
+            return True
+
+        elif user_obj.is_active:
+            # if the user is staff, allow everything
+            if user_obj.is_staff:
+                return True
+
+            # detect a type of collaboration
+            collaboration_type = self.discriminator_function(obj)
+
+            # disallow operation if the type is unknown
+            if not collaboration_type in self.type_to_permission_loggic_mapping:
+                return False
+            collaborators_query = self.type_to_permission_loggic_mapping[collaboration_type]['query']
+            collaborators_filter = self.type_to_permission_loggic_mapping[collaboration_type]['filter']
+
+            kwargs = {
+                collaborators_query: user_obj,
+                'pk': obj.pk,
+            }
+            kwargs.update(collaborators_filter)
+
+            if obj._meta.model._default_manager.filter(**kwargs).exists():
+                return True
+        return False

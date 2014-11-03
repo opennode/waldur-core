@@ -35,7 +35,7 @@ class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
 class ResourceQuotaSerializer(serializers.ModelSerializer):
     class Meta(object):
         model = models.ResourceQuota
-        fields = ('vcpu', 'ram', 'storage', 'backup')
+        fields = ('vcpu', 'ram', 'storage', 'max_instances')
 
 
 class ProjectSerializer(core_serializers.CollectedFieldsMixin,
@@ -230,6 +230,7 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
     )
     user_full_name = serializers.Field(source='user.full_name')
     user_native_name = serializers.Field(source='user.native_name')
+    user_username = serializers.Field(source='user.username')
 
     role = CustomerRoleField(choices=models.CustomerRole.TYPE_CHOICES)
 
@@ -238,7 +239,7 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
         fields = (
             'url', 'role',
             'customer', 'customer_name',
-            'user', 'user_full_name', 'user_native_name',
+            'user', 'user_username', 'user_full_name', 'user_native_name',
         )
         view_name = 'customer_permission-detail'
 
