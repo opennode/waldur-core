@@ -6,7 +6,7 @@ from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.structure.models import CustomerRole, ProjectRole
+from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories
 
 
@@ -42,6 +42,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'admin': factories.UserFactory(),
             'admin_other': factories.UserFactory(),
             'manager': factories.UserFactory(),
+            'group_manager': factories.UserFactory(),
         }
 
         self.customers = {
@@ -49,6 +50,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'inaccessible': factories.CustomerFactory.create_batch(2),
             'admin': factories.CustomerFactory(),
             'manager': factories.CustomerFactory(),
+            'group_manager': factories.CustomerFactory(),
         }
 
         for customer in self.customers['owned']:
@@ -57,6 +59,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.projects = {
             'admin': factories.ProjectFactory(customer=self.customers['admin']),
             'manager': factories.ProjectFactory(customer=self.customers['manager']),
+            'group_manager': factories.ProjectFactory(customer=self.customers['group_manager']),
         }
 
         self.projects['admin'].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
@@ -65,10 +68,13 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.project_groups = {
             'admin': factories.ProjectGroupFactory(customer=self.customers['admin']),
             'manager': factories.ProjectGroupFactory(customer=self.customers['manager']),
+            'group_manager': factories.ProjectGroupFactory(customer=self.customers['group_manager']),
         }
 
         self.project_groups['admin'].projects.add(self.projects['admin'])
         self.project_groups['manager'].projects.add(self.projects['manager'])
+        self.project_groups['group_manager'].projects.add(self.projects['group_manager'])
+        self.project_groups['group_manager'].add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
     # List filtration tests
     def test_user_can_list_customers_he_is_owner_of(self):
@@ -96,6 +102,10 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['manager'])
         self._check_customer_in_list(self.customers['manager'])
 
+    def test_user_can_list_customer_if_he_is_group_manager_in_a_project_group_owned_by_a_customer(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+        self._check_customer_in_list(self.customers['group_manager'])
+
     def test_user_cannot_list_customer_if_he_is_admin_in_a_project_not_owned_by_a_customer(self):
         self.client.force_authenticate(user=self.users['admin'])
         self._check_customer_in_list(self.customers['manager'], False)
@@ -104,9 +114,13 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['manager'])
         self._check_customer_in_list(self.customers['admin'], False)
 
+    def test_user_cannot_list_customer_if_he_is_group_manager_in_a_project_group_not_owned_by_a_customer(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+        self._check_customer_in_list(self.customers['manager'], False)
+
     # Nested objects filtration tests
     def test_user_can_see_project_he_has_a_role_in_within_customer(self):
-        for user_role in ('admin', 'manager'):
+        for user_role in ('admin', 'manager', 'group_manager'):
             self.client.force_authenticate(user=self.users[user_role])
 
             customer = self.customers[user_role]
@@ -123,7 +137,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             )
 
     def test_user_can_see_project_group_he_has_a_role_in_within_customer(self):
-        for user_role in ('admin', 'manager'):
+        for user_role in ('admin', 'manager', 'group_manager'):
             self.client.force_authenticate(user=self.users[user_role])
 
             customer = self.customers[user_role]
@@ -172,7 +186,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             )
 
     def test_user_cannot_see_project_he_has_no_role_in_within_customer(self):
-        for user_role in ('admin', 'manager'):
+        for user_role in ('admin', 'manager', 'group_manager'):
             self.client.force_authenticate(user=self.users[user_role])
 
             customer = self.customers[user_role]
@@ -189,7 +203,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             )
 
     def test_user_cannot_see_project_group_he_has_no_role_in_within_customer(self):
-        for user_role in ('admin', 'manager'):
+        for user_role in ('admin', 'manager', 'group_manager'):
             self.client.force_authenticate(user=self.users[user_role])
 
             customer = self.customers[user_role]

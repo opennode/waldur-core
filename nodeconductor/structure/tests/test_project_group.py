@@ -6,9 +6,7 @@ from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.structure.models import CustomerRole
-from nodeconductor.structure.models import ProjectGroup
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import CustomerRole, ProjectGroup, ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories
 
 
@@ -33,6 +31,7 @@ class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
             'owner': factories.UserFactory(),
             'admin': factories.UserFactory(),
             'manager': factories.UserFactory(),
+            'group_manager': factories.UserFactory(),
             'no_role': factories.UserFactory(),
         }
 
@@ -46,8 +45,10 @@ class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
             'owner': project_groups[:-1],
             'admin': project_groups[0:2],
             'manager': project_groups[1:3],
+            'group_manager': project_groups[2:3],
             'inaccessible': project_groups[-1:],
         }
+        project_groups[2].add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
         admined_project = factories.ProjectFactory(customer=self.customer)
         admined_project.add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
@@ -176,10 +177,14 @@ class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
     def test_user_can_list_project_groups_including_projects_he_is_manager_of(self):
         self._ensure_list_access_allowed('manager')
 
+    def test_user_can_list_project_groups_where_he_is_manager(self):
+        self._ensure_list_access_allowed('group_manager')
+
     def test_user_cannot_list_project_groups_he_has_no_role_in(self):
         self._ensure_list_access_forbidden('owner')
         self._ensure_list_access_forbidden('admin')
         self._ensure_list_access_forbidden('manager')
+        self._ensure_list_access_forbidden('group_manager')
 
     # Direct instance access tests
     def test_anonymous_user_cannot_access_project_group(self):
@@ -196,10 +201,14 @@ class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
     def test_user_can_access_project_groups_including_projects_he_is_manager_of(self):
         self._ensure_direct_access_allowed('manager')
 
+    def test_user_can_access_project_groups_where_he_is_manager(self):
+        self._ensure_direct_access_allowed('group_manager')
+
     def test_user_cannot_access_project_groups_he_has_no_role_in(self):
         self._ensure_direct_access_forbidden('owner')
         self._ensure_direct_access_forbidden('admin')
         self._ensure_direct_access_forbidden('manager')
+        self._ensure_direct_access_forbidden('group_manager')
 
     # Helper methods
     def _ensure_list_access_allowed(self, user_role):

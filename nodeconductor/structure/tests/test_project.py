@@ -6,8 +6,7 @@ from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.structure.tests import factories
-from nodeconductor.structure.models import CustomerRole
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
 
 
 class ProjectRoleTest(TestCase):
@@ -40,6 +39,7 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
             'owner': factories.UserFactory(),
             'admin': factories.UserFactory(),
             'manager': factories.UserFactory(),
+            'group_manager': factories.UserFactory(),
             'no_role': factories.UserFactory(),
             'multirole': factories.UserFactory(),
         }
@@ -48,6 +48,7 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
             'owner': factories.ProjectFactory(),
             'admin': factories.ProjectFactory(),
             'manager': factories.ProjectFactory(),
+            'group_manager': factories.ProjectFactory(),
             'inaccessible': factories.ProjectFactory(),
         }
 
@@ -56,6 +57,9 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
         self.projects['admin'].add_user(self.users['multirole'], ProjectRole.ADMINISTRATOR)
         self.projects['manager'].add_user(self.users['multirole'], ProjectRole.MANAGER)
+        self.project_group = factories.ProjectGroupFactory()
+        self.project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
+        self.project_group.projects.add(self.projects['group_manager'])
 
         self.projects['owner'].customer.add_user(self.users['owner'], CustomerRole.OWNER)
 
@@ -80,6 +84,9 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
     def test_user_can_list_projects_he_is_manager_of(self):
         self._ensure_list_access_allowed('manager')
+
+    def test_user_can_list_projects_he_is_group_manager_of(self):
+        self._ensure_list_access_allowed('group_manager')
 
     def test_user_cannot_list_projects_he_has_no_role_in(self):
         for user_role, project in self.forbidden_combinations:
@@ -110,6 +117,9 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
     def test_user_can_access_project_he_is_manager_of(self):
         self._ensure_direct_access_allowed('manager')
+
+    def test_user_can_access_project_he_is_group_manager_of(self):
+        self._ensure_direct_access_allowed('group_manager')
 
     def test_user_cannot_access_project_he_has_no_role_in(self):
         for user_role, project in self.forbidden_combinations:

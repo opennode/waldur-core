@@ -7,7 +7,7 @@ from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.structure.models import ProjectRole, CustomerRole
+from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories
 
 User = get_user_model()
@@ -39,6 +39,7 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
         self.users = {
             'admin': factories.UserFactory(),
             'manager': factories.UserFactory(),
+            'group_manager': factories.UserFactory(),
             'admin2': factories.UserFactory(),
             'manager2': factories.UserFactory(),
             'no_role': factories.UserFactory(),
@@ -51,11 +52,16 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
         self.projects = {
             'admin': factories.ProjectFactory(customer=self.customer),
             'manager': factories.ProjectFactory(),
+            'group_manager': factories.ProjectFactory(),
             'standalone': factories.ProjectFactory(),
         }
 
         for user, project, role in self.all_roles:
             self.projects[project].add_user(self.users[user], self.role_map[role])
+
+        self.project_group = factories.ProjectGroupFactory()
+        self.project_group.projects.add(self.projects['group_manager'])
+        self.project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
     # No role tests
     def test_user_cannot_list_roles_in_projects_he_has_no_role_in(self):
@@ -149,6 +155,26 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
         # TODO: Test for Location header pointing to an existing permission
 
+    def test_user_can_assign_project_roles_in_projects_he_is_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+
+        user_url = self._get_user_url(self.users['no_role'])
+        project_url = self._get_project_url(self.projects['group_manager'])
+
+        data = {
+            'project': project_url,
+            'user': user_url,
+            'role': 'manager'
+        }
+
+        response = self.client.post(reverse('project_permission-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # modification of an existing permission has a different status code
+        response = self.client.post(reverse('project_permission-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
+        # TODO: Test for Location header pointing to an existing permission
+
     def test_user_can_assign_project_roles_in_projects_he_is_owner_of(self):
         self.client.force_authenticate(user=self.customer_owner)
 
@@ -168,7 +194,6 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
         response = self.client.post(reverse('project_permission-list'), data)
         self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
         # TODO: Test for Location header pointing to an existing permission
-
 
     def test_user_cannot_directly_modify_role_of_project_he_is_manager_of(self):
         self.client.force_authenticate(user=self.users['manager'])
@@ -209,7 +234,6 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
                     self.users[role.user], role.role, permissions=response.data),
                 'Owner user does not see an existing privilege: {0}'.format(role),
             )
-
 
     # Administrator tests
     def test_user_can_list_roles_of_projects_he_is_administrator_of(self):
