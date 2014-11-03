@@ -190,7 +190,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
                         status=status.HTTP_400_BAD_REQUEST)
 
 
-class TemplateViewSet(core_viewsets.UpdateModelViewSet):
+class TemplateViewSet(core_viewsets.ModelViewSet):
     """List of VM templates that are accessible by this user.
 
     VM template is a description of a system installed on VM instances: OS, disk partition etc.
