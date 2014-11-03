@@ -10,4 +10,5 @@ class Command(NoArgsCommand):
         states = models.Backup.States
         executing_states = (states.BACKING_UP, states.RESTORING, states.DELETING)
         for backup in models.Backup.objects.filter(state__in=executing_states):
+
             backup.poll_current_state()

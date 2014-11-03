@@ -35,7 +35,7 @@ class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
 class ResourceQuotaSerializer(serializers.ModelSerializer):
     class Meta(object):
         model = models.ResourceQuota
-        fields = ('vcpu', 'ram', 'storage', 'backup')
+        fields = ('vcpu', 'ram', 'storage', 'max_instances')
 
 
 class ProjectSerializer(core_serializers.CollectedFieldsMixin,

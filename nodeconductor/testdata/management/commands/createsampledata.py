@@ -397,7 +397,7 @@ Other use cases are covered with random data.
 
         # Adding quota to project:
         print 'Creating quota for project %s' % project
-        project.quota = ResourceQuota.objects.create(vcpu=2, ram=2, storage=10, backup=20)
+        project.quota = ResourceQuota.objects.create(vcpu=2, ram=2, storage=10, max_instances=10)
         project.save()
 
         return project
@@ -422,7 +422,8 @@ Other use cases are covered with random data.
         return user
 
     def create_instance(self, user, project, flavor, template, security_group):
-        ips = ','.join('.'.join('%s' % random.randint(0, 255) for _ in range(4)) for _ in range(3))
+        internal_ips = ','.join('10.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3)) for _ in range(3))
+        external_ips = ','.join('.'.join('%s' % random.randint(0, 255) for _ in range(4)) for _ in range(3))
         ssh_public_key = SshPublicKey.objects.create(
             user=user,
             name="public key",
@@ -438,7 +439,8 @@ Other use cases are covered with random data.
             project=project,
             flavor=flavor,
             template=template,
-            ips=ips,
+            internal_ips=internal_ips,
+            external_ips=external_ips,
             start_time=timezone.now(),
             ssh_public_key=ssh_public_key,
         )

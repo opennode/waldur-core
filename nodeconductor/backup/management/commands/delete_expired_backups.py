@@ -7,6 +7,6 @@ from nodeconductor.backup import models
 class Command(NoArgsCommand):
     help = 'Deletes all expired backups'
 
-    def handle_noargs(self):
+    def handle_noargs(self, **options):
         for backup in models.Backup.objects.filter(kept_until__lt=timezone.now()):
             backup.start_deletion()

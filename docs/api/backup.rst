@@ -42,7 +42,11 @@ Example of a created backup representation:
         "created_at": "2014-10-19T20:43:37.370Z",
         "kept_until": null,
         "state": "Backing up"
+        "backup_schedule": "http://example.com/api/backup-schedules/075c3525b9af42e08f54c3ccf87e998a/"
     }
+
+Please note, that backups can be both manual and automatic, triggered by the schedule.
+In the first case, **backup_schedule** field will be **null**, in the latter - contain a link to the schedule.
 
 Backup has a state, currently supported states are:
 
@@ -81,3 +85,12 @@ for triggering the next backups.
 - **retention time** is a duration in days during which backup is preserved.
 - **maximal_number_of_backups** is a maximal number of active backups connected to this schedule.
 - **schedule** is a backup schedule defined in a cron format.
+
+Activating/deactivating a schedule
+----------------------------------
+
+A schedule can be it two states: active or not. Non-active states are not used for scheduling the new tasks.
+
+To activate a backup schedule, issue POST request to **/api/backup-schedules/<UUID>/activate/**.
+
+To deactivate a backup schedule, issue POST request to **/api/backup-schedules/<UUID>/deactivate/**.
