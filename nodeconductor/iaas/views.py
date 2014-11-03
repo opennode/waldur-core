@@ -70,7 +70,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
                       core_mixins.UpdateOnlyModelMixin,
                       viewsets.GenericViewSet):
     """List of VM instances that are accessible by this user.
-    http://nodeconductor.readthedocs.org/en/latest/api/api.html#instance-model
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#instance
     """
 
     queryset = models.Instance.objects.all()
