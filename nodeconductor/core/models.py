@@ -14,7 +14,8 @@ from django.db import models
 from django.db.models import signals
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ugettext_lazy as _, ugettext_lazy
+from django_fsm import FSMField, transition
 from rest_framework.authtoken.models import Token
 from uuidfield import UUIDField
 
@@ -186,3 +187,60 @@ class SshPublicKey(UuidMixin, models.Model):
 
     def __str__(self):
         return self.name
+
+
+class SynchronizationStates(object):
+    PUSHING_SCHEDULED = 'u'
+    PUSHING = 'U'
+    PULLING_SCHEDULED = 'd'
+    PULLING = 'D'
+    IN_SYNC = 's'
+    ERRED = 'e'
+
+    CHOICES = (
+        (PUSHING_SCHEDULED, _('Pushing Scheduled')),
+        (PUSHING, _('Pushing')),
+        (PULLING_SCHEDULED, _('Pulling Scheduled')),
+        (PULLING, _('Pulling')),
+        (IN_SYNC, _('Synchronized')),
+        (ERRED, _('Erred')),
+    )
+
+
+class SynchronizableMixin(models.Model):
+    class Meta(object):
+        abstract = True
+
+    state = FSMField(
+        max_length=1,
+        default=SynchronizationStates.PUSHING_SCHEDULED,
+        choices=SynchronizationStates.CHOICES,
+    )
+
+    @transition(field=state, source=SynchronizationStates.PUSHING_SCHEDULED, target=SynchronizationStates.PUSHING)
+    def begin_pushing(self):
+        pass
+
+    @transition(field=state, source=SynchronizationStates.IN_SYNC, target=SynchronizationStates.PUSHING_SCHEDULED)
+    def schedule_pushing(self):
+        pass
+
+    @transition(field=state, source=SynchronizationStates.PULLING_SCHEDULED, target=SynchronizationStates.PULLING)
+    def begin_pulling(self):
+        pass
+
+    @transition(field=state, source=SynchronizationStates.IN_SYNC, target=SynchronizationStates.PULLING_SCHEDULED)
+    def schedule_pulling(self):
+        pass
+
+    @transition(
+        field=state,
+        source=[SynchronizationStates.PUSHING, SynchronizationStates.PULLING],
+        target=SynchronizationStates.IN_SYNC,
+    )
+    def set_in_sync(self):
+        pass
+
+    @transition(field=state, source='*', target=SynchronizationStates.ERRED)
+    def set_erred(self):
+        pass
