@@ -6,6 +6,8 @@ import django.contrib.auth
 import factory
 import factory.fuzzy
 
+from rest_framework.reverse import reverse
+
 from nodeconductor.structure import models
 
 
@@ -31,6 +33,12 @@ class UserFactory(factory.DjangoModelFactory):
             for customer in extracted:
                 self.customers.add(customer)
 
+    @classmethod
+    def get_url(cls, user=None):
+        if user is None:
+            user = UserFactory()
+        return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})
+
 
 class CustomerFactory(factory.DjangoModelFactory):
     class Meta(object):
@@ -39,6 +47,12 @@ class CustomerFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'Customer%s' % n)
     abbreviation = factory.LazyAttribute(lambda o: o.name[:4])
     contact_details = factory.Sequence(lambda n: 'contacts %s' % n)
+
+    @classmethod
+    def get_url(cls, customer=None):
+        if customer is None:
+            customer = CustomerFactory()
+        return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
 
 
 class ProjectFactory(factory.DjangoModelFactory):
