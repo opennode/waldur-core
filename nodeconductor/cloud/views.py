@@ -15,7 +15,7 @@ from nodeconductor.structure import models as structure_models
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
     """List of VM instance flavors that are accessible by this user.
-    http://nodeconductor.readthedocs.org/en/latest/api/api.html#flavor
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#flavor-management
     """
 
     queryset = models.Flavor.objects.all()

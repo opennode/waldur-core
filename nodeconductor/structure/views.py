@@ -24,8 +24,6 @@ User = auth.get_user_model()
 class CustomerViewSet(viewsets.ModelViewSet):
     """List of customers that are accessible by this user.
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#customer-management
-
-    TODO: Customer definition.
     """
 
     queryset = models.Customer.objects.all()
@@ -48,8 +46,6 @@ class CustomerViewSet(viewsets.ModelViewSet):
 class ProjectViewSet(viewsets.ModelViewSet):
     """List of projects that are accessible by this user.
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#project-management
-
-    TODO: Project definition.
     """
 
     queryset = models.Project.objects.all()
