@@ -299,6 +299,21 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
 
         return queryset
 
+    def pre_save(self, obj):
+        super(CustomerPermissionViewSet, self).pre_save(obj)
+        user = self.request.user
+        customer = obj.group.customerrole.customer
+
+        if user.is_staff:
+            return
+
+        # check for the user role.
+        is_customer_owner = customer.roles.filter(
+            permission_group__user=user, role_type=CustomerRole.OWNER).exists()
+        if is_customer_owner:
+            return
+
+        raise PermissionDenied()
 
 # XXX: This should be put to models
 filters.set_permissions_for_model(

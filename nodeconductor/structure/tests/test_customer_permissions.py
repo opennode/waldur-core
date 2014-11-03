@@ -86,6 +86,58 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
                     '{0} user does not see privilege he is supposed to see: {1}'.format(login_user, role),
                 )
 
+    def test_user_can_assign_roles_within_customers_he_owns(self):
+        self.client.force_authenticate(user=self.users['first'])
+
+        data = {
+            'customer': factories.CustomerFactory.get_url(self.customers['first']),
+            'user': factories.UserFactory.get_url(self.users['no_role']),
+            'role': 'owner'
+        }
+
+        response = self.client.post(reverse('customer_permission-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_user_cannot_assign_roles_within_customers_he_doesnt_owns(self):
+        self.client.force_authenticate(user=self.users['no_role'])
+
+        data = {
+            'customer': factories.CustomerFactory.get_url(self.customers['first']),
+            'user': factories.UserFactory.get_url(self.users['no_role']),
+            'role': 'owner'
+        }
+
+        response = self.client.post(reverse('customer_permission-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_user_with_customer_owner_role_cannot_assign_roles_within_customers_he_doesnt_own(self):
+        self.client.force_authenticate(user=self.users['no_role'])
+
+        data = {
+            'customer': factories.CustomerFactory.get_url(self.customers['first']),
+            'user': factories.UserFactory.get_url(self.users['no_role']),
+            'role': 'owner'
+        }
+
+        response = self.client.post(reverse('customer_permission-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_user_cannot_assign_roles_within_customers_he_doesnt_own_but_has_project_admin_role(self):
+        admin_user = factories.UserFactory()
+        project = factories.ProjectFactory(customer=self.customers['first'])
+        project.add_user(admin_user, ProjectRole.ADMINISTRATOR)
+
+        self.client.force_authenticate(user=admin_user)
+
+        data = {
+            'customer': factories.CustomerFactory.get_url(self.customers['first']),
+            'user': factories.UserFactory.get_url(self.users['no_role']),
+            'role': 'owner'
+        }
+
+        response = self.client.post(reverse('customer_permission-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_user_can_list_roles_within_customer_if_he_has_admin_role_in_a_project_owned_by_that_customer(self):
         admin_user = factories.UserFactory()
         project = factories.ProjectFactory(customer=self.customers['first'])
