@@ -1,4 +1,4 @@
-from django.tests import TestCase
+from django.test import TestCase
 
 from nodeconductor.structure import models
 from nodeconductor.structure.tests import factories
