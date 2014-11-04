@@ -236,11 +236,11 @@ Other use cases are covered with random data.
         cloud = Cloud.objects.create(
             customer=customer,
             name=cloud_name,
-            auth_url='http://%s.com' % random_string(10, 12, with_spaces=True),
+            auth_url='http://%s.com' % random_string(10, 12),
         )
 
         for project in customer.projects.all():
-            CloudProjectMembership(cloud=cloud, project=project)
+            CloudProjectMembership.objects.create(cloud=cloud, project=project)
 
         # add flavors
         cloud.flavors.create(
