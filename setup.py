@@ -29,7 +29,7 @@ install_requires = [
     'drf-extensions==0.2.6',
     'logan==0.5.9.1',
     'python-keystoneclient>=0.9.0,<0.11.2',
-    'python-novaclient>=2.17.0',
+    'python-novaclient>=2.17.0,<2.19.0',
     'redis==2.10.3',
     'South==0.8.4',
 ]
