@@ -1,19 +1,3 @@
-VM instances are launched in clouds, whereas the instance may belong to one cloud only, and the cloud may have
-multiple VM instances.
-
-VM instance may be in one of the following states:
-
-* creating
-* created
-* starting
-* started
-* stopping
-* stopped
-* restarting
-* deleting
-* deleted
-* erred
-
 Instance list
 -------------
 
