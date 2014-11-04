@@ -15,6 +15,23 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - project
 - project_group
 
+Soring is supported in ascending and descending order by specifying a field to an **?o=** parameter.
+
+- ?o=hostname - sort by hostname in ascending order
+- ?o=-hostname - sort by hostname in descending order
+- ?o=state - sort by state in ascending order
+- ?o=-state - sort by state in descending order
+- ?o=project__customer__name - sort by customer name in ascending order
+- ?o=-project__customer__name - sort by customer name in descending order
+
+
+Instance permissions
+--------------------
+
+- Staff members can list all available VM instances in any cloud.
+- Customer owners can list all VM instances in all the clouds that belong to any of the customers they own.
+- Project administrators can list all VM instances, create new instances and start/stop/restart instances in all the clouds that are connected to any of the projects they are administrators in.
+- Project managers can list all VM instances in all the clouds that are connected to any of the projects they are managers in.
 
 Instance status
 ---------------

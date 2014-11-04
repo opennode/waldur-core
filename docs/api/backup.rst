@@ -1,16 +1,15 @@
 Introduction
 ------------
 
-NC supports backups in a generic way - if a model (like VM Instance, Project, Customer) implements a backup strategy,
-it can be used as a source of backup data.
+NodeConductor supports backups in a generic way - if a model (like VM Instance, Project, Customer) implements a
+backup strategy, it can be used as a source of backup data.
 
 The backups can be created either manually or by setting a schedule for regular automatic backups.
-
 
 Backup
 ------
 
-To create a backup, issue
+To create a backup, issue the following POST request:
 
 .. code-block:: http
 

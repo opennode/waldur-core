@@ -23,6 +23,11 @@ Project management
 
 .. include:: project.rst
 
+Project group management
+========================
+
+.. include:: project_group.rst
+
 Project quota management
 ========================
 
@@ -43,6 +48,16 @@ Cloud management
 
 .. include:: cloud.rst
 
+Flavor management
+=================
+
+.. include:: flavor.rst
+
+Templates
+=========
+
+.. include:: template.rst
+
 VM instance management
 ======================
 
@@ -62,7 +77,6 @@ Security group management
 =========================
 
 .. include:: security_group.rst
-
 
 Services
 ========
