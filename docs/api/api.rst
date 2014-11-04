@@ -23,6 +23,11 @@ Project management
 
 .. include:: project.rst
 
+Project group management
+========================
+
+.. include:: project_group.rst
+
 Project quota management
 ========================
 
@@ -44,7 +49,7 @@ Cloud management
 .. include:: cloud.rst
 
 Flavor management
-================
+=================
 
 .. include:: flavor.rst
 

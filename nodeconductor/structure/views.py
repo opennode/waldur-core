@@ -23,6 +23,7 @@ User = auth.get_user_model()
 
 class CustomerViewSet(viewsets.ModelViewSet):
     """List of customers that are accessible by this user.
+
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#customer-management
     """
 
@@ -45,6 +46,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
 class ProjectViewSet(viewsets.ModelViewSet):
     """List of projects that are accessible by this user.
+
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#project-management
     """
 
@@ -79,19 +81,42 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return super(ProjectViewSet, self).get_serializer_class()
 
 
+class ProjectGroupFilter(django_filters.FilterSet):
+    customer = django_filters.CharFilter(
+        name='customer__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
+    name = django_filters.CharFilter(lookup_type='icontains')
+
+    class Meta(object):
+        model = models.ProjectGroup
+        fields = [
+            'name',
+            'customer',
+        ]
+        order_by = [
+            'name',
+            '-name',
+            'customer__name',
+            '-customer__name',
+        ]
+
+
 class ProjectGroupViewSet(viewsets.ModelViewSet):
-    """List of project groups that are accessible by this user.
+    """
+    List of project groups that are accessible to this user.
 
-    TODO: Project group definition.
-
-    TODO: describe permissions for different user types.
+    TODO: add documentation
     """
 
     queryset = models.ProjectGroup.objects.all()
     serializer_class = serializers.ProjectGroupSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
+    filter_class = ProjectGroupFilter
 
 
 class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
@@ -100,6 +125,7 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
     """List of project groups members that are accessible by this user.
+
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#managing-project-roles
     """
 
@@ -160,11 +186,10 @@ class UserFilter(django_filters.FilterSet):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    """List of users that are accessible by this user.
+    """
+    List of NodeConductor users.
 
-    TODO: User definition.
-
-    TODO: describe permissions for different user types.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#user-management
     """
 
     queryset = User.objects.all()
