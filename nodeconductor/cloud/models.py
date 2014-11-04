@@ -2,18 +2,19 @@ from __future__ import unicode_literals
 
 import logging
 
-from django.core.validators import URLValidator, MaxValueValidator, MinValueValidator
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
 from django.db import models
 from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from django_fsm import FSMField, transition
-from keystoneclient.exceptions import CertificateConfigError, CMSError, ClientException
-from keystoneclient.v2_0 import client
 from uuidfield import UUIDField
 
-from nodeconductor.core.models import UuidMixin, DescribableMixin
+from nodeconductor.cloud.backend import CloudBackendError
+from nodeconductor.core.models import (
+    DescribableMixin, SshPublicKey, SynchronizableMixin, SynchronizationStates, UuidMixin,
+)
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models as structure_models
@@ -23,8 +24,17 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 logger = logging.getLogger(__name__)
 
 
+def validate_known_keystone_urls(value):
+    from nodeconductor.cloud.backend.openstack import OpenStackBackend
+    backend = OpenStackBackend()
+    try:
+        backend.get_credentials(value)
+    except CloudBackendError:
+        raise ValidationError('%s is not a known OpenStack deployment.' % value)
+
+
 @python_2_unicode_compatible
-class Cloud(UuidMixin, models.Model):
+class Cloud(UuidMixin, SynchronizableMixin, models.Model):
     """
     A cloud instance information.
 
@@ -41,17 +51,20 @@ class Cloud(UuidMixin, models.Model):
         project_path = 'projects'
         project_group_path = 'projects__project_groups'
 
-    username = models.CharField(max_length=100, blank=True)
-    password = models.CharField(max_length=100, blank=True)
-
     name = models.CharField(max_length=100)
     customer = models.ForeignKey(structure_models.Customer, related_name='clouds')
     projects = models.ManyToManyField(
         structure_models.Project, related_name='clouds', through='CloudProjectMembership')
 
-    unscoped_token = models.TextField(blank=True)
-    scoped_token = models.TextField(blank=True)
-    auth_url = models.CharField(max_length=200, validators=[URLValidator()])
+    # OpenStack backend specific fields
+    auth_url = models.CharField(max_length=200, help_text='Keystone endpoint url',
+                                validators=[URLValidator(), validate_known_keystone_urls])
+
+    def get_backend(self):
+        # TODO: Support different clouds instead of hard-coding
+        # Importing here to avoid circular imports hell
+        from nodeconductor.cloud.backend.openstack import OpenStackBackend
+        return OpenStackBackend()
 
     def __str__(self):
         return self.name
@@ -60,7 +73,6 @@ class Cloud(UuidMixin, models.Model):
         """
         Synchronizes nodeconductor cloud with real cloud account
         """
-        pass
 
 
 def get_related_clouds(obj, request):
@@ -94,56 +106,46 @@ def add_clouds_to_related_model(sender, fields, **kwargs):
     fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
 
 
-class CloudProjectMembership(models.Model):
+@python_2_unicode_compatible
+class CloudProjectMembership(SynchronizableMixin, models.Model):
     """
     This model represents many to many relationships between project and cloud
     """
-    class States(object):
-        CREATING = 'c'
-        READY = 'r'
-        ERRED = 'e'
-
-        CHOICES = (
-            (CREATING, 'Creating'),
-            (READY, 'Ready'),
-            (ERRED, 'Erred'),
-        )
 
     cloud = models.ForeignKey(Cloud)
     project = models.ForeignKey(structure_models.Project)
-    tenant_uuid = UUIDField(unique=True, null=True)
-    state = FSMField(default=States.CREATING, max_length=1, choices=States.CHOICES)
+
+    # OpenStack backend specific fields
+    username = models.CharField(max_length=100, blank=True)
+    password = models.CharField(max_length=100, blank=True)
+
+    tenant_id = models.CharField(max_length=64, blank=True)
+
+    class Meta(object):
+        unique_together = ('cloud', 'tenant_id')
 
     class Permissions(object):
         customer_path = 'cloud__customer'
         project_path = 'project'
         project_group_path = 'project__project_groups'
 
-    @transition(field=state, source=States.CREATING, target=States.READY)
-    def _set_ready(self):
-        pass
+    def __str__(self):
+        return '{0} | {1}'.format(self.cloud.name, self.project.name)
 
-    @transition(field=state, source=States.CREATING, target=States.ERRED)
-    def _set_erred(self):
-        pass
 
-    def create_in_backend(self):
-        """
-        Create new tenant and store its uuid in tenant_uuid field
-        """
-        # XXX: this have to be moved to settings or implemented in other way
-        ADMIN_TENANT = 'admin'
-        try:
-            keystone = client.Client(
-                self.cloud.username, self.cloud.password, ADMIN_TENANT, auth_url=self.cloud.auth_url)
-            tenant = keystone.tenants.create(
-                tenant_name=self.project.name, description=self.project.description, enabled=True)
-            self.tenant_uuid = tenant.id
-            self._set_ready()
-        except (ClientException, CertificateConfigError, CMSError) as e:
-            logger.exception('Failed to create CloudProjectMembership with id %s. %s', self.id, str(e))
-            self._set_erred()
-        self.save()
+@receiver(signals.post_save, sender=SshPublicKey)
+def propagate_new_key(sender, instance=None, created=False, **kwargs):
+    if not created:
+        return
+
+    # TODO: Schedule propagation task(s)? instead of doing it inline
+    # XXX: Come up with a solid strategy which projects are to be affected
+    cloud_project_memberships = filter_queryset_for_user(
+        CloudProjectMembership.objects.filter(state=SynchronizationStates.IN_SYNC), instance.user)
+
+    for membership in cloud_project_memberships.iterator():
+        backend = membership.cloud.get_backend()
+        backend.push_ssh_public_key(membership, instance)
 
 
 @python_2_unicode_compatible

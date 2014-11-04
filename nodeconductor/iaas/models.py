@@ -64,12 +64,12 @@ class Template(core_models.UuidMixin,
     name = models.CharField(max_length=100, unique=True)
     os = models.CharField(max_length=100)
     is_active = models.BooleanField(default=False)
-    setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
+    setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                     validators=[MinValueValidator(Decimal('0.1')),
-                                                MaxValueValidator(Decimal('1000.0'))])
-    monthly_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
+                                                MaxValueValidator(Decimal('100000.0'))])
+    monthly_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                       validators=[MinValueValidator(Decimal('0.1')),
-                                                  MaxValueValidator(Decimal('1000.0'))])
+                                                  MaxValueValidator(Decimal('100000.0'))])
 
     def __str__(self):
         return self.name

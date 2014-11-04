@@ -39,11 +39,11 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
             'project': self._get_project_url(self.project)
         }
 
-        with patch('nodeconductor.cloud.tasks.create_backend_membership.delay') as mocked_task:
+        with patch('nodeconductor.cloud.tasks.initial_push_cloud_membership.delay') as mocked_task:
             response = self.client.post(url, data)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             membership = models.CloudProjectMembership.objects.get(project=self.project, cloud=self.cloud)
-            mocked_task.assert_called_with(membership)
+            mocked_task.assert_called_with(membership.pk)
 
 
 # XXX: this have to be reworked to permissions test

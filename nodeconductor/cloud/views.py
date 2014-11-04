@@ -1,5 +1,8 @@
-from django.shortcuts import get_object_or_404
+from __future__ import unicode_literals
 
+import logging
+
+from django.shortcuts import get_object_or_404
 from rest_framework import exceptions
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
@@ -13,22 +16,12 @@ from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import models as structure_models
 
 
+logger = logging.getLogger(__name__)
+
+
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
     """List of VM instance flavors that are accessible by this user.
-
-    VM instance flavor is a pre-defined set of virtual hardware parameters that the instance will use: CPU, memory, disk size etc.
-
-    VM instance flavor is not to be confused with VM template -- flavor is a set of virtual hardware parameters whereas template is a definition of a system to be installed on this instance.
-
-    Flavors are connected to clouds, whereas the flavor may belong to one cloud only, and the cloud may have multiple flavors.
-
-    Staff members can list all available flavors for any cloud and create new flavors.
-
-    Customer owners can list all flavors for all the clouds that belong to any of the customers they own.
-
-    Project administrators can list all the flavors for all the clouds that are connected to any of the projects they are administrators in.
-
-    Project managers can list all the flavors for all the clouds that are connected to any of the projects they are managers in.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#flavor-management
     """
 
     queryset = models.Flavor.objects.all()
@@ -39,20 +32,7 @@ class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
 
 class CloudViewSet(viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
-
-    Cloud represents an instance of an account in a certain service accessible over APIs, for example OpenStack IaaS instance.
-
-    Clouds are connected to customers, whereas the cloud may belong to one customer only, and the customer may have multiple clouds.
-
-    Clouds are connected to projects, whereas the cloud may belong to multiple projects, and the project may contain multiple clouds.
-
-    Staff members can list all available clouds for any project and/or customer and create new clouds.
-
-    Customer owners can list all clouds that belong to any of the customers they own. Customer owners can also create clouds for the customers they own.
-
-    Project administrators can list all the clouds that are connected to any of the projects they are administrators in.
-
-    Project managers can list all the clouds that are connected to any of the projects they are managers in.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#cloud-model
     """
 
     queryset = models.Cloud.objects.all().prefetch_related('flavors')
@@ -76,6 +56,16 @@ class CloudViewSet(viewsets.ModelViewSet):
         super(CloudViewSet, self).pre_save(cloud)
         self._check_permission(cloud)
 
+    def post_save(self, obj, created=False):
+        if created:
+            tasks.push_cloud_account.delay(obj.uuid)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return serializers.CloudCreateSerializer
+
+        return super(CloudViewSet, self).get_serializer_class()
+
     @action()
     def sync(self, request, uuid):
         """
@@ -94,22 +84,23 @@ class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_viewsets.GenericViewSet):
     """
     List of project-cloud connections
-
-    Staff and customer owners can add/delete new connections
-
-    Managers and administrators can view connections
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#link-cloud-to-a-project
     """
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
     filter_backends = (structure_filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
 
-    def post_save(self, membership, created):
+    def post_save(self, obj, created=False):
         if created:
-            tasks.create_backend_membership.delay(membership)
+            tasks.initial_push_cloud_membership.delay(obj.pk)
 
 
 class SecurityGroupViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    List of openstack security groups
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#security-group-management
+    """
     queryset = models.SecurityGroup.objects.all()
     serializer_class = serializers.SecurityGroupSerializer
     lookup_field = 'uuid'

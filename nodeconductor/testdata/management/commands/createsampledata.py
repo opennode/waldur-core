@@ -236,11 +236,11 @@ Other use cases are covered with random data.
         cloud = Cloud.objects.create(
             customer=customer,
             name=cloud_name,
-            auth_url='http://%s.com' % random_string(10, 12, with_spaces=True),
+            auth_url='http://%s.com' % random_string(10, 12),
         )
 
         for project in customer.projects.all():
-            CloudProjectMembership(cloud=cloud, project=project)
+            CloudProjectMembership.objects.create(cloud=cloud, project=project)
 
         # add flavors
         cloud.flavors.create(
@@ -354,6 +354,9 @@ Other use cases are covered with random data.
         projects[0].add_user(user1, ProjectRole.MANAGER)
         projects[1].add_user(user1, ProjectRole.ADMINISTRATOR)
 
+        # add cloud to both of the projects
+        CloudProjectMembership(cloud=cloud, project=projects[0])
+        CloudProjectMembership(cloud=cloud, project=projects[1])
         self.create_instance(user1, projects[0], cloud.flavors.all()[0], cloud.images.filter(
             template__isnull=False)[0].template, security_groups[0])
         self.create_instance(user1, projects[1], cloud.flavors.all()[1], cloud.images.filter(
@@ -435,7 +438,7 @@ Other use cases are covered with random data.
         )
         print 'Creating instance for project %s' % project
         instance = Instance.objects.create(
-            hostname='host',
+            hostname='host %s' % random.randint(0, 255),
             project=project,
             flavor=flavor,
             template=template,

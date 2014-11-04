@@ -17,8 +17,7 @@ def set_permissions_for_model(model, **kwargs):
 
 
 def filter_queryset_for_user(queryset, user):
-    nc = getattr(settings, 'NODE_CONDUCTOR', {})
-    filtered_relations = nc.get('FILTERED_RELATIONS', ())
+    filtered_relations = ('customer', 'project')
 
     if user.is_staff:
         return queryset

@@ -37,7 +37,7 @@ class CloudProjectMembershipFactory(factory.DjangoModelFactory):
 
     cloud = factory.SubFactory(CloudFactory)
     project = factory.SubFactory(structure_factories.ProjectFactory)
-    tenant_uuid = factory.Sequence(lambda n: uuid4())
+    tenant_id = factory.Sequence(lambda n: 'tenant_id_%s' % n)
 
     @classmethod
     def get_url(cls, membership=None):

@@ -60,7 +60,11 @@ class InstanceFilter(django_filters.FilterSet):
         ]
         order_by = [
             'hostname',
+            '-hostname',
             'state',
+            '-state',
+            'project__customer__name',
+            '-project__customer__name',
         ]
 
 
@@ -70,28 +74,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
                       core_mixins.UpdateOnlyModelMixin,
                       viewsets.GenericViewSet):
     """List of VM instances that are accessible by this user.
-
-    VM instances are launched in clouds, whereas the instance may belong to one cloud only, and the cloud may have
-    multiple VM instances.
-
-    VM instance may be in one of the following states:
-     - creating
-     - created
-     - starting
-     - started
-     - stopping
-     - stopped
-     - restarting
-     - deleting
-     - deleted
-     - erred
-
-    Staff members can list all available VM instances in any cloud.
-    Customer owners can list all VM instances in all the clouds that belong to any of the customers they own.
-    Project administrators can list all VM instances, create new instances and start/stop/restart instances in all the
-    clouds that are connected to any of the projects they are administrators in.
-    Project managers can list all VM instances in all the clouds that are connected to any of the projects they are
-    managers in.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#vm-instance-management
     """
 
     queryset = models.Instance.objects.all()
@@ -190,25 +173,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
                         status=status.HTTP_400_BAD_REQUEST)
 
 
-class TemplateViewSet(core_viewsets.UpdateModelViewSet):
-    """List of VM templates that are accessible by this user.
-
-    VM template is a description of a system installed on VM instances: OS, disk partition etc.
-
-    VM template is not to be confused with VM instance flavor -- template is a definition of a system to be installed (set of software) whereas flavor is a set of virtual hardware parameters.
-
-    VM templates are connected to clouds, whereas the template may belong to one cloud only, and the cloud may have multiple VM templates.
-
-    Staff members can list all available VM templates in any cloud and create new templates.
-
-    Customer owners can list all VM templates in all the clouds that belong to any of the customers they own.
-
-    Project administrators can list all VM templates and create new VM instances using these templates in all the clouds that are connected to any of the projects they are administrators in.
-
-    Project managers can list all VM templates in all the clouds that are connected to any of the projects they are managers in.
-
-    Staff members can add licenses to template by sending POST request with list of licenses uuids.
-    Example POST data: {'licenses': [license1_uuid, licenses2_uuid ...]}
+class TemplateViewSet(core_viewsets.ModelViewSet):
+    """
+        List of VM templates that are accessible by this user.
+        http://nodeconductor.readthedocs.org/en/latest/api/api.html#templates
     """
 
     queryset = models.Template.objects.all()
@@ -247,15 +215,9 @@ class TemplateViewSet(core_viewsets.UpdateModelViewSet):
 
 
 class SshKeyViewSet(core_viewsets.ModelViewSet):
-    """List of SSH public keys that are accessible by this user.
-
-    SSH public keys are injected to VM instances during creation, so that holder of corresponding SSH private key can log in to that instance.
-
-    SSH public keys are connected to user accounts, whereas the key may belong to one user only, and the user may have multiple SSH keys.
-
-    Users can only access SSH keys connected to their accounts.
-
-    Project administrators can select what SSH key will be injected to VM instance during instance provisioning.
+    """
+        List of SSH public keys that are accessible by this user.
+        http://nodeconductor.readthedocs.org/en/latest/api/api.html#key-management
     """
 
     queryset = core_models.SshPublicKey.objects.all()
@@ -272,14 +234,6 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
 
 
 class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
-    """
-    List of operations with VM templates.
-
-    TODO: list supported operation types.
-
-    TODO: describe permissions for different user types.
-    """
-
     queryset = models.Purchase.objects.all()
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'
@@ -287,7 +241,10 @@ class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 
 class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
-    """TODO: add documentation.
+    """
+    List of VM Images for instantiation within a certain cloud.
+
+    TODO: add documentation.
 
     TODO: describe permissions for different user types.
     """
@@ -299,15 +256,8 @@ class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 
 class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
-    """
-    Every template is potentially connected to zero or more consumed licenses.
-    License is defined as an abstract consumable.
-
-    Only staff can view all licenses, edit and delete them.
-
-    Customer owners, managers and administrators can view license only with templates
-
-    Add customer uuid as `customer` GET parameter to filter licenses for customer
+    """List of template licenses that are accessible by this user.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#template-licenses
     """
     queryset = models.TemplateLicense.objects.all()
     serializer_class = serializers.TemplateLicenseSerializer

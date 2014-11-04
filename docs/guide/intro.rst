@@ -6,10 +6,9 @@ To install NodeConductor standalone on RHEL6-compatible operating systems (CentO
 .. code-block:: bash
 
     # Configure repositories
-    rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+    rpm -Uvh https://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
     rpm -Uvh https://repos.fedorapeople.org/repos/openstack/openstack-icehouse/rdo-release-icehouse-4.noarch.rpm
-    curl http://opennodecloud.com/CentOS/6/nodeconductor.repo > /etc/yum.repos.d/nodeconductor.repo
-    rpm --import http://opennodecloud.com/CentOS/6/RPM-GPG-KEY-OpenNode
+    rpm -Uvh http://opennodecloud.com/centos/6/nodeconductor-release.rpm
 
     # Install and enable services
     yum -y install mysql-server nodeconductor-wsgi redis
@@ -51,6 +50,7 @@ Upgrade
 
 TODO
 
+.. include:: configuration.rst
 .. include:: background.rst
 .. include:: fsm.rst
 .. include:: structure.rst
