@@ -5,7 +5,7 @@ from rest_framework.reverse import reverse
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories as iaas_factories
 from nodeconductor.structure.tests import factories as structure_factories
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 
 
 class ImagesApiPermissionTest(test.APISimpleTestCase):
@@ -13,23 +13,31 @@ class ImagesApiPermissionTest(test.APISimpleTestCase):
         self.users = {
             'admin': structure_factories.UserFactory(),
             'manager': structure_factories.UserFactory(),
+            'group_manager': structure_factories.UserFactory(),
             'no_role': structure_factories.UserFactory(),
         }
 
         self.images = {
             'admin': iaas_factories.ImageFactory(),
             'manager': iaas_factories.ImageFactory(),
+            'group_manager': iaas_factories.ImageFactory(),
             'inaccessible': iaas_factories.ImageFactory(),
         }
 
         admined_project = structure_factories.ProjectFactory()
         managed_project = structure_factories.ProjectFactory()
+        group_manager_project = structure_factories.ProjectFactory()
+        self.project_group = structure_factories.ProjectGroupFactory()
+        self.project_group.projects.add(group_manager_project)
 
         admined_project.add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         managed_project.add_user(self.users['manager'], ProjectRole.MANAGER)
+        self.project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
         cloud_factories.CloudProjectMembershipFactory(cloud=self.images['admin'].cloud, project=admined_project)
         cloud_factories.CloudProjectMembershipFactory(cloud=self.images['manager'].cloud, project=managed_project)
+        cloud_factories.CloudProjectMembershipFactory(
+            cloud=self.images['group_manager'].cloud, project=group_manager_project)
 
     # List filtration tests
     def test_anonymous_user_cannot_list_images(self):
@@ -52,6 +60,15 @@ class ImagesApiPermissionTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         image_url = self._get_image_url(self.images['manager'])
+        self.assertIn(image_url, [image['url'] for image in response.data])
+
+    def test_user_can_list_images_of_project_he_is_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+
+        response = self.client.get(reverse('image-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        image_url = self._get_image_url(self.images['group_manager'])
         self.assertIn(image_url, [image['url'] for image in response.data])
 
     def test_user_cannot_list_images_of_project_he_has_no_role_in(self):
@@ -80,6 +97,12 @@ class ImagesApiPermissionTest(test.APISimpleTestCase):
         self.client.force_authenticate(user=self.users['manager'])
 
         response = self.client.get(self._get_image_url(self.images['manager']))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_can_access_image_of_project_he_is_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+
+        response = self.client.get(self._get_image_url(self.images['group_manager']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_access_image_of_project_he_has_no_role_in(self):
@@ -132,6 +155,14 @@ class ImagesApiPermissionTest(test.APISimpleTestCase):
         response = self.client.put(self._get_image_url(image), data)
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
+    def test_user_cannot_change_image_allowed_for_project_he_is_group_manager_of(self):
+        self.client.force_authenticate(self.users['group_manager'])
+        image = self.images['group_manager']
+
+        data = self._get_valid_payload(image)
+        response = self.client.put(self._get_image_url(image), data)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
     # Deletion tests
     def test_anonymous_user_cannot_delete_image(self):
         for image in self.images.values():
@@ -148,6 +179,12 @@ class ImagesApiPermissionTest(test.APISimpleTestCase):
         self.client.force_authenticate(user=self.users['manager'])
 
         response = self.client.delete(self._get_image_url(self.images['manager']))
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_user_cannot_delete_image_allowed_for_project_he_is_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+
+        response = self.client.delete(self._get_image_url(self.images['group_manager']))
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     # Helper methods

@@ -10,7 +10,7 @@ from nodeconductor.core.fields import comma_separated_string_list_re as ips_rege
 from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure import models as structure_models
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -36,10 +36,14 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.user = structure_factories.UserFactory.create()
 
         self.admined_instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
-        self.managed_instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+
+        project = structure_factories.ProjectFactory()
+        project_group = structure_factories.ProjectGroupFactory()
+        project_group.projects.add(project)
+        self.managed_instance = factories.InstanceFactory(state=Instance.States.OFFLINE, project=project)
 
         self.admined_instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
-        self.managed_instance.project.add_user(self.user, ProjectRole.MANAGER)
+        project_group.add_user(self.user, ProjectGroupRole.MANAGER)
 
     # List filtration tests
     def test_anonymous_user_cannot_list_instances(self):

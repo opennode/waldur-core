@@ -39,6 +39,7 @@ class Cloud(UuidMixin, models.Model):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'projects'
+        project_group_path = 'projects__project_groups'
 
     username = models.CharField(max_length=100, blank=True)
     password = models.CharField(max_length=100, blank=True)

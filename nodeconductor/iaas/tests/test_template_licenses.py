@@ -65,9 +65,13 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
         # license
         self.license = factories.TemplateLicenseFactory()
         self.license.templates.add(self.template)
+        # users
         self.staff = structure_factories.UserFactory(is_superuser=True, is_staff=True)
         self.manager = structure_factories.UserFactory()
         self.project.add_user(self.manager, structure_models.ProjectRole.MANAGER)
+        self.group_manager = structure_factories.UserFactory()
+        print self.group_manager
+        self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
 
     def test_projects_in_license_response(self):
         self.client.force_authenticate(self.staff)
@@ -223,6 +227,21 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
             lambda d: d['project_group'] == self.project_group.name, response.data)[0]['count']
         self.assertEqual(project_group_licenses_count, instance.instance_licenses.count())
 
+    def test_stats_shows_filtered_results_for_group_manager(self):
+        self.client.force_authenticate(self.group_manager)
+        models.InstanceLicense.objects.all().delete()
+        instance = factories.InstanceFactory(project=self.project)
+        factories.InstanceLicenseFactory(template_license=self.license, instance=instance)
+        factories.InstanceLicenseFactory(template_license=self.license, instance=instance)
+        factories.InstanceLicenseFactory(template_license=self.license)
+
+        response = self.client.get(_template_license_stats_url(), {'aggregate': 'project_group'})
+        # manager can see only licenses from his projects
+        self.assertEqual(len(response.data), 1)
+        project_group_licenses_count = filter(
+            lambda d: d['project_group'] == self.project_group.name, response.data)[0]['count']
+        self.assertEqual(project_group_licenses_count, instance.instance_licenses.count())
+
 
 class LicensePermissionsTest(helpers.PermissionsTest):
 
@@ -248,6 +267,10 @@ class LicensePermissionsTest(helpers.PermissionsTest):
         self.project.add_user(self.administrator, structure_models.ProjectRole.ADMINISTRATOR)
         self.owner = structure_factories.UserFactory(username='owner')
         self.customer.add_user(self.owner, structure_models.CustomerRole.OWNER)
+        self.group_manager = structure_factories.UserFactory()
+        self.project_group = structure_factories.ProjectGroupFactory()
+        self.project_group.projects.add(self.project)
+        self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
 
     def get_urls_configs(self):
         yield {'url': _template_license_list_url(), 'method': 'GET'}
@@ -265,7 +288,7 @@ class LicensePermissionsTest(helpers.PermissionsTest):
         Returns list of users which can access given url with given method
         """
         if url == _template_license_stats_url():
-            return [self.staff, self.owner, self.manager, self.administrator]
+            return [self.staff, self.owner, self.manager, self.group_manager, self.administrator]
         return [self.staff]
 
     def get_users_without_permissions(self, url, method):
@@ -274,4 +297,4 @@ class LicensePermissionsTest(helpers.PermissionsTest):
         """
         if url == _template_license_stats_url():
             return []
-        return [self.owner, self.manager, self.administrator]
+        return [self.owner, self.manager, self.group_manager, self.administrator]
