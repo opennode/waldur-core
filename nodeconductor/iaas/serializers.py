@@ -193,7 +193,8 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
 class SshKeySerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = core_models.SshPublicKey
-        fields = ('url', 'uuid', 'name', 'public_key',)
+        fields = ('url', 'uuid', 'name', 'public_key', 'fingerprint')
+        read_only_fields = ('fingerprint',)
         lookup_field = 'uuid'
 
 

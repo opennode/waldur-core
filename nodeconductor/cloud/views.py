@@ -1,5 +1,8 @@
-from django.shortcuts import get_object_or_404
+from __future__ import unicode_literals
 
+import logging
+
+from django.shortcuts import get_object_or_404
 from rest_framework import exceptions
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
@@ -11,6 +14,9 @@ from nodeconductor.cloud import models, serializers, tasks
 from nodeconductor.core import viewsets, mixins
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import models as structure_models
+
+
+logger = logging.getLogger(__name__)
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -50,6 +56,16 @@ class CloudViewSet(viewsets.ModelViewSet):
         super(CloudViewSet, self).pre_save(cloud)
         self._check_permission(cloud)
 
+    def post_save(self, obj, created=False):
+        if created:
+            tasks.push_cloud_account.delay(obj.uuid)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return serializers.CloudCreateSerializer
+
+        return super(CloudViewSet, self).get_serializer_class()
+
     @action()
     def sync(self, request, uuid):
         """
@@ -75,9 +91,9 @@ class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
     filter_backends = (structure_filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
 
-    def post_save(self, membership, created):
+    def post_save(self, obj, created=False):
         if created:
-            tasks.create_backend_membership.delay(membership)
+            tasks.initial_push_cloud_membership.delay(obj.pk)
 
 
 class SecurityGroupViewSet(viewsets.ReadOnlyModelViewSet):
