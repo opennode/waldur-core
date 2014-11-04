@@ -341,7 +341,7 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
             aggregate_field = 'template_license__name'
 
         queryset = filters.filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
-        queryset = queryset.values(aggregate_field).annotate(count=django_models.Count('id'))
+        queryset = queryset.values(aggregate_field).annotate(count=django_models.Count('id', distinct=True))
 
         # This hack can be removed when https://code.djangoproject.com/ticket/16735 will be closed
         for d in queryset:
