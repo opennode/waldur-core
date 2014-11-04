@@ -3,8 +3,10 @@ from django.core.exceptions import ValidationError
 from django.http import Http404
 
 from nodeconductor.cloud import models as cloud_models
+from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas.tests import factories
+from nodeconductor.cloud import models as cloud_models
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -21,7 +23,7 @@ class InstanceCreateSerializerTest(TestCase):
         self.serializer.validate_security_groups(attrs, attr_name)
         self.assertEqual(len(attrs), 0)
         # all ok:
-        attrs = {'security_groups': [{'name': cloud_models.SecurityGroups.groups_names[0]}]}
+        attrs = {'security_groups': [{'name': cloud_factories.SecurityGroupFactory().name}]}
         self.serializer.validate_security_groups(attrs, attr_name)
         self.assertIn('security_groups', attrs)
 
@@ -35,14 +37,3 @@ class InstanceCreateSerializerTest(TestCase):
         self.serializer.validate_ssh_public_key(attrs, attr_name)
         self.assertIn(attr_name, attrs)
 
-
-class InstanceSecurityGroupSerializerTest(TestCase):
-
-    def setUp(self):
-        self.serializer = serializers.InstanceSecurityGroupSerializer()
-
-    def test_validate_name(self):
-        # if security groups is not in cloud security groups list - ValidationError have to be raised
-        attrs = {'security_groups': [{'name': 'some_random_name'}]}
-        attr_name = 'security_groups'
-        self.assertRaises(ValidationError, lambda: self.serializer.validate_name(attrs, attr_name))

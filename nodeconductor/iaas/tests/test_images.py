@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework import test
 from rest_framework.reverse import reverse
 
+from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories as iaas_factories
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.models import ProjectRole
@@ -27,8 +28,8 @@ class ImagesApiPermissionTest(test.APISimpleTestCase):
         admined_project.add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         managed_project.add_user(self.users['manager'], ProjectRole.MANAGER)
 
-        admined_project.clouds.add(self.images['admin'].cloud)
-        managed_project.clouds.add(self.images['manager'].cloud)
+        cloud_factories.CloudProjectMembershipFactory(cloud=self.images['admin'].cloud, project=admined_project)
+        cloud_factories.CloudProjectMembershipFactory(cloud=self.images['manager'].cloud, project=managed_project)
 
     # List filtration tests
     def test_anonymous_user_cannot_list_images(self):
@@ -55,7 +56,8 @@ class ImagesApiPermissionTest(test.APISimpleTestCase):
 
     def test_user_cannot_list_images_of_project_he_has_no_role_in(self):
         inaccessible_project = structure_factories.ProjectFactory()
-        inaccessible_project.clouds.add(self.images['inaccessible'].cloud)
+        cloud_factories.CloudProjectMembershipFactory(
+            cloud=self.images['inaccessible'].cloud, project=inaccessible_project)
 
         self._ensure_list_access_forbidden(self.users['no_role'], 'inaccessible')
 
@@ -82,7 +84,8 @@ class ImagesApiPermissionTest(test.APISimpleTestCase):
 
     def test_user_cannot_access_image_of_project_he_has_no_role_in(self):
         inaccessible_project = structure_factories.ProjectFactory()
-        inaccessible_project.clouds.add(self.images['inaccessible'].cloud)
+        cloud_factories.CloudProjectMembershipFactory(
+            cloud=self.images['inaccessible'].cloud, project=inaccessible_project)
 
         self._ensure_direct_access_forbidden(self.users['no_role'], 'inaccessible')
 

@@ -100,6 +100,13 @@ Response will contain a list of customer owners and their brief data:
         }
     ]
 
+Supported filters are:
+
+- ?customer - matching of a customer uuid
+- ?username - matching of a customer owner username
+- ?full_name - matching of a customer owner full name
+- ?native_name - matching of a customer owner native name
+
 To add a new user to the customer, POST a new relationship to **customer-permissions** endpoint:
 
 .. code-block:: http

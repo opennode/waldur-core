@@ -6,7 +6,6 @@ import factory.fuzzy
 
 from nodeconductor.iaas import models
 from nodeconductor.core import models as core_models
-from nodeconductor.cloud import models as cloud_models
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -65,13 +64,18 @@ class InstanceFactory(factory.DjangoModelFactory):
     hostname = factory.Sequence(lambda n: 'host%s' % n)
     template = factory.SubFactory(TemplateFactory)
     flavor = factory.SubFactory(cloud_factories.FlavorFactory)
-    project = factory.SubFactory(structure_factories.ProjectFactory,
-                                 cloud=factory.SelfAttribute('..flavor.cloud'))
     start_time = factory.LazyAttribute(lambda o: timezone.now())
-    ips = factory.LazyAttribute(lambda o: ','.join(
-                                '.'.join('%s' % randint(0, 255) for i in range(4))
-                                for j in range(3)))
+    external_ips = factory.LazyAttribute(lambda o: ','.join('.'.join(
+        '%s' % randint(0, 255) for _ in range(4)) for _ in range(3)))
+    internal_ips = factory.LazyAttribute(lambda o: ','.join(
+        '10.%s' % '.'.join('%s' % randint(0, 255) for _ in range(3)) for _ in range(3)))
     ssh_public_key = factory.SubFactory(SshPublicKeyFactory)
+
+    @factory.lazy_attribute
+    def project(self):
+        project = structure_factories.ProjectFactory()
+        cloud_factories.CloudProjectMembershipFactory(project=project, cloud=self.flavor.cloud)
+        return project
 
 
 class InstanceLicenseFactory(factory.DjangoModelFactory):
@@ -98,4 +102,4 @@ class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
         model = models.InstanceSecurityGroup
 
     instance = factory.SubFactory(InstanceFactory)
-    name = factory.Iterator(cloud_models.SecurityGroups.groups_names)
+    security_group = factory.SubFactory(cloud_factories.SecurityGroupFactory)

@@ -49,8 +49,10 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
         project2.add_user(self.users['manager'], ProjectRole.MANAGER)
 
         self.clouds = cloud_factories.CloudFactory.create_batch(4, customer=project1.customer)
-        project1.clouds.add(self.clouds[0], self.clouds[1])
-        project2.clouds.add(self.clouds[2], self.clouds[3])
+        cloud_factories.CloudProjectMembershipFactory(project=project1, cloud=self.clouds[0])
+        cloud_factories.CloudProjectMembershipFactory(project=project1, cloud=self.clouds[1])
+        cloud_factories.CloudProjectMembershipFactory(project=project2, cloud=self.clouds[2])
+        cloud_factories.CloudProjectMembershipFactory(project=project2, cloud=self.clouds[3])
 
         for t, c in (
                 (0, 0),

@@ -7,7 +7,7 @@ from rest_framework.exceptions import PermissionDenied
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.cloud.tests import factories
-from nodeconductor.cloud import views, models
+from nodeconductor.cloud import views
 
 
 class CloudViewSetTest(TestCase):
@@ -32,20 +32,3 @@ class CloudViewSetTest(TestCase):
         self.view.request = mocked_request
         response = self.view.sync(request=mocked_request, uuid=cloud.uuid)
         self.assertEqual(response.status_code, 200)
-
-    def test_get_serializer_context(self):
-        user = structure_factories.UserFactory()
-        mocked_request = type(str('MockedRequest'), (object,), {'user': user})
-        self.view.request = mocked_request
-        self.view.format_kwarg = None
-        self.assertEqual(self.view.get_serializer_context()['user'], user)
-
-
-class SecurityGroupsViewSetTest(TestCase):
-
-    def setUp(self):
-        self.view = views.SecurityGroupsViewSet()
-
-    def test_list(self):
-        response = self.view.list(None)
-        self.assertSequenceEqual(response.data, models.SecurityGroups.groups)

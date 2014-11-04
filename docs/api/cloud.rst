@@ -36,7 +36,8 @@ Example of a request:
 Link cloud to a project
 -----------------------
 In order to be able to provision instance using a cloud account, it must first be linked to a project. To do that,
-POST a connection between project and a cloud to **/api/project-cloud-memberships/**. For example,
+POST a connection between project and a cloud to **/api/project-cloud-memberships/** as stuff user or customer owner.
+For example,
 
 .. code-block:: http
 
@@ -51,5 +52,11 @@ POST a connection between project and a cloud to **/api/project-cloud-membership
         "cloud": "http://example.com/api/clouds/736038dc5cac47309111916eb6fe802d/",
     }
 
-To remove a link, issue DELETE to url of the corresponding connection.
+To remove a link, issue DELETE to url of the corresponding connection as stuff user or customer owner.
+
+Project-cloud connection list
+-----------------------------
+To get a list of connections between project and a cloud, run GET against **/api/project-cloud-memberships/**
+as authenticated user. Note that a user can only see connections of a project where a user has a role.
+
 

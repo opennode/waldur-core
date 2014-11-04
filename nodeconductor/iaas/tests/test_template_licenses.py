@@ -59,7 +59,7 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
         self.project_group.projects.add(self.project)
         # cloud and template
         self.cloud = cloud_factories.CloudFactory()
-        self.cloud.projects.add(self.project)
+        cloud_factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
         self.template = factories.TemplateFactory(os='OS')
         factories.ImageFactory(cloud=self.cloud, template=self.template)
         # license
@@ -234,7 +234,7 @@ class LicensePermissionsTest(helpers.PermissionsTest):
         self.project_group.projects.add(self.project)
         # cloud and template
         self.cloud = cloud_factories.CloudFactory()
-        self.cloud.projects.add(self.project)
+        cloud_factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
         template = factories.TemplateFactory()
         factories.ImageFactory(cloud=self.cloud, template=template)
         # license

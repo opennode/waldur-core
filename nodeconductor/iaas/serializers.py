@@ -1,9 +1,7 @@
-from django.core.exceptions import ValidationError
 from django.http import Http404
 from rest_framework import serializers
 
 from nodeconductor.backup import serializers as backup_serializers
-from nodeconductor.cloud import models as cloud_models
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
@@ -12,20 +10,23 @@ from nodeconductor.structure import serializers as structure_serializers
 
 class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
-    protocol = serializers.CharField(read_only=True)
-    from_port = serializers.CharField(read_only=True)
-    to_port = serializers.CharField(read_only=True)
-    ip_range = serializers.CharField(read_only=True)
+    security_group = serializers.HyperlinkedRelatedField(
+        source='security_group',
+        view_name='security_group-detail',
+        lookup_field='uuid',
+    )
+    name = serializers.Field(source='security_group.name')
+    protocol = serializers.Field(source='security_group.protocol')
+    from_port = serializers.Field(source='security_group.from_port')
+    to_port = serializers.Field(source='security_group.to_port')
+    ip_range = serializers.Field(source='security_group.ip_range')
+    netmask = serializers.Field(source='security_group.netmask')
 
     class Meta(object):
         model = models.InstanceSecurityGroup
-        fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range')
-
-    def validate_name(self, attrs, attr_name):
-        name = attrs[attr_name]
-        if not name in cloud_models.SecurityGroups.groups_names:
-            raise ValidationError('There is no group with name %s' % name)
-        return attrs
+        fields = ('security_group', 'name', 'protocol', 'from_port', 'to_port',
+                  'ip_range', 'netmask',)
+        lookup_field = 'uuid'
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,
@@ -80,13 +81,16 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
-    ips = IPsField(source='ips', read_only=True)
+    external_ips = IPsField(source='external_ips', read_only=True)
+    internal_ips = IPsField(source='internal_ips', read_only=True)
     ssh_public_key_name = serializers.Field(source='ssh_public_key.name')
     backups = backup_serializers.BackupSerializer()
     backup_schedules = backup_serializers.BackupScheduleSerializer()
 
     security_groups = InstanceSecurityGroupSerializer(read_only=True)
     instance_licenses = InstanceLicenseSerializer(read_only=True)
+    # special field for customer
+    customer_abbreviation = serializers.Field(source='project.customer.abbreviation')
 
     class Meta(object):
         model = models.Instance
@@ -96,11 +100,11 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'cloud', 'cloud_name',
             'flavor', 'flavor_name',
             'project', 'project_name',
-            'customer', 'customer_name',
+            'customer', 'customer_name', 'customer_abbreviation',
             'ssh_public_key', 'ssh_public_key_name',
             'project_groups',
             'security_groups',
-            'ips',
+            'external_ips', 'internal_ips',
             'state',
             'backups', 'backup_schedules',
             'instance_licenses'
@@ -167,7 +171,15 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Template
-        fields = ('url', 'uuid', 'template_licenses',)
+        fields = (
+            'url', 'uuid',
+            'name', 'description', 'icon_url',
+            'os',
+            'is_active',
+            'setup_fee',
+            'monthly_fee',
+            'template_licenses',
+        )
         lookup_field = 'uuid'
 
 
@@ -221,3 +233,34 @@ class ImageSerializer(RelatedResourcesFieldMixin,
 
     def get_related_paths(self):
         return 'cloud',
+
+
+# XXX: this serializer have to be removed after haystack implementation
+class ServiceSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
+
+    agreed_sla = serializers.SerializerMethodField('get_agreed_sla')
+    actual_sla = serializers.SerializerMethodField('get_actual_sla')
+    service_type = serializers.SerializerMethodField('get_service_type')
+    project_groups = structure_serializers.BasicProjectGroupSerializer(
+        source='project.project_groups', many=True, read_only=True)
+    name = serializers.Field(source="hostname")
+
+    class Meta(object):
+        model = models.Instance
+        fields = (
+            'url', 'project_name', 'name', 'project_groups', 'agreed_sla', 'actual_sla',
+        )
+        view_name = 'service-detail'
+        lookup_field = 'uuid'
+
+    def get_related_paths(self):
+        return 'project',
+
+    def get_agreed_sla(self, obj):
+        return 100
+
+    def get_actual_sla(self, obj):
+        return 97
+
+    def get_service_type(self, obj):
+        return 'IaaS'

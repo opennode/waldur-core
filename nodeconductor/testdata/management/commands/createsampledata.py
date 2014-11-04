@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.cloud.models import Cloud, CloudProjectMembership
+from nodeconductor.cloud.models import Cloud, CloudProjectMembership, SecurityGroup
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
 from nodeconductor.structure.models import *
@@ -309,7 +309,28 @@ Other use cases are covered with random data.
             architecture=1,
             description='A backup image of WinXP',
         )
-        return cloud
+
+        # add security groups
+        security_group1 = SecurityGroup.objects.create(
+            name=random_string(5, 10),
+            description='Openstack security group',
+            protocol='tcp',
+            from_port=22,
+            to_port=22,
+            ip_range='10.2.6.%d' % random.randint(0, 255),
+            netmask=24
+        )
+
+        security_group2 = SecurityGroup.objects.create(
+            name=random_string(5, 10),
+            protocol='udp',
+            from_port=22,
+            to_port=22,
+            ip_range='10.2.3.%d' % random.randint(0, 255),
+            netmask=24
+        )
+        
+        return cloud, (security_group1, security_group2)
 
     def create_customer(self):
         customer_name = 'Customer %s' % random_string(3, 7)
@@ -326,15 +347,17 @@ Other use cases are covered with random data.
             self.create_project(customer),
         ]
 
-        cloud = self.create_cloud(customer)
+        cloud, security_groups = self.create_cloud(customer)
 
         # Use Case 5: User has roles in several projects of the same customer
         user1 = self.create_user()
         projects[0].add_user(user1, ProjectRole.MANAGER)
         projects[1].add_user(user1, ProjectRole.ADMINISTRATOR)
 
-        self.create_instance(user1, projects[0], cloud.flavors.all()[0], cloud.images.filter(template__isnull=False)[0].template)
-        self.create_instance(user1, projects[1], cloud.flavors.all()[1], cloud.images.filter(template__isnull=False)[1].template)
+        self.create_instance(user1, projects[0], cloud.flavors.all()[0], cloud.images.filter(
+            template__isnull=False)[0].template, security_groups[0])
+        self.create_instance(user1, projects[1], cloud.flavors.all()[1], cloud.images.filter(
+            template__isnull=False)[1].template, security_groups[1])
 
         # Use Case 6: User owns a customer
         user2 = self.create_user()
@@ -374,7 +397,7 @@ Other use cases are covered with random data.
 
         # Adding quota to project:
         print 'Creating quota for project %s' % project
-        project.quota = ResourceQuota.objects.create(vcpu=2, ram=2, storage=10, backup=20)
+        project.quota = ResourceQuota.objects.create(vcpu=2, ram=2, storage=10, max_instances=10)
         project.save()
 
         return project
@@ -398,8 +421,9 @@ Other use cases are covered with random data.
         user.save()
         return user
 
-    def create_instance(self, user, project, flavor, template):
-        ips = ','.join('.'.join('%s' % random.randint(0, 255) for i in range(4)) for j in range(3))
+    def create_instance(self, user, project, flavor, template, security_group):
+        internal_ips = ','.join('10.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3)) for _ in range(3))
+        external_ips = ','.join('.'.join('%s' % random.randint(0, 255) for _ in range(4)) for _ in range(3))
         ssh_public_key = SshPublicKey.objects.create(
             user=user,
             name="public key",
@@ -415,8 +439,10 @@ Other use cases are covered with random data.
             project=project,
             flavor=flavor,
             template=template,
-            ips=ips,
+            internal_ips=internal_ips,
+            external_ips=external_ips,
             start_time=timezone.now(),
             ssh_public_key=ssh_public_key,
         )
-        InstanceSecurityGroup.objects.create(name='test security group', instance=instance)
+
+        InstanceSecurityGroup.objects.create(instance=instance, security_group=security_group)

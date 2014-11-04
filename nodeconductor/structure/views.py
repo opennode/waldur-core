@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.contrib import auth
 from django.db.models.query_utils import Q
 import django_filters
+from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import viewsets as rf_viewsets
@@ -22,18 +23,7 @@ User = auth.get_user_model()
 
 class CustomerViewSet(viewsets.ModelViewSet):
     """List of customers that are accessible by this user.
-
-    TODO: Customer definition.
-
-    Customers are connected to users through roles, whereas user may have role "customer owner". Each customer may have multiple owners, and each user may own multiple customers.
-
-    Staff members can list all available customers and create new customers.
-
-    Customer owners can list all customers they own. Customer owners can also create new customers.
-
-    Project administrators can list all the customers that own any of the projects they are administrators in.
-
-    Project managers can list all the customers that own any of the projects they are managers in.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#customer-management
     """
 
     queryset = models.Customer.objects.all()
@@ -55,22 +45,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
 class ProjectViewSet(viewsets.ModelViewSet):
     """List of projects that are accessible by this user.
-
-    TODO: Project definition.
-
-    Projects are connected to customers, whereas the project may belong to one customer only, and the customer may have multiple projects.
-
-    Projects are connected to project groups, whereas the project may belong to multiple project groups, and the project group may contain multiple projects.
-
-    Projects are connected to clouds, whereas the project may contain multiple clouds, and the cloud may belong to multiple projects.
-
-    Staff members can list all available projects of any customer and create new projects.
-
-    Customer owners can list all projects that belong to any of the customers they own. Customer owners can also create projects for the customers they own.
-
-    Project administrators can list all the projects they are administrators in.
-
-    Project managers can list all the projects they are managers in.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#project-management
     """
 
     queryset = models.Project.objects.all()
@@ -125,10 +100,7 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
     """List of project groups members that are accessible by this user.
-
-    Project group membership expresses projects' links to project group.
-
-    Project group membership can be viewed and modified by customer owners and staff users.
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#managing-project-roles
     """
 
     queryset = models.ProjectGroup.projects.through.objects.all()
@@ -271,6 +243,30 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
         raise PermissionDenied()
 
 
+class CustomerPermissionFilter(django_filters.FilterSet):
+    customer = django_filters.CharFilter(
+        name='group__customerrole__customer__uuid',
+    )
+    username = django_filters.CharFilter(
+        name='user__username',
+    )
+    full_name = django_filters.CharFilter(
+        name='user__full_name',
+    )
+    native_name = django_filters.CharFilter(
+        name='user__native_name',
+    )
+
+    class Meta(object):
+        model = User.groups.through
+        fields = [
+            'customer',
+            'username',
+            'full_name',
+            'native_name',
+        ]
+
+
 class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                                 rf_mixins.RetrieveModelMixin,
                                 rf_mixins.DestroyModelMixin,
@@ -278,9 +274,10 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                                 rf_viewsets.GenericViewSet):
     model = User.groups.through
     serializer_class = serializers.CustomerPermissionSerializer
-    filter_backends = ()
+    filter_backends = (rf_filter.DjangoFilterBackend,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
+    filter_class = CustomerPermissionFilter
 
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
@@ -291,12 +288,29 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
         # TODO: Test for it!
         if not self.request.user.is_staff:
             queryset = queryset.filter(
-                group__customerrole__customer__roles__permission_group__user=self.request.user,
-                group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER,
+                Q(group__customerrole__customer__roles__permission_group__user=self.request.user,
+                  group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
+                |
+                Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user)
             ).distinct()
 
         return queryset
 
+    def pre_save(self, obj):
+        super(CustomerPermissionViewSet, self).pre_save(obj)
+        user = self.request.user
+        customer = obj.group.customerrole.customer
+
+        if user.is_staff:
+            return
+
+        # check for the user role.
+        is_customer_owner = customer.roles.filter(
+            permission_group__user=user, role_type=CustomerRole.OWNER).exists()
+        if is_customer_owner:
+            return
+
+        raise PermissionDenied()
 
 # XXX: This should be put to models
 filters.set_permissions_for_model(

@@ -18,5 +18,13 @@ PERMISSION_LOGICS = (
 
         any_permission=True,
     )),
+    ('cloud.CloudProjectMembership', FilteredCollaboratorsPermissionLogic(
+        collaborators_query='cloud__customer__roles__permission_group__user',
+        collaborators_filter={
+            'cloud__customer__roles__role_type': CustomerRole.OWNER,
+        },
+
+        any_permission=True,
+    )),
     ('cloud.Flavor', StaffPermissionLogic(any_permission=True)),
 )

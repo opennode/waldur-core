@@ -1,3 +1,19 @@
+VM instances are launched in clouds, whereas the instance may belong to one cloud only, and the cloud may have
+multiple VM instances.
+
+VM instance may be in one of the following states:
+
+* creating
+* created
+* starting
+* started
+* stopping
+* stopped
+* restarting
+* deleting
+* deleted
+* erred
+
 Instance list
 -------------
 
@@ -15,6 +31,13 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - project
 - project_group
 
+Instance permissions
+--------------------
+
+- Staff members can list all available VM instances in any cloud.
+- Customer owners can list all VM instances in all the clouds that belong to any of the customers they own.
+- Project administrators can list all VM instances, create new instances and start/stop/restart instances in all the clouds that are connected to any of the projects they are administrators in.
+- Project managers can list all VM instances in all the clouds that are connected to any of the projects they are managers in.
 
 Instance status
 ---------------
@@ -42,6 +65,8 @@ To create a instance, client must define:
 - link to the project;
 - link to user's public key (it must belong to a user, who will be able to log in to the instance);
 - security_groups (optional).
+- internal ips (optional);
+- external ips (optional);
 
 Example of a valid request:
 
@@ -60,7 +85,17 @@ Example of a valid request:
         "flavor": "http://example.com/api/flavors/c3c546b92845431188636d8f97df223c/",
         "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
         "ssh_public_key": "http://example.com/api/keys/6fbd6b24246f4fb38715c29bafa2e5e7/",
-        "security_groups": [{"name": "security group name 1"}, {"name": security group name 2}]
+        "internal_ips": "10.242.22.8,172.18.216.75,192.168.162.2",
+        "external ips": "131.107.140.29,216.21.127.62,210.143.155.57",
+        "security_groups": {
+            "url": "http://example.com/api/security-groups/16c55dad9b3048db8dd60e89bd4d85bc/",
+            "name": "global_http",
+            "protocol": "tcp",
+            "from_port": 80,
+            "to_port": 80,
+            "ip_range": "0.0.0.0",
+            "netmask": 0
+        },
     }
 
 Stopping/starting an instance

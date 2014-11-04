@@ -1,5 +1,5 @@
 Project list
--------------
+------------
 
 To get a list of projects, run GET against */api/projects/* as authenticated user. Note that a user can
 only see connected projects:
@@ -10,8 +10,19 @@ only see connected projects:
 An optional filter **?can_manage** is supported to return a list of projects where current user is manager or a customer
 owner.
 
+Project permissions
+-------------------
+
+- Projects are connected to customers, whereas the project may belong to one customer only, and the customer may have multiple projects.
+- Projects are connected to project groups, whereas the project may belong to multiple project groups, and the project group may contain multiple projects.
+- Projects are connected to clouds, whereas the project may contain multiple clouds, and the cloud may belong to multiple projects.
+- Staff members can list all available projects of any customer and create new projects.
+- Customer owners can list all projects that belong to any of the customers they own. Customer owners can also create projects for the customers they own.
+- Project administrators can list all the projects they are administrators in.
+- Project managers can list all the projects they are managers in.
+
 Create a new project
----------------------
+--------------------
 
 A new project can be created by users with staff privilege (is_staff=True) or customer owners.
 Project resource quota is optional. Example of a valid request:
@@ -30,14 +41,14 @@ Project resource quota is optional. Example of a valid request:
         "resource_quota": {
                 "vcpu": 2,
                 "ram": 2.0,
-                "storage": 36.15540199549969,
-                "backup": 113.5527366632655
+                "storage": 36.15,
+                "max_instances": 11
             },
     }
 
 
 Deletion of a project
-----------------------
+---------------------
 
 Deletion of a project is done through sending a DELETE request to the project instance URI.
 Valid request example (token is user specific):
@@ -52,8 +63,12 @@ Valid request example (token is user specific):
 Managing project roles
 ----------------------
 
+Project group membership expresses projects' links to project group.
+
 Each project has two associated user groups that represent project managers and administrators. The link is maintained
 through **api/project-permissions/** endpoint.
+
+Note that project group membership can be viewed and modified only by customer owners and staff users.
 
 To list all visible links, run a GET query against a list.
 
@@ -85,8 +100,8 @@ Response will contain a list of project users and their brief data:
             "resource_quota": {
                 "vcpu": 2,
                 "ram": 2.0,
-                "storage": 36.15540199549969,
-                "backup": 113.5527366632655
+                "storage": 36.15,
+                "max_instances": 11
             },
         },
         {
@@ -98,10 +113,10 @@ Response will contain a list of project users and their brief data:
             "user_full_name": "",
             "user_native_name": ""
             "resource_quota": {
-                "vcpu": 4,
-                "ram": 4.0,
-                "storage": 19.58190256910468,
-                "backup": 144.89305168268402
+                "vcpu": 2,
+                "ram": 2.0,
+                "storage": 36.15,
+                "max_instances": 11
             },
         }
     ]

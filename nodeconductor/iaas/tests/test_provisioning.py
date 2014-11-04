@@ -5,10 +5,8 @@ from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.cloud import models as cloud_models
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
-from nodeconductor.iaas import models
 from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure import models as structure_models
@@ -328,7 +326,8 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.template = factories.TemplateFactory()
         self.flavor = cloud_factories.FlavorFactory(cloud=cloud)
-        self.project = structure_factories.ProjectFactory(cloud=cloud)
+        self.project = structure_factories.ProjectFactory()
+        cloud_factories.CloudProjectMembershipFactory(cloud=cloud, project=self.project)
         self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
@@ -376,8 +375,8 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         data = self.get_valid_data()
 
         another_flavor = cloud_factories.FlavorFactory()
-        another_project = structure_factories.ProjectFactory(
-            cloud=another_flavor.cloud)
+        another_project = structure_factories.ProjectFactory()
+        cloud_factories.CloudProjectMembershipFactory(project=another_project, cloud=another_flavor.cloud)
 
         another_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
@@ -447,23 +446,41 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertDictContainsSubset({'volume_sizes': ['Enter a whole number.']},
                                       response.data)
 
-    # instance ips field tests
-    def test_instance_factory_generates_valid_ips_field(self):
+    # instance external and internal ips fields tests
+    def test_instance_factory_generates_valid_internal_ips_field(self):
         instance = factories.InstanceFactory()
 
-        ips = instance.ips
+        internal_ips = instance.internal_ips
 
-        self.assertTrue(ips_regex.match(ips))
+        self.assertTrue(ips_regex.match(internal_ips))
 
-    def test_instance_api_contains_valid_ips_field(self):
+    def test_instance_factory_generates_valid_external_ips_field(self):
+        instance = factories.InstanceFactory()
+
+        external_ips = instance.internal_ips
+
+        self.assertTrue(ips_regex.match(external_ips))
+
+    def test_instance_api_contains_valid_external_ips_field(self):
         instance = factories.InstanceFactory()
         instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         response = self.client.get(self._get_instance_url(instance))
 
-        ips = response.data['ips']
+        external_ips = response.data['external_ips']
 
-        for ip in ips:
+        for ip in external_ips:
+            self.assertTrue(ips_regex.match(ip))
+
+    def test_instance_api_contains_valid_internal_ips_field(self):
+        instance = factories.InstanceFactory()
+        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        response = self.client.get(self._get_instance_url(instance))
+
+        internal_ips = response.data['internal_ips']
+
+        for ip in internal_ips:
             self.assertTrue(ips_regex.match(ip))
 
     def test_instance_licenses_added_on_instance_creation(self):
@@ -532,6 +549,10 @@ def _ssh_public_key_url(key):
     return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': key.uuid})
 
 
+def _security_group_url(group):
+    return 'http://testserver' + reverse('security_group-detail', kwargs={'uuid': group.uuid})
+
+
 def _instance_data(instance=None):
     if instance is None:
         instance = factories.InstanceFactory()
@@ -548,64 +569,66 @@ def _instance_data(instance=None):
 class InstanceSecurityGroupsTest(test.APISimpleTestCase):
 
     def setUp(self):
-        cloud_models.SecurityGroups.groups = [
-            {
-                "name": "test security group1",
-                "description": "test security group1 description",
-                "protocol": "tcp",
-                "from_port": 1,
-                "to_port": 65535,
-                "ip_range": "0.0.0.0/0"
-            },
-            {
-                "name": "test security group2",
-                "description": "test security group2 description",
-                "protocol": "udp",
-                "from_port": 1,
-                "to_port": 65535,
-                "ip_range": "0.0.0.0/0"
-            },
-        ]
-        cloud_models.SecurityGroups.groups_names = [g['name'] for g in cloud_models.SecurityGroups.groups]
         self.user = structure_factories.UserFactory.create()
+        self.client.force_authenticate(self.user)
+
         self.instance = factories.InstanceFactory()
         self.instance.ssh_public_key.user = self.user
         self.instance.ssh_public_key.save()
         self.instance.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
-        self.client.force_authenticate(self.user)
+
+        self.instance_security_groups = factories.InstanceSecurityGroupFactory.create_batch(2, instance=self.instance)
+        self.cloud_security_groups = [g.security_group for g in self.instance_security_groups]
 
     def test_groups_list_in_instance_response(self):
-        security_groups = [
-            factories.InstanceSecurityGroupFactory(instance=self.instance, name=g['name'])
-            for g in cloud_models.SecurityGroups.groups]
-
         response = self.client.get(_instance_url(self.instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range')
+
+        fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range', 'netmask')
         for field in fields:
-            expected_security_groups = [getattr(g, field) for g in security_groups]
+            expected_security_groups = [getattr(g, field) for g in self.cloud_security_groups]
             self.assertItemsEqual([g[field] for g in response.data['security_groups']], expected_security_groups)
 
     def test_add_instance_with_security_groups(self):
         data = _instance_data(self.instance)
-        data['security_groups'] = [{'name': name} for name in cloud_models.SecurityGroups.groups_names]
+        data['security_groups'] = [self._get_valid_paylpad(g.security_group)
+                                   for g in self.instance_security_groups]
 
         response = self.client.post(_instance_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        instance = models.Instance.objects.get(hostname=data['hostname'])
-        self.assertItemsEqual(
-            [g.name for g in instance.security_groups.all()], cloud_models.SecurityGroups.groups_names)
 
-    def test_change_instance_security_groups(self):
-        data = {'security_groups': [{'name': name} for name in cloud_models.SecurityGroups.groups_names]}
+    def test_change_instance_security_groups_single_field(self):
+        data = {'security_groups': [self._get_valid_paylpad(g.security_group)
+                                    for g in self.instance_security_groups]}
 
         response = self.client.patch(_instance_url(self.instance), data=data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertItemsEqual(
-            [g.name for g in self.instance.security_groups.all()], cloud_models.SecurityGroups.groups_names)
+
+    def test_change_instance_security_groups(self):
+        response = self.client.get(_instance_url(self.instance))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = _instance_data(self.instance)
+        data['security_groups'] = [self._get_valid_paylpad(g.security_group)
+                                   for g in self.instance_security_groups]
+
+        response = self.client.put(_instance_url(self.instance), data=data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_security_groups_is_not_required(self):
         data = _instance_data(self.instance)
         self.assertNotIn('security_groups', data)
         response = self.client.post(_instance_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    # Helper methods
+    def _get_valid_paylpad(self, resource):
+        return {
+            'security_group': _security_group_url(resource),
+            'name': resource.name,
+            'protocol': resource.protocol,
+            'from_port': resource.from_port,
+            'to_port': resource.to_port,
+            'ip_range': resource.ip_range,
+            'netmask': resource.netmask,
+        }

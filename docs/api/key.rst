@@ -7,6 +7,14 @@ Note that user can see only keys that he owns.
 - Keys are injected to instances during creation. The owner of the key can log in to that instance.
 - Project administrators can select what key will be injected to instance during instance provisioning.
 
+Key permissions
+---------------
+
+- SSH public keys are injected to VM instances during creation, so that holder of corresponding SSH private key can log in to that instance.
+- SSH public keys are connected to user accounts, whereas the key may belong to one user only, and the user may have multiple SSH keys.
+- Users can only access SSH keys connected to their accounts.
+- Project administrators can select what SSH key will be injected to VM instance during instance provisioning.
+
 Create a new key
 ----------------
 

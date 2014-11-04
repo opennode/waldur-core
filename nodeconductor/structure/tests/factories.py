@@ -6,6 +6,8 @@ import django.contrib.auth
 import factory
 import factory.fuzzy
 
+from rest_framework.reverse import reverse
+
 from nodeconductor.structure import models
 
 
@@ -16,8 +18,8 @@ class UserFactory(factory.DjangoModelFactory):
     username = factory.Sequence(lambda n: 'john%s' % n)
     civil_number = factory.Sequence(lambda n: '%08d' % n)
     email = factory.LazyAttribute(lambda o: '%s@example.org' % o.username)
-    full_name = 'John Doe'
-    native_name = 'Jöhn Dõe'
+    full_name = factory.Sequence(lambda n: 'John Doe%s' % n)
+    native_name = factory.Sequence(lambda n: 'Jöhn Dõe%s' % n)
     is_staff = False
     is_active = True
     is_superuser = False
@@ -31,6 +33,12 @@ class UserFactory(factory.DjangoModelFactory):
             for customer in extracted:
                 self.customers.add(customer)
 
+    @classmethod
+    def get_url(cls, user=None):
+        if user is None:
+            user = UserFactory()
+        return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})
+
 
 class CustomerFactory(factory.DjangoModelFactory):
     class Meta(object):
@@ -40,6 +48,12 @@ class CustomerFactory(factory.DjangoModelFactory):
     abbreviation = factory.LazyAttribute(lambda o: o.name[:4])
     contact_details = factory.Sequence(lambda n: 'contacts %s' % n)
 
+    @classmethod
+    def get_url(cls, customer=None):
+        if customer is None:
+            customer = CustomerFactory()
+        return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
+
 
 class ProjectFactory(factory.DjangoModelFactory):
     class Meta(object):
@@ -47,17 +61,6 @@ class ProjectFactory(factory.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: 'Proj%s' % n)
     customer = factory.SubFactory(CustomerFactory)
-
-    @factory.post_generation
-    def cloud(self, create, extracted, **kwargs):
-        if create and extracted:
-            self.clouds.add(extracted)
-
-    @factory.post_generation
-    def clouds(self, create, extracted, **kwargs):
-        if create and extracted:
-            for cloud in extracted:
-                self.clouds.add(cloud)
 
 
 class ProjectGroupFactory(factory.DjangoModelFactory):
@@ -75,4 +78,4 @@ class ResourceQuotaFactory(factory.DjangoModelFactory):
     vcpu = factory.Iterator([1, 2, 3, 4])
     ram = factory.Iterator([1.0, 2.0, 3.0, 4.0])
     storage = factory.fuzzy.FuzzyFloat(10.0, 50.0)
-    backup = factory.fuzzy.FuzzyFloat(20.0, 150.0)
+    max_instances = factory.Iterator([1, 2, 3, 4])

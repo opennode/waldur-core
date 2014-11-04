@@ -63,12 +63,12 @@ class Template(core_models.UuidMixin,
     name = models.CharField(max_length=100, unique=True)
     os = models.CharField(max_length=100)
     is_active = models.BooleanField(default=False)
-    setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
+    setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                     validators=[MinValueValidator(Decimal('0.1')),
-                                                MaxValueValidator(Decimal('1000.0'))])
-    monthly_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
+                                                MaxValueValidator(Decimal('100000.0'))])
+    monthly_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                       validators=[MinValueValidator(Decimal('0.1')),
-                                                  MaxValueValidator(Decimal('1000.0'))])
+                                                  MaxValueValidator(Decimal('100000.0'))])
 
     def __str__(self):
         return self.name
@@ -138,7 +138,8 @@ class Instance(core_models.UuidMixin,
     template = models.ForeignKey(Template, related_name='+')
     flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
-    ips = fields.IPsField(max_length=256)
+    external_ips = fields.IPsField(max_length=256)
+    internal_ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
     ssh_public_key = models.ForeignKey(core_models.SshPublicKey, related_name='instances')
 
@@ -242,6 +243,9 @@ class Instance(core_models.UuidMixin,
                     f.write('Deleting: %s' % str(self))
 
         return FakeStrategy
+
+    def get_instance_security_groups(self):
+        return InstanceSecurityGroup.objects.filter(instance=self)
 
     def _init_instance_licenses(self):
         """
@@ -359,26 +363,4 @@ class InstanceSecurityGroup(core_models.UuidMixin, models.Model):
         project_path = 'instance__project'
 
     instance = models.ForeignKey(Instance, related_name='security_groups')
-    name = models.CharField(max_length=127)
-
-    @property
-    def _cloud_security_group(self):
-        if not hasattr(self, '_security_group'):
-            self._security_group = [g for g in cloud_models.SecurityGroups.groups if g['name'] == self.name][0]
-        return self._security_group
-
-    @property
-    def protocol(self):
-        return self._cloud_security_group['protocol']
-
-    @property
-    def from_port(self):
-        return self._cloud_security_group['from_port']
-
-    @property
-    def to_port(self):
-        return self._cloud_security_group['to_port']
-
-    @property
-    def ip_range(self):
-        return self._cloud_security_group['ip_range']
+    security_group = models.ForeignKey(cloud_models.SecurityGroup, related_name='instance_groups')
