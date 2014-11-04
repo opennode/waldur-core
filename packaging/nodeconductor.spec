@@ -35,6 +35,7 @@ Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework <
 Requires: python-django-rest-framework-extensions = 0.2.6
 Requires: python-django-saml2 >= 0.11.0, python-django-saml2 < 0.12
 Requires: python-django-uuidfield = 0.5.0
+Requires: python-keystoneclient >= 0.9
 Requires: python-logan = 0.5.9.1
 Requires: python-redis = 2.10.3
 Requires: python-south = 0.8.4
