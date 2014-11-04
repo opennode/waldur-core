@@ -36,7 +36,7 @@ class OpenStackBackend(object):
 
             membership.username = username
             membership.password = password
-            membership.tenant_uuid = tenant.id
+            membership.tenant_id = tenant.id
 
             self._ensure_user_is_tenant_admin(membership.username, tenant, keystone)
 
@@ -109,7 +109,7 @@ class OpenStackBackend(object):
             auth_url=membership.cloud.auth_url,
             username=membership.username,
             password=membership.password,
-            tenant_id=membership.tenant_uuid.hex,
+            tenant_id=membership.tenant_id,
         )
         sess = session.Session(auth=auth_plugin)
         return nova_client.Client(session=sess)

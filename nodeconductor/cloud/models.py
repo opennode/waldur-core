@@ -105,6 +105,7 @@ def add_clouds_to_related_model(sender, fields, **kwargs):
     fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
 
 
+@python_2_unicode_compatible
 class CloudProjectMembership(SynchronizableMixin, models.Model):
     """
     This model represents many to many relationships between project and cloud
@@ -114,14 +115,20 @@ class CloudProjectMembership(SynchronizableMixin, models.Model):
     project = models.ForeignKey(structure_models.Project)
 
     # OpenStack backend specific fields
-    username = models.CharField(max_length=100)
-    password = models.CharField(max_length=100)
+    username = models.CharField(max_length=100, blank=True)
+    password = models.CharField(max_length=100, blank=True)
 
-    tenant_uuid = UUIDField(unique=True, null=True)
+    tenant_id = models.CharField(max_length=64, blank=True)
+
+    class Meta(object):
+        unique_together = ('cloud', 'tenant_id')
 
     class Permissions(object):
         customer_path = 'cloud__customer'
         project_path = 'project'
+
+    def __str__(self):
+        return '{0} | {1}'.format(self.cloud.name, self.project.name)
 
 
 @receiver(signals.post_save, sender=SshPublicKey)
