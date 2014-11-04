@@ -26,10 +26,10 @@ CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
 NODE_CONDUCTOR = {
     'OPENSTACK_CREDENTIALS': (
         {
-            'keystone_url': 'http://example.com:5000/v2',
+            'auth_url': 'http://example.com:5000/v2',
             'username': 'admin',
             'password': 'password',
-            'tenant': 'admin',
+            'tenant_name': 'admin',
         },
     ),
 }

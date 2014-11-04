@@ -26,20 +26,23 @@ class OpenStackBackend(object):
         # There's nothing to push for OpenStack
         pass
 
+    # CloudProjectMembership related methods
     def push_membership(self, membership):
-        # Fail fast if no corresponding OpenStack configured in settings
-        keystone = self.get_keystone_client(membership.cloud)
-
         try:
-            tenant = self._get_or_create_tenant(membership, keystone)
+            # Fail fast if no corresponding OpenStack configured in settings
+            credentials = self.get_credentials(membership.cloud.auth_url)
 
-            username, password = self._get_or_create_user(membership, keystone)
+            keystone = self.get_keystone_client(**credentials)
+
+            tenant = self.get_or_create_tenant(membership, keystone)
+
+            username, password = self.get_or_create_user(membership, keystone)
 
             membership.username = username
             membership.password = password
             membership.tenant_id = tenant.id
 
-            self._ensure_user_is_tenant_admin(membership.username, tenant, keystone)
+            self.ensure_user_is_tenant_admin(username, tenant, keystone)
 
             membership.save()
 
@@ -87,24 +90,17 @@ class OpenStackBackend(object):
         openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
 
         try:
-            return next(o for o in openstacks if o['keystone_url'] == keystone_url)
+            return next(o for o in openstacks if o['auth_url'] == keystone_url)
         except StopIteration:
             logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
             six.reraise(CloudBackendError, CloudBackendError())
 
-    def get_keystone_client(self, cloud):
-        credentials = self.get_credentials(cloud.auth_url)
-        try:
-            return keystone_client.Client(
-                username=credentials['username'],
-                password=credentials['password'],
-                tenant_name=credentials['tenant'],
-                auth_url=credentials['keystone_url'],
-            )
-        except keystone_exceptions.Unauthorized:
-            logger.exception('Failed to sign into keystone at endpoint %s using admin account',
-                             cloud.auth_url)
-            six.reraise(CloudBackendError, CloudBackendError())
+    def get_keystone_client(self, **credentials):
+        auth_plugin = v2.Password(**credentials)
+        sess = session.Session(auth=auth_plugin)
+        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+        sess.get_token()
+        return keystone_client.Client(session=sess)
 
     def get_nova_client(self, membership):
         auth_plugin = v2.Password(
@@ -114,26 +110,37 @@ class OpenStackBackend(object):
             tenant_id=membership.tenant_id,
         )
         sess = session.Session(auth=auth_plugin)
+        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+        sess.get_token()
         return nova_client.Client(session=sess)
 
-    def _get_or_create_user(self, membership, keystone):
+    def get_or_create_user(self, membership, keystone):
         # Try to sign in if credentials are already stored in membership
+        User = get_user_model()
+
         if membership.username:
-            logger.info('Signing in using stored membership credentials')
-            keystone_client.Client(
-                username=membership.username,
-                password=membership.password,
-                auth_url=membership.cloud.auth_url,
+            try:
+                logger.info('Signing in using stored membership credentials')
+                self.get_keystone_client(
+                    auth_url=membership.cloud.auth_url,
+                    username=membership.username,
+                    password=membership.password,
+                    # Tenant is not set here since we don't want to check for tenant membership here
+                )
+                logger.info('Successfully signed in, using existing user %s', membership.username)
+                return membership.username, membership.password
+            except keystone_exceptions.AuthorizationFailure:
+                logger.info('Failed to sign in, using existing user %s', membership.username)
+
+            username = membership.username
+        else:
+            username = '{0}-{1}'.format(
+                User.objects.make_random_password(),
+                membership.project.name,
             )
-            logger.info('Successfully logged in, using existing user %s', membership.username)
-            return membership.username, membership.password
 
         # Try to create user in keystone
-        username = '{0}-{1}'.format(
-            get_user_model().objects.make_random_password(),
-            membership.project.name,
-        )
-        password = get_user_model().objects.make_random_password()
+        password = User.objects.make_random_password()
 
         logger.info('Creating keystone user %s', username)
         keystone.users.create(
@@ -144,7 +151,7 @@ class OpenStackBackend(object):
         logger.info('Successfully created keystone user %s', username)
         return username, password
 
-    def _get_or_create_tenant(self, membership, keystone):
+    def get_or_create_tenant(self, membership, keystone):
         tenant_name = '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
 
         # First try to create a tenant
@@ -162,7 +169,7 @@ class OpenStackBackend(object):
         logger.info('Looking up existing tenant %s', tenant_name)
         return keystone.tenants.find(name=tenant_name)
 
-    def _ensure_user_is_tenant_admin(self, username, tenant, keystone):
+    def ensure_user_is_tenant_admin(self, username, tenant, keystone):
         logger.info('Assigning admin role to user %s within tenant %s',
                     username, tenant.name)
 

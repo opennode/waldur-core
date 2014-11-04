@@ -15,10 +15,10 @@ Therefore configuration might look like this:
     NODE_CONDUCTOR = {
         'OPENSTACK_CREDENTIALS': (
             {
-                'keystone_url': 'http://keystone.example.com:5000/v2',
+                'auth_url': 'http://keystone.example.com:5000/v2',
                 'username': 'node',
                 'password': 'conductor',
-                'tenant': 'admin',
+                'tenant_name': 'admin',
             },
         ),
     }
@@ -35,7 +35,7 @@ Available settings
 
       Each entry is a dictionary with the following keys:
 
-      keystone_url
+      auth_url
         Url of the Keystone endpoint including version. Note, that public endpoint is to be used,
         typically it is exposed on port 5000.
 
@@ -46,8 +46,8 @@ Available settings
       password
         Password of an admin account.
 
-      tenant
-        Administrative tenant. Typically this is set to 'admin'.
+      tenant_name
+        Name of administrative tenant. Typically this is set to 'admin'.
 
 
 

@@ -14,7 +14,7 @@ from django.db import models
 from django.db.models import signals
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
-from django.utils.translation import ugettext_lazy as _, ugettext_lazy
+from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMField, transition
 from rest_framework.authtoken.models import Token
 from uuidfield import UUIDField
