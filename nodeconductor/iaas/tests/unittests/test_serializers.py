@@ -26,14 +26,3 @@ class InstanceCreateSerializerTest(TestCase):
         attrs = {'security_groups': [{'name': cloud_factories.SecurityGroupFactory().name}]}
         self.serializer.validate_security_groups(attrs, attr_name)
         self.assertIn('security_groups', attrs)
-
-    def test_validate_ssh_public_key(self):
-        # wrong public key
-        attrs = {'ssh_public_key': factories.SshPublicKeyFactory()}
-        attr_name = 'ssh_public_key'
-        self.assertRaises(Http404, lambda: self.serializer.validate_ssh_public_key(attrs, attr_name))
-        # right public key
-        self.serializer.user = attrs['ssh_public_key'].user
-        self.serializer.validate_ssh_public_key(attrs, attr_name)
-        self.assertIn(attr_name, attrs)
-
