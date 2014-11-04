@@ -15,6 +15,16 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - project
 - project_group
 
+Soring is supported in ascending and descending order by specifying a field to an **?o=** parameter.
+
+- ?o=hostname - sort by hostname in ascending order
+- ?o=-hostname - sort by hostname in ascending order
+- ?o=state - sort by state in ascending order
+- ?o=-state - sort by state in ascending order
+- ?o=project__customer__name - sort by customer name in ascending order
+- ?o=-project__customer__name - sort by customer name in ascending order
+
+
 Instance permissions
 --------------------
 

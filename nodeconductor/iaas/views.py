@@ -60,7 +60,11 @@ class InstanceFilter(django_filters.FilterSet):
         ]
         order_by = [
             'hostname',
+            '-hostname',
             'state',
+            '-state',
+            'project__customer__name',
+            '-project__customer__name',
         ]
 
 
@@ -228,14 +232,6 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
 
 
 class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
-    """
-    List of operations with VM templates.
-
-    TODO: list supported operation types.
-
-    TODO: describe permissions for different user types.
-    """
-
     queryset = models.Purchase.objects.all()
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'
@@ -243,7 +239,10 @@ class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 
 class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
-    """TODO: add documentation.
+    """
+    List of VM Images for instantiation within a certain cloud.
+
+    TODO: add documentation.
 
     TODO: describe permissions for different user types.
     """
