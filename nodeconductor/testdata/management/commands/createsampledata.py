@@ -435,7 +435,7 @@ Other use cases are covered with random data.
         )
         print 'Creating instance for project %s' % project
         instance = Instance.objects.create(
-            hostname='host',
+            hostname='host %s' % random.randint(0, 255),
             project=project,
             flavor=flavor,
             template=template,
