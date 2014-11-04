@@ -89,21 +89,21 @@ def set_state(model_class, uuid_or_pk, transition):
         # There's nothing we can do here to save the state of an entity
         logger.error(
             'Could not %s %s with id %s. Instance has gone',
-            (logged_operation, entity_name, uuid_or_pk))
+            logged_operation, entity_name, uuid_or_pk)
 
         six.reraise(StateChangeError, StateChangeError())
     except DatabaseError:
         # Transaction failed to commit, most likely due to concurrent update
         logger.error(
             'Could not %s %s with id %s due to concurrent update',
-            (logged_operation, entity_name, uuid_or_pk))
+            logged_operation, entity_name, uuid_or_pk)
 
         six.reraise(StateChangeError, StateChangeError())
     except TransitionNotAllowed:
         # Leave the entity intact
         logger.error(
             'Could not %s %s with id %s, transition not allowed',
-            (logged_operation, entity_name, uuid_or_pk))
+            logged_operation, entity_name, uuid_or_pk)
         six.reraise(StateChangeError, StateChangeError())
 
     logger.info(
