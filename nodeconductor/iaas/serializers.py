@@ -40,11 +40,24 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
         fields = ('url', 'hostname', 'description',
                   'template', 'flavor', 'project', 'security_groups', 'ssh_public_key')
         lookup_field = 'uuid'
-        # TODO: Accept ip address count and volumes
 
     def __init__(self, *args, **kwargs):
         super(InstanceCreateSerializer, self).__init__(*args, **kwargs)
         self.user = kwargs['context']['user']
+
+    def get_fields(self):
+        fields = super(InstanceCreateSerializer, self).get_fields()
+
+        try:
+            request = self.context['view'].request
+            user = request.user
+        except (KeyError, AttributeError):
+            return fields
+
+        # TODO: Extract into a generic filter
+        fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(user=user)
+
+        return fields
 
     def get_filtered_field_names(self):
         return 'project', 'flavor'
@@ -52,12 +65,6 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
     def validate_security_groups(self, attrs, attr_name):
         if attr_name in attrs and attrs[attr_name] is None:
             del attrs[attr_name]
-        return attrs
-
-    def validate_ssh_public_key(self, attrs, attr_name):
-        key = attrs[attr_name]
-        if key.user != self.user:
-            raise Http404
         return attrs
 
 
@@ -109,7 +116,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'backups', 'backup_schedules',
             'instance_licenses'
         )
-
+        read_only_fields = ('ssh_public_key',)
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):

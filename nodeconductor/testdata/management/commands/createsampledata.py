@@ -354,6 +354,9 @@ Other use cases are covered with random data.
         projects[0].add_user(user1, ProjectRole.MANAGER)
         projects[1].add_user(user1, ProjectRole.ADMINISTRATOR)
 
+        # add cloud to both of the projects
+        CloudProjectMembership(cloud=cloud, project=projects[0])
+        CloudProjectMembership(cloud=cloud, project=projects[1])
         self.create_instance(user1, projects[0], cloud.flavors.all()[0], cloud.images.filter(
             template__isnull=False)[0].template, security_groups[0])
         self.create_instance(user1, projects[1], cloud.flavors.all()[1], cloud.images.filter(
