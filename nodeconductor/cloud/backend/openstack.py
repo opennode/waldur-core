@@ -10,6 +10,7 @@ from keystoneclient import exceptions as keystone_exceptions
 from keystoneclient import session
 from keystoneclient.auth.identity import v2
 from keystoneclient.v2_0 import client as keystone_client
+from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
 from nodeconductor.cloud.backend import CloudBackendError
@@ -48,28 +49,29 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, CloudBackendError())
 
     def push_ssh_public_key(self, membership, public_key):
-        # We want names to be more or less human readable in backend.
+        # We want names to be human readable in backend.
         # OpenStack only allows latin letters, digits, dashes, underscores and spaces
         # as key names, thus we mangle the original name.
         safe_name = re.sub(r'[^-a-zA-Z0-9 _]+', '_', public_key.name)
         key_name = '{0}-{1}'.format(public_key.uuid.hex, safe_name)
-        key_fingerprint = public_key.fingerprint
-
-        nova = self.get_nova_client(membership)
 
         try:
-            # OpenStack ignores project boundaries when dealing with keys,
-            # so the same key can be already there given it was propagated
-            # via a different project
-            logger.debug('Retrieving list of keys existing on backend')
-            published_keys = set((k.name, k.fingerprint) for k in nova.keypairs.list())
-            if (key_name, key_fingerprint) not in published_keys:
-                logger.info('Propagating ssh public key %s (%s) to backend', key_fingerprint, key_name)
-                nova.keypairs.create(name=key_name, public_key=public_key.public_key)
-            else:
-                logger.info('Not propagating ssh public key; key already exists on backend')
-        except keystone_exceptions.AuthorizationFailure:
-            logger.warning('Failed to propagate ssh public key; authorization failed', exc_info=1)
+            nova = self.get_nova_client(membership)
+
+            try:
+                # There's no way to edit existing key inplace,
+                # so try to delete existing key with the same name first.
+                nova.keypairs.delete(key_name)
+                logger.info('Deleted stale ssh public key %s from backend', key_name)
+            except nova_exceptions.NotFound:
+                # There was no stale key, it's ok
+                pass
+
+            logger.info('Propagating ssh public key %s to backend', key_name)
+            nova.keypairs.create(name=key_name, public_key=public_key.public_key)
+            logger.info('Successfully propagated ssh public key %s to backend', key_name)
+        except nova_exceptions.ClientException:
+            logger.exception('Failed to propagate ssh public key %s to backend', key_name)
             six.reraise(CloudBackendError, CloudBackendError())
 
     def pull_flavors(self, membership):
@@ -100,7 +102,7 @@ class OpenStackBackend(object):
                 auth_url=credentials['keystone_url'],
             )
         except keystone_exceptions.Unauthorized:
-            logger.exception('Failed to log into keystone at endpoint %s using admin account',
+            logger.exception('Failed to sign into keystone at endpoint %s using admin account',
                              cloud.auth_url)
             six.reraise(CloudBackendError, CloudBackendError())
 
