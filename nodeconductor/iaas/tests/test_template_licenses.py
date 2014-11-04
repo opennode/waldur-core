@@ -70,7 +70,6 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
         self.manager = structure_factories.UserFactory()
         self.project.add_user(self.manager, structure_models.ProjectRole.MANAGER)
         self.group_manager = structure_factories.UserFactory()
-        print self.group_manager
         self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
 
     def test_projects_in_license_response(self):

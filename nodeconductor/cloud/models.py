@@ -117,6 +117,7 @@ class CloudProjectMembership(models.Model):
     class Permissions(object):
         customer_path = 'cloud__customer'
         project_path = 'project'
+        project_group_path = 'project__project_groups'
 
     @transition(field=state, source=States.CREATING, target=States.READY)
     def _set_ready(self):
@@ -154,6 +155,7 @@ class Flavor(UuidMixin, models.Model):
     class Permissions(object):
         customer_path = 'cloud__projects__customer'
         project_path = 'cloud__projects'
+        project_group_path = 'cloud__projects__project_groups'
 
     name = models.CharField(max_length=100)
     cloud = models.ForeignKey(Cloud, related_name='flavors')
