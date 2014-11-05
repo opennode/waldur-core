@@ -5,13 +5,13 @@ import warnings
 
 from django.conf import settings
 from django.contrib.auth.models import (
-    AbstractBaseUser, PermissionsMixin, UserManager, SiteProfileNotAvailable, Permission)
-from django.contrib.contenttypes.models import ContentType
+    AbstractBaseUser, PermissionsMixin, UserManager, SiteProfileNotAvailable)
 from django.core import validators
 from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import send_mail
 from django.db import models
 from django.db.models import signals
+from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
@@ -122,34 +122,6 @@ class User(UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
         return self._profile_cache
 
 
-def create_auth_token(sender, instance=None, created=False, **kwargs):
-    if created:
-        Token.objects.create(user=instance)
-
-signals.post_save.connect(create_auth_token, sender=User)
-
-
-def create_user_group_permissions(sender, **kwargs):
-    """
-    Create permissions for the User.groups.through objects so that DjangoObjectPermissions could be applied.
-    """
-    if not sender.__name__ == 'nodeconductor.core.models':
-        return
-    content_type = ContentType.objects.get_for_model(User.groups.through)
-    Permission.objects.get_or_create(codename='delete_user_groups',
-                                     name='Can delete user groups',
-                                     content_type=content_type)
-    Permission.objects.get_or_create(codename='add_user_groups',
-                                     name='Can add user groups',
-                                     content_type=content_type)
-    Permission.objects.get_or_create(codename='change_user_groups',
-                                     name='Can change user groups',
-                                     content_type=content_type)
-
-
-signals.post_syncdb.connect(create_user_group_permissions)
-
-
 @python_2_unicode_compatible
 class SshPublicKey(UuidMixin, models.Model):
     """
@@ -244,3 +216,10 @@ class SynchronizableMixin(models.Model):
     @transition(field=state, source='*', target=SynchronizationStates.ERRED)
     def set_erred(self):
         pass
+
+
+# Signal handlers
+@receiver(signals.post_save, sender=User)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)

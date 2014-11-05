@@ -4,6 +4,7 @@ from django.contrib.auth.models import Group
 from django.db import models
 from django.db import transaction
 from django.db.models import signals
+from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
@@ -68,19 +69,6 @@ class CustomerRole(models.Model):
 
     def __str__(self):
         return self.get_role_type_display()
-
-
-def create_customer_roles(sender, instance, created, **kwargs):
-    if created:
-        with transaction.atomic():
-            owner_group = Group.objects.create(name='Role: {0} owner'.format(instance.uuid))
-
-            instance.roles.create(role_type=CustomerRole.OWNER, permission_group=owner_group)
-
-signals.post_save.connect(create_customer_roles,
-                          sender=Customer,
-                          weak=False,
-                          dispatch_uid='structure.customer_roles_bootstrap')
 
 
 @python_2_unicode_compatible
@@ -151,21 +139,6 @@ class Project(DescribableMixin, UuidMixin, models.Model):
         }
 
 
-def create_project_roles(sender, instance, created, **kwargs):
-    if created:
-        with transaction.atomic():
-            admin_group = Group.objects.create(name='Role: {0} admin'.format(instance.uuid))
-            mgr_group = Group.objects.create(name='Role: {0} mgr'.format(instance.uuid))
-
-            instance.roles.create(role_type=ProjectRole.ADMINISTRATOR, permission_group=admin_group)
-            instance.roles.create(role_type=ProjectRole.MANAGER, permission_group=mgr_group)
-
-signals.post_save.connect(create_project_roles,
-                          sender=Project,
-                          weak=False,
-                          dispatch_uid='structure.project_roles_bootstrap')
-
-
 @python_2_unicode_compatible
 class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
     """
@@ -192,3 +165,32 @@ class NetworkSegment(models.Model):
     netmask = models.PositiveIntegerField(null=False)
     vlan = models.PositiveIntegerField(null=False)
     project = models.ForeignKey(Project, related_name='segments')
+
+
+# Signal handlers
+@receiver(
+    signals.post_save,
+    sender=Project,
+    dispatch_uid='nodeconductor.structure.models.create_project_roles',
+)
+def create_project_roles(sender, instance, created, **kwargs):
+    if created:
+        with transaction.atomic():
+            admin_group = Group.objects.create(name='Role: {0} admin'.format(instance.uuid))
+            mgr_group = Group.objects.create(name='Role: {0} mgr'.format(instance.uuid))
+
+            instance.roles.create(role_type=ProjectRole.ADMINISTRATOR, permission_group=admin_group)
+            instance.roles.create(role_type=ProjectRole.MANAGER, permission_group=mgr_group)
+
+
+@receiver(
+    signals.post_save,
+    sender=Customer,
+    dispatch_uid='nodeconductor.structure.models.create_customer_roles',
+)
+def create_customer_roles(sender, instance, created, **kwargs):
+    if created:
+        with transaction.atomic():
+            owner_group = Group.objects.create(name='Role: {0} owner'.format(instance.uuid))
+
+            instance.roles.create(role_type=CustomerRole.OWNER, permission_group=owner_group)

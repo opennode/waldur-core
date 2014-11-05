@@ -9,7 +9,6 @@ from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from uuidfield import UUIDField
 
 from nodeconductor.cloud.backend import CloudBackendError
 from nodeconductor.core.models import (
@@ -74,6 +73,81 @@ class Cloud(UuidMixin, SynchronizableMixin, models.Model):
         """
 
 
+@python_2_unicode_compatible
+class CloudProjectMembership(SynchronizableMixin, models.Model):
+    """
+    This model represents many to many relationships between project and cloud
+    """
+
+    cloud = models.ForeignKey(Cloud)
+    project = models.ForeignKey(structure_models.Project)
+
+    # OpenStack backend specific fields
+    username = models.CharField(max_length=100, blank=True)
+    password = models.CharField(max_length=100, blank=True)
+
+    tenant_id = models.CharField(max_length=64, blank=True)
+
+    class Meta(object):
+        unique_together = ('cloud', 'tenant_id')
+
+    class Permissions(object):
+        customer_path = 'cloud__customer'
+        project_path = 'project'
+
+    def __str__(self):
+        return '{0} | {1}'.format(self.cloud.name, self.project.name)
+
+
+@python_2_unicode_compatible
+class Flavor(UuidMixin, models.Model):
+    """
+    A preset of computing resources.
+    """
+
+    class Permissions(object):
+        customer_path = 'cloud__projects__customer'
+        project_path = 'cloud__projects'
+
+    name = models.CharField(max_length=100)
+    cloud = models.ForeignKey(Cloud, related_name='flavors')
+
+    cores = models.PositiveSmallIntegerField(help_text=_('Number of cores in a VM'))
+    ram = models.FloatField(help_text=_('Memory size in GB'))
+    disk = models.FloatField(help_text=_('Root disk size in GB'))
+
+    def __str__(self):
+        return self.name
+
+
+@python_2_unicode_compatible
+class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
+    """
+    This class contains openstack security groups.
+    """
+
+    tcp = 'tcp'
+    udp = 'udp'
+
+    PROTOCOL_CHOICES = (
+        (tcp, _('tcp')),
+        (udp, _('udp')),
+    )
+
+    name = models.CharField(max_length=127)
+    protocol = models.CharField(max_length=3, choices=PROTOCOL_CHOICES)
+    from_port = models.IntegerField(validators=[MaxValueValidator(65535),
+                                                MinValueValidator(1)])
+    to_port = models.IntegerField(validators=[MaxValueValidator(65535),
+                                              MinValueValidator(1)])
+    ip_range = models.IPAddressField()
+    netmask = models.PositiveIntegerField(null=False)
+
+    def __str__(self):
+        return self.name
+
+
+# Signal handlers
 def get_related_clouds(obj, request):
     related_clouds = obj.clouds.all()
 
@@ -105,32 +179,6 @@ def add_clouds_to_related_model(sender, fields, **kwargs):
     fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
 
 
-@python_2_unicode_compatible
-class CloudProjectMembership(SynchronizableMixin, models.Model):
-    """
-    This model represents many to many relationships between project and cloud
-    """
-
-    cloud = models.ForeignKey(Cloud)
-    project = models.ForeignKey(structure_models.Project)
-
-    # OpenStack backend specific fields
-    username = models.CharField(max_length=100, blank=True)
-    password = models.CharField(max_length=100, blank=True)
-
-    tenant_id = models.CharField(max_length=64, blank=True)
-
-    class Meta(object):
-        unique_together = ('cloud', 'tenant_id')
-
-    class Permissions(object):
-        customer_path = 'cloud__customer'
-        project_path = 'project'
-
-    def __str__(self):
-        return '{0} | {1}'.format(self.cloud.name, self.project.name)
-
-
 @receiver(signals.post_save, sender=SshPublicKey)
 def propagate_new_key(sender, instance=None, created=False, **kwargs):
     if not created:
@@ -146,78 +194,32 @@ def propagate_new_key(sender, instance=None, created=False, **kwargs):
         backend.push_ssh_public_key(membership, instance)
 
 
-@python_2_unicode_compatible
-class Flavor(UuidMixin, models.Model):
-    """
-    A preset of computing resources.
-    """
-
-    class Permissions(object):
-        customer_path = 'cloud__projects__customer'
-        project_path = 'cloud__projects'
-
-    name = models.CharField(max_length=100)
-    cloud = models.ForeignKey(Cloud, related_name='flavors')
-
-    cores = models.PositiveSmallIntegerField(help_text=_('Number of cores in a VM'))
-    ram = models.FloatField(help_text=_('Memory size in GB'))
-    disk = models.FloatField(help_text=_('Root disk size in GB'))
-
-    def __str__(self):
-        return self.name
-
-
-# These should come from backend properly
+# FIXME: These should come from backend properly, see NC-139
+# Remove after NC-139 is implemented
 @receiver(signals.post_save, sender=Cloud)
 def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
     if created:
         instance.flavors.create(
             name='Weak & Small',
             cores=2,
-            ram=2.0,
-            disk=10.0,
+            ram=2 * 1024,
+            disk=10 * 1024,
         )
         instance.flavors.create(
             name='Powerful & Small',
             cores=16,
-            ram=2.0,
-            disk=10.0,
+            ram=2 * 1024,
+            disk=10 * 1024,
         )
         instance.flavors.create(
             name='Weak & Large',
             cores=2,
-            ram=32.0,
-            disk=100.0,
+            ram=32 * 1024,
+            disk=100 * 1024,
         )
         instance.flavors.create(
             name='Powerful & Large',
             cores=16,
-            ram=32.0,
-            disk=100.0,
+            ram=32 * 1024,
+            disk=100 * 1024,
         )
-
-
-class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
-    """
-    This class contains openstack security groups.
-    """
-
-    tcp = 'tcp'
-    udp = 'udp'
-
-    PROTOCOL_CHOICES = (
-        (tcp, _('tcp')),
-        (udp, _('udp')),
-    )
-
-    name = models.CharField(max_length=127)
-    protocol = models.CharField(max_length=3, choices=PROTOCOL_CHOICES)
-    from_port = models.IntegerField(validators=[MaxValueValidator(65535),
-                                                MinValueValidator(1)])
-    to_port = models.IntegerField(validators=[MaxValueValidator(65535),
-                                              MinValueValidator(1)])
-    ip_range = models.IPAddressField()
-    netmask = models.PositiveIntegerField(null=False)
-
-    def __str__(self):
-        return self.name
