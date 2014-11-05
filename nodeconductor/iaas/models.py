@@ -321,6 +321,7 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
                                                   MaxValueValidator(Decimal('1000.0'))])
 
     class Permissions(object):
+        customer_path = 'instance__project__customer'
         project_path = 'instance__project'
 
     def __str__(self):
