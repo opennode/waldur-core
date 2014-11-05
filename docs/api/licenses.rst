@@ -101,7 +101,15 @@ answers scoped by their visibility permissions of instances. By default queries 
 
 Supported aggregate queries are:
 
-- ?aggregate=project_name  -  by project names, result example: [{'project_name': 'project_1', 'count': 3}, ..];
-- ?aggregate=project_group  -  by project groups, result example: [{'project_group': 'proejct_group1', 'count': 2}, ..];
-- ?aggregate=license_type  - by license type, result example: [{'license_type': 'license_type1', 'count': 2}, ..];
-- no parameter  - by license name, result example: [{'name': 'license_name1', 'count': 4}, ..];
+- ?aggregate=name -  by license name
+- ?aggregate=type -  by license type
+- ?aggregate=project_group -  by project groups
+- ?aggregate=project  - by projects
+
+Note: aggregate parameters can be combined to aggregate by several fields. For example ?aggregate=name&aggregate=type&aggregate=project will aggregate result by license name, license_type and project group
+
+Supported filters:
+
+- ?customer=customer_uuid
+- ?name=license_name
+- ?type=license_type
