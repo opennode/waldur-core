@@ -278,6 +278,8 @@ class LicenseStatsTests(test.APITransactionTestCase):
         self.assertEqual(len(response.data), models.InstanceLicense.objects.filter(
             instance__project=self.first_project).all().count())
 
+    # TODO: add tests for project group manager
+
 
 class LicensePermissionsTest(helpers.PermissionsTest):
 
