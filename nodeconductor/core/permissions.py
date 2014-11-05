@@ -273,8 +273,8 @@ class TypedCollaboratorsPermissionLogic(PermissionLogic):
     For example, it is useful for cases when an object can be accessed either by project administrators or
     by customer owners.
     """
-    def __init__(self, type_to_permission_loggic_mapping, discriminator_function=None):
-        self.type_to_permission_loggic_mapping = type_to_permission_loggic_mapping
+    def __init__(self, type_to_permission_logic_mapping, discriminator_function=None):
+        self.type_to_permission_logic_mapping = type_to_permission_logic_mapping
         self.discriminator_function = discriminator_function or detect_group_type
 
     def has_perm(self, user_obj, perm, obj=None):
@@ -294,10 +294,10 @@ class TypedCollaboratorsPermissionLogic(PermissionLogic):
             collaboration_type = self.discriminator_function(obj)
 
             # disallow operation if the type is unknown
-            if not collaboration_type in self.type_to_permission_loggic_mapping:
+            if not collaboration_type in self.type_to_permission_logic_mapping:
                 return False
-            collaborators_query = self.type_to_permission_loggic_mapping[collaboration_type]['query']
-            collaborators_filter = self.type_to_permission_loggic_mapping[collaboration_type]['filter']
+            collaborators_query = self.type_to_permission_logic_mapping[collaboration_type]['query']
+            collaborators_filter = self.type_to_permission_logic_mapping[collaboration_type]['filter']
 
             kwargs = {
                 collaborators_query: user_obj,
