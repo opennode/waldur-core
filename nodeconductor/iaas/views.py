@@ -265,36 +265,58 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request.user.is_staff:
             raise Http404
-
         queryset = super(TemplateLicenseViewSet, self).get_queryset()
-
         if 'customer' in self.request.QUERY_PARAMS:
             customer_uuid = self.request.QUERY_PARAMS['customer']
-            customer_templates_ids = models.Template.objects.filter(
-                images__cloud__projects__customer__uuid=customer_uuid).values_list('id', flat=True)
-            queryset = queryset.filter(templates__in=customer_templates_ids)
+            queryset = queryset.filter(templates__images__cloud__customer__uuid=customer_uuid)
+        return queryset
 
+    def _filter_queryset(self, queryset):
+        if 'customer' in self.request.QUERY_PARAMS:
+            customer_uuid = self.request.QUERY_PARAMS['customer']
+            queryset = queryset.filter(template_license__templates__images__cloud__customer__uuid=customer_uuid)
+        if 'name' in self.request.QUERY_PARAMS:
+            queryset = queryset.filter(template_license__name=self.request.QUERY_PARAMS['name'])
+        if 'type' in self.request.QUERY_PARAMS:
+            queryset = queryset.filter(template_license__license_type=self.request.QUERY_PARAMS['type'])
         return queryset
 
     @link(is_for_list=True)
     def stats(self, request):
-        aggregate = self.request.QUERY_PARAMS.get('aggregate', 'name')
-        if aggregate == 'project_name':
-            aggregate_field = 'instance__project__name'
-        elif aggregate == 'project_group':
-            aggregate_field = 'instance__project__project_groups__name'
-        elif aggregate == 'license_type':
-            aggregate_field = 'template_license__license_type'
-        else:
-            aggregate_field = 'template_license__name'
-
         queryset = filters.filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
-        queryset = queryset.values(aggregate_field).annotate(count=django_models.Count('id'))
+        queryset = self._filter_queryset(queryset)
 
+        aggregate_parameters = self.request.QUERY_PARAMS.getlist('aggregate', [])
+        aggregate_paramenter_to_field_map = {
+            'project': ['instance__project__uuid', 'instance__project__name'],
+            'project_group': ['instance__project__project_groups__uuid', 'instance__project__project_groups__name'],
+            'type': ['template_license__license_type'],
+            'name': ['template_license__name'],
+        }
+
+        aggregate_fields = []
+        for aggregate_parameter in aggregate_parameters:
+            if aggregate_parameter not in aggregate_paramenter_to_field_map:
+                return Response('Licenses statistics can not be aggregated by %s' % aggregate_parameter,
+                                status=status.HTTP_400_BAD_REQUEST)
+            aggregate_fields += aggregate_paramenter_to_field_map[aggregate_parameter]
+
+        queryset = queryset.values(*aggregate_fields).annotate(count=django_models.Count('id', distinct=True))
         # This hack can be removed when https://code.djangoproject.com/ticket/16735 will be closed
+        # Replace databases paths by normal names. Ex: instance__project__uuid is replaced by project_uuid
+        name_replace_map = {
+            'instance__project__uuid': 'project_uuid',
+            'instance__project__name': 'project_name',
+            'instance__project__project_groups__uuid': 'project_group_uuid',
+            'instance__project__project_groups__name': 'project_group_name',
+            'template_license__license_type': 'type',
+            'template_license__name': 'name'
+        }
         for d in queryset:
-            d[aggregate] = d[aggregate_field]
-            del d[aggregate_field]
+            for db_name, output_name in name_replace_map.iteritems():
+                if db_name in d:
+                    d[output_name] = d[db_name]
+                    del d[db_name]
 
         return Response(queryset)
 
