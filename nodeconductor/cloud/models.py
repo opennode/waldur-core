@@ -201,9 +201,27 @@ def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
 
 
 class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
+
+    class Permissions(object):
+        customer_path = 'cloud_project_membership__project__customer'
+        project_path = 'cloud_project_membership__project'
+        project_group_path = 'cloud_project_membership__project__project_groups'
+
     """
     This class contains openstack security groups.
     """
+    cloud_project_membership = models.ForeignKey(CloudProjectMembership, related_name='security_groups')
+    name = models.CharField(max_length=127)
+
+    # openstack specific
+    os_security_group_id = models.CharField(max_length='128', blank=True,
+                                            help_text='Reference to a SecurityGroup in a remote cloud')
+
+    def __str__(self):
+        return self.name
+
+
+class SecurityGroupRule(models.Model):
 
     tcp = 'tcp'
     udp = 'udp'
@@ -213,14 +231,38 @@ class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
         (udp, _('udp')),
     )
 
-    name = models.CharField(max_length=127)
+    group = models.ForeignKey(SecurityGroup, related_name='rules')
+
     protocol = models.CharField(max_length=3, choices=PROTOCOL_CHOICES)
     from_port = models.IntegerField(validators=[MaxValueValidator(65535),
                                                 MinValueValidator(1)])
     to_port = models.IntegerField(validators=[MaxValueValidator(65535),
                                               MinValueValidator(1)])
     ip_range = models.IPAddressField()
-    netmask = models.PositiveIntegerField(null=False)
+    netmask = models.SmallIntegerField(null=False)
+
+    # openstack specific
+    os_security_group_rule_id = models.CharField(max_length='128', blank=True)
 
     def __str__(self):
-        return self.name
+        return '%s (%s): %s/%s (%s -> %s)' % \
+               (self.group, self.protocol, self.ip_range, self.netmask, self.from_port, self.to_port)
+
+
+# TODO: make the defaults configurable
+@receiver(signals.post_save, sender=CloudProjectMembership)
+def create_dummy_security_groups(sender, instance=None, created=False, **kwargs):
+    if created:
+        # group http
+        http_group = instance.security_groups.create(
+            name='http',
+            description='Security group for web servers'
+        )
+        http_group.rules.create(
+            protocol='tcp',
+            from_port=80,
+            to_port=80,
+            ip_range='0.0.0.0',
+            netmask=0
+        )
+

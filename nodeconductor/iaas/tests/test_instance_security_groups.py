@@ -1,6 +1,7 @@
 from django.core.urlresolvers import reverse
 from rest_framework import test, status
 
+from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
@@ -67,21 +68,21 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         response = self.client.get(_instance_url(self.instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range', 'netmask')
+        fields = ('name',)
         for field in fields:
             expected_security_groups = [getattr(g, field) for g in self.cloud_security_groups]
             self.assertItemsEqual([g[field] for g in response.data['security_groups']], expected_security_groups)
 
     def test_add_instance_with_security_groups(self):
         data = _instance_data(self.instance)
-        data['security_groups'] = [self._get_valid_paylpad(g.security_group)
+        data['security_groups'] = [self._get_valid_security_group_payload(g.security_group)
                                    for g in self.instance_security_groups]
 
         response = self.client.post(_instance_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_change_instance_security_groups_single_field(self):
-        data = {'security_groups': [self._get_valid_paylpad(g.security_group)
+        data = {'security_groups': [self._get_valid_security_group_payload(g.security_group)
                                     for g in self.instance_security_groups]}
 
         response = self.client.patch(_instance_url(self.instance), data=data)
@@ -92,7 +93,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = _instance_data(self.instance)
-        data['security_groups'] = [self._get_valid_paylpad(g.security_group)
+        data['security_groups'] = [self._get_valid_security_group_payload()
                                    for g in self.instance_security_groups]
 
         response = self.client.put(_instance_url(self.instance), data=data)
@@ -105,13 +106,9 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     # Helper methods
-    def _get_valid_paylpad(self, resource):
+    def _get_valid_security_group_payload(self, security_group=None):
+        if security_group is None:
+            security_group = cloud_factories.SecurityGroupFactory()
         return {
-            'security_group': _security_group_url(resource),
-            'name': resource.name,
-            'protocol': resource.protocol,
-            'from_port': resource.from_port,
-            'to_port': resource.to_port,
-            'ip_range': resource.ip_range,
-            'netmask': resource.netmask,
+            'url': _security_group_url(security_group),
         }

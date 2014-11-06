@@ -81,14 +81,10 @@ Example of a valid request:
         "ssh_public_key": "http://example.com/api/keys/6fbd6b24246f4fb38715c29bafa2e5e7/",
         "internal_ips": "10.242.22.8,172.18.216.75,192.168.162.2",
         "external ips": "131.107.140.29,216.21.127.62,210.143.155.57",
-        "security_groups": {
-            "url": "http://example.com/api/security-groups/16c55dad9b3048db8dd60e89bd4d85bc/",
-            "name": "global_http",
-            "protocol": "tcp",
-            "from_port": 80,
-            "to_port": 80,
-            "ip_range": "0.0.0.0",
-            "netmask": 0
+        "security_groups": [
+            { "url": "http://example.com/api/security-groups/16c55dad9b3048db8dd60e89bd4d85bc/"},
+            { "url": "http://example.com/api/security-groups/232da2ad9b3048db8dd60eeaa23d8123/"}
+        ]
         },
     }
 

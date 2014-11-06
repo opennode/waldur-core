@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
+from django.utils import unittest
 from mock import patch
 from rest_framework import status
 from rest_framework import test
@@ -96,47 +97,42 @@ class CloudTest(test.APISimpleTestCase):
 class SecurityGroupTest(test.APISimpleTestCase):
 
     def setUp(self):
+        self.admin = structure_factories.UserFactory()
         self.user = structure_factories.UserFactory()
-        self.security_group = factories.SecurityGroupFactory()
+        self.staff = structure_factories.UserFactory(is_staff=True)
 
-    def test_anonymous_user_cannot_list_security_groups(self):
-        response = self.client.get(_security_group_list_url())
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.project = structure_factories.ProjectFactory()
+        self.project.add_user(self.admin, structure_models.ProjectRole.ADMINISTRATOR)
 
-    def test_authenticated_user_can_list_security_groups(self):
-        self.client.force_authenticate(user=self.user)
+        self.cloud_project_membership = factories.CloudProjectMembershipFactory(project=self.project)
 
-        response = self.client.get(_security_group_list_url())
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.security_group = factories.SecurityGroupFactory(cloud_project_membership=self.cloud_project_membership)
 
-    def test_authenticated_user_can_access_security_groups(self):
-        self.client.force_authenticate(user=self.user)
+    def test_user_can_access_security_groups_of_project_instances_he_is_admin_of(self):
+        self.client.force_authenticate(user=self.admin)
 
         response = self.client.get(_security_group_detail_url(self.security_group))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_user_cannot_create_security_groups(self):
+    def test_user_cannot_access_security_groups_of_instances_not_connected_to_him(self):
         self.client.force_authenticate(user=self.user)
+        response = self.client.get(_security_group_detail_url(self.security_group))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-        response = self.client.post(_security_group_list_url(), self._valid_data())
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+    def test_non_staff_cannot_create_security_groups(self):
+        self.client.force_authenticate(user=self.admin)
 
-    def test_user_cannot_change_security_group(self):
-        self.client.force_authenticate(user=self.user)
+        response = self.client.post(_security_group_list_url(), self._get_valid_data())
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        response = self.client.get(_security_group_list_url())
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def test_staff_cannot_create_template_security_groups(self):
+        self.client.force_authenticate(user=self.staff)
 
-        response = self.client.post(_security_group_detail_url(self.security_group), self._valid_data())
+        response = self.client.post(_security_group_list_url(), self._get_valid_data())
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     # Helper methods
-    def _valid_data(self):
+    def _get_valid_data(self):
         return {
-            'name': 'default',
-            'protocol': 'tcp',
-            'to_port': 22,
-            'from_port': 22,
-            'ip_range': '10.2.3.192',
-            'netmask': 24
+            'name': 'http',
         }

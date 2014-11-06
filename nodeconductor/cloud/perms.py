@@ -31,4 +31,7 @@ PERMISSION_LOGICS = (
         any_permission=True,
     )),
     ('cloud.Flavor', StaffPermissionLogic(any_permission=True)),
+    ('cloud.SecurityGroup', StaffPermissionLogic(any_permission=True)),
+    ('cloud.SecurityGroupRule', StaffPermissionLogic(any_permission=True)),
+
 )

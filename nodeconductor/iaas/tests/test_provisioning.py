@@ -4,6 +4,7 @@ from django.core.urlresolvers import reverse
 from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
+from nodeconductor.cloud.models import CloudProjectMembership
 
 from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
@@ -139,6 +140,22 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         changed_instance = Instance.objects.get(pk=self.admined_instance.pk)
 
         self.assertEqual(changed_instance.description, 'changed description1')
+
+    def test_user_can_change_security_groups_of_instance_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        data = self._get_valid_payload(self.admined_instance)
+
+        # new sec group
+        cloud_project_membership = CloudProjectMembership.objects.get(cloud=self.admined_instance.flavor.cloud,
+                                                                      project=self.admined_instance.project)
+        security_group = cloud_factories.SecurityGroupFactory(cloud_project_membership=cloud_project_membership)
+        data['security_groups'] = [
+            {'url': cloud_factories.SecurityGroupFactory.get_url(security_group)}
+        ]
+
+        response = self.client.put(self._get_instance_url(self.admined_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_change_description_of_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
@@ -527,7 +544,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         }
 
 
-class InstanceListRetreiveTEst(test.APITransactionTestCase):
+class InstanceListRetrieveTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
