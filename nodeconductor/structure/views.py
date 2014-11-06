@@ -15,7 +15,7 @@ from nodeconductor.core import mixins
 from nodeconductor.structure import filters
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
-from nodeconductor.structure.models import ProjectRole, CustomerRole
+from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 
 
 User = auth.get_user_model()
@@ -285,6 +285,11 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
         if is_customer_owner:
             return
 
+        is_group_manager = project.project_groups.filter(
+            roles__permission_group__user=user, roles__role_type=ProjectGroupRole.MANAGER).exists()
+        if is_group_manager:
+            return
+
         raise PermissionDenied()
 
 
@@ -337,6 +342,8 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                   group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
                 |
                 Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user)
+                |
+                Q(group__customerrole__customer__project_groups__roles__permission_group__user=self.request.user)
             ).distinct()
 
         return queryset

@@ -6,7 +6,7 @@ from rest_framework.reverse import reverse
 
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories as iaas_factories
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -15,7 +15,7 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
         self.users = {
             'staff': structure_factories.UserFactory(is_staff=True),
             'admin': structure_factories.UserFactory(is_staff=False),
-            'manager': structure_factories.UserFactory(is_staff=False),
+            'group_manager': structure_factories.UserFactory(is_staff=False),
             'non_staff': structure_factories.UserFactory(is_staff=False),
         }
 
@@ -46,7 +46,9 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
         project1.add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
 
         project2 = structure_factories.ProjectFactory(customer=project1.customer)
-        project2.add_user(self.users['manager'], ProjectRole.MANAGER)
+        project_group = structure_factories.ProjectGroupFactory()
+        project_group.projects.add(project2)
+        project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
         self.clouds = cloud_factories.CloudFactory.create_batch(4, customer=project1.customer)
         cloud_factories.CloudProjectMembershipFactory(project=project1, cloud=self.clouds[0])
@@ -126,8 +128,8 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
             # role, cloud index, resulting template indexes
             ('admin', 0, (0,)),
             ('admin', 1, (1, 2)),
-            ('manager', 2, (1, 2)),
-            ('manager', 3, (3,)),
+            ('group_manager', 2, (1, 2)),
+            ('group_manager', 3, (3,)),
         )
 
         for role, cloud_index, template_indexes in tests:
@@ -146,19 +148,12 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
             self.assertEqual(sorted(expected_urls), sorted(actual_urls))
 
     def test_non_staff_user_gets_no_templates_when_filtering_by_cloud_he_has_no_access_to(self):
-        tests = (
-            # role, cloud index
-            ('admin', 2),
-            ('admin', 3),
-            ('manager', 0),
-            ('manager', 1),
-        )
-
-        for role, cloud_index in tests:
+        for role in ('admin', 'group_manager'):
             self.client.force_authenticate(user=self.users[role])
 
+            cloud = cloud_factories.CloudFactory()
             response = self.client.get(reverse('template-list'),
-                                       {'cloud': self.clouds[cloud_index].uuid})
+                                       {'cloud': cloud.uuid})
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
             self.assertEqual(0, len(response.data), 'User should see no templates')

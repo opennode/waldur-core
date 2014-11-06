@@ -15,6 +15,7 @@ class Customer(UuidMixin, models.Model):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
+        project_group_path = 'project_groups'
 
     name = models.CharField(max_length=160)
     abbreviation = models.CharField(max_length=8)
@@ -125,6 +126,7 @@ class Project(DescribableMixin, UuidMixin, models.Model):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
+        project_group_path = 'project_groups'
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='projects')
@@ -167,6 +169,25 @@ signals.post_save.connect(create_project_roles,
 
 
 @python_2_unicode_compatible
+class ProjectGroupRole(UuidMixin, models.Model):
+    class Meta(object):
+        unique_together = ('project_group', 'role_type')
+
+    MANAGER = 0
+
+    TYPE_CHOICES = (
+        (MANAGER, _('Group Manager')),
+    )
+
+    project_group = models.ForeignKey('structure.ProjectGroup', related_name='roles')
+    role_type = models.SmallIntegerField(choices=TYPE_CHOICES)
+    permission_group = models.OneToOneField(Group)
+
+    def __str__(self):
+        return self.get_role_type_display()
+
+
+@python_2_unicode_compatible
 class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
     """
     Project groups are means to organize customer's projects into arbitrary sets.
@@ -174,6 +195,7 @@ class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'projects'
+        project_group_path = 'self'
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='project_groups')
@@ -182,6 +204,32 @@ class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
 
     def __str__(self):
         return self.name
+
+    def add_user(self, user, role_type):
+        role = self.roles.get(role_type=role_type)
+        role.permission_group.user_set.add(user)
+
+    def remove_user(self, user, role_type=None):
+        groups = user.groups.filter(role__project=self)
+
+        if role_type is not None:
+            groups = groups.filter(role__role_type=role_type)
+
+        with transaction.atomic():
+            for group in groups.iterator():
+                group.user_set.remove(user)
+
+
+def create_project_group_roles(sender, instance, created, **kwargs):
+    if created:
+        with transaction.atomic():
+            mgr_group = Group.objects.create(name='Role: {0} group mgr'.format(instance.uuid))
+            instance.roles.create(role_type=ProjectGroupRole.MANAGER, permission_group=mgr_group)
+
+signals.post_save.connect(create_project_group_roles,
+                          sender=ProjectGroup,
+                          weak=False,
+                          dispatch_uid='structure.project_group_roles_bootstrap')
 
 
 class NetworkSegment(models.Model):

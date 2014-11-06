@@ -174,7 +174,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
 
 class TemplateViewSet(core_viewsets.ModelViewSet):
-    """List of VM templates that are accessible by this user.
+    """
+    List of VM templates that are accessible by this user.
+
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#templates
     """
 
@@ -214,7 +216,9 @@ class TemplateViewSet(core_viewsets.ModelViewSet):
 
 
 class SshKeyViewSet(core_viewsets.ModelViewSet):
-    """List of SSH public keys that are accessible by this user.
+    """
+    List of SSH public keys that are accessible by this user.
+
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#key-management
     """
 

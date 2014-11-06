@@ -66,9 +66,12 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
         # license
         self.license = factories.TemplateLicenseFactory()
         self.license.templates.add(self.template)
+        # users
         self.staff = structure_factories.UserFactory(is_superuser=True, is_staff=True)
         self.manager = structure_factories.UserFactory()
         self.project.add_user(self.manager, structure_models.ProjectRole.MANAGER)
+        self.group_manager = structure_factories.UserFactory()
+        self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
 
     def test_projects_in_license_response(self):
         self.client.force_authenticate(self.staff)
@@ -190,6 +193,8 @@ class LicenseStatsTests(test.APITransactionTestCase):
         # also first group has manger:
         self.admin = structure_factories.UserFactory()
         self.first_project.add_user(self.admin, structure_models.ProjectRole.ADMINISTRATOR)
+        self.group_manager = structure_factories.UserFactory()
+        self.first_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
         self.staff = structure_factories.UserFactory(is_staff=True)
         self.owner = structure_factories.UserFactory()
         self.customer.add_user(self.owner, structure_models.CustomerRole.OWNER)
@@ -278,7 +283,12 @@ class LicenseStatsTests(test.APITransactionTestCase):
         self.assertEqual(len(response.data), models.InstanceLicense.objects.filter(
             instance__project=self.first_project).all().count())
 
-    # TODO: add tests for project group manager
+    def test_group_manager_can_see_stats_only_for_his_project_group(self):
+        self.client.force_authenticate(self.group_manager)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), models.InstanceLicense.objects.filter(
+            instance__project__project_groups=self.first_group).all().count())
 
 
 class LicensePermissionsTest(helpers.PermissionsTest):
@@ -305,6 +315,10 @@ class LicensePermissionsTest(helpers.PermissionsTest):
         self.project.add_user(self.administrator, structure_models.ProjectRole.ADMINISTRATOR)
         self.owner = structure_factories.UserFactory(username='owner')
         self.customer.add_user(self.owner, structure_models.CustomerRole.OWNER)
+        self.group_manager = structure_factories.UserFactory()
+        self.project_group = structure_factories.ProjectGroupFactory()
+        self.project_group.projects.add(self.project)
+        self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
 
     def get_urls_configs(self):
         yield {'url': _template_license_list_url(), 'method': 'GET'}
@@ -322,7 +336,7 @@ class LicensePermissionsTest(helpers.PermissionsTest):
         Returns list of users which can access given url with given method
         """
         if url == _template_license_stats_url():
-            return [self.staff, self.owner, self.manager, self.administrator]
+            return [self.staff, self.owner, self.manager, self.group_manager, self.administrator]
         return [self.staff]
 
     def get_users_without_permissions(self, url, method):
@@ -331,4 +345,4 @@ class LicensePermissionsTest(helpers.PermissionsTest):
         """
         if url == _template_license_stats_url():
             return []
-        return [self.owner, self.manager, self.administrator]
+        return [self.owner, self.manager, self.group_manager, self.administrator]

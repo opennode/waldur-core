@@ -60,11 +60,36 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'name', 'customer', 'resource_quota')
+        fields = ('url', 'name', 'customer', 'resource_quota', 'project_groups')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
         return 'customer',
+
+    def validate(self, attrs):
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return attrs
+
+        if user.is_staff:
+            return attrs
+        is_customer_owner = attrs['customer'].roles.filter(
+            permission_group__user=user, role_type=models.CustomerRole.OWNER).exists()
+        if is_customer_owner:
+            return attrs
+
+        groups = attrs['project_groups']
+        if not groups:
+            raise ValidationError('Project has to belong to some group')
+
+        for group in groups:
+            is_group_manager = group.roles.filter(
+                permission_group__user=user, role_type=models.ProjectGroupRole.MANAGER).exists()
+            if not is_group_manager:
+                raise ValidationError('User does not have permission to add project to %s' % group)
+
+        return attrs
 
 
 class CustomerSerializer(core_serializers.CollectedFieldsMixin,

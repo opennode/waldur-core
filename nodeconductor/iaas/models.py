@@ -33,6 +33,7 @@ class Image(core_models.UuidMixin,
 
     class Permissions(object):
         project_path = 'cloud__projects'
+        project_group_path = 'cloud__projects__project_groups'
 
     i386 = 0
     amd64 = 1
@@ -87,6 +88,7 @@ class Instance(core_models.UuidMixin,
     """
     class Permissions(object):
         project_path = 'project'
+        project_group_path = 'project__project_groups'
 
     class States(object):
         PROVISIONING_SCHEDULED = 'p'
@@ -323,6 +325,7 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
     class Permissions(object):
         customer_path = 'instance__project__customer'
         project_path = 'instance__project'
+        project_group_path = 'instance__project__project_groups'
 
     def __str__(self):
         return 'License: %s for %s' % (self.template_license, self.instance)
@@ -344,6 +347,7 @@ class Purchase(core_models.UuidMixin, models.Model):
     """
     class Permissions(object):
         project_path = 'project'
+        project_group_path = 'project__project_groups'
 
     date = models.DateTimeField()
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='purchases')
@@ -362,6 +366,7 @@ class InstanceSecurityGroup(core_models.UuidMixin, models.Model):
     """
     class Permissions(object):
         project_path = 'instance__project'
+        project_group_path = 'instance__project__project_groups'
 
     instance = models.ForeignKey(Instance, related_name='security_groups')
     security_group = models.ForeignKey(cloud_models.SecurityGroup, related_name='instance_groups')
