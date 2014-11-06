@@ -240,7 +240,7 @@ Other use cases are covered with random data.
         )
 
         for project in customer.projects.all():
-            cpm = CloudProjectMembership.objects.create(cloud=cloud, project=project, tenant_id=random_string(10, 12))
+            CloudProjectMembership.objects.create(cloud=cloud, project=project, tenant_id=random_string(10, 12))
 
         # add flavors
         cloud.flavors.create(
