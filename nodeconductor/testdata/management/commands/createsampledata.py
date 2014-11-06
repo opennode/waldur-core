@@ -407,7 +407,7 @@ Other use cases are covered with random data.
         external_ips = ','.join('.'.join('%s' % random.randint(0, 255) for _ in range(4)) for _ in range(3))
         ssh_public_key = SshPublicKey.objects.create(
             user=user,
-            name='public key %s' % random.randint(0, 255),
+            name='public key %s' % random.randint(0, 1000),
             public_key=("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28"
                         "TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY"
                         "dknWoMoArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9du"
