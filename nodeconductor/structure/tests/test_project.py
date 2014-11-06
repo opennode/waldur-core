@@ -1,13 +1,99 @@
 from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
+from mock_django import mock_signal_receiver
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.structure.tests import factories
+from nodeconductor.structure import signals
 from nodeconductor.structure.models import CustomerRole
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import Project, ProjectRole
+from nodeconductor.structure.tests import factories
+
+
+class ProjectTest(TransactionTestCase):
+    def setUp(self):
+        self.project = factories.ProjectFactory()
+        self.user = factories.UserFactory()
+
+    def test_add_user_emits_structure_role_granted_if_grant_didnt_exist_before(self):
+        with mock_signal_receiver(signals.structure_role_granted) as receiver:
+            self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        receiver.assert_called_once_with(
+            structure=self.project,
+            user=self.user,
+            role=ProjectRole.ADMINISTRATOR,
+
+            sender=Project,
+            signal=signals.structure_role_granted,
+        )
+
+    def test_add_user_doesnt_emit_structure_role_granted_if_grant_existed_before(self):
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        with mock_signal_receiver(signals.structure_role_granted) as receiver:
+            self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertFalse(receiver.called, 'structure_role_granted should not be emitted')
+
+    def test_remove_user_emits_structure_role_revoked_for_each_role_user_had_in_project(self):
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        self.project.add_user(self.user, ProjectRole.MANAGER)
+
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.project.remove_user(self.user)
+
+        from mock import call
+
+        calls = [
+            call(
+                structure=self.project,
+                user=self.user,
+                role=ProjectRole.MANAGER,
+
+                sender=Project,
+                signal=signals.structure_role_revoked,
+            ),
+
+            call(
+                structure=self.project,
+                user=self.user,
+                role=ProjectRole.ADMINISTRATOR,
+
+                sender=Project,
+                signal=signals.structure_role_revoked,
+            ),
+        ]
+
+        receiver.assert_has_calls(calls, any_order=True)
+
+        self.assertEqual(
+            receiver.call_count, 2,
+            'Excepted exactly 2 signals emitted'
+        )
+
+    def test_remove_user_emits_structure_role_revoked_if_grant_existed_before(self):
+        self.project.add_user(self.user, ProjectRole.MANAGER)
+
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.project.remove_user(self.user, ProjectRole.MANAGER)
+
+        receiver.assert_called_once_with(
+            structure=self.project,
+            user=self.user,
+            role=ProjectRole.MANAGER,
+
+            sender=Project,
+            signal=signals.structure_role_revoked,
+        )
+
+    def test_remove_user_doesnt_emit_structure_role_revoked_if_grant_didnt_exist_before(self):
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.project.remove_user(self.user, ProjectRole.MANAGER)
+
+        self.assertFalse(receiver.called, 'structure_role_remove should not be emitted')
 
 
 class ProjectRoleTest(TestCase):

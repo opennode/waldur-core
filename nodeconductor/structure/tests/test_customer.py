@@ -3,10 +3,13 @@ from __future__ import unicode_literals
 from unittest import TestCase
 
 from django.core.urlresolvers import reverse
+from django.test import TransactionTestCase
+from mock_django import mock_signal_receiver
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.structure.models import CustomerRole, ProjectRole
+from nodeconductor.structure import signals
+from nodeconductor.structure.models import Customer, CustomerRole, ProjectRole
 from nodeconductor.structure.tests import factories
 
 
@@ -22,6 +25,69 @@ class UrlResolverMixin(object):
 
     def _get_user_url(self, user):
         return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})
+
+
+class CustomerTest(TransactionTestCase):
+    def setUp(self):
+        self.customer = factories.CustomerFactory()
+        self.user = factories.UserFactory()
+
+    def test_add_user_emits_structure_role_granted_if_grant_didnt_exist_before(self):
+        with mock_signal_receiver(signals.structure_role_granted) as receiver:
+            self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        receiver.assert_called_once_with(
+            structure=self.customer,
+            user=self.user,
+            role=CustomerRole.OWNER,
+
+            sender=Customer,
+            signal=signals.structure_role_granted,
+        )
+
+    def test_add_user_doesnt_emit_structure_role_granted_if_grant_existed_before(self):
+        self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        with mock_signal_receiver(signals.structure_role_granted) as receiver:
+            self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        self.assertFalse(receiver.called, 'structure_role_granted should not be emitted')
+
+    def test_remove_user_emits_structure_role_revoked_for_each_role_user_had_in_project(self):
+        self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.customer.remove_user(self.user)
+
+        receiver.assert_called_once_with(
+            structure=self.customer,
+            user=self.user,
+            role=CustomerRole.OWNER,
+
+            sender=Customer,
+            signal=signals.structure_role_revoked,
+        )
+
+    def test_remove_user_emits_structure_role_revoked_if_grant_existed_before(self):
+        self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.customer.remove_user(self.user, CustomerRole.OWNER)
+
+        receiver.assert_called_once_with(
+            structure=self.customer,
+            user=self.user,
+            role=CustomerRole.OWNER,
+
+            sender=Customer,
+            signal=signals.structure_role_revoked,
+        )
+
+    def test_remove_user_doesnt_emit_structure_role_revoked_if_grant_didnt_exist_before(self):
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.customer.remove_user(self.user, CustomerRole.OWNER)
+
+        self.assertFalse(receiver.called, 'structure_role_remove should not be emitted')
 
 
 class CustomerRoleTest(TestCase):

@@ -9,6 +9,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import UuidMixin, DescribableMixin
+from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
 
 @python_2_unicode_compatible
@@ -23,18 +24,37 @@ class Customer(UuidMixin, models.Model):
     # XXX: How do we tell customers with same names from each other?
 
     def add_user(self, user, role_type):
-        role = self.roles.get(role_type=role_type)
-        role.permission_group.user_set.add(user)
+        with transaction.atomic():
+            role = self.roles.get(role_type=role_type)
+
+            if not role.permission_group.user_set.filter(pk=user.pk).exists():
+                role.permission_group.user_set.add(user)
+
+                structure_role_granted.send(
+                    sender=Customer,
+                    structure=self,
+                    user=user,
+                    role=role_type,
+                )
 
     def remove_user(self, user, role_type=None):
-        groups = user.groups.filter(role__customer=self)
-
-        if role_type is not None:
-            groups = groups.filter(role__role_type=role_type)
-
         with transaction.atomic():
-            for group in groups.iterator():
-                group.user_set.remove(user)
+            memberships = user.groups.through.objects.filter(
+                group__customerrole__customer=self,
+            )
+
+            if role_type is not None:
+                memberships = memberships.filter(group__customerrole__role_type=role_type)
+
+            for membership in memberships.iterator():
+                structure_role_revoked.send(
+                    sender=Customer,
+                    structure=self,
+                    user=membership.user,
+                    role=membership.group.customerrole.role_type,
+                )
+
+                memberships.delete()
 
     def get_owners(self):
         return self.roles.get(role_type=CustomerRole.OWNER).permission_group.user_set
@@ -119,18 +139,37 @@ class Project(DescribableMixin, UuidMixin, models.Model):
     resource_quota = models.OneToOneField(ResourceQuota, related_name='project', null=True)
 
     def add_user(self, user, role_type):
-        role = self.roles.get(role_type=role_type)
-        role.permission_group.user_set.add(user)
+        with transaction.atomic():
+            role = self.roles.get(role_type=role_type)
+
+            if not role.permission_group.user_set.filter(pk=user.pk).exists():
+                role.permission_group.user_set.add(user)
+
+                structure_role_granted.send(
+                    sender=Project,
+                    structure=self,
+                    user=user,
+                    role=role_type,
+                )
 
     def remove_user(self, user, role_type=None):
-        groups = user.groups.filter(role__project=self)
-
-        if role_type is not None:
-            groups = groups.filter(role__role_type=role_type)
-
         with transaction.atomic():
-            for group in groups.iterator():
-                group.user_set.remove(user)
+            memberships = user.groups.through.objects.filter(
+                group__projectrole__project=self,
+            )
+
+            if role_type is not None:
+                memberships = memberships.filter(group__projectrole__role_type=role_type)
+
+            for membership in memberships.iterator():
+                structure_role_revoked.send(
+                    sender=Project,
+                    structure=self,
+                    user=membership.user,
+                    role=membership.group.projectrole.role_type,
+                )
+
+                memberships.delete()
 
     def __str__(self):
         return '%(name)s | %(customer)s' % {
