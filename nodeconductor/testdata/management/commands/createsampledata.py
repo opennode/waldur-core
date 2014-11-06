@@ -378,7 +378,7 @@ Other use cases are covered with random data.
 
         # Adding quota to project:
         print 'Creating quota for project %s' % project
-        project.quota = ResourceQuota.objects.create(vcpu=2, ram=2, storage=10, max_instances=10)
+        project.resource_quota = ResourceQuota.objects.create(vcpu=2, ram=2, storage=10, max_instances=10)
         project.save()
 
         return project

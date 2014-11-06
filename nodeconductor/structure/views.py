@@ -15,7 +15,7 @@ from nodeconductor.core import mixins
 from nodeconductor.structure import filters
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
-from nodeconductor.structure.models import ProjectRole, CustomerRole
+from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 
 
 User = auth.get_user_model()
@@ -44,6 +44,25 @@ class CustomerViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('Cannot delete customer with existing project_groups')
 
 
+class ProjectFilter(django_filters.FilterSet):
+    project_group = django_filters.CharFilter(
+        name='project_groups__uuid',
+        distinct=True,
+    )
+    name = django_filters.CharFilter(lookup_type='icontains')
+
+    class Meta(object):
+        model = models.Project
+        fields = [
+            'project_group',
+            'name',
+        ]
+        order_by = [
+            'name',
+            '-name',
+        ]
+
+
 class ProjectViewSet(viewsets.ModelViewSet):
     """List of projects that are accessible by this user.
 
@@ -53,9 +72,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
+    filter_class = ProjectFilter
 
     def get_queryset(self):
         user = self.request.user
@@ -265,6 +285,11 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
         if is_customer_owner:
             return
 
+        is_group_manager = project.project_groups.filter(
+            roles__permission_group__user=user, roles__role_type=ProjectGroupRole.MANAGER).exists()
+        if is_group_manager:
+            return
+
         raise PermissionDenied()
 
 
@@ -317,6 +342,8 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                   group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
                 |
                 Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user)
+                |
+                Q(group__customerrole__customer__project_groups__roles__permission_group__user=self.request.user)
             ).distinct()
 
         return queryset

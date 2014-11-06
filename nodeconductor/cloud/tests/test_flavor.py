@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.cloud.tests import factories
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -25,21 +25,29 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
         self.users = {
             'admin': structure_factories.UserFactory(),
             'manager': structure_factories.UserFactory(),
+            'group_manager': structure_factories.UserFactory(),
             'no_role': structure_factories.UserFactory(),
         }
 
         self.flavors = {
             'admin': factories.FlavorFactory(),
             'manager': factories.FlavorFactory(),
+            'group_manager': factories.FlavorFactory(),
             'inaccessible': factories.FlavorFactory(),
         }
 
         admined_project = structure_factories.ProjectFactory()
         managed_project = structure_factories.ProjectFactory()
+        group_managed_project = structure_factories.ProjectFactory()
+        project_group = structure_factories.ProjectGroupFactory()
+        project_group.projects.add(group_managed_project)
 
+        project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
         admined_project.add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         managed_project.add_user(self.users['manager'], ProjectRole.MANAGER)
 
+        factories.CloudProjectMembershipFactory(
+            cloud=self.flavors['group_manager'].cloud, project=group_managed_project)
         factories.CloudProjectMembershipFactory(cloud=self.flavors['admin'].cloud, project=admined_project)
         factories.CloudProjectMembershipFactory(cloud=self.flavors['manager'].cloud, project=managed_project)
 
@@ -64,6 +72,15 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         flavor_url = self._get_flavor_url(self.flavors['manager'])
+        self.assertIn(flavor_url, [instance['url'] for instance in response.data])
+
+    def test_user_can_list_flavors_of_projects_he_is_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+
+        response = self.client.get(reverse('flavor-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        flavor_url = self._get_flavor_url(self.flavors['group_manager'])
         self.assertIn(flavor_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_flavors_of_projects_he_has_no_role_in(self):
@@ -94,6 +111,12 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
         self.client.force_authenticate(user=self.users['manager'])
 
         response = self.client.get(self._get_flavor_url(self.flavors['manager']))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_can_access_flavor_allowed_for_project_he_is_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+
+        response = self.client.get(self._get_flavor_url(self.flavors['group_manager']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_access_flavor_allowed_for_project_he_has_no_role_in(self):
@@ -149,6 +172,15 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
+    def test_user_cannot_change_flavor_allowed_for_project_he_is_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+        flavor = self.flavors['group_manager']
+
+        payload = self._get_valid_payload(flavor)
+        response = self.client.put(self._get_flavor_url(flavor), payload)
+
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
     # Deletion tests
     def test_anonymous_user_cannot_delete_flavor(self):
         flavor = factories.FlavorFactory()
@@ -162,10 +194,10 @@ class FlavorApiPermissionTest(test.APISimpleTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
-    def test_user_cannot_delete_flavor_allowed_for_project_he_is_manager_of(self):
-        self.client.force_authenticate(user=self.users['manager'])
+    def test_user_cannot_delete_flavor_allowed_for_project_he_is_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
 
-        response = self.client.delete(self._get_flavor_url(self.flavors['manager']))
+        response = self.client.delete(self._get_flavor_url(self.flavors['group_manager']))
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 

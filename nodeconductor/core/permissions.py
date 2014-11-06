@@ -31,11 +31,11 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
         Parameters
         ----------
         collaborators_query : string
-            Django queryset filter-like expression to fetch collaborators
-            based on current object.
+            Django queryset filter-like expression or list of expressions
+            to fetch collaborators based on current object.
             Default is False.
         collaborators_filter : dict
-            A filter to apply to collaborators.
+            A filter or list of filters to apply to collaborators.
             Default is {}.
         any_permission : boolean
             True to give any permission of the specified object to the
@@ -57,8 +57,14 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
             It will be ignored if :attr:`any_permission` is True.
             Default is False.
         """
-        self.collaborators_query = collaborators_query
-        self.collaborators_filter = collaborators_filter or {}
+        if isinstance(collaborators_query, basestring):
+            self.collaborators_queries = [collaborators_query]
+        else:
+            self.collaborators_queries = collaborators_query
+        if isinstance(collaborators_filter, dict):
+            self.collaborators_filters = [collaborators_filter] or [{}]
+        else:
+            self.collaborators_filters = collaborators_filter
         self.any_permission = any_permission
         self.add_permission = add_permission
         self.change_permission = change_permission
@@ -126,11 +132,9 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
             if user_obj.is_staff:
                 return True
 
-            kwargs = {
-                self.collaborators_query: user_obj,
-                'pk': obj.pk,
-            }
-            kwargs.update(self.collaborators_filter)
+        for query, filt in zip(self.collaborators_queries, self.collaborators_filters):
+            kwargs = {query: user_obj, 'pk': obj.pk}
+            kwargs.update(filt)
 
             if obj._meta.model._default_manager.filter(**kwargs).exists():
                 return self.is_permission_allowed(perm)
@@ -255,6 +259,16 @@ class StaffPermissionLogic(PermissionLogic):
         return False
 
 
+def detect_group_type(permission_group):
+    perm_group = permission_group.group
+    if hasattr(perm_group, 'projectrole'):
+        return 'project'
+    elif hasattr(perm_group, 'customerrole'):
+        return 'customer'
+    elif hasattr(perm_group, 'projectgrouprole'):
+        return 'project_group'
+
+
 class TypedCollaboratorsPermissionLogic(PermissionLogic):
     """
     Permission logic that supports definition of several user groups based on the type of the
@@ -263,8 +277,8 @@ class TypedCollaboratorsPermissionLogic(PermissionLogic):
     For example, it is useful for cases when an object can be accessed either by project administrators or
     by customer owners.
     """
-    def __init__(self, type_to_permission_loggic_mapping, discriminator_function):
-        self.type_to_permission_loggic_mapping = type_to_permission_loggic_mapping
+    def __init__(self, type_to_permission_logic_mapping, discriminator_function=None):
+        self.type_to_permission_logic_mapping = type_to_permission_logic_mapping
         self.discriminator_function = discriminator_function
 
     def has_perm(self, user_obj, perm, obj=None):
@@ -284,10 +298,10 @@ class TypedCollaboratorsPermissionLogic(PermissionLogic):
             collaboration_type = self.discriminator_function(obj)
 
             # disallow operation if the type is unknown
-            if not collaboration_type in self.type_to_permission_loggic_mapping:
+            if not collaboration_type in self.type_to_permission_logic_mapping:
                 return False
-            collaborators_query = self.type_to_permission_loggic_mapping[collaboration_type]['query']
-            collaborators_filter = self.type_to_permission_loggic_mapping[collaboration_type]['filter']
+            collaborators_query = self.type_to_permission_logic_mapping[collaboration_type]['query']
+            collaborators_filter = self.type_to_permission_logic_mapping[collaboration_type]['filter']
 
             kwargs = {
                 collaborators_query: user_obj,

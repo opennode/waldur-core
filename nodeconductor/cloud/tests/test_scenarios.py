@@ -34,9 +34,13 @@ class CloudTest(test.APISimpleTestCase):
 
         self.admin = structure_factories.UserFactory()
         self.manager = structure_factories.UserFactory()
+        self.group_manager = structure_factories.UserFactory()
         self.project = structure_factories.ProjectFactory(customer=self.customer)
         self.project.add_user(self.admin, structure_models.ProjectRole.ADMINISTRATOR)
         self.project.add_user(self.manager, structure_models.ProjectRole.MANAGER)
+        project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
+        project_group.projects.add(self.project)
+        project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
         self.cloud = factories.CloudFactory(customer=self.customer)
         factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
 
@@ -66,6 +70,12 @@ class CloudTest(test.APISimpleTestCase):
 
     def test_manager_can_view_only_cloud_public_fields(self):
         self.client.force_authenticate(user=self.manager)
+        response = self.client.get(_cloud_url(self.cloud))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertItemsEqual(response.data.keys(), self.expected_public_fields)
+
+    def test_group_manager_can_view_only_cloud_public_fields(self):
+        self.client.force_authenticate(user=self.group_manager)
         response = self.client.get(_cloud_url(self.cloud))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertItemsEqual(response.data.keys(), self.expected_public_fields)

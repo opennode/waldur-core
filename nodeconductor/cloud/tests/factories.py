@@ -58,6 +58,12 @@ class SecurityGroupFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'group%s' % n)
     description = factory.Sequence(lambda n: 'very good group %s' % n)
 
+    @classmethod
+    def get_url(cls, security_group=None):
+        if security_group is None:
+            security_group = CloudProjectMembershipFactory()
+        return 'http://testserver' + reverse('security_group-detail', kwargs={'uuid': security_group.uuid})
+
 
 class SecurityGroupRuleFactory(factory.DjangoModelFactory):
     class Meta(object):

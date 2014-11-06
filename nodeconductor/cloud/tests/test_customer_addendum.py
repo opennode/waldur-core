@@ -1,12 +1,11 @@
 from __future__ import unicode_literals
-import unittest
 
 from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.cloud.tests import factories
-from nodeconductor.structure.models import CustomerRole, ProjectRole
+from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -24,6 +23,7 @@ class CustomerAddendumApiPermissionTest(UrlResolverMixin, test.APITransactionTes
             'owner': structure_factories.UserFactory(),
             'admin': structure_factories.UserFactory(),
             'manager': structure_factories.UserFactory(),
+            'group_manager': structure_factories.UserFactory(),
         }
 
         self.customer = structure_factories.CustomerFactory()
@@ -32,22 +32,29 @@ class CustomerAddendumApiPermissionTest(UrlResolverMixin, test.APITransactionTes
         self.clouds = {
             'admin': factories.CloudFactory(customer=self.customer),
             'manager': factories.CloudFactory(customer=self.customer),
+            'group_manager': factories.CloudFactory(customer=self.customer),
         }
 
         self.projects = {
             'admin': structure_factories.ProjectFactory(customer=self.customer),
             'manager': structure_factories.ProjectFactory(customer=self.customer),
+            'group_manager': structure_factories.ProjectFactory(customer=self.customer)
         }
 
         self.projects['admin'].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         self.projects['manager'].add_user(self.users['manager'], ProjectRole.MANAGER)
+        project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
+        project_group.projects.add(self.projects['group_manager'])
+        project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
         factories.CloudProjectMembershipFactory(project=self.projects['admin'], cloud=self.clouds['admin'])
         factories.CloudProjectMembershipFactory(project=self.projects['manager'], cloud=self.clouds['manager'])
+        factories.CloudProjectMembershipFactory(
+            project=self.projects['group_manager'], cloud=self.clouds['group_manager'])
 
     # Nested objects filtration tests
     def test_user_can_see_cloud_he_has_access_to_within_customer(self):
-        for user_role in ('admin', 'manager'):
+        for user_role in ('admin', 'manager', 'group_manager'):
             self.client.force_authenticate(user=self.users[user_role])
 
             seen_cloud = self.clouds[user_role]
@@ -81,6 +88,21 @@ class CustomerAddendumApiPermissionTest(UrlResolverMixin, test.APITransactionTes
                 'User should not see cloud',
             )
 
+    def test_group_manger_can_see_all_clouds_of_customer(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+        seen_clouds = self.clouds.values()
+
+        response = self.client.get(self._get_customer_url(self.customer))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertIn('clouds', response.data, 'Customer must contain cloud list')
+        cloud_urls = set([cloud['url'] for cloud in response.data['clouds']])
+        for seen_cloud in seen_clouds:
+            self.assertIn(
+                self._get_cloud_url(seen_cloud), cloud_urls,
+                'Group manager should see all customer clouds',
+            )
+
     # Helper methods
     def _check_user_list_access_customers(self, customers, test_function):
         response = self.client.get(reverse('customer-list'))
@@ -108,4 +130,3 @@ class CustomerAddendumApiPermissionTest(UrlResolverMixin, test.APITransactionTes
             response = self.client.get(self._get_customer_url(customer))
 
             self.assertEqual(response.status_code, status_code)
-
