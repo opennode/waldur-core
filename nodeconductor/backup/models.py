@@ -12,7 +12,7 @@ from croniter.croniter import croniter
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core import fields as core_fields
-from nodeconductor.backup import tasks, managers
+from nodeconductor.backup import tasks
 
 
 class BackupSourceAbstractModel(models.Model):
@@ -148,8 +148,6 @@ class Backup(core_models.UuidMixin,
 
     state = FSMField(default=States.READY, max_length=1, choices=STATE_CHOICES)
     result_id = models.CharField(max_length=63, null=True)
-
-    objects = managers.BackupManager()
 
     def __str__(self):
         return '%(uuid)s backup of %(object)s' % {
