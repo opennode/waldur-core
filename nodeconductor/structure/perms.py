@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
-from nodeconductor.core.permissions import StaffPermissionLogic
-from nodeconductor.core.permissions import TypedCollaboratorsPermissionLogic
-from nodeconductor.core.permissions import FilteredCollaboratorsPermissionLogic
+from nodeconductor.core.permissions import (
+    StaffPermissionLogic, TypedCollaboratorsPermissionLogic, FilteredCollaboratorsPermissionLogic, detect_group_type)
 from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
 
 
@@ -40,5 +39,6 @@ PERMISSION_LOGICS = (
                 }
             }
         },
+        discriminator_function=detect_group_type,
     )),
 )
