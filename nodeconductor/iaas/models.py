@@ -327,14 +327,6 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
         return 'License: %s for %s' % (self.template_license, self.instance)
 
 
-class Volume(models.Model):
-    """
-    A generalization of a block device.
-    """
-    instance = models.ForeignKey(Instance, related_name='volumes')
-    size = models.PositiveSmallIntegerField()
-
-
 class Purchase(core_models.UuidMixin, models.Model):
     """
     Purchase history allows to see historical information
@@ -355,7 +347,7 @@ class Purchase(core_models.UuidMixin, models.Model):
         }
 
 
-class InstanceSecurityGroup(core_models.UuidMixin, models.Model):
+class InstanceSecurityGroup(models.Model):
     """
     Cloud security group added to instance
     """

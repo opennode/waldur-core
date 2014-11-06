@@ -4,6 +4,7 @@ from django.core.urlresolvers import reverse
 from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
+from nodeconductor.cloud.models import CloudProjectMembership
 
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
@@ -134,6 +135,22 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         changed_instance = Instance.objects.get(pk=self.admined_instance.pk)
 
         self.assertEqual(changed_instance.description, 'changed description1')
+
+    def test_user_can_change_security_groups_of_instance_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        data = self._get_valid_payload(self.admined_instance)
+
+        # new sec group
+        cloud_project_membership = CloudProjectMembership.objects.get(cloud=self.admined_instance.flavor.cloud,
+                                                                      project=self.admined_instance.project)
+        security_group = cloud_factories.SecurityGroupFactory(cloud_project_membership=cloud_project_membership)
+        data['security_groups'] = [
+            {'url': _security_group_url(security_group)}
+        ]
+
+        response = self.client.put(self._get_instance_url(self.admined_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_change_description_of_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
@@ -584,21 +601,21 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         response = self.client.get(_instance_url(self.instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        fields = ('name', 'protocol', 'from_port', 'to_port', 'ip_range', 'netmask')
+        fields = ('name',)
         for field in fields:
             expected_security_groups = [getattr(g, field) for g in self.cloud_security_groups]
             self.assertItemsEqual([g[field] for g in response.data['security_groups']], expected_security_groups)
 
     def test_add_instance_with_security_groups(self):
         data = _instance_data(self.instance)
-        data['security_groups'] = [self._get_valid_paylpad(g.security_group)
+        data['security_groups'] = [self._get_valid_security_group_payload(g.security_group)
                                    for g in self.instance_security_groups]
 
         response = self.client.post(_instance_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_change_instance_security_groups_single_field(self):
-        data = {'security_groups': [self._get_valid_paylpad(g.security_group)
+        data = {'security_groups': [self._get_valid_security_group_payload(g.security_group)
                                     for g in self.instance_security_groups]}
 
         response = self.client.patch(_instance_url(self.instance), data=data)
@@ -609,7 +626,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = _instance_data(self.instance)
-        data['security_groups'] = [self._get_valid_paylpad(g.security_group)
+        data['security_groups'] = [self._get_valid_security_group_payload()
                                    for g in self.instance_security_groups]
 
         response = self.client.put(_instance_url(self.instance), data=data)
@@ -622,13 +639,9 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     # Helper methods
-    def _get_valid_paylpad(self, resource):
+    def _get_valid_security_group_payload(self, security_group=None):
+        if security_group is None:
+            security_group = cloud_factories.SecurityGroupFactory()
         return {
-            'security_group': _security_group_url(resource),
-            'name': resource.name,
-            'protocol': resource.protocol,
-            'from_port': resource.from_port,
-            'to_port': resource.to_port,
-            'ip_range': resource.ip_range,
-            'netmask': resource.netmask,
+            'url': _security_group_url(security_group),
         }
