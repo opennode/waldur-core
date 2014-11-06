@@ -31,11 +31,11 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
         Parameters
         ----------
         collaborators_query : string
-            Django queryset filter-like expression to fetch collaborators
-            based on current object.
+            Django queryset filter-like expression or list of expressions
+            to fetch collaborators based on current object.
             Default is False.
         collaborators_filter : dict
-            A filter to apply to collaborators.
+            A filter or list of filters to apply to collaborators.
             Default is {}.
         any_permission : boolean
             True to give any permission of the specified object to the
@@ -57,8 +57,14 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
             It will be ignored if :attr:`any_permission` is True.
             Default is False.
         """
-        self.collaborators_query = collaborators_query
-        self.collaborators_filter = collaborators_filter or {}
+        if isinstance(collaborators_query, basestring):
+            self.collaborators_queries = [collaborators_query]
+        else:
+            self.collaborators_queries = collaborators_query
+        if isinstance(collaborators_filter, dict):
+            self.collaborators_filters = [collaborators_filter] or [{}]
+        else:
+            self.collaborators_filters = collaborators_filter
         self.any_permission = any_permission
         self.add_permission = add_permission
         self.change_permission = change_permission
@@ -126,11 +132,9 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
             if user_obj.is_staff:
                 return True
 
-            kwargs = {
-                self.collaborators_query: user_obj,
-                'pk': obj.pk,
-            }
-            kwargs.update(self.collaborators_filter)
+        for query, filt in zip(self.collaborators_queries, self.collaborators_filters):
+            kwargs = {query: user_obj, 'pk': obj.pk}
+            kwargs.update(filt)
 
             if obj._meta.model._default_manager.filter(**kwargs).exists():
                 return self.is_permission_allowed(perm)

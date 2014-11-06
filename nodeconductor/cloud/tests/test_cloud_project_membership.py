@@ -96,20 +96,31 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         response = self.client.post(reverse('cloudproject_membership-list'), payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_user_cannot_connect_new_cloud_and_project_if_he_is_project_admin(self):
-        for user_role in ['admin', 'manager', 'group_manager']:
-            user = self.users[user_role]
-            self.client.force_authenticate(user=user)
+    def test_group_manager_can_connect_project_and_cloud(self):
+        user = self.users['group_manager']
+        self.client.force_authenticate(user=user)
 
-            cloud = factories.CloudFactory(customer=self.customer)
-            project = self.connected_project
-            payload = self._get_valid_payload(cloud, project)
+        cloud = factories.CloudFactory(customer=self.customer)
+        project = self.connected_project
+        payload = self._get_valid_payload(cloud, project)
 
+        with patch('nodeconductor.cloud.tasks.initial_push_cloud_membership.delay'):
             response = self.client.post(reverse('cloudproject_membership-list'), payload)
-            # the new cloud should not be visible to the user
-            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-            self.assertDictContainsSubset(
-                {'cloud': ['Invalid hyperlink - object does not exist.']}, response.data)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_admin_cannot_connect_new_cloud_and_project_if_he_is_project_admin(self):
+        user = self.users['admin']
+        self.client.force_authenticate(user=user)
+
+        cloud = factories.CloudFactory(customer=self.customer)
+        project = self.connected_project
+        payload = self._get_valid_payload(cloud, project)
+
+        response = self.client.post(reverse('cloudproject_membership-list'), payload)
+        # the new cloud should not be visible to the user
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'cloud': ['Invalid hyperlink - object does not exist.']}, response.data)
 
     def test_user_cannot_revoke_cloud_and_project_permission_if_he_is_project_manager(self):
         user = self.users['manager']
@@ -123,7 +134,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_user_cannot_revoke_cloud_and_project_permission_if_he_is_project_group_manager(self):
+    def test_user_can_revoke_cloud_and_project_permission_if_he_is_project_group_manager(self):
         user = self.users['group_manager']
         self.client.force_authenticate(user=user)
 
@@ -133,7 +144,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
 
         url = factories.CloudProjectMembershipFactory.get_url(membership)
         response = self.client.delete(url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def _get_valid_payload(self, cloud=None, project=None):
         cloud = cloud or factories.CloudFactory()

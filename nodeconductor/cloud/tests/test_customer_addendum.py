@@ -74,7 +74,6 @@ class CustomerAddendumApiPermissionTest(UrlResolverMixin, test.APITransactionTes
         for user_role, cloud in (
                 ('admin', 'manager'),
                 ('manager', 'admin'),
-                ('group_manager', 'manager'),
         ):
             self.client.force_authenticate(user=self.users[user_role])
 
@@ -87,6 +86,21 @@ class CustomerAddendumApiPermissionTest(UrlResolverMixin, test.APITransactionTes
             self.assertNotIn(
                 self._get_cloud_url(unseen_cloud), cloud_urls,
                 'User should not see cloud',
+            )
+
+    def test_group_manger_can_see_all_clouds_of_customer(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+        seen_clouds = self.clouds.values()
+
+        response = self.client.get(self._get_customer_url(self.customer))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertIn('clouds', response.data, 'Customer must contain cloud list')
+        cloud_urls = set([cloud['url'] for cloud in response.data['clouds']])
+        for seen_cloud in seen_clouds:
+            self.assertIn(
+                self._get_cloud_url(seen_cloud), cloud_urls,
+                'Group manager should see all customer clouds',
             )
 
     # Helper methods
@@ -116,4 +130,3 @@ class CustomerAddendumApiPermissionTest(UrlResolverMixin, test.APITransactionTes
             response = self.client.get(self._get_customer_url(customer))
 
             self.assertEqual(response.status_code, status_code)
-

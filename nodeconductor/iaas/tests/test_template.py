@@ -148,19 +148,12 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
             self.assertEqual(sorted(expected_urls), sorted(actual_urls))
 
     def test_non_staff_user_gets_no_templates_when_filtering_by_cloud_he_has_no_access_to(self):
-        tests = (
-            # role, cloud index
-            ('admin', 2),
-            ('admin', 3),
-            ('group_manager', 0),
-            ('group_manager', 1),
-        )
-
-        for role, cloud_index in tests:
+        for role in ('admin', 'group_manager'):
             self.client.force_authenticate(user=self.users[role])
 
+            cloud = cloud_factories.CloudFactory()
             response = self.client.get(reverse('template-list'),
-                                       {'cloud': self.clouds[cloud_index].uuid})
+                                       {'cloud': cloud.uuid})
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
             self.assertEqual(0, len(response.data), 'User should see no templates')

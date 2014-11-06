@@ -49,7 +49,7 @@ class Cloud(UuidMixin, SynchronizableMixin, models.Model):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'projects'
-        project_group_path = 'projects__project_groups'
+        project_group_path = 'customer__projects__project_groups'
 
     name = models.CharField(max_length=100)
     customer = models.ForeignKey(structure_models.Customer, related_name='clouds')
