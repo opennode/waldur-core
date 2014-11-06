@@ -131,8 +131,6 @@ class BackupListPermissionsTest(helpers.ListPermissionsTest):
         instance = iaas_factories.InstanceFactory()
         backup1 = factories.BackupFactory(backup_source=instance)
         backup2 = factories.BackupFactory(backup_source=instance)
-        # deleted backup should not be visible even for user with permissions
-        factories.BackupFactory(backup_source=instance, state=models.Backup.States.DELETED)
 
         user_with_view_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
         user_without_view_permission = structure_factories.UserFactory.create()

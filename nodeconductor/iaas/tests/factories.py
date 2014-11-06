@@ -1,6 +1,5 @@
 from random import randint
 
-from django.core.urlresolvers import reverse
 from django.utils import timezone
 import factory
 import factory.fuzzy
@@ -79,16 +78,6 @@ class InstanceFactory(factory.DjangoModelFactory):
         project = structure_factories.ProjectFactory()
         cloud_factories.CloudProjectMembershipFactory(project=project, cloud=self.flavor.cloud)
         return project
-
-    @classmethod
-    def get_url(self, instance):
-        if instance is None:
-            instance = InstanceFactory()
-        return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
-
-    @classmethod
-    def get_list_url(self):
-        return 'http://testserver' + reverse('instance-list')
 
 
 class InstanceLicenseFactory(factory.DjangoModelFactory):
