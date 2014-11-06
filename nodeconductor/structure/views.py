@@ -44,6 +44,25 @@ class CustomerViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('Cannot delete customer with existing project_groups')
 
 
+class ProjectFilter(django_filters.FilterSet):
+    project_group = django_filters.CharFilter(
+        name='project_groups__uuid',
+        distinct=True,
+    )
+    name = django_filters.CharFilter(lookup_type='icontains')
+
+    class Meta(object):
+        model = models.Project
+        fields = [
+            'project_group',
+            'name',
+        ]
+        order_by = [
+            'name',
+            '-name',
+        ]
+
+
 class ProjectViewSet(viewsets.ModelViewSet):
     """List of projects that are accessible by this user.
 
@@ -53,9 +72,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
+    filter_class = ProjectFilter
 
     def get_queryset(self):
         user = self.request.user

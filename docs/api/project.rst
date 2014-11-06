@@ -7,8 +7,10 @@ only see connected projects:
 - projects that the user owns as a customer
 - projects where user has any role
 
-An optional filter **?can_manage** is supported to return a list of projects where current user is manager or a customer
-owner.
+Supported filters:
+
+- ?can_manage - return a list of projects where current user is manager, group manager or a customer owner;
+- ?project_group=<Project Group UUID> - return a list of projects in a specified project group.
 
 Project permissions
 -------------------

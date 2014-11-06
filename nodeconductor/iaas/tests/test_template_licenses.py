@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.db import models as django_models
 from django.core.urlresolvers import reverse
 from rest_framework import test
 from rest_framework import status
@@ -58,7 +59,7 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
         self.project_group = structure_factories.ProjectGroupFactory()
         self.project_group.projects.add(self.project)
         # cloud and template
-        self.cloud = cloud_factories.CloudFactory()
+        self.cloud = cloud_factories.CloudFactory(customer=self.customer)
         cloud_factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
         self.template = factories.TemplateFactory(os='OS')
         factories.ImageFactory(cloud=self.cloud, template=self.template)
@@ -161,85 +162,133 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
         self.assertEqual(self.template.template_licenses.count(), 1)
         self.assertEqual(self.template.template_licenses.all()[0], self.license)
 
-    def test_not_aggregated_stats(self):
+
+class LicenseStatsTests(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.url = _template_license_stats_url()
+        self.customer = structure_factories.CustomerFactory()
+        # we have 2 projects groups:
+        self.first_group = structure_factories.ProjectGroupFactory(customer=self.customer)
+        self.second_group = structure_factories.ProjectGroupFactory(customer=self.customer)
+        # and 2 template licenses:
+        self.first_template_license = factories.TemplateLicenseFactory(
+            name='first_template_license', license_type='first license type')
+        self.second_template_license = factories.TemplateLicenseFactory(
+            name='second_template_license', license_type='second license type')
+        cloud = cloud_factories.CloudFactory(customer=self.customer)
+        self.template = factories.TemplateFactory()
+        factories.ImageFactory(cloud=cloud, template=self.template)
+
+        self.template.template_licenses.add(self.first_template_license)
+        self.template.template_licenses.add(self.second_template_license)
+        # every group has 1 projects:
+        self.first_project = structure_factories.ProjectFactory(customer=self.customer, name='first_project')
+        self.first_project.project_groups.add(self.first_group)
+        self.second_project = structure_factories.ProjectFactory(customer=self.customer, name='second_project')
+        self.second_project.project_groups.add(self.second_group)
+        # every project has 1 instance with first and second template licenses:
+        self.first_instance = factories.InstanceFactory(template=self.template, project=self.first_project)
+        self.second_instance = factories.InstanceFactory(template=self.template, project=self.second_project)
+        # also first group has manger:
+        self.admin = structure_factories.UserFactory()
+        self.first_project.add_user(self.admin, structure_models.ProjectRole.ADMINISTRATOR)
+        self.group_manager = structure_factories.UserFactory()
+        self.first_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
+        self.staff = structure_factories.UserFactory(is_staff=True)
+        self.owner = structure_factories.UserFactory()
+        self.customer.add_user(self.owner, structure_models.CustomerRole.OWNER)
+
+    def test_licenses_stats_with_no_aggregation_returns_all_licenses(self):
         self.client.force_authenticate(self.staff)
-        factories.InstanceLicenseFactory(template_license=self.license)
-        factories.InstanceLicenseFactory(template_license=self.license)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertItemsEqual(response.data, models.InstanceLicense.objects.values().annotate(
+            count=django_models.Count('id', distinct=True)))
 
-        response = self.client.get(_template_license_stats_url())
-        self.assertEqual(response.data[0]['name'], self.license.name)
-        self.assertEqual(response.data[0]['count'], self.license.instance_licenses.count())
-
-    def test_stats_aggregated_by_project_name(self):
+    def test_licenses_stats_aggregated_by_name_and_type(self):
         self.client.force_authenticate(self.staff)
-        models.InstanceLicense.objects.all().delete()
-        instance = factories.InstanceFactory(project=self.project)
-        factories.InstanceLicenseFactory(template_license=self.license, instance=instance)
-        factories.InstanceLicenseFactory(template_license=self.license, instance=instance)
-        factories.InstanceLicenseFactory(template_license=self.license)
+        response = self.client.get(self.url, {'aggregate': ['name', 'type']})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expected_result = [
+            {'name': self.first_template_license.name, 'type': self.first_template_license.license_type, 'count': 2},
+            {'name': self.second_template_license.name, 'type': self.second_template_license.license_type, 'count': 2},
+        ]
+        self.assertItemsEqual(response.data, expected_result)
 
-        response = self.client.get(_template_license_stats_url(), {'aggregate': 'project_name'})
-        self.assertEqual(len(response.data), 2)
-        project_licenses_count = filter(
-            lambda d: d['project_name'] == self.project.name, response.data)[0]['count']
-        self.assertEqual(project_licenses_count, instance.instance_licenses.count())
-
-    def test_stats_aggregated_by_project_group_name(self):
+    def test_licenses_stats_aggregated_by_name_type_and_project(self):
         self.client.force_authenticate(self.staff)
-        models.InstanceLicense.objects.all().delete()
-        instance = factories.InstanceFactory(project=self.project)
-        factories.InstanceLicenseFactory(template_license=self.license, instance=instance)
-        factories.InstanceLicenseFactory(template_license=self.license, instance=instance)
-        factories.InstanceLicenseFactory(template_license=self.license)
+        response = self.client.get(self.url, {'aggregate': ['name', 'type', 'project']})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expected_result = []
+        for project in self.first_project, self.second_project:
+            for template_license in self.first_template_license, self.second_template_license:
+                expected_result.append({
+                    'name': template_license.name, 'type': template_license.license_type, 'count': 1,
+                    'project_name': project.name, 'project_uuid': str(project.uuid)
+                })
+        self.assertItemsEqual(response.data, expected_result)
 
-        response = self.client.get(_template_license_stats_url(), {'aggregate': 'project_group'})
-        self.assertEqual(len(response.data), 2)
-        project_group_licenses_count = filter(
-            lambda d: d['project_group'] == self.project_group.name, response.data)[0]['count']
-        self.assertEqual(project_group_licenses_count, instance.instance_licenses.count())
-
-    def test_stats_aggregated_by_license_type(self):
+    def test_licenses_stats_aggregated_by_name_type_and_project_group(self):
         self.client.force_authenticate(self.staff)
-        models.InstanceLicense.objects.all().delete()
-        factories.InstanceLicenseFactory(template_license=self.license)
-        factories.InstanceLicenseFactory()
-        factories.InstanceLicenseFactory()
+        response = self.client.get(self.url, {'aggregate': ['name', 'type', 'project_group']})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expected_result = []
+        for group in self.first_group, self.second_group:
+            for template_license in self.first_template_license, self.second_template_license:
+                expected_result.append({
+                    'name': template_license.name, 'type': template_license.license_type, 'count': 1,
+                    'project_group_name': group.name, 'project_group_uuid': str(group.uuid)
+                })
+        self.assertItemsEqual(response.data, expected_result)
 
-        response = self.client.get(_template_license_stats_url(), {'aggregate': 'license_type'})
-        self.assertEqual(len(response.data), 3)
-        project_group_licenses_count = filter(
-            lambda d: d['license_type'] == self.license.license_type, response.data)[0]['count']
-        self.assertEqual(project_group_licenses_count, self.license.instance_licenses.count())
+    def test_owner_can_see_stats_only_for_his_customer(self):
+        self.client.force_authenticate(self.owner)
+        # instance license for other customer:
+        other_instance = factories.InstanceLicenseFactory()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            len(response.data), models.InstanceLicense.objects.exclude(pk=other_instance.pk).all().count())
 
-    def test_stats_shows_filtered_results_for_manager(self):
-        self.client.force_authenticate(self.manager)
-        models.InstanceLicense.objects.all().delete()
-        instance = factories.InstanceFactory(project=self.project)
-        factories.InstanceLicenseFactory(template_license=self.license, instance=instance)
-        factories.InstanceLicenseFactory(template_license=self.license, instance=instance)
-        factories.InstanceLicenseFactory(template_license=self.license)
+    def test_licenses_stats_filtering_by_customer(self):
+        self.client.force_authenticate(self.staff)
+        # instance license for other customer:
+        other_instance = factories.InstanceLicenseFactory()
+        response = self.client.get(self.url, {'customer': self.customer.uuid})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            len(response.data), models.InstanceLicense.objects.exclude(pk=other_instance.pk).all().count())
 
-        response = self.client.get(_template_license_stats_url(), {'aggregate': 'project_group'})
-        # manager can see only licenses from his projects
-        self.assertEqual(len(response.data), 1)
-        project_group_licenses_count = filter(
-            lambda d: d['project_group'] == self.project_group.name, response.data)[0]['count']
-        self.assertEqual(project_group_licenses_count, instance.instance_licenses.count())
+    def test_licenses_stats_filtering_by_license_name(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(self.url, {'name': self.first_template_license.name})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertItemsEqual(response.data, models.InstanceLicense.objects.filter(
+            template_license=self.first_template_license).values().annotate(
+            count=django_models.Count('id', distinct=True)))
 
-    def test_stats_shows_filtered_results_for_group_manager(self):
+    def test_licenses_stats_filtering_by_license_type(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(self.url, {'type': self.first_template_license.license_type})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertItemsEqual(response.data, models.InstanceLicense.objects.filter(
+            template_license=self.first_template_license).values().annotate(
+            count=django_models.Count('id', distinct=True)))
+
+    def test_admin_can_see_stats_only_for_his_projects(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), models.InstanceLicense.objects.filter(
+            instance__project=self.first_project).all().count())
+
+    def test_group_manager_can_see_stats_only_for_his_project_group(self):
         self.client.force_authenticate(self.group_manager)
-        models.InstanceLicense.objects.all().delete()
-        instance = factories.InstanceFactory(project=self.project)
-        factories.InstanceLicenseFactory(template_license=self.license, instance=instance)
-        factories.InstanceLicenseFactory(template_license=self.license, instance=instance)
-        factories.InstanceLicenseFactory(template_license=self.license)
-
-        response = self.client.get(_template_license_stats_url(), {'aggregate': 'project_group'})
-        # manager can see only licenses from his projects
-        self.assertEqual(len(response.data), 1)
-        project_group_licenses_count = filter(
-            lambda d: d['project_group'] == self.project_group.name, response.data)[0]['count']
-        self.assertEqual(project_group_licenses_count, instance.instance_licenses.count())
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), models.InstanceLicense.objects.filter(
+            instance__project__project_groups=self.first_group).all().count())
 
 
 class LicensePermissionsTest(helpers.PermissionsTest):
