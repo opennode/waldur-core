@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import json
 
+from django.core.management import call_command
 from rest_framework import test, status
 
 
@@ -73,6 +74,9 @@ class PermissionsTest(test.APISimpleTestCase):
             data = conf['data'] if 'data' in conf else {}
 
             for user in self.get_users_with_permission(url, method):
+                call_command('flush', verbosity=0, interactive=False)
+                self.setUp()
+
                 self.client.force_authenticate(user=user)
                 response = getattr(self.client, method.lower())(url, data=data)
                 self.assertFalse(
@@ -81,6 +85,9 @@ class PermissionsTest(test.APISimpleTestCase):
                     % (user, url, method, response.status_code))
 
             for user in self.get_users_without_permissions(url, method):
+                call_command('flush', verbosity=0, interactive=False)
+                self.setUp()
+
                 self.client.force_authenticate(user=user)
                 response = getattr(self.client, method.lower())(url, data=data)
                 self.assertTrue(
