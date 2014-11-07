@@ -370,3 +370,15 @@ filters.set_permissions_for_model(
     customer_path='group__projectrole__project__customer',
     project_path='group__projectrole__project',
 )
+
+
+class IpMappingViewSet(viewsets.ModelViewSet):
+    """
+    List of mappings between public IPs and floating IPs
+    """
+    queryset = models.IpMapping.objects.all()
+    serializer_class = serializers.IpMappingSerializer
+    lookup_field = 'uuid'
+    filter_backends = (filters.GenericRoleFilter,)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)

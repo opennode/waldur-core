@@ -240,3 +240,12 @@ class NetworkSegment(models.Model):
     netmask = models.PositiveIntegerField(null=False)
     vlan = models.PositiveIntegerField(null=False)
     project = models.ForeignKey(Project, related_name='segments')
+
+
+class IpMapping(UuidMixin, models.Model):
+    class Permissions(object):
+        project_path = 'project'
+
+    public_ip = models.IPAddressField(null=False)
+    private_ip = models.IPAddressField(null=False,)
+    project = models.ForeignKey(Project, related_name='ip_mappings')

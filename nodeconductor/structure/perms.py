@@ -41,4 +41,5 @@ PERMISSION_LOGICS = (
         },
         discriminator_function=detect_group_type,
     )),
+    ('structure.IpMapping',  StaffPermissionLogic(any_permission=True)),
 )
