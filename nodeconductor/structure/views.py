@@ -6,7 +6,9 @@ import django_filters
 from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
+from rest_framework import status
 from rest_framework import viewsets as rf_viewsets
+from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 
 from nodeconductor.core import permissions
@@ -229,10 +231,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
                                rf_mixins.RetrieveModelMixin,
-                               rf_mixins.DestroyModelMixin,
                                mixins.ListModelMixin,
                                rf_viewsets.GenericViewSet):
-    queryset = User.groups.through.objects.all()
+    queryset = User.groups.through.objects.exclude(group__projectrole=None)
     serializer_class = serializers.ProjectPermissionSerializer
     filter_backends = (filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,
@@ -240,7 +241,6 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
 
     def get_queryset(self):
         queryset = super(ProjectPermissionViewSet, self).get_queryset()
-        queryset = queryset.exclude(group__projectrole=None)
 
         # TODO: refactor against django filtering
         user_uuid = self.request.QUERY_PARAMS.get('user', None)
@@ -249,23 +249,54 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
 
         return queryset
 
-    def pre_save(self, obj):
-        super(ProjectPermissionViewSet, self).pre_save(obj)
+    def can_save(self, user_group):
         user = self.request.user
-        project = obj.group.projectrole.project
+        project = user_group.group.projectrole.project
 
         # check for the user role. Inefficient but more readable
         is_manager = project.roles.filter(
             permission_group__user=user, role_type=ProjectRole.MANAGER).exists()
         if is_manager:
-            return
+            return True
 
         is_customer_owner = project.customer.roles.filter(
             permission_group__user=user, role_type=CustomerRole.OWNER).exists()
         if is_customer_owner:
-            return
+            return True
 
-        raise PermissionDenied()
+        return False
+
+    def pre_save(self, obj):
+        if not self.can_save(obj):
+            raise PermissionDenied()
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+
+        if serializer.is_valid():
+            self.pre_save(serializer.object)
+            self.object = serializer.save(force_insert=True)
+
+            self.post_save(self.object, created=True)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED,
+                            headers=headers)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        self.pre_delete(obj)
+
+        user = obj.user
+        project = obj.group.projectrole.project
+        role = obj.group.projectrole.role_type
+
+        project.remove_user(user, role)
+
+        self.post_delete(obj)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CustomerPermissionFilter(django_filters.FilterSet):
@@ -297,7 +328,7 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
                                 rf_mixins.DestroyModelMixin,
                                 mixins.ListModelMixin,
                                 rf_viewsets.GenericViewSet):
-    model = User.groups.through
+    queryset = User.groups.through.objects.exclude(group__customerrole=None)
     serializer_class = serializers.CustomerPermissionSerializer
     filter_backends = (rf_filter.DjangoFilterBackend,)
     permission_classes = (rf_permissions.IsAuthenticated,
@@ -306,9 +337,6 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
 
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
-        # TODO: Test for it!
-        # Only take groups defining customer roles
-        queryset = queryset.exclude(group__customerrole=None)
 
         # TODO: Test for it!
         if not self.request.user.is_staff:

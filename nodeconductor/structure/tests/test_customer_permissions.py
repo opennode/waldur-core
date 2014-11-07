@@ -3,16 +3,24 @@ from __future__ import unicode_literals
 import collections
 
 from django.contrib.auth import get_user_model
+from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
 from rest_framework.reverse import reverse
 
 from nodeconductor.structure.models import CustomerRole, ProjectRole
+from nodeconductor.structure.views import CustomerPermissionViewSet
 from nodeconductor.structure.tests import factories
 
 User = get_user_model()
 
 TestRole = collections.namedtuple('TestRole', ['user', 'customer', 'role'])
+
+
+class CustomerPermissionViewSetTest(unittest.TestCase):
+    def test_foo(self):
+        viewset = CustomerPermissionViewSet.as_view()
+        pass
 
 
 class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):

@@ -4,15 +4,52 @@ import collections
 
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
+from django.utils import unittest
+from mock import Mock
 from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.structure.models import ProjectRole, CustomerRole
 from nodeconductor.structure.tests import factories
+from nodeconductor.structure.views import ProjectPermissionViewSet
 
 User = get_user_model()
 
 TestRole = collections.namedtuple('TestRole', ['user', 'project', 'role'])
+
+
+class ProjectPermissionViewSetTest(unittest.TestCase):
+    def test_create_adds_user_role_from_project(self):
+        request = Mock()
+
+        user_group = Mock()
+
+        user = user_group.user
+        project = user_group.group.projectrole.project
+        role_type = user_group.group.projectrole.role_type
+
+        view_set = ProjectPermissionViewSet()
+        view_set.can_save = Mock(return_value=True)
+
+        view_set.create(request)
+
+        project.add_user.assert_called_once_with(user, role_type)
+
+    def test_destroy_removes_user_role_from_project(self):
+        request = Mock()
+
+        user_group = Mock()
+
+        user = user_group.user
+        project = user_group.group.projectrole.project
+        role_type = user_group.group.projectrole.role_type
+
+        view_set = ProjectPermissionViewSet()
+        view_set.get_object = Mock(return_value=user_group)
+
+        view_set.destroy(request)
+
+        project.remove_user.assert_called_once_with(user, role_type)
 
 
 class UserProjectPermissionTest(test.APITransactionTestCase):

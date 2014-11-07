@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import logging
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
 from django.db import models
@@ -12,7 +13,7 @@ from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.cloud.backend import CloudBackendError
 from nodeconductor.core.models import (
-    DescribableMixin, SshPublicKey, SynchronizableMixin, SynchronizationStates, UuidMixin,
+    DescribableMixin, SshPublicKey, SynchronizableMixin, UuidMixin,
 )
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
@@ -22,9 +23,12 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 
 logger = logging.getLogger(__name__)
 
+# User = get_user_model()
+
 
 def validate_known_keystone_urls(value):
     from nodeconductor.cloud.backend.openstack import OpenStackBackend
+
     backend = OpenStackBackend()
     try:
         backend.get_credentials(value)
@@ -40,6 +44,7 @@ class Cloud(UuidMixin, SynchronizableMixin, models.Model):
     Represents parameters set that are necessary to connect to a particular cloud,
     such as connection endpoints, credentials, etc.
     """
+
     class Meta(object):
         unique_together = (
             ('customer', 'name'),
@@ -62,6 +67,7 @@ class Cloud(UuidMixin, SynchronizableMixin, models.Model):
         # TODO: Support different clouds instead of hard-coding
         # Importing here to avoid circular imports hell
         from nodeconductor.cloud.backend.openstack import OpenStackBackend
+
         return OpenStackBackend()
 
     def __str__(self):
@@ -158,6 +164,7 @@ def get_related_clouds(obj, request):
         pass
 
     from nodeconductor.cloud.serializers import BasicCloudSerializer
+
     serializer_instance = BasicCloudSerializer(related_clouds, context={'request': request})
 
     return serializer_instance.data
@@ -173,25 +180,93 @@ def add_clouds_to_related_model(sender, fields, **kwargs):
     # Note: importing here to avoid circular import hell
     from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
 
-    if not sender in (CustomerSerializer, ProjectSerializer):
+    if sender not in (CustomerSerializer, ProjectSerializer):
         return
 
     fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
 
 
 @receiver(signals.post_save, sender=SshPublicKey)
-def propagate_new_key(sender, instance=None, created=False, **kwargs):
+def propagate_new_users_key_to_his_projects_clouds(sender, instance=None, created=False, **kwargs):
     if not created:
         return
 
-    # TODO: Schedule propagation task(s)? instead of doing it inline
-    # XXX: Come up with a solid strategy which projects are to be affected
-    cloud_project_memberships = filter_queryset_for_user(
-        CloudProjectMembership.objects.filter(state=SynchronizationStates.IN_SYNC), instance.user)
+    public_key = instance
 
-    for membership in cloud_project_memberships.iterator():
-        backend = membership.cloud.get_backend()
-        backend.push_ssh_public_key(membership, instance)
+    membership_queryset = filter_queryset_for_user(
+        CloudProjectMembership.objects.all(), public_key.user)
+
+    membership_pks = membership_queryset.values_list('pk', flat=True)
+
+    if membership_pks:
+        # Note: importing here to avoid circular import hell
+        from nodeconductor.cloud import tasks
+
+        tasks.push_ssh_public_keys.delay([public_key.uuid], membership_pks)
+
+
+# @receiver(signals.m2m_changed, sender=User.groups.through)
+# @receiver(signals.m2m_changed)
+def propagate_users_keys_to_his_projects_clouds(sender, instance, action, reverse, model, pk_set, **kwargs):
+    # XXX: This is fragile
+    if sender._meta.model_name != 'user_groups' or action != 'post_add':
+        return
+
+    if reverse:
+        # instance is group
+        # pk_set   is a set of user pks
+        key_filter = {'user__pk__in': pk_set}
+        membership_filter = {
+            'project__roles__permission_group': instance,
+        }
+    else:
+        # instance is user
+        # pk_set   is a set of group pks
+        key_filter = {'user': instance}
+        membership_filter = {
+            'project__roles__permission_group__pk__in': pk_set,
+        }
+
+    ssh_public_key_uuids = SshPublicKey.objects.filter(
+        **key_filter).values_list('uuid', flat=True)
+
+    membership_pks = CloudProjectMembership.objects.filter(
+        **membership_filter).distinct().values_list('pk', flat=True)
+
+    if ssh_public_key_uuids and membership_pks:
+        # Note: importing here to avoid circular import hell
+        from nodeconductor.cloud import tasks
+
+        # Send uuids as strings rather than UUID objects
+        tasks.push_ssh_public_keys.delay(
+            [k.hex for k in ssh_public_key_uuids], membership_pks)
+
+
+# @receiver(signals.post_save, sender=User.groups.through)
+@receiver(signals.post_save)
+def propagate_users_keys_to_his_projects_clouds2(sender, instance=None, created=False, **kwargs):
+    # XXX: This is fragile
+    if sender._meta.model_name != 'user_groups' or not created:
+        return
+
+    key_filter = {'user': instance.user}
+    membership_filter = {
+        'project__roles__permission_group': instance.group,
+    }
+
+    ssh_public_key_uuids = SshPublicKey.objects.filter(
+        **key_filter).values_list('uuid', flat=True)
+
+    membership_pks = CloudProjectMembership.objects.filter(
+        **membership_filter).distinct().values_list('pk', flat=True)
+
+    if ssh_public_key_uuids and membership_pks:
+        # Note: importing here to avoid circular import hell
+        from nodeconductor.cloud import tasks
+
+        # Send uuids as strings rather than UUID objects
+        tasks.push_ssh_public_keys.delay(
+            [k.uuid for k in ssh_public_key_uuids], membership_pks)
 
 
 # FIXME: These should come from backend properly, see NC-139
