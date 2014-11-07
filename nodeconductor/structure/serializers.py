@@ -192,6 +192,20 @@ class ProjectRoleField(serializers.ChoiceField):
             raise ValidationError('Unknown role')
 
 
+class ProjectGroupRoleField(serializers.ChoiceField):
+
+    def field_to_native(self, obj, field_name):
+        if obj is not None:
+            return models.ProjectGroupRole.ROLE_TO_NAME[obj.group.projectgrouprole.role_type]
+
+    def field_from_native(self, data, files, field_name, into):
+        role = data.get('role')
+        if role in models.ProjectGroupRole.NAME_TO_ROLE:
+            into[field_name] = models.ProjectGroupRole.NAME_TO_ROLE[role]
+        else:
+            raise ValidationError('Unknown role')
+
+
 class CustomerRoleField(serializers.ChoiceField):
 
     def field_to_native(self, obj, field_name):
@@ -321,6 +335,45 @@ class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin
 
     def get_filtered_field_names(self):
         return 'project',
+
+
+class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
+                                       serializers.HyperlinkedModelSerializer):
+    project_group = serializers.HyperlinkedRelatedField(source='group.projectgrouprole.project_group', view_name='projectgroup-detail',
+                                                        lookup_field='uuid', queryset=models.ProjectGroup.objects.all())
+    user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
+                                               queryset=User.objects.all())
+
+    project_group_name = serializers.Field(source='group.projectgrouprole.project_group.name')
+    user_full_name = serializers.Field(source='user.full_name')
+    user_native_name = serializers.Field(source='user.native_name')
+
+    role = ProjectGroupRoleField(choices=models.ProjectGroupRole.TYPE_CHOICES)
+
+    class Meta(object):
+        model = User.groups.through
+        fields = (
+            'url',
+            'role',
+            'project_group', 'project_group_name',
+            'user', 'user_full_name', 'user_native_name',
+        )
+        view_name = 'projectgroup_permission-detail'
+
+    def restore_object(self, attrs, instance=None):
+        project_group = attrs['group.projectgrouprole.project_group']
+        group = project_group.roles.get(role_type=attrs['role']).permission_group
+        UserGroup = User.groups.through
+        return UserGroup(user=attrs['user'], group=group)
+
+    def save_object(self, obj, **kwargs):
+        try:
+            obj.save()
+        except IntegrityError:
+            raise NotModifiedPermission()
+
+    def get_filtered_field_names(self):
+        return 'project_group',
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
