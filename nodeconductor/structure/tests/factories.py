@@ -1,6 +1,8 @@
 # encoding: utf-8
 from __future__ import unicode_literals
 
+import random
+
 import django.contrib.auth
 
 import factory
@@ -99,3 +101,24 @@ class ResourceQuotaFactory(factory.DjangoModelFactory):
     ram = factory.Iterator([1.0, 2.0, 3.0, 4.0])
     storage = factory.fuzzy.FuzzyFloat(10.0, 50.0)
     max_instances = factory.Iterator([1, 2, 3, 4])
+
+
+class IpMappingFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.IpMapping
+
+    public_ip = factory.LazyAttribute(lambda o: '84.%s' % '.'.join(
+        '%s' % random.randint(0, 255) for _ in range(3)))
+    private_ip = factory.LazyAttribute(lambda o: '10.%s' % '.'.join(
+        '%s' % random.randint(0, 255) for _ in range(3)))
+    project = factory.SubFactory(ProjectFactory)
+
+    @classmethod
+    def get_url(cls, ip_mapping=None):
+        ip_mapping = ip_mapping or IpMappingFactory()
+
+        return 'http://testserver' + reverse('ip_mapping-detail', kwargs={'uuid': ip_mapping.uuid})
+
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('ip_mapping-list')
