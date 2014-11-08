@@ -350,13 +350,9 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
 
 
-class IpMappingSerializer(core_serializers.PermissionFieldFilteringMixin,
-                          serializers.HyperlinkedModelSerializer):
+class IpMappingSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = models.IpMapping
         fields = ('url', 'uuid', 'public_ip', 'private_ip', 'project')
         lookup_field = 'uuid'
         view_name = 'ip_mapping-detail'
-
-    def get_filtered_field_names(self):
-        return 'project',

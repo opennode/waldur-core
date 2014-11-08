@@ -372,6 +372,20 @@ filters.set_permissions_for_model(
 )
 
 
+class IpMappingFilter(django_filters.FilterSet):
+    project = django_filters.CharFilter(
+        name='project__uuid',
+    )
+
+    class Meta(object):
+        model = models.IpMapping
+        fields = [
+            'project',
+            'private_ip',
+            'public_ip',
+        ]
+
+
 class IpMappingViewSet(viewsets.ModelViewSet):
     """
     List of mappings between public IPs and floating IPs
@@ -382,3 +396,4 @@ class IpMappingViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
+    filter_class = IpMappingFilter
