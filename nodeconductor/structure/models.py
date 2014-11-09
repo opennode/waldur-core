@@ -246,7 +246,7 @@ class IpMapping(UuidMixin, models.Model):
     class Permissions(object):
         project_path = 'project'
         customer_path = 'project__customer'
-        project_group_path = 'project__project_group'
+        project_group_path = 'project__project_groups'
 
     public_ip = models.IPAddressField(null=False)
     private_ip = models.IPAddressField(null=False,)
