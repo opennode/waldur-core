@@ -2,10 +2,11 @@ from __future__ import unicode_literals
 
 import json
 
+from django.core.management import call_command
 from rest_framework import test, status
 
 
-class PermissionsTest(test.APISimpleTestCase):
+class PermissionsTest(test.APITransactionTestCase):
     """
     Abstract class for permissions tests.
 

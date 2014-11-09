@@ -1,52 +1,17 @@
-Pagination
-==========
-
-.. include:: pagination.rst
-
-Version
-=======
-
-.. include:: version.rst
-
 Authentication
 ==============
 
 .. include:: authentication.rst
 
+Backup management
+=================
+
+.. include:: backup.rst
+
 Customer management
 ===================
 
 .. include:: customer.rst
-
-Project management
-==================
-
-.. include:: project.rst
-
-Project group management
-========================
-
-.. include:: project_group.rst
-
-Project quota management
-========================
-
-.. include:: project_quotas.rst
-
-IP mappings
-===========
-
-.. include:: ip_mapping.rst
-
-User management
-===============
-
-.. include:: user.rst
-
-Key management
-==============
-
-.. include:: key.rst
 
 Cloud management
 ================
@@ -58,25 +23,41 @@ Flavor management
 
 .. include:: flavor.rst
 
-Templates
-=========
+IP mappings
+===========
 
-.. include:: template.rst
+.. include:: ip_mapping.rst
 
-VM instance management
-======================
+Key management
+==============
 
-.. include:: instance.rst
-
-Backup management
-=================
-
-.. include:: backup.rst
+.. include:: key.rst
 
 License management
 ==================
 
 .. include:: licenses.rst
+
+Pagination
+==========
+
+.. include:: pagination.rst
+
+Project group management
+========================
+
+.. include:: project_group.rst
+
+Project management
+==================
+
+.. include:: project.rst
+
+Project quota management
+========================
+
+.. include:: project_quotas.rst
+
 
 Security group management
 =========================
@@ -87,3 +68,23 @@ Services
 ========
 
 .. include:: services.rst
+
+Templates
+=========
+
+.. include:: template.rst
+
+User management
+===============
+
+.. include:: user.rst
+
+Version
+=======
+
+.. include:: version.rst
+
+VM instance management
+======================
+
+.. include:: instance.rst
