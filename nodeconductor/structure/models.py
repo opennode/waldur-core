@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models
 from django.db import transaction
@@ -24,11 +25,22 @@ class Customer(UuidMixin, models.Model):
     # XXX: How do we tell customers with same names from each other?
 
     def add_user(self, user, role_type):
+        UserGroup = get_user_model().groups.through
+
         with transaction.atomic():
             role = self.roles.get(role_type=role_type)
 
-            if not role.permission_group.user_set.filter(pk=user.pk).exists():
-                role.permission_group.user_set.add(user)
+            try:
+                membership = UserGroup.objects.get(
+                    user=user,
+                    group__customerrole=role,
+                )
+                return membership, False
+            except UserGroup.DoesNotExist:
+                membership = UserGroup.objects.create(
+                    user=user,
+                    group=role.permission_group,
+                )
 
                 structure_role_granted.send(
                     sender=Customer,
@@ -36,11 +48,15 @@ class Customer(UuidMixin, models.Model):
                     user=user,
                     role=role_type,
                 )
+                return membership, True
 
     def remove_user(self, user, role_type=None):
+        UserGroup = get_user_model().groups.through
+
         with transaction.atomic():
-            memberships = user.groups.through.objects.filter(
+            memberships = UserGroup.objects.filter(
                 group__customerrole__customer=self,
+                user=user,
             )
 
             if role_type is not None:
@@ -54,7 +70,15 @@ class Customer(UuidMixin, models.Model):
                     role=membership.group.customerrole.role_type,
                 )
 
-                memberships.delete()
+                membership.delete()
+
+    def has_user(self, user, role_type=None):
+        queryset = self.roles.filter(permission_group__user=user)
+
+        if role_type is not None:
+            queryset = queryset.filter(role_type=role_type)
+
+        return queryset.exists()
 
     def get_owners(self):
         return self.roles.get(role_type=CustomerRole.OWNER).permission_group.user_set
@@ -139,11 +163,22 @@ class Project(DescribableMixin, UuidMixin, models.Model):
     resource_quota = models.OneToOneField(ResourceQuota, related_name='project', null=True)
 
     def add_user(self, user, role_type):
+        UserGroup = get_user_model().groups.through
+
         with transaction.atomic():
             role = self.roles.get(role_type=role_type)
 
-            if not role.permission_group.user_set.filter(pk=user.pk).exists():
-                role.permission_group.user_set.add(user)
+            try:
+                membership = UserGroup.objects.get(
+                    user=user,
+                    group__projectrole=role,
+                )
+                return membership, False
+            except UserGroup.DoesNotExist:
+                membership = UserGroup.objects.create(
+                    user=user,
+                    group=role.permission_group,
+                )
 
                 structure_role_granted.send(
                     sender=Project,
@@ -151,11 +186,15 @@ class Project(DescribableMixin, UuidMixin, models.Model):
                     user=user,
                     role=role_type,
                 )
+                return membership, True
 
     def remove_user(self, user, role_type=None):
+        UserGroup = get_user_model().groups.through
+
         with transaction.atomic():
-            memberships = user.groups.through.objects.filter(
+            memberships = UserGroup.objects.filter(
                 group__projectrole__project=self,
+                user=user,
             )
 
             if role_type is not None:
@@ -169,7 +208,15 @@ class Project(DescribableMixin, UuidMixin, models.Model):
                     role=membership.group.projectrole.role_type,
                 )
 
-                memberships.delete()
+                membership.delete()
+
+    def has_user(self, user, role_type=None):
+        queryset = self.roles.filter(permission_group__user=user)
+
+        if role_type is not None:
+            queryset = queryset.filter(role_type=role_type)
+
+        return queryset.exists()
 
     def __str__(self):
         return '%(name)s | %(customer)s' % {

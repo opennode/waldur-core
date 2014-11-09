@@ -32,6 +32,29 @@ class CustomerTest(TransactionTestCase):
         self.customer = factories.CustomerFactory()
         self.user = factories.UserFactory()
 
+    def test_add_user_returns_created_if_grant_didnt_exist_before(self):
+        _, created = self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        self.assertTrue(created, 'Customer permission should have been reported as created')
+
+    def test_add_user_returns_not_created_if_grant_existed_before(self):
+        self.customer.add_user(self.user, CustomerRole.OWNER)
+        _, created = self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        self.assertFalse(created, 'Customer permission should have been reported as not created')
+
+    def test_add_user_returns_membership(self):
+        membership, _ = self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        self.assertEqual(membership.user, self.user)
+        self.assertEqual(membership.group.customerrole.customer, self.customer)
+
+    def test_add_user_returns_same_membership_for_consequent_calls_with_same_arguments(self):
+        membership1, _ = self.customer.add_user(self.user, CustomerRole.OWNER)
+        membership2, _ = self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        self.assertEqual(membership1, membership2)
+
     def test_add_user_emits_structure_role_granted_if_grant_didnt_exist_before(self):
         with mock_signal_receiver(signals.structure_role_granted) as receiver:
             self.customer.add_user(self.user, CustomerRole.OWNER)
@@ -53,7 +76,7 @@ class CustomerTest(TransactionTestCase):
 
         self.assertFalse(receiver.called, 'structure_role_granted should not be emitted')
 
-    def test_remove_user_emits_structure_role_revoked_for_each_role_user_had_in_project(self):
+    def test_remove_user_emits_structure_role_revoked_for_each_role_user_had_in_customer(self):
         self.customer.add_user(self.user, CustomerRole.OWNER)
 
         with mock_signal_receiver(signals.structure_role_revoked) as receiver:

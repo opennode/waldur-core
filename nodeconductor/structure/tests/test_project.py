@@ -17,6 +17,29 @@ class ProjectTest(TransactionTestCase):
         self.project = factories.ProjectFactory()
         self.user = factories.UserFactory()
 
+    def test_add_user_returns_created_if_grant_didnt_exist_before(self):
+        _, created = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertTrue(created, 'Project permission should have been reported as created')
+
+    def test_add_user_returns_not_created_if_grant_existed_before(self):
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        _, created = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertFalse(created, 'Project permission should have been reported as not created')
+
+    def test_add_user_returns_membership(self):
+        membership, _ = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertEqual(membership.user, self.user)
+        self.assertEqual(membership.group.projectrole.project, self.project)
+
+    def test_add_user_returns_same_membership_for_consequent_calls_with_same_arguments(self):
+        membership1, _ = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        membership2, _ = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertEqual(membership1, membership2)
+
     def test_add_user_emits_structure_role_granted_if_grant_didnt_exist_before(self):
         with mock_signal_receiver(signals.structure_role_granted) as receiver:
             self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
