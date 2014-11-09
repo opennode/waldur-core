@@ -9,7 +9,6 @@ from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from uuidfield import UUIDField
 
 from nodeconductor.cloud.backend import CloudBackendError
 from nodeconductor.core.models import (
@@ -266,3 +265,13 @@ def create_dummy_security_groups(sender, instance=None, created=False, **kwargs)
             netmask=0
         )
 
+
+class IpMapping(UuidMixin, models.Model):
+    class Permissions(object):
+        project_path = 'project'
+        customer_path = 'project__customer'
+        project_group_path = 'project__project_groups'
+
+    public_ip = models.GenericIPAddressField(null=False)
+    private_ip = models.GenericIPAddressField(null=False)
+    project = models.ForeignKey(structure_models.Project, related_name='ip_mappings')

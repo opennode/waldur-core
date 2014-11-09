@@ -348,11 +348,3 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
                   'civil_number', 'phone_number', 'description', 'is_staff', 'organization', 'project_groups')
         read_only_fields = ('uuid', 'is_staff')
         lookup_field = 'uuid'
-
-
-class IpMappingSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta:
-        model = models.IpMapping
-        fields = ('url', 'uuid', 'public_ip', 'private_ip', 'project')
-        lookup_field = 'uuid'
-        view_name = 'ip_mapping-detail'
