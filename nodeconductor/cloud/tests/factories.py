@@ -54,8 +54,23 @@ class SecurityGroupFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.SecurityGroup
 
+    cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
     name = factory.Sequence(lambda n: 'group%s' % n)
-    protocol = models.SecurityGroup.tcp
+    description = factory.Sequence(lambda n: 'very good group %s' % n)
+
+    @classmethod
+    def get_url(cls, security_group=None):
+        if security_group is None:
+            security_group = CloudProjectMembershipFactory()
+        return 'http://testserver' + reverse('security_group-detail', kwargs={'uuid': security_group.uuid})
+
+
+class SecurityGroupRuleFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.SecurityGroupRule
+
+    security_group = factory.SubFactory(SecurityGroupFactory)
+    protocol = models.SecurityGroupRule.tcp
     from_port = factory.fuzzy.FuzzyInteger(1, 65535)
     to_port = factory.fuzzy.FuzzyInteger(1, 65535)
     ip_range = factory.LazyAttribute(lambda o: '.'.join('%s' % randint(1, 255) for i in range(4)))

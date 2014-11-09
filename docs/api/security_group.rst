@@ -1,7 +1,15 @@
 Security group list
 -------------------
 
-To get a list of openstack security groups, run GET against *api/security-groups/* as authenticated user.
+To get a list of Security Groups and security group rules, run GET against *api/security-groups/* as authenticated user.
+
+Supported filters:
+
+- ?project=<project_uuid> - only groups connected to a defined cloud
+- ?cloud=<cloud_uuid> - only groups connected to a defined project
+
+When instantiating a new instance, setting both **project** and **cloud** filters will result in a proper set of
+security groups for selection.
 
 Example of valid request (token is user specific):
 
@@ -22,30 +30,29 @@ Valid response example:
     Content-Type: application/json
     Vary: Accept
     Allow: GET, HEAD, OPTIONS
-    X-Result-Count: 2
+    X-Result-Count: 1
 
     [
-
         {
-            "url": "http://example.com/api/security-groups/5b65998a80ba4af19b1b3a7d1b972fbf/",
-            "uuid": "5b65998a80ba4af19b1b3a7d1b972fbf",
-            "name": "default",
-            "description": "Openstack security group",
-            "protocol": 0,
-            "from_port": 22,
-            "to_port": 22,
-            "ip_range": "10.2.6.30",
-            "netmask": 24
-        },
-        {
-            "url": "http://example.com/api/security-groups/16c55dad9b3048db8dd60e89bd4d85bc/",
-            "uuid": "16c55dad9b3048db8dd60e89bd4d85bc",
-            "name": "global_http",
-            "description": "Allow web traffic from the Internet",
-            "protocol": 1,
-            "from_port": 80,
-            "to_port": 80,
-            "ip_range": "0.0.0.0",
-            "netmask": 0
-        },
+            "url": "http://example.com/api/security-groups/1b07456342b44dc49b80e7a63aed8572/",
+            "uuid": "1b07456342b44dc49b80e7a63aed8572",
+            "name": "http",
+            "description": "Security group for web servers",
+            "rules": [
+                {
+                    "protocol": "tcp",
+                    "from_port": 80,
+                    "to_port": 80,
+                    "ip_range": "0.0.0.0",
+                    "netmask": 0
+                }
+            ],
+            "cloud_project_membership": {
+                "url": "http://example.com/api/project-cloud-memberships/4/",
+                "project": "http://example.com/api/projects/46915c169bd34ea19fbe20ccfbbff721/",
+                "project_name": "Project uKnz",
+                "cloud": "http://example.com/api/clouds/194157833b3b4ad2b18d71cf9678431f/",
+                "cloud_name": "CloudAccount of Customer wJsCGu (rUzCLtuvdYHb)"
+            }
+        }
     ]

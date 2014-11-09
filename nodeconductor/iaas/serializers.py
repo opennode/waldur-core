@@ -1,7 +1,7 @@
-from django.http import Http404
 from rest_framework import serializers
 
 from nodeconductor.backup import serializers as backup_serializers
+from nodeconductor.cloud import serializers as cloud_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
@@ -10,23 +10,20 @@ from nodeconductor.structure import serializers as structure_serializers
 
 class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
-    security_group = serializers.HyperlinkedRelatedField(
-        source='security_group',
-        view_name='security_group-detail',
-        lookup_field='uuid',
-    )
     name = serializers.Field(source='security_group.name')
-    protocol = serializers.Field(source='security_group.protocol')
-    from_port = serializers.Field(source='security_group.from_port')
-    to_port = serializers.Field(source='security_group.to_port')
-    ip_range = serializers.Field(source='security_group.ip_range')
-    netmask = serializers.Field(source='security_group.netmask')
+    rules = cloud_serializers.BasicSecurityGroupRuleSerializer(
+        source='security_group.rules',
+        many=True,
+        read_only=True
+    )
+    url = serializers.HyperlinkedRelatedField(source='security_group', lookup_field='uuid',
+                                              view_name='security_group-detail')
 
     class Meta(object):
         model = models.InstanceSecurityGroup
-        fields = ('security_group', 'name', 'protocol', 'from_port', 'to_port',
-                  'ip_range', 'netmask',)
+        fields = ('url', 'name', 'rules')
         lookup_field = 'uuid'
+        view_name = 'security_group-detail'
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,

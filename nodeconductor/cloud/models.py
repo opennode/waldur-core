@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import logging
 
-from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
 from django.db import models
@@ -22,8 +21,6 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 
 
 logger = logging.getLogger(__name__)
-
-# User = get_user_model()
 
 
 def validate_known_keystone_urls(value):
@@ -53,6 +50,7 @@ class Cloud(UuidMixin, SynchronizableMixin, models.Model):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'projects'
+        project_group_path = 'customer__projects__project_groups'
 
     name = models.CharField(max_length=100)
     customer = models.ForeignKey(structure_models.Customer, related_name='clouds')
@@ -100,6 +98,7 @@ class CloudProjectMembership(SynchronizableMixin, models.Model):
     class Permissions(object):
         customer_path = 'cloud__customer'
         project_path = 'project'
+        project_group_path = 'project__project_groups'
 
     def __str__(self):
         return '{0} | {1}'.format(self.cloud.name, self.project.name)
@@ -114,6 +113,7 @@ class Flavor(UuidMixin, models.Model):
     class Permissions(object):
         customer_path = 'cloud__projects__customer'
         project_path = 'cloud__projects'
+        project_group_path = 'cloud__projects__project_groups'
 
     name = models.CharField(max_length=100)
     cloud = models.ForeignKey(Cloud, related_name='flavors')
@@ -128,9 +128,28 @@ class Flavor(UuidMixin, models.Model):
 
 @python_2_unicode_compatible
 class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
+
+    class Permissions(object):
+        customer_path = 'cloud_project_membership__project__customer'
+        project_path = 'cloud_project_membership__project'
+        project_group_path = 'cloud_project_membership__project__project_groups'
+
     """
     This class contains openstack security groups.
     """
+    cloud_project_membership = models.ForeignKey(CloudProjectMembership, related_name='security_groups')
+    name = models.CharField(max_length=127)
+
+    # openstack specific
+    os_security_group_id = models.CharField(max_length='128', blank=True,
+                                            help_text='Reference to a SecurityGroup in a remote cloud')
+
+    def __str__(self):
+        return self.name
+
+
+@python_2_unicode_compatible
+class SecurityGroupRule(models.Model):
 
     tcp = 'tcp'
     udp = 'udp'
@@ -140,17 +159,22 @@ class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
         (udp, _('udp')),
     )
 
-    name = models.CharField(max_length=127)
+    group = models.ForeignKey(SecurityGroup, related_name='rules')
+
     protocol = models.CharField(max_length=3, choices=PROTOCOL_CHOICES)
     from_port = models.IntegerField(validators=[MaxValueValidator(65535),
                                                 MinValueValidator(1)])
     to_port = models.IntegerField(validators=[MaxValueValidator(65535),
                                               MinValueValidator(1)])
     ip_range = models.IPAddressField()
-    netmask = models.PositiveIntegerField(null=False)
+    netmask = models.SmallIntegerField(null=False)
+
+    # openstack specific
+    os_security_group_rule_id = models.CharField(max_length='128', blank=True)
 
     def __str__(self):
-        return self.name
+        return '%s (%s): %s/%s (%s -> %s)' % \
+               (self.group, self.protocol, self.ip_range, self.netmask, self.from_port, self.to_port)
 
 
 # Signal handlers
@@ -297,4 +321,22 @@ def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
             cores=16,
             ram=32 * 1024,
             disk=100 * 1024,
+        )
+
+
+# TODO: make the defaults configurable
+@receiver(signals.post_save, sender=CloudProjectMembership)
+def create_dummy_security_groups(sender, instance=None, created=False, **kwargs):
+    if created:
+        # group http
+        http_group = instance.security_groups.create(
+            name='http',
+            description='Security group for web servers'
+        )
+        http_group.rules.create(
+            protocol='tcp',
+            from_port=80,
+            to_port=80,
+            ip_range='0.0.0.0',
+            netmask=0
         )

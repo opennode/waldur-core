@@ -41,10 +41,12 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
     resource_quota = ResourceQuotaSerializer(read_only=True)
+    resource_quota_usage = ResourceQuotaSerializer(read_only=True)
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'project_groups', 'resource_quota')
+        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'project_groups', 'resource_quota',
+                  'resource_quota_usage')
         lookup_field = 'uuid'
 
     def get_related_paths(self):
@@ -58,11 +60,36 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'name', 'customer', 'resource_quota')
+        fields = ('url', 'name', 'customer', 'resource_quota', 'project_groups')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
         return 'customer',
+
+    def validate(self, attrs):
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return attrs
+
+        if user.is_staff:
+            return attrs
+        is_customer_owner = attrs['customer'].roles.filter(
+            permission_group__user=user, role_type=models.CustomerRole.OWNER).exists()
+        if is_customer_owner:
+            return attrs
+
+        groups = attrs['project_groups']
+        if not groups:
+            raise ValidationError('Project has to belong to some group')
+
+        for group in groups:
+            is_group_manager = group.roles.filter(
+                permission_group__user=user, role_type=models.ProjectGroupRole.MANAGER).exists()
+            if not is_group_manager:
+                raise ValidationError('User does not have permission to add project to %s' % group)
+
+        return attrs
 
 
 class CustomerSerializer(core_serializers.CollectedFieldsMixin,
@@ -161,6 +188,20 @@ class ProjectRoleField(serializers.ChoiceField):
         role = data.get('role')
         if role in models.ProjectRole.NAME_TO_ROLE:
             into[field_name] = models.ProjectRole.NAME_TO_ROLE[role]
+        else:
+            raise ValidationError('Unknown role')
+
+
+class ProjectGroupRoleField(serializers.ChoiceField):
+
+    def field_to_native(self, obj, field_name):
+        if obj is not None:
+            return models.ProjectGroupRole.ROLE_TO_NAME[obj.group.projectgrouprole.role_type]
+
+    def field_from_native(self, data, files, field_name, into):
+        role = data.get('role')
+        if role in models.ProjectGroupRole.NAME_TO_ROLE:
+            into[field_name] = models.ProjectGroupRole.NAME_TO_ROLE[role]
         else:
             raise ValidationError('Unknown role')
 
@@ -277,6 +318,45 @@ class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin
 
     def get_filtered_field_names(self):
         return 'project',
+
+
+class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
+                                       serializers.HyperlinkedModelSerializer):
+    project_group = serializers.HyperlinkedRelatedField(source='group.projectgrouprole.project_group', view_name='projectgroup-detail',
+                                                        lookup_field='uuid', queryset=models.ProjectGroup.objects.all())
+    user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
+                                               queryset=User.objects.all())
+
+    project_group_name = serializers.Field(source='group.projectgrouprole.project_group.name')
+    user_full_name = serializers.Field(source='user.full_name')
+    user_native_name = serializers.Field(source='user.native_name')
+
+    role = ProjectGroupRoleField(choices=models.ProjectGroupRole.TYPE_CHOICES)
+
+    class Meta(object):
+        model = User.groups.through
+        fields = (
+            'url',
+            'role',
+            'project_group', 'project_group_name',
+            'user', 'user_full_name', 'user_native_name',
+        )
+        view_name = 'projectgroup_permission-detail'
+
+    def restore_object(self, attrs, instance=None):
+        project_group = attrs['group.projectgrouprole.project_group']
+        group = project_group.roles.get(role_type=attrs['role']).permission_group
+        UserGroup = User.groups.through
+        return UserGroup(user=attrs['user'], group=group)
+
+    def save_object(self, obj, **kwargs):
+        try:
+            obj.save()
+        except IntegrityError:
+            raise NotModifiedPermission()
+
+    def get_filtered_field_names(self):
+        return 'project_group',
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):

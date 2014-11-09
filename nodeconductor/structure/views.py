@@ -18,7 +18,7 @@ from nodeconductor.core import mixins
 from nodeconductor.structure import filters
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
-from nodeconductor.structure.models import ProjectRole, CustomerRole
+from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 
 
 User = auth.get_user_model()
@@ -47,6 +47,53 @@ class CustomerViewSet(viewsets.ModelViewSet):
             raise PermissionDenied('Cannot delete customer with existing project_groups')
 
 
+class ProjectFilter(django_filters.FilterSet):
+    project_group = django_filters.CharFilter(
+        name='project_groups__uuid',
+        distinct=True,
+    )
+    name = django_filters.CharFilter(lookup_type='icontains')
+
+    vcpu = django_filters.NumberFilter(
+        name='resource_quota__vcpu',
+    )
+
+    ram = django_filters.NumberFilter(
+        name='resource_quota__ram',
+    )
+
+    storage = django_filters.NumberFilter(
+        name='resource_quota__storage',
+    )
+
+    max_instances = django_filters.NumberFilter(
+        name='resource_quota__max_instances',
+    )
+
+    class Meta(object):
+        model = models.Project
+        fields = [
+            'project_group',
+            'name',
+            'vcpu',
+            'ram',
+            'storage',
+            'max_instances'
+        ]
+        order_by = [
+            'name',
+            '-name',
+            'resource_quota__vcpu',
+            '-resource_quota__vcpu',
+            'resource_quota__ram',
+            '-resource_quota__ram',
+            'resource_quota__storage',
+            '-resource_quota__storage',
+            'resource_quota__max_instances',
+            '-resource_quota__max_instances'
+        ]
+
+
 class ProjectViewSet(viewsets.ModelViewSet):
     """List of projects that are accessible by this user.
 
@@ -56,9 +103,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
+    filter_class = ProjectFilter
 
     def get_queryset(self):
         user = self.request.user
@@ -248,6 +296,12 @@ class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
 
         if project.customer.has_user(user, CustomerRole.OWNER):
             return True
+        
+        # TODO: Move to ProjectGroup.has_user()
+        is_group_manager = project.project_groups.filter(
+            roles__permission_group__user=user, roles__role_type=ProjectGroupRole.MANAGER).exists()
+        if is_group_manager:
+            return True
 
         return False
 
@@ -321,6 +375,59 @@ class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class ProjectGroupPermissionViewSet(rf_mixins.CreateModelMixin,
+                                    rf_mixins.RetrieveModelMixin,
+                                    rf_mixins.DestroyModelMixin,
+                                    mixins.ListModelMixin,
+                                    rf_viewsets.GenericViewSet):
+    queryset = User.groups.through.objects.all()
+    serializer_class = serializers.ProjectGroupPermissionSerializer
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
+
+    def get_queryset(self):
+        queryset = super(ProjectGroupPermissionViewSet, self).get_queryset()
+        queryset = queryset.exclude(group__projectgrouprole=None)
+
+        # TODO: refactor against django filtering
+        user_uuid = self.request.QUERY_PARAMS.get('user', None)
+        if user_uuid is not None:
+            queryset = queryset.filter(user__uuid=user_uuid)
+
+        # TODO: Test for it!
+        # XXX: This should be removed after permissions refactoring
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(
+                Q(group__projectgrouprole__project_group__customer__roles__permission_group__user=self.request.user,
+                  group__projectgrouprole__project_group__customer__roles__role_type=models.CustomerRole.OWNER)
+                |
+                Q(group__projectgrouprole__project_group__projects__roles__permission_group__user=self.request.user,
+                  group__projectgrouprole__project_group__customer__roles__role_type=models.ProjectRole.MANAGER)
+                |
+                Q(group__projectgrouprole__project_group__roles__permission_group__user=self.request.user)
+            ).distinct()
+
+        return queryset
+
+    def pre_save(self, obj):
+        super(ProjectGroupPermissionViewSet, self).pre_save(obj)
+        user = self.request.user
+        project_group = obj.group.projectgrouprole.project_group
+
+        # check for the user role. Inefficient but more readable
+        is_customer_owner = project_group.customer.roles.filter(
+            permission_group__user=user, role_type=CustomerRole.OWNER).exists()
+        if is_customer_owner:
+            return
+
+        is_group_manager = project_group.project_groups.filter(
+            roles__permission_group__user=user, roles__role_type=ProjectGroupRole.MANAGER).exists()
+        if is_group_manager:
+            return
+
+        raise PermissionDenied()
+
+
 class CustomerPermissionFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='group__customerrole__customer__uuid',
@@ -374,6 +481,8 @@ class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
                   group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
                 |
                 Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user)
+                |
+                Q(group__customerrole__customer__project_groups__roles__permission_group__user=self.request.user)
             ).distinct()
 
         return queryset

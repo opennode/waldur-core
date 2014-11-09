@@ -95,10 +95,20 @@ class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFiltering
         return 'project', 'cloud'
 
 
+class BasicSecurityGroupRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.SecurityGroupRule
+        fields = ('protocol', 'from_port', 'to_port', 'ip_range', 'netmask')
+
+
 class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
+
+    rules = BasicSecurityGroupRuleSerializer(read_only=True)
+    cloud_project_membership = CloudProjectMembershipSerializer()
+
     class Meta(object):
         model = models.SecurityGroup
-        fields = ('url', 'uuid', 'name', 'description', 'protocol',
-                  'from_port', 'to_port', 'ip_range', 'netmask')
+        fields = ('url', 'uuid', 'name', 'description', 'rules',
+                  'cloud_project_membership')
         lookup_field = 'uuid'
         view_name = 'security_group-detail'

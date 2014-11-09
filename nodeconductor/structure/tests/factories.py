@@ -62,6 +62,16 @@ class ProjectFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'Proj%s' % n)
     customer = factory.SubFactory(CustomerFactory)
 
+    @classmethod
+    def get_url(cls, project=None):
+        if project is None:
+            project = ProjectFactory()
+        return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
+
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('project-list')
+
 
 class ProjectGroupFactory(factory.DjangoModelFactory):
     class Meta(object):
@@ -69,6 +79,16 @@ class ProjectGroupFactory(factory.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: 'Proj Grp %s' % n)
     customer = factory.SubFactory(CustomerFactory)
+
+    @classmethod
+    def get_url(cls, project_group=None):
+        if project_group is None:
+            project_group = ProjectGroupFactory()
+        return 'http://testserver' + reverse('projectgroup-detail', kwargs={'uuid': project_group.uuid})
+
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('projectgroup-list')
 
 
 class ResourceQuotaFactory(factory.DjangoModelFactory):

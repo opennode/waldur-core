@@ -7,8 +7,27 @@ only see connected projects:
 - projects that the user owns as a customer
 - projects where user has any role
 
-An optional filter **?can_manage** is supported to return a list of projects where current user is manager or a customer
-owner.
+Supported logic filters:
+
+- ?can_manage - return a list of projects where current user is manager, group manager or a customer owner;
+
+Field filters:
+
+- ?project_group=<Project Group UUID> - return a list of projects in a specified project group.
+- ?vcpu=<number> - return a list of projects with a specified vcpu quota
+- ?ram=<number> - return a list of projects with a specified ram quota
+- ?storage=<number> - return a list of projects with a specified storage quota
+- ?max_instance=<number> - return a list of projects with a specified max_instance quota
+
+Sorting can be done by the following fields, specifying field name as a parameter to **?o=<field_name>**. To get a
+descending sorting prefix field name with a **-**.
+
+- ?o=name - sort by project name;
+- ?o=resource_quota__vcpu - sort by project's quota of vCPU number;
+- ?o=resource_quota__ram - sort by project's quota of RAM;
+- ?o=resource_quota__storage - sort by project's quota of storage;
+- ?o=resource_quota__max_instances - sort by project's quota of instance number.
+
 
 Project permissions
 -------------------
@@ -63,12 +82,12 @@ Valid request example (token is user specific):
 Managing project roles
 ----------------------
 
-Project group membership expresses projects' links to project group.
-
-Each project has two associated user groups that represent project managers and administrators. The link is maintained
+Project permissions expresses connection of users to a project. Each project has two associated user groups that
+represent project managers and administrators. The link is maintained
 through **api/project-permissions/** endpoint.
 
-Note that project group membership can be viewed and modified only by customer owners and staff users.
+Note that project group membership can be viewed and modified only by customer owners, corresponding project group
+managers and staff users.
 
 To list all visible links, run a GET query against a list.
 
@@ -97,12 +116,6 @@ Response will contain a list of project users and their brief data:
             "user": "http://example.com/api/users/14471861a30d4293b7ef49340fc3080e/",
             "user_full_name": "",
             "user_native_name": ""
-            "resource_quota": {
-                "vcpu": 2,
-                "ram": 2.0,
-                "storage": 36.15,
-                "max_instances": 11
-            },
         },
         {
             "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
@@ -112,12 +125,6 @@ Response will contain a list of project users and their brief data:
             "user": "http://example.com/api/users/8f96d098e60642baa809707a8b118631/",
             "user_full_name": "",
             "user_native_name": ""
-            "resource_quota": {
-                "vcpu": 2,
-                "ram": 2.0,
-                "storage": 36.15,
-                "max_instances": 11
-            },
         }
     ]
 
