@@ -389,11 +389,13 @@ class IpMappingFilter(django_filters.FilterSet):
 class IpMappingViewSet(viewsets.ModelViewSet):
     """
     List of mappings between public IPs and private IPs
+    
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#ip-mappings
     """
     queryset = models.IpMapping.objects.all()
     serializer_class = serializers.IpMappingSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
+    filter_backends = (filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
     filter_class = IpMappingFilter

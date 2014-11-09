@@ -381,6 +381,11 @@ Other use cases are covered with random data.
         project.resource_quota = ResourceQuota.objects.create(vcpu=2, ram=2, storage=10, max_instances=10)
         project.save()
 
+        print 'Creating IP mapping of a project %s' % project
+        public_ip = '84.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3))
+        private_ip = '10.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3))
+        IpMapping.objects.create(public_ip=public_ip, private_ip=private_ip, project=project)
+
         return project
 
     def create_user(self):

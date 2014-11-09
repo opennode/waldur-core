@@ -33,6 +33,11 @@ Project quota management
 
 .. include:: project_quotas.rst
 
+IP mappings
+===========
+
+.. include:: ip_mapping.rst
+
 User management
 ===============
 
