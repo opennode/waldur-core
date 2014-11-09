@@ -2,10 +2,6 @@ IP mapping list
 ---------------
 
 To get a list of IP mappings, run GET against */api/ip-mappings/* as authenticated user.
-Note that user can see only connected IP mappings:
-
-- IP mappings that belong to a project where a user has a role.
-- IP mappings that belong to a customer that a user owns.
 
 Supported filters are:
 
@@ -42,10 +38,10 @@ Example of a request:
         "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
     }
 
-Deletion of a IP mapping
-------------------------
+Deletion of an IP mapping
+-------------------------
 
-Deletion of a IP mapping is done through sending a DELETE request to the IP mapping instance URI by staff user.
+Deletion of an IP mapping is done through sending a DELETE request to the IP mapping instance URI by staff user.
 Valid request example (token is user specific):
 
 .. code-block:: http
