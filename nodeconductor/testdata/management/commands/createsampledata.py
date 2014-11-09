@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.cloud.models import Cloud, CloudProjectMembership, SecurityGroup
+from nodeconductor.cloud.models import Cloud, CloudProjectMembership
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
 from nodeconductor.structure.models import *
@@ -378,7 +378,16 @@ Other use cases are covered with random data.
 
         # Adding quota to project:
         print 'Creating quota for project %s' % project
-        project.resource_quota = ResourceQuota.objects.create(vcpu=2, ram=2, storage=10, max_instances=10)
+        project.resource_quota = ResourceQuota.objects.create(vcpu=random.randint(60, 255),
+                                                              ram=random.randint(60, 255),
+                                                              storage=random.randint(60, 255),
+                                                              max_instances=random.randint(60, 255))
+        print 'Generating approximate quota consumption for project %s' % project
+        project.resource_quota_usage = ResourceQuota.objects.\
+            create(vcpu=project.resource_quota.vcpu - random.randint(0, 50),
+                   ram=project.resource_quota.ram - random.randint(0, 50),
+                   storage=project.resource_quota.storage - random.randint(0, 50),
+                   max_instances=project.resource_quota.max_instances - random.randint(0, 50))
         project.save()
 
         return project
