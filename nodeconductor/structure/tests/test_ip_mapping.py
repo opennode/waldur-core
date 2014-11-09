@@ -147,3 +147,53 @@ class IpMappingPermissionTest(test.APISimpleTestCase):
             'private_ip': resource.private_ip,
             'project': factories.ProjectFactory.get_url(resource.project)
         }
+
+
+class IpMappingPermissionApiFiltrationTest(test.APISimpleTestCase):
+    def setUp(self):
+        user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=user)
+
+        self.ip_mappings = {
+            'first': factories.IpMappingFactory(),
+            'second': factories.IpMappingFactory(),
+        }
+
+    def test_staff_user_can_filter_ip_mappings_by_project_uuid(self):
+        response = self.client.get(factories.IpMappingFactory.get_list_url())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for ip_mapping in self.ip_mappings:
+            project = self.ip_mappings[ip_mapping].project
+
+            query = '?project=%s' % project.uuid
+
+            response = self.client.get(factories.IpMappingFactory.get_list_url() + query)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+            project_url = factories.ProjectFactory.get_url(project)
+
+            for instance in response.data:
+                self.assertEqual(project_url, instance['project'])
+
+    def test_staff_user_can_filter_ip_mappings_by_private_ip(self):
+        for ip_mapping in self.ip_mappings:
+            private_ip = self.ip_mappings[ip_mapping].private_ip
+            self._ensure_matching_entries_in('private_ip', private_ip)
+
+    def test_staff_user_can_filter_ip_mappings_by_public_ip(self):
+        for ip_mapping in self.ip_mappings:
+            public_ip = self.ip_mappings[ip_mapping].public_ip
+            self._ensure_matching_entries_in('public_ip', public_ip)
+
+    def _ensure_matching_entries_in(self, field, value):
+        query = '?%s=%s' % (field, value)
+
+        response = self.client.get(factories.IpMappingFactory.get_list_url())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.get(factories.IpMappingFactory.get_list_url() + query)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for ip_mapping in response.data:
+                self.assertEqual(value, ip_mapping[field])
