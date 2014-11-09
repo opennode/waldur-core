@@ -388,12 +388,12 @@ class IpMappingFilter(django_filters.FilterSet):
 
 class IpMappingViewSet(viewsets.ModelViewSet):
     """
-    List of mappings between public IPs and floating IPs
+    List of mappings between public IPs and private IPs
     """
     queryset = models.IpMapping.objects.all()
     serializer_class = serializers.IpMappingSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
     filter_class = IpMappingFilter
