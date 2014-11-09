@@ -18,6 +18,7 @@ from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.structure.signals import structure_role_granted, project_resource_added
 
 
 logger = logging.getLogger(__name__)
@@ -226,71 +227,25 @@ def propagate_new_users_key_to_his_projects_clouds(sender, instance=None, create
         # Note: importing here to avoid circular import hell
         from nodeconductor.cloud import tasks
 
-        tasks.push_ssh_public_keys.delay([public_key.uuid], membership_pks)
+        tasks.push_ssh_public_keys.delay([public_key.uuid.hex], list(membership_pks))
 
 
-# @receiver(signals.m2m_changed, sender=User.groups.through)
-# @receiver(signals.m2m_changed)
-def propagate_users_keys_to_his_projects_clouds(sender, instance, action, reverse, model, pk_set, **kwargs):
-    # XXX: This is fragile
-    if sender._meta.model_name != 'user_groups' or action != 'post_add':
-        return
-
-    if reverse:
-        # instance is group
-        # pk_set   is a set of user pks
-        key_filter = {'user__pk__in': pk_set}
-        membership_filter = {
-            'project__roles__permission_group': instance,
-        }
-    else:
-        # instance is user
-        # pk_set   is a set of group pks
-        key_filter = {'user': instance}
-        membership_filter = {
-            'project__roles__permission_group__pk__in': pk_set,
-        }
+@receiver(structure_role_granted, sender=structure_models.Project)
+def propagate_users_keys_to_clouds_of_newly_granted_project(sender, structure, user, role, **kwargs):
+    project = structure
 
     ssh_public_key_uuids = SshPublicKey.objects.filter(
-        **key_filter).values_list('uuid', flat=True)
+        user=user).values_list('uuid', flat=True)
 
     membership_pks = CloudProjectMembership.objects.filter(
-        **membership_filter).distinct().values_list('pk', flat=True)
+        project=project).values_list('pk', flat=True)
 
     if ssh_public_key_uuids and membership_pks:
         # Note: importing here to avoid circular import hell
         from nodeconductor.cloud import tasks
 
-        # Send uuids as strings rather than UUID objects
         tasks.push_ssh_public_keys.delay(
-            [k.hex for k in ssh_public_key_uuids], membership_pks)
-
-
-# @receiver(signals.post_save, sender=User.groups.through)
-@receiver(signals.post_save)
-def propagate_users_keys_to_his_projects_clouds2(sender, instance=None, created=False, **kwargs):
-    # XXX: This is fragile
-    if sender._meta.model_name != 'user_groups' or not created:
-        return
-
-    key_filter = {'user': instance.user}
-    membership_filter = {
-        'project__roles__permission_group': instance.group,
-    }
-
-    ssh_public_key_uuids = SshPublicKey.objects.filter(
-        **key_filter).values_list('uuid', flat=True)
-
-    membership_pks = CloudProjectMembership.objects.filter(
-        **membership_filter).distinct().values_list('pk', flat=True)
-
-    if ssh_public_key_uuids and membership_pks:
-        # Note: importing here to avoid circular import hell
-        from nodeconductor.cloud import tasks
-
-        # Send uuids as strings rather than UUID objects
-        tasks.push_ssh_public_keys.delay(
-            [k.uuid for k in ssh_public_key_uuids], membership_pks)
+            list(ssh_public_key_uuids), list(membership_pks))
 
 
 # FIXME: These should come from backend properly, see NC-139

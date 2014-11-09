@@ -69,7 +69,7 @@ def initial_push_cloud_membership(membership_pk):
 def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
     public_keys = models.SshPublicKey.objects.filter(uuid__in=ssh_public_keys_uuids)
 
-    existing_keys = set(k.uuid for k in public_keys)
+    existing_keys = set(k.uuid.hex for k in public_keys)
     missing_keys = set(ssh_public_keys_uuids) - existing_keys
     if missing_keys:
         logging.warn(
