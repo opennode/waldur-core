@@ -333,11 +333,6 @@ class ProjectGroupPermissionViewSet(rf_mixins.CreateModelMixin,
         project_group = obj.group.projectgrouprole.project_group
 
         # check for the user role. Inefficient but more readable
-        is_manager = project_group.roles.filter(
-            permission_group__user=user, role_type=ProjectRole.MANAGER).exists()
-        if is_manager:
-            return
-
         is_customer_owner = project_group.customer.roles.filter(
             permission_group__user=user, role_type=CustomerRole.OWNER).exists()
         if is_customer_owner:
