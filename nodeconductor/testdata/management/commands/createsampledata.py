@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.cloud.models import Cloud, CloudProjectMembership
+from nodeconductor.cloud.models import Cloud, CloudProjectMembership, IpMapping
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
 from nodeconductor.structure.models import *
@@ -389,6 +389,11 @@ Other use cases are covered with random data.
                    storage=project.resource_quota.storage - random.randint(0, 50),
                    max_instances=project.resource_quota.max_instances - random.randint(0, 50))
         project.save()
+
+        print 'Creating IP mapping of a project %s' % project
+        public_ip = '84.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3))
+        private_ip = '10.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3))
+        IpMapping.objects.create(public_ip=public_ip, private_ip=private_ip, project=project)
 
         return project
 

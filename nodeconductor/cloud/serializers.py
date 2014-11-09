@@ -112,3 +112,11 @@ class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
                   'cloud_project_membership')
         lookup_field = 'uuid'
         view_name = 'security_group-detail'
+
+
+class IpMappingSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = models.IpMapping
+        fields = ('url', 'uuid', 'public_ip', 'private_ip', 'project')
+        lookup_field = 'uuid'
+        view_name = 'ip_mapping-detail'

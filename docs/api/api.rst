@@ -23,6 +23,11 @@ Flavor management
 
 .. include:: flavor.rst
 
+IP mappings
+===========
+
+.. include:: ip_mapping.rst
+
 Key management
 ==============
 
