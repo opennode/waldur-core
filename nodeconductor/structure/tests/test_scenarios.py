@@ -50,7 +50,7 @@ class ResourceQuotasTest(test.APISimpleTestCase):
 
     def test_project_returns_quotas(self):
         expected_quota = factories.ResourceQuotaFactory()
-        expected_quota.project = self.project
+        expected_quota.project_quota = self.project
         self.project.save()
 
         response = self.client.get(_project_url(self.project))

@@ -113,12 +113,11 @@ class ProjectRole(UuidMixin, models.Model):
 
 
 class ResourceQuota(models.Model):
-    """ Project or user memory and CPU quotas """
-
-    vcpu = models.PositiveIntegerField(help_text=_('Available CPUs'))
-    ram = models.FloatField(help_text=_('Maximum available RAM size in GB'))
-    storage = models.FloatField(help_text=_('Maximum available storage size in GB (incl. backup)'))
-    max_instances = models.PositiveIntegerField(help_text=_('Maximum number of running instances'))
+    """Project quotas"""
+    vcpu = models.PositiveIntegerField(help_text=_('Virtual CPUs'))
+    ram = models.FloatField(help_text=_('RAM size'))
+    storage = models.FloatField(help_text=_('Storage size (incl. backup)'))
+    max_instances = models.PositiveIntegerField(help_text=_('Number of running instances'))
 
 
 @python_2_unicode_compatible
@@ -130,7 +129,8 @@ class Project(DescribableMixin, UuidMixin, models.Model):
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='projects')
-    resource_quota = models.OneToOneField(ResourceQuota, related_name='project', null=True)
+    resource_quota = models.OneToOneField(ResourceQuota, related_name='project_quota', null=True)
+    resource_quota_usage = models.OneToOneField(ResourceQuota, related_name='project_quota_usage', null=True)
 
     def add_user(self, user, role_type):
         role = self.roles.get(role_type=role_type)

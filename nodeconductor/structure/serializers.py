@@ -43,10 +43,12 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
     resource_quota = ResourceQuotaSerializer(read_only=True)
+    resource_quota_usage = ResourceQuotaSerializer(read_only=True)
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'project_groups', 'resource_quota')
+        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'project_groups', 'resource_quota',
+                  'resource_quota_usage')
         lookup_field = 'uuid'
 
     def get_related_paths(self):
