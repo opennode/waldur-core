@@ -51,15 +51,43 @@ class ProjectFilter(django_filters.FilterSet):
     )
     name = django_filters.CharFilter(lookup_type='icontains')
 
+    vcpu = django_filters.NumberFilter(
+        name='resource_quota__vcpu',
+    )
+
+    ram = django_filters.NumberFilter(
+        name='resource_quota__ram',
+    )
+
+    storage = django_filters.NumberFilter(
+        name='resource_quota__storage',
+    )
+
+    max_instances = django_filters.NumberFilter(
+        name='resource_quota__max_instances',
+    )
+
     class Meta(object):
         model = models.Project
         fields = [
             'project_group',
             'name',
+            'vcpu',
+            'ram',
+            'storage',
+            'max_instances'
         ]
         order_by = [
             'name',
             '-name',
+            'resource_quota__vcpu',
+            '-resource_quota__vcpu',
+            'resource_quota__ram',
+            '-resource_quota__ram',
+            'resource_quota__storage',
+            '-resource_quota__storage',
+            'resource_quota__max_instances',
+            '-resource_quota__max_instances'
         ]
 
 
