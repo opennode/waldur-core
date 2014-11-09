@@ -57,17 +57,20 @@ Since making changes to a backend can take a long time, they are done in backgro
 Here's a proper way to deal with managed entities:
 
 * within the scope of REST api request:
- 1. introduce the change (create, delete or edit an entity)
+
+ #. introduce the change (create, delete or edit an entity)
     to the NodeConductor's database;
- 2. schedule a background job passing instance id as a parameter;
- 3. return a postive HTTP response to the caller.
+ #. schedule a background job passing instance id as a parameter;
+ #. return a positive HTTP response to the caller.
+
 * within the scope of background job:
- 1. fetch the entity being changed by its instance id;
- 2. make sure that it is in a proper state (e.g. not being updated by another background job);
- 3. transactionally update the its state to reflect that it is being updated;
- 4. perform necessary calls to backend to synchronize changes
+
+ #. fetch the entity being changed by its instance id;
+ #. make sure that it is in a proper state (e.g. not being updated by another background job);
+ #. transactionally update the its state to reflect that it is being updated;
+ #. perform necessary calls to backend to synchronize changes
     from NodeConductor's database to that backend;
- 5. transactionally update the its state to reflect that it not being updated anymore.
+ #. transactionally update the its state to reflect that it not being updated anymore.
 
 Using the above flow makes it possible for user to get immediate feedback
 from an initial REST api call and then query state changes of the entity.
