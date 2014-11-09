@@ -5,7 +5,7 @@ from nodeconductor.structure.models import CustomerRole, ProjectRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
-class IpMappingPermissionTest(test.APISimpleTestCase):
+class IpMappingPermissionTest(test.APITransactionTestCase):
     def setUp(self):
         self.users = {
             'owner': structure_factories.UserFactory(),
