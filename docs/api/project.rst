@@ -7,10 +7,27 @@ only see connected projects:
 - projects that the user owns as a customer
 - projects where user has any role
 
-Supported filters:
+Supported logic filters:
 
 - ?can_manage - return a list of projects where current user is manager, group manager or a customer owner;
+
+Field filters:
+
 - ?project_group=<Project Group UUID> - return a list of projects in a specified project group.
+- ?vcpu=<number> - return a list of projects with a specified vcpu quota
+- ?ram=<number> - return a list of projects with a specified ram quota
+- ?storage=<number> - return a list of projects with a specified storage quota
+- ?max_instance=<number> - return a list of projects with a specified max_instance quota
+
+Sorting can be done by the following fields, specifying field name as a parameter to **?o=<field_name>**. To get a
+descending sorting prefix field name with a **-**.
+
+- ?o=name - sort by project name;
+- ?o=resource_quota__vcpu - sort by project's quota of vCPU number;
+- ?o=resource_quota__ram - sort by project's quota of RAM;
+- ?o=resource_quota__storage - sort by project's quota of storage;
+- ?o=resource_quota__max_instances - sort by project's quota of instance number.
+
 
 Project permissions
 -------------------
