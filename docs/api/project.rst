@@ -65,12 +65,12 @@ Valid request example (token is user specific):
 Managing project roles
 ----------------------
 
-Project group membership expresses projects' links to project group.
-
-Each project has two associated user groups that represent project managers and administrators. The link is maintained
+Project permissions expresses connection of users to a project. Each project has two associated user groups that
+represent project managers and administrators. The link is maintained
 through **api/project-permissions/** endpoint.
 
-Note that project group membership can be viewed and modified only by customer owners and staff users.
+Note that project group membership can be viewed and modified only by customer owners, corresponding project group
+managers and staff users.
 
 To list all visible links, run a GET query against a list.
 
@@ -99,12 +99,6 @@ Response will contain a list of project users and their brief data:
             "user": "http://example.com/api/users/14471861a30d4293b7ef49340fc3080e/",
             "user_full_name": "",
             "user_native_name": ""
-            "resource_quota": {
-                "vcpu": 2,
-                "ram": 2.0,
-                "storage": 36.15,
-                "max_instances": 11
-            },
         },
         {
             "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
@@ -114,12 +108,6 @@ Response will contain a list of project users and their brief data:
             "user": "http://example.com/api/users/8f96d098e60642baa809707a8b118631/",
             "user_full_name": "",
             "user_native_name": ""
-            "resource_quota": {
-                "vcpu": 2,
-                "ram": 2.0,
-                "storage": 36.15,
-                "max_instances": 11
-            },
         }
     ]
 
