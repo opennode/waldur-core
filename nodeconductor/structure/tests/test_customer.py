@@ -3,10 +3,16 @@ from __future__ import unicode_literals
 from unittest import TestCase
 
 from django.core.urlresolvers import reverse
+from django.test import TransactionTestCase
+from mock_django import mock_signal_receiver
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.structure.models import CustomerRole, ProjectRole
+from nodeconductor.structure import signals
+from nodeconductor.structure.models import Customer
+from nodeconductor.structure.models import CustomerRole
+from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import ProjectGroupRole
 from nodeconductor.structure.tests import factories
 
 
@@ -22,6 +28,92 @@ class UrlResolverMixin(object):
 
     def _get_user_url(self, user):
         return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})
+
+
+class CustomerTest(TransactionTestCase):
+    def setUp(self):
+        self.customer = factories.CustomerFactory()
+        self.user = factories.UserFactory()
+
+    def test_add_user_returns_created_if_grant_didnt_exist_before(self):
+        _, created = self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        self.assertTrue(created, 'Customer permission should have been reported as created')
+
+    def test_add_user_returns_not_created_if_grant_existed_before(self):
+        self.customer.add_user(self.user, CustomerRole.OWNER)
+        _, created = self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        self.assertFalse(created, 'Customer permission should have been reported as not created')
+
+    def test_add_user_returns_membership(self):
+        membership, _ = self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        self.assertEqual(membership.user, self.user)
+        self.assertEqual(membership.group.customerrole.customer, self.customer)
+
+    def test_add_user_returns_same_membership_for_consequent_calls_with_same_arguments(self):
+        membership1, _ = self.customer.add_user(self.user, CustomerRole.OWNER)
+        membership2, _ = self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        self.assertEqual(membership1, membership2)
+
+    def test_add_user_emits_structure_role_granted_if_grant_didnt_exist_before(self):
+        with mock_signal_receiver(signals.structure_role_granted) as receiver:
+            self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        receiver.assert_called_once_with(
+            structure=self.customer,
+            user=self.user,
+            role=CustomerRole.OWNER,
+
+            sender=Customer,
+            signal=signals.structure_role_granted,
+        )
+
+    def test_add_user_doesnt_emit_structure_role_granted_if_grant_existed_before(self):
+        self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        with mock_signal_receiver(signals.structure_role_granted) as receiver:
+            self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        self.assertFalse(receiver.called, 'structure_role_granted should not be emitted')
+
+    def test_remove_user_emits_structure_role_revoked_for_each_role_user_had_in_customer(self):
+        self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.customer.remove_user(self.user)
+
+        receiver.assert_called_once_with(
+            structure=self.customer,
+            user=self.user,
+            role=CustomerRole.OWNER,
+
+            sender=Customer,
+            signal=signals.structure_role_revoked,
+        )
+
+    def test_remove_user_emits_structure_role_revoked_if_grant_existed_before(self):
+        self.customer.add_user(self.user, CustomerRole.OWNER)
+
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.customer.remove_user(self.user, CustomerRole.OWNER)
+
+        receiver.assert_called_once_with(
+            structure=self.customer,
+            user=self.user,
+            role=CustomerRole.OWNER,
+
+            sender=Customer,
+            signal=signals.structure_role_revoked,
+        )
+
+    def test_remove_user_doesnt_emit_structure_role_revoked_if_grant_didnt_exist_before(self):
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.customer.remove_user(self.user, CustomerRole.OWNER)
+
+        self.assertFalse(receiver.called, 'structure_role_remove should not be emitted')
 
 
 class CustomerRoleTest(TestCase):
@@ -42,6 +134,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'admin': factories.UserFactory(),
             'admin_other': factories.UserFactory(),
             'manager': factories.UserFactory(),
+            'group_manager': factories.UserFactory(),
         }
 
         self.customers = {
@@ -49,6 +142,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'inaccessible': factories.CustomerFactory.create_batch(2),
             'admin': factories.CustomerFactory(),
             'manager': factories.CustomerFactory(),
+            'group_manager': factories.CustomerFactory(),
         }
 
         for customer in self.customers['owned']:
@@ -57,6 +151,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.projects = {
             'admin': factories.ProjectFactory(customer=self.customers['admin']),
             'manager': factories.ProjectFactory(customer=self.customers['manager']),
+            'group_manager': factories.ProjectFactory(customer=self.customers['group_manager']),
         }
 
         self.projects['admin'].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
@@ -65,10 +160,13 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.project_groups = {
             'admin': factories.ProjectGroupFactory(customer=self.customers['admin']),
             'manager': factories.ProjectGroupFactory(customer=self.customers['manager']),
+            'group_manager': factories.ProjectGroupFactory(customer=self.customers['group_manager']),
         }
 
         self.project_groups['admin'].projects.add(self.projects['admin'])
         self.project_groups['manager'].projects.add(self.projects['manager'])
+        self.project_groups['group_manager'].projects.add(self.projects['group_manager'])
+        self.project_groups['group_manager'].add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
     # List filtration tests
     def test_user_can_list_customers_he_is_owner_of(self):
@@ -96,6 +194,10 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['manager'])
         self._check_customer_in_list(self.customers['manager'])
 
+    def test_user_can_list_customer_if_he_is_group_manager_in_a_project_group_owned_by_a_customer(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+        self._check_customer_in_list(self.customers['group_manager'])
+
     def test_user_cannot_list_customer_if_he_is_admin_in_a_project_not_owned_by_a_customer(self):
         self.client.force_authenticate(user=self.users['admin'])
         self._check_customer_in_list(self.customers['manager'], False)
@@ -104,9 +206,13 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['manager'])
         self._check_customer_in_list(self.customers['admin'], False)
 
+    def test_user_cannot_list_customer_if_he_is_group_manager_in_a_project_group_not_owned_by_a_customer(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+        self._check_customer_in_list(self.customers['manager'], False)
+
     # Nested objects filtration tests
     def test_user_can_see_project_he_has_a_role_in_within_customer(self):
-        for user_role in ('admin', 'manager'):
+        for user_role in ('admin', 'manager', 'group_manager'):
             self.client.force_authenticate(user=self.users[user_role])
 
             customer = self.customers[user_role]
@@ -123,7 +229,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             )
 
     def test_user_can_see_project_group_he_has_a_role_in_within_customer(self):
-        for user_role in ('admin', 'manager'):
+        for user_role in ('admin', 'manager', 'group_manager'):
             self.client.force_authenticate(user=self.users[user_role])
 
             customer = self.customers[user_role]
@@ -172,7 +278,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             )
 
     def test_user_cannot_see_project_he_has_no_role_in_within_customer(self):
-        for user_role in ('admin', 'manager'):
+        for user_role in ('admin', 'manager', 'group_manager'):
             self.client.force_authenticate(user=self.users[user_role])
 
             customer = self.customers[user_role]
@@ -189,7 +295,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             )
 
     def test_user_cannot_see_project_group_he_has_no_role_in_within_customer(self):
-        for user_role in ('admin', 'manager'):
+        for user_role in ('admin', 'manager', 'group_manager'):
             self.client.force_authenticate(user=self.users[user_role])
 
             customer = self.customers[user_role]

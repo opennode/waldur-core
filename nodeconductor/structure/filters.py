@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 from operator import or_
 
-from django.conf import settings
 from django.db.models import Q
 from rest_framework.filters import BaseFilterBackend
 
@@ -17,8 +16,7 @@ def set_permissions_for_model(model, **kwargs):
 
 
 def filter_queryset_for_user(queryset, user):
-    nc = getattr(settings, 'NODE_CONDUCTOR', {})
-    filtered_relations = nc.get('FILTERED_RELATIONS', ())
+    filtered_relations = ('customer', 'project', 'project_group')
 
     if user.is_staff:
         return queryset

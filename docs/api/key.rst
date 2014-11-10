@@ -1,19 +1,26 @@
+Introduction
+------------
+
+SSH public keys are injected to VM instances during creation, so that holder of corresponding SSH private key can
+log in to that instance.
+SSH public keys are connected to user accounts, whereas the key may belong to one user only, and the user may have multiple SSH keys.
+Users can only access SSH keys connected to their accounts. Staff users can see all the accounts.
+Project administrators can select what SSH key will be injected intto VM instance during instance provisioning.
+
 Key list
 --------
 
 To get a list of SSH keys, run GET against */api/keys/* as authenticated user.
-Note that user can see only keys that he owns.
 
-- Keys are injected to instances during creation. The owner of the key can log in to that instance.
-- Project administrators can select what key will be injected to instance during instance provisioning.
+Supported filtering:
 
-Key permissions
----------------
+- ?name=  - partial matching filtering by key name
+- ?fingerprint= - exact filtering by key fingerprint
+- ?uuid= - exact matching by key UUID
 
-- SSH public keys are injected to VM instances during creation, so that holder of corresponding SSH private key can log in to that instance.
-- SSH public keys are connected to user accounts, whereas the key may belong to one user only, and the user may have multiple SSH keys.
-- Users can only access SSH keys connected to their accounts.
-- Project administrators can select what SSH key will be injected to VM instance during instance provisioning.
+Supported ordering:
+
+- ?o=name - order by key name
 
 Create a new key
 ----------------

@@ -3,20 +3,24 @@ from rest_framework import test
 from rest_framework.reverse import reverse
 
 from nodeconductor.iaas.tests import factories as iaas_factories
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
 class PurchaseApiPermissionTest(test.APISimpleTestCase):
+
     def setUp(self):
         self.user = structure_factories.UserFactory.create()
 
         admined_project = structure_factories.ProjectFactory()
         managed_project = structure_factories.ProjectFactory()
+        project_group = structure_factories.ProjectGroupFactory()
+        project_group.projects.add(managed_project)
+
         inaccessible_project = structure_factories.ProjectFactory()
 
         admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
-        managed_project.add_user(self.user, ProjectRole.MANAGER)
+        project_group.add_user(self.user, ProjectGroupRole.MANAGER)
 
         self.admined_purchase = iaas_factories.PurchaseFactory(project=admined_project)
         self.managed_purchase = iaas_factories.PurchaseFactory(project=managed_project)
@@ -98,7 +102,7 @@ class PurchaseApiPermissionTest(test.APISimpleTestCase):
         response = self.client.get(self._get_purchase_url(inaccessible_purchase))
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        
+
     # Helper methods
     def _get_purchase_url(self, purchase):
         return 'http://testserver' + reverse('purchase-detail', kwargs={'uuid': purchase.uuid})

@@ -1,19 +1,3 @@
-VM instances are launched in clouds, whereas the instance may belong to one cloud only, and the cloud may have
-multiple VM instances.
-
-VM instance may be in one of the following states:
-
-* creating
-* created
-* starting
-* started
-* stopping
-* stopped
-* restarting
-* deleting
-* deleted
-* erred
-
 Instance list
 -------------
 
@@ -30,6 +14,16 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - state
 - project
 - project_group
+
+Soring is supported in ascending and descending order by specifying a field to an **?o=** parameter.
+
+- ?o=hostname - sort by hostname in ascending order
+- ?o=-hostname - sort by hostname in descending order
+- ?o=state - sort by state in ascending order
+- ?o=-state - sort by state in descending order
+- ?o=project__customer__name - sort by customer name in ascending order
+- ?o=-project__customer__name - sort by customer name in descending order
+
 
 Instance permissions
 --------------------
@@ -87,14 +81,10 @@ Example of a valid request:
         "ssh_public_key": "http://example.com/api/keys/6fbd6b24246f4fb38715c29bafa2e5e7/",
         "internal_ips": "10.242.22.8,172.18.216.75,192.168.162.2",
         "external ips": "131.107.140.29,216.21.127.62,210.143.155.57",
-        "security_groups": {
-            "url": "http://example.com/api/security-groups/16c55dad9b3048db8dd60e89bd4d85bc/",
-            "name": "global_http",
-            "protocol": "tcp",
-            "from_port": 80,
-            "to_port": 80,
-            "ip_range": "0.0.0.0",
-            "netmask": 0
+        "security_groups": [
+            { "url": "http://example.com/api/security-groups/16c55dad9b3048db8dd60e89bd4d85bc/"},
+            { "url": "http://example.com/api/security-groups/232da2ad9b3048db8dd60eeaa23d8123/"}
+        ]
         },
     }
 

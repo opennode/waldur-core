@@ -50,6 +50,7 @@ Upgrade
 
 TODO
 
+.. include:: configuration.rst
 .. include:: background.rst
 .. include:: fsm.rst
 .. include:: structure.rst

@@ -5,16 +5,17 @@ import warnings
 
 from django.conf import settings
 from django.contrib.auth.models import (
-    AbstractBaseUser, PermissionsMixin, UserManager, SiteProfileNotAvailable, Permission)
-from django.contrib.contenttypes.models import ContentType
+    AbstractBaseUser, PermissionsMixin, UserManager, SiteProfileNotAvailable)
 from django.core import validators
 from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import send_mail
 from django.db import models
 from django.db.models import signals
+from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from django_fsm import FSMField, transition
 from rest_framework.authtoken.models import Token
 from uuidfield import UUIDField
 
@@ -121,34 +122,6 @@ class User(UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
         return self._profile_cache
 
 
-def create_auth_token(sender, instance=None, created=False, **kwargs):
-    if created:
-        Token.objects.create(user=instance)
-
-signals.post_save.connect(create_auth_token, sender=User)
-
-
-def create_user_group_permissions(sender, **kwargs):
-    """
-    Create permissions for the User.groups.through objects so that DjangoObjectPermissions could be applied.
-    """
-    if not sender.__name__ == 'nodeconductor.core.models':
-        return
-    content_type = ContentType.objects.get_for_model(User.groups.through)
-    Permission.objects.get_or_create(codename='delete_user_groups',
-                                     name='Can delete user groups',
-                                     content_type=content_type)
-    Permission.objects.get_or_create(codename='add_user_groups',
-                                     name='Can add user groups',
-                                     content_type=content_type)
-    Permission.objects.get_or_create(codename='change_user_groups',
-                                     name='Can change user groups',
-                                     content_type=content_type)
-
-
-signals.post_syncdb.connect(create_user_group_permissions)
-
-
 @python_2_unicode_compatible
 class SshPublicKey(UuidMixin, models.Model):
     """
@@ -158,7 +131,98 @@ class SshPublicKey(UuidMixin, models.Model):
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_index=True)
     name = models.CharField(max_length=50, blank=True)
+    fingerprint = models.CharField(max_length=47)  # In ideal world should be unique
     public_key = models.TextField(max_length=2000)
+
+    class Meta(object):
+        unique_together = ('user', 'name')
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        def get_fingerprint(public_key):
+            # How to get fingerprint from ssh key:
+            # http://stackoverflow.com/a/6682934/175349
+            # http://www.ietf.org/rfc/rfc4716.txt Section 4.
+            import base64
+            import hashlib
+
+            key_body = base64.b64decode(public_key.strip().split()[1].encode('ascii'))
+            fp_plain = hashlib.md5(key_body).hexdigest()
+            return ':'.join(a + b for a, b in zip(fp_plain[::2], fp_plain[1::2]))
+
+        # Fingerprint is always set based on public_key
+        try:
+            self.fingerprint = get_fingerprint(self.public_key)
+        except IndexError:
+            raise ValueError('Public key format is incorrect. Fingerprint calculation has failed.')
+
+        if update_fields and 'public_key' in update_fields and 'fingerprint' not in update_fields:
+            update_fields.append('fingerprint')
+
+        super(SshPublicKey, self).save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
         return self.name
+
+
+class SynchronizationStates(object):
+    PUSHING_SCHEDULED = 'u'
+    PUSHING = 'U'
+    PULLING_SCHEDULED = 'd'
+    PULLING = 'D'
+    IN_SYNC = 's'
+    ERRED = 'e'
+
+    CHOICES = (
+        (PUSHING_SCHEDULED, _('Pushing Scheduled')),
+        (PUSHING, _('Pushing')),
+        (PULLING_SCHEDULED, _('Pulling Scheduled')),
+        (PULLING, _('Pulling')),
+        (IN_SYNC, _('Synchronized')),
+        (ERRED, _('Erred')),
+    )
+
+
+class SynchronizableMixin(models.Model):
+    class Meta(object):
+        abstract = True
+
+    state = FSMField(
+        max_length=1,
+        default=SynchronizationStates.PUSHING_SCHEDULED,
+        choices=SynchronizationStates.CHOICES,
+    )
+
+    @transition(field=state, source=SynchronizationStates.PUSHING_SCHEDULED, target=SynchronizationStates.PUSHING)
+    def begin_pushing(self):
+        pass
+
+    @transition(field=state, source=SynchronizationStates.IN_SYNC, target=SynchronizationStates.PUSHING_SCHEDULED)
+    def schedule_pushing(self):
+        pass
+
+    @transition(field=state, source=SynchronizationStates.PULLING_SCHEDULED, target=SynchronizationStates.PULLING)
+    def begin_pulling(self):
+        pass
+
+    @transition(field=state, source=SynchronizationStates.IN_SYNC, target=SynchronizationStates.PULLING_SCHEDULED)
+    def schedule_pulling(self):
+        pass
+
+    @transition(
+        field=state,
+        source=[SynchronizationStates.PUSHING, SynchronizationStates.PULLING],
+        target=SynchronizationStates.IN_SYNC,
+    )
+    def set_in_sync(self):
+        pass
+
+    @transition(field=state, source='*', target=SynchronizationStates.ERRED)
+    def set_erred(self):
+        pass
+
+
+# Signal handlers
+@receiver(signals.post_save, sender=User)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)

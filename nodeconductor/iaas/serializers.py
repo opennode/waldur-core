@@ -1,7 +1,10 @@
-from django.http import Http404
+from django.db import IntegrityError
+
 from rest_framework import serializers
+from rest_framework.exceptions import ParseError
 
 from nodeconductor.backup import serializers as backup_serializers
+from nodeconductor.cloud import serializers as cloud_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
@@ -10,23 +13,20 @@ from nodeconductor.structure import serializers as structure_serializers
 
 class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
-    security_group = serializers.HyperlinkedRelatedField(
-        source='security_group',
-        view_name='security_group-detail',
-        lookup_field='uuid',
-    )
     name = serializers.Field(source='security_group.name')
-    protocol = serializers.Field(source='security_group.protocol')
-    from_port = serializers.Field(source='security_group.from_port')
-    to_port = serializers.Field(source='security_group.to_port')
-    ip_range = serializers.Field(source='security_group.ip_range')
-    netmask = serializers.Field(source='security_group.netmask')
+    rules = cloud_serializers.BasicSecurityGroupRuleSerializer(
+        source='security_group.rules',
+        many=True,
+        read_only=True
+    )
+    url = serializers.HyperlinkedRelatedField(source='security_group', lookup_field='uuid',
+                                              view_name='security_group-detail')
 
     class Meta(object):
         model = models.InstanceSecurityGroup
-        fields = ('security_group', 'name', 'protocol', 'from_port', 'to_port',
-                  'ip_range', 'netmask',)
+        fields = ('url', 'name', 'rules')
         lookup_field = 'uuid'
+        view_name = 'security_group-detail'
 
 
 class InstanceCreateSerializer(PermissionFieldFilteringMixin,
@@ -40,11 +40,24 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
         fields = ('url', 'hostname', 'description',
                   'template', 'flavor', 'project', 'security_groups', 'ssh_public_key')
         lookup_field = 'uuid'
-        # TODO: Accept ip address count and volumes
 
     def __init__(self, *args, **kwargs):
         super(InstanceCreateSerializer, self).__init__(*args, **kwargs)
         self.user = kwargs['context']['user']
+
+    def get_fields(self):
+        fields = super(InstanceCreateSerializer, self).get_fields()
+
+        try:
+            request = self.context['view'].request
+            user = request.user
+        except (KeyError, AttributeError):
+            return fields
+
+        # TODO: Extract into a generic filter
+        fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(user=user)
+
+        return fields
 
     def get_filtered_field_names(self):
         return 'project', 'flavor'
@@ -52,12 +65,6 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
     def validate_security_groups(self, attrs, attr_name):
         if attr_name in attrs and attrs[attr_name] is None:
             del attrs[attr_name]
-        return attrs
-
-    def validate_ssh_public_key(self, attrs, attr_name):
-        key = attrs[attr_name]
-        if key.user != self.user:
-            raise Http404
         return attrs
 
 
@@ -109,7 +116,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'backups', 'backup_schedules',
             'instance_licenses'
         )
-
+        read_only_fields = ('ssh_public_key',)
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
@@ -147,6 +154,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'name', 'description', 'icon_url',
             'os',
             'is_active',
+            'sla_level',
             'setup_fee',
             'monthly_fee',
             'template_licenses',
@@ -176,6 +184,7 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'name', 'description', 'icon_url',
             'os',
             'is_active',
+            'sla_level',
             'setup_fee',
             'monthly_fee',
             'template_licenses',
@@ -186,8 +195,24 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
 class SshKeySerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = core_models.SshPublicKey
-        fields = ('url', 'uuid', 'name', 'public_key',)
+        fields = ('url', 'uuid', 'name', 'public_key', 'fingerprint')
+        read_only_fields = ('fingerprint',)
         lookup_field = 'uuid'
+
+    def validate(self, attrs):
+        """
+        Check that the start is before the stop.
+        """
+        try:
+            request = self.context['view'].request
+            user = request.user
+        except (KeyError, AttributeError):
+            return attrs
+
+        name = attrs['name']
+        if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
+            raise serializers.ValidationError('SSH key name is not unique for a user')
+        return attrs
 
 
 class PurchaseSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):

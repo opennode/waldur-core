@@ -15,5 +15,19 @@ class CloudAdmin(admin.ModelAdmin):
     list_display = ('name', 'customer')
     ordering = ('name', 'customer')
 
+
+class SecurityGroupRuleInline(admin.TabularInline):
+    model = models.SecurityGroupRule
+    extra = 1
+
+
+class SecurityGroupAdmin(admin.ModelAdmin):
+    inlines = (
+        SecurityGroupRuleInline,
+    )
+    list_display = ('cloud_project_membership', 'name')
+    ordering = ('cloud_project_membership', 'name')
+
+
 admin.site.register(models.Cloud, CloudAdmin)
-admin.site.register(models.SecurityGroup)
+admin.site.register(models.SecurityGroup, SecurityGroupAdmin)

@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models.signals import post_save
+from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext as _
@@ -33,6 +33,7 @@ class Image(core_models.UuidMixin,
 
     class Permissions(object):
         project_path = 'cloud__projects'
+        project_group_path = 'cloud__projects__project_groups'
 
     i386 = 0
     amd64 = 1
@@ -63,6 +64,7 @@ class Template(core_models.UuidMixin,
     name = models.CharField(max_length=100, unique=True)
     os = models.CharField(max_length=100)
     is_active = models.BooleanField(default=False)
+    sla_level = models.IntegerField()
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                     validators=[MinValueValidator(Decimal('0.1')),
                                                 MaxValueValidator(Decimal('100000.0'))])
@@ -87,6 +89,7 @@ class Instance(core_models.UuidMixin,
     """
     class Permissions(object):
         project_path = 'project'
+        project_group_path = 'project__project_groups'
 
     class States(object):
         PROVISIONING_SCHEDULED = 'p'
@@ -266,15 +269,6 @@ class Instance(core_models.UuidMixin,
             self._init_instance_licenses()
 
 
-@receiver(post_save, sender=Instance)
-def auto_start_instance(sender, instance=None, created=False, **kwargs):
-    if created:
-        # Importing here to avoid circular imports
-        from nodeconductor.iaas import tasks
-
-        tasks.schedule_provisioning.delay(instance.uuid)
-
-
 @python_2_unicode_compatible
 class TemplateLicense(core_models.UuidMixin, models.Model):
     class Services(object):
@@ -321,20 +315,15 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
                                                   MaxValueValidator(Decimal('1000.0'))])
 
     class Permissions(object):
+        customer_path = 'instance__project__customer'
         project_path = 'instance__project'
+        project_group_path = 'instance__project__project_groups'
 
     def __str__(self):
         return 'License: %s for %s' % (self.template_license, self.instance)
 
 
-class Volume(models.Model):
-    """
-    A generalization of a block device.
-    """
-    instance = models.ForeignKey(Instance, related_name='volumes')
-    size = models.PositiveSmallIntegerField()
-
-
+@python_2_unicode_compatible
 class Purchase(core_models.UuidMixin, models.Model):
     """
     Purchase history allows to see historical information
@@ -343,6 +332,7 @@ class Purchase(core_models.UuidMixin, models.Model):
     """
     class Permissions(object):
         project_path = 'project'
+        project_group_path = 'project__project_groups'
 
     date = models.DateTimeField()
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='purchases')
@@ -355,12 +345,27 @@ class Purchase(core_models.UuidMixin, models.Model):
         }
 
 
-class InstanceSecurityGroup(core_models.UuidMixin, models.Model):
+class InstanceSecurityGroup(models.Model):
     """
     Cloud security group added to instance
     """
     class Permissions(object):
         project_path = 'instance__project'
+        project_group_path = 'instance__project__project_groups'
 
     instance = models.ForeignKey(Instance, related_name='security_groups')
     security_group = models.ForeignKey(cloud_models.SecurityGroup, related_name='instance_groups')
+
+
+# Signal handlers
+@receiver(
+    signals.post_save,
+    sender=Instance,
+    dispatch_uid='nodeconductor.iaas.models.auto_start_instance',
+)
+def auto_start_instance(sender, instance=None, created=False, **kwargs):
+    if created:
+        # Importing here to avoid circular imports
+        from nodeconductor.iaas import tasks
+
+        tasks.schedule_provisioning.delay(instance.uuid)

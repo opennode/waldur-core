@@ -1,26 +1,217 @@
 from __future__ import unicode_literals
 
+from mock import call
+
 from django.core.urlresolvers import reverse
-from django.test import TestCase
+from django.test import TransactionTestCase
+from mock_django import mock_signal_receiver
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.structure.tests import factories
+from nodeconductor.structure import signals
 from nodeconductor.structure.models import CustomerRole
+from nodeconductor.structure.models import Project
+from nodeconductor.structure.models import ProjectGroupRole
 from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.tests import factories
 
 
-class ProjectRoleTest(TestCase):
+class ProjectTest(TransactionTestCase):
     def setUp(self):
         self.project = factories.ProjectFactory()
+        self.user = factories.UserFactory()
 
-    def test_admin_project_role_is_created_upon_project_creation(self):
-        self.assertTrue(self.project.roles.filter(role_type=ProjectRole.ADMINISTRATOR).exists(),
-                        'Administrator role should have been created')
+    def test_add_user_returns_created_if_grant_didnt_exist_before(self):
+        _, created = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-    def test_manager_project_role_is_created_upon_project_creation(self):
-        self.assertTrue(self.project.roles.filter(role_type=ProjectRole.MANAGER).exists(),
-                        'Manager role should have been created')
+        self.assertTrue(created, 'Project permission should have been reported as created')
+
+    def test_add_user_returns_not_created_if_grant_existed_before(self):
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        _, created = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertFalse(created, 'Project permission should have been reported as not created')
+
+    def test_add_user_returns_membership(self):
+        membership, _ = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertEqual(membership.user, self.user)
+        self.assertEqual(membership.group.projectrole.project, self.project)
+
+    def test_add_user_returns_same_membership_for_consequent_calls_with_same_arguments(self):
+        membership1, _ = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        membership2, _ = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertEqual(membership1, membership2)
+
+    def test_add_user_emits_structure_role_granted_if_grant_didnt_exist_before(self):
+        with mock_signal_receiver(signals.structure_role_granted) as receiver:
+            self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        receiver.assert_called_once_with(
+            structure=self.project,
+            user=self.user,
+            role=ProjectRole.ADMINISTRATOR,
+
+            sender=Project,
+            signal=signals.structure_role_granted,
+        )
+
+    def test_add_user_doesnt_emit_structure_role_granted_if_grant_existed_before(self):
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        with mock_signal_receiver(signals.structure_role_granted) as receiver:
+            self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertFalse(receiver.called, 'structure_role_granted should not be emitted')
+
+    def test_remove_user_emits_structure_role_revoked_for_each_role_user_had_in_project(self):
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        self.project.add_user(self.user, ProjectRole.MANAGER)
+
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.project.remove_user(self.user)
+
+        calls = [
+            call(
+                structure=self.project,
+                user=self.user,
+                role=ProjectRole.MANAGER,
+
+                sender=Project,
+                signal=signals.structure_role_revoked,
+            ),
+
+            call(
+                structure=self.project,
+                user=self.user,
+                role=ProjectRole.ADMINISTRATOR,
+
+                sender=Project,
+                signal=signals.structure_role_revoked,
+            ),
+        ]
+
+        receiver.assert_has_calls(calls, any_order=True)
+
+        self.assertEqual(
+            receiver.call_count, 2,
+            'Excepted exactly 2 signals emitted'
+        )
+
+    def test_remove_user_emits_structure_role_revoked_if_grant_existed_before(self):
+        self.project.add_user(self.user, ProjectRole.MANAGER)
+
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.project.remove_user(self.user, ProjectRole.MANAGER)
+
+        receiver.assert_called_once_with(
+            structure=self.project,
+            user=self.user,
+            role=ProjectRole.MANAGER,
+
+            sender=Project,
+            signal=signals.structure_role_revoked,
+        )
+
+    def test_remove_user_doesnt_emit_structure_role_revoked_if_grant_didnt_exist_before(self):
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.project.remove_user(self.user, ProjectRole.MANAGER)
+
+        self.assertFalse(receiver.called, 'structure_role_remove should not be emitted')
+
+
+def _get_valid_project_payload(resource=None):
+    resource = resource or factories.ProjectFactory()
+    return {
+        'name': resource.name,
+        'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
+    }
+
+
+class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.staff = factories.UserFactory(is_staff=True)
+
+        self.customer = factories.CustomerFactory()
+        self.owner = factories.UserFactory()
+        self.customer.add_user(self.owner, CustomerRole.OWNER)
+
+        self.group_manager = factories.UserFactory()
+        self.project_group = factories.ProjectGroupFactory(customer=self.customer)
+        self.project_group.add_user(self.group_manager, ProjectGroupRole.MANAGER)
+
+        self.project = factories.ProjectFactory(customer=self.customer)
+        self.project_group.projects.add(self.project)
+
+        self.admin = factories.UserFactory()
+        self.project.add_user(self.admin, ProjectRole.ADMINISTRATOR)
+
+        self.other_project = factories.ProjectFactory()
+
+    # Create tests:
+    def test_staff_can_create_any_project(self):
+        self.client.force_authenticate(self.staff)
+
+        data = _get_valid_project_payload()
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Project.objects.filter(name=data['name']).exists())
+
+    def test_owner_can_create_project_belonging_to_the_customer_he_owns(self):
+        self.client.force_authenticate(self.owner)
+
+        data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Project.objects.filter(name=data['name']).exists())
+
+    def test_owner_cannot_create_project_not_belonging_to_the_customer_he_owns(self):
+        self.client.force_authenticate(self.owner)
+
+        data = _get_valid_project_payload()
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_group_manager_can_create_project_belonging_to_his_group(self):
+        self.client.force_authenticate(self.group_manager)
+
+        data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
+        data['project_groups'] = [factories.ProjectGroupFactory.get_url(self.project_group)]
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Project.objects.filter(name=data['name']).exists())
+
+    def test_group_manager_cannot_create_project_with_not_his_group(self):
+        self.client.force_authenticate(self.group_manager)
+
+        data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
+        data['project_groups'] = [factories.ProjectGroupFactory.get_url()]
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_group_manager_cannot_create_project_without_group(self):
+        self.client.force_authenticate(self.group_manager)
+
+        data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # Update tests:
+    def test_user_can_change_single_project_field(self):
+        self.client.force_authenticate(self.staff)
+
+        response = self.client.patch(factories.ProjectFactory.get_url(self.project), {'name': 'New project name'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('New project name', response.data['name'])
+
+    # Delete tests:
+    def test_user_can_delete_project_belonging_to_the_customer_he_owns(self):
+        self.client.force_authenticate(self.staff)
+
+        response = self.client.delete(factories.ProjectFactory.get_url())
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
 
 class ProjectApiPermissionTest(test.APITransactionTestCase):
@@ -40,6 +231,7 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
             'owner': factories.UserFactory(),
             'admin': factories.UserFactory(),
             'manager': factories.UserFactory(),
+            'group_manager': factories.UserFactory(),
             'no_role': factories.UserFactory(),
             'multirole': factories.UserFactory(),
         }
@@ -48,6 +240,7 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
             'owner': factories.ProjectFactory(),
             'admin': factories.ProjectFactory(),
             'manager': factories.ProjectFactory(),
+            'group_manager': factories.ProjectFactory(),
             'inaccessible': factories.ProjectFactory(),
         }
 
@@ -56,6 +249,9 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
         self.projects['admin'].add_user(self.users['multirole'], ProjectRole.ADMINISTRATOR)
         self.projects['manager'].add_user(self.users['multirole'], ProjectRole.MANAGER)
+        self.project_group = factories.ProjectGroupFactory()
+        self.project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
+        self.project_group.projects.add(self.projects['group_manager'])
 
         self.projects['owner'].customer.add_user(self.users['owner'], CustomerRole.OWNER)
 
@@ -80,6 +276,9 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
     def test_user_can_list_projects_he_is_manager_of(self):
         self._ensure_list_access_allowed('manager')
+
+    def test_user_can_list_projects_he_is_group_manager_of(self):
+        self._ensure_list_access_allowed('group_manager')
 
     def test_user_cannot_list_projects_he_has_no_role_in(self):
         for user_role, project in self.forbidden_combinations:
@@ -110,6 +309,9 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
     def test_user_can_access_project_he_is_manager_of(self):
         self._ensure_direct_access_allowed('manager')
+
+    def test_user_can_access_project_he_is_group_manager_of(self):
+        self._ensure_direct_access_allowed('group_manager')
 
     def test_user_cannot_access_project_he_has_no_role_in(self):
         for user_role, project in self.forbidden_combinations:
@@ -155,76 +357,3 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
         response = self.client.get(self._get_project_url(self.projects[project]))
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-
-class ProjectManipulationTest(test.APITransactionTestCase):
-    def setUp(self):
-        self.user = factories.UserFactory()
-        self.client.force_authenticate(user=self.user)
-
-        self.customer = factories.CustomerFactory()
-        self.customer.add_user(self.user, CustomerRole.OWNER)
-        self.foreign_customer = factories.CustomerFactory()
-
-        self.projects = {
-            'accessible': factories.ProjectFactory(customer=self.customer),
-            'inaccessible': factories.ProjectFactory(customer=self.foreign_customer),
-        }
-        self.project_urls = {
-            'accessible': reverse('project-detail',
-                                  kwargs={'uuid': self.projects['accessible'].uuid}),
-            'inaccessible': reverse('project-detail',
-                                    kwargs={'uuid': self.projects['inaccessible'].uuid}),
-        }
-
-    def test_user_can_delete_project_belonging_to_the_customer_he_owns(self):
-        response = self.client.delete(self.project_urls['accessible'])
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-    def test_user_can_delete_project_if_he_is_staff(self):
-        user = factories.UserFactory()
-        user.is_staff = True
-        user.save()
-        self.client.force_authenticate(user=user)
-        project = factories.ProjectFactory()
-        response = self.client.delete(reverse('project-detail',
-                                      kwargs={'uuid': project.uuid}))
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-    def test_user_cannot_delete_project_that_does_not_belong_to_owned_customer(self):
-        response = self.client.delete(self.project_urls['inaccessible'])
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_user_can_create_project_for_own_customer(self):
-        response = self.client.post(reverse('project-list'),
-                                    self._get_valid_project_payload(self.projects['accessible']))
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-    def test_user_cannot_create_project_for_customer_he_doesnt_own(self):
-        response = self.client.post(reverse('project-list'),
-                                    self._get_valid_project_payload(self.projects['inaccessible']))
-        # a reference to the invisible customer will be treated as a bad request link
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_user_can_change_single_project_field_for_project_belonging_to_customer_he_owns(self):
-        response = self.client.patch(self._get_project_url(self.projects['accessible']),
-                                     {'name': 'New project name'})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('New project name', response.data['name'])
-
-    def test_user_cannot_change_single_project_field_for_not_connected_customer(self):
-        response = self.client.patch(self._get_project_url(self.projects['inaccessible']),
-                                     {'name': 'New project name'})
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    # Helper functions
-    def _get_valid_project_payload(self, resource=None):
-        resource = resource or factories.ProjectFactory()
-        return {
-            'name': resource.name,
-            'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
-        }
-
-    def _get_project_url(self, project):
-        return 'http://testserver' + reverse('project-detail',
-                                             kwargs={'uuid': project.uuid})

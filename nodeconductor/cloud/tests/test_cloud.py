@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.cloud.tests import factories
-from nodeconductor.structure.models import ProjectRole, CustomerRole
+from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -15,12 +15,14 @@ class CloudPermissionTest(test.APITransactionTestCase):
             'owned': structure_factories.CustomerFactory(),
             'has_admined_project': structure_factories.CustomerFactory(),
             'has_managed_project': structure_factories.CustomerFactory(),
+            'has_managed_by_group_manager': structure_factories.CustomerFactory(),
         }
 
         self.users = {
             'customer_owner': structure_factories.UserFactory(),
             'project_admin': structure_factories.UserFactory(),
             'project_manager': structure_factories.UserFactory(),
+            'group_manager': structure_factories.UserFactory(),
             'no_role': structure_factories.UserFactory(),
         }
 
@@ -28,12 +30,16 @@ class CloudPermissionTest(test.APITransactionTestCase):
             'owned': structure_factories.ProjectFactory(customer=self.customers['owned']),
             'admined': structure_factories.ProjectFactory(customer=self.customers['has_admined_project']),
             'managed': structure_factories.ProjectFactory(customer=self.customers['has_managed_project']),
+            'managed_by_group_manager': structure_factories.ProjectFactory(
+                customer=self.customers['has_managed_by_group_manager']),
         }
 
         self.clouds = {
             'owned': factories.CloudFactory(customer=self.customers['owned']),
             'admined': factories.CloudFactory(customer=self.customers['has_admined_project']),
             'managed': factories.CloudFactory(customer=self.customers['has_managed_project']),
+            'managed_by_group_manager': factories.CloudFactory(
+                customer=self.customers['has_managed_by_group_manager']),
             'not_in_project': factories.CloudFactory(),
         }
 
@@ -41,9 +47,14 @@ class CloudPermissionTest(test.APITransactionTestCase):
 
         self.projects['admined'].add_user(self.users['project_admin'], ProjectRole.ADMINISTRATOR)
         self.projects['managed'].add_user(self.users['project_manager'], ProjectRole.MANAGER)
+        project_group = structure_factories.ProjectGroupFactory()
+        project_group.projects.add(self.projects['managed_by_group_manager'])
+        project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
         factories.CloudProjectMembershipFactory(cloud=self.clouds['admined'], project=self.projects['admined'])
         factories.CloudProjectMembershipFactory(cloud=self.clouds['managed'], project=self.projects['managed'])
+        factories.CloudProjectMembershipFactory(
+            cloud=self.clouds['managed_by_group_manager'], project=self.projects['managed_by_group_manager'])
 
         self.cloud_list_url = reverse('cloud-list')
 
@@ -70,6 +81,15 @@ class CloudPermissionTest(test.APITransactionTestCase):
         cloud_url = self._get_cloud_url(self.clouds['managed'])
         self.assertIn(cloud_url, [instance['url'] for instance in response.data])
 
+    def test_user_can_list_clouds_of_projects_he_is_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+
+        response = self.client.get(self.cloud_list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        cloud_url = self._get_cloud_url(self.clouds['managed_by_group_manager'])
+        self.assertIn(cloud_url, [instance['url'] for instance in response.data])
+
     def test_user_can_list_clouds_of_projects_he_is_customer_owner_of(self):
         # persist affected objects
         self.clouds['owned'].save()  # make sure that cloud gets a UUID
@@ -89,7 +109,7 @@ class CloudPermissionTest(test.APITransactionTestCase):
         response = self.client.get(self.cloud_list_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        for cloud_type in 'admined', 'managed':
+        for cloud_type in 'admined', 'managed', 'managed_by_group_manager':
             cloud_url = self._get_cloud_url(self.clouds[cloud_type])
             self.assertNotIn(
                 cloud_url,
@@ -113,6 +133,12 @@ class CloudPermissionTest(test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['project_manager'])
 
         response = self.client.get(self._get_cloud_url(self.clouds['managed']))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_can_access_cloud_allowed_for_project_he_is_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+
+        response = self.client.get(self._get_cloud_url(self.clouds['managed_by_group_manager']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_see_clouds_customer_name(self):
@@ -141,7 +167,7 @@ class CloudPermissionTest(test.APITransactionTestCase):
             )
 
     def test_user_cannot_access_cloud_not_allowed_for_any_project(self):
-        for user_role in 'customer_owner', 'project_admin', 'project_manager':
+        for user_role in 'customer_owner', 'project_admin', 'project_manager', 'group_manager':
             self.client.force_authenticate(user=self.users[user_role])
 
             response = self.client.get(self._get_cloud_url(self.clouds['not_in_project']))
@@ -157,7 +183,8 @@ class CloudPermissionTest(test.APITransactionTestCase):
         for user_role, cloud_type in {
                 'project_admin': 'admined',
                 'project_manager': 'managed',
-            }.iteritems():
+                'group_manager': 'managed_by_group_manager',
+                }.iteritems():
             self.client.force_authenticate(user=self.users[user_role])
 
             seen_flavor = factories.FlavorFactory(cloud=self.clouds[cloud_type])
@@ -204,6 +231,25 @@ class CloudPermissionTest(test.APITransactionTestCase):
         response = self.client.post(self.cloud_list_url, self._get_valid_payload(new_cloud))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    # OpenStack backend related tests
+    def test_user_cannot_create_cloud_with_auth_url_not_listed_in_settings(self):
+        self.client.force_authenticate(user=self.users['customer_owner'])
+
+        new_cloud = factories.CloudFactory.build(customer=self.customers['owned'])
+        payload = self._get_valid_payload(new_cloud)
+        payload['auth_url'] = 'http://another.example.com'
+
+        response = self.client.post(self.cloud_list_url, payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'auth_url': ['http://another.example.com is not a known OpenStack deployment.']}, response.data)
+
+    def test_user_can_create_cloud_with_auth_url_listed_in_settings(self):
+        self.client.force_authenticate(user=self.users['customer_owner'])
+        new_cloud = factories.CloudFactory.build(customer=self.customers['owned'])
+        response = self.client.post(self.cloud_list_url, self._get_valid_payload(new_cloud))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     def _get_cloud_url(self, cloud):
         return 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': cloud.uuid})
 
@@ -217,4 +263,5 @@ class CloudPermissionTest(test.APITransactionTestCase):
         return {
             'name': resource.name,
             'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
+            'auth_url': 'http://example.com:5000/v2',
         }

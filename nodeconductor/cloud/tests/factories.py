@@ -37,7 +37,7 @@ class CloudProjectMembershipFactory(factory.DjangoModelFactory):
 
     cloud = factory.SubFactory(CloudFactory)
     project = factory.SubFactory(structure_factories.ProjectFactory)
-    tenant_uuid = factory.Sequence(lambda n: uuid4())
+    tenant_id = factory.Sequence(lambda n: 'tenant_id_%s' % n)
 
     @classmethod
     def get_url(cls, membership=None):
@@ -54,9 +54,45 @@ class SecurityGroupFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.SecurityGroup
 
+    cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
     name = factory.Sequence(lambda n: 'group%s' % n)
-    protocol = models.SecurityGroup.tcp
+    description = factory.Sequence(lambda n: 'very good group %s' % n)
+
+    @classmethod
+    def get_url(cls, security_group=None):
+        if security_group is None:
+            security_group = CloudProjectMembershipFactory()
+        return 'http://testserver' + reverse('security_group-detail', kwargs={'uuid': security_group.uuid})
+
+
+class SecurityGroupRuleFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.SecurityGroupRule
+
+    security_group = factory.SubFactory(SecurityGroupFactory)
+    protocol = models.SecurityGroupRule.tcp
     from_port = factory.fuzzy.FuzzyInteger(1, 65535)
     to_port = factory.fuzzy.FuzzyInteger(1, 65535)
     ip_range = factory.LazyAttribute(lambda o: '.'.join('%s' % randint(1, 255) for i in range(4)))
     netmask = 24
+
+
+class IpMappingFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.IpMapping
+
+    public_ip = factory.LazyAttribute(lambda o: '84.%s' % '.'.join(
+        '%s' % randint(0, 255) for _ in range(3)))
+    private_ip = factory.LazyAttribute(lambda o: '10.%s' % '.'.join(
+        '%s' % randint(0, 255) for _ in range(3)))
+    project = factory.SubFactory(structure_factories.ProjectFactory)
+
+    @classmethod
+    def get_url(cls, ip_mapping=None):
+        ip_mapping = ip_mapping or IpMappingFactory()
+
+        return 'http://testserver' + reverse('ip_mapping-detail', kwargs={'uuid': ip_mapping.uuid})
+
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('ip_mapping-list')

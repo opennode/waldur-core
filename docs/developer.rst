@@ -44,15 +44,33 @@ ViewSet should be used.
 .. _django-permission: https://pypi.python.org/pypi/django-permission/
 
 
-Asynchronous entities
-=====================
+Managed entities
+================
 
-Asynchronous entities are those representing managed service or object outside of NodeConductor. Creation and
-modification of such services cannot be done within a single transaction and typically is triggering a background
-job. For example, creation of a new virtual machine or adding a new cloud to a project.
+Managed entities are entities for which NodeConductor's database is considered an authoritative source of information.
+By means of REST api the user defines the desired state of the entities.
+NodeConductor's jobs is then to make the backend (OpenStack, Github, Jira, etc) reflect
+the desired state as close as possible.
 
-For such entities, approach is to:
+Since making changes to a backend can take a long time, they are done in background tasks.
 
-- first create an instance in NodeConductor DB;
-- schedule a background job passing instance id as a parameter;
-- job updates instance's status as it progresses.
+Here's a proper way to deal with managed entities:
+
+* within the scope of REST api request:
+
+ #. introduce the change (create, delete or edit an entity)
+    to the NodeConductor's database;
+ #. schedule a background job passing instance id as a parameter;
+ #. return a positive HTTP response to the caller.
+
+* within the scope of background job:
+
+ #. fetch the entity being changed by its instance id;
+ #. make sure that it is in a proper state (e.g. not being updated by another background job);
+ #. transactionally update the its state to reflect that it is being updated;
+ #. perform necessary calls to backend to synchronize changes
+    from NodeConductor's database to that backend;
+ #. transactionally update the its state to reflect that it not being updated anymore.
+
+Using the above flow makes it possible for user to get immediate feedback
+from an initial REST api call and then query state changes of the entity.

@@ -1,6 +1,12 @@
+from __future__ import unicode_literals
+
+import logging
+
 from django.shortcuts import get_object_or_404
+import django_filters
 
 from rest_framework import exceptions
+from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import viewsets as rf_viewsets
@@ -13,8 +19,12 @@ from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import models as structure_models
 
 
+logger = logging.getLogger(__name__)
+
+
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
     """List of VM instance flavors that are accessible by this user.
+
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#flavor-management
     """
 
@@ -26,6 +36,7 @@ class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
 
 class CloudViewSet(viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
+
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#cloud-model
     """
 
@@ -50,6 +61,16 @@ class CloudViewSet(viewsets.ModelViewSet):
         super(CloudViewSet, self).pre_save(cloud)
         self._check_permission(cloud)
 
+    def post_save(self, obj, created=False):
+        if created:
+            tasks.push_cloud_account.delay(obj.uuid)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return serializers.CloudCreateSerializer
+
+        return super(CloudViewSet, self).get_serializer_class()
+
     @action()
     def sync(self, request, uuid):
         """
@@ -68,6 +89,7 @@ class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_viewsets.GenericViewSet):
     """
     List of project-cloud connections
+
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#link-cloud-to-a-project
     """
     queryset = models.CloudProjectMembership.objects.all()
@@ -75,16 +97,70 @@ class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
     filter_backends = (structure_filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
 
-    def post_save(self, membership, created):
+    def post_save(self, obj, created=False):
         if created:
-            tasks.create_backend_membership.delay(membership)
+            tasks.initial_push_cloud_membership.delay(obj.pk)
+
+
+class SecurityGroupFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(
+        name='name',
+    )
+    cloud = django_filters.CharFilter(
+        name='cloud_project_membership__cloud__uuid',
+    )
+    project = django_filters.CharFilter(
+        name='cloud_project_membership__project__uuid',
+    )
+
+    class Meta(object):
+        model = models.SecurityGroup
+        fields = [
+            'name',
+            'cloud',
+            'project'
+        ]
 
 
 class SecurityGroupViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    List of openstack security groups
+    List of security groups
+
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#security-group-management
     """
     queryset = models.SecurityGroup.objects.all()
     serializer_class = serializers.SecurityGroupSerializer
     lookup_field = 'uuid'
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
+    filter_class = SecurityGroupFilter
+    filter_backends = (structure_filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+
+
+class IpMappingFilter(django_filters.FilterSet):
+    project = django_filters.CharFilter(
+        name='project__uuid',
+    )
+
+    class Meta(object):
+        model = models.IpMapping
+        fields = [
+            'project',
+            'private_ip',
+            'public_ip',
+        ]
+
+
+class IpMappingViewSet(viewsets.ModelViewSet):
+    """
+    List of mappings between public IPs and private IPs
+
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#ip-mappings
+    """
+    queryset = models.IpMapping.objects.all()
+    serializer_class = serializers.IpMappingSerializer
+    lookup_field = 'uuid'
+    filter_backends = (structure_filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
+    filter_class = IpMappingFilter

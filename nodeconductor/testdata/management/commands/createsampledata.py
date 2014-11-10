@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.cloud.models import Cloud, CloudProjectMembership, SecurityGroup
+from nodeconductor.cloud.models import Cloud, CloudProjectMembership, IpMapping
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
 from nodeconductor.structure.models import *
@@ -236,11 +236,11 @@ Other use cases are covered with random data.
         cloud = Cloud.objects.create(
             customer=customer,
             name=cloud_name,
-            auth_url='http://%s.com' % random_string(10, 12, with_spaces=True),
+            auth_url='http://%s.com' % random_string(10, 12),
         )
 
         for project in customer.projects.all():
-            CloudProjectMembership(cloud=cloud, project=project)
+            CloudProjectMembership.objects.create(cloud=cloud, project=project, tenant_id=random_string(10, 12))
 
         # add flavors
         cloud.flavors.create(
@@ -261,6 +261,7 @@ Other use cases are covered with random data.
             name='CentOS 6 x64 %s' % random_string(3, 7),
             os='CentOS 6.5',
             is_active=True,
+            sla_level=97,
             icon_url='http://wiki.centos.org/ArtWork/Brand?action=AttachFile&do=get&target=centos-symbol.png',
             setup_fee=Decimal(str(random.random() * 100.0)),
             monthly_fee=Decimal(str(random.random() * 100.0)),
@@ -269,6 +270,7 @@ Other use cases are covered with random data.
             name='Windows 3.11 %s' % random_string(3, 7),
             os='Windows 3.11',
             is_active=False,
+            sla_level=97,
             setup_fee=Decimal(str(random.random() * 100.0)),
             monthly_fee=Decimal(str(random.random() * 100.0)),
         )
@@ -310,27 +312,7 @@ Other use cases are covered with random data.
             description='A backup image of WinXP',
         )
 
-        # add security groups
-        security_group1 = SecurityGroup.objects.create(
-            name=random_string(5, 10),
-            description='Openstack security group',
-            protocol='tcp',
-            from_port=22,
-            to_port=22,
-            ip_range='10.2.6.%d' % random.randint(0, 255),
-            netmask=24
-        )
-
-        security_group2 = SecurityGroup.objects.create(
-            name=random_string(5, 10),
-            protocol='udp',
-            from_port=22,
-            to_port=22,
-            ip_range='10.2.3.%d' % random.randint(0, 255),
-            netmask=24
-        )
-        
-        return cloud, (security_group1, security_group2)
+        return cloud
 
     def create_customer(self):
         customer_name = 'Customer %s' % random_string(3, 7)
@@ -347,17 +329,18 @@ Other use cases are covered with random data.
             self.create_project(customer),
         ]
 
-        cloud, security_groups = self.create_cloud(customer)
+        cloud = self.create_cloud(customer)
 
         # Use Case 5: User has roles in several projects of the same customer
         user1 = self.create_user()
         projects[0].add_user(user1, ProjectRole.MANAGER)
         projects[1].add_user(user1, ProjectRole.ADMINISTRATOR)
 
+        # add cloud to both of the projects
         self.create_instance(user1, projects[0], cloud.flavors.all()[0], cloud.images.filter(
-            template__isnull=False)[0].template, security_groups[0])
+            template__isnull=False)[0].template)
         self.create_instance(user1, projects[1], cloud.flavors.all()[1], cloud.images.filter(
-            template__isnull=False)[1].template, security_groups[1])
+            template__isnull=False)[1].template)
 
         # Use Case 6: User owns a customer
         user2 = self.create_user()
@@ -397,8 +380,22 @@ Other use cases are covered with random data.
 
         # Adding quota to project:
         print 'Creating quota for project %s' % project
-        project.quota = ResourceQuota.objects.create(vcpu=2, ram=2, storage=10, max_instances=10)
+        project.resource_quota = ResourceQuota.objects.create(vcpu=random.randint(60, 255),
+                                                              ram=random.randint(60, 255),
+                                                              storage=random.randint(60, 255),
+                                                              max_instances=random.randint(60, 255))
+        print 'Generating approximate quota consumption for project %s' % project
+        project.resource_quota_usage = ResourceQuota.objects.\
+            create(vcpu=project.resource_quota.vcpu - random.randint(0, 50),
+                   ram=project.resource_quota.ram - random.randint(0, 50),
+                   storage=project.resource_quota.storage - random.randint(0, 50),
+                   max_instances=project.resource_quota.max_instances - random.randint(0, 50))
         project.save()
+
+        print 'Creating IP mapping of a project %s' % project
+        public_ip = '84.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3))
+        private_ip = '10.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3))
+        IpMapping.objects.create(public_ip=public_ip, private_ip=private_ip, project=project)
 
         return project
 
@@ -421,12 +418,12 @@ Other use cases are covered with random data.
         user.save()
         return user
 
-    def create_instance(self, user, project, flavor, template, security_group):
+    def create_instance(self, user, project, flavor, template):
         internal_ips = ','.join('10.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3)) for _ in range(3))
         external_ips = ','.join('.'.join('%s' % random.randint(0, 255) for _ in range(4)) for _ in range(3))
         ssh_public_key = SshPublicKey.objects.create(
             user=user,
-            name="public key",
+            name='public key %s' % random.randint(0, 1000),
             public_key=("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28"
                         "TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY"
                         "dknWoMoArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9du"
@@ -435,7 +432,7 @@ Other use cases are covered with random data.
         )
         print 'Creating instance for project %s' % project
         instance = Instance.objects.create(
-            hostname='host',
+            hostname='host %s' % random.randint(0, 255),
             project=project,
             flavor=flavor,
             template=template,
@@ -445,4 +442,5 @@ Other use cases are covered with random data.
             ssh_public_key=ssh_public_key,
         )
 
-        InstanceSecurityGroup.objects.create(instance=instance, security_group=security_group)
+        cmp = CloudProjectMembership.objects.get(project=project, cloud=flavor.cloud)
+        InstanceSecurityGroup.objects.create(instance=instance, security_group=cmp.security_groups.first())

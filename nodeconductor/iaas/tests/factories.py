@@ -1,5 +1,6 @@
 from random import randint
 
+from django.core.urlresolvers import reverse
 from django.utils import timezone
 import factory
 import factory.fuzzy
@@ -29,6 +30,7 @@ class TemplateFactory(factory.DjangoModelFactory):
     description = factory.Sequence(lambda n: 'description %d' % n)
     icon_url = factory.Sequence(lambda n: 'http://example.com/%d.png' % n)
     is_active = True
+    sla_level = factory.LazyAttribute(lambda o: 97)
     setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
@@ -50,11 +52,23 @@ class SshPublicKeyFactory(factory.DjangoModelFactory):
 
     user = factory.SubFactory(structure_factories.UserFactory)
     name = factory.Sequence(lambda n: 'ssh_public_key%s' % n)
-    public_key = """ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28
-TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY
-dknWoMoArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9du
-D2C05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh
-vEAFdOJcqjyyH4FOGYa8usP1 test"""
+    public_key = (
+        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28"
+        "TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY"
+        "dknWoMoArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9du"
+        "D2C05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
+        "vEAFdOJcqjyyH4FOGYa8usP1 test"
+    )
+
+    @classmethod
+    def get_url(self, key):
+        if key is None:
+            key = SshPublicKeyFactory()
+        return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': str(key.uuid)})
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('sshpublickey-list')
 
 
 class InstanceFactory(factory.DjangoModelFactory):
@@ -76,6 +90,16 @@ class InstanceFactory(factory.DjangoModelFactory):
         project = structure_factories.ProjectFactory()
         cloud_factories.CloudProjectMembershipFactory(project=project, cloud=self.flavor.cloud)
         return project
+
+    @classmethod
+    def get_url(self, instance):
+        if instance is None:
+            instance = InstanceFactory()
+        return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('instance-list')
 
 
 class InstanceLicenseFactory(factory.DjangoModelFactory):

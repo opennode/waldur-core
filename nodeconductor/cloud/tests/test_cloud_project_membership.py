@@ -7,8 +7,7 @@ from rest_framework import test
 
 from nodeconductor.cloud import models
 from nodeconductor.cloud.tests import factories
-from nodeconductor.structure.models import CustomerRole
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -40,11 +39,11 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
             'project': self._get_project_url(self.project)
         }
 
-        with patch('nodeconductor.cloud.tasks.create_backend_membership.delay') as mocked_task:
+        with patch('nodeconductor.cloud.tasks.initial_push_cloud_membership.delay') as mocked_task:
             response = self.client.post(url, data)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             membership = models.CloudProjectMembership.objects.get(project=self.project, cloud=self.cloud)
-            mocked_task.assert_called_with(membership)
+            mocked_task.assert_called_with(membership.pk)
 
 
 # XXX: this have to be reworked to permissions test
@@ -55,6 +54,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
             'owner': structure_factories.UserFactory(),
             'admin': structure_factories.UserFactory(),
             'manager': structure_factories.UserFactory(),
+            'group_manager': structure_factories.UserFactory(),
             'no_role': structure_factories.UserFactory(),
             'not_connected': structure_factories.UserFactory(),
         }
@@ -63,10 +63,13 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         self.customer = structure_factories.CustomerFactory()
         self.customer.add_user(self.users['owner'], CustomerRole.OWNER)
 
-        # that has 2 users connected: admin and manager
+        # that has 3 users connected: admin, manager, group_manager
         self.connected_project = structure_factories.ProjectFactory(customer=self.customer)
         self.connected_project.add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         self.connected_project.add_user(self.users['manager'], ProjectRole.MANAGER)
+        project_group = structure_factories.ProjectGroupFactory()
+        project_group.projects.add(self.connected_project)
+        project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
         # has defined a cloud and connected cloud to a project
         self.cloud = factories.CloudFactory(customer=self.customer)
@@ -93,22 +96,33 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         response = self.client.post(reverse('cloudproject_membership-list'), payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_user_cannot_connect_new_cloud_and_project_if_he_is_project_admin(self):
-        for user_role in ['admin', 'manager']:
-            user = self.users[user_role]
-            self.client.force_authenticate(user=user)
+    def test_group_manager_can_connect_project_and_cloud(self):
+        user = self.users['group_manager']
+        self.client.force_authenticate(user=user)
 
-            cloud = factories.CloudFactory(customer=self.customer)
-            project = self.connected_project
-            payload = self._get_valid_payload(cloud, project)
+        cloud = factories.CloudFactory(customer=self.customer)
+        project = self.connected_project
+        payload = self._get_valid_payload(cloud, project)
 
+        with patch('nodeconductor.cloud.tasks.initial_push_cloud_membership.delay'):
             response = self.client.post(reverse('cloudproject_membership-list'), payload)
-            # the new cloud should not be visible to the user
-            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-            self.assertDictContainsSubset(
-                {'cloud': ['Invalid hyperlink - object does not exist.']}, response.data)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_user_cannot_revoke_cloud_and_project_permission_if_he_is_project_admin(self):
+    def test_admin_cannot_connect_new_cloud_and_project_if_he_is_project_admin(self):
+        user = self.users['admin']
+        self.client.force_authenticate(user=user)
+
+        cloud = factories.CloudFactory(customer=self.customer)
+        project = self.connected_project
+        payload = self._get_valid_payload(cloud, project)
+
+        response = self.client.post(reverse('cloudproject_membership-list'), payload)
+        # the new cloud should not be visible to the user
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'cloud': ['Invalid hyperlink - object does not exist.']}, response.data)
+
+    def test_user_cannot_revoke_cloud_and_project_permission_if_he_is_project_manager(self):
         user = self.users['manager']
         self.client.force_authenticate(user=user)
 
@@ -119,6 +133,18 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         url = factories.CloudProjectMembershipFactory.get_url(membership)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_can_revoke_cloud_and_project_permission_if_he_is_project_group_manager(self):
+        user = self.users['group_manager']
+        self.client.force_authenticate(user=user)
+
+        project = self.connected_project
+        cloud = self.cloud
+        membership = factories.CloudProjectMembershipFactory(project=project, cloud=cloud)
+
+        url = factories.CloudProjectMembershipFactory.get_url(membership)
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def _get_valid_payload(self, cloud=None, project=None):
         cloud = cloud or factories.CloudFactory()
