@@ -18,7 +18,7 @@ from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.filters import filter_queryset_for_user
-from nodeconductor.structure.signals import structure_role_granted, project_resource_added
+from nodeconductor.structure.signals import structure_role_granted
 
 
 logger = logging.getLogger(__name__)
@@ -120,8 +120,8 @@ class Flavor(UuidMixin, models.Model):
     cloud = models.ForeignKey(Cloud, related_name='flavors')
 
     cores = models.PositiveSmallIntegerField(help_text=_('Number of cores in a VM'))
-    ram = models.FloatField(help_text=_('Memory size in GB'))
-    disk = models.FloatField(help_text=_('Root disk size in GB'))
+    ram = models.PositiveIntegerField(help_text=_('Memory size in MiB'))
+    disk = models.PositiveIntegerField(help_text=_('Root disk size in MiB'))
 
     def __str__(self):
         return self.name
@@ -141,7 +141,7 @@ class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
     cloud_project_membership = models.ForeignKey(CloudProjectMembership, related_name='security_groups')
     name = models.CharField(max_length=127)
 
-    # openstack specific
+    # OpenStack backend specific fields
     os_security_group_id = models.CharField(max_length='128', blank=True,
                                             help_text='Reference to a SecurityGroup in a remote cloud')
 
@@ -170,7 +170,7 @@ class SecurityGroupRule(models.Model):
     ip_range = models.IPAddressField()
     netmask = models.SmallIntegerField(null=False)
 
-    # openstack specific
+    # OpenStack backend specific fields
     os_security_group_rule_id = models.CharField(max_length='128', blank=True)
 
     def __str__(self):
