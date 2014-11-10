@@ -253,7 +253,7 @@ class NotModifiedPermission(APIException):
     default_detail = 'Permissions were not modified'
 
 
-# TODO: refactor to abstract class, subclass by CustomerPermissions and ProjectPermissions
+# TODO: refactor to abstract class, subclass by CustomerPermissions, ProjectPermissions and ProjectGroupPermissions
 class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
                                    serializers.HyperlinkedModelSerializer):
     customer = serializers.HyperlinkedRelatedField(
@@ -280,7 +280,7 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
         fields = (
             'url', 'role',
             'customer', 'customer_name',
-            'user', 'user_username', 'user_full_name', 'user_native_name',
+            'user', 'user_full_name', 'user_native_name', 'user_username',
         )
         view_name = 'customer_permission-detail'
 
@@ -310,6 +310,7 @@ class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin
     project_name = serializers.Field(source='group.projectrole.project.name')
     user_full_name = serializers.Field(source='user.full_name')
     user_native_name = serializers.Field(source='user.native_name')
+    user_username = serializers.Field(source='user.username')
 
     role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
 
@@ -319,7 +320,7 @@ class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin
             'url',
             'role',
             'project', 'project_name',
-            'user', 'user_full_name', 'user_native_name',
+            'user', 'user_full_name', 'user_native_name', 'user_username',
         )
         view_name = 'project_permission-detail'
 
@@ -349,6 +350,7 @@ class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFiltering
     project_group_name = serializers.Field(source='group.projectgrouprole.project_group.name')
     user_full_name = serializers.Field(source='user.full_name')
     user_native_name = serializers.Field(source='user.native_name')
+    user_username = serializers.Field(source='user.username')
 
     role = ProjectGroupRoleField(choices=models.ProjectGroupRole.TYPE_CHOICES)
 
@@ -358,7 +360,7 @@ class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFiltering
             'url',
             'role',
             'project_group', 'project_group_name',
-            'user', 'user_full_name', 'user_native_name',
+            'user', 'user_full_name', 'user_native_name', 'user_username',
         )
         view_name = 'projectgroup_permission-detail'
 
