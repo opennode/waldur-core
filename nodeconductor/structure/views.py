@@ -230,6 +230,15 @@ class UserFilter(django_filters.FilterSet):
             'description',
             'job_title',
             'username',
+            # descending
+            '-full_name',
+            '-native_name',
+            '-organization',
+            '-email',
+            '-phone_number',
+            '-description',
+            '-job_title',
+            '-username',
         ]
 
 
