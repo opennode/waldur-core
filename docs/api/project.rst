@@ -14,6 +14,7 @@ Supported logic filters:
 Field filters:
 
 - ?project_group=<Project Group UUID> - return a list of projects in a specified project group.
+- ?project_group_name=<Project group name> - return a list of projects with belonging to groups with matching names
 - ?vcpu=<number> - return a list of projects with a specified vcpu quota
 - ?ram=<number> - return a list of projects with a specified ram quota
 - ?storage=<number> - return a list of projects with a specified storage quota
@@ -27,7 +28,7 @@ descending sorting prefix field name with a **-**.
 - ?o=resource_quota__ram - sort by project's quota of RAM;
 - ?o=resource_quota__storage - sort by project's quota of storage;
 - ?o=resource_quota__max_instances - sort by project's quota of instance number.
-
+- ?o=project_groups__name - sort by project's group names
 
 Project permissions
 -------------------

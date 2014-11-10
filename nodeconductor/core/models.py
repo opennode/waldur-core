@@ -150,7 +150,10 @@ class SshPublicKey(UuidMixin, models.Model):
             return ':'.join(a + b for a, b in zip(fp_plain[::2], fp_plain[1::2]))
 
         # Fingerprint is always set based on public_key
-        self.fingerprint = get_fingerprint(self.public_key)
+        try:
+            self.fingerprint = get_fingerprint(self.public_key)
+        except IndexError:
+            raise ValueError('Public key format is incorrect. Fingerprint calculation has failed.')
 
         if update_fields and 'public_key' in update_fields and 'fingerprint' not in update_fields:
             update_fields.append('fingerprint')

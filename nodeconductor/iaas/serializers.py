@@ -1,4 +1,7 @@
+from django.db import IntegrityError
+
 from rest_framework import serializers
+from rest_framework.exceptions import ParseError
 
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.cloud import serializers as cloud_serializers
@@ -195,6 +198,21 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         fields = ('url', 'uuid', 'name', 'public_key', 'fingerprint')
         read_only_fields = ('fingerprint',)
         lookup_field = 'uuid'
+
+    def validate(self, attrs):
+        """
+        Check that the start is before the stop.
+        """
+        try:
+            request = self.context['view'].request
+            user = request.user
+        except (KeyError, AttributeError):
+            return attrs
+
+        name = attrs['name']
+        if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
+            raise serializers.ValidationError('SSH key name is not unique for a user')
+        return attrs
 
 
 class PurchaseSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):

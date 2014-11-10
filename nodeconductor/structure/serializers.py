@@ -273,7 +273,7 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
         fields = (
             'url', 'role',
             'customer', 'customer_name',
-            'user', 'user_username', 'user_full_name', 'user_native_name',
+            'user', 'user_full_name', 'user_native_name', 'user_username',
         )
         view_name = 'customer_permission-detail'
 
@@ -297,6 +297,7 @@ class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin
     project_name = serializers.Field(source='group.projectrole.project.name')
     user_full_name = serializers.Field(source='user.full_name')
     user_native_name = serializers.Field(source='user.native_name')
+    user_username = serializers.Field(source='user.username')
 
     role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
 
@@ -306,7 +307,7 @@ class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin
             'url',
             'role',
             'project', 'project_name',
-            'user', 'user_full_name', 'user_native_name',
+            'user', 'user_full_name', 'user_native_name', 'user_username',
         )
         view_name = 'project_permission-detail'
 
@@ -330,6 +331,7 @@ class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFiltering
     project_group_name = serializers.Field(source='group.projectgrouprole.project_group.name')
     user_full_name = serializers.Field(source='user.full_name')
     user_native_name = serializers.Field(source='user.native_name')
+    user_username = serializers.Field(source='user.username')
 
     role = ProjectGroupRoleField(choices=models.ProjectGroupRole.TYPE_CHOICES)
 
@@ -339,7 +341,7 @@ class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFiltering
             'url',
             'role',
             'project_group', 'project_group_name',
-            'user', 'user_full_name', 'user_native_name',
+            'user', 'user_full_name', 'user_native_name', 'user_username',
         )
         view_name = 'projectgroup_permission-detail'
 
@@ -348,12 +350,6 @@ class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFiltering
         group = project_group.roles.get(role_type=attrs['role']).permission_group
         UserGroup = User.groups.through
         return UserGroup(user=attrs['user'], group=group)
-
-    def save_object(self, obj, **kwargs):
-        try:
-            obj.save()
-        except IntegrityError:
-            raise NotModifiedPermission()
 
     def get_filtered_field_names(self):
         return 'project_group',

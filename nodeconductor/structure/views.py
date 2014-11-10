@@ -52,6 +52,13 @@ class ProjectFilter(django_filters.FilterSet):
         name='project_groups__uuid',
         distinct=True,
     )
+
+    project_group_name = django_filters.CharFilter(
+        name='project_groups__name',
+        distinct=True,
+        lookup_type='icontains'
+    )
+
     name = django_filters.CharFilter(lookup_type='icontains')
 
     vcpu = django_filters.NumberFilter(
@@ -74,6 +81,7 @@ class ProjectFilter(django_filters.FilterSet):
         model = models.Project
         fields = [
             'project_group',
+            'project_group_name',
             'name',
             'vcpu',
             'ram',
@@ -90,7 +98,9 @@ class ProjectFilter(django_filters.FilterSet):
             'resource_quota__storage',
             '-resource_quota__storage',
             'resource_quota__max_instances',
-            '-resource_quota__max_instances'
+            '-resource_quota__max_instances',
+            'project_groups__name',
+            '-project_groups__name',
         ]
 
 
@@ -158,8 +168,6 @@ class ProjectGroupFilter(django_filters.FilterSet):
 class ProjectGroupViewSet(viewsets.ModelViewSet):
     """
     List of project groups that are accessible to this user.
-
-    TODO: add documentation
     """
 
     queryset = models.ProjectGroup.objects.all()
@@ -223,6 +231,7 @@ class UserFilter(django_filters.FilterSet):
             'project',
             'project_group',
             'username',
+            'civil_number'
         ]
         order_by = [
             'full_name',
@@ -233,6 +242,15 @@ class UserFilter(django_filters.FilterSet):
             'description',
             'job_title',
             'username',
+            # descending
+            '-full_name',
+            '-native_name',
+            '-organization',
+            '-email',
+            '-phone_number',
+            '-description',
+            '-job_title',
+            '-username',
         ]
 
 
@@ -254,10 +272,6 @@ class UserViewSet(viewsets.ModelViewSet):
         queryset = super(UserViewSet, self).get_queryset()
         # TODO: refactor against django filtering
 
-        civil_number = self.request.QUERY_PARAMS.get('civil_number', None)
-        if civil_number is not None:
-            queryset = queryset.filter(civil_number=civil_number)
-
         current_user = self.request.QUERY_PARAMS.get('current', None)
         if current_user is not None and not user.is_anonymous():
             queryset = User.objects.filter(uuid=user.uuid)
@@ -273,6 +287,8 @@ class UserViewSet(viewsets.ModelViewSet):
                 |
                 Q(groups__projectrole__project__roles__permission_group__user=user,
                   groups__projectrole__project__roles__role_type=models.ProjectRole.MANAGER)
+                |
+                Q(groups__projectgrouprole__project_group__roles__permission_group__user=user)
             ).distinct()
 
         return queryset
