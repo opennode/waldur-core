@@ -29,6 +29,7 @@ class LdapToGroup(models.Model):
         }
 
 
+# Signal handlers
 @receiver(populate_user)
 def synchronise_user_groups(**kwargs):
     """

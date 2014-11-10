@@ -33,5 +33,5 @@ PERMISSION_LOGICS = (
     ('cloud.Flavor', StaffPermissionLogic(any_permission=True)),
     ('cloud.SecurityGroup', StaffPermissionLogic(any_permission=True)),
     ('cloud.SecurityGroupRule', StaffPermissionLogic(any_permission=True)),
-
+    ('cloud.IpMapping',  StaffPermissionLogic(any_permission=True)),
 )

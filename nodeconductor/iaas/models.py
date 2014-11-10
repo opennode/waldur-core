@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models.signals import post_save
+from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext as _
@@ -64,6 +64,7 @@ class Template(core_models.UuidMixin,
     name = models.CharField(max_length=100, unique=True)
     os = models.CharField(max_length=100)
     is_active = models.BooleanField(default=False)
+    sla_level = models.IntegerField()
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                     validators=[MinValueValidator(Decimal('0.1')),
                                                 MaxValueValidator(Decimal('100000.0'))])
@@ -268,15 +269,6 @@ class Instance(core_models.UuidMixin,
             self._init_instance_licenses()
 
 
-@receiver(post_save, sender=Instance)
-def auto_start_instance(sender, instance=None, created=False, **kwargs):
-    if created:
-        # Importing here to avoid circular imports
-        from nodeconductor.iaas import tasks
-
-        tasks.schedule_provisioning.delay(instance.uuid)
-
-
 @python_2_unicode_compatible
 class TemplateLicense(core_models.UuidMixin, models.Model):
     class Services(object):
@@ -331,6 +323,7 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
         return 'License: %s for %s' % (self.template_license, self.instance)
 
 
+@python_2_unicode_compatible
 class Purchase(core_models.UuidMixin, models.Model):
     """
     Purchase history allows to see historical information
@@ -362,3 +355,17 @@ class InstanceSecurityGroup(models.Model):
 
     instance = models.ForeignKey(Instance, related_name='security_groups')
     security_group = models.ForeignKey(cloud_models.SecurityGroup, related_name='instance_groups')
+
+
+# Signal handlers
+@receiver(
+    signals.post_save,
+    sender=Instance,
+    dispatch_uid='nodeconductor.iaas.models.auto_start_instance',
+)
+def auto_start_instance(sender, instance=None, created=False, **kwargs):
+    if created:
+        # Importing here to avoid circular imports
+        from nodeconductor.iaas import tasks
+
+        tasks.schedule_provisioning.delay(instance.uuid)

@@ -9,16 +9,16 @@ from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from uuidfield import UUIDField
 
 from nodeconductor.cloud.backend import CloudBackendError
 from nodeconductor.core.models import (
-    DescribableMixin, SshPublicKey, SynchronizableMixin, SynchronizationStates, UuidMixin,
+    DescribableMixin, SshPublicKey, SynchronizableMixin, UuidMixin,
 )
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.structure.signals import structure_role_granted, project_resource_added
 
 
 logger = logging.getLogger(__name__)
@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 def validate_known_keystone_urls(value):
     from nodeconductor.cloud.backend.openstack import OpenStackBackend
+
     backend = OpenStackBackend()
     try:
         backend.get_credentials(value)
@@ -41,6 +42,7 @@ class Cloud(UuidMixin, SynchronizableMixin, models.Model):
     Represents parameters set that are necessary to connect to a particular cloud,
     such as connection endpoints, credentials, etc.
     """
+
     class Meta(object):
         unique_together = (
             ('customer', 'name'),
@@ -64,6 +66,7 @@ class Cloud(UuidMixin, SynchronizableMixin, models.Model):
         # TODO: Support different clouds instead of hard-coding
         # Importing here to avoid circular imports hell
         from nodeconductor.cloud.backend.openstack import OpenStackBackend
+
         return OpenStackBackend()
 
     def __str__(self):
@@ -73,37 +76,6 @@ class Cloud(UuidMixin, SynchronizableMixin, models.Model):
         """
         Synchronizes nodeconductor cloud with real cloud account
         """
-
-
-def get_related_clouds(obj, request):
-    related_clouds = obj.clouds.all()
-
-    try:
-        user = request.user
-        related_clouds = filter_queryset_for_user(related_clouds, user)
-    except AttributeError:
-        pass
-
-    from nodeconductor.cloud.serializers import BasicCloudSerializer
-    serializer_instance = BasicCloudSerializer(related_clouds, context={'request': request})
-
-    return serializer_instance.data
-
-
-# These hacks are necessary for Django <1.7
-# TODO: Refactor to use app.ready() after transition to Django 1.7
-# See https://docs.djangoproject.com/en/1.7/topics/signals/#connecting-receiver-functions
-
-# @receiver(pre_serializer_fields, sender=CustomerSerializer)
-@receiver(pre_serializer_fields)
-def add_clouds_to_related_model(sender, fields, **kwargs):
-    # Note: importing here to avoid circular import hell
-    from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
-
-    if not sender in (CustomerSerializer, ProjectSerializer):
-        return
-
-    fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
 
 
 @python_2_unicode_compatible
@@ -133,21 +105,6 @@ class CloudProjectMembership(SynchronizableMixin, models.Model):
         return '{0} | {1}'.format(self.cloud.name, self.project.name)
 
 
-@receiver(signals.post_save, sender=SshPublicKey)
-def propagate_new_key(sender, instance=None, created=False, **kwargs):
-    if not created:
-        return
-
-    # TODO: Schedule propagation task(s)? instead of doing it inline
-    # XXX: Come up with a solid strategy which projects are to be affected
-    cloud_project_memberships = filter_queryset_for_user(
-        CloudProjectMembership.objects.filter(state=SynchronizationStates.IN_SYNC), instance.user)
-
-    for membership in cloud_project_memberships.iterator():
-        backend = membership.cloud.get_backend()
-        backend.push_ssh_public_key(membership, instance)
-
-
 @python_2_unicode_compatible
 class Flavor(UuidMixin, models.Model):
     """
@@ -170,36 +127,7 @@ class Flavor(UuidMixin, models.Model):
         return self.name
 
 
-# These should come from backend properly
-@receiver(signals.post_save, sender=Cloud)
-def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
-    if created:
-        instance.flavors.create(
-            name='Weak & Small',
-            cores=2,
-            ram=2.0,
-            disk=10.0,
-        )
-        instance.flavors.create(
-            name='Powerful & Small',
-            cores=16,
-            ram=2.0,
-            disk=10.0,
-        )
-        instance.flavors.create(
-            name='Weak & Large',
-            cores=2,
-            ram=32.0,
-            disk=100.0,
-        )
-        instance.flavors.create(
-            name='Powerful & Large',
-            cores=16,
-            ram=32.0,
-            disk=100.0,
-        )
-
-
+@python_2_unicode_compatible
 class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
 
     class Permissions(object):
@@ -221,6 +149,7 @@ class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class SecurityGroupRule(models.Model):
 
     tcp = 'tcp'
@@ -249,6 +178,118 @@ class SecurityGroupRule(models.Model):
                (self.group, self.protocol, self.ip_range, self.netmask, self.from_port, self.to_port)
 
 
+# Signal handlers
+def get_related_clouds(obj, request):
+    related_clouds = obj.clouds.all()
+
+    try:
+        user = request.user
+        related_clouds = filter_queryset_for_user(related_clouds, user)
+    except AttributeError:
+        pass
+
+    from nodeconductor.cloud.serializers import BasicCloudSerializer
+
+    serializer_instance = BasicCloudSerializer(related_clouds, context={'request': request})
+
+    return serializer_instance.data
+
+
+# These hacks are necessary for Django <1.7
+# TODO: Refactor to use app.ready() after transition to Django 1.7
+# See https://docs.djangoproject.com/en/1.7/topics/signals/#connecting-receiver-functions
+
+# @receiver(pre_serializer_fields, sender=CustomerSerializer)
+@receiver(pre_serializer_fields)
+def add_clouds_to_related_model(sender, fields, **kwargs):
+    # Note: importing here to avoid circular import hell
+    from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
+
+    if sender not in (CustomerSerializer, ProjectSerializer):
+        return
+
+    fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
+
+
+@receiver(signals.post_save, sender=SshPublicKey)
+def propagate_new_users_key_to_his_projects_clouds(sender, instance=None, created=False, **kwargs):
+    if not created:
+        return
+
+    public_key = instance
+
+    membership_queryset = filter_queryset_for_user(
+        CloudProjectMembership.objects.all(), public_key.user)
+
+    membership_pks = membership_queryset.values_list('pk', flat=True)
+
+    if membership_pks:
+        # Note: importing here to avoid circular import hell
+        from nodeconductor.cloud import tasks
+
+        tasks.push_ssh_public_keys.delay([public_key.uuid.hex], list(membership_pks))
+
+
+@receiver(structure_role_granted, sender=structure_models.Project)
+def propagate_users_keys_to_clouds_of_newly_granted_project(sender, structure, user, role, **kwargs):
+    project = structure
+
+    ssh_public_key_uuids = SshPublicKey.objects.filter(
+        user=user).values_list('uuid', flat=True)
+
+    membership_pks = CloudProjectMembership.objects.filter(
+        project=project).values_list('pk', flat=True)
+
+    if ssh_public_key_uuids and membership_pks:
+        # Note: importing here to avoid circular import hell
+        from nodeconductor.cloud import tasks
+
+        tasks.push_ssh_public_keys.delay(
+            list(ssh_public_key_uuids), list(membership_pks))
+
+
+# FIXME: These should come from backend properly, see NC-139
+# Remove after NC-139 is implemented
+@receiver(signals.post_save, sender=Cloud)
+def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
+    if created:
+        instance.flavors.create(
+            name='Weak & Small',
+            cores=2,
+            ram=2 * 1024,
+            disk=10 * 1024,
+        )
+        instance.flavors.create(
+            name='Powerful & Small',
+            cores=16,
+            ram=2 * 1024,
+            disk=10 * 1024,
+        )
+        instance.flavors.create(
+            name='Weak & Large',
+            cores=2,
+            ram=32 * 1024,
+            disk=100 * 1024,
+        )
+        instance.flavors.create(
+            name='Powerful & Large',
+            cores=16,
+            ram=32 * 1024,
+            disk=100 * 1024,
+        )
+
+
+class IpMapping(UuidMixin, models.Model):
+    class Permissions(object):
+        project_path = 'project'
+        customer_path = 'project__customer'
+        project_group_path = 'project__project_groups'
+
+    public_ip = models.IPAddressField(null=False)
+    private_ip = models.IPAddressField(null=False)
+    project = models.ForeignKey(structure_models.Project, related_name='ip_mappings')
+
+
 # TODO: make the defaults configurable
 @receiver(signals.post_save, sender=CloudProjectMembership)
 def create_dummy_security_groups(sender, instance=None, created=False, **kwargs):
@@ -265,4 +306,3 @@ def create_dummy_security_groups(sender, instance=None, created=False, **kwargs)
             ip_range='0.0.0.0',
             netmask=0
         )
-
