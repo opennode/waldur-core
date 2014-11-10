@@ -49,6 +49,13 @@ class ProjectFilter(django_filters.FilterSet):
         name='project_groups__uuid',
         distinct=True,
     )
+
+    project_group_name = django_filters.CharFilter(
+        name='project_groups__name',
+        distinct=True,
+        lookup_type='icontains'
+    )
+
     name = django_filters.CharFilter(lookup_type='icontains')
 
     vcpu = django_filters.NumberFilter(
@@ -71,6 +78,7 @@ class ProjectFilter(django_filters.FilterSet):
         model = models.Project
         fields = [
             'project_group',
+            'project_group_name',
             'name',
             'vcpu',
             'ram',
@@ -87,7 +95,9 @@ class ProjectFilter(django_filters.FilterSet):
             'resource_quota__storage',
             '-resource_quota__storage',
             'resource_quota__max_instances',
-            '-resource_quota__max_instances'
+            '-resource_quota__max_instances',
+            'project_groups__name',
+            '-project_groups__name',
         ]
 
 
