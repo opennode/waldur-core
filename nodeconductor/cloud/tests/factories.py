@@ -75,3 +75,24 @@ class SecurityGroupRuleFactory(factory.DjangoModelFactory):
     to_port = factory.fuzzy.FuzzyInteger(1, 65535)
     ip_range = factory.LazyAttribute(lambda o: '.'.join('%s' % randint(1, 255) for i in range(4)))
     netmask = 24
+
+
+class IpMappingFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.IpMapping
+
+    public_ip = factory.LazyAttribute(lambda o: '84.%s' % '.'.join(
+        '%s' % randint(0, 255) for _ in range(3)))
+    private_ip = factory.LazyAttribute(lambda o: '10.%s' % '.'.join(
+        '%s' % randint(0, 255) for _ in range(3)))
+    project = factory.SubFactory(structure_factories.ProjectFactory)
+
+    @classmethod
+    def get_url(cls, ip_mapping=None):
+        ip_mapping = ip_mapping or IpMappingFactory()
+
+        return 'http://testserver' + reverse('ip_mapping-detail', kwargs={'uuid': ip_mapping.uuid})
+
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('ip_mapping-list')

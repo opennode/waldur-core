@@ -4,6 +4,7 @@ import logging
 
 from django.shortcuts import get_object_or_404
 import django_filters
+
 from rest_framework import exceptions
 from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
@@ -135,3 +136,31 @@ class SecurityGroupViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = SecurityGroupFilter
     filter_backends = (structure_filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
 
+
+class IpMappingFilter(django_filters.FilterSet):
+    project = django_filters.CharFilter(
+        name='project__uuid',
+    )
+
+    class Meta(object):
+        model = models.IpMapping
+        fields = [
+            'project',
+            'private_ip',
+            'public_ip',
+        ]
+
+
+class IpMappingViewSet(viewsets.ModelViewSet):
+    """
+    List of mappings between public IPs and private IPs
+
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#ip-mappings
+    """
+    queryset = models.IpMapping.objects.all()
+    serializer_class = serializers.IpMappingSerializer
+    lookup_field = 'uuid'
+    filter_backends = (structure_filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
+    filter_class = IpMappingFilter

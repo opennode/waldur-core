@@ -279,6 +279,17 @@ def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
         )
 
 
+class IpMapping(UuidMixin, models.Model):
+    class Permissions(object):
+        project_path = 'project'
+        customer_path = 'project__customer'
+        project_group_path = 'project__project_groups'
+
+    public_ip = models.IPAddressField(null=False)
+    private_ip = models.IPAddressField(null=False)
+    project = models.ForeignKey(structure_models.Project, related_name='ip_mappings')
+
+
 # TODO: make the defaults configurable
 @receiver(signals.post_save, sender=CloudProjectMembership)
 def create_dummy_security_groups(sender, instance=None, created=False, **kwargs):
