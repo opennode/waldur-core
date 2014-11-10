@@ -22,7 +22,6 @@ Supported ordering:
 
 - ?o=name - order by key name
 
-
 Create a new key
 ----------------
 

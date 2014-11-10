@@ -155,8 +155,6 @@ class ProjectGroupFilter(django_filters.FilterSet):
 class ProjectGroupViewSet(viewsets.ModelViewSet):
     """
     List of project groups that are accessible to this user.
-
-    TODO: add documentation
     """
 
     queryset = models.ProjectGroup.objects.all()
@@ -220,6 +218,7 @@ class UserFilter(django_filters.FilterSet):
             'project',
             'project_group',
             'username',
+            'civil_number'
         ]
         order_by = [
             'full_name',
@@ -260,10 +259,6 @@ class UserViewSet(viewsets.ModelViewSet):
         queryset = super(UserViewSet, self).get_queryset()
         # TODO: refactor against django filtering
 
-        civil_number = self.request.QUERY_PARAMS.get('civil_number', None)
-        if civil_number is not None:
-            queryset = queryset.filter(civil_number=civil_number)
-
         current_user = self.request.QUERY_PARAMS.get('current', None)
         if current_user is not None and not user.is_anonymous():
             queryset = User.objects.filter(uuid=user.uuid)
@@ -279,6 +274,8 @@ class UserViewSet(viewsets.ModelViewSet):
                 |
                 Q(groups__projectrole__project__roles__permission_group__user=user,
                   groups__projectrole__project__roles__role_type=models.ProjectRole.MANAGER)
+                |
+                Q(groups__projectgrouprole__project_group__roles__permission_group__user=user)
             ).distinct()
 
         return queryset
