@@ -197,14 +197,20 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         read_only_fields = ('fingerprint',)
         lookup_field = 'uuid'
 
-    def save_object(self, obj, **kwargs):
+    def validate(self, attrs):
+        """
+        Check that the start is before the stop.
+        """
         try:
-            obj.save()
-        except IntegrityError:
-            # TODO: this should be checked by validator
-            raise ParseError('SSH key name is not unique for a user')
-        except ValueError as v:
-            raise ParseError(v.message)
+            request = self.context['view'].request
+            user = request.user
+        except (KeyError, AttributeError):
+            return attrs
+
+        name = attrs['name']
+        if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
+            raise serializers.ValidationError('SSH key name is not unique for a user')
+        return attrs
 
 
 class PurchaseSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):

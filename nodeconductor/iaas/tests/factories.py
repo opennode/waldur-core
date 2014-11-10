@@ -59,6 +59,16 @@ class SshPublicKeyFactory(factory.DjangoModelFactory):
         "vEAFdOJcqjyyH4FOGYa8usP1 test"
     )
 
+    @classmethod
+    def get_url(self, key):
+        if key is None:
+            key = SshPublicKeyFactory()
+        return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': str(key.uuid)})
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('sshpublickey-list')
+
 
 class InstanceFactory(factory.DjangoModelFactory):
     class Meta(object):
