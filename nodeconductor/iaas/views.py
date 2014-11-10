@@ -215,6 +215,23 @@ class TemplateViewSet(core_viewsets.ModelViewSet):
         return queryset
 
 
+class SshKeyFilter(django_filters.FilterSet):
+    uuid = django_filters.CharFilter()
+    name = django_filters.CharFilter(lookup_type='icontains')
+
+    class Meta(object):
+        model = core_models.SshPublicKey
+        fields = [
+            'name',
+            'fingerprint',
+            'uuid',
+        ]
+        order_by = [
+            'name',
+            '-name',
+        ]
+
+
 class SshKeyViewSet(core_viewsets.ModelViewSet):
     """
     List of SSH public keys that are accessible by this user.
@@ -225,6 +242,8 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
     queryset = core_models.SshPublicKey.objects.all()
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
+    filter_backends = (rf_filter.DjangoFilterBackend,)
+    filter_class = SshKeyFilter
 
     def pre_save(self, key):
         key.user = self.request.user
@@ -232,6 +251,10 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super(SshKeyViewSet, self).get_queryset()
         user = self.request.user
+
+        if user.is_staff:
+            return queryset
+
         return queryset.filter(user=user)
 
 
