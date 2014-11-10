@@ -1,10 +1,124 @@
 from __future__ import unicode_literals
 
-from django.core.urlresolvers import reverse
-from rest_framework import test, status
+from mock import call
 
+from django.core.urlresolvers import reverse
+from django.test import TransactionTestCase
+from mock_django import mock_signal_receiver
+from rest_framework import status
+from rest_framework import test
+
+from nodeconductor.structure import signals
+from nodeconductor.structure.models import CustomerRole
+from nodeconductor.structure.models import Project
+from nodeconductor.structure.models import ProjectGroupRole
+from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories
-from nodeconductor.structure.models import Project, CustomerRole, ProjectRole, ProjectGroupRole
+
+
+class ProjectTest(TransactionTestCase):
+    def setUp(self):
+        self.project = factories.ProjectFactory()
+        self.user = factories.UserFactory()
+
+    def test_add_user_returns_created_if_grant_didnt_exist_before(self):
+        _, created = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertTrue(created, 'Project permission should have been reported as created')
+
+    def test_add_user_returns_not_created_if_grant_existed_before(self):
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        _, created = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertFalse(created, 'Project permission should have been reported as not created')
+
+    def test_add_user_returns_membership(self):
+        membership, _ = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertEqual(membership.user, self.user)
+        self.assertEqual(membership.group.projectrole.project, self.project)
+
+    def test_add_user_returns_same_membership_for_consequent_calls_with_same_arguments(self):
+        membership1, _ = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        membership2, _ = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertEqual(membership1, membership2)
+
+    def test_add_user_emits_structure_role_granted_if_grant_didnt_exist_before(self):
+        with mock_signal_receiver(signals.structure_role_granted) as receiver:
+            self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        receiver.assert_called_once_with(
+            structure=self.project,
+            user=self.user,
+            role=ProjectRole.ADMINISTRATOR,
+
+            sender=Project,
+            signal=signals.structure_role_granted,
+        )
+
+    def test_add_user_doesnt_emit_structure_role_granted_if_grant_existed_before(self):
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        with mock_signal_receiver(signals.structure_role_granted) as receiver:
+            self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        self.assertFalse(receiver.called, 'structure_role_granted should not be emitted')
+
+    def test_remove_user_emits_structure_role_revoked_for_each_role_user_had_in_project(self):
+        self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        self.project.add_user(self.user, ProjectRole.MANAGER)
+
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.project.remove_user(self.user)
+
+        calls = [
+            call(
+                structure=self.project,
+                user=self.user,
+                role=ProjectRole.MANAGER,
+
+                sender=Project,
+                signal=signals.structure_role_revoked,
+            ),
+
+            call(
+                structure=self.project,
+                user=self.user,
+                role=ProjectRole.ADMINISTRATOR,
+
+                sender=Project,
+                signal=signals.structure_role_revoked,
+            ),
+        ]
+
+        receiver.assert_has_calls(calls, any_order=True)
+
+        self.assertEqual(
+            receiver.call_count, 2,
+            'Excepted exactly 2 signals emitted'
+        )
+
+    def test_remove_user_emits_structure_role_revoked_if_grant_existed_before(self):
+        self.project.add_user(self.user, ProjectRole.MANAGER)
+
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.project.remove_user(self.user, ProjectRole.MANAGER)
+
+        receiver.assert_called_once_with(
+            structure=self.project,
+            user=self.user,
+            role=ProjectRole.MANAGER,
+
+            sender=Project,
+            signal=signals.structure_role_revoked,
+        )
+
+    def test_remove_user_doesnt_emit_structure_role_revoked_if_grant_didnt_exist_before(self):
+        with mock_signal_receiver(signals.structure_role_revoked) as receiver:
+            self.project.remove_user(self.user, ProjectRole.MANAGER)
+
+        self.assertFalse(receiver.called, 'structure_role_remove should not be emitted')
 
 
 def _get_valid_project_payload(resource=None):

@@ -261,6 +261,7 @@ Other use cases are covered with random data.
             name='CentOS 6 x64 %s' % random_string(3, 7),
             os='CentOS 6.5',
             is_active=True,
+            sla_level=97,
             icon_url='http://wiki.centos.org/ArtWork/Brand?action=AttachFile&do=get&target=centos-symbol.png',
             setup_fee=Decimal(str(random.random() * 100.0)),
             monthly_fee=Decimal(str(random.random() * 100.0)),
@@ -269,6 +270,7 @@ Other use cases are covered with random data.
             name='Windows 3.11 %s' % random_string(3, 7),
             os='Windows 3.11',
             is_active=False,
+            sla_level=97,
             setup_fee=Decimal(str(random.random() * 100.0)),
             monthly_fee=Decimal(str(random.random() * 100.0)),
         )

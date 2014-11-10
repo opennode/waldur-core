@@ -4,15 +4,55 @@ import collections
 
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
+from django.utils import unittest
+from mock import Mock
 from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories
+from nodeconductor.structure.views import ProjectPermissionViewSet
 
 User = get_user_model()
 
 TestRole = collections.namedtuple('TestRole', ['user', 'project', 'role'])
+
+
+class ProjectPermissionViewSetTest(unittest.TestCase):
+    def setUp(self):
+        self.view_set = ProjectPermissionViewSet()
+        self.request = Mock()
+        self.user_group = Mock()
+
+    def test_create_adds_user_role_to_project(self):
+        project = self.user_group.group.projectrole.project
+        project.add_user.return_value = self.user_group, True
+
+        serializer = Mock()
+        serializer.is_valid.return_value = True
+        serializer.object = self.user_group
+
+        self.view_set.request = self.request
+        self.view_set.can_save = Mock(return_value=True)
+        self.view_set.get_serializer = Mock(return_value=serializer)
+        self.view_set.create(self.request)
+
+        project.add_user.assert_called_once_with(
+            self.user_group.user,
+            self.user_group.group.projectrole.role_type,
+        )
+
+    def test_destroy_removes_user_role_from_project(self):
+        project = self.user_group.group.projectrole.project
+
+        self.view_set.get_object = Mock(return_value=self.user_group)
+
+        self.view_set.destroy(self.request)
+
+        project.remove_user.assert_called_once_with(
+            self.user_group.user,
+            self.user_group.group.projectrole.role_type,
+        )
 
 
 class UserProjectPermissionTest(test.APITransactionTestCase):
@@ -153,7 +193,11 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
         # modification of an existing permission has a different status code
         response = self.client.post(reverse('project_permission-list'), data)
         self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
-        # TODO: Test for Location header pointing to an existing permission
+        self.assertEqual(
+            {'detail': 'Permissions were not modified'}, response.data)
+
+        existing_permission_url = self._get_permission_url('no_role', 'manager', 'manager')
+        self.assertEqual(response['Location'], existing_permission_url)
 
     def test_user_can_assign_project_roles_in_projects_he_is_group_manager_of(self):
         self.client.force_authenticate(user=self.users['group_manager'])
@@ -296,11 +340,11 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['manager'])
         # We skip deleting manager's permission now
         # otherwise he won't be able to manage roles anymore
-        managed_roles = (
+        managed_roles = [
             role
             for role in self.all_roles
             if (role.project == 'manager') and (role.user != 'manager')
-        )
+        ]
 
         for role in managed_roles:
             permission_url = self._get_permission_url(*role)

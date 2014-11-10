@@ -10,6 +10,7 @@ dev_requires = [
 tests_requires = [
     'factory_boy==2.4.1',
     'mock==1.0.1',
+    'mock-django==0.6.6',
     'six>=1.7.3',
     'django-celery==3.1.16',
 ]
