@@ -282,18 +282,6 @@ class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
                 group.user_set.remove(user)
 
 
-def create_project_group_roles(sender, instance, created, **kwargs):
-    if created:
-        with transaction.atomic():
-            mgr_group = Group.objects.create(name='Role: {0} group mgr'.format(instance.uuid))
-            instance.roles.create(role_type=ProjectGroupRole.MANAGER, permission_group=mgr_group)
-
-signals.post_save.connect(create_project_group_roles,
-                          sender=ProjectGroup,
-                          weak=False,
-                          dispatch_uid='structure.project_group_roles_bootstrap')
-
-
 class NetworkSegment(models.Model):
     class Meta(object):
         unique_together = ('vlan', 'project')
@@ -331,3 +319,15 @@ def create_customer_roles(sender, instance, created, **kwargs):
             owner_group = Group.objects.create(name='Role: {0} owner'.format(instance.uuid))
 
             instance.roles.create(role_type=CustomerRole.OWNER, permission_group=owner_group)
+
+
+@receiver(
+    signals.post_save,
+    sender=ProjectGroup,
+    dispatch_uid='nodeconductor.structure.models.create_project_group_roles',
+)
+def create_project_group_roles(sender, instance, created, **kwargs):
+    if created:
+        with transaction.atomic():
+            mgr_group = Group.objects.create(name='Role: {0} group mgr'.format(instance.uuid))
+            instance.roles.create(role_type=ProjectGroupRole.MANAGER, permission_group=mgr_group)

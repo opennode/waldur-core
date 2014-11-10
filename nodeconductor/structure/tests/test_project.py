@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+from mock import call
+
 from django.core.urlresolvers import reverse
 from django.test import TransactionTestCase
 from mock_django import mock_signal_receiver
@@ -69,8 +71,6 @@ class ProjectTest(TransactionTestCase):
 
         with mock_signal_receiver(signals.structure_role_revoked) as receiver:
             self.project.remove_user(self.user)
-
-        from mock import call
 
         calls = [
             call(
