@@ -242,14 +242,14 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
         response = self.client.get(reverse('project_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        manager_roles = (role for role in self.all_roles if role.project == 'admin')
+        admin_roles = (role for role in self.all_roles if role.project == 'admin')
 
-        for role in manager_roles:
+        for role in admin_roles:
             self.assertTrue(
                 self._check_if_present(
                     self.projects[role.project],
                     self.users[role.user], role.role, permissions=response.data),
-                'Manager user does not see an existing privilege: {0}'.format(role),
+                'Admin user does not see an existing privilege: {0}'.format(role),
             )
 
     def test_user_cannot_assign_roles_in_projects_he_is_administrator_of_but_not_manager_of(self):
@@ -352,6 +352,7 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
             'user': user_url,
             'user_full_name': user.full_name,
             'user_native_name': user.native_name,
+            'user_username': user.username,
             'project': project_url,
             'project_name': project.name,
             'role': role,

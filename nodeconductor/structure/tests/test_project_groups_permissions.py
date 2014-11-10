@@ -124,7 +124,7 @@ class TestGroupPermissionsListRetrieve(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         expected_fields = [
             'url', 'role', 'project_group', 'project_group_name',
-            'user', 'user_full_name', 'user_native_name'
+            'user', 'user_full_name', 'user_native_name', 'user_username'
         ]
         self.assertItemsEqual(response.data.keys(), expected_fields)
 
