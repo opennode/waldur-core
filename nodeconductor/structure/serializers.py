@@ -2,9 +2,7 @@ from __future__ import unicode_literals
 
 from django.contrib import auth
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
 from rest_framework import serializers
-from rest_framework.exceptions import APIException
 from rest_framework.reverse import reverse
 
 from nodeconductor.core import serializers as core_serializers
@@ -248,11 +246,6 @@ class ProjectPermissionReadSerializer(core_serializers.RelatedResourcesFieldMixi
         return 'group.projectrole.project',
 
 
-class NotModifiedPermission(APIException):
-    status_code = 304
-    default_detail = 'Permissions were not modified'
-
-
 # TODO: refactor to abstract class, subclass by CustomerPermissions and ProjectPermissions
 class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
                                    serializers.HyperlinkedModelSerializer):
@@ -290,12 +283,6 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
         UserGroup = User.groups.through
         return UserGroup(user=attrs['user'], group=group)
 
-    def save_object(self, obj, **kwargs):
-        try:
-            obj.save()
-        except IntegrityError:
-            raise NotModifiedPermission()
-
     def get_filtered_field_names(self):
         return 'customer',
 
@@ -328,12 +315,6 @@ class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin
         group = project.roles.get(role_type=attrs['role']).permission_group
         UserGroup = User.groups.through
         return UserGroup(user=attrs['user'], group=group)
-
-    def save_object(self, obj, **kwargs):
-        try:
-            obj.save()
-        except IntegrityError:
-            raise NotModifiedPermission()
 
     def get_filtered_field_names(self):
         return 'project',

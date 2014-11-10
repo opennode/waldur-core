@@ -1,18 +1,58 @@
 from __future__ import unicode_literals
 
 import collections
+from mock import Mock
 
 from django.contrib.auth import get_user_model
+from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
 from rest_framework.reverse import reverse
 
 from nodeconductor.structure.models import CustomerRole, ProjectRole
+from nodeconductor.structure.views import CustomerPermissionViewSet
 from nodeconductor.structure.tests import factories
 
 User = get_user_model()
 
 TestRole = collections.namedtuple('TestRole', ['user', 'customer', 'role'])
+
+
+class CustomerPermissionViewSetTest(unittest.TestCase):
+    def setUp(self):
+        self.view_set = CustomerPermissionViewSet()
+        self.request = Mock()
+        self.user_group = Mock()
+
+    def test_create_adds_user_role_to_customer(self):
+        customer = self.user_group.group.customerrole.customer
+        customer.add_user.return_value = self.user_group, True
+
+        serializer = Mock()
+        serializer.is_valid.return_value = True
+        serializer.object = self.user_group
+
+        self.view_set.request = self.request
+        self.view_set.can_save = Mock(return_value=True)
+        self.view_set.get_serializer = Mock(return_value=serializer)
+        self.view_set.create(self.request)
+
+        customer.add_user.assert_called_once_with(
+            self.user_group.user,
+            self.user_group.group.customerrole.role_type,
+        )
+
+    def test_destroy_removes_user_role_from_customer(self):
+        customer = self.user_group.group.customerrole.customer
+
+        self.view_set.get_object = Mock(return_value=self.user_group)
+
+        self.view_set.destroy(self.request)
+
+        customer.remove_user.assert_called_once_with(
+            self.user_group.user,
+            self.user_group.group.customerrole.role_type,
+        )
 
 
 class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):

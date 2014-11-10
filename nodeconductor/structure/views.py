@@ -6,8 +6,11 @@ import django_filters
 from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
+from rest_framework import status
 from rest_framework import viewsets as rf_viewsets
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
+from rest_framework.settings import api_settings
 
 from nodeconductor.core import permissions
 from nodeconductor.core import viewsets
@@ -275,20 +278,35 @@ class UserViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
-                               rf_mixins.RetrieveModelMixin,
-                               rf_mixins.DestroyModelMixin,
+class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
                                mixins.ListModelMixin,
                                rf_viewsets.GenericViewSet):
-    queryset = User.groups.through.objects.all()
+    queryset = User.groups.through.objects.exclude(group__projectrole=None)
     serializer_class = serializers.ProjectPermissionSerializer
     filter_backends = (filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
 
+    def can_save(self, user_group):
+        user = self.request.user
+        project = user_group.group.projectrole.project
+
+        if project.has_user(user, ProjectRole.MANAGER):
+            return True
+
+        if project.customer.has_user(user, CustomerRole.OWNER):
+            return True
+        
+        # TODO: Move to ProjectGroup.has_user()
+        is_group_manager = project.project_groups.filter(
+            roles__permission_group__user=user, roles__role_type=ProjectGroupRole.MANAGER).exists()
+        if is_group_manager:
+            return True
+
+        return False
+
     def get_queryset(self):
         queryset = super(ProjectPermissionViewSet, self).get_queryset()
-        queryset = queryset.exclude(group__projectrole=None)
 
         # TODO: refactor against django filtering
         user_uuid = self.request.QUERY_PARAMS.get('user', None)
@@ -297,28 +315,64 @@ class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
 
         return queryset
 
+    def get_success_headers(self, data):
+        try:
+            return {'Location': data[api_settings.URL_FIELD_NAME]}
+        except (TypeError, KeyError):
+            return {}
+
     def pre_save(self, obj):
-        super(ProjectPermissionViewSet, self).pre_save(obj)
-        user = self.request.user
+        if not self.can_save(obj):
+            raise PermissionDenied()
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+
+        if serializer.is_valid():
+            self.pre_save(serializer.object)
+
+            project = serializer.object.group.projectrole.project
+            user = serializer.object.user
+            role = serializer.object.group.projectrole.role_type
+
+            self.object, created = project.add_user(user, role)
+
+            self.post_save(self.object, created=created)
+
+            # Instantiating serializer again, this time with instance
+            # to make urls render properly.
+            serializer = self.get_serializer(instance=self.object)
+
+            headers = self.get_success_headers(serializer.data)
+
+            if created:
+                return Response(
+                    serializer.data,
+                    status=status.HTTP_201_CREATED,
+                    headers=headers,
+                )
+            else:
+                return Response(
+                    {'detail': 'Permissions were not modified'},
+                    status=status.HTTP_304_NOT_MODIFIED,
+                    headers=headers,
+                )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        self.pre_delete(obj)
+
+        user = obj.user
         project = obj.group.projectrole.project
+        role = obj.group.projectrole.role_type
 
-        # check for the user role. Inefficient but more readable
-        is_manager = project.roles.filter(
-            permission_group__user=user, role_type=ProjectRole.MANAGER).exists()
-        if is_manager:
-            return
+        project.remove_user(user, role)
 
-        is_customer_owner = project.customer.roles.filter(
-            permission_group__user=user, role_type=CustomerRole.OWNER).exists()
-        if is_customer_owner:
-            return
+        self.post_delete(obj)
 
-        is_group_manager = project.project_groups.filter(
-            roles__permission_group__user=user, roles__role_type=ProjectGroupRole.MANAGER).exists()
-        if is_group_manager:
-            return
-
-        raise PermissionDenied()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ProjectGroupPermissionViewSet(rf_mixins.CreateModelMixin,
@@ -398,23 +452,27 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         ]
 
 
-class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
-                                rf_mixins.RetrieveModelMixin,
-                                rf_mixins.DestroyModelMixin,
+class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
                                 mixins.ListModelMixin,
                                 rf_viewsets.GenericViewSet):
-    model = User.groups.through
+    queryset = User.groups.through.objects.exclude(group__customerrole=None)
     serializer_class = serializers.CustomerPermissionSerializer
     filter_backends = (rf_filter.DjangoFilterBackend,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
     filter_class = CustomerPermissionFilter
 
+    def can_save(self, user_group):
+        user = self.request.user
+        customer = user_group.group.customerrole.customer
+
+        if customer.has_user(user, CustomerRole.OWNER):
+            return True
+
+        return False
+
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
-        # TODO: Test for it!
-        # Only take groups defining customer roles
-        queryset = queryset.exclude(group__customerrole=None)
 
         # TODO: Test for it!
         if not self.request.user.is_staff:
@@ -429,21 +487,64 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
 
         return queryset
 
+    def get_success_headers(self, data):
+        try:
+            return {'Location': data[api_settings.URL_FIELD_NAME]}
+        except (TypeError, KeyError):
+            return {}
+
     def pre_save(self, obj):
-        super(CustomerPermissionViewSet, self).pre_save(obj)
-        user = self.request.user
+        if not self.can_save(obj):
+            raise PermissionDenied()
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+
+        if serializer.is_valid():
+            self.pre_save(serializer.object)
+
+            customer = serializer.object.group.customerrole.customer
+            user = serializer.object.user
+            role = serializer.object.group.customerrole.role_type
+
+            self.object, created = customer.add_user(user, role)
+
+            self.post_save(self.object, created=created)
+
+            # Instantiating serializer again, this time with instance
+            # to make urls render properly.
+            serializer = self.get_serializer(instance=self.object)
+
+            headers = self.get_success_headers(serializer.data)
+
+            if created:
+                return Response(
+                    serializer.data,
+                    status=status.HTTP_201_CREATED,
+                    headers=headers,
+                )
+            else:
+                return Response(
+                    {'detail': 'Permissions were not modified'},
+                    status=status.HTTP_304_NOT_MODIFIED,
+                    headers=headers,
+                )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        self.pre_delete(obj)
+
+        user = obj.user
         customer = obj.group.customerrole.customer
+        role = obj.group.customerrole.role_type
 
-        if user.is_staff:
-            return
+        customer.remove_user(user, role)
 
-        # check for the user role.
-        is_customer_owner = customer.roles.filter(
-            permission_group__user=user, role_type=CustomerRole.OWNER).exists()
-        if is_customer_owner:
-            return
+        self.post_delete(obj)
 
-        raise PermissionDenied()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # XXX: This should be put to models
 filters.set_permissions_for_model(
