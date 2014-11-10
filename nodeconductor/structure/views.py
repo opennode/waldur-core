@@ -296,12 +296,10 @@ class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
 
         if project.customer.has_user(user, CustomerRole.OWNER):
             return True
-        
-        # TODO: Move to ProjectGroup.has_user()
-        is_group_manager = project.project_groups.filter(
-            roles__permission_group__user=user, roles__role_type=ProjectGroupRole.MANAGER).exists()
-        if is_group_manager:
-            return True
+
+        for project_group in project.project_groups.all():
+            if project_group.has_user(user, ProjectGroupRole.MANAGER):
+                return True
 
         return False
 
@@ -375,9 +373,7 @@ class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ProjectGroupPermissionViewSet(rf_mixins.CreateModelMixin,
-                                    rf_mixins.RetrieveModelMixin,
-                                    rf_mixins.DestroyModelMixin,
+class ProjectGroupPermissionViewSet(rf_mixins.RetrieveModelMixin,
                                     mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.all()
@@ -409,23 +405,76 @@ class ProjectGroupPermissionViewSet(rf_mixins.CreateModelMixin,
 
         return queryset
 
-    def pre_save(self, obj):
-        super(ProjectGroupPermissionViewSet, self).pre_save(obj)
+    def can_save(self, user_group):
         user = self.request.user
+        project_group = user_group.group.projectgrouprole.project_group
+
+        if project_group.has_user(user, ProjectGroupRole.MANAGER):
+            return True
+
+        if project_group.customer.has_user(user, CustomerRole.OWNER):
+            return True
+
+        return False
+
+    def pre_save(self, obj):
+        if not self.can_save(obj):
+            raise PermissionDenied()
+
+    def get_success_headers(self, data):
+        try:
+            return {'Location': data[api_settings.URL_FIELD_NAME]}
+        except (TypeError, KeyError):
+            return {}
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+
+        if serializer.is_valid():
+            self.pre_save(serializer.object)
+
+            project_group = serializer.object.group.projectgrouprole.project_group
+            user = serializer.object.user
+            role = serializer.object.group.projectgrouprole.role_type
+
+            self.object, created = project_group.add_user(user, role)
+
+            self.post_save(self.object, created=created)
+
+            # Instantiating serializer again, this time with instance
+            # to make urls render properly.
+            serializer = self.get_serializer(instance=self.object)
+
+            headers = self.get_success_headers(serializer.data)
+
+            if created:
+                return Response(
+                    serializer.data,
+                    status=status.HTTP_201_CREATED,
+                    headers=headers,
+                )
+            else:
+                return Response(
+                    {'detail': 'Permissions were not modified'},
+                    status=status.HTTP_304_NOT_MODIFIED,
+                    headers=headers,
+                )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        self.pre_delete(obj)
+
+        user = obj.user
         project_group = obj.group.projectgrouprole.project_group
+        role = obj.group.projectgrouprole.role_type
 
-        # check for the user role. Inefficient but more readable
-        is_customer_owner = project_group.customer.roles.filter(
-            permission_group__user=user, role_type=CustomerRole.OWNER).exists()
-        if is_customer_owner:
-            return
+        project_group.remove_user(user, role)
 
-        is_group_manager = project_group.project_groups.filter(
-            roles__permission_group__user=user, roles__role_type=ProjectGroupRole.MANAGER).exists()
-        if is_group_manager:
-            return
+        self.post_delete(obj)
 
-        raise PermissionDenied()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CustomerPermissionFilter(django_filters.FilterSet):
