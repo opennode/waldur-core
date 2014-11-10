@@ -282,6 +282,7 @@ class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
     """List of template licenses that are accessible by this user.
+
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#template-licenses
     """
     queryset = models.TemplateLicense.objects.all()
