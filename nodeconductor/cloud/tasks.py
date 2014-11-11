@@ -33,7 +33,7 @@ def push_cloud_account(cloud_uuid):
     processing_state='begin_syncing',
     desired_state='set_in_sync',
 )
-def initial_push_cloud_account(cloud_account_uuid):
+def sync_cloud_account(cloud_account_uuid):
     cloud = models.Cloud.objects.get(uuid=cloud_account_uuid)
 
     backend = cloud.get_backend()
@@ -59,7 +59,7 @@ def push_cloud_membership(membership_pk):
     processing_state='begin_syncing',
     desired_state='set_in_sync',
 )
-def initial_push_cloud_membership(membership_pk):
+def sync_cloud_membership(membership_pk):
     membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
 
     backend = membership.cloud.get_backend()
