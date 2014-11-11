@@ -193,9 +193,11 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class SshKeySerializer(serializers.HyperlinkedModelSerializer):
+    user_uuid = serializers.Field(source='user.uuid')
+
     class Meta(object):
         model = core_models.SshPublicKey
-        fields = ('url', 'uuid', 'name', 'public_key', 'fingerprint')
+        fields = ('url', 'uuid', 'name', 'public_key', 'fingerprint', 'user_uuid')
         read_only_fields = ('fingerprint',)
         lookup_field = 'uuid'
 
@@ -213,6 +215,19 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
             raise serializers.ValidationError('SSH key name is not unique for a user')
         return attrs
+
+    def get_fields(self):
+        fields = super(SshKeySerializer, self).get_fields()
+
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return fields
+
+        if not user.is_staff:
+            del fields['user_uuid']
+
+        return fields
 
 
 class PurchaseSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
