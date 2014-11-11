@@ -257,37 +257,6 @@ def propagate_users_keys_to_clouds_of_newly_granted_project(sender, structure, u
             list(ssh_public_key_uuids), list(membership_pks))
 
 
-# FIXME: These should come from backend properly, see NC-139
-# Remove after NC-139 is implemented
-@receiver(signals.post_save, sender=Cloud)
-def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
-    if created:
-        instance.flavors.create(
-            name='Weak & Small',
-            cores=2,
-            ram=2 * 1024,
-            disk=10 * 1024,
-        )
-        instance.flavors.create(
-            name='Powerful & Small',
-            cores=16,
-            ram=2 * 1024,
-            disk=10 * 1024,
-        )
-        instance.flavors.create(
-            name='Weak & Large',
-            cores=2,
-            ram=32 * 1024,
-            disk=100 * 1024,
-        )
-        instance.flavors.create(
-            name='Powerful & Large',
-            cores=16,
-            ram=32 * 1024,
-            disk=100 * 1024,
-        )
-
-
 class IpMapping(UuidMixin, models.Model):
     class Permissions(object):
         project_path = 'project'
