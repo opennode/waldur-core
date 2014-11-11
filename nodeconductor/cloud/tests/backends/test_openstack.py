@@ -1,10 +1,34 @@
+from __future__ import unicode_literals
+
+import collections
+
+from django.test import TransactionTestCase
 from django.utils import unittest
 from keystoneclient import exceptions as keystone_exceptions
 import mock
 
 from nodeconductor.cloud.backend import CloudBackendError
-
 from nodeconductor.cloud.backend.openstack import OpenStackBackend
+from nodeconductor.cloud.models import Flavor
+from nodeconductor.cloud.tests import factories
+from nodeconductor.iaas.tests.factories import InstanceFactory
+
+NovaFlavor = collections.namedtuple('NovaFlavor',
+                                    ['id', 'name', 'vcpus', 'ram', 'disk'])
+
+
+def next_unique_flavor_id():
+    return factories.FlavorFactory.build().flavor_id
+
+
+def nc_flavor_to_nova_flavor(flavor):
+    return NovaFlavor(
+        id=flavor.flavor_id,
+        name=flavor.name,
+        vcpus=flavor.cores,
+        ram=flavor.ram / 1024,
+        disk=flavor.disk / 1024,
+    )
 
 
 class OpenStackBackendPublicApiTest(unittest.TestCase):
@@ -63,6 +87,115 @@ class OpenStackBackendPublicApiTest(unittest.TestCase):
         self.backend.get_keystone_client.side_effect = keystone_exceptions.AuthorizationFailure
         with self.assertRaises(CloudBackendError):
             self.backend.push_membership(self.membership)
+
+
+class OpenStackBackendPublicApi2Test(TransactionTestCase):
+    def setUp(self):
+        self.keystone_client = mock.Mock()
+        self.nova_client = mock.Mock()
+        self.nova_client.flavors.findall.return_value = []
+
+        self.cloud_account = factories.CloudFactory()
+        self.flavors = factories.FlavorFactory.create_batch(2, cloud=self.cloud_account)
+
+        # Mock low level non-AbstractCloudBackend api methods
+        self.backend = OpenStackBackend()
+        self.backend.get_credentials = mock.Mock(return_value={})
+        # self.backend.get_keystone_client = mock.Mock(return_value=self.keystone_client)
+        self.backend.get_nova_client = mock.Mock(return_value=self.nova_client)
+
+    # TODO: Test pull_flavors uses proper credentials for nova
+    def test_pull_flavors_queries_only_public_flavors(self):
+        self.backend.pull_flavors(self.cloud_account)
+
+        self.nova_client.flavors.findall.assert_called_once_with(
+            is_public=True
+        )
+
+    def test_pull_flavors_creates_flavors_missing_in_database(self):
+        # Given
+        new_flavor = NovaFlavor(next_unique_flavor_id(), 'id1', 3, 5, 8)
+
+        self.nova_client.flavors.findall.return_value = [
+            nc_flavor_to_nova_flavor(self.flavors[0]),
+            nc_flavor_to_nova_flavor(self.flavors[1]),
+            new_flavor,
+        ]
+
+        # When
+        self.backend.pull_flavors(self.cloud_account)
+
+        # Then
+        try:
+            stored_flavor = self.cloud_account.flavors.get(flavor_id=new_flavor.id)
+
+            self.assertEqual(stored_flavor.name, new_flavor.name)
+            self.assertEqual(stored_flavor.cores, new_flavor.vcpus)
+            self.assertEqual(stored_flavor.ram, new_flavor.ram * 1024)
+            self.assertEqual(stored_flavor.disk, new_flavor.disk * 1024)
+        except Flavor.DoesNotExist:
+            self.fail('Flavor should have been created in the database')
+
+    def test_pull_flavors_updates_matching_flavors(self):
+        # Given
+        def double_fields(flavor):
+            return flavor._replace(
+                name=flavor.name + 'foo',
+                vcpus=flavor.vcpus * 2,
+                ram=flavor.ram * 2,
+                disk=flavor.disk * 2,
+            )
+
+        backend_flavors = [
+            double_fields(nc_flavor_to_nova_flavor(self.flavors[0])),
+            double_fields(nc_flavor_to_nova_flavor(self.flavors[1])),
+        ]
+
+        self.nova_client.flavors.findall.return_value = backend_flavors
+
+        # When
+        self.backend.pull_flavors(self.cloud_account)
+
+        # Then
+        for updated_flavor in backend_flavors:
+            stored_flavor = self.cloud_account.flavors.get(flavor_id=updated_flavor.id)
+
+            self.assertEqual(stored_flavor.name, updated_flavor.name)
+            self.assertEqual(stored_flavor.cores, updated_flavor.vcpus)
+            self.assertEqual(stored_flavor.ram, updated_flavor.ram * 1024)
+            self.assertEqual(stored_flavor.disk, updated_flavor.disk * 1024)
+
+    def test_pull_flavors_deletes_flavors_missing_in_backend(self):
+        # Given
+        self.nova_client.flavors.findall.return_value = [
+            nc_flavor_to_nova_flavor(self.flavors[0]),
+        ]
+
+        # When
+        self.backend.pull_flavors(self.cloud_account)
+
+        # Then
+        is_present = self.cloud_account.flavors.filter(
+            flavor_id=self.flavors[1].flavor_id).exists()
+
+        self.assertFalse(is_present, 'Flavor should have been deleted from the database')
+
+    def test_pull_flavors_doesnt_delete_flavors_linked_to_instances(self):
+        # Given
+        InstanceFactory.create(flavor=self.flavors[1])
+
+        self.nova_client.flavors.findall.return_value = [
+            nc_flavor_to_nova_flavor(self.flavors[0]),
+        ]
+
+        # When
+        self.backend.pull_flavors(self.cloud_account)
+
+        # Then
+        is_present = self.cloud_account.flavors.filter(
+            flavor_id=self.flavors[1].flavor_id).exists()
+
+        self.assertTrue(is_present, 'Flavor should have not been deleted from the database')
 
 
 class OpenStackBackendHelperApiTest(unittest.TestCase):

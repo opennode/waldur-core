@@ -5,6 +5,8 @@ import re
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.db.models import ProtectedError
 from django.utils import six
 from keystoneclient import exceptions as keystone_exceptions
 from keystoneclient import session
@@ -25,6 +27,58 @@ class OpenStackBackend(object):
     def push_cloud_account(self, cloud_account):
         # There's nothing to push for OpenStack
         pass
+
+    def pull_flavors(self, cloud_account):
+        # Fail fast if no corresponding OpenStack configured in settings
+        credentials = self.get_credentials(cloud_account.auth_url)
+
+        nova = self.get_nova_client(**credentials)
+
+        backend_flavors = nova.flavors.findall(is_public=True)
+        backend_flavors = dict(((f.id, f) for f in backend_flavors))
+
+        with transaction.atomic():
+            nc_flavors = cloud_account.flavors.all()
+            nc_flavors = dict(((f.flavor_id, f) for f in nc_flavors))
+
+            backend_ids = set(backend_flavors.keys())
+            nc_ids = set(nc_flavors.keys())
+
+            # Remove stale flavors, the ones that are not on backend anymore
+            for flavor_id in nc_ids - backend_ids:
+                nc_flavor = nc_flavors[flavor_id]
+                # Delete the flavor that has instances after NC-178 gets implemented.
+                try:
+                    nc_flavor.delete()
+                    logger.info('Deleted stale flavor %s', nc_flavor.uuid)
+                except ProtectedError:
+                    logger.info('Skipped deletion of stale flavor %s due to linked instances',
+                                nc_flavor.uuid)
+
+            # Add new flavors, the ones that are not yet in the database
+            for flavor_id in backend_ids - nc_ids:
+                backend_flavor = backend_flavors[flavor_id]
+
+                nc_flavor = cloud_account.flavors.create(
+                    name=backend_flavor.name,
+                    cores=backend_flavor.vcpus,
+                    ram=backend_flavor.ram * 1024,
+                    disk=backend_flavor.disk * 1024,
+                    flavor_id=backend_flavor.id,
+                )
+                logger.info('Created new flavor %s', nc_flavor.uuid)
+
+            # Update matching flavors, the ones that exist in both places
+            for flavor_id in nc_ids & backend_ids:
+                nc_flavor = nc_flavors[flavor_id]
+                backend_flavor = backend_flavors[flavor_id]
+
+                nc_flavor.name = backend_flavor.name
+                nc_flavor.cores = backend_flavor.vcpus
+                nc_flavor.ram = backend_flavor.ram * 1024
+                nc_flavor.disk = backend_flavor.disk * 1024
+                nc_flavor.save()
+                logger.info('Updated existing flavor %s', nc_flavor.uuid)
 
     # CloudProjectMembership related methods
     def push_membership(self, membership):
@@ -59,7 +113,12 @@ class OpenStackBackend(object):
         key_name = '{0}-{1}'.format(public_key.uuid.hex, safe_name)
 
         try:
-            nova = self.get_nova_client(membership)
+            nova = self.get_nova_client(
+                auth_url=membership.cloud.auth_url,
+                username=membership.username,
+                password=membership.password,
+                tenant_id=membership.tenant_id,
+            )
 
             try:
                 # There's no way to edit existing key inplace,
@@ -76,13 +135,6 @@ class OpenStackBackend(object):
         except nova_exceptions.ClientException:
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
             six.reraise(CloudBackendError, CloudBackendError())
-
-    def pull_flavors(self, membership):
-        # TODO: Get list of flavors from DB
-        # TODO: Get list of flavors from OpenStack
-        # TODO: Remove non-matching from DB
-        # TODO: Add missing to DB
-        pass
 
     # Helper methods
     def get_credentials(self, keystone_url):
@@ -102,13 +154,8 @@ class OpenStackBackend(object):
         sess.get_token()
         return keystone_client.Client(session=sess)
 
-    def get_nova_client(self, membership):
-        auth_plugin = v2.Password(
-            auth_url=membership.cloud.auth_url,
-            username=membership.username,
-            password=membership.password,
-            tenant_id=membership.tenant_id,
-        )
+    def get_nova_client(self, **credentials):
+        auth_plugin = v2.Password(**credentials)
         sess = session.Session(auth=auth_plugin)
         # This will eagerly sign in throwing AuthorizationFailure on bad credentials
         sess.get_token()
