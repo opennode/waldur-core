@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @shared_task
 @tracked_processing(
     models.Cloud,
-    processing_state='begin_pushing',
+    processing_state='begin_syncing',
     desired_state='set_in_sync',
 )
 def push_cloud_account(cloud_uuid):
@@ -29,8 +29,23 @@ def push_cloud_account(cloud_uuid):
 
 @shared_task
 @tracked_processing(
+    models.Cloud,
+    processing_state='begin_syncing',
+    desired_state='set_in_sync',
+)
+def initial_push_cloud_account(cloud_account_uuid):
+    cloud = models.Cloud.objects.get(uuid=cloud_account_uuid)
+
+    backend = cloud.get_backend()
+    backend.push_cloud_account(cloud)
+
+    backend.pull_flavors(cloud)
+
+
+@shared_task
+@tracked_processing(
     models.CloudProjectMembership,
-    processing_state='begin_pushing',
+    processing_state='begin_syncing',
     desired_state='set_in_sync',
 )
 def push_cloud_membership(membership_pk):
@@ -41,7 +56,7 @@ def push_cloud_membership(membership_pk):
 @shared_task
 @tracked_processing(
     models.CloudProjectMembership,
-    processing_state='begin_pushing',
+    processing_state='begin_syncing',
     desired_state='set_in_sync',
 )
 def initial_push_cloud_membership(membership_pk):

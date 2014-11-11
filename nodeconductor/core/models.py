@@ -165,19 +165,15 @@ class SshPublicKey(UuidMixin, models.Model):
 
 
 class SynchronizationStates(object):
-    PUSHING_SCHEDULED = 'u'
-    PUSHING = 'U'
-    PULLING_SCHEDULED = 'd'
-    PULLING = 'D'
+    SYNCING_SCHEDULED = 'u'
+    SYNCING = 'U'
     IN_SYNC = 's'
     ERRED = 'e'
 
     CHOICES = (
-        (PUSHING_SCHEDULED, _('Pushing Scheduled')),
-        (PUSHING, _('Pushing')),
-        (PULLING_SCHEDULED, _('Pulling Scheduled')),
-        (PULLING, _('Pulling')),
-        (IN_SYNC, _('Synchronized')),
+        (SYNCING_SCHEDULED, _('Sync Scheduled')),
+        (SYNCING, _('Syncing')),
+        (IN_SYNC, _('In Sync')),
         (ERRED, _('Erred')),
     )
 
@@ -188,31 +184,19 @@ class SynchronizableMixin(models.Model):
 
     state = FSMField(
         max_length=1,
-        default=SynchronizationStates.PUSHING_SCHEDULED,
+        default=SynchronizationStates.SYNCING_SCHEDULED,
         choices=SynchronizationStates.CHOICES,
     )
 
-    @transition(field=state, source=SynchronizationStates.PUSHING_SCHEDULED, target=SynchronizationStates.PUSHING)
-    def begin_pushing(self):
+    @transition(field=state, source=SynchronizationStates.SYNCING_SCHEDULED, target=SynchronizationStates.SYNCING)
+    def begin_syncing(self):
         pass
 
-    @transition(field=state, source=SynchronizationStates.IN_SYNC, target=SynchronizationStates.PUSHING_SCHEDULED)
-    def schedule_pushing(self):
+    @transition(field=state, source=SynchronizationStates.IN_SYNC, target=SynchronizationStates.SYNCING_SCHEDULED)
+    def schedule_syncing(self):
         pass
 
-    @transition(field=state, source=SynchronizationStates.PULLING_SCHEDULED, target=SynchronizationStates.PULLING)
-    def begin_pulling(self):
-        pass
-
-    @transition(field=state, source=SynchronizationStates.IN_SYNC, target=SynchronizationStates.PULLING_SCHEDULED)
-    def schedule_pulling(self):
-        pass
-
-    @transition(
-        field=state,
-        source=[SynchronizationStates.PUSHING, SynchronizationStates.PULLING],
-        target=SynchronizationStates.IN_SYNC,
-    )
+    @transition(field=state, source=SynchronizationStates.SYNCING, target=SynchronizationStates.IN_SYNC)
     def set_in_sync(self):
         pass
 
