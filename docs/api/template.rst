@@ -42,7 +42,7 @@ A new template can only be created by users with staff privilege (is_staff=True)
         "icon_url": "http://centos.org/images/logo_small.png",
         "os": "CentOS 7",
         "is_active": true,
-        "sla_level": 97,
+        "sla_level": 99.9,
         "setup_fee": "10",
         "monthly_fee": "20",
         "template_licenses": [
