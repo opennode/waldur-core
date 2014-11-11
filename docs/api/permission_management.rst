@@ -19,7 +19,7 @@ Filtering by *organisational unit* UUID is supported. Depending on the type, fil
 - ?project=<UUID>
 
 Ordering can be done by setting an ordering field with **?o=<field_name>**. For descending ordering prefix field name
-with **-**. Supported field names are:
+with a dash (-). Supported field names are:
 
 - ?o=user__username
 - ?o=user__full_name
