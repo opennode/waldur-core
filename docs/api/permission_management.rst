@@ -1,17 +1,18 @@
-Listing structure permission
-----------------------------
+Listing permissions
+-------------------
 
-Structure is an entity defining organisational relationship. Currently supported are 3 structures:
+Entities of NodeConductor are grouped into *organisational units*.
+The following *organisational units* are supported: customer, project group and project.
+
+Each *organisational unit* has a list of users associated with it.
+Getting a list of users connected to a certain *organisational unit* is done through running a
+GET request against a corresponding endpoint.
 
 - customer: endpoint **/api/customer-permissions/**
-- project_group: endpoint **/api/project-groups-permissions/**
+- project_group: endpoint **/api/project-group-permissions/**
 - project: endpoint **/api/project-permissions/**
 
-Each structure has a list of users associated with it with roles.
-Getting a list of users connected to a certain structure is done through running a GET request against
-the corresponding endpoint.
-
-Filtering by structure UUID is supported, depending on the structure filter field is one of:
+Filtering by *organisational unit* UUID is supported. Depending on the type, filter field is one of:
 
 - ?customer=<UUID>
 - ?project_group=<UUID>
@@ -23,4 +24,3 @@ with **-**. Supported field names are:
 - ?o=user__username
 - ?o=user__full_name
 - ?o=user__native_name
-
