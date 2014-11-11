@@ -116,12 +116,21 @@ class Flavor(UuidMixin, models.Model):
         project_path = 'cloud__projects'
         project_group_path = 'cloud__projects__project_groups'
 
+    class Meta(object):
+        unique_together = (
+            # OpenStack backend specific constraint
+            ('cloud', 'flavor_id'),
+        )
+
     name = models.CharField(max_length=100)
     cloud = models.ForeignKey(Cloud, related_name='flavors')
 
     cores = models.PositiveSmallIntegerField(help_text=_('Number of cores in a VM'))
     ram = models.PositiveIntegerField(help_text=_('Memory size in MiB'))
     disk = models.PositiveIntegerField(help_text=_('Root disk size in MiB'))
+
+    # OpenStack backend specific fields
+    flavor_id = models.CharField(max_length=255)
 
     def __str__(self):
         return self.name

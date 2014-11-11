@@ -30,6 +30,8 @@ class FlavorFactory(factory.DjangoModelFactory):
     ram = 2 * 1024
     disk = 10 * 1024
 
+    flavor_id = factory.Sequence(lambda n: 'flavor-id%s' % n)
+
 
 class CloudProjectMembershipFactory(factory.DjangoModelFactory):
     class Meta(object):
