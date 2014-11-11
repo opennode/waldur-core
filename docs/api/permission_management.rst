@@ -18,6 +18,13 @@ Filtering by *organisational unit* UUID is supported. Depending on the type, fil
 - ?project_group=<UUID>
 - ?project=<UUID>
 
+In addition, filtering by field names is supported. In all cases filtering is based on case
+insensitive partial matching.
+
+- ?username=<username>
+- ?full_name=<full name>
+- ?native_name=<native name>
+
 Ordering can be done by setting an ordering field with **?o=<field_name>**. For descending ordering prefix field name
 with a dash (-). Supported field names are:
 
