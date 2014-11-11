@@ -1,9 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.utils import unittest
-from rest_framework import test, status
-
 from mock import Mock
+from rest_framework import test, status
 
 from nodeconductor.core.tests import helpers
 from nodeconductor.structure import models, views
