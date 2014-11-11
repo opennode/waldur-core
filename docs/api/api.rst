@@ -43,6 +43,12 @@ Pagination
 
 .. include:: pagination.rst
 
+Permissions
+===========
+
+.. include:: permission_management.rst
+
+
 Project group management
 ========================
 

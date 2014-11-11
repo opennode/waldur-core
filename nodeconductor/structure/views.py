@@ -293,18 +293,55 @@ class UserViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+# TODO: cover filtering/ordering with tests
+class ProjectPermissionFilter(django_filters.FilterSet):
+    project = django_filters.CharFilter(
+        name='group__projectrole__project__uuid',
+    )
+    username = django_filters.CharFilter(
+        name='user__username',
+    )
+    full_name = django_filters.CharFilter(
+        name='user__full_name',
+    )
+    native_name = django_filters.CharFilter(
+        name='user__native_name',
+    )
+
+    class Meta(object):
+        model = User.groups.through
+        fields = [
+            'project',
+            'username',
+            'full_name',
+            'native_name',
+        ]
+        order_by = [
+            'user__username',
+            'user__full_name',
+            'user__native_name',
+            # desc
+            '-user__username',
+            '-user__full_name',
+            '-user__native_name',
+        ]
+
 
 class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
                                mixins.ListModelMixin,
                                rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.exclude(group__projectrole=None)
     serializer_class = serializers.ProjectPermissionSerializer
-    filter_backends = (filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    filter_class = ProjectPermissionFilter
 
     def can_save(self, user_group):
         user = self.request.user
+        if user.is_staff:
+            return True
+
         project = user_group.group.projectrole.project
 
         if project.has_user(user, ProjectRole.MANAGER):
@@ -391,6 +428,40 @@ class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class ProjectGroupPermissionFilter(django_filters.FilterSet):
+    project_group = django_filters.CharFilter(
+        name='group__projectgrouprole__project_group__uuid',
+    )
+    username = django_filters.CharFilter(
+        name='user__username',
+    )
+    full_name = django_filters.CharFilter(
+        name='user__full_name',
+    )
+    native_name = django_filters.CharFilter(
+        name='user__native_name',
+    )
+
+    class Meta(object):
+        model = User.groups.through
+        fields = [
+            'project_group',
+            'username',
+            'full_name',
+            'native_name',
+        ]
+        order_by = [
+            'user__username',
+            'user__full_name',
+            'user__native_name',
+            # desc
+            '-user__username',
+            '-user__full_name',
+            '-user__native_name',
+
+        ]
+
+
 class ProjectGroupPermissionViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.RetrieveModelMixin,
                                     rf_mixins.DestroyModelMixin,
@@ -400,6 +471,8 @@ class ProjectGroupPermissionViewSet(rf_mixins.CreateModelMixin,
     serializer_class = serializers.ProjectGroupPermissionSerializer
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
+    filter_backends = (rf_filter.DjangoFilterBackend,)
+    filter_class = ProjectGroupPermissionFilter
 
     def get_queryset(self):
         queryset = super(ProjectGroupPermissionViewSet, self).get_queryset()
@@ -428,6 +501,9 @@ class ProjectGroupPermissionViewSet(rf_mixins.CreateModelMixin,
     def pre_save(self, obj):
         super(ProjectGroupPermissionViewSet, self).pre_save(obj)
         user = self.request.user
+        if user.is_staff:
+            return
+
         project_group = obj.group.projectgrouprole.project_group
 
         # check for the user role. Inefficient but more readable
@@ -436,8 +512,8 @@ class ProjectGroupPermissionViewSet(rf_mixins.CreateModelMixin,
         if is_customer_owner:
             return
 
-        is_group_manager = project_group.project_groups.filter(
-            roles__permission_group__user=user, roles__role_type=ProjectGroupRole.MANAGER).exists()
+        is_group_manager = project_group.roles.filter(
+            permission_group__user=user, role_type=ProjectGroupRole.MANAGER).exists()
         if is_group_manager:
             return
 
@@ -466,6 +542,16 @@ class CustomerPermissionFilter(django_filters.FilterSet):
             'full_name',
             'native_name',
         ]
+        order_by = [
+            'user__username',
+            'user__full_name',
+            'user__native_name',
+            # desc
+            '-user__username',
+            '-user__full_name',
+            '-user__native_name',
+
+        ]
 
 
 class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
@@ -473,13 +559,16 @@ class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
                                 rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.exclude(group__customerrole=None)
     serializer_class = serializers.CustomerPermissionSerializer
-    filter_backends = (rf_filter.DjangoFilterBackend,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
+    filter_backends = (rf_filter.DjangoFilterBackend,)
     filter_class = CustomerPermissionFilter
 
     def can_save(self, user_group):
         user = self.request.user
+        if user.is_staff:
+            return True
+
         customer = user_group.group.customerrole.customer
 
         if customer.has_user(user, CustomerRole.OWNER):
