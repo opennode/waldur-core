@@ -301,12 +301,15 @@ class ProjectPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
+        lookup_type='icontains',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
+        lookup_type='icontains',
     )
     native_name = django_filters.CharFilter(
         name='user__native_name',
+        lookup_type='icontains',
     )
 
     class Meta(object):
@@ -433,12 +436,15 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
+        lookup_type='icontains',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
+        lookup_type='icontains',
     )
     native_name = django_filters.CharFilter(
         name='user__native_name',
+        lookup_type='icontains',
     )
 
     class Meta(object):
@@ -574,12 +580,15 @@ class CustomerPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
+        lookup_type='icontains',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
+        lookup_type='icontains',
     )
     native_name = django_filters.CharFilter(
         name='user__native_name',
+        lookup_type='icontains',
     )
 
     class Meta(object):
