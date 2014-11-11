@@ -139,7 +139,7 @@ class Instance(core_models.UuidMixin,
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
-    flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
+    flavor = models.ForeignKey(cloud_models.Flavor, related_name='+', on_delete=models.PROTECT)
     project = models.ForeignKey(structure_models.Project, related_name='instances')
     external_ips = fields.IPsField(max_length=256)
     internal_ips = fields.IPsField(max_length=256)

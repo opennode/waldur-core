@@ -39,7 +39,7 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
             'project': self._get_project_url(self.project)
         }
 
-        with patch('nodeconductor.cloud.tasks.initial_push_cloud_membership.delay') as mocked_task:
+        with patch('nodeconductor.cloud.tasks.sync_cloud_membership.delay') as mocked_task:
             response = self.client.post(url, data)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             membership = models.CloudProjectMembership.objects.get(project=self.project, cloud=self.cloud)
@@ -104,7 +104,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         project = self.connected_project
         payload = self._get_valid_payload(cloud, project)
 
-        with patch('nodeconductor.cloud.tasks.initial_push_cloud_membership.delay'):
+        with patch('nodeconductor.cloud.tasks.sync_cloud_membership.delay'):
             response = self.client.post(reverse('cloudproject_membership-list'), payload)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 

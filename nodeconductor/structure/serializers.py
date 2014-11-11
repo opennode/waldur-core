@@ -220,32 +220,6 @@ class CustomerRoleField(serializers.ChoiceField):
             raise ValidationError('Unknown role')
 
 
-class ProjectPermissionReadSerializer(core_serializers.RelatedResourcesFieldMixin,
-                                      serializers.HyperlinkedModelSerializer):
-    user = serializers.HyperlinkedRelatedField(
-        view_name='user-detail',
-        lookup_field='uuid',
-        queryset=User.objects.all(),
-    )
-    user_full_name = serializers.Field(source='user.full_name')
-    user_native_name = serializers.Field(source='user.native_name')
-
-    role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
-
-    class Meta(object):
-        model = User.groups.through
-        fields = (
-            'url',
-            'project', 'project_name',
-            'user', 'user_full_name', 'user_native_name',
-            'role',
-        )
-        view_name = 'project_permission-detail'
-
-    def get_related_paths(self):
-        return 'group.projectrole.project',
-
-
 # TODO: refactor to abstract class, subclass by CustomerPermissions and ProjectPermissions
 class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
                                    serializers.HyperlinkedModelSerializer):
