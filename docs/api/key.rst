@@ -17,6 +17,7 @@ Supported filtering:
 - ?name=  - partial matching filtering by key name
 - ?fingerprint= - exact filtering by key fingerprint
 - ?uuid= - exact matching by key UUID
+- ?user_uuid= - exact matching by user key UUID
 
 Supported ordering:
 

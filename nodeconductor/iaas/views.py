@@ -217,6 +217,9 @@ class TemplateViewSet(core_viewsets.ModelViewSet):
 
 class SshKeyFilter(django_filters.FilterSet):
     uuid = django_filters.CharFilter()
+    user_uuid = django_filters.CharFilter(
+        name='user__uuid'
+    )
     name = django_filters.CharFilter(lookup_type='icontains')
 
     class Meta(object):
@@ -225,6 +228,7 @@ class SshKeyFilter(django_filters.FilterSet):
             'name',
             'fingerprint',
             'uuid',
+            'user_uuid'
         ]
         order_by = [
             'name',
