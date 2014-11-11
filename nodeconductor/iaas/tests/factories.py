@@ -1,3 +1,4 @@
+from decimal import Decimal
 from random import randint
 
 from django.core.urlresolvers import reverse
@@ -9,7 +10,6 @@ from nodeconductor.iaas import models
 from nodeconductor.core import models as core_models
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.structure.tests import factories as structure_factories
-
 
 class ImageFactory(factory.DjangoModelFactory):
     class Meta(object):
@@ -30,7 +30,7 @@ class TemplateFactory(factory.DjangoModelFactory):
     description = factory.Sequence(lambda n: 'description %d' % n)
     icon_url = factory.Sequence(lambda n: 'http://example.com/%d.png' % n)
     is_active = True
-    sla_level = factory.LazyAttribute(lambda o: 99.9)
+    sla_level = factory.LazyAttribute(lambda o: Decimal('99.9'))
     setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 

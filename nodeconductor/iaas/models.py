@@ -64,7 +64,7 @@ class Template(core_models.UuidMixin,
     name = models.CharField(max_length=100, unique=True)
     os = models.CharField(max_length=100)
     is_active = models.BooleanField(default=False)
-    sla_level = models.DecimalField(max_digits=6, decimal_places=4)
+    sla_level = models.DecimalField(max_digits=6, decimal_places=4,     null=True, blank=True,)
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                     validators=[MinValueValidator(Decimal('0.1')),
                                                 MaxValueValidator(Decimal('100000.0'))])
