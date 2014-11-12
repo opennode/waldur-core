@@ -18,7 +18,21 @@ class PurchaseAdmin(admin.ModelAdmin):
     readonly_fields = ('date', 'user', 'project')
 
 
+class TemplateMappingInline(admin.TabularInline):
+    model = models.TemplateMapping
+    fields = ('description', 'backend_id')
+    ordering = ('description', )
+    extra = 3
+
+
+class TemplateAdmin(admin.ModelAdmin):
+    inlines = (
+        TemplateMappingInline,
+    )
+    ordering = ('name', )
+
+
 admin.site.register(models.Instance, InstanceAdmin)
-admin.site.register(models.Template)
+admin.site.register(models.Template, TemplateAdmin)
 admin.site.register(models.Image)
 admin.site.register(models.Purchase, PurchaseAdmin)

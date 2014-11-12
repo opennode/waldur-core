@@ -77,6 +77,18 @@ class Template(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
+class TemplateMapping(core_models.DescribableMixin, models.Model):
+    class Meta(object):
+        unique_together = ('template', 'backend_id')
+
+    template = models.ForeignKey(Template, related_name='mappings')
+    backend_id = models.CharField(max_length=255)
+
+    def __str__(self):
+        return '{0} <-> {1}'.format(self.template.name, self.description)
+
+
+@python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
                backup_models.BackupableMixin,
