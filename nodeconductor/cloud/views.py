@@ -63,7 +63,7 @@ class CloudViewSet(viewsets.ModelViewSet):
 
     def post_save(self, obj, created=False):
         if created:
-            tasks.push_cloud_account.delay(obj.uuid)
+            tasks.sync_cloud_account.delay(obj.uuid.hex)
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -99,7 +99,7 @@ class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
 
     def post_save(self, obj, created=False):
         if created:
-            tasks.initial_push_cloud_membership.delay(obj.pk)
+            tasks.sync_cloud_membership.delay(obj.pk)
 
 
 class SecurityGroupFilter(django_filters.FilterSet):
