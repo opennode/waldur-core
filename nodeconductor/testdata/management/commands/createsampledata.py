@@ -248,12 +248,14 @@ Other use cases are covered with random data.
             cores=2,
             ram=1024 * 1024,
             disk=45 * 1024,
+            flavor_id='cld1'
         )
         cloud.flavors.create(
             name='x2.xx of cloud %s' % cloud.uuid,
             cores=4,
             ram=2048 * 1024,
             disk=90 * 1024,
+            flavor_id='cld2'
         )
 
         # add templates
