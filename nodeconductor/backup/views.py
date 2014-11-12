@@ -4,8 +4,9 @@ from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.contrib.contenttypes import models as ct_models
+from django_fsm import TransitionNotAllowed
 
-from rest_framework import permissions as rf_permissions
+from rest_framework import permissions as rf_permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -93,11 +94,20 @@ class BackupViewSet(viewsets.CreateModelViewSet):
     def restore(self, request, uuid):
         backup = self._get_backup(request.user, uuid)
         replace_original = request.DATA.get('replace_original', False)
-        backup.start_restoration(replace_original=replace_original)
+        try:
+            backup.start_restoration(replace_original=replace_original)
+        except TransitionNotAllowed as t:
+            return Response('Cannot restore a backup in state \'%s\'' % backup.get_state_display(),
+                            status=status.HTTP_400_BAD_REQUEST)
         return Response({'status': 'Backup restoration process was started'})
 
     @action()
     def delete(self, request, uuid):
         backup = self._get_backup(request.user, uuid)
-        backup.start_deletion()
-        return Response({'status': 'Backup deletion process was started'})
+        try:
+            backup.start_deletion()
+        except TransitionNotAllowed as t:
+            return Response('Cannot delete a backup in state \'%s\'' % backup.get_state_display(),
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'status': 'Backup deletion was started'})
