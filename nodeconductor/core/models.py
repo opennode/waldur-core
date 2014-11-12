@@ -7,7 +7,7 @@ from django.conf import settings
 from django.contrib.auth.models import (
     AbstractBaseUser, PermissionsMixin, UserManager, SiteProfileNotAvailable)
 from django.core import validators
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.mail import send_mail
 from django.db import models
 from django.db.models import signals
@@ -122,6 +122,23 @@ class User(UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
         return self._profile_cache
 
 
+def validate_ssh_public_key(ssh_key):
+    import base64
+    import struct
+
+    try:
+        key_type, key_body, comment = ssh_key.split()
+        data = base64.decodestring(key_body)
+        int_len = 4
+        # Unpack the first 4 bytes of decoded key body. Must be 7.
+        str_len = struct.unpack('>I', data[:int_len])[0]
+
+        # Check if decoded key type equals to encoded key type
+        if data[int_len:int_len+str_len] != key_type:
+            raise ValidationError('%s is not a valid SSH public key type.' % key_type)
+    except (base64.binascii.Error, struct.error, ValueError):
+        raise ValidationError('Invalid SSH public key')
+
 @python_2_unicode_compatible
 class SshPublicKey(UuidMixin, models.Model):
     """
@@ -132,7 +149,7 @@ class SshPublicKey(UuidMixin, models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_index=True)
     name = models.CharField(max_length=50, blank=True)
     fingerprint = models.CharField(max_length=47)  # In ideal world should be unique
-    public_key = models.TextField(max_length=2000)
+    public_key = models.TextField(max_length=2000, validators=[validate_ssh_public_key])
 
     class Meta(object):
         unique_together = ('user', 'name')
