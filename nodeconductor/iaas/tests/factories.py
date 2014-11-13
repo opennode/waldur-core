@@ -92,7 +92,7 @@ class InstanceFactory(factory.DjangoModelFactory):
         return project
 
     @classmethod
-    def get_url(self, instance):
+    def get_url(self, instance=None):
         if instance is None:
             instance = InstanceFactory()
         return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})

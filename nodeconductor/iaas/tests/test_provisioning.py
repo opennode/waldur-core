@@ -4,6 +4,7 @@ from django.core.urlresolvers import reverse
 from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
+from mock import patch
 from nodeconductor.cloud.models import CloudProjectMembership
 
 from nodeconductor.backup import models as backup_models
