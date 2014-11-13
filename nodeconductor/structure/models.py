@@ -10,6 +10,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import UuidMixin, DescribableMixin
+from nodeconductor.structure import tasks
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
 
@@ -373,3 +374,22 @@ def create_project_group_roles(sender, instance, created, **kwargs):
         with transaction.atomic():
             mgr_group = Group.objects.create(name='Role: {0} group mgr'.format(instance.uuid))
             instance.roles.create(role_type=ProjectGroupRole.MANAGER, permission_group=mgr_group)
+
+
+@receiver(
+    signals.post_save,
+    sender=Project,
+    dispatch_uid='nodeconductor.structure.models.create_project_zabbix_hostgroup',
+)
+def create_project_zabbix_hostgroup(sender, instance, created, **kwargs):
+    if created:
+        tasks.create_zabbix_hostgroup.delay(instance)
+
+
+@receiver(
+    signals.post_delete,
+    sender=Project,
+    dispatch_uid='nodeconductor.structure.models.create_project_zabbix_hostgroup',
+)
+def delete_project_zabbix_hostgroup(sender, instance, **kwargs):
+    tasks.delete_zabbix_hostgroup.delay(instance)

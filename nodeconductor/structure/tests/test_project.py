@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
-from mock import call
+from mock import call, patch
 
-from django.core.urlresolvers import reverse
+from django.core.urlresolvers import reverse, resolve
 from django.test import TransactionTestCase
 from mock_django import mock_signal_receiver
 from rest_framework import status
@@ -198,6 +198,15 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_zabbix_hostgroup_creation_starts_on_project_creation(self):
+        self.client.force_authenticate(self.staff)
+
+        data = _get_valid_project_payload()
+        with patch('nodeconductor.structure.tasks.create_zabbix_hostgroup.delay') as patched_task:
+            response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            self.assertTrue(patched_task.called, 'Zabbix hostgroup creation task should be called')
+
     # Update tests:
     def test_user_can_change_single_project_field(self):
         self.client.force_authenticate(self.staff)
@@ -212,6 +221,14 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
 
         response = self.client.delete(factories.ProjectFactory.get_url())
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_zabbix_hostgroup_deletion_starts_on_project_deletion(self):
+        self.client.force_authenticate(self.staff)
+
+        with patch('nodeconductor.structure.tasks.delete_zabbix_hostgroup.delay') as patched_task:
+            response = self.client.delete(factories.ProjectFactory.get_url())
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+            self.assertTrue(patched_task.called, 'Zabbix hostgroup deletion task should be called')
 
 
 class ProjectApiPermissionTest(test.APITransactionTestCase):
