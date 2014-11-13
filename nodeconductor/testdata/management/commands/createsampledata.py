@@ -296,23 +296,8 @@ Other use cases are covered with random data.
         template2.template_licenses.add(license1)
 
         # add images
-        cloud.images.create(
-            name='CentOS 6',
-            architecture=0,
-            description='A CentOS 6 image',
-            template=template1,
-        )
-        cloud.images.create(
-            name='Windows 2008',
-            architecture=1,
-            description='A Windows 2008 R2',
-            template=template2,
-        )
-        cloud.images.create(
-            name='Windows XP backup',
-            architecture=1,
-            description='A backup image of WinXP',
-        )
+        cloud.images.create(template=template1, backend_id='foo')
+        cloud.images.create(template=template2, backend_id='bar')
 
         return cloud
 

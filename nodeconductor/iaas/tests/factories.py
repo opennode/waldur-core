@@ -11,16 +11,6 @@ from nodeconductor.core import models as core_models
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.structure.tests import factories as structure_factories
 
-class ImageFactory(factory.DjangoModelFactory):
-    class Meta(object):
-        model = models.Image
-
-    name = factory.Sequence(lambda n: 'image%s' % n)
-    cloud = factory.SubFactory(cloud_factories.CloudFactory)
-    architecture = factory.Iterator(models.Image.ARCHITECTURE_CHOICES, getter=lambda c: c[0])
-    description = factory.Sequence(lambda n: 'description%s' % n)
-    template = None
-
 
 class TemplateFactory(factory.DjangoModelFactory):
     class Meta(object):
@@ -35,6 +25,14 @@ class TemplateFactory(factory.DjangoModelFactory):
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
 
+class TemplateMappingFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.TemplateMapping
+
+    template = factory.SubFactory(TemplateFactory)
+    backend_image_id = factory.Sequence(lambda n: 'image-id-%s' % n)
+
+
 class TemplateLicenseFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.TemplateLicense
@@ -44,6 +42,15 @@ class TemplateLicenseFactory(factory.DjangoModelFactory):
     service_type = models.TemplateLicense.Services.IAAS
     setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
+
+
+class ImageFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.Image
+
+    cloud = factory.SubFactory(cloud_factories.CloudFactory)
+    template = factory.SubFactory(TemplateFactory)
+    backend_id = factory.Sequence(lambda n: 'id%s' % n)
 
 
 class SshPublicKeyFactory(factory.DjangoModelFactory):
