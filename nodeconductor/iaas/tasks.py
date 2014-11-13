@@ -57,7 +57,6 @@ def delete_zabbix_host_and_service(instance_uuid):
 @tracked_processing(models.Instance, processing_state='begin_provisioning', desired_state='set_online')
 def schedule_provisioning(instance_uuid):
     _mock_processing(instance_uuid)
-    print 'OLOLO'
     create_zabbix_host_and_service(instance_uuid)
 
 
