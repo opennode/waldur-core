@@ -24,23 +24,23 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
             'inactive': [iaas_factories.TemplateFactory(is_active=False)],
         }
 
-       #  Uadmin<-->P0      P1<--->Umgr
-       #            ^       ^
-       #            |       |
-       #  +---------+       +---------+
-       #  |         |       |         |
-       #  v         v       v         v
-       #  C0        C1      C2        C3
-       #  ^         ^       ^         ^
-       #  |         |\     /|         |
-       #  |         |(I) (I)|         |
-       #  |         |  \ /  |         |
-       # (I)       (I)  x  (I)       (I)
-       #  |         |  / \  |         |
-       #  |         | /   \ |         |
-       #  |         |/     \|         |
-       #  v         v       v         v
-       #  T0        T1      T2        T3
+        #  Uadmin<-->P0      P1<--->Umgr
+        #            ^       ^
+        #            |       |
+        #  +---------+       +---------+
+        #  |         |       |         |
+        #  v         v       v         v
+        #  C0        C1      C2        C3
+        #  ^         ^       ^         ^
+        #  |         |\     /|         |
+        #  |         |(I) (I)|         |
+        #  |         |  \ /  |         |
+        # (I)       (I)  x  (I)       (I)
+        #  |         |  / \  |         |
+        #  |         | /   \ |         |
+        #  |         |/     \|         |
+        #  v         v       v         v
+        #  T0        T1      T2        T3
 
         project1 = structure_factories.ProjectFactory()
         project1.add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
