@@ -9,20 +9,19 @@ only see connected instances:
 
 Filtering of instance list is supported through HTTP query parameters, the following fields are supported:
 
-- hostname
-- customer_name
-- state
-- project
-- project_group
+- ?hostname=<hostname>
+- ?customer_name
+- ?state=<state symbol>
+- ?project=<project_name>
+- ?project_group=<project_group_name>
 
-Soring is supported in ascending and descending order by specifying a field to an **?o=** parameter.
+Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
 
 - ?o=hostname - sort by hostname in ascending order
-- ?o=-hostname - sort by hostname in descending order
 - ?o=state - sort by state in ascending order
-- ?o=-state - sort by state in descending order
 - ?o=project__customer__name - sort by customer name in ascending order
-- ?o=-project__customer__name - sort by customer name in descending order
+- ?o=project__project_groups__name - sort by project group name
+- ?o=project__name - sort by project name
 
 
 Instance permissions
@@ -33,14 +32,31 @@ Instance permissions
 - Project administrators can list all VM instances, create new instances and start/stop/restart instances in all the clouds that are connected to any of the projects they are administrators in.
 - Project managers can list all VM instances in all the clouds that are connected to any of the projects they are managers in.
 
-Instance status
----------------
+Instance state
+--------------
 
 Each instance has a **state** field that defines its current operational state. Instance has a FSM that defines possible
 state transitions. If a request is made to perform an operation on instance in incorrect state, a validation
 error will be returned.
 
 The UI can poll for updates to provide feedback after submitting one of the longer running operations.
+
+In a DB, state is stored encoded with a symbol. States are:
+
+- PROVISIONING_SCHEDULED = 'p'
+- PROVISIONING = 'P'
+- ONLINE = '+'
+- OFFLINE = '-'
+- STARTING_SCHEDULED = 'a'
+- STARTING = 'A'
+- STOPPING_SCHEDULED = 'o'
+- STOPPING = 'O'
+- ERRED = 'e'
+- DELETION_SCHEDULED = 'd'
+- DELETING = 'D'
+- DELETED = 'x'
+- RESIZING_SCHEDULED = 'r'
+- RESIZING = 'R'
 
 A graph of possible state transitions is shown below.
 
