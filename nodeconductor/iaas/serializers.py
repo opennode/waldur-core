@@ -254,27 +254,6 @@ class PurchaseSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedMode
         return 'project.customer', 'project'
 
 
-class ImageSerializer(RelatedResourcesFieldMixin,
-                      PermissionFieldFilteringMixin,
-                      serializers.HyperlinkedModelSerializer):
-    architecture = serializers.ChoiceField(choices=models.Image.ARCHITECTURE_CHOICES, source='get_architecture_display')
-
-    class Meta(object):
-        model = models.Image
-        fields = (
-            'url', 'uuid', 'name', 'description',
-            'cloud', 'cloud_name',
-            'architecture',
-        )
-        lookup_field = 'uuid'
-
-    def get_filtered_field_names(self):
-        return 'cloud',
-
-    def get_related_paths(self):
-        return 'cloud',
-
-
 # XXX: this serializer have to be removed after haystack implementation
 class ServiceSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
 
