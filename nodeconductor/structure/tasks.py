@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def create_zabbix_hostgroup(project):
-    z = zabbix.Zabbix(settings.ZABBIX['IAAS'])
-    z.create_hostgroup(project)
+    zabbix_client = zabbix.Zabbix(settings.ZABBIX['IAAS'])
+    zabbix_client.create_hostgroup(project)
 
 
 @shared_task
 def delete_zabbix_hostgroup(project):
-    z = zabbix.Zabbix(settings.ZABBIX['IAAS'])
-    z.delete_hostgroup(project)
+    zabbix_client = zabbix.Zabbix(settings.ZABBIX['IAAS'])
+    zabbix_client.delete_hostgroup(project)
