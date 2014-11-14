@@ -123,21 +123,33 @@ class User(UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
 
 
 def validate_ssh_public_key(ssh_key):
+    # http://stackoverflow.com/a/2494645
     import base64
     import struct
 
     try:
-        key_type, key_body, comment = ssh_key.split()
+        key_parts = ssh_key.split(' ', 2)
+        key_type, key_body = key_parts[0], key_parts[1]
+
+        if key_type != 'ssh-rsa':
+            raise ValidationError('Invalid SSH public key type %s, only ssh-rsa is supported' % key_type)
+
         data = base64.decodestring(key_body)
         int_len = 4
-        # Unpack the first 4 bytes of decoded key body. Must be 7.
+        # Unpack the first 4 bytes of the decoded key body. Must be 7.
         str_len = struct.unpack('>I', data[:int_len])[0]
 
-        # Check if decoded key type equals to encoded key type
-        if data[int_len:int_len+str_len] != key_type:
-            raise ValidationError('%s is not a valid SSH public key type.' % key_type)
-    except (base64.binascii.Error, struct.error, ValueError):
-        raise ValidationError('Invalid SSH public key')
+        encoded_key_type = data[int_len:int_len + str_len]
+        # Check if the encoded key type equals to the decoded key type
+        if encoded_key_type != key_type:
+            raise ValidationError("Invalid encoded SSH public key type %s within the key's body, "
+                                  "only ssh-rsa is supported" % encoded_key_type)
+    except IndexError:
+        raise ValidationError('Invalid SSH public key structure')
+
+    except (base64.binascii.Error, struct.error):
+        raise ValidationError('Invalid SSH public key body')
+
 
 @python_2_unicode_compatible
 class SshPublicKey(UuidMixin, models.Model):

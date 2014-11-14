@@ -47,33 +47,6 @@ class SshKeyCreateDeleteTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         self.assertTrue(core_models.SshPublicKey.objects.filter(name=data['name']).exists(),
-                        'New key have to be created in db')
-
-    def test_cannot_create_key_with_invalid_type(self):
-        invalid_key = self.user_key.public_key.replace('ssh-rsa', 'ssh-dss')
-        self._ensure_cannot_create_key(invalid_key)
-
-    def test_cannot_create_key_with_invalid_body(self):
-        key_body = self.user_key.public_key.split()[1]
-        invalid_key = ' '.join(['ssh-rsa', key_body[:len(key_body) // 2], 'test'])
-        self._ensure_cannot_create_key(invalid_key)
-
-    def test_cannot_create_key_with_invalid_structure(self):
-        invalid_key = self.user_key.public_key.replace(' ', '')
-        self._ensure_cannot_create_key(invalid_key)
+                        'New key should have been created in the database')
 
     # TODO: add tests for key deletion
-
-    # Helpers method
-    def _ensure_cannot_create_key(self, public_key):
-        self.client.force_authenticate(self.user)
-
-        data = {
-            'name': 'key#2',
-            'public_key': public_key,
-        }
-
-        response = self.client.post(factories.SshPublicKeyFactory.get_list_url(), data=data)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-        self.assertFalse(core_models.SshPublicKey.objects.filter(name=data['name']).exists())
