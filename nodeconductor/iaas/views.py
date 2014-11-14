@@ -65,6 +65,10 @@ class InstanceFilter(django_filters.FilterSet):
             '-state',
             'project__customer__name',
             '-project__customer__name',
+            'project__name',
+            '-project__name',
+            'project__project_groups__name',
+            '-project__project_groups__name',
         ]
 
 
