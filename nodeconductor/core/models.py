@@ -136,7 +136,7 @@ def validate_ssh_public_key(ssh_key):
 
         data = base64.decodestring(key_body)
         int_len = 4
-        # Unpack the first 4 bytes of the decoded key body. Must be 7.
+        # Unpack the first 4 bytes of the decoded key body
         str_len = struct.unpack('>I', data[:int_len])[0]
 
         encoded_key_type = data[int_len:int_len + str_len]
