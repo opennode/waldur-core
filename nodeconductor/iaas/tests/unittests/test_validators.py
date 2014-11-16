@@ -5,7 +5,8 @@ from nodeconductor.core.models import validate_ssh_public_key
 
 
 class SshKeyValidatorTest(unittest.TestCase):
-    def test_valid_ssh_key(self):
+    # Positive tests
+    def test_valid_ssh_key_is_accepted(self):
         valid_key = (
         "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28"
         "TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY"
@@ -15,6 +16,27 @@ class SshKeyValidatorTest(unittest.TestCase):
         )
         validate_ssh_public_key(valid_key)
 
+    def test_valid_public_key_without_comment_is_accepted(self):
+        valid_key = (
+        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28"
+        "TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY"
+        "dknWoMoArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9du"
+        "D2C05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
+        "vEAFdOJcqjyyH4FOGYa8usP1"
+        )
+        validate_ssh_public_key(valid_key)
+
+    def test_valid_public_key_with_comment_with_spaces_is_accepted(self):
+        valid_key = (
+        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28"
+        "TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY"
+        "dknWoMoArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9du"
+        "D2C05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
+        "vEAFdOJcqjyyH4FOGYa8usP1 test foo bar"
+        )
+        validate_ssh_public_key(valid_key)
+
+    # Negative tests
     def test_ssh_key_with_invalid_type_raises_validation_error(self):
         key_with_invalid_type = "ssh-dsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDU test"
 
