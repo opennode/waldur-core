@@ -273,21 +273,6 @@ class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
     filter_backends = (filters.GenericRoleFilter,)
 
 
-class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
-    """
-    List of VM Images for instantiation within a certain cloud.
-
-    TODO: add documentation.
-
-    TODO: describe permissions for different user types.
-    """
-
-    queryset = models.Image.objects.all()
-    serializer_class = serializers.ImageSerializer
-    lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter,)
-
-
 class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
     """List of template licenses that are accessible by this user.
 

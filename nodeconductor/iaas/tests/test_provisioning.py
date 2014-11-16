@@ -4,10 +4,10 @@ from django.core.urlresolvers import reverse
 from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
-from nodeconductor.cloud.models import CloudProjectMembership
 
 from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
+from nodeconductor.cloud.models import CloudProjectMembership
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
 from nodeconductor.iaas.models import Instance
