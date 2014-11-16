@@ -40,6 +40,7 @@ def sync_cloud_account(cloud_account_uuid):
     backend.push_cloud_account(cloud)
 
     backend.pull_flavors(cloud)
+    backend.pull_images(cloud)
 
 
 @shared_task
@@ -78,6 +79,17 @@ def sync_cloud_membership(membership_pk):
                 public_key.uuid, membership.pk,
                 exc_info=1,
             )
+
+
+@shared_task
+@tracked_processing(
+    models.Cloud,
+    processing_state='begin_syncing',
+    desired_state='set_in_sync',
+)
+def pull_images(cloud_account_uuid):
+    cloud = models.Cloud.objects.get(uuid=cloud_account_uuid)
+    cloud.get_backend().pull_images(cloud)
 
 
 @shared_task

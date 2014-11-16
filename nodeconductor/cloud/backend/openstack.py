@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from itertools import groupby
 import logging
 import re
 
@@ -8,15 +9,17 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import ProtectedError
 from django.utils import six
+from glanceclient.v1 import client as glance_client
 from keystoneclient import exceptions as keystone_exceptions
 from keystoneclient import session
 from keystoneclient.auth.identity import v2
+from keystoneclient.service_catalog import ServiceCatalog
 from keystoneclient.v2_0 import client as keystone_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
 from nodeconductor.cloud.backend import CloudBackendError
-
+from nodeconductor.iaas.models import TemplateMapping
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +84,72 @@ class OpenStackBackend(object):
                 logger.info('Updated existing flavor %s', nc_flavor.uuid)
 
     # CloudProjectMembership related methods
+    def pull_images(self, cloud_account):
+        # Fail fast if no corresponding OpenStack configured in settings
+        credentials = self.get_credentials(cloud_account.auth_url)
+
+        glance = self.get_glance_client(**credentials)
+
+        backend_images = dict(
+            (image.id, image)
+            for image in glance.images.list()
+            if not image.deleted
+            if image.is_public
+        )
+
+        with transaction.atomic():
+            # Add missing images
+            current_image_ids = set()
+
+            # itertools.groupby requires the iterable to be sorted by key
+            mapping_queryset = (
+                TemplateMapping.objects
+                .filter(backend_image_id__in=backend_images.keys())
+                .order_by('template__pk')
+            )
+
+            mappings_grouped = groupby(mapping_queryset.iterator(), lambda m: m.template.pk)
+
+            for _, mapping_iterator in mappings_grouped:
+                # itertools.groupby shares the iterable,
+                # store mappings in own list
+                mappings = list(mapping_iterator)
+                # At least one mapping is guaranteed to be present
+                mapping = mappings[0]
+
+                if len(mappings) > 1:
+                    logger.error(
+                        'Failed to update images for template %s, '
+                        'multiple backend images matched: %s',
+                        mapping.template, ', '.join(m.backend_image_id for m in mappings),
+                    )
+                else:
+                    # XXX: This might fail in READ REPEATED isolation level,
+                    # which is default on MySQL
+                    # see https://docs.djangoproject.com/en/1.6/ref/models/querysets/#django.db.models.query.QuerySet.get_or_create
+                    image, created = cloud_account.images.get_or_create(
+                        template=mapping.template,
+                        defaults={'backend_id': mapping.backend_image_id},
+                    )
+
+                    if created:
+                        logger.info('Created image %s pointing to %s', image, image.backend_id)
+                    elif image.backend_id != mapping.backend_image_id:
+                        image.backend_id = mapping.backend_image_id
+                        image.save()
+                        logger.info('Updated image %s to point to %s', image, image.backend_id)
+                    else:
+                        logger.info('Image %s pointing to %s is already up to date', image, image.backend_id)
+
+                    current_image_ids.add(image.backend_id)
+
+            # Remove stale images,
+            # the ones that don't have any template mappings defined for them
+
+            for image in cloud_account.images.exclude(backend_id__in=current_image_ids):
+                image.delete()
+                logger.info('Removed stale image %s, was pointing to', image, image.backend_id)
+
     def push_membership(self, membership):
         try:
             # Fail fast if no corresponding OpenStack configured in settings
@@ -160,6 +229,24 @@ class OpenStackBackend(object):
         # This will eagerly sign in throwing AuthorizationFailure on bad credentials
         sess.get_token()
         return nova_client.Client(session=sess)
+
+    def get_glance_client(self, **credentials):
+        auth_plugin = v2.Password(**credentials)
+        sess = session.Session(auth=auth_plugin)
+        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+        token = sess.get_token()
+
+        catalog = ServiceCatalog.factory(auth_plugin.get_auth_ref(sess))
+        endpoint = catalog.url_for(service_type='image')
+
+        kwargs = {
+            'token': token,
+            'insecure': False,
+            'timeout': 600,
+            'ssl_compression': True,
+        }
+
+        return glance_client.Client(endpoint, **kwargs)
 
     def get_or_create_user(self, membership, keystone):
         # Try to sign in if credentials are already stored in membership
