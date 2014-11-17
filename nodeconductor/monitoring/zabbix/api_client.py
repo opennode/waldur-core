@@ -19,6 +19,19 @@ class ZabbixApiClient(object):
         self.templateid = zabbix_parameters['templateid']
         self.default_service_parameters = zabbix_parameters['default_service_parameters']
 
+    def get_host(self, instance):
+        try:
+            api = self.get_zabbix_api()
+            name = self.get_host_name(instance)
+            hosts = api.host.get(filter={'host': name})
+            if not hosts:
+                raise ZabbixError('There is no host for instance %s')
+            return hosts[0]
+        except ZabbixAPIException as e:
+            message = "Can not get zabbix host for instance %s. %s: %s" % (instance, e.__class__.__name__, e)
+            logger.exception(message)
+            six.reraise(ZabbixError, ZabbixError())
+
     def create_host(self, instance):
         try:
             api = self.get_zabbix_api()

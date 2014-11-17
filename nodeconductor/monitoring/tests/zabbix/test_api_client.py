@@ -202,3 +202,14 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.api.service.get.side_effect = ZabbixAPIException
 
         self.assertRaises(ZabbixError, lambda: self.zabbix_client.delete_service(self.instance))
+
+    def test_get_host_returns_hosts_if_it_exists(self):
+        host = self.zabbix_client.get_host(self.instance)
+
+        expected_host_name = self.zabbix_client.get_host_name(self.instance)
+        self.assertEquals(host, {'hostid': 1})
+        self.api.host.get.assert_called_once_with(filter={'host': expected_host_name})
+
+    def test_get_host_raises_error_if_host_does_not_exist(self):
+        self.api.host.get.return_value = []
+        self.assertRaises(ZabbixError, lambda: self.zabbix_client.get_host(self.instance))
