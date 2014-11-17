@@ -37,7 +37,7 @@ class SshKeyCreateDeleteTest(test.APITransactionTestCase):
         response = self.client.post(factories.SshPublicKeyFactory.get_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_key_creation(self):
+    def test_valid_key_creation(self):
         self.client.force_authenticate(self.user)
         data = {
             'name': 'key#2',
@@ -47,6 +47,6 @@ class SshKeyCreateDeleteTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         self.assertTrue(core_models.SshPublicKey.objects.filter(name=data['name']).exists(),
-                        'New key have to be created in db')
+                        'New key should have been created in the database')
 
     # TODO: add tests for key deletion
