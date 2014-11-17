@@ -66,6 +66,8 @@ class ProjectFilter(django_filters.FilterSet):
 
     name = django_filters.CharFilter(lookup_type='icontains')
 
+    description = django_filters.CharFilter(lookup_type='icontains')
+
     vcpu = django_filters.NumberFilter(
         name='resource_quota__vcpu',
     )
@@ -92,7 +94,8 @@ class ProjectFilter(django_filters.FilterSet):
             'ram',
             'storage',
             'max_instances',
-            'customer'
+            'customer',
+            'description'
         ]
         order_by = [
             'name',
