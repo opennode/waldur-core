@@ -65,6 +65,10 @@ class InstanceFilter(django_filters.FilterSet):
             '-state',
             'project__customer__name',
             '-project__customer__name',
+            'project__name',
+            '-project__name',
+            'project__project_groups__name',
+            '-project__project_groups__name',
         ]
 
 
@@ -217,6 +221,9 @@ class TemplateViewSet(core_viewsets.ModelViewSet):
 
 class SshKeyFilter(django_filters.FilterSet):
     uuid = django_filters.CharFilter()
+    user_uuid = django_filters.CharFilter(
+        name='user__uuid'
+    )
     name = django_filters.CharFilter(lookup_type='icontains')
 
     class Meta(object):
@@ -225,6 +232,7 @@ class SshKeyFilter(django_filters.FilterSet):
             'name',
             'fingerprint',
             'uuid',
+            'user_uuid'
         ]
         order_by = [
             'name',
@@ -261,21 +269,6 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
 class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
     queryset = models.Purchase.objects.all()
     serializer_class = serializers.PurchaseSerializer
-    lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter,)
-
-
-class ImageViewSet(core_viewsets.ReadOnlyModelViewSet):
-    """
-    List of VM Images for instantiation within a certain cloud.
-
-    TODO: add documentation.
-
-    TODO: describe permissions for different user types.
-    """
-
-    queryset = models.Image.objects.all()
-    serializer_class = serializers.ImageSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter,)
 

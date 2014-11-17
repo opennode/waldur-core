@@ -26,9 +26,11 @@ class FlavorFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'flavor%s' % n)
     cloud = factory.SubFactory(CloudFactory)
 
-    cores = 4
-    ram = 2.0
-    disk = 10
+    cores = 4 * 1024
+    ram = 2 * 1024
+    disk = 10 * 1024
+
+    flavor_id = factory.Sequence(lambda n: 'flavor-id%s' % n)
 
 
 class CloudProjectMembershipFactory(factory.DjangoModelFactory):

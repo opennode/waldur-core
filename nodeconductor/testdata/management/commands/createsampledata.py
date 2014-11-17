@@ -246,14 +246,16 @@ Other use cases are covered with random data.
         cloud.flavors.create(
             name='x1.xx of cloud %s' % cloud.uuid,
             cores=2,
-            ram=1024,
-            disk=45,
+            ram=1024 * 1024,
+            disk=45 * 1024,
+            flavor_id='cld1'
         )
         cloud.flavors.create(
             name='x2.xx of cloud %s' % cloud.uuid,
             cores=4,
-            ram=2048,
-            disk=90,
+            ram=2048 * 1024,
+            disk=90 * 1024,
+            flavor_id='cld2'
         )
 
         # add templates
@@ -294,23 +296,8 @@ Other use cases are covered with random data.
         template2.template_licenses.add(license1)
 
         # add images
-        cloud.images.create(
-            name='CentOS 6',
-            architecture=0,
-            description='A CentOS 6 image',
-            template=template1,
-        )
-        cloud.images.create(
-            name='Windows 2008',
-            architecture=1,
-            description='A Windows 2008 R2',
-            template=template2,
-        )
-        cloud.images.create(
-            name='Windows XP backup',
-            architecture=1,
-            description='A backup image of WinXP',
-        )
+        cloud.images.create(template=template1, backend_id='foo')
+        cloud.images.create(template=template2, backend_id='bar')
 
         return cloud
 

@@ -48,6 +48,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
 
 class ProjectFilter(django_filters.FilterSet):
+    customer = django_filters.CharFilter(
+        name='customer__uuid',
+        distinct=True,
+    )
+
     project_group = django_filters.CharFilter(
         name='project_groups__uuid',
         distinct=True,
@@ -86,7 +91,8 @@ class ProjectFilter(django_filters.FilterSet):
             'vcpu',
             'ram',
             'storage',
-            'max_instances'
+            'max_instances',
+            'customer'
         ]
         order_by = [
             'name',
@@ -132,6 +138,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 Q(roles__permission_group__user=user,
                   roles__role_type=models.ProjectRole.MANAGER)
             ).distinct()
+
+        can_admin = self.request.QUERY_PARAMS.get('can_admin', None)
+
+        if can_admin is not None:
+            queryset = queryset.filter(
+                roles__permission_group__user=user,
+                roles__role_type=models.ProjectRole.ADMINISTRATOR,
+            )
 
         return queryset
 
@@ -301,12 +315,15 @@ class ProjectPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
+        lookup_type='icontains',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
+        lookup_type='icontains',
     )
     native_name = django_filters.CharFilter(
         name='user__native_name',
+        lookup_type='icontains',
     )
 
     class Meta(object):
@@ -433,12 +450,15 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
+        lookup_type='icontains',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
+        lookup_type='icontains',
     )
     native_name = django_filters.CharFilter(
         name='user__native_name',
+        lookup_type='icontains',
     )
 
     class Meta(object):
@@ -574,12 +594,15 @@ class CustomerPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
+        lookup_type='icontains',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
+        lookup_type='icontains',
     )
     native_name = django_filters.CharFilter(
         name='user__native_name',
+        lookup_type='icontains',
     )
 
     class Meta(object):
