@@ -7,11 +7,11 @@ from celery import shared_task
 from django.conf import settings
 from django.db import transaction
 
-from nodeconductor.core import zabbix
 from nodeconductor.core.tasks import tracked_processing
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.cloud import models as cloud_models
 from nodeconductor.iaas import models
+from nodeconductor.monitoring.zabbix.api_client import ZabbixAPIException
 
 logger = logging.getLogger(__name__)
 event_log = EventLoggerAdapter(logger)
@@ -41,14 +41,14 @@ def _mock_processing(instance_uuid, should_fail=False):
 
 def create_zabbix_host_and_service(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
-    zabbix_client = zabbix.Zabbix(settings.ZABBIX['IAAS'])
+    zabbix_client = ZabbixAPIException(settings.ZABBIX['IAAS'])
     zabbix_client.create_host(instance)
     zabbix_client.create_service(instance)
 
 
 def delete_zabbix_host_and_service(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
-    zabbix_client = zabbix.Zabbix(settings.ZABBIX['IAAS'])
+    zabbix_client = ZabbixAPIException(settings.ZABBIX['IAAS'])
     zabbix_client.delete_host(instance)
     zabbix_client.delete_service(instance)
 

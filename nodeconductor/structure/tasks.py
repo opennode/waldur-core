@@ -5,7 +5,7 @@ import logging
 from django.conf import settings
 from celery import shared_task
 
-from nodeconductor.core import zabbix
+from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 
 
 logger = logging.getLogger(__name__)
@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def create_zabbix_hostgroup(project):
-    zabbix_client = zabbix.Zabbix(settings.ZABBIX['IAAS'])
+    zabbix_client = ZabbixApiClient(settings.ZABBIX['IAAS'])
     zabbix_client.create_hostgroup(project)
 
 
 @shared_task
 def delete_zabbix_hostgroup(project):
-    zabbix_client = zabbix.Zabbix(settings.ZABBIX['IAAS'])
+    zabbix_client = ZabbixApiClient(settings.ZABBIX['IAAS'])
     zabbix_client.delete_hostgroup(project)

@@ -3,7 +3,8 @@ from django.utils import unittest
 from mock import Mock
 from pyzabbix import ZabbixAPIException
 
-from nodeconductor.core import zabbix
+from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
+from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
 
 def get_mocked_zabbix_api():
@@ -32,7 +33,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
     def setUp(self):
         self.zabbix_parameters = settings.ZABBIX['IAAS']
         self.api = get_mocked_zabbix_api()
-        self.zabbix_client = zabbix.Zabbix(self.zabbix_parameters)
+        self.zabbix_client = ZabbixApiClient(self.zabbix_parameters)
         self.zabbix_client.get_zabbix_api = Mock(return_value=self.api)
 
         self.project = Mock()
@@ -85,7 +86,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
     def test_create_host_raises_zabbix_error_on_api_exception(self):
         self.api.host.exists.side_effect = ZabbixAPIException
 
-        self.assertRaises(zabbix.ZabbixError, lambda: self.zabbix_client.create_host(self.instance))
+        self.assertRaises(ZabbixError, lambda: self.zabbix_client.create_host(self.instance))
 
     # Host deletion
     def test_delete_host_deletes_host_if_it_exists(self):
@@ -107,7 +108,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
     def test_delete_host_raises_zabbix_error_on_api_exception(self):
         self.api.host.get.side_effect = ZabbixAPIException
 
-        self.assertRaises(zabbix.ZabbixError, lambda: self.zabbix_client.delete_host(self.instance))
+        self.assertRaises(ZabbixError, lambda: self.zabbix_client.delete_host(self.instance))
 
     # Hostgroup creation
     def test_create_hostgroup_creates_new_hostgroup_if_it_does_not_exist(self):
@@ -129,7 +130,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
     def test_create_hostgroup_raises_zabbix_error_on_api_exception(self):
         self.api.hostgroup.exists.side_effect = ZabbixAPIException
 
-        self.assertRaises(zabbix.ZabbixError, lambda: self.zabbix_client.create_hostgroup(self.project))
+        self.assertRaises(ZabbixError, lambda: self.zabbix_client.create_hostgroup(self.project))
 
     # Hostgroup deletion
     def test_delete_hostgroup_deletes_host_if_it_exists(self):
@@ -151,7 +152,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
     def test_delete_hostgroup_raises_zabbix_error_on_api_exception(self):
         self.api.hostgroup.get.side_effect = ZabbixAPIException
 
-        self.assertRaises(zabbix.ZabbixError, lambda: self.zabbix_client.delete_hostgroup(self.project))
+        self.assertRaises(ZabbixError, lambda: self.zabbix_client.delete_hostgroup(self.project))
 
     # Service creation
     def test_create_service_uses_given_template_trigger(self):
@@ -178,7 +179,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
     def test_create_service_raises_zabbix_error_on_api_exception(self):
         self.api.service.get.side_effect = ZabbixAPIException
 
-        self.assertRaises(zabbix.ZabbixError, lambda: self.zabbix_client.create_service(self.instance))
+        self.assertRaises(ZabbixError, lambda: self.zabbix_client.create_service(self.instance))
 
     # Service deletion
     def test_delete_service_deletes_host_if_it_exists(self):
@@ -200,4 +201,4 @@ class ZabbixPublicApiTest(unittest.TestCase):
     def test_delete_service_raises_zabbix_error_on_api_exception(self):
         self.api.service.get.side_effect = ZabbixAPIException
 
-        self.assertRaises(zabbix.ZabbixError, lambda: self.zabbix_client.delete_service(self.instance))
+        self.assertRaises(ZabbixError, lambda: self.zabbix_client.delete_service(self.instance))

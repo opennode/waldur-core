@@ -3,18 +3,13 @@ import logging
 from django.utils import six
 from pyzabbix import ZabbixAPI, ZabbixAPIException
 
+from nodeconductor.monitoring.zabbix.errors import ZabbixError
+
 
 logger = logging.getLogger(__name__)
 
 
-class ZabbixError(Exception):
-    """
-    Base zabbix error
-    """
-    pass
-
-
-class Zabbix(object):
+class ZabbixApiClient(object):
 
     def __init__(self, zabbix_parameters):
         self.server = zabbix_parameters['server']
