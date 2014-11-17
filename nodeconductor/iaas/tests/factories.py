@@ -99,10 +99,11 @@ class InstanceFactory(factory.DjangoModelFactory):
         return project
 
     @classmethod
-    def get_url(self, instance=None):
+    def get_url(self, instance=None, action=None):
         if instance is None:
             instance = InstanceFactory()
-        return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
+        url = 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
+        return url if action is None else url + action + '/'
 
     @classmethod
     def get_list_url(self):

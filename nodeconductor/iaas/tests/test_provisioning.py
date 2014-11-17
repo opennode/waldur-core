@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
 from django.utils import unittest
+from mock import patch, Mock
 from rest_framework import status
 from rest_framework import test
 
@@ -562,3 +563,42 @@ class InstanceListRetrieveTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['backups']), 1)
         self.assertEqual(response.data['backups'][0]['url'], backup_factories.BackupFactory.get_url(backup))
+
+
+class InstaneUsageTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.staff = structure_factories.UserFactory(is_staff=True)
+        self.instance = factories.InstanceFactory()
+        self.url = factories.InstanceFactory.get_url(self.instance, action='usage')
+
+    def test_item_parameter_have_to_be_defined(self):
+        self.client.force_authenticate(self.staff)
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_item_parameter_have_to_be_one_of_zabix_db_client_items(self):
+        self.client.force_authenticate(self.staff)
+
+        response = self.client.get(self.url, {'item': 'undefined_item'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cpu_usage(self):
+        self.client.force_authenticate(self.staff)
+
+        patched_cliend = Mock()
+        patched_cliend.items = {'cpu': {'key': 'cpu_key', 'value': 'cpu_value'}}
+        expected_data = [
+            {'from': 1L, 'to': 471970877L, 'value': 0},
+            {'from': 471970877L, 'to': 943941753L, 'value': 0},
+            {'from': 943941753L, 'to': 1415912629L, 'value': 3.0}
+        ]
+        patched_cliend.get_item_stats = Mock(return_value=expected_data)
+        with patch('nodeconductor.iaas.views.ZabbixDBClient', return_value=patched_cliend):
+            data = {'item': 'cpu', 'from': 1L, 'to': 1415912629L, 'datapoints': 3}
+            response = self.client.get(self.url, data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data, expected_data)
+            patched_cliend.get_item_stats.assert_called_once_with(
+                self.instance, data['item'], data['from'], data['to'], data['datapoints'])
