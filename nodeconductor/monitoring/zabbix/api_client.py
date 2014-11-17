@@ -25,7 +25,7 @@ class ZabbixApiClient(object):
             name = self.get_host_name(instance)
             hosts = api.host.get(filter={'host': name})
             if not hosts:
-                raise ZabbixError('There is no host for instance %s')
+                raise ZabbixError('There is no host for instance %s' % instance)
             return hosts[0]
         except ZabbixAPIException as e:
             message = "Can not get zabbix host for instance %s. %s: %s" % (instance, e.__class__.__name__, e)
