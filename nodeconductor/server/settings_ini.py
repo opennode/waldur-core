@@ -42,7 +42,7 @@ config_defaults = {
         'password': '',
         'tenant_name': '',
         'username': '',
-    }
+    },
     'saml2': {
         'acs_url': '',
         'attribute_map_dir': os.path.join(conf_dir, 'attribute-maps'),
