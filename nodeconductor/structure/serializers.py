@@ -46,7 +46,7 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
     class Meta(object):
         model = models.Project
         fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'project_groups', 'resource_quota',
-                  'resource_quota_usage')
+                  'resource_quota_usage', 'description')
         lookup_field = 'uuid'
 
     def get_related_paths(self):
@@ -60,7 +60,7 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'name', 'customer', 'resource_quota', 'project_groups')
+        fields = ('url', 'name', 'customer', 'resource_quota', 'project_groups', 'description')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
