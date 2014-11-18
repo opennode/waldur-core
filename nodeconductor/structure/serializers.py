@@ -350,7 +350,29 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = User
-        fields = ('url', 'uuid', 'username', 'full_name', 'native_name', 'job_title', 'email',
-                  'civil_number', 'phone_number', 'description', 'is_staff', 'organization', 'project_groups')
-        read_only_fields = ('uuid', 'is_staff')
+        fields = ('url',
+                  'uuid', 'username',
+                  'full_name', 'native_name',
+                  'job_title', 'email', 'organization', 'phone_number',
+                  'civil_number',
+                  'description',
+                  'is_staff', 'is_active',
+                  'project_groups',
+        )
+        read_only_fields = ('uuid', 'is_staff',)
         lookup_field = 'uuid'
+
+    def get_fields(self):
+        fields = super(UserSerializer, self).get_fields()
+
+        try:
+            request = self.context['view'].request
+            user = request.user
+        except (KeyError, AttributeError):
+            return fields
+
+        if not user.is_staff:
+            del fields['is_active']
+            del fields['is_staff']
+
+        return fields
