@@ -37,6 +37,12 @@ config_defaults = {
         'port': '3306',
         'user': 'nodeconductor',
     },
+    'openstack': {
+        'auth_url': '',
+        'password': '',
+        'tenant_name': '',
+        'username': '',
+    },
     'saml2': {
         'acs_url': '',
         'attribute_map_dir': os.path.join(conf_dir, 'attribute-maps'),
@@ -339,3 +345,15 @@ CELERY_RESULT_BACKEND = 'redis://localhost'
 
 # See also: http://docs.celeryproject.org/en/latest/configuration.html#celery-accept-content
 CELERY_ACCEPT_CONTENT = ['json']
+
+NODE_CONDUCTOR = {
+    'OPENSTACK_CREDENTIALS': (
+        {
+            'auth_url': config.get('openstack', 'auth_url'),
+            'username': config.get('openstack', 'username'),
+            'password': config.get('openstack', 'password'),
+            'tenant_name': config.get('openstack', 'tenant_name'),
+        },
+    ),
+}
+
