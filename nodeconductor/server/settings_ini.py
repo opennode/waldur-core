@@ -169,14 +169,12 @@ LOGGING = {
         # Logging to syslog
         # See also: https://docs.python.org/2/library/logging.handlers.html#sysloghandler
         'syslog': {
-            'address': '/dev/log',
             'class': 'logging.handlers.SysLogHandler',
             'filters': ['request'],
             'formatter': 'request_format',
             'level': config.get('logging', 'log_level').upper(),
         },
         'syslog-event': {
-            'address': '/dev/log',
             'class': 'logging.handlers.SysLogHandler',
             'filters': ['request'],
             'formatter': 'request_format',
@@ -208,6 +206,7 @@ if config.get('logging', 'log_file') != '':
     LOGGING['loggers']['django']['handlers'].append('file')
 
 if config.getboolean('logging', 'syslog'):
+    LOGGING['handlers']['syslog']['address'] = '/dev/log'
     LOGGING['loggers']['django']['handlers'].append('syslog')
 
 if config.get('events', 'log_file') != '':
@@ -215,6 +214,7 @@ if config.get('events', 'log_file') != '':
     LOGGING['loggers']['nodeconductor']['handlers'].append('file-event')
 
 if config.getboolean('events', 'syslog'):
+    LOGGING['handlers']['syslog-event']['address'] = '/dev/log'
     LOGGING['loggers']['nodeconductor']['handlers'].append('syslog-event')
 
 if config.get('saml2', 'log_file') != '':
