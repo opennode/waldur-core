@@ -346,7 +346,7 @@ CELERY_RESULT_BACKEND = 'redis://localhost'
 # See also: http://docs.celeryproject.org/en/latest/configuration.html#celery-accept-content
 CELERY_ACCEPT_CONTENT = ['json']
 
-NODE_CONDUCTOR = {
+NODECONDUCTOR = {
     'OPENSTACK_CREDENTIALS': (
         {
             'auth_url': config.get('openstack', 'auth_url'),

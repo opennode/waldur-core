@@ -23,7 +23,7 @@ INSTALLED_APPS += (
 BROKER_URL = 'django://'
 CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
 
-NODE_CONDUCTOR = {
+NODECONDUCTOR = {
     'OPENSTACK_CREDENTIALS': (
         {
             'auth_url': 'http://example.com:5000/v2',
