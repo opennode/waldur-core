@@ -19,7 +19,7 @@ class ZabbixDBClient(object):
     }
 
     def __init__(self):
-        self.zabbix_api_client = api_client.ZabbixApiClient(settings.ZABBIX['IAAS'])
+        self.zabbix_api_client = api_client.ZabbixApiClient(settings.NODECONDUCTOR['ZABBIX'])
 
     def get_item_stats(self, instance, item, start_timestamp, end_timestamp, segments_count):
         host_id = self.zabbix_api_client.get_host(instance)['hostid']
