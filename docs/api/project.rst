@@ -61,12 +61,6 @@ Project resource quota is optional. Example of a valid request:
     {
         "name": "Project A",
         "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
-        "resource_quota": {
-                "vcpu": 2,
-                "ram": 2.0,
-                "storage": 36.15,
-                "max_instances": 11
-            },
     }
 
 
