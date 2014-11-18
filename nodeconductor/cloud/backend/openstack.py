@@ -207,7 +207,7 @@ class OpenStackBackend(object):
 
     # Helper methods
     def get_credentials(self, keystone_url):
-        nc_settings = getattr(settings, 'NODE_CONDUCTOR', {})
+        nc_settings = getattr(settings, 'NODECONDUCTOR', {})
         openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
 
         try:

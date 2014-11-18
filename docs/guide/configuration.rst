@@ -6,13 +6,13 @@ NodeConductor is a Django_ based application, so configuration is done by modify
 If you want to configure options related to Django, such as tune caches, configure custom logging, etc,
 please refer to `Django Documentation`_.
 
-Configuration for NodeConductor is namespaced inside a single Django setting, named **NODE_CONDUCTOR**.
+Configuration for NodeConductor is namespaced inside a single Django setting, named **NODECONDUCTOR**.
 
 Therefore configuration might look like this:
 
 .. code-block:: python
 
-    NODE_CONDUCTOR = {
+    NODECONDUCTOR = {
         'OPENSTACK_CREDENTIALS': (
             {
                 'auth_url': 'http://keystone.example.com:5000/v2',
