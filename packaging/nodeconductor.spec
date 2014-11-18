@@ -17,7 +17,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.8.0
+Version: 0.9.0
 Release: 1
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -35,11 +35,13 @@ Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework <
 Requires: python-django-rest-framework-extensions = 0.2.6
 Requires: python-django-saml2 >= 0.11.0, python-django-saml2 < 0.12
 Requires: python-django-uuidfield = 0.5.0
+Requires: python-glanceclient >= 1:0.12.0, python-glanceclient < 1:0.13.0
 Requires: python-keystoneclient >= 1:0.9.0, python-keystoneclient < 1:0.11.2
-Requires: python-novaclient >= 1:2.17.0, python-novaclient < 1:2.19.0
 Requires: python-logan = 0.5.9.1
+Requires: python-novaclient >= 1:2.17.0, python-novaclient < 1:2.19.0
 Requires: python-redis = 2.10.3
 Requires: python-south = 0.8.4
+Requires: python-zabbix >= 0.7.2
 Requires: xmlsec1-openssl
 
 Source0: %{name}-%{version}.tar.gz
@@ -175,6 +177,9 @@ All done. Happy NodeConducting!
 EOF
 
 %changelog
+* Mon Nov 18 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.9.0-1
+- New upstream release
+
 * Mon Nov 10 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.8.0-1
 - New upstream release
 
