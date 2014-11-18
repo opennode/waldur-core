@@ -31,9 +31,8 @@ class ZabbixDBClient(object):
             segment_list = self.format_time_and_value_to_segment_list(
                 time_and_value_list, segments_count, start_timestamp, end_timestamp)
             return segment_list
-        except DatabaseError as e:
-            message = "Can not execute query to zabbix db. %s: %s" % (e.__class__.__name__, e)
-            logger.exception(message)
+        except DatabaseError:
+            logger.exception("Can not execute query to zabbix db.")
             six.reraise(errors.ZabbixError, errors.ZabbixError())
 
     def format_time_and_value_to_segment_list(self, time_and_value_list, segments_count, start_timestamp, end_timestamp):

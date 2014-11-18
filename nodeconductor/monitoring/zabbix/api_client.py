@@ -27,9 +27,8 @@ class ZabbixApiClient(object):
             if not hosts:
                 raise ZabbixError('There is no host for instance %s' % instance)
             return hosts[0]
-        except ZabbixAPIException as e:
-            message = "Can not get zabbix host for instance %s. %s: %s" % (instance, e.__class__.__name__, e)
-            logger.exception(message)
+        except ZabbixAPIException:
+            logger.exception('Can not get zabbix host for instance %s', instance)
             six.reraise(ZabbixError, ZabbixError())
 
     def create_host(self, instance):
@@ -41,8 +40,7 @@ class ZabbixApiClient(object):
                 api, instance, group['groupid'], self.templateid, self.interface_parameters)
 
             if not created:
-                message = "Can not create new zabbix host for instance %s. It already exists." % instance
-                logger.warn(message)
+                logger.warn("Can not create new zabbix host for instance %s. It already exists.", instance)
 
         except ZabbixAPIException as e:
             message = "Can not create zabbix host for instance %s. %s: %s" % (instance, e.__class__.__name__, e)
@@ -55,12 +53,10 @@ class ZabbixApiClient(object):
 
             deleted = self.delete_host_if_exists(api, instance)
             if not deleted:
-                message = "Can not delete zabbix host for instance %s. It does not exist." % instance
-                logger.warn(message)
+                logger.warn("Can not delete zabbix host for instance %s. It does not exist.", instance)
 
-        except ZabbixAPIException as e:
-            message = "Can not delete zabbix host. %s: %s" % (e.__class__.__name__, e)
-            logger.exception(message)
+        except ZabbixAPIException:
+            logger.exception("Can not delete zabbix host.")
             six.reraise(ZabbixError, ZabbixError())
 
     def create_hostgroup(self, project):
@@ -70,12 +66,10 @@ class ZabbixApiClient(object):
             _, created = self.get_or_create_hostgroup(api, project)
 
             if not created:
-                message = "Can not create new zabbix hostgroup for project %s. It already exists." % project
-                logger.warn(message)
+                logger.warn("Can not create new zabbix hostgroup for project %s. It already exists.", project)
 
-        except ZabbixAPIException as e:
-            message = "Can not create zabbix hostgroup for project %s. %s: %s" % (project, e.__class__.__name__, e)
-            logger.exception(message)
+        except ZabbixAPIException:
+            logger.exception("Can not create zabbix hostgroup for project %s", project)
             six.reraise(ZabbixError, ZabbixError())
 
     def delete_hostgroup(self, project):
@@ -84,12 +78,10 @@ class ZabbixApiClient(object):
 
             deleted = self.delete_hostgroup_if_exists(api, project)
             if not deleted:
-                message = "Can not delete zabbix host for project %s. It does not exist." % project
-                logger.warn(message)
+                logger.warn("Can not delete zabbix host for project %s. It does not exist.", project)
 
-        except ZabbixAPIException as e:
-            message = "Can not delete zabbix hostgroup. %s: %s" % (e.__class__.__name__, e)
-            logger.exception(message)
+        except ZabbixAPIException:
+            logger.exception("Can not delete zabbix hostgroup.")
             six.reraise(ZabbixError, ZabbixError())
 
     def create_service(self, instance):
@@ -104,13 +96,12 @@ class ZabbixApiClient(object):
             _, created = self.get_or_create_service(api, service_parameters)
 
             if not created:
-                message = "Can not create new zabbix service for instance %s. Service with name %s already exists" % (
-                    instance, name)
-                logger.warn(message)
+                logger.warn(
+                    "Can not create new zabbix service for instance %s. Service with name %s already exists",
+                    (instance, name))
 
-        except ZabbixAPIException as e:
-            message = "Can not create zabbix it-service. %s: %s" % (e.__class__.__name__, e)
-            logger.exception(message)
+        except ZabbixAPIException:
+            logger.exception("Can not create zabbix it-service.")
             six.reraise(ZabbixError, ZabbixError())
 
     def delete_service(self, instance):
@@ -119,12 +110,10 @@ class ZabbixApiClient(object):
 
             deleted = self.delete_service_if_exists(api, instance)
             if not deleted:
-                message = "Can not delete zabbix service for instance %s. Service with name does not exist" % instance
-                logger.warn(message)
+                logger.warn("Can not delete zabbix service for instance %s. Service with name does not exist", instance)
 
-        except ZabbixAPIException as e:
-            message = "Can not delete zabbix it-service. %s: %s" % (e.__class__.__name__, e)
-            logger.exception(message)
+        except ZabbixAPIException:
+            logger.exception("Can not delete zabbix it-service.")
             six.reraise(ZabbixError, ZabbixError())
 
     # Helpers:
