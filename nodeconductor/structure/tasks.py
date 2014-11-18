@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def create_zabbix_hostgroup(project):
-    zabbix_client = ZabbixApiClient(settings.NODECONDUCTOR['ZABBIX'])
+    zabbix_client = ZabbixApiClient(settings.NODECONDUCTOR['MONITORING']['ZABBIX'])
     zabbix_client.create_hostgroup(project)
 
 
 @shared_task
 def delete_zabbix_hostgroup(project):
-    zabbix_client = ZabbixApiClient(settings.NODECONDUCTOR['ZABBIX'])
+    zabbix_client = ZabbixApiClient(settings.NODECONDUCTOR['MONITORING']['ZABBIX'])
     zabbix_client.delete_hostgroup(project)

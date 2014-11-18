@@ -41,14 +41,14 @@ def _mock_processing(instance_uuid, should_fail=False):
 
 def create_zabbix_host_and_service(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
-    zabbix_client = ZabbixAPIException(settings.NODECONDUCTOR['ZABBIX'])
+    zabbix_client = ZabbixAPIException(settings.NODECONDUCTOR['MONITORING']['ZABBIX'])
     zabbix_client.create_host(instance)
     zabbix_client.create_service(instance)
 
 
 def delete_zabbix_host_and_service(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
-    zabbix_client = ZabbixAPIException(settings.NODECONDUCTOR['ZABBIX'])
+    zabbix_client = ZabbixAPIException(settings.NODECONDUCTOR['MONITORING']['ZABBIX'])
     zabbix_client.delete_host(instance)
     zabbix_client.delete_service(instance)
 
