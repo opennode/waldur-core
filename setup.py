@@ -32,6 +32,7 @@ install_requires = [
     'python-glanceclient>=0.12.0,<0.13.0',
     'python-keystoneclient>=0.9.0,<0.11.2',
     'python-novaclient>=2.17.0,<2.19.0',
+    'pyzabbix>=0.7.2',
     'redis==2.10.3',
     'South==0.8.4',
 ]
