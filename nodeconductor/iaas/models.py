@@ -25,33 +25,26 @@ logger = logging.getLogger(__name__)
 
 
 @python_2_unicode_compatible
-class Image(core_models.UuidMixin,
-            core_models.DescribableMixin,
-            models.Model):
+class Image(models.Model):
     class Meta(object):
-        unique_together = ('cloud', 'template')
+        unique_together = (
+            ('cloud', 'template'),
+        )
 
     class Permissions(object):
         project_path = 'cloud__projects'
         project_group_path = 'cloud__projects__project_groups'
 
-    i386 = 0
-    amd64 = 1
-
-    ARCHITECTURE_CHOICES = (
-        (i386, 'i386'),
-        (amd64, 'amd64'),
-    )
-    name = models.CharField(max_length=80)
     cloud = models.ForeignKey(cloud_models.Cloud, related_name='images')
-    template = models.ForeignKey('iaas.Template', null=True, blank=True, related_name='images')
-    architecture = models.SmallIntegerField(choices=ARCHITECTURE_CHOICES)
+    template = models.ForeignKey('iaas.Template', related_name='images')
+
+    backend_id = models.CharField(max_length=255)
 
     def __str__(self):
-        return '%(name)s | %(cloud)s' % {
-            'name': self.name,
-            'cloud': self.cloud.name
-        }
+        return '{template} <-> {cloud}'.format(
+            cloud=self.cloud.name,
+            template=self.template.name,
+        )
 
 
 @python_2_unicode_compatible
@@ -64,7 +57,7 @@ class Template(core_models.UuidMixin,
     name = models.CharField(max_length=100, unique=True)
     os = models.CharField(max_length=100)
     is_active = models.BooleanField(default=False)
-    sla_level = models.IntegerField()
+    sla_level = models.DecimalField(max_digits=6, decimal_places=4,     null=True, blank=True,)
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                     validators=[MinValueValidator(Decimal('0.1')),
                                                 MaxValueValidator(Decimal('100000.0'))])
@@ -74,6 +67,18 @@ class Template(core_models.UuidMixin,
 
     def __str__(self):
         return self.name
+
+
+@python_2_unicode_compatible
+class TemplateMapping(core_models.DescribableMixin, models.Model):
+    class Meta(object):
+        unique_together = ('template', 'backend_image_id')
+
+    template = models.ForeignKey(Template, related_name='mappings')
+    backend_image_id = models.CharField(max_length=255)
+
+    def __str__(self):
+        return '{0} <-> {1}'.format(self.template.name, self.description)
 
 
 @python_2_unicode_compatible
@@ -139,7 +144,7 @@ class Instance(core_models.UuidMixin,
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
-    flavor = models.ForeignKey(cloud_models.Flavor, related_name='+')
+    flavor = models.ForeignKey(cloud_models.Flavor, related_name='+', on_delete=models.PROTECT)
     project = models.ForeignKey(structure_models.Project, related_name='instances')
     external_ips = fields.IPsField(max_length=256)
     internal_ips = fields.IPsField(max_length=256)

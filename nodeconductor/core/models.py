@@ -7,7 +7,7 @@ from django.conf import settings
 from django.contrib.auth.models import (
     AbstractBaseUser, PermissionsMixin, UserManager, SiteProfileNotAvailable)
 from django.core import validators
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.mail import send_mail
 from django.db import models
 from django.db.models import signals
@@ -122,6 +122,35 @@ class User(UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
         return self._profile_cache
 
 
+def validate_ssh_public_key(ssh_key):
+    # http://stackoverflow.com/a/2494645
+    import base64
+    import struct
+
+    try:
+        key_parts = ssh_key.split(' ', 2)
+        key_type, key_body = key_parts[0], key_parts[1]
+
+        if key_type != 'ssh-rsa':
+            raise ValidationError('Invalid SSH public key type %s, only ssh-rsa is supported' % key_type)
+
+        data = base64.decodestring(key_body)
+        int_len = 4
+        # Unpack the first 4 bytes of the decoded key body
+        str_len = struct.unpack('>I', data[:int_len])[0]
+
+        encoded_key_type = data[int_len:int_len + str_len]
+        # Check if the encoded key type equals to the decoded key type
+        if encoded_key_type != key_type:
+            raise ValidationError("Invalid encoded SSH public key type %s within the key's body, "
+                                  "only ssh-rsa is supported" % encoded_key_type)
+    except IndexError:
+        raise ValidationError('Invalid SSH public key structure')
+
+    except (base64.binascii.Error, struct.error):
+        raise ValidationError('Invalid SSH public key body')
+
+
 @python_2_unicode_compatible
 class SshPublicKey(UuidMixin, models.Model):
     """
@@ -132,7 +161,7 @@ class SshPublicKey(UuidMixin, models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_index=True)
     name = models.CharField(max_length=50, blank=True)
     fingerprint = models.CharField(max_length=47)  # In ideal world should be unique
-    public_key = models.TextField(max_length=2000)
+    public_key = models.TextField(max_length=2000, validators=[validate_ssh_public_key])
 
     class Meta(object):
         unique_together = ('user', 'name')
@@ -165,19 +194,15 @@ class SshPublicKey(UuidMixin, models.Model):
 
 
 class SynchronizationStates(object):
-    PUSHING_SCHEDULED = 'u'
-    PUSHING = 'U'
-    PULLING_SCHEDULED = 'd'
-    PULLING = 'D'
+    SYNCING_SCHEDULED = 'u'
+    SYNCING = 'U'
     IN_SYNC = 's'
     ERRED = 'e'
 
     CHOICES = (
-        (PUSHING_SCHEDULED, _('Pushing Scheduled')),
-        (PUSHING, _('Pushing')),
-        (PULLING_SCHEDULED, _('Pulling Scheduled')),
-        (PULLING, _('Pulling')),
-        (IN_SYNC, _('Synchronized')),
+        (SYNCING_SCHEDULED, _('Sync Scheduled')),
+        (SYNCING, _('Syncing')),
+        (IN_SYNC, _('In Sync')),
         (ERRED, _('Erred')),
     )
 
@@ -188,31 +213,19 @@ class SynchronizableMixin(models.Model):
 
     state = FSMField(
         max_length=1,
-        default=SynchronizationStates.PUSHING_SCHEDULED,
+        default=SynchronizationStates.SYNCING_SCHEDULED,
         choices=SynchronizationStates.CHOICES,
     )
 
-    @transition(field=state, source=SynchronizationStates.PUSHING_SCHEDULED, target=SynchronizationStates.PUSHING)
-    def begin_pushing(self):
+    @transition(field=state, source=SynchronizationStates.SYNCING_SCHEDULED, target=SynchronizationStates.SYNCING)
+    def begin_syncing(self):
         pass
 
-    @transition(field=state, source=SynchronizationStates.IN_SYNC, target=SynchronizationStates.PUSHING_SCHEDULED)
-    def schedule_pushing(self):
+    @transition(field=state, source=SynchronizationStates.IN_SYNC, target=SynchronizationStates.SYNCING_SCHEDULED)
+    def schedule_syncing(self):
         pass
 
-    @transition(field=state, source=SynchronizationStates.PULLING_SCHEDULED, target=SynchronizationStates.PULLING)
-    def begin_pulling(self):
-        pass
-
-    @transition(field=state, source=SynchronizationStates.IN_SYNC, target=SynchronizationStates.PULLING_SCHEDULED)
-    def schedule_pulling(self):
-        pass
-
-    @transition(
-        field=state,
-        source=[SynchronizationStates.PUSHING, SynchronizationStates.PULLING],
-        target=SynchronizationStates.IN_SYNC,
-    )
+    @transition(field=state, source=SynchronizationStates.SYNCING, target=SynchronizationStates.IN_SYNC)
     def set_in_sync(self):
         pass
 

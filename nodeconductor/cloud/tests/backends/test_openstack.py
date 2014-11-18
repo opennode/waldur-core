@@ -1,10 +1,40 @@
+from __future__ import unicode_literals
+
+import collections
+
+from django.test import TransactionTestCase
 from django.utils import unittest
 from keystoneclient import exceptions as keystone_exceptions
 import mock
 
 from nodeconductor.cloud.backend import CloudBackendError
-
 from nodeconductor.cloud.backend.openstack import OpenStackBackend
+from nodeconductor.cloud.models import Flavor
+from nodeconductor.cloud.tests import factories
+from nodeconductor.iaas.models import Image
+from nodeconductor.iaas.tests import factories as iaas_factories
+
+NovaFlavor = collections.namedtuple('NovaFlavor',
+                                    ['id', 'name', 'vcpus', 'ram', 'disk'])
+
+GlanceImage = collections.namedtuple(
+    'GlanceImage',
+    ['id', 'is_public', 'deleted']
+)
+
+
+def next_unique_flavor_id():
+    return factories.FlavorFactory.build().flavor_id
+
+
+def nc_flavor_to_nova_flavor(flavor):
+    return NovaFlavor(
+        id=flavor.flavor_id,
+        name=flavor.name,
+        vcpus=flavor.cores,
+        ram=flavor.ram / 1024,
+        disk=flavor.disk / 1024,
+    )
 
 
 class OpenStackBackendPublicApiTest(unittest.TestCase):
@@ -63,6 +93,328 @@ class OpenStackBackendPublicApiTest(unittest.TestCase):
         self.backend.get_keystone_client.side_effect = keystone_exceptions.AuthorizationFailure
         with self.assertRaises(CloudBackendError):
             self.backend.push_membership(self.membership)
+
+
+class OpenStackBackendFlavorApiTest(TransactionTestCase):
+    def setUp(self):
+        self.keystone_client = mock.Mock()
+        self.nova_client = mock.Mock()
+        self.nova_client.flavors.findall.return_value = []
+
+        self.cloud_account = factories.CloudFactory()
+        self.flavors = factories.FlavorFactory.create_batch(2, cloud=self.cloud_account)
+
+        # Mock low level non-AbstractCloudBackend api methods
+        self.backend = OpenStackBackend()
+        self.backend.get_credentials = mock.Mock(return_value={})
+        # self.backend.get_keystone_client = mock.Mock(return_value=self.keystone_client)
+        self.backend.get_nova_client = mock.Mock(return_value=self.nova_client)
+
+    # TODO: Test pull_flavors uses proper credentials for nova
+    def test_pull_flavors_queries_only_public_flavors(self):
+        self.backend.pull_flavors(self.cloud_account)
+
+        self.nova_client.flavors.findall.assert_called_once_with(
+            is_public=True
+        )
+
+    def test_pull_flavors_creates_flavors_missing_in_database(self):
+        # Given
+        new_flavor = NovaFlavor(next_unique_flavor_id(), 'id1', 3, 5, 8)
+
+        self.nova_client.flavors.findall.return_value = [
+            nc_flavor_to_nova_flavor(self.flavors[0]),
+            nc_flavor_to_nova_flavor(self.flavors[1]),
+            new_flavor,
+        ]
+
+        # When
+        self.backend.pull_flavors(self.cloud_account)
+
+        # Then
+        try:
+            stored_flavor = self.cloud_account.flavors.get(flavor_id=new_flavor.id)
+
+            self.assertEqual(stored_flavor.name, new_flavor.name)
+            self.assertEqual(stored_flavor.cores, new_flavor.vcpus)
+            self.assertEqual(stored_flavor.ram, new_flavor.ram * 1024)
+            self.assertEqual(stored_flavor.disk, new_flavor.disk * 1024)
+        except Flavor.DoesNotExist:
+            self.fail('Flavor should have been created in the database')
+
+    def test_pull_flavors_updates_matching_flavors(self):
+        # Given
+        def double_fields(flavor):
+            return flavor._replace(
+                name=flavor.name + 'foo',
+                vcpus=flavor.vcpus * 2,
+                ram=flavor.ram * 2,
+                disk=flavor.disk * 2,
+            )
+
+        backend_flavors = [
+            double_fields(nc_flavor_to_nova_flavor(self.flavors[0])),
+            double_fields(nc_flavor_to_nova_flavor(self.flavors[1])),
+        ]
+
+        self.nova_client.flavors.findall.return_value = backend_flavors
+
+        # When
+        self.backend.pull_flavors(self.cloud_account)
+
+        # Then
+        for updated_flavor in backend_flavors:
+            stored_flavor = self.cloud_account.flavors.get(flavor_id=updated_flavor.id)
+
+            self.assertEqual(stored_flavor.name, updated_flavor.name)
+            self.assertEqual(stored_flavor.cores, updated_flavor.vcpus)
+            self.assertEqual(stored_flavor.ram, updated_flavor.ram * 1024)
+            self.assertEqual(stored_flavor.disk, updated_flavor.disk * 1024)
+
+    def test_pull_flavors_deletes_flavors_missing_in_backend(self):
+        # Given
+        self.nova_client.flavors.findall.return_value = [
+            nc_flavor_to_nova_flavor(self.flavors[0]),
+        ]
+
+        # When
+        self.backend.pull_flavors(self.cloud_account)
+
+        # Then
+        is_present = self.cloud_account.flavors.filter(
+            flavor_id=self.flavors[1].flavor_id).exists()
+
+        self.assertFalse(is_present, 'Flavor should have been deleted from the database')
+
+    def test_pull_flavors_doesnt_delete_flavors_linked_to_instances(self):
+        # Given
+        iaas_factories.InstanceFactory.create(flavor=self.flavors[1])
+
+        self.nova_client.flavors.findall.return_value = [
+            nc_flavor_to_nova_flavor(self.flavors[0]),
+        ]
+
+        # When
+        self.backend.pull_flavors(self.cloud_account)
+
+        # Then
+        is_present = self.cloud_account.flavors.filter(
+            flavor_id=self.flavors[1].flavor_id).exists()
+
+        self.assertTrue(is_present, 'Flavor should have not been deleted from the database')
+
+
+class OpenStackBackendImageApiTest(TransactionTestCase):
+    def setUp(self):
+        self.glance_client = mock.Mock()
+
+        #  C
+        #  ^
+        #  |
+        # (I0)
+        #  |
+        #  v
+        #  T0          T1        T2
+        #  ^           ^         ^
+        #  | \         | \       |
+        #  |  \        |  \      |
+        #  |   \       |   \     |
+        #  v    v      v    v    v
+        #  TM0  TM1    TM2  TM3  TM4
+        #
+
+        self.cloud_account = factories.CloudFactory()
+        self.templates = iaas_factories.TemplateFactory.create_batch(3)
+
+        self.template_mappings = (
+            iaas_factories.TemplateMappingFactory.create_batch(2, template=self.templates[0]) +
+            iaas_factories.TemplateMappingFactory.create_batch(2, template=self.templates[1]) +
+            iaas_factories.TemplateMappingFactory.create_batch(1, template=self.templates[2])
+        )
+
+        self.image = iaas_factories.ImageFactory(
+            cloud=self.cloud_account,
+            template=self.template_mappings[0].template,
+            backend_id=self.template_mappings[0].backend_image_id,
+        )
+
+        # Mock low level non-AbstractCloudBackend api methods
+        self.backend = OpenStackBackend()
+        self.backend.get_credentials = mock.Mock(return_value={})
+        self.backend.get_glance_client = mock.Mock(return_value=self.glance_client)
+
+    def test_pulling_creates_images_for_all_matching_template_mappings(self):
+        # Given
+        matching_mapping1 = self.template_mappings[2]
+        image_id = matching_mapping1.backend_image_id
+        new_image = GlanceImage(image_id, is_public=True, deleted=False)
+
+        # Make another mapping use the same backend id
+        matching_mapping2 = self.template_mappings[4]
+        matching_mapping2.backend_image_id = image_id
+        matching_mapping2.save()
+
+        self.glance_client.images.list.return_value = iter([
+            new_image,
+        ])
+
+        # When
+        self.backend.pull_images(self.cloud_account)
+
+        # Then
+        image_count = self.cloud_account.images.filter(
+            backend_id=new_image.id,
+        ).count()
+
+        self.assertEqual(2, image_count,
+                         'Two images should have been created')
+
+        try:
+            self.cloud_account.images.get(
+                backend_id=matching_mapping1.backend_image_id,
+                template=matching_mapping1.template,
+            )
+        except Image.DoesNotExist:
+            self.fail('Image for the first matching template mapping'
+                      ' should have been created')
+
+        try:
+            self.cloud_account.images.get(
+                backend_id=matching_mapping2.backend_image_id,
+                template=matching_mapping2.template,
+            )
+        except Image.DoesNotExist:
+            self.fail('Image for the second matching template mapping'
+                      ' should have been created')
+
+    def test_pulling_doesnt_create_images_missing_in_database_if_template_mapping_doesnt_exist(self):
+        # Given
+        non_matching_image = GlanceImage('not-mapped-id', is_public=True, deleted=False)
+
+        self.glance_client.images.list.return_value = iter([
+            non_matching_image,
+        ])
+
+        # When
+        self.backend.pull_images(self.cloud_account)
+
+        # Then
+        image_exists = self.cloud_account.images.filter(
+            backend_id=non_matching_image.id,
+        ).exists()
+        self.assertFalse(image_exists, 'Image should not have been created in the database')
+
+    def test_pulling_doesnt_create_images_for_non_public_backend_images(self):
+        # Given
+        matching_mapping = self.template_mappings[2]
+        image_id = matching_mapping.backend_image_id
+        new_image = GlanceImage(image_id, is_public=False, deleted=False)
+
+        self.glance_client.images.list.return_value = iter([
+            new_image,
+        ])
+
+        # When
+        self.backend.pull_images(self.cloud_account)
+
+        # Then
+        image_exists = self.cloud_account.images.filter(
+            backend_id=new_image.id,
+        ).exists()
+        self.assertFalse(image_exists, 'Image should not have been created in the database')
+
+    def test_pulling_doesnt_create_images_for_deleted_backend_images(self):
+        # Given
+        matching_mapping = self.template_mappings[2]
+        image_id = matching_mapping.backend_image_id
+        new_image = GlanceImage(image_id, is_public=True, deleted=True)
+
+        self.glance_client.images.list.return_value = iter([
+            new_image,
+        ])
+
+        # When
+        self.backend.pull_images(self.cloud_account)
+
+        # Then
+        image_exists = self.cloud_account.images.filter(
+            backend_id=new_image.id,
+        ).exists()
+        self.assertFalse(image_exists, 'Image should not have been created in the database')
+
+    def test_pulling_does_not_create_image_if_backend_image_ids_collide(self):
+        # Given
+        matching_mapping1 = self.template_mappings[2]
+        new_image1 = GlanceImage(matching_mapping1.backend_image_id, is_public=True, deleted=False)
+
+        # Make another mapping use the same backend id
+        matching_mapping2 = self.template_mappings[3]
+        new_image2 = GlanceImage(matching_mapping2.backend_image_id, is_public=True, deleted=False)
+
+        self.glance_client.images.list.return_value = iter([
+            new_image1,
+            new_image2,
+        ])
+
+        # When
+        self.backend.pull_images(self.cloud_account)
+
+        # Then
+        images_exist = self.cloud_account.images.filter(
+            template=self.templates[1]
+        ).exists()
+
+        self.assertFalse(images_exist,
+                         'No images should have been created')
+
+    def test_pulling_deletes_existing_image_if_template_mapping_doesnt_exist(self):
+        # Given
+
+        non_matching_image = GlanceImage('not-mapped-id', is_public=True, deleted=False)
+
+        self.glance_client.images.list.return_value = iter([
+            non_matching_image,
+        ])
+
+        # When
+        self.backend.pull_images(self.cloud_account)
+
+        # Then
+        matching_mapping = self.template_mappings[0]
+
+        image_exists = self.cloud_account.images.filter(
+            backend_id=matching_mapping.backend_image_id,
+            template=matching_mapping.template,
+        ).exists()
+
+        self.assertFalse(image_exists, 'Image should have been deleted')
+
+    def test_pulling_updates_existing_images_backend_id_if_template_mapping_changed(self):
+        # Given
+
+        # Simulate MO updating the mapping
+        matching_mapping = self.template_mappings[0]
+        image_id = 'new-id'
+        matching_mapping.backend_image_id = image_id
+        matching_mapping.save()
+
+        existing_image = GlanceImage(image_id, is_public=True, deleted=False)
+
+        self.glance_client.images.list.return_value = iter([
+            existing_image,
+        ])
+
+        # When
+        self.backend.pull_images(self.cloud_account)
+
+        # Then
+        try:
+            self.cloud_account.images.get(
+                backend_id=matching_mapping.backend_image_id,
+                template=matching_mapping.template,
+            )
+        except Image.DoesNotExist:
+            self.fail("Image's backend_id should have been updated")
 
 
 class OpenStackBackendHelperApiTest(unittest.TestCase):

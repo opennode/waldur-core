@@ -18,7 +18,7 @@ from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.filters import filter_queryset_for_user
-from nodeconductor.structure.signals import structure_role_granted, project_resource_added
+from nodeconductor.structure.signals import structure_role_granted
 
 
 logger = logging.getLogger(__name__)
@@ -116,12 +116,21 @@ class Flavor(UuidMixin, models.Model):
         project_path = 'cloud__projects'
         project_group_path = 'cloud__projects__project_groups'
 
+    class Meta(object):
+        unique_together = (
+            # OpenStack backend specific constraint
+            ('cloud', 'flavor_id'),
+        )
+
     name = models.CharField(max_length=100)
     cloud = models.ForeignKey(Cloud, related_name='flavors')
 
     cores = models.PositiveSmallIntegerField(help_text=_('Number of cores in a VM'))
-    ram = models.FloatField(help_text=_('Memory size in GB'))
-    disk = models.FloatField(help_text=_('Root disk size in GB'))
+    ram = models.PositiveIntegerField(help_text=_('Memory size in MiB'))
+    disk = models.PositiveIntegerField(help_text=_('Root disk size in MiB'))
+
+    # OpenStack backend specific fields
+    flavor_id = models.CharField(max_length=255)
 
     def __str__(self):
         return self.name
@@ -141,7 +150,7 @@ class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
     cloud_project_membership = models.ForeignKey(CloudProjectMembership, related_name='security_groups')
     name = models.CharField(max_length=127)
 
-    # openstack specific
+    # OpenStack backend specific fields
     os_security_group_id = models.CharField(max_length='128', blank=True,
                                             help_text='Reference to a SecurityGroup in a remote cloud')
 
@@ -170,7 +179,7 @@ class SecurityGroupRule(models.Model):
     ip_range = models.IPAddressField()
     netmask = models.SmallIntegerField(null=False)
 
-    # openstack specific
+    # OpenStack backend specific fields
     os_security_group_rule_id = models.CharField(max_length='128', blank=True)
 
     def __str__(self):
@@ -246,37 +255,6 @@ def propagate_users_keys_to_clouds_of_newly_granted_project(sender, structure, u
 
         tasks.push_ssh_public_keys.delay(
             list(ssh_public_key_uuids), list(membership_pks))
-
-
-# FIXME: These should come from backend properly, see NC-139
-# Remove after NC-139 is implemented
-@receiver(signals.post_save, sender=Cloud)
-def create_dummy_flavors(sender, instance=None, created=False, **kwargs):
-    if created:
-        instance.flavors.create(
-            name='Weak & Small',
-            cores=2,
-            ram=2 * 1024,
-            disk=10 * 1024,
-        )
-        instance.flavors.create(
-            name='Powerful & Small',
-            cores=16,
-            ram=2 * 1024,
-            disk=10 * 1024,
-        )
-        instance.flavors.create(
-            name='Weak & Large',
-            cores=2,
-            ram=32 * 1024,
-            disk=100 * 1024,
-        )
-        instance.flavors.create(
-            name='Powerful & Large',
-            cores=16,
-            ram=32 * 1024,
-            disk=100 * 1024,
-        )
 
 
 class IpMapping(UuidMixin, models.Model):

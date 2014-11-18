@@ -91,7 +91,7 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
 
         self.projects = {
             'admin': factories.ProjectFactory(customer=self.customer),
-            'manager': factories.ProjectFactory(),
+            'manager': factories.ProjectFactory(customer=self.customer),
             'group_manager': factories.ProjectFactory(),
             'standalone': factories.ProjectFactory(),
         }
@@ -369,6 +369,13 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
             permission_url = self._get_permission_url(*role)
             response = self.client.delete(permission_url)
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_can_delete_role_of_projects_he_is_owner_of(self):
+        self.client.force_authenticate(user=self.customer_owner)
+
+        permission_url = self._get_permission_url('manager', 'manager', 'manager')
+        response = self.client.delete(permission_url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     # Helper methods
     def _get_permission_url(self, user, project, role):

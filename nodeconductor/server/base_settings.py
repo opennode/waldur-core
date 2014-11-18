@@ -24,6 +24,7 @@ INSTALLED_APPS = (
 
     'nodeconductor.core',
     'nodeconductor.backup',
+    'nodeconductor.monitoring',
     'nodeconductor.structure',
     'nodeconductor.cloud',
     'nodeconductor.iaas',

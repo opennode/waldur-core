@@ -10,11 +10,14 @@ only see connected projects:
 Supported logic filters:
 
 - ?can_manage - return a list of projects where current user is manager, group manager or a customer owner;
+- ?can_admin - return a list of projects where current user is admin.
 
 Field filters:
 
+- ?customer=<Customer UUID> - return a list of projects belonging to a specific customer.
 - ?project_group=<Project Group UUID> - return a list of projects in a specified project group.
 - ?project_group_name=<Project group name> - return a list of projects with belonging to groups with matching names
+- ?description=<text> - return a list of projects with description matching a given text
 - ?vcpu=<number> - return a list of projects with a specified vcpu quota
 - ?ram=<number> - return a list of projects with a specified ram quota
 - ?storage=<number> - return a list of projects with a specified storage quota

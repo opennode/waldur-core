@@ -46,7 +46,7 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
     class Meta(object):
         model = models.Project
         fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'project_groups', 'resource_quota',
-                  'resource_quota_usage')
+                  'resource_quota_usage', 'description')
         lookup_field = 'uuid'
 
     def get_related_paths(self):
@@ -60,7 +60,7 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'name', 'customer', 'resource_quota', 'project_groups')
+        fields = ('url', 'name', 'customer', 'resource_quota', 'project_groups', 'description')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
@@ -127,7 +127,7 @@ class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.ProjectGroup
-        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'projects')
+        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'projects', 'description')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
@@ -218,32 +218,6 @@ class CustomerRoleField(serializers.ChoiceField):
             into[field_name] = models.CustomerRole.NAME_TO_ROLE[role]
         else:
             raise ValidationError('Unknown role')
-
-
-class ProjectPermissionReadSerializer(core_serializers.RelatedResourcesFieldMixin,
-                                      serializers.HyperlinkedModelSerializer):
-    user = serializers.HyperlinkedRelatedField(
-        view_name='user-detail',
-        lookup_field='uuid',
-        queryset=User.objects.all(),
-    )
-    user_full_name = serializers.Field(source='user.full_name')
-    user_native_name = serializers.Field(source='user.native_name')
-
-    role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
-
-    class Meta(object):
-        model = User.groups.through
-        fields = (
-            'url',
-            'project', 'project_name',
-            'user', 'user_full_name', 'user_native_name',
-            'role',
-        )
-        view_name = 'project_permission-detail'
-
-    def get_related_paths(self):
-        return 'group.projectrole.project',
 
 
 # TODO: refactor to abstract class, subclass by CustomerPermissions and ProjectPermissions
@@ -376,7 +350,29 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = User
-        fields = ('url', 'uuid', 'username', 'full_name', 'native_name', 'job_title', 'email',
-                  'civil_number', 'phone_number', 'description', 'is_staff', 'organization', 'project_groups')
-        read_only_fields = ('uuid', 'is_staff')
+        fields = ('url',
+                  'uuid', 'username',
+                  'full_name', 'native_name',
+                  'job_title', 'email', 'organization', 'phone_number',
+                  'civil_number',
+                  'description',
+                  'is_staff', 'is_active',
+                  'project_groups',
+        )
+        read_only_fields = ('uuid', 'is_staff',)
         lookup_field = 'uuid'
+
+    def get_fields(self):
+        fields = super(UserSerializer, self).get_fields()
+
+        try:
+            request = self.context['view'].request
+            user = request.user
+        except (KeyError, AttributeError):
+            return fields
+
+        if not user.is_staff:
+            del fields['is_active']
+            del fields['is_staff']
+
+        return fields

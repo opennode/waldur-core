@@ -10,6 +10,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import UuidMixin, DescribableMixin
+from nodeconductor.structure import tasks
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
 
@@ -268,18 +269,60 @@ class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
         return self.name
 
     def add_user(self, user, role_type):
-        role = self.roles.get(role_type=role_type)
-        role.permission_group.user_set.add(user)
-
-    def remove_user(self, user, role_type=None):
-        groups = user.groups.filter(role__project=self)
-
-        if role_type is not None:
-            groups = groups.filter(role__role_type=role_type)
+        UserGroup = get_user_model().groups.through
 
         with transaction.atomic():
-            for group in groups.iterator():
-                group.user_set.remove(user)
+            role = self.roles.get(role_type=role_type)
+
+            try:
+                membership = UserGroup.objects.get(
+                    user=user,
+                    group__projectgrouprole=role,
+                )
+                return membership, False
+            except UserGroup.DoesNotExist:
+                membership = UserGroup.objects.create(
+                    user=user,
+                    group=role.permission_group,
+                )
+
+                structure_role_granted.send(
+                    sender=ProjectGroup,
+                    structure=self,
+                    user=user,
+                    role=role_type,
+                )
+                return membership, True
+
+    def remove_user(self, user, role_type=None):
+        UserGroup = get_user_model().groups.through
+
+        with transaction.atomic():
+            memberships = UserGroup.objects.filter(
+                group__projectgrouprole__project_group=self,
+                user=user,
+            )
+
+            if role_type is not None:
+                memberships = memberships.filter(group__projectgrouprole__role_type=role_type)
+
+            for membership in memberships.iterator():
+                structure_role_revoked.send(
+                    sender=ProjectGroup,
+                    structure=self,
+                    user=membership.user,
+                    role=membership.group.projectgrouprole.role_type,
+                )
+
+                membership.delete()
+
+    def has_user(self, user, role_type=None):
+        queryset = self.roles.filter(permission_group__user=user)
+
+        if role_type is not None:
+            queryset = queryset.filter(role_type=role_type)
+
+        return queryset.exists()
 
 
 class NetworkSegment(models.Model):
@@ -331,3 +374,22 @@ def create_project_group_roles(sender, instance, created, **kwargs):
         with transaction.atomic():
             mgr_group = Group.objects.create(name='Role: {0} group mgr'.format(instance.uuid))
             instance.roles.create(role_type=ProjectGroupRole.MANAGER, permission_group=mgr_group)
+
+
+@receiver(
+    signals.post_save,
+    sender=Project,
+    dispatch_uid='nodeconductor.structure.models.create_project_zabbix_hostgroup',
+)
+def create_project_zabbix_hostgroup(sender, instance, created, **kwargs):
+    if created:
+        tasks.create_zabbix_hostgroup.delay(instance)
+
+
+@receiver(
+    signals.post_delete,
+    sender=Project,
+    dispatch_uid='nodeconductor.structure.models.delete_project_zabbix_hostgroup',
+)
+def delete_project_zabbix_hostgroup(sender, instance, **kwargs):
+    tasks.delete_zabbix_hostgroup.delay(instance)

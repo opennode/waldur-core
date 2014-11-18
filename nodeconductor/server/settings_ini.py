@@ -37,6 +37,12 @@ config_defaults = {
         'port': '3306',
         'user': 'nodeconductor',
     },
+    'openstack': {
+        'auth_url': '',
+        'password': '',
+        'tenant_name': '',
+        'username': '',
+    },
     'saml2': {
         'acs_url': '',
         'attribute_map_dir': os.path.join(conf_dir, 'attribute-maps'),
@@ -163,14 +169,12 @@ LOGGING = {
         # Logging to syslog
         # See also: https://docs.python.org/2/library/logging.handlers.html#sysloghandler
         'syslog': {
-            'address': '/dev/log',
             'class': 'logging.handlers.SysLogHandler',
             'filters': ['request'],
             'formatter': 'request_format',
             'level': config.get('logging', 'log_level').upper(),
         },
         'syslog-event': {
-            'address': '/dev/log',
             'class': 'logging.handlers.SysLogHandler',
             'filters': ['request'],
             'formatter': 'request_format',
@@ -202,6 +206,7 @@ if config.get('logging', 'log_file') != '':
     LOGGING['loggers']['django']['handlers'].append('file')
 
 if config.getboolean('logging', 'syslog'):
+    LOGGING['handlers']['syslog']['address'] = '/dev/log'
     LOGGING['loggers']['django']['handlers'].append('syslog')
 
 if config.get('events', 'log_file') != '':
@@ -209,6 +214,7 @@ if config.get('events', 'log_file') != '':
     LOGGING['loggers']['nodeconductor']['handlers'].append('file-event')
 
 if config.getboolean('events', 'syslog'):
+    LOGGING['handlers']['syslog-event']['address'] = '/dev/log'
     LOGGING['loggers']['nodeconductor']['handlers'].append('syslog-event')
 
 if config.get('saml2', 'log_file') != '':
@@ -339,3 +345,15 @@ CELERY_RESULT_BACKEND = 'redis://localhost'
 
 # See also: http://docs.celeryproject.org/en/latest/configuration.html#celery-accept-content
 CELERY_ACCEPT_CONTENT = ['json']
+
+NODECONDUCTOR = {
+    'OPENSTACK_CREDENTIALS': (
+        {
+            'auth_url': config.get('openstack', 'auth_url'),
+            'username': config.get('openstack', 'username'),
+            'password': config.get('openstack', 'password'),
+            'tenant_name': config.get('openstack', 'tenant_name'),
+        },
+    ),
+}
+

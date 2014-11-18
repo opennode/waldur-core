@@ -29,8 +29,10 @@ install_requires = [
     'djangosaml2>=0.11.0,<0.12',
     'drf-extensions==0.2.6',
     'logan==0.5.9.1',
+    'python-glanceclient>=0.12.0,<0.13.0',
     'python-keystoneclient>=0.9.0,<0.11.2',
     'python-novaclient>=2.17.0,<2.19.0',
+    'pyzabbix>=0.7.2',
     'redis==2.10.3',
     'South==0.8.4',
 ]
@@ -38,7 +40,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.8.0',
+    version='0.9.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
