@@ -389,7 +389,7 @@ def create_project_zabbix_hostgroup(sender, instance, created, **kwargs):
 @receiver(
     signals.post_delete,
     sender=Project,
-    dispatch_uid='nodeconductor.structure.models.create_project_zabbix_hostgroup',
+    dispatch_uid='nodeconductor.structure.models.delete_project_zabbix_hostgroup',
 )
 def delete_project_zabbix_hostgroup(sender, instance, **kwargs):
     tasks.delete_zabbix_hostgroup.delay(instance)
