@@ -48,6 +48,11 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
+    template_name = django_filters.CharFilter(
+        name='template__name',
+        lookup_type='icontains',
+    )
+
     hostname = django_filters.CharFilter(lookup_type='icontains')
     state = django_filters.CharFilter()
 
@@ -59,6 +64,7 @@ class InstanceFilter(django_filters.FilterSet):
             'state',
             'project',
             'project_group',
+            'template_name'
         ]
         order_by = [
             'hostname',
@@ -71,6 +77,8 @@ class InstanceFilter(django_filters.FilterSet):
             '-project__name',
             'project__project_groups__name',
             '-project__project_groups__name',
+            'template__name',
+            '-template__name',
         ]
 
 
