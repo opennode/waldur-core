@@ -15,8 +15,8 @@ Additional requirements:
 * ``virtualenv``
 * C compiler and development libraries needed to build dependencies
 
-  - CentOS: ``gcc openldap-devel python-devel``
-  - Ubuntu: ``gcc libldap2-dev libsasl2-dev python-dev``
+  - CentOS: ``gcc libffi-devel openldap-devel openssl-devel python-devel``
+  - Ubuntu: ``gcc libffi-dev libldap2-dev libsasl2-dev libssl-dev python-dev``
 
 **NodeConductor installation**
 
@@ -35,10 +35,10 @@ Additional requirements:
 
     # Workaround for CentOS 6 / setuptools 0.6.10 -- not needed for other setups
     # CentOS 6 has an old version of Setuptools that fails to install all the dependencies correctly.
-    # To work around the problem, install python-keystoneclient from RDO repository *before* installing NodeConductor.
+    # To work around the problem, install these packages from RDO repository *before* installing NodeConductor.
     # Make sure to create virtualenv that includes system site-packages.
     rpm -Uvh https://repos.fedorapeople.org/repos/openstack/openstack-icehouse/rdo-release-icehouse-4.noarch.rpm
-    yum install python-keystoneclient
+    yum install python-glanceclient python-keystoneclient python-novaclient
     virtualenv --system-site-packages venv
 
 3. Install nodeconductor in development mode along with dependencies:
