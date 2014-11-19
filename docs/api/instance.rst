@@ -10,10 +10,11 @@ only see connected instances:
 Filtering of instance list is supported through HTTP query parameters, the following fields are supported:
 
 - ?hostname=<hostname>
-- ?customer_name
+- ?customer_name=<customer name>
 - ?state=<state symbol>
 - ?project=<project_name>
 - ?project_group=<project_group_name>
+- ?template_name=<template name>
 
 Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
 
@@ -22,6 +23,7 @@ Sorting is supported in ascending and descending order by specifying a field to 
 - ?o=project__customer__name - sort by customer name in ascending order
 - ?o=project__project_groups__name - sort by project group name
 - ?o=project__name - sort by project name
+- ?o=template__name - sort by template name
 
 
 Instance permissions
