@@ -1,4 +1,4 @@
-from django.conf.urls import patterns
+from django.conf.urls import patterns, url
 
 from nodeconductor.iaas import views
 
@@ -13,4 +13,5 @@ def register_in(router):
 
 urlpatterns = patterns(
     '',
+    url(r'^stats/customer/$', views.CustomerStatsView.as_view(), name='stats_customer'),
 )

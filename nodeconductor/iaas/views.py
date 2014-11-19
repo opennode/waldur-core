@@ -10,7 +10,7 @@ from django_fsm import TransitionNotAllowed
 from rest_framework import filters as rf_filter
 from rest_framework import mixins
 from rest_framework import permissions, status
-from rest_framework import viewsets
+from rest_framework import viewsets, views
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework_extensions.decorators import action, link
@@ -24,7 +24,7 @@ from nodeconductor.iaas import serializers
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import filters
 from nodeconductor.structure.filters import filter_queryset_for_user
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup
 
 
 logger = logging.getLogger(__name__)
@@ -401,3 +401,22 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
     filter_class = ServiceFilter
+
+
+class CustomerStatsView(views.APIView):
+
+    def get(self, request, format=None):
+        customer_statistics = []
+        customer_queryset = filter_queryset_for_user(Customer.objects.all(), request.user)
+        for customer in customer_queryset:
+            projects_count = filter_queryset_for_user(Project.objects.filter(customer=customer), request.user).count()
+            project_groups_count = filter_queryset_for_user(
+                ProjectGroup.objects.filter(customer=customer), request.user).count()
+            instances_count = filter_queryset_for_user(
+                models.Instance.objects.filter(project__customer=customer), request.user).count()
+            customer_statistics.append({
+                'name': customer.name, 'projects': projects_count,
+                'project_groups': project_groups_count, 'instances': instances_count
+            })
+
+        return Response(customer_statistics, status=status.HTTP_200_OK)
