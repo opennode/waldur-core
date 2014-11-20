@@ -59,6 +59,12 @@ config_defaults = {
     'sqlite3': {
         'path': os.path.join(conf_dir, 'db.sqlite3'),
     },
+    'zabbix': {
+        'host_template_id': '',
+        'password': '',
+        'server_url': '',
+        'username': '',
+    }
 }
 
 for section, options in config_defaults.items():
@@ -355,5 +361,27 @@ NODECONDUCTOR = {
             'tenant_name': config.get('openstack', 'tenant_name'),
         },
     ),
+    'MONITORING': {
+        'ZABBIX': {
+            'server': config.get('zabbix', 'server_url'),
+            'username': config.get('zabbix', 'username'),
+            'password': config.get('zabbix', 'password'),
+            'templateid': config.get('zabbix', 'host_template_id'),
+            'interface_parameters': {
+                'ip': '0.0.0.0',
+                'main': 1,
+                'port': '10050',
+                'type': 1,
+                'useip': 1,
+                'dns': '',
+            },
+            'default_service_parameters': {
+                'algorithm': 1,
+                'sortorder': 1,
+                'showsla': 1,
+                'goodsla': 95,
+            },
+        }
+    }
 }
 
