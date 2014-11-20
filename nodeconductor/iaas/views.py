@@ -21,7 +21,6 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
-from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import filters
 from nodeconductor.structure.filters import filter_queryset_for_user
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup
@@ -183,24 +182,22 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     @link()
     def usage(self, request, uuid):
-        zabbix_db_client = ZabbixDBClient()
-        if not 'item' in request.QUERY_PARAMS:
-            return Response({'status': "GET parameter 'item' have to be defined"}, status=status.HTTP_400_BAD_REQUEST)
-
-        item = request.QUERY_PARAMS['item']
-        if not item in zabbix_db_client.items:
-            return Response(
-                {'status': "GET parameter 'item' have to from list: %s" % zabbix_db_client.items.keys()},
-                status=status.HTTP_400_BAD_REQUEST)
-
-        hour = 60 * 60
-        start_timestamp = int(request.QUERY_PARAMS.get('from', time.time() - hour))
-        end_timestamp = int(request.QUERY_PARAMS.get('to', time.time()))
-        segments_count = int(request.QUERY_PARAMS.get('datapoints', 6))
         instance = self._get_instance_or_404(request, uuid)
 
-        segment_list = zabbix_db_client.get_item_stats(instance, item, start_timestamp, end_timestamp, segments_count)
-        return Response(segment_list, status=status.HTTP_200_OK)
+        hour = 60 * 60
+        data = {
+            'start_timestamp': request.QUERY_PARAMS.get('from', time.time() - hour),
+            'end_timestamp': request.QUERY_PARAMS.get('to', time.time()),
+            'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
+            'item': request.QUERY_PARAMS.get('item'),
+        }
+
+        serializer = serializers.UsageStatsSerializer(data=data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        stats = serializer.get_stats([instance])
+        return Response(stats, status=status.HTTP_200_OK)
 
 
 class TemplateViewSet(core_viewsets.ModelViewSet):
@@ -420,3 +417,30 @@ class CustomerStatsView(views.APIView):
             })
 
         return Response(customer_statistics, status=status.HTTP_200_OK)
+
+
+class UsageStatsView(views.APIView):
+
+    def get(self, request, format=None):
+        usage_stats = []
+        customer_queryset = filter_queryset_for_user(Customer.objects.all(), request.user)
+        for customer in customer_queryset:
+            instances = models.Instance.objects.filter(project__customer=customer)
+            if instances:
+                hour = 60 * 60
+                data = {
+                    'start_timestamp': request.QUERY_PARAMS.get('from', time.time() - hour),
+                    'end_timestamp': request.QUERY_PARAMS.get('to', time.time()),
+                    'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
+                    'item': request.QUERY_PARAMS.get('item'),
+                }
+
+                serializer = serializers.UsageStatsSerializer(data=data)
+                if not serializer.is_valid():
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+                stats = serializer.get_stats(instances)
+                usage_stats.append({'name': customer.name, 'datapoints': stats})
+            else:
+                usage_stats.append({'name': customer.name, 'datapoints': []})
+        return Response(usage_stats, status=status.HTTP_200_OK)
