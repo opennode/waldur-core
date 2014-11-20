@@ -205,6 +205,16 @@ class OpenStackBackend(object):
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
             six.reraise(CloudBackendError, CloudBackendError())
 
+    # Statistics methods:
+    def get_resource_stats(self, auth_url):
+        try:
+            credentials = self.get_credentials(auth_url)
+            nova = self.get_nova_client(credentials)
+            return nova.hypervisors.statistics()._info
+        except (nova_exceptions.ClientException, keystone_exceptions.ClientException):
+            logger.exception('Failed to get statics for auth_url: %s', auth_url)
+            six.reraise(CloudBackendError, CloudBackendError())
+
     # Helper methods
     def get_credentials(self, keystone_url):
         nc_settings = getattr(settings, 'NODECONDUCTOR', {})

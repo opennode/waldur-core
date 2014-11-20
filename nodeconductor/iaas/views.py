@@ -23,7 +23,7 @@ from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.structure import filters
 from nodeconductor.structure.filters import filter_queryset_for_user
-from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup
+from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, ResourceQuota
 
 
 logger = logging.getLogger(__name__)
@@ -398,6 +398,39 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
     filter_class = ServiceFilter
+
+
+class ResourceStatsView(views.APIView):
+
+    def _check_user(self, request):
+        if not request.user.is_staff:
+            raise PermissionDenied()
+
+    def _get_quotas_stats(self, clouds):
+        quotas_list = ResourceQuota.objects.filter(project_quota__clouds__in=clouds).values('vcpu', 'ram', 'storage')
+        return {
+            'vcpu_quota': sum([q['vcpu'] for q in quotas_list]),
+            'ram_quota': sum([q['ram'] for q in quotas_list]),
+            'storage_quota': sum([q['storage'] for q in quotas_list]),
+        }
+
+    def get(self, request, format=None):
+        self._check_user(request)
+        if not 'auth_url' in request.QUERY_PARAMS:
+            return Response('GET parameter "auth_url" have to be defined', status=status.HTTP_400_BAD_REQUEST)
+        auth_url = request.QUERY_PARAMS['auth_url']
+
+        try:
+            clouds = Cloud.objects.filter(auth_url=auth_url)
+            cloud_backend = clouds[0].get_backend()
+        except IndexError:
+            return Response('No clouds with auth url: %s' % auth_url, status=status.HTTP_400_BAD_REQUEST)
+
+        stats = cloud_backend.get_resource_stats(auth_url)
+        quotas_stats = self._get_quotas_stats(clouds)
+        stats.update(quotas_stats)
+
+        return Response(stats, status=status.HTTP_200_OK)
 
 
 class CustomerStatsView(views.APIView):

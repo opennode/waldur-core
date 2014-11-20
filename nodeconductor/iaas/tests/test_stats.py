@@ -2,6 +2,7 @@ from django.core.urlresolvers import reverse
 from mock import patch, Mock
 from rest_framework import test, status
 
+from nodeconductor.cloud import models as cloud_models
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure import models as structure_models
@@ -162,5 +163,64 @@ class UsageStatsTest(test.APITransactionTestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
             expected_data = [{'name': self.customer1.name, 'datapoints': self.expected_customer_data}]
             self.assertItemsEqual(response.data, expected_data)
-            patched_cliend.get_item_stats.assert_called_once_with(
-                self.instances1, data['item'], data['from'], data['to'], data['datapoints'])
+
+
+class ResourceStatsTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.auth_url = 'http://example.com/'
+
+        self.project_quota1 = structure_factories.ResourceQuotaFactory()
+        self.project1 = structure_factories.ProjectFactory(resource_quota=self.project_quota1)
+        self.project_quota2 = structure_factories.ResourceQuotaFactory()
+        self.project2 = structure_factories.ProjectFactory(resource_quota=self.project_quota2)
+
+        self.cloud = cloud_factories.CloudFactory(auth_url=self.auth_url)
+        cloud_models.CloudProjectMembership.objects.create(cloud=self.cloud, project=self.project1, tenant_id='1')
+        cloud_models.CloudProjectMembership.objects.create(cloud=self.cloud, project=self.project2, tenant_id='2')
+
+        self.user = structure_factories.UserFactory()
+        self.staff = structure_factories.UserFactory(is_staff=True)
+
+        self.url = reverse('stats_resource')
+
+    def test_resource_stats_is_not_available_for_user(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_resource_stats_auth_url_parameter_have_to_be_defined(self):
+        self.client.force_authenticate(self.staff)
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_resource_stats_auth_url_have_to_be_one_of_cloud_urls(self):
+        self.client.force_authenticate(self.staff)
+
+        data = {'auth_url': 'some_random_url'}
+        response = self.client.get(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_resource_stats_returns_backend_resource_stats(self):
+        mocked_backend = Mock()
+        expected_result = {
+            u'count': 2, u'vcpus_used': 0, u'local_gb_used': 0, u'memory_mb': 7660, u'current_workload': 0,
+            u'vcpus': 2, u'running_vms': 0, u'free_disk_gb': 12, u'disk_available_least': 6, u'local_gb': 12,
+            u'free_ram_mb': 6636, u'memory_mb_used': 1024
+        }
+        expected_result.update({
+            'vcpu_quota': self.project_quota1.vcpu + self.project_quota2.vcpu,
+            'ram_quota': self.project_quota1.ram + self.project_quota2.ram,
+            'storage_quota': self.project_quota1.storage + self.project_quota2.storage,
+        })
+        mocked_backend.get_resource_stats = Mock(return_value=expected_result)
+
+        with patch('nodeconductor.cloud.models.Cloud.get_backend', return_value=mocked_backend):
+            self.client.force_authenticate(self.staff)
+
+            response = self.client.get(self.url, {'auth_url': self.auth_url})
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data, expected_result)
+            mocked_backend.get_resource_stats.assert_called_once_with(self.auth_url)
