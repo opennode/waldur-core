@@ -59,6 +59,12 @@ config_defaults = {
     'sqlite3': {
         'path': os.path.join(conf_dir, 'db.sqlite3'),
     },
+    'zabbix': {
+        'host_template_id': '',
+        'password': '',
+        'server_url': '',
+        'username': '',
+    }
 }
 
 for section, options in config_defaults.items():
@@ -169,14 +175,12 @@ LOGGING = {
         # Logging to syslog
         # See also: https://docs.python.org/2/library/logging.handlers.html#sysloghandler
         'syslog': {
-            'address': '/dev/log',
             'class': 'logging.handlers.SysLogHandler',
             'filters': ['request'],
             'formatter': 'request_format',
             'level': config.get('logging', 'log_level').upper(),
         },
         'syslog-event': {
-            'address': '/dev/log',
             'class': 'logging.handlers.SysLogHandler',
             'filters': ['request'],
             'formatter': 'request_format',
@@ -208,6 +212,7 @@ if config.get('logging', 'log_file') != '':
     LOGGING['loggers']['django']['handlers'].append('file')
 
 if config.getboolean('logging', 'syslog'):
+    LOGGING['handlers']['syslog']['address'] = '/dev/log'
     LOGGING['loggers']['django']['handlers'].append('syslog')
 
 if config.get('events', 'log_file') != '':
@@ -215,6 +220,7 @@ if config.get('events', 'log_file') != '':
     LOGGING['loggers']['nodeconductor']['handlers'].append('file-event')
 
 if config.getboolean('events', 'syslog'):
+    LOGGING['handlers']['syslog-event']['address'] = '/dev/log'
     LOGGING['loggers']['nodeconductor']['handlers'].append('syslog-event')
 
 if config.get('saml2', 'log_file') != '':
@@ -355,5 +361,27 @@ NODECONDUCTOR = {
             'tenant_name': config.get('openstack', 'tenant_name'),
         },
     ),
+    'MONITORING': {
+        'ZABBIX': {
+            'server': config.get('zabbix', 'server_url'),
+            'username': config.get('zabbix', 'username'),
+            'password': config.get('zabbix', 'password'),
+            'templateid': config.get('zabbix', 'host_template_id'),
+            'interface_parameters': {
+                'ip': '0.0.0.0',
+                'main': 1,
+                'port': '10050',
+                'type': 1,
+                'useip': 1,
+                'dns': '',
+            },
+            'default_service_parameters': {
+                'algorithm': 1,
+                'sortorder': 1,
+                'showsla': 1,
+                'goodsla': 95,
+            },
+        }
+    }
 }
 

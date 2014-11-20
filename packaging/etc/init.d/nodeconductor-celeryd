@@ -68,6 +68,9 @@ start() {
         return 1
     fi
 
+    DEBUG_CMD="celery worker --logfile='$CELERYD_LOG_FILE' --loglevel='$CELERYD_LOG_LEVEL' --pidfile='$CELERYD_PID_FILE' $CELERYD_OPTS"
+    DEBUG_MSG="Failed to start Celery daemon.\nTry running this command as user '$CELERYD_USER' to check what went wrong:\n\n  $DEBUG_CMD\n"
+
     celery multi start \
         $CELERYD_NODES \
         $DAEMON_OPTS \
@@ -80,6 +83,7 @@ start() {
     if [ $? -ne 0 ]; then
         failure
         echo
+        echo -e $DEBUG_MSG
         return 1
     fi
 
@@ -92,6 +96,7 @@ start() {
     if [ -z "$pid_files" ]; then
         failure
         echo
+        echo -e $DEBUG_MSG
         return 1
     fi
 

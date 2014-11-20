@@ -46,7 +46,7 @@ Available settings
       Each entry is a dictionary with the following keys:
 
       auth_url
-        Url of the Keystone endpoint including version. Note, that public endpoint is to be used,
+        URL of the Keystone endpoint including version. Note, that public endpoint is to be used,
         typically it is exposed on port 5000.
 
       username
@@ -63,28 +63,28 @@ Available settings
       Dictionary of available monitoring engines.
 
       ZABBIX
-        Dictionary of zabbix monitoring engine parameters
+        Dictionary of Zabbix monitoring engine parameters.
 
           server
-            Url of zabbix server
+            URL of Zabbix server.
 
           username
-            Username of an zabbix user account.
-            This user must be able to create zabbix hostgroups, hosts, templates, service.
+            Username of Zabbix user account.
+            This user must be able to create zabbix hostgroups, hosts, templates and IT services.
 
           password
-            Password of an zabbix user account.
+            Password of Zabbix user account.
 
           interface_parameters
-            Dictionary of parameters for zabbix hosts interface.
-            Have to contain keys: 'main', 'port', 'ip', 'type', 'useip', 'dns'
+            Dictionary of parameters for Zabbix hosts interface.
+            Have to contain keys: 'main', 'port', 'ip', 'type', 'useip', 'dns'.
 
           templateid
-            Id of default zabbix host template.
+            Id of default Zabbix host template.
 
           default_service_parameters
-            Default parameters for zabbix it-services
-            Have to contain keys: 'algorithm', 'showsla', 'sortorder', 'goodsla'
+            Default parameters for Zabbix IT services
+            Have to contain keys: 'algorithm', 'showsla', 'sortorder', 'goodsla'.
 
 
 .. _Django: https://www.djangoproject.com/

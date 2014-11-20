@@ -20,13 +20,21 @@ def generate_settings():
     config.set('global', 'secret_key', base64.b64encode(os.urandom(32)))
     config.set('global', 'static_root', os.path.join(os.getcwd(), 'static_files'))
     config.set('global', 'template_debug', 'true')
+
     config.add_section('logging')
     config.set('logging', 'log_file', os.path.join(config_dir, 'nodeconductor.log'))
+
     config.add_section('openstack')
     config.set('openstack', 'auth_url', 'http://example.com:5000/v2')
+    config.set('openstack', 'username', 'admin')
     config.set('openstack', 'password', 'password')
     config.set('openstack', 'tenant_name', 'admin')
-    config.set('openstack', 'username', 'admin')
+
+    config.add_section('zabbix')
+    config.set('zabbix', 'server_url', 'http://zabbix.example.com/zabbix')
+    config.set('zabbix', 'username', 'admin')
+    config.set('zabbix', 'password', 'password')
+    config.set('zabbix', 'host_template_id', '10106')
 
     with open(os.path.join(config_dir, "settings.ini"), 'w+') as f:
         config.write(f)
