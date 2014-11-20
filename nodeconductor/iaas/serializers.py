@@ -98,12 +98,13 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     instance_licenses = InstanceLicenseSerializer(read_only=True)
     # special field for customer
     customer_abbreviation = serializers.Field(source='project.customer.abbreviation')
+    template_os = serializers.Field(source='template.os')
 
     class Meta(object):
         model = models.Instance
         fields = (
             'url', 'uuid', 'hostname', 'description', 'start_time',
-            'template', 'template_name',
+            'template', 'template_name', 'template_os',
             'cloud', 'cloud_name',
             'flavor', 'flavor_name',
             'project', 'project_name',
