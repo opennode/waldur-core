@@ -7,6 +7,18 @@ only see connected customers:
 - customers that the user owns
 - customers that have a project where user has a role
 
+Filtering of customer list is supported through HTTP query parameters, the following fields are supported:
+
+- ?name=<customer name>
+- ?abbreviation=<customer abbreviation>
+- ?contact_details=<contact details>
+
+Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
+
+- ?o=name - sort by name
+- ?o=abbreviation - sort by abbreviation
+- ?o=contact_details - sort by contact details
+
 Customer permissions
 --------------------
 

@@ -23,6 +23,34 @@ from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGro
 
 User = auth.get_user_model()
 
+class CustomerFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
+    abbreviation = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
+    contact_details = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
+
+    class Meta(object):
+        model = models.Customer
+        fields = [
+            'name',
+            'abbreviation',
+            'contact_details',
+        ]
+        order_by = [
+            'name',
+            'abbreviation',
+            'contact_details',
+            # desc
+            '-name',
+            '-abbreviation',
+            '-contact_details',
+        ]
+
 
 class CustomerViewSet(viewsets.ModelViewSet):
     """List of customers that are accessible by this user.
@@ -33,9 +61,10 @@ class CustomerViewSet(viewsets.ModelViewSet):
     queryset = models.Customer.objects.all()
     serializer_class = serializers.CustomerSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    filter_class = CustomerFilter
 
     def pre_delete(self, obj):
         projects = models.Project.objects.filter(customer=obj).exists()
