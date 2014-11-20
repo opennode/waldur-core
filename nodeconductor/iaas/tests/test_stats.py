@@ -113,17 +113,21 @@ class UsageStatsTest(test.APITransactionTestCase):
 
         self.staff = structure_factories.UserFactory(is_staff=True)
         self.owner = structure_factories.UserFactory()
+        self.group_manager = structure_factories.UserFactory()
         self.customer1.add_user(self.owner, structure_models.CustomerRole.OWNER)
 
         self.project1 = structure_factories.ProjectFactory(customer=self.customer1)
         self.project2 = structure_factories.ProjectFactory(customer=self.customer2)
+        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer1)
+        self.project_group.projects.add(self.project1)
+        self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
 
         self.instances1 = factories.InstanceFactory.create_batch(2, project=self.project1)
         self.instances2 = factories.InstanceFactory.create_batch(2, project=self.project2)
 
         self.url = reverse('stats_usage')
 
-        self.expected_customer_data = [
+        self.expected_datapoints = [
             {'from': 1L, 'to': 471970877L, 'value': 0},
             {'from': 471970877L, 'to': 943941753L, 'value': 0},
             {'from': 943941753L, 'to': 1415912629L, 'value': 3.0}
@@ -131,10 +135,10 @@ class UsageStatsTest(test.APITransactionTestCase):
 
     def _get_patched_client(self):
         patched_cliend = Mock()
-        patched_cliend.get_item_stats = Mock(return_value=self.expected_customer_data)
+        patched_cliend.get_item_stats = Mock(return_value=self.expected_datapoints)
         return patched_cliend
 
-    def test_staff_receive_stats_for_all_projects(self):
+    def test_staff_receive_stats_for_all_customers(self):
         self.client.force_authenticate(self.staff)
 
         patched_cliend = self._get_patched_client()
@@ -146,9 +150,24 @@ class UsageStatsTest(test.APITransactionTestCase):
             expected_data = [
                 {
                     'name': customer.name,
-                    'datapoints': self.expected_customer_data if customer in (self.customer1, self.customer2) else []
+                    'datapoints': self.expected_datapoints if customer in (self.customer1, self.customer2) else []
                 }
                 for customer in structure_models.Customer.objects.all()
+            ]
+            self.assertItemsEqual(response.data, expected_data)
+
+    def test_staff_receive_stats_for_all_projects(self):
+        self.client.force_authenticate(self.staff)
+
+        patched_cliend = self._get_patched_client()
+        with patch('nodeconductor.iaas.serializers.ZabbixDBClient', return_value=patched_cliend) as patched:
+            patched.items = {'cpu': {'key': 'cpu_key', 'table': 'cpu_table'}}
+            data = {'item': 'cpu', 'from': 1, 'to': 1415912629, 'datapoints': 3, 'aggregate': 'project'}
+            response = self.client.get(self.url, data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            expected_data = [
+                {'name': project.name, 'datapoints': self.expected_datapoints}
+                for project in structure_models.Project.objects.all()
             ]
             self.assertItemsEqual(response.data, expected_data)
 
@@ -161,7 +180,19 @@ class UsageStatsTest(test.APITransactionTestCase):
             data = {'item': 'cpu', 'from': 1, 'to': 1415912629, 'datapoints': 3}
             response = self.client.get(self.url, data)
             self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
-            expected_data = [{'name': self.customer1.name, 'datapoints': self.expected_customer_data}]
+            expected_data = [{'name': self.customer1.name, 'datapoints': self.expected_datapoints}]
+            self.assertItemsEqual(response.data, expected_data)
+
+    def test_group_manager_receive_stats_for_his_group(self):
+        self.client.force_authenticate(self.group_manager)
+
+        patched_cliend = self._get_patched_client()
+        with patch('nodeconductor.iaas.serializers.ZabbixDBClient', return_value=patched_cliend) as patched:
+            patched.items = {'cpu': {'key': 'cpu_key', 'table': 'cpu_table'}}
+            data = {'item': 'cpu', 'from': 1, 'to': 1415912629, 'datapoints': 3, 'aggregate': 'project_group'}
+            response = self.client.get(self.url, data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            expected_data = [{'name': self.project_group.name, 'datapoints': self.expected_datapoints}]
             self.assertItemsEqual(response.data, expected_data)
 
 

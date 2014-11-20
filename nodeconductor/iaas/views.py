@@ -454,11 +454,32 @@ class CustomerStatsView(views.APIView):
 
 class UsageStatsView(views.APIView):
 
+    aggregate_models = {
+        'customer': {'model': Customer, 'path': models.Instance.Permissions.customer_path},
+        'project_group': {'model': ProjectGroup, 'path': models.Instance.Permissions.project_group_path},
+        'project': {'model': Project, 'path': models.Instance.Permissions.project_path},
+    }
+
+    def _get_aggregate_queryset(self, request, aggregate_model_name):
+        model = self.aggregate_models[aggregate_model_name]['model']
+        return filter_queryset_for_user(model.objects.all(), request.user)
+
+    def _get_aggregate_filter(self, aggregate_model_name, obj):
+        path = self.aggregate_models[aggregate_model_name]['path']
+        return {path: obj}
+
     def get(self, request, format=None):
         usage_stats = []
-        customer_queryset = filter_queryset_for_user(Customer.objects.all(), request.user)
-        for customer in customer_queryset:
-            instances = models.Instance.objects.filter(project__customer=customer)
+
+        aggregate_model_name = request.QUERY_PARAMS.get('aggregate', 'customer')
+        if aggregate_model_name not in self.aggregate_models.keys():
+            return Response(
+                'Get parameter "aggregate" can take only this values: ' % ', '.join(self.aggregate_models.keys()),
+                status=status.HTTP_400_BAD_REQUEST)
+
+        for aggregate_object in self._get_aggregate_queryset(request, aggregate_model_name):
+            instances = models.Instance.objects.filter(
+                **self._get_aggregate_filter(aggregate_model_name, aggregate_object))
             if instances:
                 hour = 60 * 60
                 data = {
@@ -473,7 +494,7 @@ class UsageStatsView(views.APIView):
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
                 stats = serializer.get_stats(instances)
-                usage_stats.append({'name': customer.name, 'datapoints': stats})
+                usage_stats.append({'name': aggregate_object.name, 'datapoints': stats})
             else:
-                usage_stats.append({'name': customer.name, 'datapoints': []})
+                usage_stats.append({'name': aggregate_object.name, 'datapoints': []})
         return Response(usage_stats, status=status.HTTP_200_OK)
