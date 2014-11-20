@@ -13,6 +13,7 @@ Field filters (all of the filters to case insensitive partial matching) are:
 - phone_number
 - description
 - job_title
+- username
 - project
 - project_group
 
@@ -21,6 +22,7 @@ In addition, several custom filters are supported:
 - ?current - filters out user making a request. Useful for getting information about a currently logged in user.
 - ?civil_number=XXX - filters out users with a specified civil number
 - ?can_manage - filter for users with project roles that a request user can manage (i.e. remove privileges).
+- ?is_active=True|False - show only active (non-active) users.
 
 Creating a user
 ---------------

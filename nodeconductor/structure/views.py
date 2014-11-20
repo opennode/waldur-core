@@ -258,11 +258,13 @@ class UserFilter(django_filters.FilterSet):
     )
 
     full_name = django_filters.CharFilter(lookup_type='icontains')
+    username = django_filters.CharFilter()
     native_name = django_filters.CharFilter(lookup_type='icontains')
     organization = django_filters.CharFilter(lookup_type='icontains')
     job_title = django_filters.CharFilter(lookup_type='icontains')
     # XXX: temporary. Should be done by a proper search full-text search engine
     description = django_filters.CharFilter(lookup_type='icontains')
+    is_active = django_filters.BooleanFilter()
 
     class Meta(object):
         model = User
@@ -277,7 +279,8 @@ class UserFilter(django_filters.FilterSet):
             'project',
             'project_group',
             'username',
-            'civil_number'
+            'civil_number',
+            'is_active',
         ]
         order_by = [
             'full_name',
@@ -288,6 +291,7 @@ class UserFilter(django_filters.FilterSet):
             'description',
             'job_title',
             'username',
+            'active',
             # descending
             '-full_name',
             '-native_name',
@@ -297,6 +301,7 @@ class UserFilter(django_filters.FilterSet):
             '-description',
             '-job_title',
             '-username',
+            '-is_active',
         ]
 
 
@@ -337,6 +342,8 @@ class UserViewSet(viewsets.ModelViewSet):
                 Q(groups__projectgrouprole__project_group__roles__permission_group__user=user)
             ).distinct()
 
+        if not user.is_staff:
+            queryset = queryset.filter(is_active=True)
         return queryset
 
 
