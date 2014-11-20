@@ -77,43 +77,41 @@ Arguments:
 
     def add_sample_data(self):
         self.stdout.write("""Generating data structures...
+              +---------------+  +-----------------+  +------------------+  +---------------+
+              | User          |  | User            |  | User             |  | User          |
+              | username: Bob |  | username: Alice |  | username: Walter |  | username: Zed |
+              | password: Bob |  | password: Alice |  | password: Walter |  | password: Zed |
+              +---------------+  +-----------------+  | is_staff: yes    |  | (no roles)    |
+                       \              /       \       +------------------+  +---------------+
+                   role:owner        /    role:owner
+                         \          /           \\
+                          \   role:owner         \\
+                           \      /               \\
+                  +-------------------------+   +----------------------------+
+                  | Customer                |   | Customer                   |
+                  | name: Ministry of Bells |   | name: Ministry of Whistles |
+          +-------+-------------------------+   +----------------------------+-----+
+          |                                                                        |
++---------+---------+                +---------------+                +------------+---------+
+| Project Group     |                | User          |                | Project Group        +--role: manager--+
+| name: Bells Portal+-+role:manager+-+ username: Gus +-+role:manager+-+ name: Whistles Portal|                 |
++------+------------+                | password: Gus |                +-----------+----------+                 |
+       |                             +---------------+                            |                            |
+       |                                                +-------------------------+                            |
+       |                                                |                         |                            |
+       |   +----------------+            +--------------+----+      +-------------+--------------+             |
+       |   | Project        |            | Project           |      | Project                    |             |
+       +---+ name: bells.org|            | name: whistles.org|      | name: intranet.whistles.org+--role:admin-+
+           +--+-------------+            +---------------+---+      +----+------------+----------+             |
+              |             |            |               |               |            |                        |
+          role:admin    role:manager role:admin      role:manager    role:admin   role:manager                 |
+              |             |            |               |               |            |                        |
+     +--------+----------+  |  +---------+------+    +---+------------+  |  +---------+-------+    +-----------+----+
+     | User              |  |  | User           |    | User           |  |  | User            |    | User           |
+     | username: Charlie |  +--+ username: Dave |    | username: Erin +--+  | username: Frank |    | username: Harry|
+     | password: Charlie |     | password: Dave |    | password: Erin |     | password: Frank |    | password: Harry|
+     +-------------------+     +-------------+--+    +----------------+     +-----------------+    +----------------+
 
-+---------------+  +-----------------+  +------------------+  +---------------+
-| User          |  | User            |  | User             |  | User          |
-| username: Bob |  | username: Alice |  | username: Walter |  | username: Zed |
-| password: Bob |  | password: Alice |  | password: Walter |  | password: Zed |
-+-------+-------+  +-----+-----+-----+  | is_staff: yes    |  | (no roles)    |
-         \              /       \       +------------------+  +---------------+
-     role:owner        /    role:owner
-           \          /           \\
-            \   role:owner         \\
-             \      /               \\
-    +---------+----+----------+   +--+-------------------------+
-    | Customer                |   | Customer                   |
-    | name: Ministry of Bells |   | name: Ministry of Whistles |
-    +------------+------------+   +----------+-----------------+
-                 |                            \\
-                 |                             \\
-      +----------+---------+         +----------+------------+
-      | Project Group      |         | Project Group         |
-      | name: Bells Portal |         | name: Whistles Portal |
-      +----------+---------+         +--+----------------+---+
-                /                      /                  \\
-               /                      /                    \\
-   +----------+------+  +------------+-------+  +-----------+-----------------+
-   | Project         |  | Project            |  | Project                     |
-   | name: bells.org |  | name: whistles.org |  | name: intranet.whistles.org |
-   +--------+-----+--+  +----------+----+----+  +--------+----+---------------+
-           /       \              /      \              /      \\
-     role:admin     \       role:admin    \       role:admin    \\
-         /           \          /          \          /          \\
-        /        role:manager  /       role:manager  /       role:manager
-       /               \      /              \      /              \\
-+-----+-------------+ +-+----+---------+ +----+----+------+ +-------+---------+
-| User              | | User           | | User           | | User            |
-| username: Charlie | | username: Dave | | username: Erin | | username: Frank |
-| password: Charlie | | password: Dave | | password: Erin | | password: Frank |
-+-------------------+ +----------------+ +----------------+ +-----------------+
 
 Use cases covered:
  - Use case 2: User that is admin of a project -- Charlie, Dave, Erin
@@ -129,7 +127,7 @@ Other use cases are covered with random data.
 """)
 
         data = {
-            'users' : {
+            'users': {
                 'Alice': {},
                 'Bob': {},
                 'Charlie': {},
@@ -138,14 +136,17 @@ Other use cases are covered with random data.
                 'Frank': {},
                 'Walter': {
                     'is_staff': True,
-                 },
+                },
                 'Zed': {},
+                'Gus': {},
+                'Harry': {},
             },
-            'customers' : {
+            'customers': {
                 'Ministry of Bells': {
                     'owners': ['Alice', 'Bob'],
                     'project_groups': {
                         'Bells Portal': {
+                            'managers': ['Gus'],
                             'projects': {
                                 'bells.org': {
                                     'admins': ['Charlie'],
@@ -159,13 +160,14 @@ Other use cases are covered with random data.
                     'owners': ['Bob'],
                     'project_groups': {
                         'Whistles Portal': {
+                            'managers': ['Harry', 'Gus'],
                             'projects': {
                                 'whistles.org': {
                                     'admins': ['Dave'],
                                     'managers': ['Erin'],
                                 },
                                 'intranet.whistles.org': {
-                                    'admins': ['Erin'],
+                                    'admins': ['Erin', 'Harry'],
                                     'managers': ['Frank'],
                                 },
                             },
@@ -209,6 +211,12 @@ Other use cases are covered with random data.
                 project_group, was_created = customer.project_groups.get_or_create(name=project_group_name)
                 self.stdout.write('Project Group "%s" %s.' % (project_group_name, "created" if was_created else "already exists"))
                 yuml += '[Customer;name:%s]-->[Project Group;name:%s],' % (customer_name, project_group_name)
+
+                for username in project_group_params['managers']:
+                    self.stdout.write('Adding user "%s" as manager of project group "%s"...' % (username, project_group_name))
+                    project_group.add_user(users[username], ProjectGroupRole.MANAGER)
+                    yuml += '[Project Group;name:%s]<-role:manager-[User;username:%s;password:%s],' % \
+                            (project_group_name, username, username)
 
                 for project_name, project_params in project_group_params['projects'].items():
                     self.stdout.write('Creating project "%s" in project group "%s"...' % (project_name, project_group_name))
