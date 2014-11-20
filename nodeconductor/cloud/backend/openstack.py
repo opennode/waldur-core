@@ -15,6 +15,7 @@ from keystoneclient import session
 from keystoneclient.auth.identity import v2
 from keystoneclient.service_catalog import ServiceCatalog
 from keystoneclient.v2_0 import client as keystone_client
+from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
@@ -167,6 +168,8 @@ class OpenStackBackend(object):
 
             self.ensure_user_is_tenant_admin(username, tenant, keystone)
 
+            self.get_or_create_network(membership)
+
             membership.save()
 
             logger.info('Successfully synchronized CloudProjectMembership with id %s', membership.id)
@@ -222,6 +225,13 @@ class OpenStackBackend(object):
         # This will eagerly sign in throwing AuthorizationFailure on bad credentials
         sess.get_token()
         return keystone_client.Client(session=sess)
+
+    def get_neutron_client(self, **credentials):
+        auth_plugin = v2.Password(**credentials)
+        sess = session.Session(auth=auth_plugin)
+        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+        sess.get_token()
+        return neutron_client.Client(session=sess)
 
     def get_nova_client(self, **credentials):
         auth_plugin = v2.Password(**credentials)
@@ -286,7 +296,7 @@ class OpenStackBackend(object):
         return username, password
 
     def get_or_create_tenant(self, membership, keystone):
-        tenant_name = '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
+        tenant_name = self.get_tenant_name(membership)
 
         # First try to create a tenant
         logger.info('Creating tenant %s', tenant_name)
@@ -322,3 +332,42 @@ class OpenStackBackend(object):
         except keystone_exceptions.Conflict:
             logger.info('User %s already has admin role within tenant %s',
                         username, tenant.name)
+
+    def get_or_create_network(self, membership):
+        credentials = self.get_credentials(membership.cloud.auth_url)
+
+        neutron = self.get_neutron_client(**credentials)
+
+        network_name = self.get_tenant_name(membership)
+
+        if neutron.list_networks(name=network_name)['networks']:
+            logger.info('Network %s already exists, using it instead', network_name)
+            return
+
+        logger.info('Creating network %s', network_name)
+        network = {'name': network_name}
+
+        create_response = neutron.create_network({'networks': [network]})
+        network_id = create_response['networks'][0]['id']
+
+        subnet_name = '{0}-sn01'.format(network_name)
+
+        logger.info('Creating subnet %s', subnet_name)
+        subnet = {
+            'network_id': network_id,
+            'cidr': '192.168.42.0/24',
+            'allocation_pools': [
+                {
+                    'start': '192.168.42.10',
+                    'end': '192.168.42.250'
+                }
+            ],
+            'name': subnet_name,
+            'ip_version': 4,
+            'enable_dhcp': True,
+            'gateway_ip': None,
+        }
+        neutron.create_subnet({'subnets': [subnet]})
+
+    def get_tenant_name(self, membership):
+        return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)

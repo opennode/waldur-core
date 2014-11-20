@@ -52,6 +52,7 @@ class OpenStackBackendPublicApiTest(unittest.TestCase):
         self.backend.get_nova_client = mock.Mock(return_value=self.nova_client)
         self.backend.get_or_create_tenant = mock.Mock(return_value=self.tenant)
         self.backend.get_or_create_user = mock.Mock(return_value=('john', 'doe'))
+        self.backend.get_or_create_network = mock.Mock()
         self.backend.ensure_user_is_tenant_admin = mock.Mock()
 
     def test_push_cloud_account_does_not_call_openstack_api(self):
@@ -74,6 +75,11 @@ class OpenStackBackendPublicApiTest(unittest.TestCase):
         self.backend.push_membership(self.membership)
 
         self.backend.get_or_create_tenant.assert_called_once_with(self.membership, self.keystone_client)
+
+    def test_push_membership_synchronizes_network(self):
+        self.backend.push_membership(self.membership)
+
+        self.backend.get_or_create_network.assert_called_once_with(self.membership)
 
     def test_push_membership_synchronizes_users_role_in_tenant(self):
         self.backend.push_membership(self.membership)
