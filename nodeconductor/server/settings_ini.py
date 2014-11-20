@@ -118,6 +118,10 @@ if config.get('global', 'db_backend') == 'mysql':
         'PORT': config.get('mysql', 'port'),
         'USER': config.get('mysql', 'user'),
         'PASSWORD': config.get('mysql', 'password'),
+        # use case-sensitive collation
+        'OPTIONS' : {
+            'init_command': 'SET COLLATION_CONNECTION=utf8_bin'
+        }
     }
 elif config.has_section('sqlite3'):
     DATABASES['default'] = {
