@@ -77,7 +77,7 @@ URL: /stats/resource/
 Required request GET parameter: ?auth_url - cloud URL
 
 Answer will be list dictionaries with fields:
-'ram_quota', 'vcpu_quota', 'storage_quota', 'free_disk_gb', 'disk_available_least', 'local_gb', 'free_ram_mb', 'memory_mb_used', 'count', 'vcpus_used', 'local_gb_used', u'memory_mb', 'current_workload', 'vcpus': 2, 'running_vms'
+'ram_quota', 'vcpu_quota', 'storage_quota', 'free_disk_gb', 'disk_available_least', 'local_gb', 'free_ram_mb', 'memory_mb_used', 'count', 'vcpus_used', 'local_gb_used', u'memory_mb', 'current_workload', 'vcpus', 'running_vms'
 
 
 Example:
