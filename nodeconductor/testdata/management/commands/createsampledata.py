@@ -135,16 +135,53 @@ Other use cases are covered with random data.
             'users': {
                 'Alice': {},
                 'Bob': {},
-                'Charlie': {},
-                'Dave': {},
-                'Erin': {},
+                'Charlie': {
+                    'ssh_keys': {
+                        'Public key 1': (
+                            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28TtLm5yBDRL"
+                            "KAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rYdknWoMo"
+                            "ArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9duD2C"
+                            "05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
+                            "vEAFdOJcqjyyH4FOGYa8usP1 charlie@example.com"),
+
+                    }
+                },
+                'Dave': {
+                    'ssh_keys': {
+                        'Public key 1': (
+                            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDI+1EEbekRo8UENZ68F0j0PrUZbW8ZoAqQPr9OrYlWkNdOR"
+                            "hM218Q7d14cvxf4TBixC18yv/wwRRCm7yZf7pztAyNj1NsAD9YuHFxC2idz9j9ztdPaCcyNDaZMaju74sBhEEQ"
+                            "c2HjCVGacJMhDtZ64FBSHdbfFwNLoTDErzQhQPLIQ2PrOSGKgn14KjVjqyvSRSE1lP//X6Uf0EXRe2FXfxVZYj1"
+                            "Wh0QNsHyCG/6S8s875wlpiV2yhCN+RIBqUt+K3f9kTmkJrHQ4R//7jxbfM5BPRFZwJNcqGTzEY9A+U35/Bqylw3w"
+                            "d3HZUq+o7p/fUPf1funstUOmyKdf6UNykt dave@example.com"),
+                    }
+                },
+                'Erin': {
+                    'ssh_keys': {
+                        'Public key 1': (
+                            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDgT5PABOUDgqI3XgfZubMP5m8rSfFjrxO05l+fRcUzY4fahHCc"
+                            "sPinnYCWR9w6u5Q0S0FcNr1pSOeh+turenndwvTQECUrqRnXTRVFNegQiLVxzHxi4ymTVvTmfq9uAGgkH5YgbADq"
+                            "Nv64NRwZRbC6b1PB1Wm5mkoF31Uzy76pq3pf++rfh/s+Wg+vAyLy+WaSqeqvFxmeP7np/ByCv8zDAJClX9Cbhj3+"
+                            "IRm2TvESUOXz8kj1g7/dcFBSDjb098EeFmzpywreSjgjRFwbkfu7bU0Jo0+CT/zWgEDZstl9Hk0ln8fepYAdGYty"
+                            "565XosxwbWruVIfIJm/4kNo9enp5 erin@example.com"),
+                    }
+                },
                 'Frank': {},
                 'Walter': {
                     'is_staff': True,
                 },
                 'Zed': {},
                 'Gus': {},
-                'Harry': {},
+                'Harry': {
+                    'ssh_keys': {
+                        'Public key 1': (
+                            "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLFbmgChA5krmUM0/Hl1fr/1MfzSsp2IY+N6Q1t0M9aGzBonHe"
+                            "MSisaw8NE81tYHCIz0gdRnCPuv3UBsIKx1PKRyGeMQYbsSrjYAhZJAKCrjYE1NsDmOmkKdR+Z+6fZ/LNaXh2oG/m"
+                            "KUfyhrwZtYuXKQ4B8LgIO2oMmi3UVyW8IwUGkQMEY9vxKKv+ka2aioZJBJudFN2MVNlC8M6iYkMx22yS/c3arrbt"
+                            "zKYbmxqYERXHlCqwd/+S7NuYdL4oG4U+juwQWHJK0qhX8O/M+1lxWKPqI+w/ClCpf4oaw158GfmzlSM3nqza8te8"
+                            "SJXgWJl48XMIJAMeAgpkyYt8Zpwt harry@example.com"),
+                    }
+                },
             },
             'customers': {
                 'Ministry of Bells': {
@@ -263,6 +300,14 @@ Other use cases are covered with random data.
                 yuml += '[User;username:%s;password:%s;is_staff:yes{bg:green}],' % (username, username)
             else:
                 yuml += '[User;username:%s;password:%s],' % (username, username)
+
+            if 'ssh_keys' in user_params:
+                for key_name in user_params['ssh_keys']:
+                    self.stdout.write('Creating SSH public key "%s" for user "%s"...' % (key_name, username))
+                    public_key, was_created = SshPublicKey.objects.get_or_create(user=users[username], name=key_name,
+                                                                                 public_key=user_params['ssh_keys'][key_name])
+                    self.stdout.write('SSH public key "%s" for user "%s" %s.'
+                                      % (key_name, username, "created" if was_created else "already exists"))
 
         for customer_name, customer_params in data['customers'].items():
             self.stdout.write('Creating customer "%s"...' % customer_name)
