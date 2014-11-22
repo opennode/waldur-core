@@ -5,7 +5,7 @@ SSH public keys are injected to VM instances during creation, so that holder of 
 log in to that instance.
 SSH public keys are connected to user accounts, whereas the key may belong to one user only, and the user may have multiple SSH keys.
 Users can only access SSH keys connected to their accounts. Staff users can see all the accounts.
-Project administrators can select what SSH key will be injected intto VM instance during instance provisioning.
+Project administrators can select what SSH key will be injected into VM instance during instance provisioning.
 
 Key list
 --------
