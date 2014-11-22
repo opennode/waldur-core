@@ -77,40 +77,45 @@ Arguments:
 
     def add_sample_data(self):
         self.stdout.write("""Generating data structures...
-              +---------------+  +-----------------+  +------------------+  +---------------+
-              | User          |  | User            |  | User             |  | User          |
-              | username: Bob |  | username: Alice |  | username: Walter |  | username: Zed |
-              | password: Bob |  | password: Alice |  | password: Walter |  | password: Zed |
-              +---------------+  +-----------------+  | is_staff: yes    |  | (no roles)    |
-                       \              /       \       +------------------+  +---------------+
-                   role:owner        /    role:owner
-                         \          /           \\
-                          \   role:owner         \\
-                           \      /               \\
-                  +-------------------------+   +----------------------------+
-                  | Customer                |   | Customer                   |
-                  | name: Ministry of Bells |   | name: Ministry of Whistles |
-          +-------+-------------------------+   +----------------------------+-----+
-          |                                                                        |
-+---------+---------+                +---------------+                +------------+---------+
-| Project Group     |                | User          |                | Project Group        +--role: manager--+
-| name: Bells Portal+-+role:manager+-+ username: Gus +-+role:manager+-+ name: Whistles Portal|                 |
-+------+------------+                | password: Gus |                +-----------+----------+                 |
-       |                             +---------------+                            |                            |
-       |                                                +-------------------------+                            |
-       |                                                |                         |                            |
-       |   +----------------+            +--------------+----+      +-------------+--------------+             |
-       |   | Project        |            | Project           |      | Project                    |             |
-       +---+ name: bells.org|            | name: whistles.org|      | name: intranet.whistles.org+--role:admin-+
-           +--+-------------+            +---------------+---+      +----+------------+----------+             |
-              |             |            |               |               |            |                        |
-          role:admin    role:manager role:admin      role:manager    role:admin   role:manager                 |
-              |             |            |               |               |            |                        |
-     +--------+----------+  |  +---------+------+    +---+------------+  |  +---------+-------+    +-----------+----+
+             +---------------+  +-----------------+  +------------------+  +---------------+
+             | User          |  | User            |  | User             |  | User          |
+             | username: Bob |  | username: Alice |  | username: Walter |  | username: Zed |
+             | password: Bob |  | password: Alice |  | password: Walter |  | password: Zed |
+             +------+--------+  +--+---------+----+  | is_staff: yes    |  | (no roles)    |
+                    |              |         |       +-----------+------+  +---------------+
+                role:owner     role:owner role:owner             |
+                    |              |         |               role:owner
+                    |              |         |                   |
+           +--------+--------------+-+       |               +---+------------------------+      +---------------+
+           | Customer                |       |               | Customer                   +------+ Cloud account |
+           | name: Ministry of Bells |       +---------------+ name: Ministry of Whistles |      | cloud: Fractus|
+           +----+-----------------+--+                       +-----------+------------+---+      +---------------+
+                |                 |                                      |            |
+                |                 |   +---------------+                  |            |
++---------------+---+             |   | User          |                  |       +----+-----------------+
+| Project Group     +-role:manager----+ username: Gus +----role:manager---------+ Project Group         +-------+
+| name: Bells Portal|             |   | password: Gus |                  |       | name: Whistles Portal|       |
++--------------+----+             |   +---------------+                  |       +--------+-------------+       |
+               |                  |                                      |                |                     |
+               |   +--------------+--+     +---------------+             |                |                     |
+               |   | Cloud account   |     | Cloud account |             |                |                     |
+               |   | cloud: Stratus  |     | cloud: Cumulus+-------------+                |                     |
+               |   +---+-------------+     +---------+-----+                              |                 role:manager
+               |       |                   |         |                                    |                     |
+               |       |    +--------------+         |    +-------------------------------+                     |
+               |       |    |                        |    |                               |                     |
+            +--+-------+----+            +-----------+----+--+      +---------------------+------+              |
+            |Project        |            | Project           |      | Project                    |              |
+            |name: bells.org|            | name: whistles.org|      | name: intranet.whistles.org+-+role:admin+-+
+            +-+-------------+            +---------------+---+      +----+------------+----------+              |
+              +             +            +               +               +            +                         |
+          role:admin    role:manager role:admin      role:manager    role:admin   role:manager                  |
+              +             +            +               +               +            +                         |
+     +--------+----------+  |  +---------+------+    +---+------------+  |  +---------+-------+    +------------+---+
      | User              |  |  | User           |    | User           |  |  | User            |    | User           |
      | username: Charlie |  +--+ username: Dave |    | username: Erin +--+  | username: Frank |    | username: Harry|
      | password: Charlie |     | password: Dave |    | password: Erin |     | password: Frank |    | password: Harry|
-     +-------------------+     +-------------+--+    +----------------+     +-----------------+    +----------------+
+     +-------------------+     +----------------+    +----------------+     +-----------------+    +----------------+
 
 
 Use cases covered:
@@ -144,6 +149,10 @@ Other use cases are covered with random data.
             'customers': {
                 'Ministry of Bells': {
                     'owners': ['Alice', 'Bob'],
+                    'clouds': {
+                        'Stratus': {},
+                        'Cumulus': {},
+                    },
                     'project_groups': {
                         'Bells Portal': {
                             'managers': ['Gus'],
@@ -151,6 +160,7 @@ Other use cases are covered with random data.
                                 'bells.org': {
                                     'admins': ['Charlie'],
                                     'managers': ['Dave'],
+                                    'connected_clouds': ['Stratus', 'Cumulus']
                                 },
                             },
                         },
@@ -158,6 +168,10 @@ Other use cases are covered with random data.
                 },
                 'Ministry of Whistles': {
                     'owners': ['Bob'],
+                    'clouds': {
+                        'Fractus': {},
+                        'Cumulus': {},
+                    },
                     'project_groups': {
                         'Whistles Portal': {
                             'managers': ['Harry', 'Gus'],
@@ -165,10 +179,12 @@ Other use cases are covered with random data.
                                 'whistles.org': {
                                     'admins': ['Dave'],
                                     'managers': ['Erin'],
+                                    'connected_clouds': ['Cumulus'],
                                 },
                                 'intranet.whistles.org': {
                                     'admins': ['Erin', 'Harry'],
                                     'managers': ['Frank'],
+                                    'connected_clouds': [],
                                 },
                             },
                         },
@@ -206,6 +222,13 @@ Other use cases are covered with random data.
                 customer.add_user(users[username], CustomerRole.OWNER)
                 yuml += '[User;username:%s;password:%s]-role:owner->[Customer;name:%s],' % (username, username, customer_name)
 
+            for cloud_name in customer_params['clouds']:
+                self.stdout.write('Creating cloud account "%s Cloud" for customer "%s"...' % (cloud_name, customer_name))
+                customer_params['clouds'][cloud_name], was_created = customer.clouds.get_or_create(customer=customer,
+                                                                                                   name=cloud_name)
+                self.stdout.write('"%s Cloud" account %s.' % (cloud_name, "created" if was_created else "already exists"))
+                yuml += '[Customer;name:%s]-->[Cloud account;cloud:%s{bg:skyblue}],' % (customer_name, cloud_name)
+
             for project_group_name, project_group_params in customer_params['project_groups'].items():
                 self.stdout.write('Creating project group "%s" for customer "%s"...' % (project_group_name, customer_name))
                 project_group, was_created = customer.project_groups.get_or_create(name=project_group_name)
@@ -234,6 +257,15 @@ Other use cases are covered with random data.
                         self.stdout.write('Adding user "%s" as manager of project "%s"...' % (username, project_name))
                         project.add_user(users[username], ProjectRole.MANAGER)
                         yuml += '[Project;name:%s]<-role:manager-[User;username:%s;password:%s],' % (project_name, username, username)
+
+                    for cloud_name in project_params['connected_clouds']:
+                        self.stdout.write('Adding connection between "%s Cloud" cloud account and "%s" project...'
+                                          % (cloud_name, project_name))
+                        connection, was_created = CloudProjectMembership.objects.get_or_create(
+                            cloud=customer_params['clouds'][cloud_name], project=project)
+                        self.stdout.write('Connection between "%s Cloud" cloud account and "%s" project %s.'
+                                          % (cloud_name, project_name, "created" if was_created else "already exists"))
+                        yuml += '[Cloud account;cloud:%s]-->[Project;name:%s],' % (cloud_name, project_name)
 
         self.stdout.write(yuml)
 
