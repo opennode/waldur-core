@@ -156,7 +156,7 @@ Other use cases are covered with random data.
                                     'cores': 1,
                                     'ram': 512,
                                     'disk': 1024,
-                                    }
+                                }
                             },
                             'templates': {
                                 'CentOS 7 minimal jmHCYir': {
@@ -170,7 +170,7 @@ Other use cases are covered with random data.
                                     'cores': 1,
                                     'ram': 2048,
                                     'disk': 10 * 1024,
-                                    }
+                                }
                             },
                             'templates': {
                                 'CentOS 6 x64 qsECMr': {
@@ -201,7 +201,7 @@ Other use cases are covered with random data.
                                     'cores': 4,
                                     'ram': 8192,
                                     'disk': 10 * 1024,
-                                    }
+                                }
                             },
                             'templates': {
                                 'Windows 3.11 pQzCuMQ': {
@@ -215,7 +215,7 @@ Other use cases are covered with random data.
                                     'cores': 2,
                                     'ram': 4096,
                                     'disk': 10 * 1024,
-                                    }
+                                }
                             },
                             'templates': {
                                 'Windows 3.11 jWxL': {
