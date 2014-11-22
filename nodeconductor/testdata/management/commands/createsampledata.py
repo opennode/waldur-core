@@ -150,8 +150,34 @@ Other use cases are covered with random data.
                 'Ministry of Bells': {
                     'owners': ['Alice', 'Bob'],
                     'clouds': {
-                        'Stratus': {},
-                        'Cumulus': {},
+                        'Stratus': {
+                            'flavors': {
+                                'm1.tiny': {
+                                    'cores': 1,
+                                    'ram': 512,
+                                    'disk': 1024,
+                                    }
+                            },
+                            'templates': {
+                                'CentOS 7 minimal jmHCYir': {
+                                    'os': 'CentOS 7',
+                                },
+                            },
+                        },
+                        'Cumulus': {
+                            'flavors': {
+                                'm1.small': {
+                                    'cores': 1,
+                                    'ram': 2048,
+                                    'disk': 10 * 1024,
+                                    }
+                            },
+                            'templates': {
+                                'CentOS 6 x64 qsECMr': {
+                                    'os': 'CentOS 6.5',
+                                },
+                            },
+                        },
                     },
                     'project_groups': {
                         'Bells Portal': {
@@ -169,8 +195,34 @@ Other use cases are covered with random data.
                 'Ministry of Whistles': {
                     'owners': ['Bob'],
                     'clouds': {
-                        'Fractus': {},
-                        'Cumulus': {},
+                        'Fractus': {
+                            'flavors': {
+                                'm1.large': {
+                                    'cores': 4,
+                                    'ram': 8192,
+                                    'disk': 10 * 1024,
+                                    }
+                            },
+                            'templates': {
+                                'Windows 3.11 pQzCuMQ': {
+                                    'os': 'Windows 3.11',
+                                },
+                            },
+                        },
+                        'Cumulus': {
+                            'flavors': {
+                                'm1.medium': {
+                                    'cores': 2,
+                                    'ram': 4096,
+                                    'disk': 10 * 1024,
+                                    }
+                            },
+                            'templates': {
+                                'Windows 3.11 jWxL': {
+                                    'os': 'Windows 3.11',
+                                },
+                            }
+                        },
                     },
                     'project_groups': {
                         'Whistles Portal': {
@@ -222,12 +274,29 @@ Other use cases are covered with random data.
                 customer.add_user(users[username], CustomerRole.OWNER)
                 yuml += '[User;username:%s;password:%s]-role:owner->[Customer;name:%s],' % (username, username, customer_name)
 
-            for cloud_name in customer_params['clouds']:
+            for cloud_name, cloud_params in customer_params['clouds'].items():
                 self.stdout.write('Creating cloud account "%s Cloud" for customer "%s"...' % (cloud_name, customer_name))
                 customer_params['clouds'][cloud_name], was_created = customer.clouds.get_or_create(customer=customer,
                                                                                                    name=cloud_name)
+                cloud = customer_params['clouds'][cloud_name]
                 self.stdout.write('"%s Cloud" account %s.' % (cloud_name, "created" if was_created else "already exists"))
                 yuml += '[Customer;name:%s]-->[Cloud account;cloud:%s{bg:skyblue}],' % (customer_name, cloud_name)
+
+                for flavor_name in cloud_params['flavors']:
+                    self.stdout.write('Creating flavor "%s" for cloud account "%s"...' % (flavor_name, cloud_name))
+                    flavor, was_created = cloud.flavors.get_or_create(name=flavor_name, cloud=cloud_name,
+                                                                      **cloud_params['flavors'][flavor_name])
+                    self.stdout.write('"%s" flavor for cloud account "%s" %s.'
+                                      % (flavor_name, cloud_name, "created" if was_created else "already exists"))
+
+                for template_name in cloud_params['templates']:
+                    self.stdout.write('Creating template "%s" for cloud account "%s"...' % (template_name, cloud_name))
+                    template, was_created = Template.objects.get_or_create(name=template_name,
+                                                                           **cloud_params['templates'][template_name])
+                    if was_created:
+                        cloud.images.create(cloud=cloud, template=template)
+                    self.stdout.write('"%s" template for cloud account "%s" %s.'
+                                      % (template_name, cloud_name, "created" if was_created else "already exists"))
 
             for project_group_name, project_group_params in customer_params['project_groups'].items():
                 self.stdout.write('Creating project group "%s" for customer "%s"...' % (project_group_name, customer_name))
