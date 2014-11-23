@@ -1,4 +1,6 @@
-from rest_framework import serializers
+from django.db.utils import IntegrityError
+from rest_framework import serializers, status
+from rest_framework.exceptions import APIException
 
 from nodeconductor.cloud import models
 from nodeconductor.core import serializers as core_serializers
@@ -75,6 +77,11 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
         return native
 
 
+class UniqueConstraintError(APIException):
+    status_code = status.HTTP_302_FOUND
+    default_detail = 'Entity already exists.'
+
+
 class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFilteringMixin,
                                        core_serializers.RelatedResourcesFieldMixin,
                                        serializers.HyperlinkedModelSerializer):
@@ -93,6 +100,14 @@ class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFiltering
 
     def get_related_paths(self):
         return 'project', 'cloud'
+
+    def save(self, **kwargs):
+        try:
+            return super(CloudProjectMembershipSerializer, self).save(**kwargs)
+        except IntegrityError:
+            # unique constraint validation
+            # TODO: Should be done on a higher level
+            raise UniqueConstraintError()
 
 
 class BasicSecurityGroupRuleSerializer(serializers.ModelSerializer):

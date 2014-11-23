@@ -1,7 +1,4 @@
-from django.db import IntegrityError
-
 from rest_framework import serializers
-from rest_framework.exceptions import ParseError
 
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.cloud import serializers as cloud_serializers
