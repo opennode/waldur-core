@@ -134,6 +134,22 @@ Example of a valid request:
         "flavor": "1ee385bc043249498cfeb8c7e3e079f0",
     }
 
+To resize disk of the flavor, submit a POST request to the instance's RPC url, specifying also size of the disk.
+Example of a valid request:
+
+
+.. code-block:: http
+
+    POST /api/instances/6c9b01c251c24174a6691a1f894fae31/resize/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "disk_size": "1024",
+    }
+
 Deletion of an instance
 -----------------------
 

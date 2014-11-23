@@ -185,8 +185,28 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return Response({'status': "New flavor is not within the same cloud"},
                             status=status.HTTP_400_BAD_REQUEST)
         elif 'disk_size' in request.DATA:
-            size = request.DATA['disk_size']
-            return self._schedule_transition(request, uuid, 'resize', new_size=size)
+            # TODO: Move to the background task
+            is_admin = instance.project.roles.filter(permission_group__user=request.user,
+                                                     role_type=ProjectRole.ADMINISTRATOR).exists()
+            if not is_admin:
+                raise PermissionDenied()
+
+            old_size = instance.flavor.disk
+
+            try:
+                new_size = int(request.DATA['disk_size'])
+
+                if new_size < 0:
+                    raise ValueError
+            except ValueError:
+                return Response({'status': "Disk size should be positive integer"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            instance.flavor.disk = new_size
+            instance.flavor.save()
+
+            return Response({'status': "Disk was successfully resized from %s MiB to %s MiB"
+                                       % (old_size, new_size)}, status=status.HTTP_200_OK)
 
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
