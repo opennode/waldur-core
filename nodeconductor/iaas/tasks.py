@@ -4,7 +4,9 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from celery import shared_task
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from nodeconductor.core.tasks import tracked_processing
@@ -15,10 +17,6 @@ from nodeconductor.monitoring.zabbix.api_client import ZabbixAPIException
 
 logger = logging.getLogger(__name__)
 event_log = EventLoggerAdapter(logger)
-
-
-class ResizingError(KeyError, models.Instance.DoesNotExist):
-    pass
 
 
 def _mock_processing(instance_uuid, should_fail=False):
@@ -84,5 +82,16 @@ def schedule_deleting(instance_uuid, **kwargs):
 def schedule_resizing(instance_uuid, **kwargs):
     with transaction.atomic():
         instance = models.Instance.objects.get(uuid=instance_uuid)
-        instance.flavor = cloud_models.Flavor.objects.get(uuid=kwargs['new_flavor'])
+
+        if 'new_flavor' in kwargs:
+            instance.flavor = cloud_models.Flavor.objects.get(uuid=kwargs['new_flavor'])
+        elif 'new_size' in kwargs:
+            try:
+                instance.flavor.size = kwargs['new_size']
+            except ValidationError:
+                logger.warn(
+                    'Failed to resize disk of the flavor %s from %s MiB to %s MiB',
+                    instance.flavor.uuid, instance.flavor.size, kwargs['new_size'],
+                    )
+
         instance.save()

@@ -174,20 +174,21 @@ class InstanceViewSet(mixins.CreateModelMixin,
         except models.Instance.DoesNotExist:
             raise Http404()
 
-        try:
+        if 'flavor' in request.DATA:
             flavor_uuid = request.DATA['flavor']
-        except KeyError:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            instance_cloud = instance.flavor.cloud
 
-        instance_cloud = instance.flavor.cloud
+            new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
+            if new_flavor.exists():
+                return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_uuid)
 
-        new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
+            return Response({'status': "New flavor is not within the same cloud"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        elif 'disk_size' in request.DATA:
+            size = request.DATA['disk_size']
+            return self._schedule_transition(request, uuid, 'resize', new_size=size)
 
-        if new_flavor.exists():
-            return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_uuid)
-
-        return Response({'status': "New flavor is not within the same cloud"},
-                        status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
     @link()
     def usage(self, request, uuid):
