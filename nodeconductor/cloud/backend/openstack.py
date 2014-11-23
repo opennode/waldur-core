@@ -209,7 +209,7 @@ class OpenStackBackend(object):
     def get_resource_stats(self, auth_url):
         try:
             credentials = self.get_credentials(auth_url)
-            nova = self.get_nova_client(credentials)
+            nova = self.get_nova_client(**credentials)
             return nova.hypervisors.statistics()._info
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException):
             logger.exception('Failed to get statics for auth_url: %s', auth_url)
