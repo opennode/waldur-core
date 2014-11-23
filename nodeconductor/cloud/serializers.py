@@ -43,10 +43,10 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Cloud
-        fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
+        fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects', 'auth_url')
         lookup_field = 'uuid'
 
-    public_fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
+    public_fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects', 'auth_url')
 
     def get_filtered_field_names(self):
         return 'customer',
