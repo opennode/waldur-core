@@ -9,18 +9,19 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import ProtectedError
 from django.utils import six
+from glanceclient import exc as glance_exceptions
 from glanceclient.v1 import client as glance_client
 from keystoneclient import exceptions as keystone_exceptions
-from keystoneclient import session
+from keystoneclient import session as keystone_session
 from keystoneclient.auth.identity import v2
 from keystoneclient.service_catalog import ServiceCatalog
 from keystoneclient.v2_0 import client as keystone_client
+from neutronclient.client import exceptions as neutron_exceptions
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
 from nodeconductor.cloud.backend import CloudBackendError
-from nodeconductor.iaas.models import TemplateMapping
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +34,8 @@ class OpenStackBackend(object):
         pass
 
     def pull_flavors(self, cloud_account):
-        # Fail fast if no corresponding OpenStack configured in settings
-        credentials = self.get_credentials(cloud_account.auth_url)
-
-        nova = self.get_nova_client(**credentials)
+        session = self.create_admin_session(cloud_account.auth_url)
+        nova = self.create_nova_client(session)
 
         backend_flavors = nova.flavors.findall(is_public=True)
         backend_flavors = dict(((f.id, f) for f in backend_flavors))
@@ -86,10 +85,8 @@ class OpenStackBackend(object):
 
     # CloudProjectMembership related methods
     def pull_images(self, cloud_account):
-        # Fail fast if no corresponding OpenStack configured in settings
-        credentials = self.get_credentials(cloud_account.auth_url)
-
-        glance = self.get_glance_client(**credentials)
+        session = self.create_admin_session(cloud_account.auth_url)
+        glance = self.create_glance_client(session)
 
         backend_images = dict(
             (image.id, image)
@@ -97,6 +94,8 @@ class OpenStackBackend(object):
             if not image.deleted
             if image.is_public
         )
+
+        from nodeconductor.iaas.models import TemplateMapping
 
         with transaction.atomic():
             # Add missing images
@@ -153,10 +152,10 @@ class OpenStackBackend(object):
 
     def push_membership(self, membership):
         try:
-            # Fail fast if no corresponding OpenStack configured in settings
-            credentials = self.get_credentials(membership.cloud.auth_url)
+            session = self.create_admin_session(membership.cloud.auth_url)
 
-            keystone = self.get_keystone_client(**credentials)
+            keystone = self.create_keystone_client(session)
+            neutron = self.create_neutron_client(session)
 
             tenant = self.get_or_create_tenant(membership, keystone)
 
@@ -168,7 +167,7 @@ class OpenStackBackend(object):
 
             self.ensure_user_is_tenant_admin(username, tenant, keystone)
 
-            self.get_or_create_network(membership)
+            self.get_or_create_network(membership, neutron)
 
             membership.save()
 
@@ -178,19 +177,11 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, CloudBackendError())
 
     def push_ssh_public_key(self, membership, public_key):
-        # We want names to be human readable in backend.
-        # OpenStack only allows latin letters, digits, dashes, underscores and spaces
-        # as key names, thus we mangle the original name.
-        safe_name = re.sub(r'[^-a-zA-Z0-9 _]+', '_', public_key.name)
-        key_name = '{0}-{1}'.format(public_key.uuid.hex, safe_name)
+        key_name = self.get_key_name(public_key)
 
         try:
-            nova = self.get_nova_client(
-                auth_url=membership.cloud.auth_url,
-                username=membership.username,
-                password=membership.password,
-                tenant_id=membership.tenant_id,
-            )
+            session = self.create_tenant_session(membership)
+            nova = self.create_nova_client(session)
 
             try:
                 # There's no way to edit existing key inplace,
@@ -208,7 +199,167 @@ class OpenStackBackend(object):
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
             six.reraise(CloudBackendError, CloudBackendError())
 
+    # Instance related methods
+    def provision_instance(self, instance):
+        from nodeconductor.cloud.models import CloudProjectMembership
+
+        try:
+            membership = CloudProjectMembership.objects.get(
+                project=instance.project,
+                cloud=instance.flavor.cloud,
+            )
+
+            image = instance.flavor.cloud.images.get(
+                template=instance.template,
+            )
+
+            session = self.create_tenant_session(membership)
+
+            nova = self.create_nova_client(session)
+            glance = self.create_glance_client(session)
+            neutron = self.create_neutron_client(session)
+
+            network_name = self.get_tenant_name(membership)
+
+            matching_networks = neutron.list_networks(name=network_name)['networks']
+            matching_networks_count = len(matching_networks)
+
+            if matching_networks_count > 1:
+                logger.error('Found %d networks named "%s", expected exactly one',
+                             matching_networks_count, network_name)
+                raise CloudBackendError('Unable to find network to attach instance to')
+            elif matching_networks_count == 0:
+                logger.error('Found no networks named "%s", expected exactly one',
+                             network_name)
+                raise CloudBackendError('Unable to find network to attach instance to')
+
+            network = matching_networks[0]
+
+            backend_flavor = nova.flavors.get(instance.flavor.flavor_id)  # FIXME: flavor_id -> backend_id
+            backend_image = glance.images.get(image.backend_id)
+
+            server = nova.servers.create(
+                name=instance.hostname,
+                image=backend_image,
+                flavor=backend_flavor,
+                block_device_mapping_v2=[
+                    {
+                        # 'boot_index': '0',
+                        'destination_type': 'volume',
+                        'device_type': 'disk',
+                        'source_type': 'image',
+                        'uuid': backend_image.id,
+                        'volume_size': 10,
+                    },
+                    # This should have worked by creating an empty volume.
+                    # But, as always, OpenStack doesn't work as advertised:
+                    # see https://bugs.launchpad.net/nova/+bug/1347499
+                    # equivalent nova boot options would be
+                    # --block-device source=blank,dest=volume,size=10,type=disk
+                    # {
+                    # 'destination_type': 'blank',
+                    #     'device_type': 'disk',
+                    #     'source_type': 'image',
+                    #     'uuid': backend_image.id,
+                    #     'volume_size': 10,
+                    # },
+                ],
+                nics=[
+                    {'net-id': network['id']}
+                ],
+                key_name=self.get_key_name(instance.ssh_public_key),
+            )
+
+            instance.backend_id = server.id
+            instance.save()
+
+            logger.info('Successfully booted instance %s', instance.uuid)
+        except (glance_exceptions.ClientException,
+                nova_exceptions.ClientException,
+                neutron_exceptions.NeutronClientException):
+            logger.info('Failed to boot instance %s', instance.uuid)
+            six.reraise(CloudBackendError, CloudBackendError())
+
+    def get_instance_state(self, instance):
+        from nodeconductor.cloud.models import CloudProjectMembership
+        from nodeconductor.iaas.models import Instance
+
+        state_map = {
+            'ACTIVE': Instance.States.ONLINE,
+            'BUILD': Instance.States.PROVISIONING,
+            'SHUTOFF': Instance.States.OFFLINE,
+            'PAUSED': Instance.States.OFFLINE,
+            'SUSPENDED': Instance.States.OFFLINE,
+            'ERROR': Instance.States.ERRED,
+            'DELETED': Instance.States.DELETED,
+            'SOFT_DELETED': Instance.States.DELETED,
+        }
+
+        try:
+            membership = CloudProjectMembership.objects.get(
+                project=instance.project,
+                cloud=instance.flavor.cloud,
+            )
+
+            session = self.create_tenant_session(membership)
+            nova = self.create_nova_client(session)
+
+            server = nova.servers.get(instance.backend_id)
+
+            return state_map[server.status]
+        except (KeyError,
+                CloudProjectMembership.DoesNotExist,
+                keystone_exceptions.ClientException,
+                nova_exceptions.ClientException):
+            logger.exception('Failed to get state of instance %s', instance.uuid)
+            six.reraise(CloudBackendError, CloudBackendError())
+
     # Helper methods
+    def create_admin_session(self, keystone_url):
+        nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+        openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
+
+        try:
+            credentials = next(o for o in openstacks if o['auth_url'] == keystone_url)
+            auth_plugin = v2.Password(**credentials)
+            session = keystone_session.Session(auth=auth_plugin)
+            # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+            session.get_token()
+            return session
+        except StopIteration:
+            logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
+            six.reraise(CloudBackendError, CloudBackendError())
+
+    def create_tenant_session(self, membership):
+        credentials = {
+            'auth_url': membership.cloud.auth_url,
+            'username': membership.username,
+            'password': membership.password,
+            'tenant_id': membership.tenant_id,
+        }
+
+        auth_plugin = v2.Password(**credentials)
+        session = keystone_session.Session(auth=auth_plugin)
+
+        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+        session.get_token()
+        return session
+
+    def create_user_session(self, membership):
+        credentials = {
+            'auth_url': membership.cloud.auth_url,
+            'username': membership.username,
+            'password': membership.password,
+            # Tenant is not set here since we don't want to check for tenant membership here
+        }
+
+        auth_plugin = v2.Password(**credentials)
+        session = keystone_session.Session(auth=auth_plugin)
+
+        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+        session.get_token()
+        return session
+
     def get_credentials(self, keystone_url):
         nc_settings = getattr(settings, 'NODECONDUCTOR', {})
         openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
@@ -219,44 +370,29 @@ class OpenStackBackend(object):
             logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
             six.reraise(CloudBackendError, CloudBackendError())
 
-    def get_keystone_client(self, **credentials):
-        auth_plugin = v2.Password(**credentials)
-        sess = session.Session(auth=auth_plugin)
-        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
-        sess.get_token()
-        return keystone_client.Client(session=sess)
+    def create_glance_client(self, session):
+        auth_plugin = session.auth
 
-    def get_neutron_client(self, **credentials):
-        auth_plugin = v2.Password(**credentials)
-        sess = session.Session(auth=auth_plugin)
-        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
-        sess.get_token()
-        return neutron_client.Client(session=sess)
-
-    def get_nova_client(self, **credentials):
-        auth_plugin = v2.Password(**credentials)
-        sess = session.Session(auth=auth_plugin)
-        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
-        sess.get_token()
-        return nova_client.Client(session=sess)
-
-    def get_glance_client(self, **credentials):
-        auth_plugin = v2.Password(**credentials)
-        sess = session.Session(auth=auth_plugin)
-        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
-        token = sess.get_token()
-
-        catalog = ServiceCatalog.factory(auth_plugin.get_auth_ref(sess))
+        catalog = ServiceCatalog.factory(auth_plugin.get_auth_ref(session))
         endpoint = catalog.url_for(service_type='image')
 
         kwargs = {
-            'token': token,
+            'token': session.get_token(),
             'insecure': False,
             'timeout': 600,
             'ssl_compression': True,
         }
 
         return glance_client.Client(endpoint, **kwargs)
+
+    def create_keystone_client(self, session):
+        return keystone_client.Client(session=session)
+
+    def create_neutron_client(self, session):
+        return neutron_client.Client(session=session)
+
+    def create_nova_client(self, session):
+        return nova_client.Client(session=session)
 
     def get_or_create_user(self, membership, keystone):
         # Try to sign in if credentials are already stored in membership
@@ -265,12 +401,7 @@ class OpenStackBackend(object):
         if membership.username:
             try:
                 logger.info('Signing in using stored membership credentials')
-                self.get_keystone_client(
-                    auth_url=membership.cloud.auth_url,
-                    username=membership.username,
-                    password=membership.password,
-                    # Tenant is not set here since we don't want to check for tenant membership here
-                )
+                self.create_user_session(membership)
                 logger.info('Successfully signed in, using existing user %s', membership.username)
                 return membership.username, membership.password
             except keystone_exceptions.AuthorizationFailure:
@@ -333,11 +464,7 @@ class OpenStackBackend(object):
             logger.info('User %s already has admin role within tenant %s',
                         username, tenant.name)
 
-    def get_or_create_network(self, membership):
-        credentials = self.get_credentials(membership.cloud.auth_url)
-
-        neutron = self.get_neutron_client(**credentials)
-
+    def get_or_create_network(self, membership, neutron):
         network_name = self.get_tenant_name(membership)
 
         if neutron.list_networks(name=network_name)['networks']:
@@ -368,6 +495,15 @@ class OpenStackBackend(object):
             'gateway_ip': None,
         }
         neutron.create_subnet({'subnets': [subnet]})
+
+    def get_key_name(self, public_key):
+        # We want names to be human readable in backend.
+        # OpenStack only allows latin letters, digits, dashes, underscores and spaces
+        # as key names, thus we mangle the original name.
+
+        safe_name = re.sub(r'[^-a-zA-Z0-9 _]+', '_', public_key.name)
+        key_name = '{0}-{1}'.format(public_key.uuid.hex, safe_name)
+        return key_name
 
     def get_tenant_name(self, membership):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
