@@ -44,6 +44,9 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             membership = models.CloudProjectMembership.objects.get(project=self.project, cloud=self.cloud)
             mocked_task.assert_called_with(membership.pk)
+            # duplicate call should result in 302 code
+            response = self.client.post(url, data)
+            self.assertEqual(response.status_code, status.HTTP_302_FOUND)
 
 
 # XXX: this have to be reworked to permissions test

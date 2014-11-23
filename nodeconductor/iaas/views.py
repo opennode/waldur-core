@@ -340,7 +340,7 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
 
     def get_queryset(self):
         if not self.request.user.is_staff:
-            raise Http404
+            raise Http404()
         queryset = super(TemplateLicenseViewSet, self).get_queryset()
         if 'customer' in self.request.QUERY_PARAMS:
             customer_uuid = self.request.QUERY_PARAMS['customer']
