@@ -124,6 +124,40 @@ class InstanceViewSet(mixins.CreateModelMixin,
             raise Http404()
         return instance
 
+    def change_flavor(self, instance, flavor_uuid):
+        instance_cloud = instance.flavor.cloud
+
+        new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
+        if new_flavor.exists():
+            return self._schedule_transition(self.request, instance.uuid, 'resize', new_flavor=flavor_uuid)
+
+        return Response({'status': "New flavor is not within the same cloud"},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    def resize_disk(self, instance, new_size):
+        # TODO: Move to the background task
+        is_admin = instance.project.roles.filter(permission_group__user=self.request.user,
+                                                 role_type=ProjectRole.ADMINISTRATOR).exists()
+        if not is_admin:
+            raise PermissionDenied()
+
+        from django.forms import IntegerField
+        from django.core.exceptions import ValidationError
+
+        try:
+            form = IntegerField(min_value=0)
+            new_size = form.clean(new_size)
+        except ValidationError:
+            return Response({'status': "Disk size should be positive integer"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        old_size = instance.flavor.disk
+        instance.flavor.disk = new_size
+        instance.flavor.save()
+
+        return Response({'status': "Disk was successfully resized from %s MiB to %s MiB"
+                                   % (old_size, new_size)}, status=status.HTTP_200_OK)
+
     def _schedule_transition(self, request, uuid, operation, **kwargs):
         # Importing here to avoid circular imports
         from nodeconductor.iaas import tasks
@@ -175,38 +209,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
             raise Http404()
 
         if 'flavor' in request.DATA:
-            flavor_uuid = request.DATA['flavor']
-            instance_cloud = instance.flavor.cloud
-
-            new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
-            if new_flavor.exists():
-                return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_uuid)
-
-            return Response({'status': "New flavor is not within the same cloud"},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return self.change_flavor(instance, self.request.DATA['flavor'])
         elif 'disk_size' in request.DATA:
-            # TODO: Move to the background task
-            is_admin = instance.project.roles.filter(permission_group__user=request.user,
-                                                     role_type=ProjectRole.ADMINISTRATOR).exists()
-            if not is_admin:
-                raise PermissionDenied()
-
-            old_size = instance.flavor.disk
-
-            try:
-                new_size = int(request.DATA['disk_size'])
-
-                if new_size < 0:
-                    raise ValueError
-            except ValueError:
-                return Response({'status': "Disk size should be positive integer"},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-            instance.flavor.disk = new_size
-            instance.flavor.save()
-
-            return Response({'status': "Disk was successfully resized from %s MiB to %s MiB"
-                                       % (old_size, new_size)}, status=status.HTTP_200_OK)
+            return self.resize_disk(instance, self.request.DATA['disk_size'])
 
         return Response(status=status.HTTP_400_BAD_REQUEST)
 

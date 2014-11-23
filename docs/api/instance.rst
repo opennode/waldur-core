@@ -134,7 +134,7 @@ Example of a valid request:
         "flavor": "1ee385bc043249498cfeb8c7e3e079f0",
     }
 
-To resize disk of the flavor, submit a POST request to the instance's RPC url, specifying also size of the disk.
+To resize disk of the instance, submit a POST request to the instance's RPC url, specifying also size of the disk.
 Example of a valid request:
 
 
