@@ -198,7 +198,7 @@ class Backup(core_models.UuidMixin,
         from nodeconductor.backup import tasks
 
         if self.state == self.States.BACKING_UP:
-            self._check_task_result(tasks.backup_task, self._confirm_backup)
+            self._check_task_result(tasks.process_backup_task, self._confirm_backup)
         elif self.state == self.States.RESTORING:
             self._check_task_result(tasks.restoration_task, self._confirm_restoration)
         elif self.state == self.States.DELETING:
