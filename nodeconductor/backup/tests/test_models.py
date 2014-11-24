@@ -92,7 +92,7 @@ class BackupTest(TestCase):
         with self.assertRaises(IntegrityError):
             backup.save()
 
-    @patch('nodeconductor.backup.tasks.backup_task.delay', return_value=mocked_task_result)
+    @patch('nodeconductor.backup.tasks.process_backup_task.delay', return_value=mocked_task_result)
     def test_start_backup(self, mocked_task):
         backup = factories.BackupFactory()
         backup.start_backup()
@@ -140,7 +140,7 @@ class BackupTest(TestCase):
         backup = factories.BackupFactory(state=models.Backup.States.BACKING_UP)
         backup._check_task_result = MagicMock()
         backup.poll_current_state()
-        backup._check_task_result.assert_called_with(tasks.backup_task, backup._confirm_backup)
+        backup._check_task_result.assert_called_with(tasks.process_backup_task, backup._confirm_backup)
         # restoration
         backup = factories.BackupFactory(state=models.Backup.States.RESTORING)
         backup._check_task_result = MagicMock()

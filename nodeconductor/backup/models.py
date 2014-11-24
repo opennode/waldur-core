@@ -164,7 +164,7 @@ class Backup(core_models.UuidMixin,
         from nodeconductor.backup import tasks
 
         self._starting_backup()
-        result = tasks.backup_task.delay(self.uuid.hex)
+        result = tasks.process_backup_task.delay(self.uuid.hex)
         self.result_id = result.id
         self.__save()
 
