@@ -384,7 +384,7 @@ def create_project_zabbix_hostgroup(sender, instance, created, **kwargs):
     from nodeconductor.structure import tasks
 
     if created:
-        tasks.create_zabbix_hostgroup.delay(str(instance.uuid))
+        tasks.create_zabbix_hostgroup.delay(instance.uuid.hex)
 
 
 @receiver(
@@ -395,4 +395,4 @@ def create_project_zabbix_hostgroup(sender, instance, created, **kwargs):
 def delete_project_zabbix_hostgroup(sender, instance, **kwargs):
     from nodeconductor.structure import tasks
 
-    tasks.delete_zabbix_hostgroup.delay(str(instance.uuid))
+    tasks.delete_zabbix_hostgroup.delay(instance.uuid.hex)

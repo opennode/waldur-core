@@ -164,7 +164,7 @@ class Backup(core_models.UuidMixin,
         from nodeconductor.backup import tasks
 
         self._starting_backup()
-        result = tasks.backup_task.delay(str(self.uuid))
+        result = tasks.backup_task.delay(self.uuid.hex)
         self.result_id = result.id
         self.__save()
 
@@ -176,7 +176,7 @@ class Backup(core_models.UuidMixin,
         from nodeconductor.backup import tasks
 
         self._starting_restoration()
-        result = tasks.restoration_task.delay(str(self.uuid), replace_original=False)
+        result = tasks.restoration_task.delay(self.uuid.hex, replace_original=False)
         self.result_id = result.id
         self.__save()
 
@@ -187,7 +187,7 @@ class Backup(core_models.UuidMixin,
         from nodeconductor.backup import tasks
 
         self._starting_deletion()
-        result = tasks.deletion_task.delay(str(self.uuid))
+        result = tasks.deletion_task.delay(self.uuid.hex)
         self.result_id = result.id
         self.__save()
 
