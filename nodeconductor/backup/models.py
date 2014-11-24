@@ -12,7 +12,7 @@ from croniter.croniter import croniter
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core import fields as core_fields
-from nodeconductor.backup import tasks, managers
+from nodeconductor.backup import managers
 
 
 class BackupSourceAbstractModel(models.Model):
@@ -161,8 +161,10 @@ class Backup(core_models.UuidMixin,
         """
         Starts celery backup task
         """
+        from nodeconductor.backup import tasks
+
         self._starting_backup()
-        result = tasks.backup_task.delay(self.backup_source)
+        result = tasks.backup_task.delay(str(self.uuid))
         self.result_id = result.id
         self.__save()
 
@@ -171,8 +173,10 @@ class Backup(core_models.UuidMixin,
         Starts backup restoration task.
         If 'replace_original' is True, should attempt to rewrite the latest state. False by default.
         """
+        from nodeconductor.backup import tasks
+
         self._starting_restoration()
-        result = tasks.restoration_task.delay(self.backup_source, replace_original=False)
+        result = tasks.restoration_task.delay(str(self.uuid), replace_original=False)
         self.result_id = result.id
         self.__save()
 
@@ -180,8 +184,10 @@ class Backup(core_models.UuidMixin,
         """
         Starts backup deletion task
         """
+        from nodeconductor.backup import tasks
+
         self._starting_deletion()
-        result = tasks.deletion_task.delay(self.backup_source)
+        result = tasks.deletion_task.delay(str(self.uuid))
         self.result_id = result.id
         self.__save()
 
@@ -189,6 +195,8 @@ class Backup(core_models.UuidMixin,
         """
         Checks status of the backup task. Updates the backup state on task completion.
         """
+        from nodeconductor.backup import tasks
+
         if self.state == self.States.BACKING_UP:
             self._check_task_result(tasks.backup_task, self._confirm_backup)
         elif self.state == self.States.RESTORING:

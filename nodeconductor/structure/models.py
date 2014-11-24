@@ -10,7 +10,6 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import UuidMixin, DescribableMixin
-from nodeconductor.structure import tasks
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
 
@@ -382,8 +381,10 @@ def create_project_group_roles(sender, instance, created, **kwargs):
     dispatch_uid='nodeconductor.structure.models.create_project_zabbix_hostgroup',
 )
 def create_project_zabbix_hostgroup(sender, instance, created, **kwargs):
+    from nodeconductor.structure import tasks
+
     if created:
-        tasks.create_zabbix_hostgroup.delay(instance)
+        tasks.create_zabbix_hostgroup.delay(str(instance.uuid))
 
 
 @receiver(
@@ -392,4 +393,6 @@ def create_project_zabbix_hostgroup(sender, instance, created, **kwargs):
     dispatch_uid='nodeconductor.structure.models.delete_project_zabbix_hostgroup',
 )
 def delete_project_zabbix_hostgroup(sender, instance, **kwargs):
+    from nodeconductor.structure import tasks
+
     tasks.delete_zabbix_hostgroup.delay(str(instance.uuid))
