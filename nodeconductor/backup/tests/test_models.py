@@ -96,7 +96,7 @@ class BackupTest(TestCase):
     def test_start_backup(self, mocked_task):
         backup = factories.BackupFactory()
         backup.start_backup()
-        mocked_task.assert_called_with(backup.backup_source)
+        mocked_task.assert_called_with(str(backup.uuid))
         self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.BACKING_UP)
 
@@ -104,7 +104,7 @@ class BackupTest(TestCase):
     def test_start_restoration(self, mocked_task):
         backup = factories.BackupFactory()
         backup.start_restoration()
-        mocked_task.assert_called_with(backup.backup_source, replace_original=False)
+        mocked_task.assert_called_with(str(backup.uuid), replace_original=False)
         self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.RESTORING)
 
@@ -112,7 +112,7 @@ class BackupTest(TestCase):
     def test_start_deletion(self, mocked_task):
         backup = factories.BackupFactory()
         backup.start_deletion()
-        mocked_task.assert_called_with(backup.backup_source)
+        mocked_task.assert_called_with(str(backup.uuid))
         self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.DELETING)
 
