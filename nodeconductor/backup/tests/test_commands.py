@@ -50,7 +50,7 @@ class PollBackups(TestCase):
         restoring_backup = factories.BackupFactory(state=states.RESTORING, result_id='rid')
         deleting_backup = factories.BackupFactory(state=states.DELETING, result_id='did')
 
-        with patch('nodeconductor.backup.tasks.backup_task.AsyncResult') as patched:
+        with patch('nodeconductor.backup.tasks.process_backup_task.AsyncResult') as patched:
             command.handle_noargs()
             patched.assert_called_with(backuping_backup.result_id)
         with patch('nodeconductor.backup.tasks.restoration_task.AsyncResult') as patched:

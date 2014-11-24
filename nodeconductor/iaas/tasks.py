@@ -4,14 +4,14 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from celery import shared_task
-from django.conf import settings
 from django.db import transaction
 
 from nodeconductor.core.tasks import tracked_processing
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.cloud import models as cloud_models
 from nodeconductor.iaas import models
-from nodeconductor.monitoring.zabbix.api_client import ZabbixAPIException
+from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
+from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
 logger = logging.getLogger(__name__)
 event_log = EventLoggerAdapter(logger)
@@ -41,16 +41,24 @@ def _mock_processing(instance_uuid, should_fail=False):
 
 def create_zabbix_host_and_service(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
-    zabbix_client = ZabbixAPIException(settings.NODECONDUCTOR['MONITORING']['ZABBIX'])
-    zabbix_client.create_host(instance)
-    zabbix_client.create_service(instance)
+    try:
+        zabbix_client = ZabbixApiClient()
+        zabbix_client.create_host(instance)
+        zabbix_client.create_service(instance)
+    except ZabbixError:
+        # task does not have to fail if something is wrong with zabbix
+        pass
 
 
 def delete_zabbix_host_and_service(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
-    zabbix_client = ZabbixAPIException(settings.NODECONDUCTOR['MONITORING']['ZABBIX'])
-    zabbix_client.delete_host(instance)
-    zabbix_client.delete_service(instance)
+    try:
+        zabbix_client = ZabbixApiClient()
+        zabbix_client.delete_host(instance)
+        zabbix_client.delete_service(instance)
+    except ZabbixError:
+        # task does not have to fail if something is wrong with zabbix
+        pass
 
 
 @shared_task
