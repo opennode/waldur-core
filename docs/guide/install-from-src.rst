@@ -1,10 +1,70 @@
+Installation from source
+------------------------
+
+Additional requirements:
+
+- ``git``
+- ``virtualenv``
+- C compiler and development libraries needed to build dependencies
+
+  - CentOS: ``gcc libffi-devel openldap-devel openssl-devel python-devel``
+  - Ubuntu: ``gcc libffi-dev libldap2-dev libsasl2-dev libssl-dev python-dev``
+
+**NodeConductor installation**
+
+1. Get the code:
+
+  .. code-block:: bash
+
+    git clone https://github.com/opennode/nodeconductor.git
+
+2. Create a virtualenv:
+
+  .. code-block:: bash
+
+    cd nodeconductor
+    virtualenv venv
+
+    # Workaround for CentOS 6 / setuptools 0.6.10 -- not needed for other setups
+    # CentOS 6 has an old version of Setuptools that fails to install all the dependencies correctly.
+    # To work around the problem, install these packages from RDO repository *before* installing NodeConductor.
+    # Make sure to create virtualenv that includes system site-packages.
+    rpm -Uvh https://repos.fedorapeople.org/repos/openstack/openstack-icehouse/rdo-release-icehouse-4.noarch.rpm
+    yum install python-glanceclient python-keystoneclient python-neutronclient python-novaclient
+    virtualenv --system-site-packages venv
+
+3. Install nodeconductor in development mode along with dependencies:
+
+  .. code-block:: bash
+
+    venv/bin/python setup.py develop
+
+4. Create settings file -- settings files will be created in ``~/.nodeconductor`` directory:
+
+  .. code-block:: bash
+
+    venv/bin/nodeconductor init
+
+5. Initialise database -- SQLite3 database will be created in ``~/.nodeconductor/db.sqlite`` unless specified otherwise in settings files:
+
+  .. code-block:: bash
+
+    venv/bin/nodeconductor syncdb --noinput
+    venv/bin/nodeconductor migrate --noinput
+
+6. Collect static data -- static files will be copied to ``static_files`` in the same directory:
+
+  .. code-block:: bash
+
+    venv/bin/nodeconductor collectstatic --noinput
+
 Configuration
--------------
++++++++++++++
 
 NodeConductor is a Django_ based application, so configuration is done by modifying settings.py.
 
 If you want to configure options related to Django, such as tune caches, configure custom logging, etc,
-please refer to `Django Documentation`_.
+please refer to `Django documentation`_.
 
 Configuration for NodeConductor is namespaced inside a single Django setting, named **NODECONDUCTOR**.
 
@@ -23,18 +83,17 @@ Therefore configuration might look like this:
         ),
         'MONITORING': {
             'ZABBIX': {
-                'server': "http://zabbix.example.com/zabbix",
-                'username': "admin",
-                'password': "zabbix",
-                'interface_parameters': {"ip": "0.0.0.0", "main": 1, "port": "10050", "type": 1, "useip": 1, "dns": ""},
+                'server': 'http://zabbix.example.com/zabbix',
+                'username': 'admin',
+                'password': 'zabbix',
+                'interface_parameters': {'ip': '0.0.0.0', 'main': 1, 'port': '10050', 'type': 1, 'useip': 1, 'dns': ''},
                 'templateid': '10106',
                 'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
             }
         }
     }
 
-Available settings
-++++++++++++++++++
+**Available settings**
 
 .. glossary::
 
@@ -88,4 +147,4 @@ Available settings
 
 
 .. _Django: https://www.djangoproject.com/
-.. _Django Documentation: https://docs.djangoproject.com/en/1.6/
+.. _Django documentation: https://docs.djangoproject.com/en/1.6/
