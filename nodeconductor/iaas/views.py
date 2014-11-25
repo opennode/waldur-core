@@ -125,8 +125,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
         return instance
 
     def change_flavor(self, instance, flavor_uuid):
-        instance_cloud = instance.flavor.cloud
+        new_flavor = filter_queryset_for_user(Flavor.objects.all(), self.request.user).filter(uuid=flavor_uuid)
 
+        if not new_flavor.exists():
+            return Response({'status': "No flavor with uuid %s" % flavor_uuid}, status=status.HTTP_400_BAD_REQUEST)
+
+        instance_cloud = instance.flavor.cloud
         new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
         if new_flavor.exists():
             return self._schedule_transition(self.request, instance.uuid, 'resize', new_flavor=flavor_uuid)
@@ -141,13 +145,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
         if not is_admin:
             raise PermissionDenied()
 
-        from django.forms import IntegerField
-        from django.core.exceptions import ValidationError
-
         try:
-            form = IntegerField(min_value=0)
-            new_size = form.clean(new_size)
-        except ValidationError:
+            new_size = int(self.request.DATA['disk_size'])
+
+            if new_size < 0:
+                raise ValueError
+        except ValueError:
             return Response({'status': "Disk size should be positive integer"},
                             status=status.HTTP_400_BAD_REQUEST)
 
