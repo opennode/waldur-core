@@ -20,6 +20,10 @@ config_defaults = {
         'static_root': os.path.join(conf_dir, 'static'),
         'template_debug': 'false',
     },
+    'celery': {
+        'broker_url': 'redis://localhost',
+        'result_backend_url': 'redis://localhost',
+    },
     'events': {
         'log_file': '',  # empty to disable
         'log_level': 'INFO',
@@ -348,10 +352,10 @@ SAML_ATTRIBUTE_MAPPING = {
 # Celery
 # See also: http://docs.celeryproject.org/en/latest/getting-started/brokers/index.html#broker-instructions
 # See also: http://docs.celeryproject.org/en/latest/configuration.html#broker-url
-BROKER_URL = 'redis://localhost'
+BROKER_URL = config.get('celery', 'broker_url')
 
-# See also: http://docs.celeryproject.org/en/latest/configuration.html#std:setting-CELERY_RESULT_BACKEND
-CELERY_RESULT_BACKEND = 'redis://localhost'
+# See also: http://docs.celeryproject.org/en/latest/configuration.html#celery-result-backend
+CELERY_RESULT_BACKEND = config.get('celery', 'result_backend_url')
 
 # See also: http://docs.celeryproject.org/en/latest/configuration.html#celery-accept-content
 CELERY_ACCEPT_CONTENT = ['json']
