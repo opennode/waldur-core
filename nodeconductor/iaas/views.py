@@ -117,13 +117,6 @@ class InstanceViewSet(mixins.CreateModelMixin,
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
         return queryset
 
-    def _get_instance_or_404(self, request, uuid):
-        # XXX: this should be testing for actions/role pairs as well
-        instance = filter_queryset_for_user(models.Instance.objects.filter(uuid=uuid), request.user).first()
-        if instance is None:
-            raise Http404()
-        return instance
-
     def change_flavor(self, instance, flavor_uuid):
         new_flavor = filter_queryset_for_user(Flavor.objects.all(), self.request.user).filter(uuid=flavor_uuid)
 
@@ -162,33 +155,34 @@ class InstanceViewSet(mixins.CreateModelMixin,
                                    % (old_size, new_size)}, status=status.HTTP_200_OK)
 
     def _schedule_transition(self, request, uuid, operation, **kwargs):
-        # Importing here to avoid circular imports
-        from nodeconductor.iaas import tasks
-        instance = self._get_instance_or_404(request, uuid)
+        instance = self.get_object()
 
-        is_admin = instance.project.roles.filter(permission_group__user=request.user,
-                                                 role_type=ProjectRole.ADMINISTRATOR).exists()
+        is_admin = instance.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
+
         if not is_admin:
             raise PermissionDenied()
 
+        # Importing here to avoid circular imports
+        from nodeconductor.core.tasks import set_state, StateChangeError
+        from nodeconductor.iaas import tasks
+
         supported_operations = {
             # code: (scheduled_celery_task, instance_marker_state)
-            'start': (instance.schedule_starting, tasks.schedule_starting),
-            'stop': (instance.schedule_stopping, tasks.schedule_stopping),
-            'destroy': (instance.schedule_deletion, tasks.schedule_deleting),
-            'resize': (instance.schedule_resizing, tasks.schedule_resizing),
+            'start': ('schedule_starting', tasks.schedule_starting),
+            'stop': ('schedule_stopping', tasks.schedule_stopping),
+            'destroy': ('schedule_deletion', tasks.schedule_deleting),
+            'resize': ('schedule_resizing', tasks.schedule_resizing),
         }
 
-        logger.info('Scheduling provisioning instance with uuid %s', uuid)
-        processing_task = supported_operations[operation][1]
-        instance_schedule_transition = supported_operations[operation][0]
+        # logger.info('Scheduling %s of an instance with uuid %s', operation, uuid)
+        change_instance_state, processing_task = supported_operations[operation]
+
         try:
-            instance_schedule_transition()
-            instance.save()
+            set_state(models.Instance, uuid, change_instance_state)
             processing_task.delay(uuid, **kwargs)
-        except TransitionNotAllowed:
+        except StateChangeError:
             return Response({'status': 'Performing %s operation from instance state \'%s\' is not allowed'
-                            % (operation, instance.get_state_display())},
+                                       % (operation, instance.get_state_display())},
                             status=status.HTTP_409_CONFLICT)
 
         return Response({'status': '%s was scheduled' % operation})
@@ -221,11 +215,11 @@ class InstanceViewSet(mixins.CreateModelMixin,
     @link()
     def usage(self, request, uuid):
         zabbix_db_client = ZabbixDBClient()
-        if not 'item' in request.QUERY_PARAMS:
+        if 'item' not in request.QUERY_PARAMS:
             return Response({'status': "GET parameter 'item' have to be defined"}, status=status.HTTP_400_BAD_REQUEST)
 
         item = request.QUERY_PARAMS['item']
-        if not item in zabbix_db_client.items:
+        if item not in zabbix_db_client.items:
             return Response(
                 {'status': "GET parameter 'item' have to from list: %s" % zabbix_db_client.items.keys()},
                 status=status.HTTP_400_BAD_REQUEST)
@@ -234,7 +228,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         start_timestamp = int(request.QUERY_PARAMS.get('from', time.time() - hour))
         end_timestamp = int(request.QUERY_PARAMS.get('to', time.time()))
         segments_count = int(request.QUERY_PARAMS.get('datapoints', 6))
-        instance = self._get_instance_or_404(request, uuid)
+        instance = self.get_object()
 
         segment_list = zabbix_db_client.get_item_stats(instance, item, start_timestamp, end_timestamp, segments_count)
         return Response(segment_list, status=status.HTTP_200_OK)
@@ -432,7 +426,6 @@ class ServiceFilter(django_filters.FilterSet):
 
 # XXX: This view has to be rewritten or removed after haystack implementation
 class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
-
     queryset = models.Instance.objects.all()
     serializer_class = serializers.ServiceSerializer
     lookup_field = 'uuid'

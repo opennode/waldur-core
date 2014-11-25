@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.utils import six
 from pyzabbix import ZabbixAPI, ZabbixAPIException
 
@@ -11,13 +12,8 @@ logger = logging.getLogger(__name__)
 
 class ZabbixApiClient(object):
 
-    def __init__(self, zabbix_parameters):
-        self.server = zabbix_parameters['server']
-        self.username = zabbix_parameters['username']
-        self.password = zabbix_parameters['password']
-        self.interface_parameters = zabbix_parameters['interface_parameters']
-        self.templateid = zabbix_parameters['templateid']
-        self.default_service_parameters = zabbix_parameters['default_service_parameters']
+    def __init__(self):
+        self.init_config_parameters()
 
     def get_host(self, instance):
         try:
@@ -117,6 +113,25 @@ class ZabbixApiClient(object):
             six.reraise(ZabbixError, ZabbixError())
 
     # Helpers:
+    def init_config_parameters(self):
+        nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+        monitoring_settings = nc_settings.get('MONITORING', {})
+        zabbix_parameters = monitoring_settings.get('ZABBIX', {})
+
+        try:
+            self.server = zabbix_parameters['server']
+            self.username = zabbix_parameters['username']
+            self.password = zabbix_parameters['password']
+            self.interface_parameters = zabbix_parameters.get(
+                'interface_parameters',
+                {"ip": "0.0.0.0", "main": 1, "port": "10050", "type": 1, "useip": 1, "dns": ""})
+            self.templateid = zabbix_parameters['templateid']
+            self.default_service_parameters = zabbix_parameters.get(
+                'default_service_parameters', {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95})
+        except KeyError:
+            logger.exception('Failed to find all necessary zabbix parameters in settings')
+            six.reraise(ZabbixError, ZabbixError())
+
     def get_zabbix_api(self):
         api = ZabbixAPI(server=self.server)
         api.login(self.username, self.password)

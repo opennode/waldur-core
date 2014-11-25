@@ -32,8 +32,9 @@ class ZabbixPublicApiTest(unittest.TestCase):
 
     def setUp(self):
         self.zabbix_parameters = settings.NODECONDUCTOR['MONITORING']['ZABBIX']
+
         self.api = get_mocked_zabbix_api()
-        self.zabbix_client = ZabbixApiClient(self.zabbix_parameters)
+        self.zabbix_client = ZabbixApiClient()
         self.zabbix_client.get_zabbix_api = Mock(return_value=self.api)
 
         self.project = Mock()
