@@ -195,20 +195,15 @@ class OpenStackBackend(object):
             logger.info('Propagating ssh public key %s to backend', key_name)
             nova.keypairs.create(name=key_name, public_key=public_key.public_key)
             logger.info('Successfully propagated ssh public key %s to backend', key_name)
-        except nova_exceptions.ClientException:
+        except (nova_exceptions.ClientException, keystone_exceptions.ClientException):
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
             six.reraise(CloudBackendError, CloudBackendError())
 
-    def push_security_groups(self, membership):
-        security_groups = membership.security_groups
+    def push_membership_security_groups(self, membership):
+        security_groups = membership.security_groups.all()
         try:
-            nova = self.get_nova_client(
-                auth_url=membership.cloud.auth_url,
-                username=membership.username,
-                password=membership.password,
-                tenant_id=membership.tenant_id,
-            )
-
+            session = self.create_tenant_session(membership)
+            nova = self.create_nova_client(session)
             for security_group in security_groups:
                 logger.info('Synchronizing security group %s to backend', security_group.name)
                 try:
@@ -219,13 +214,33 @@ class OpenStackBackend(object):
                         'for CloudProjectMembership with id %s', security_group, membership.id)
                 logger.info('Successfully synchronized security group %s to backend', security_group.name)
 
-        except nova_exceptions.ClientException, keystone_exceptions.ClientException:
+        except (nova_exceptions.ClientException, keystone_exceptions.ClientException):
             logger.exception('Failed to push synchronize security_groups for membership %s', membership)
             six.reraise(CloudBackendError, CloudBackendError())
 
-    # TODO: implement after openstack backup architecture decision
-    def pull_security_groups(self, membership):
-        raise NotImplementedError('Security groups pull is not implemented yet.')
+    def push_security_group(self, security_group, nova):
+        os_security_group, created = self.get_or_create_security_group(security_group)
+        # If security group already exists - we have to remove its rules to avoid duplication
+        if not created:
+            for rule in os_security_group.rules:
+                try:
+                    nova.security_group_rules.delete(rule['id'])
+                except nova_exceptions.ClientException:
+                    logger.exception('Failed to remove rule with id %s from security group %s',
+                                     rule['id'], security_group)
+
+        for rule in security_group.rules.all():
+            try:
+                nova.security_group_rules.create(
+                    parent_group_id=security_group.os_security_group_id,
+                    ip_protocol=rule.protocol,
+                    from_port=rule.from_port,
+                    to_port=rule.to_port,
+                    cidr=rule.netmask,
+                )
+            except nova_exceptions.ClientException:
+                logger.exception('Failed to create rule %s for security group %s',
+                                 rule, security_group)
 
     # Instance related methods
     def provision_instance(self, instance):
@@ -395,30 +410,6 @@ class OpenStackBackend(object):
             logger.info('Successfully deleted instance %s', instance.uuid)
 
     # Helper methods
-    def push_security_group(self, security_group, nova):
-        os_security_group, created = self.get_or_create_security_group(security_group)
-        # If security group already exists - we have to remove its rules to avoid duplication
-        if not created:
-            for rule in os_security_group.rules:
-                try:
-                    nova.security_group_rules.delete(rule['id'])
-                except nova_exceptions.ClientException:
-                    logger.exception('Failed to remove rule with id %s from security group %s',
-                                     rule['id'], security_group)
-
-        for rule in security_group.rules.all():
-            try:
-                nova.security_group_rules.create(
-                    parent_group_id=security_group.os_security_group_id,
-                    ip_protocol=rule.protocol,
-                    from_port=rule.from_port,
-                    to_port=rule.to_port,
-                    cidr=rule.netmask,
-                )
-            except nova_exceptions.ClientException:
-                logger.exception('Failed to create rule %s for security group %s',
-                                 rule, security_group)
-
     def create_security_group(self, security_group, nova):
         os_security_group = nova.security_groups.create(name=security_group.name, description='')
         security_group.os_security_group_id = os_security_group.id
