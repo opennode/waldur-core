@@ -139,7 +139,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
             raise PermissionDenied()
 
         try:
-            new_size = int(self.request.DATA['disk_size'])
+            new_size = int(new_size)
 
             if new_size < 0:
                 raise ValueError
