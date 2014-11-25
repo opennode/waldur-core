@@ -23,24 +23,6 @@ class ResizingError(KeyError, models.Instance.DoesNotExist):
     pass
 
 
-def _mock_processing(instance_uuid, should_fail=False):
-    if should_fail:
-        raise Exception('It\'s not my day')
-
-    import time
-    time.sleep(10)
-
-    # update some values
-    with transaction.atomic():
-        try:
-            instance = models.Instance.objects.get(uuid=instance_uuid)
-            instance.internal_ips = '10.10.10.10,192.168.18.3'
-            instance.external_ips = '1.2.3.4,131.107.140.29'
-            instance.save()
-        except models.Instance.DoesNotExist:
-            raise Exception('Error updating VM instance')
-
-
 def create_zabbix_host_and_service(instance):
     try:
         zabbix_client = ZabbixApiClient()
@@ -72,27 +54,12 @@ def schedule_provisioning(instance_uuid):
 
 
 @shared_task
-def wait_for_online(instance_uuid, retries):
+@tracked_processing(models.Instance, processing_state='begin_stopping', desired_state='set_offline')
+def schedule_stopping(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
     backend = instance.flavor.cloud.get_backend()
-
-    state = backend.get_instance_state(instance)
-
-    if state == models.Instance.States.ONLINE:
-        set_state(models.Instance, instance_uuid, 'set_online')
-    elif retries > 0:
-        logger.debug('Rescheduling polling instance %s', instance_uuid)
-        wait_for_online.apply_async(args=(instance_uuid, retries - 1), countdown=3)
-    else:
-        logger.error('Timed out polling instance %s', instance_uuid)
-        set_state(models.Instance, instance_uuid, 'set_erred')
-
-
-@shared_task
-@tracked_processing(models.Instance, processing_state='begin_stopping', desired_state='set_offline')
-def schedule_stopping(instance_uuid, **kwargs):
-    _mock_processing(instance_uuid)
+    backend.stop_instance(instance)
 
 
 @shared_task
@@ -106,9 +73,12 @@ def schedule_starting(instance_uuid):
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='begin_deleting', desired_state='set_deleted')
-def schedule_deleting(instance_uuid, **kwargs):
-    _mock_processing(instance_uuid)
+def schedule_deleting(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
+
+    backend = instance.flavor.cloud.get_backend()
+    backend.delete_instance(instance)
+
     delete_zabbix_host_and_service(instance)
 
 

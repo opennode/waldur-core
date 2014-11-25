@@ -273,27 +273,19 @@ class OpenStackBackend(object):
             instance.backend_id = server.id
             instance.save()
 
-            logger.info('Successfully booted instance %s', instance.uuid)
+            if not self._wait_for_instance_status(instance, nova, 'ACTIVE'):
+                logger.info('Failed to boot instance %s', instance.uuid)
+                raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
         except (glance_exceptions.ClientException,
                 nova_exceptions.ClientException,
                 neutron_exceptions.NeutronClientException):
             logger.info('Failed to boot instance %s', instance.uuid)
             six.reraise(CloudBackendError, CloudBackendError())
+        else:
+            logger.info('Successfully booted instance %s', instance.uuid)
 
-    def get_instance_state(self, instance):
+    def start_instance(self, instance):
         from nodeconductor.cloud.models import CloudProjectMembership
-        from nodeconductor.iaas.models import Instance
-
-        state_map = {
-            'ACTIVE': Instance.States.ONLINE,
-            'BUILD': Instance.States.PROVISIONING,
-            'SHUTOFF': Instance.States.OFFLINE,
-            'PAUSED': Instance.States.OFFLINE,
-            'SUSPENDED': Instance.States.OFFLINE,
-            'ERROR': Instance.States.ERRED,
-            'DELETED': Instance.States.DELETED,
-            'SOFT_DELETED': Instance.States.DELETED,
-        }
 
         try:
             membership = CloudProjectMembership.objects.get(
@@ -302,17 +294,78 @@ class OpenStackBackend(object):
             )
 
             session = self.create_tenant_session(membership)
+
             nova = self.create_nova_client(session)
+            nova.servers.start(instance.backend_id)
 
-            server = nova.servers.get(instance.backend_id)
-
-            return state_map[server.status]
-        except (KeyError,
-                CloudProjectMembership.DoesNotExist,
-                keystone_exceptions.ClientException,
-                nova_exceptions.ClientException):
-            logger.exception('Failed to get state of instance %s', instance.uuid)
+            if not self._wait_for_instance_status(instance, nova, 'ACTIVE'):
+                logger.info('Failed to start instance %s', instance.uuid)
+                raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
+        except nova_exceptions.ClientException:
+            logger.info('Failed to start instance %s', instance.uuid)
             six.reraise(CloudBackendError, CloudBackendError())
+        else:
+            logger.info('Successfully started instance %s', instance.uuid)
+
+    def stop_instance(self, instance):
+        from nodeconductor.cloud.models import CloudProjectMembership
+
+        try:
+            membership = CloudProjectMembership.objects.get(
+                project=instance.project,
+                cloud=instance.flavor.cloud,
+            )
+
+            session = self.create_tenant_session(membership)
+
+            nova = self.create_nova_client(session)
+            nova.servers.stop(instance.backend_id)
+
+            if not self._wait_for_instance_status(instance, nova, 'SHUTOFF'):
+                logger.info('Failed to stop instance %s', instance.uuid)
+                raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
+        except nova_exceptions.ClientException:
+            logger.info('Failed to stop instance %s', instance.uuid)
+            six.reraise(CloudBackendError, CloudBackendError())
+        else:
+            logger.info('Successfully stopped instance %s', instance.uuid)
+
+    def delete_instance(self, instance):
+        from nodeconductor.cloud.models import CloudProjectMembership
+
+        try:
+            membership = CloudProjectMembership.objects.get(
+                project=instance.project,
+                cloud=instance.flavor.cloud,
+            )
+
+            session = self.create_tenant_session(membership)
+
+            nova = self.create_nova_client(session)
+            nova.servers.delete(instance.backend_id)
+
+            import time
+
+            retries = 20
+            poll_interval = 3
+
+            for _ in range(retries):
+                try:
+                    nova.servers.get(instance.backend_id)
+                except nova_exceptions.NotFound:
+                    break
+
+                time.sleep(poll_interval)
+            else:
+                logger.info('Failed to delete instance %s', instance.uuid)
+                raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
+
+        except nova_exceptions.ClientException:
+            logger.info('Failed to delete instance %s', instance.uuid)
+            six.reraise(CloudBackendError, CloudBackendError())
+        else:
+            logger.info('Successfully deleted instance %s', instance.uuid)
+
 
     # Helper methods
     def create_admin_session(self, keystone_url):
@@ -507,3 +560,16 @@ class OpenStackBackend(object):
 
     def get_tenant_name(self, membership):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
+
+    def _wait_for_instance_status(self, instance, nova, status, retries=20, poll_interval=3):
+        import time
+
+        for _ in range(retries):
+            server = nova.servers.get(instance.backend_id)
+
+            if server.status == status:
+                return True
+
+            time.sleep(poll_interval)
+        else:
+            return False
