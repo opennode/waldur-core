@@ -5,6 +5,7 @@ import collections
 from django.test import TransactionTestCase
 from django.utils import unittest
 from keystoneclient import exceptions as keystone_exceptions
+from novaclient import exceptions as nova_exceptions
 import mock
 
 from nodeconductor.cloud.backend import CloudBackendError
@@ -37,7 +38,30 @@ def nc_flavor_to_nova_flavor(flavor):
     )
 
 
-class OpenStackBackendPublicApiTest(unittest.TestCase):
+class OpenStackBackendCloudAccountApiTest(unittest.TestCase):
+
+    def setUp(self):
+        self.keystone_client = mock.Mock()
+        self.nova_client = mock.Mock()
+        self.cloud_account = mock.Mock()
+        self.backend = OpenStackBackend()
+
+        self.backend.create_keystone_client = mock.Mock(return_value=self.keystone_client)
+        self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
+
+    def test_push_cloud_account_does_not_call_openstack_api(self):
+        self.backend.push_cloud_account(self.cloud_account)
+
+        self.assertFalse(self.backend.create_keystone_client.called, 'Keystone client should not have been created')
+        self.assertFalse(self.backend.create_nova_client.called, 'Nova client should not have been created')
+
+    def test_push_cloud_account_does_not_update_cloud_account(self):
+        self.backend.push_cloud_account(self.cloud_account)
+
+        self.assertFalse(self.cloud_account.save.called, 'Cloud account should not have been updated')
+
+
+class OpenStackBackendMembershipApiTest(unittest.TestCase):
     def setUp(self):
         self.keystone_client = mock.Mock()
         self.nova_client = mock.Mock()
@@ -57,17 +81,8 @@ class OpenStackBackendPublicApiTest(unittest.TestCase):
         self.backend.get_or_create_user = mock.Mock(return_value=('john', 'doe'))
         self.backend.get_or_create_network = mock.Mock()
         self.backend.ensure_user_is_tenant_admin = mock.Mock()
-
-    def test_push_cloud_account_does_not_call_openstack_api(self):
-        self.backend.push_cloud_account(self.cloud_account)
-
-        self.assertFalse(self.backend.create_keystone_client.called, 'Keystone client should not have been created')
-        self.assertFalse(self.backend.create_nova_client.called, 'Nova client should not have been created')
-
-    def test_push_cloud_account_does_not_update_cloud_account(self):
-        self.backend.push_cloud_account(self.cloud_account)
-
-        self.assertFalse(self.cloud_account.save.called, 'Cloud account should not have been updated')
+        self.backend.push_security_group = mock.Mock()
+        self.backend.create_tenant_session = mock.Mock()
 
     def test_push_membership_synchronizes_user(self):
         self.backend.push_membership(self.membership)
@@ -102,6 +117,26 @@ class OpenStackBackendPublicApiTest(unittest.TestCase):
         self.backend.create_admin_session.side_effect = keystone_exceptions.AuthorizationFailure
         with self.assertRaises(CloudBackendError):
             self.backend.push_membership(self.membership)
+
+    def test_push_membership_security_groups_pushes_each_group(self):
+        group1 = mock.Mock()
+        group2 = mock.Mock()
+        self.membership.security_groups.all = mock.Mock(return_value=[group1, group2])
+
+        self.backend.push_membership_security_groups(self.membership)
+
+        self.backend.push_security_group.assert_any_cal(group1, self.nova_client)
+        self.backend.push_security_group.assert_any_cal(group2, self.nova_client)
+
+    def test_push_membership_security_groups_raises_cloud_backed_error_on_keystone_error(self):
+        self.backend.create_tenant_session.side_effect = keystone_exceptions.AuthorizationFailure()
+        with self.assertRaises(CloudBackendError):
+            self.backend.push_membership_security_groups(self.membership)
+
+    def test_test_push_membership_security_groups_raises_cloud_backed_error_on_nova_error(self):
+        self.backend.create_nova_client.side_effect = nova_exceptions.ClientException('exception_code')
+        with self.assertRaises(CloudBackendError):
+            self.backend.push_membership_security_groups(self.membership)
 
 
 class OpenStackBackendFlavorApiTest(TransactionTestCase):
