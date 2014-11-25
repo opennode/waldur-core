@@ -15,8 +15,8 @@ from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
 from celery.utils import log
 
-logger = log.get_task_logger(__name__)
-event_log = EventLoggerAdapter(logging.getLogger(__name__))
+logger = logging.getLogger(__name__)
+event_log = EventLoggerAdapter(logger)
 
 
 class ResizingError(KeyError, models.Instance.DoesNotExist):

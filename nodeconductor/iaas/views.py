@@ -117,6 +117,42 @@ class InstanceViewSet(mixins.CreateModelMixin,
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
         return queryset
 
+    def change_flavor(self, instance, flavor_uuid):
+        new_flavor = filter_queryset_for_user(Flavor.objects.all(), self.request.user).filter(uuid=flavor_uuid)
+
+        if not new_flavor.exists():
+            return Response({'status': "No flavor with uuid %s" % flavor_uuid}, status=status.HTTP_400_BAD_REQUEST)
+
+        instance_cloud = instance.flavor.cloud
+        if new_flavor.first().cloud == instance_cloud:
+            return self._schedule_transition(self.request, instance.uuid, 'resize', new_flavor=flavor_uuid)
+
+        return Response({'status': "New flavor is not within the same cloud"},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    def resize_disk(self, instance, new_size):
+        # TODO: Move to the background task
+        is_admin = instance.project.roles.filter(permission_group__user=self.request.user,
+                                                 role_type=ProjectRole.ADMINISTRATOR).exists()
+        if not is_admin:
+            raise PermissionDenied()
+
+        try:
+            new_size = int(new_size)
+
+            if new_size < 0:
+                raise ValueError
+        except ValueError:
+            return Response({'status': "Disk size should be positive integer"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        old_size = instance.flavor.disk
+        instance.flavor.disk = new_size
+        instance.flavor.save()
+
+        return Response({'status': "Disk was successfully resized from %s MiB to %s MiB"
+                                   % (old_size, new_size)}, status=status.HTTP_200_OK)
+
     def _schedule_transition(self, request, uuid, operation, **kwargs):
         instance = self.get_object()
 
@@ -168,20 +204,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
         except models.Instance.DoesNotExist:
             raise Http404()
 
-        try:
-            flavor_uuid = request.DATA['flavor']
-        except KeyError:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+        if 'flavor' in request.DATA:
+            return self.change_flavor(instance, self.request.DATA['flavor'])
+        elif 'disk_size' in request.DATA:
+            return self.resize_disk(instance, self.request.DATA['disk_size'])
 
-        instance_cloud = instance.flavor.cloud
-
-        new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
-
-        if new_flavor.exists():
-            return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_uuid)
-
-        return Response({'status': "New flavor is not within the same cloud"},
-                        status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
     @link()
     def usage(self, request, uuid):
