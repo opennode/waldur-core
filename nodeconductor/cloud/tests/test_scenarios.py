@@ -44,7 +44,8 @@ class CloudTest(test.APISimpleTestCase):
         self.cloud = factories.CloudFactory(customer=self.customer)
         factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
 
-        self.expected_public_fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
+        self.expected_public_fields = (
+            'auth_url', 'uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
 
     def test_cloud_sync(self):
         cloud = factories.CloudFactory(customer=self.customer)
