@@ -154,6 +154,8 @@ class Instance(core_models.UuidMixin,
     state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
                      help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
+    backend_id = models.CharField(max_length=255, blank=True)
+
     @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
     def begin_provisioning(self):
         pass
@@ -368,7 +370,7 @@ class InstanceSecurityGroup(models.Model):
     sender=Instance,
     dispatch_uid='nodeconductor.iaas.models.auto_start_instance',
 )
-def auto_start_instance(sender, instance=None, created=False, **kwargs):
+def provision_instance(sender, instance=None, created=False, **kwargs):
     if created:
         # Importing here to avoid circular imports
         from nodeconductor.iaas import tasks
