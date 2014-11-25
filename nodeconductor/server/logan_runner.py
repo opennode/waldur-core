@@ -25,7 +25,7 @@ def generate_settings():
     config.set('logging', 'log_file', os.path.join(config_dir, 'nodeconductor.log'))
 
     config.add_section('openstack')
-    config.set('openstack', 'auth_url', 'http://example.com:5000/v2')
+    config.set('openstack', 'auth_url', 'http://keystone.example.com:5000/v2')
     config.set('openstack', 'username', 'admin')
     config.set('openstack', 'password', 'password')
     config.set('openstack', 'tenant_name', 'admin')
