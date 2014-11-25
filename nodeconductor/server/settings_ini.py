@@ -321,8 +321,8 @@ SAML_CONFIG = {
     # These following files are dummies
     # They are supposed to be valid, but are not really used.
     # They are only used to make PySAML2 happy.
-    'key_file': '/path/to/key.pem',  # private part
-    'cert_file': '/path/to/certificate.crt',  # public part
+    'key_file': config.get('saml2', 'key_file'),  # private part
+    'cert_file': config.get('saml2', 'cert_file'),  # public part
 
     'accepted_time_diff': 120,
 }
