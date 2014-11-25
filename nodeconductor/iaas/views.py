@@ -116,41 +116,71 @@ class InstanceViewSet(mixins.CreateModelMixin,
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
         return queryset
 
-    def _get_instance_or_404(self, request, uuid):
-        # XXX: this should be testing for actions/role pairs as well
-        instance = filter_queryset_for_user(models.Instance.objects.filter(uuid=uuid), request.user).first()
-        if instance is None:
-            raise Http404()
-        return instance
+    def change_flavor(self, instance, flavor_uuid):
+        new_flavor = filter_queryset_for_user(Flavor.objects.all(), self.request.user).filter(uuid=flavor_uuid)
 
-    def _schedule_transition(self, request, uuid, operation, **kwargs):
-        # Importing here to avoid circular imports
-        from nodeconductor.iaas import tasks
-        instance = self._get_instance_or_404(request, uuid)
+        if not new_flavor.exists():
+            return Response({'status': "No flavor with uuid %s" % flavor_uuid}, status=status.HTTP_400_BAD_REQUEST)
 
-        is_admin = instance.project.roles.filter(permission_group__user=request.user,
+        instance_cloud = instance.flavor.cloud
+        if new_flavor.first().cloud == instance_cloud:
+            return self._schedule_transition(self.request, instance.uuid, 'resize', new_flavor=flavor_uuid)
+
+        return Response({'status': "New flavor is not within the same cloud"},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    def resize_disk(self, instance, new_size):
+        # TODO: Move to the background task
+        is_admin = instance.project.roles.filter(permission_group__user=self.request.user,
                                                  role_type=ProjectRole.ADMINISTRATOR).exists()
         if not is_admin:
             raise PermissionDenied()
 
+        try:
+            new_size = int(new_size)
+
+            if new_size < 0:
+                raise ValueError
+        except ValueError:
+            return Response({'status': "Disk size should be positive integer"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        old_size = instance.flavor.disk
+        instance.flavor.disk = new_size
+        instance.flavor.save()
+
+        return Response({'status': "Disk was successfully resized from %s MiB to %s MiB"
+                                   % (old_size, new_size)}, status=status.HTTP_200_OK)
+
+    def _schedule_transition(self, request, uuid, operation, **kwargs):
+        instance = self.get_object()
+
+        is_admin = instance.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
+
+        if not is_admin:
+            raise PermissionDenied()
+
+        # Importing here to avoid circular imports
+        from nodeconductor.core.tasks import set_state, StateChangeError
+        from nodeconductor.iaas import tasks
+
         supported_operations = {
             # code: (scheduled_celery_task, instance_marker_state)
-            'start': (instance.schedule_starting, tasks.schedule_starting),
-            'stop': (instance.schedule_stopping, tasks.schedule_stopping),
-            'destroy': (instance.schedule_deletion, tasks.schedule_deleting),
-            'resize': (instance.schedule_resizing, tasks.schedule_resizing),
+            'start': ('schedule_starting', tasks.schedule_starting),
+            'stop': ('schedule_stopping', tasks.schedule_stopping),
+            'destroy': ('schedule_deletion', tasks.schedule_deleting),
+            'resize': ('schedule_resizing', tasks.schedule_resizing),
         }
 
-        logger.info('Scheduling provisioning instance with uuid %s', uuid)
-        processing_task = supported_operations[operation][1]
-        instance_schedule_transition = supported_operations[operation][0]
+        # logger.info('Scheduling %s of an instance with uuid %s', operation, uuid)
+        change_instance_state, processing_task = supported_operations[operation]
+
         try:
-            instance_schedule_transition()
-            instance.save()
+            set_state(models.Instance, uuid, change_instance_state)
             processing_task.delay(uuid, **kwargs)
-        except TransitionNotAllowed:
+        except StateChangeError:
             return Response({'status': 'Performing %s operation from instance state \'%s\' is not allowed'
-                            % (operation, instance.get_state_display())},
+                                       % (operation, instance.get_state_display())},
                             status=status.HTTP_409_CONFLICT)
 
         return Response({'status': '%s was scheduled' % operation})
@@ -173,24 +203,16 @@ class InstanceViewSet(mixins.CreateModelMixin,
         except models.Instance.DoesNotExist:
             raise Http404()
 
-        try:
-            flavor_uuid = request.DATA['flavor']
-        except KeyError:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+        if 'flavor' in request.DATA:
+            return self.change_flavor(instance, self.request.DATA['flavor'])
+        elif 'disk_size' in request.DATA:
+            return self.resize_disk(instance, self.request.DATA['disk_size'])
 
-        instance_cloud = instance.flavor.cloud
-
-        new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
-
-        if new_flavor.exists():
-            return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_uuid)
-
-        return Response({'status': "New flavor is not within the same cloud"},
-                        status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
     @link()
     def usage(self, request, uuid):
-        instance = self._get_instance_or_404(request, uuid)
+        instance = self.get_object()
 
         hour = 60 * 60
         data = {
@@ -316,7 +338,7 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
 
     def get_queryset(self):
         if not self.request.user.is_staff:
-            raise Http404
+            raise Http404()
         queryset = super(TemplateLicenseViewSet, self).get_queryset()
         if 'customer' in self.request.QUERY_PARAMS:
             customer_uuid = self.request.QUERY_PARAMS['customer']
@@ -400,7 +422,6 @@ class ServiceFilter(django_filters.FilterSet):
 
 # XXX: This view has to be rewritten or removed after haystack implementation
 class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
-
     queryset = models.Instance.objects.all()
     serializer_class = serializers.ServiceSerializer
     lookup_field = 'uuid'

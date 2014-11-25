@@ -1,7 +1,6 @@
 import logging
 
 from django.db import connections, DatabaseError
-from django.conf import settings
 from django.utils import six
 
 from nodeconductor.monitoring.zabbix import errors, api_client
@@ -19,7 +18,7 @@ class ZabbixDBClient(object):
     }
 
     def __init__(self):
-        self.zabbix_api_client = api_client.ZabbixApiClient(settings.NODECONDUCTOR['MONITORING']['ZABBIX'])
+        self.zabbix_api_client = api_client.ZabbixApiClient()
 
     def get_item_stats(self, instances, item, start_timestamp, end_timestamp, segments_count):
         host_ids = [self.zabbix_api_client.get_host(instance)['hostid'] for instance in instances]

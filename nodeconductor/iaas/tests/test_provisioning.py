@@ -8,7 +8,7 @@ from rest_framework import test
 
 from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
-from nodeconductor.cloud.models import CloudProjectMembership
+from nodeconductor.cloud.models import CloudProjectMembership, Flavor
 from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
 from nodeconductor.iaas.models import Instance
@@ -320,6 +320,35 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    # TODO: Requires extension via celery test runner
+    def test_user_can_resize_disk_of_flavor_of_instance_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        admined_instance = factories.InstanceFactory()
+        admined_instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        data = {'disk_size': 1024}
+        response = self.client.post(self._get_instance_url(admined_instance) + 'resize/', data)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        changed_flavor = Flavor.objects.get(uuid=admined_instance.flavor.uuid)
+        self.assertEqual(changed_flavor.disk, data['disk_size'])
+
+    def test_user_cannot_resize_disk_of_flavor_of_instance_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        managed_instance = factories.InstanceFactory()
+        managed_instance.project.add_user(self.user, ProjectRole.MANAGER)
+
+        self._ensure_cannot_resize_disk_of_flavor(managed_instance)
+
+    def test_user_cannot_resize_disk_of_flavor_of_instance_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.user)
+
+        inaccessible_instance = factories.InstanceFactory()
+        self._ensure_cannot_resize_disk_of_flavor(inaccessible_instance)
+
     # Helpers method
     def _get_valid_payload(self, resource=None):
         resource = resource or factories.InstanceFactory()
@@ -334,6 +363,16 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'flavor': self._get_flavor_url(resource.flavor),
             'ssh_public_key': self._get_ssh_public_key_url(resource.ssh_public_key)
         }
+
+    def _ensure_cannot_resize_disk_of_flavor(self, instance):
+        data = {'disk_size': 1024}
+        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        changed_flavor = Flavor.objects.get(uuid=instance.flavor.uuid)
+        self.assertNotEqual(changed_flavor.disk, data['disk_size'])
+
 
 # XXX: What should happen to existing instances when their project is removed?
 

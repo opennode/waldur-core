@@ -92,11 +92,11 @@ class BackupTest(TestCase):
         with self.assertRaises(IntegrityError):
             backup.save()
 
-    @patch('nodeconductor.backup.tasks.backup_task.delay', return_value=mocked_task_result)
+    @patch('nodeconductor.backup.tasks.process_backup_task.delay', return_value=mocked_task_result)
     def test_start_backup(self, mocked_task):
         backup = factories.BackupFactory()
         backup.start_backup()
-        mocked_task.assert_called_with(backup.backup_source)
+        mocked_task.assert_called_with(backup.uuid.hex)
         self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.BACKING_UP)
 
@@ -104,7 +104,7 @@ class BackupTest(TestCase):
     def test_start_restoration(self, mocked_task):
         backup = factories.BackupFactory()
         backup.start_restoration()
-        mocked_task.assert_called_with(backup.backup_source, replace_original=False)
+        mocked_task.assert_called_with(backup.uuid.hex, replace_original=False)
         self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.RESTORING)
 
@@ -112,7 +112,7 @@ class BackupTest(TestCase):
     def test_start_deletion(self, mocked_task):
         backup = factories.BackupFactory()
         backup.start_deletion()
-        mocked_task.assert_called_with(backup.backup_source)
+        mocked_task.assert_called_with(backup.uuid.hex)
         self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.DELETING)
 
@@ -140,7 +140,7 @@ class BackupTest(TestCase):
         backup = factories.BackupFactory(state=models.Backup.States.BACKING_UP)
         backup._check_task_result = MagicMock()
         backup.poll_current_state()
-        backup._check_task_result.assert_called_with(tasks.backup_task, backup._confirm_backup)
+        backup._check_task_result.assert_called_with(tasks.process_backup_task, backup._confirm_backup)
         # restoration
         backup = factories.BackupFactory(state=models.Backup.States.RESTORING)
         backup._check_task_result = MagicMock()

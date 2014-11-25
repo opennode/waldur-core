@@ -1,7 +1,4 @@
-from django.db import IntegrityError
-
 from rest_framework import serializers
-from rest_framework.exceptions import ParseError
 
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.cloud import serializers as cloud_serializers
@@ -99,12 +96,13 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     instance_licenses = InstanceLicenseSerializer(read_only=True)
     # special field for customer
     customer_abbreviation = serializers.Field(source='project.customer.abbreviation')
+    template_os = serializers.Field(source='template.os')
 
     class Meta(object):
         model = models.Instance
         fields = (
             'url', 'uuid', 'hostname', 'description', 'start_time',
-            'template', 'template_name',
+            'template', 'template_name', 'template_os',
             'cloud', 'cloud_name',
             'flavor', 'flavor_name',
             'project', 'project_name',

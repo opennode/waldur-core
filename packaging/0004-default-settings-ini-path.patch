@@ -1,11 +1,35 @@
 --- a/nodeconductor/server/settings_ini.py
 +++ b/nodeconductor/server/settings_ini.py
-@@ -6,7 +6,7 @@
+@@ -6,9 +6,9 @@
  
  from ConfigParser import RawConfigParser
  
 -conf_dir = os.path.join(os.path.expanduser('~'), '.nodeconductor')
+-data_dir = os.path.join(os.path.expanduser('~'), '.nodeconductor')
+-work_dir = os.path.join(os.path.expanduser('~'), '.nodeconductor')
 +conf_dir = '/etc/nodeconductor'
++data_dir = '/usr/share/nodeconductor'
++work_dir = '/var/lib/nodeconductor'
  
  config = RawConfigParser()
  config.read(os.path.join(conf_dir, 'settings.ini'))
+@@ -51,15 +51,15 @@
+     },
+     'saml2': {
+         'acs_url': '',
+-        'attribute_map_dir': os.path.join(conf_dir, 'attribute-maps'),
+-        'cert_file': os.path.join(conf_dir, 'dummy.crt'),
++        'attribute_map_dir': os.path.join(conf_dir, 'saml2', 'attribute-maps'),
++        'cert_file': os.path.join(conf_dir, 'saml2', 'dummy.crt'),
+         'debug': 'false',
+         'entity_id': 'saml-sp2',
+-        'key_file': os.path.join(conf_dir, 'dummy.pem'),
++        'key_file': os.path.join(conf_dir, 'saml2', 'dummy.pem'),
+         'log_file': '',  # empty to disable
+         'log_level': 'INFO',
+         'metadata_cert': '',
+-        'metadata_file': os.path.join(conf_dir, 'metadata.xml'),
++        'metadata_file': os.path.join(conf_dir, 'saml2', 'metadata.xml'),
+         'metadata_url': '',
+     },
+     'sqlite3': {

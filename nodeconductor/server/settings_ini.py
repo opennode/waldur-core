@@ -7,6 +7,8 @@ import saml2
 from ConfigParser import RawConfigParser
 
 conf_dir = os.path.join(os.path.expanduser('~'), '.nodeconductor')
+data_dir = os.path.join(os.path.expanduser('~'), '.nodeconductor')
+work_dir = os.path.join(os.path.expanduser('~'), '.nodeconductor')
 
 config = RawConfigParser()
 config.read(os.path.join(conf_dir, 'settings.ini'))
@@ -17,8 +19,12 @@ config_defaults = {
         'db_backend': 'sqlite3',
         'debug': 'false',
         'secret_key': '',
-        'static_root': os.path.join(conf_dir, 'static'),
+        'static_root': os.path.join(data_dir, 'static'),
         'template_debug': 'false',
+    },
+    'celery': {
+        'broker_url': 'redis://localhost',
+        'result_backend_url': 'redis://localhost',
     },
     'events': {
         'log_file': '',  # empty to disable
@@ -57,7 +63,7 @@ config_defaults = {
         'metadata_url': '',
     },
     'sqlite3': {
-        'path': os.path.join(conf_dir, 'db.sqlite3'),
+        'path': os.path.join(work_dir, 'db.sqlite3'),
     },
     'zabbix': {
         'host_template_id': '',
@@ -118,6 +124,10 @@ if config.get('global', 'db_backend') == 'mysql':
         'PORT': config.get('mysql', 'port'),
         'USER': config.get('mysql', 'user'),
         'PASSWORD': config.get('mysql', 'password'),
+        # use case-sensitive collation
+        'OPTIONS' : {
+            'init_command': 'SET COLLATION_CONNECTION=utf8_bin'
+        }
     }
 elif config.has_section('sqlite3'):
     DATABASES['default'] = {
@@ -317,8 +327,8 @@ SAML_CONFIG = {
     # These following files are dummies
     # They are supposed to be valid, but are not really used.
     # They are only used to make PySAML2 happy.
-    'key_file': '/path/to/key.pem',  # private part
-    'cert_file': '/path/to/certificate.crt',  # public part
+    'key_file': config.get('saml2', 'key_file'),  # private part
+    'cert_file': config.get('saml2', 'cert_file'),  # public part
 
     'accepted_time_diff': 120,
 }
@@ -344,13 +354,14 @@ SAML_ATTRIBUTE_MAPPING = {
 # Celery
 # See also: http://docs.celeryproject.org/en/latest/getting-started/brokers/index.html#broker-instructions
 # See also: http://docs.celeryproject.org/en/latest/configuration.html#broker-url
-BROKER_URL = 'redis://localhost'
+BROKER_URL = config.get('celery', 'broker_url')
 
-# See also: http://docs.celeryproject.org/en/latest/configuration.html#std:setting-CELERY_RESULT_BACKEND
-CELERY_RESULT_BACKEND = 'redis://localhost'
+# See also: http://docs.celeryproject.org/en/latest/configuration.html#celery-result-backend
+CELERY_RESULT_BACKEND = config.get('celery', 'result_backend_url')
 
 # See also: http://docs.celeryproject.org/en/latest/configuration.html#celery-accept-content
-CELERY_ACCEPT_CONTENT = ['json']
+# Not needed: set to 'json' in base_settings.py
+#CELERY_ACCEPT_CONTENT = ['json']
 
 NODECONDUCTOR = {
     'OPENSTACK_CREDENTIALS': (
