@@ -46,17 +46,6 @@ def sync_cloud_account(cloud_account_uuid):
     processing_state='begin_syncing',
     desired_state='set_in_sync',
 )
-def push_cloud_membership(membership_pk):
-    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
-    membership.cloud.get_backend().push_membership(membership)
-
-
-@shared_task
-@tracked_processing(
-    models.CloudProjectMembership,
-    processing_state='begin_syncing',
-    desired_state='set_in_sync',
-)
 def sync_cloud_membership(membership_pk):
     membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
 
