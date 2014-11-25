@@ -7,6 +7,8 @@ import saml2
 from ConfigParser import RawConfigParser
 
 conf_dir = os.path.join(os.path.expanduser('~'), '.nodeconductor')
+data_dir = os.path.join(os.path.expanduser('~'), '.nodeconductor')
+work_dir = os.path.join(os.path.expanduser('~'), '.nodeconductor')
 
 config = RawConfigParser()
 config.read(os.path.join(conf_dir, 'settings.ini'))
@@ -17,7 +19,7 @@ config_defaults = {
         'db_backend': 'sqlite3',
         'debug': 'false',
         'secret_key': '',
-        'static_root': os.path.join(conf_dir, 'static'),
+        'static_root': os.path.join(data_dir, 'static'),
         'template_debug': 'false',
     },
     'celery': {
@@ -61,7 +63,7 @@ config_defaults = {
         'metadata_url': '',
     },
     'sqlite3': {
-        'path': os.path.join(conf_dir, 'db.sqlite3'),
+        'path': os.path.join(work_dir, 'db.sqlite3'),
     },
     'zabbix': {
         'host_template_id': '',
