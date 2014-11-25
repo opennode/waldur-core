@@ -14,3 +14,7 @@ Configuration
 +++++++++++++
 
 NodeConductor configuration file can be found at ``/etc/nodeconductor/settings.ini``.
+
+Example configuration file (this is already included in your installation): `settings.ini example`_
+
+.. _settings.ini example: settings-ini-example.html
