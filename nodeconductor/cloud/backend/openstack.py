@@ -274,12 +274,12 @@ class OpenStackBackend(object):
             instance.save()
 
             if not self._wait_for_instance_status(instance, nova, 'ACTIVE'):
-                logger.info('Failed to boot instance %s', instance.uuid)
+                logger.error('Failed to boot instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
         except (glance_exceptions.ClientException,
                 nova_exceptions.ClientException,
                 neutron_exceptions.NeutronClientException):
-            logger.info('Failed to boot instance %s', instance.uuid)
+            logger.exception('Failed to boot instance %s', instance.uuid)
             six.reraise(CloudBackendError, CloudBackendError())
         else:
             logger.info('Successfully booted instance %s', instance.uuid)
@@ -299,10 +299,10 @@ class OpenStackBackend(object):
             nova.servers.start(instance.backend_id)
 
             if not self._wait_for_instance_status(instance, nova, 'ACTIVE'):
-                logger.info('Failed to start instance %s', instance.uuid)
+                logger.error('Failed to start instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
         except nova_exceptions.ClientException:
-            logger.info('Failed to start instance %s', instance.uuid)
+            logger.exception('Failed to start instance %s', instance.uuid)
             six.reraise(CloudBackendError, CloudBackendError())
         else:
             logger.info('Successfully started instance %s', instance.uuid)
@@ -322,10 +322,10 @@ class OpenStackBackend(object):
             nova.servers.stop(instance.backend_id)
 
             if not self._wait_for_instance_status(instance, nova, 'SHUTOFF'):
-                logger.info('Failed to stop instance %s', instance.uuid)
+                logger.error('Failed to stop instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
         except nova_exceptions.ClientException:
-            logger.info('Failed to stop instance %s', instance.uuid)
+            logger.exception('Failed to stop instance %s', instance.uuid)
             six.reraise(CloudBackendError, CloudBackendError())
         else:
             logger.info('Successfully stopped instance %s', instance.uuid)
