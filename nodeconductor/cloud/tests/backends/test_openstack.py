@@ -6,7 +6,6 @@ from django.test import TransactionTestCase
 from django.utils import unittest
 from keystoneclient import exceptions as keystone_exceptions
 import mock
-from novaclient import exceptions as nova_exceptions
 
 from nodeconductor.cloud.backend import CloudBackendError
 from nodeconductor.cloud.backend.openstack import OpenStackBackend
@@ -107,10 +106,10 @@ class OpenStackBackendPublicApiTest(unittest.TestCase):
     def test_get_resource_stats_gets_credetials_with_fiven_auth_url(self):
         auth_url = 'http://example.com/'
         self.backend.get_resource_stats(auth_url)
-        self.backend.get_credentials.assert_called_once_with(auth_url)
+        self.backend.create_admin_session.assert_called_once_with(auth_url)
 
     def test_get_resource_stats_raises_on_openstack_api_error(self):
-        self.backend.get_nova_client.side_effect = keystone_exceptions.AuthorizationFailure
+        self.backend.create_nova_client.side_effect = keystone_exceptions.AuthorizationFailure
 
         auth_url = 'http://example.com/'
         with self.assertRaises(CloudBackendError):
