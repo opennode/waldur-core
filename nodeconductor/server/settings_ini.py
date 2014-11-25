@@ -360,7 +360,8 @@ BROKER_URL = config.get('celery', 'broker_url')
 CELERY_RESULT_BACKEND = config.get('celery', 'result_backend_url')
 
 # See also: http://docs.celeryproject.org/en/latest/configuration.html#celery-accept-content
-CELERY_ACCEPT_CONTENT = ['json']
+# Not needed: set to 'json' in base_settings.py
+#CELERY_ACCEPT_CONTENT = ['json']
 
 NODECONDUCTOR = {
     'OPENSTACK_CREDENTIALS': (
