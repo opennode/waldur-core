@@ -124,8 +124,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return Response({'status': "No flavor with uuid %s" % flavor_uuid}, status=status.HTTP_400_BAD_REQUEST)
 
         instance_cloud = instance.flavor.cloud
-        new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
-        if new_flavor.exists():
+        if new_flavor.cloud == instance_cloud:
             return self._schedule_transition(self.request, instance.uuid, 'resize', new_flavor=flavor_uuid)
 
         return Response({'status': "New flavor is not within the same cloud"},
