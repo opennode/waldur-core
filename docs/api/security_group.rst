@@ -5,6 +5,7 @@ To get a list of Security Groups and security group rules, run GET against *api/
 
 Supported filters:
 
+- ?name=<group_name> - only groups with defined name
 - ?project=<project_uuid> - only groups connected to a defined cloud
 - ?cloud=<cloud_uuid> - only groups connected to a defined project
 
