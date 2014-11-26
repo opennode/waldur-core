@@ -6,16 +6,16 @@ User list is available to all authenticated users. To get a list, issue authenti
 User list supports several filters. All filters are set in HTTP query section.
 Field filters (all of the filters to case insensitive partial matching) are:
 
-- full_name
-- native_name
-- organization
-- email
-- phone_number
-- description
-- job_title
-- username
-- project
-- project_group
+- ?full_name=
+- ?native_name=
+- ?organization=
+- ?email=
+- ?phone_number=
+- ?description=
+- ?job_title=
+- ?username=
+- ?project=
+- ?project_group=
 
 In addition, several custom filters are supported:
 
@@ -23,6 +23,20 @@ In addition, several custom filters are supported:
 - ?civil_number=XXX - filters out users with a specified civil number
 - ?can_manage - filter for users with project roles that a request user can manage (i.e. remove privileges).
 - ?is_active=True|False - show only active (non-active) users.
+
+Ordering is supported by the fields below. Descending sorting can be achieved through prefixing
+field name with a dash (**-**).
+
+- ?o=full_name
+- ?o=native_name
+- ?o=organization
+- ?o=email
+- ?o=phone_number
+- ?o=description'
+- ?o=job_title
+- ?o=username
+- ?o=active
+
 
 Creating a user
 ---------------

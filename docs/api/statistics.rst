@@ -22,7 +22,7 @@ Answer will be list of dictionaries with fields:
 
 Example:
 
-.. code-block:: python
+.. code-block:: javascript
 
     [
         {
@@ -77,27 +77,43 @@ URL: /stats/resource/
 Required request GET parameter: ?auth_url - cloud URL
 
 Answer will be list dictionaries with fields:
-'ram_quota', 'vcpu_quota', 'storage_quota', 'free_disk_gb', 'disk_available_least', 'local_gb', 'free_ram_mb', 'memory_mb_used', 'count', 'vcpus_used', 'local_gb_used', u'memory_mb', 'current_workload', 'vcpus', 'running_vms'
 
+- count - number of physical hosts (hypervisors)
+- current_workload
+- disk_available_least
+- free_disk_gb - total available disk space on all physical hosts
+- free_ram_mb - total available memory space on all physical hosts
+- local_gb
+- local_gb_used
+- memory_mb - total size of memory for allocation
+- memory_mb_used - currently used memory size
+- memory_quota - maximum number of memory (from quotas)
+- running_vms - total number of running VMs
+- storage_quota - allocated storaeg quota
+- vcpu_quota - maximum number of vCPUs (from quotas)
+- vcpus - maximum number of vCPUs (from hypervisors)
+- vcpus_used - currently number of used vCPUs
+
+The exact semantics of the remaining fields are left as a puzzle to the reader.
 
 Example:
 
-.. code-block:: python
+.. code-block:: javascript
 
     {
-        'ram_quota': 7.0,
-        'vcpu_quota': 7,
-        'free_disk_gb': 12,
-        'disk_available_least': 6,
-        'local_gb': 12,
-        'free_ram_mb': 6636,
-        'memory_mb_used': 1024,
-        'count': 2,
-        'vcpus_used': 0,
-        'storage_quota': 79.395059159317753,
-        'local_gb_used': 0,
-        'memory_mb': 7660,
-        'current_workload': 0,
-        'vcpus': 2,
-        'running_vms': 0
+        "count": 2,
+        "current_workload": 0,
+        "disk_available_least": 48,
+        "free_disk_gb": 14,
+        "free_ram_mb": 510444,
+        "local_gb": 56,
+        "local_gb_used": 42,
+        "memory_mb": 516588,
+        "memory_mb_used": 6144,
+        "memory_quota": 0,
+        "running_vms": 4,
+        "storage_quota": 0,
+        "vcpu_quota": 0,
+        "vcpus": 64,
+        "vcpus_used": 4
     }

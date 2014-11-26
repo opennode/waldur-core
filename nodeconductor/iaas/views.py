@@ -6,7 +6,6 @@ import time
 from django.db import models as django_models
 from django.http import Http404
 import django_filters
-from django_fsm import TransitionNotAllowed
 from rest_framework import filters as rf_filter
 from rest_framework import mixins
 from rest_framework import permissions, status
@@ -19,6 +18,7 @@ from nodeconductor.cloud.models import Cloud, Flavor
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
+from nodeconductor.core.utils import sort_dict
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.structure import filters
@@ -441,7 +441,7 @@ class ResourceStatsView(views.APIView):
         quotas_list = ResourceQuota.objects.filter(project_quota__clouds__in=clouds).values('vcpu', 'ram', 'storage')
         return {
             'vcpu_quota': sum([q['vcpu'] for q in quotas_list]),
-            'ram_quota': sum([q['ram'] for q in quotas_list]),
+            'memory_quota': sum([q['ram'] for q in quotas_list]),
             'storage_quota': sum([q['storage'] for q in quotas_list]),
         }
 
@@ -461,7 +461,7 @@ class ResourceStatsView(views.APIView):
         quotas_stats = self._get_quotas_stats(clouds)
         stats.update(quotas_stats)
 
-        return Response(stats, status=status.HTTP_200_OK)
+        return Response(sort_dict(stats), status=status.HTTP_200_OK)
 
 
 class CustomerStatsView(views.APIView):
