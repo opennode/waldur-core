@@ -106,6 +106,10 @@ class SecurityGroupFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
         name='name',
     )
+    description = django_filters.CharFilter(
+        name='description',
+        lookup_type='istartswith',
+    )
     cloud = django_filters.CharFilter(
         name='cloud_project_membership__cloud__uuid',
     )
@@ -117,6 +121,7 @@ class SecurityGroupFilter(django_filters.FilterSet):
         model = models.SecurityGroup
         fields = [
             'name',
+            'description',
             'cloud',
             'project'
         ]
