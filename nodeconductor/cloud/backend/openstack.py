@@ -199,6 +199,16 @@ class OpenStackBackend(object):
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
             six.reraise(CloudBackendError, CloudBackendError())
 
+    # Statistics methods:
+    def get_resource_stats(self, auth_url):
+        try:
+            session = self.create_admin_session(auth_url)
+            nova = self.create_nova_client(session)
+            return self.get_hypervisors_statistics(nova)
+        except (nova_exceptions.ClientException, keystone_exceptions.ClientException):
+            logger.exception('Failed to get statics for auth_url: %s', auth_url)
+            six.reraise(CloudBackendError, CloudBackendError())
+
     # Instance related methods
     def provision_instance(self, instance):
         from nodeconductor.cloud.models import CloudProjectMembership
@@ -365,7 +375,6 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, CloudBackendError())
         else:
             logger.info('Successfully deleted instance %s', instance.uuid)
-
 
     # Helper methods
     def create_admin_session(self, keystone_url):
@@ -548,6 +557,9 @@ class OpenStackBackend(object):
             'gateway_ip': None,
         }
         neutron.create_subnet({'subnets': [subnet]})
+
+    def get_hypervisors_statistics(self, nova):
+        return nova.hypervisors.statistics()._info
 
     def get_key_name(self, public_key):
         # We want names to be human readable in backend.

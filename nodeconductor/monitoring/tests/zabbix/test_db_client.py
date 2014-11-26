@@ -52,7 +52,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
         instance = object
         item_key = 'cpu'
 
-        segment_list = self.client.get_item_stats(instance, item_key, start_timestamp, end_timestamp, segments_count)
+        segment_list = self.client.get_item_stats([instance], item_key, start_timestamp, end_timestamp, segments_count)
 
         expected_segment_list = [
             {'from': 1415912624L, 'to': 1415912626L, 'value': 1},

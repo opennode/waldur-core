@@ -5,6 +5,7 @@ from nodeconductor.cloud import serializers as cloud_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
+from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import serializers as structure_serializers
 
 
@@ -281,3 +282,24 @@ class ServiceSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModel
 
     def get_service_type(self, obj):
         return 'IaaS'
+
+
+class UsageStatsSerializer(serializers.Serializer):
+    segments_count = serializers.IntegerField()
+    start_timestamp = serializers.IntegerField()
+    end_timestamp = serializers.IntegerField()
+    item = serializers.CharField()
+
+    def validate_item(self, attrs, name):
+        item = attrs[name]
+        if not item in ZabbixDBClient.items:
+            raise serializers.ValidationError(
+                "GET parameter 'item' have to be from list: %s" % ZabbixDBClient.items.keys())
+        return attrs
+
+    def get_stats(self, instances):
+        self.attrs = self.data
+        zabbix_db_client = ZabbixDBClient()
+        return zabbix_db_client.get_item_stats(
+            instances, self.data['item'],
+            self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])

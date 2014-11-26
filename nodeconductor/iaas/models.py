@@ -93,6 +93,7 @@ class Instance(core_models.UuidMixin,
     it can be either a fully virtualized instance, or a container.
     """
     class Permissions(object):
+        customer_path = 'project__customer'
         project_path = 'project'
         project_group_path = 'project__project_groups'
 

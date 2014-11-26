@@ -10,7 +10,7 @@ from django_fsm import TransitionNotAllowed
 from rest_framework import filters as rf_filter
 from rest_framework import mixins
 from rest_framework import permissions, status
-from rest_framework import viewsets
+from rest_framework import viewsets, views
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework_extensions.decorators import action, link
@@ -21,10 +21,9 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
-from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import filters
 from nodeconductor.structure.filters import filter_queryset_for_user
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, ResourceQuota
 
 
 logger = logging.getLogger(__name__)
@@ -213,24 +212,22 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     @link()
     def usage(self, request, uuid):
-        zabbix_db_client = ZabbixDBClient()
-        if 'item' not in request.QUERY_PARAMS:
-            return Response({'status': "GET parameter 'item' have to be defined"}, status=status.HTTP_400_BAD_REQUEST)
-
-        item = request.QUERY_PARAMS['item']
-        if item not in zabbix_db_client.items:
-            return Response(
-                {'status': "GET parameter 'item' have to from list: %s" % zabbix_db_client.items.keys()},
-                status=status.HTTP_400_BAD_REQUEST)
-
-        hour = 60 * 60
-        start_timestamp = int(request.QUERY_PARAMS.get('from', time.time() - hour))
-        end_timestamp = int(request.QUERY_PARAMS.get('to', time.time()))
-        segments_count = int(request.QUERY_PARAMS.get('datapoints', 6))
         instance = self.get_object()
 
-        segment_list = zabbix_db_client.get_item_stats(instance, item, start_timestamp, end_timestamp, segments_count)
-        return Response(segment_list, status=status.HTTP_200_OK)
+        hour = 60 * 60
+        data = {
+            'start_timestamp': request.QUERY_PARAMS.get('from', time.time() - hour),
+            'end_timestamp': request.QUERY_PARAMS.get('to', time.time()),
+            'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
+            'item': request.QUERY_PARAMS.get('item'),
+        }
+
+        serializer = serializers.UsageStatsSerializer(data=data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        stats = serializer.get_stats([instance])
+        return Response(stats, status=status.HTTP_200_OK)
 
 
 class TemplateViewSet(core_viewsets.ModelViewSet):
@@ -430,3 +427,103 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
     filter_class = ServiceFilter
+
+
+class ResourceStatsView(views.APIView):
+
+    def _check_user(self, request):
+        if not request.user.is_staff:
+            raise PermissionDenied()
+
+    def _get_quotas_stats(self, clouds):
+        quotas_list = ResourceQuota.objects.filter(project_quota__clouds__in=clouds).values('vcpu', 'ram', 'storage')
+        return {
+            'vcpu_quota': sum([q['vcpu'] for q in quotas_list]),
+            'ram_quota': sum([q['ram'] for q in quotas_list]),
+            'storage_quota': sum([q['storage'] for q in quotas_list]),
+        }
+
+    def get(self, request, format=None):
+        self._check_user(request)
+        if not 'auth_url' in request.QUERY_PARAMS:
+            return Response('GET parameter "auth_url" have to be defined', status=status.HTTP_400_BAD_REQUEST)
+        auth_url = request.QUERY_PARAMS['auth_url']
+
+        try:
+            clouds = Cloud.objects.filter(auth_url=auth_url)
+            cloud_backend = clouds[0].get_backend()
+        except IndexError:
+            return Response('No clouds with auth url: %s' % auth_url, status=status.HTTP_400_BAD_REQUEST)
+
+        stats = cloud_backend.get_resource_stats(auth_url)
+        quotas_stats = self._get_quotas_stats(clouds)
+        stats.update(quotas_stats)
+
+        return Response(stats, status=status.HTTP_200_OK)
+
+
+class CustomerStatsView(views.APIView):
+
+    def get(self, request, format=None):
+        customer_statistics = []
+        customer_queryset = filter_queryset_for_user(Customer.objects.all(), request.user)
+        for customer in customer_queryset:
+            projects_count = filter_queryset_for_user(Project.objects.filter(customer=customer), request.user).count()
+            project_groups_count = filter_queryset_for_user(
+                ProjectGroup.objects.filter(customer=customer), request.user).count()
+            instances_count = filter_queryset_for_user(
+                models.Instance.objects.filter(project__customer=customer), request.user).count()
+            customer_statistics.append({
+                'name': customer.name, 'projects': projects_count,
+                'project_groups': project_groups_count, 'instances': instances_count
+            })
+
+        return Response(customer_statistics, status=status.HTTP_200_OK)
+
+
+class UsageStatsView(views.APIView):
+
+    aggregate_models = {
+        'customer': {'model': Customer, 'path': models.Instance.Permissions.customer_path},
+        'project_group': {'model': ProjectGroup, 'path': models.Instance.Permissions.project_group_path},
+        'project': {'model': Project, 'path': models.Instance.Permissions.project_path},
+    }
+
+    def _get_aggregate_queryset(self, request, aggregate_model_name):
+        model = self.aggregate_models[aggregate_model_name]['model']
+        return filter_queryset_for_user(model.objects.all(), request.user)
+
+    def _get_aggregate_filter(self, aggregate_model_name, obj):
+        path = self.aggregate_models[aggregate_model_name]['path']
+        return {path: obj}
+
+    def get(self, request, format=None):
+        usage_stats = []
+
+        aggregate_model_name = request.QUERY_PARAMS.get('aggregate', 'customer')
+        if aggregate_model_name not in self.aggregate_models.keys():
+            return Response(
+                'Get parameter "aggregate" can take only this values: ' % ', '.join(self.aggregate_models.keys()),
+                status=status.HTTP_400_BAD_REQUEST)
+
+        for aggregate_object in self._get_aggregate_queryset(request, aggregate_model_name):
+            instances = models.Instance.objects.filter(
+                **self._get_aggregate_filter(aggregate_model_name, aggregate_object))
+            if instances:
+                hour = 60 * 60
+                data = {
+                    'start_timestamp': request.QUERY_PARAMS.get('from', time.time() - hour),
+                    'end_timestamp': request.QUERY_PARAMS.get('to', time.time()),
+                    'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
+                    'item': request.QUERY_PARAMS.get('item'),
+                }
+
+                serializer = serializers.UsageStatsSerializer(data=data)
+                if not serializer.is_valid():
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+                stats = serializer.get_stats(instances)
+                usage_stats.append({'name': aggregate_object.name, 'datapoints': stats})
+            else:
+                usage_stats.append({'name': aggregate_object.name, 'datapoints': []})
+        return Response(usage_stats, status=status.HTTP_200_OK)

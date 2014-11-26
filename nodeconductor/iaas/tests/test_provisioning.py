@@ -634,10 +634,11 @@ class InstaneUsageTest(test.APITransactionTestCase):
             {'from': 943941753L, 'to': 1415912629L, 'value': 3.0}
         ]
         patched_cliend.get_item_stats = Mock(return_value=expected_data)
-        with patch('nodeconductor.iaas.views.ZabbixDBClient', return_value=patched_cliend):
+        with patch('nodeconductor.iaas.serializers.ZabbixDBClient', return_value=patched_cliend) as patched:
+            patched.items = {'cpu': {'key': 'cpu_key', 'table': 'cpu_table'}}
             data = {'item': 'cpu', 'from': 1L, 'to': 1415912629L, 'datapoints': 3}
             response = self.client.get(self.url, data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data, expected_data)
             patched_cliend.get_item_stats.assert_called_once_with(
-                self.instance, data['item'], data['from'], data['to'], data['datapoints'])
+                [self.instance], data['item'], data['from'], data['to'], data['datapoints'])

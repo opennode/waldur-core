@@ -103,6 +103,23 @@ class OpenStackBackendPublicApiTest(unittest.TestCase):
         with self.assertRaises(CloudBackendError):
             self.backend.push_membership(self.membership)
 
+    def test_get_resource_stats_gets_credetials_with_fiven_auth_url(self):
+        auth_url = 'http://example.com/'
+        self.backend.get_resource_stats(auth_url)
+        self.backend.create_admin_session.assert_called_once_with(auth_url)
+
+    def test_get_resource_stats_raises_on_openstack_api_error(self):
+        self.backend.create_nova_client.side_effect = keystone_exceptions.AuthorizationFailure
+
+        auth_url = 'http://example.com/'
+        with self.assertRaises(CloudBackendError):
+            self.backend.get_resource_stats(auth_url)
+
+    def test_get_resource_stats_calls_hypervisors_statistics_method(self):
+        auth_url = 'http://example.com/'
+        self.backend.get_resource_stats(auth_url)
+        self.nova_client.hypervisors.statistics.assert_called_once_with()
+
 
 class OpenStackBackendFlavorApiTest(TransactionTestCase):
     def setUp(self):
