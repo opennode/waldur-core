@@ -66,6 +66,22 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
         return attrs
 
 
+class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
+
+    security_groups = InstanceSecurityGroupSerializer(
+        many=True, required=False, allow_add_remove=True, read_only=False)
+
+    class Meta(object):
+        model = models.Instance
+        fields = ('url', 'hostname', 'description', 'security_groups',)
+        lookup_field = 'uuid'
+
+    def validate_security_groups(self, attrs, attr_name):
+        if attr_name in attrs and attrs[attr_name] is None:
+            del attrs[attr_name]
+        return attrs
+
+
 class InstanceLicenseSerializer(serializers.ModelSerializer):
 
     name = serializers.Field(source='template_license.name')
