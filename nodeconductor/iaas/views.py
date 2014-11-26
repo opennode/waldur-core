@@ -409,17 +409,47 @@ class ServiceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
-    name = django_filters.CharFilter(name='hostname', lookup_type='icontains')
+    hostname = django_filters.CharFilter(lookup_type='icontains')
+    customer_name = django_filters.CharFilter(
+        name='project__customer__name',
+        lookup_type='icontains'
+    )
+    template_name = django_filters.CharFilter(
+        name='template__name',
+        lookup_type='icontains'
+    )
     agreed_sla = django_filters.NumberFilter()
     actual_sla = django_filters.NumberFilter()
 
     class Meta(object):
         model = models.Instance
         fields = [
+            'hostname',
+            'template_name',
+            'customer_name',
             'project_name',
-            'name',
             'project_groups',
+            'agreed_sla',
+            'actual_sla',
         ]
+        order_by = [
+            'hostname',
+            'template__name',
+            'project__customer__name',
+            'project__name',
+            'project__project_groups__name',
+            'agreed_sla',
+            'actual_sla',
+            # desc
+            '-hostname',
+            '-template__name',
+            '-project__customer__name',
+            '-project__name',
+            '-project__project_groups__name',
+            '-agreed_sla',
+            '-actual_sla',
+        ]
+
 
 
 # XXX: This view has to be rewritten or removed after haystack implementation

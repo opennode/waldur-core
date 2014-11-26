@@ -19,7 +19,6 @@ Answer will be list of dictionaries with fields:
 - datapoints - list of datapoints for aggregate object. Each datapoint is a dictionary with fields: 'from', 'to', 'value'
 
 
-
 Example:
 
 .. code-block:: javascript
