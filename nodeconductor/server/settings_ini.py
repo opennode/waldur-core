@@ -371,6 +371,12 @@ NODECONDUCTOR = {
             'password': config.get('openstack', 'password'),
             'tenant_name': config.get('openstack', 'tenant_name'),
         },
+        {
+            'auth_url': 'http://localhost:55000',
+            'username': 'nodeconductor',
+            'password': 'nodeconductor',
+            'tenant_name': 'test',
+        },
     ),
     'MONITORING': {
         'ZABBIX': {
