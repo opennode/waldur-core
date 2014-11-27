@@ -86,6 +86,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.backend.create_security_group = mock.Mock()
         self.backend.update_security_group = mock.Mock()
         self.backend.delete_security_group = mock.Mock()
+        self.backend.push_security_group_rules = mock.Mock()
 
     def test_push_membership_synchronizes_user(self):
         self.backend.push_membership(self.membership)
