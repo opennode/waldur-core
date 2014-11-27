@@ -11,7 +11,7 @@ def generate_settings():
 
     from ConfigParser import RawConfigParser
 
-    config_dir = os.path.join(os.path.expanduser("~"), ".nodeconductor")
+    config_dir = os.path.join(os.path.expanduser('~'), '.nodeconductor')
     os.path.isdir(config_dir) or os.makedirs(config_dir)
 
     config = RawConfigParser()
@@ -26,20 +26,20 @@ def generate_settings():
 
     config.add_section('openstack')
     config.set('openstack', 'auth_url', 'http://keystone.example.com:5000/v2')
-    config.set('openstack', 'username', 'admin')
-    config.set('openstack', 'password', 'password')
+    config.set('openstack', 'username', 'nodeconductor')
+    config.set('openstack', 'password', 'nodeconductor')
     config.set('openstack', 'tenant_name', 'admin')
 
     config.add_section('zabbix')
     config.set('zabbix', 'server_url', 'http://zabbix.example.com/zabbix')
-    config.set('zabbix', 'username', 'admin')
-    config.set('zabbix', 'password', 'password')
+    config.set('zabbix', 'username', 'nodeconductor')
+    config.set('zabbix', 'password', 'nodeconductor')
     config.set('zabbix', 'host_template_id', '10106')
 
-    with open(os.path.join(config_dir, "settings.ini"), 'w+') as f:
+    with open(os.path.join(config_dir, 'settings.ini'), 'w+') as f:
         config.write(f)
 
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "settings_ini.py")) as f:
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'settings_ini.py')) as f:
         config_template = f.read()
 
     return config_template

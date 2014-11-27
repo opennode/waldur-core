@@ -280,3 +280,17 @@ def create_dummy_security_groups(sender, instance=None, created=False, **kwargs)
             to_port=80,
             cidr='0.0.0.0/0',
         )
+
+        # group https
+        https_group = instance.security_groups.create(
+            name='https',
+            description='Security group for web servers with https traffic'
+        )
+        https_group.rules.create(
+            protocol='tcp',
+            from_port=443,
+            to_port=443,
+            ip_range='0.0.0.0',
+            netmask=0
+        )
+

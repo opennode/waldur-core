@@ -5,6 +5,7 @@ from nodeconductor.cloud import serializers as cloud_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
+from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import serializers as structure_serializers
 
 
@@ -58,6 +59,22 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'project', 'flavor'
+
+    def validate_security_groups(self, attrs, attr_name):
+        if attr_name in attrs and attrs[attr_name] is None:
+            del attrs[attr_name]
+        return attrs
+
+
+class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
+
+    security_groups = InstanceSecurityGroupSerializer(
+        many=True, required=False, allow_add_remove=True, read_only=False)
+
+    class Meta(object):
+        model = models.Instance
+        fields = ('url', 'hostname', 'description', 'security_groups',)
+        lookup_field = 'uuid'
 
     def validate_security_groups(self, attrs, attr_name):
         if attr_name in attrs and attrs[attr_name] is None:
@@ -260,12 +277,17 @@ class ServiceSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModel
     service_type = serializers.SerializerMethodField('get_service_type')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
-    name = serializers.Field(source="hostname")
+    template_name = serializers.Field(source='template.name')
+    customer_name = serializers.Field(source='project.customer.name')
 
     class Meta(object):
         model = models.Instance
         fields = (
-            'url', 'project_name', 'name', 'project_groups', 'agreed_sla', 'actual_sla',
+            'url',
+            'hostname', 'template_name',
+            'customer_name',
+            'project_name', 'project_groups',
+            'agreed_sla', 'actual_sla',
         )
         view_name = 'service-detail'
         lookup_field = 'uuid'
@@ -281,3 +303,24 @@ class ServiceSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModel
 
     def get_service_type(self, obj):
         return 'IaaS'
+
+
+class UsageStatsSerializer(serializers.Serializer):
+    segments_count = serializers.IntegerField()
+    start_timestamp = serializers.IntegerField()
+    end_timestamp = serializers.IntegerField()
+    item = serializers.CharField()
+
+    def validate_item(self, attrs, name):
+        item = attrs[name]
+        if not item in ZabbixDBClient.items:
+            raise serializers.ValidationError(
+                "GET parameter 'item' have to be from list: %s" % ZabbixDBClient.items.keys())
+        return attrs
+
+    def get_stats(self, instances):
+        self.attrs = self.data
+        zabbix_db_client = ZabbixDBClient()
+        return zabbix_db_client.get_item_stats(
+            instances, self.data['item'],
+            self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])

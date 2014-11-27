@@ -27,7 +27,9 @@ def _service_to_dict(service):
     return {
         'url': _get_service_url(service),
         'project_name': service.project.name,
-        'name': service.hostname,
+        'hostname': service.hostname,
+        'template_name': service.template.name,
+        'customer_name': service.project.customer.name,
         'project_groups': project_groups,
         'actual_sla': 97,
         'agreed_sla': 100,
