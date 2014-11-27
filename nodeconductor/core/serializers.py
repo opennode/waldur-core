@@ -110,6 +110,7 @@ class RelatedResourcesFieldMixin(object):
 
     1. `foo` containing a URL to the Foo resource
     2. `foo_name` containing the name of the Foo resource
+    3. `foo_uuid` containing the uuid of the Foo resource
 
     In order to add related resource fields:
 
@@ -134,6 +135,7 @@ class RelatedResourcesFieldMixin(object):
             )
 
             fields['{0}_name'.format(entity_name)] = serializers.Field(source='{0}.name'.format(path))
+            fields['{0}_uuid'.format(entity_name)] = serializers.Field(source='{0}.uuid'.format(path))
 
         return fields
 
