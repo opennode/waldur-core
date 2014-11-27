@@ -495,8 +495,9 @@ Other use cases are covered with random data.
         project_group2.projects.add(*projects[2:4])
 
         # Use Case 8: Project is contained in several project groups
-        project_group3 = customer.project_groups.create(name='Project Group %s' % random_string(3, 7))
-        project_group3.projects.add(*projects[1:3])
+        # TODO: enable once support for project belonging to multiple groups is ready
+        #project_group3 = customer.project_groups.create(name='Project Group %s' % random_string(3, 7))
+        #project_group3.projects.add(*projects[1:3])
 
         return customer, projects
 

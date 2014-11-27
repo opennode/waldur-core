@@ -19,10 +19,11 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
     )
     url = serializers.HyperlinkedRelatedField(source='security_group', lookup_field='uuid',
                                               view_name='security_group-detail')
+    description = serializers.Field(source='security_group.description')
 
     class Meta(object):
         model = models.InstanceSecurityGroup
-        fields = ('url', 'name', 'rules')
+        fields = ('url', 'name', 'rules', 'description')
         lookup_field = 'uuid'
         view_name = 'security_group-detail'
 
@@ -119,9 +120,9 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
         fields = (
             'url', 'uuid', 'hostname', 'description', 'start_time',
             'template', 'template_name', 'template_os',
-            'cloud', 'cloud_name',
+            'cloud', 'cloud_name', 'cloud_uuid',
             'flavor', 'flavor_name',
-            'project', 'project_name',
+            'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_abbreviation',
             'ssh_public_key', 'ssh_public_key_name',
             'project_groups',
