@@ -291,7 +291,7 @@ class UserFilter(django_filters.FilterSet):
             'description',
             'job_title',
             'username',
-            'active',
+            'is_active',
             # descending
             '-full_name',
             '-native_name',
