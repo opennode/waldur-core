@@ -105,10 +105,11 @@ class CloudProjectMembershipViewSet(rf_mixins.CreateModelMixin,
 class SecurityGroupFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
         name='name',
+        lookup_type='icontains',
     )
     description = django_filters.CharFilter(
         name='description',
-        lookup_type='istartswith',
+        lookup_type='icontains',
     )
     cloud = django_filters.CharFilter(
         name='cloud_project_membership__cloud__uuid',
