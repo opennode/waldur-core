@@ -113,7 +113,7 @@ class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFiltering
 class BasicSecurityGroupRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.SecurityGroupRule
-        fields = ('protocol', 'from_port', 'to_port', 'ip_range', 'netmask')
+        fields = ('protocol', 'from_port', 'to_port', 'cidr')
 
 
 class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
