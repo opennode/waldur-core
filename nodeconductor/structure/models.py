@@ -22,7 +22,7 @@ class Customer(UuidMixin, models.Model):
 
     name = models.CharField(max_length=160)
     abbreviation = models.CharField(max_length=8)
-    contact_details = models.TextField()
+    contact_details = models.TextField(blank=True)
     # XXX: How do we tell customers with same names from each other?
 
     def add_user(self, user, role_type):
