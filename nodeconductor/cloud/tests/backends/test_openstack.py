@@ -83,6 +83,9 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.backend.ensure_user_is_tenant_admin = mock.Mock()
         self.backend.push_security_group = mock.Mock()
         self.backend.create_tenant_session = mock.Mock()
+        self.backend.create_security_group = mock.Mock()
+        self.backend.update_security_group = mock.Mock()
+        self.backend.delete_security_group = mock.Mock()
 
     def test_push_membership_synchronizes_user(self):
         self.backend.push_membership(self.membership)
@@ -118,25 +121,50 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         with self.assertRaises(CloudBackendError):
             self.backend.push_membership(self.membership)
 
-    def test_push_membership_security_groups_pushes_each_group(self):
+    def test_push_security_groups_creates_unexisted_groups(self):
         group1 = mock.Mock()
         group2 = mock.Mock()
+
+        self.nova_client.security_groups.findall = mock.Mock(return_value=[])
         self.membership.security_groups.all = mock.Mock(return_value=[group1, group2])
 
-        self.backend.push_membership_security_groups(self.membership)
+        self.backend.push_security_groups(self.membership)
 
-        self.backend.push_security_group.assert_any_cal(group1, self.nova_client)
-        self.backend.push_security_group.assert_any_cal(group2, self.nova_client)
+        self.backend.create_security_group.assert_any_call(group1, self.nova_client)
+        self.backend.create_security_group.assert_any_call(group2, self.nova_client)
+
+    def test_push_security_groups_updates_unsynchronized_groups(self):
+        group1 = mock.Mock()
+        group1.name = 'group1'
+        group1.id = 1
+        group1.os_security_group_id = 1
+        group2 = mock.Mock()
+        group2.name = 'group2'
+        group2.id = 1
+
+        self.nova_client.security_groups.findall = mock.Mock(return_value=[group2])
+        self.membership.security_groups.all = mock.Mock(return_value=[group1])
+
+        self.backend.push_security_groups(self.membership)
+
+        self.backend.update_security_group.assert_any_call(group1, self.nova_client)
+
+    def test_push_security_groups_deletes_unexisted_groups(self):
+        group1 = mock.Mock()
+        group1.name = 'group1'
+        group1.id = 1
+
+        self.nova_client.security_groups.findall = mock.Mock(return_value=[group1])
+        self.membership.security_groups.all = mock.Mock(return_value=[])
+
+        self.backend.push_security_groups(self.membership)
+
+        self.backend.delete_security_group.assert_any_call(group1.id, self.nova_client)
 
     def test_push_membership_security_groups_raises_cloud_backed_error_on_keystone_error(self):
         self.backend.create_tenant_session.side_effect = keystone_exceptions.AuthorizationFailure()
         with self.assertRaises(CloudBackendError):
-            self.backend.push_membership_security_groups(self.membership)
-
-    def test_test_push_membership_security_groups_raises_cloud_backed_error_on_nova_error(self):
-        self.backend.create_nova_client.side_effect = nova_exceptions.ClientException('exception_code')
-        with self.assertRaises(CloudBackendError):
-            self.backend.push_membership_security_groups(self.membership)
+            self.backend.push_security_groups(self.membership)
 
 
 class OpenStackBackendFlavorApiTest(TransactionTestCase):
