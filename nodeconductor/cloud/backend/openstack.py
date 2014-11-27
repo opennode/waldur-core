@@ -202,7 +202,6 @@ class OpenStackBackend(object):
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
             six.reraise(CloudBackendError, CloudBackendError())
 
-<<<<<<< HEAD
     def push_security_groups(self, membership):
         try:
             session = self.create_tenant_session(membership)
