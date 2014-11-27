@@ -290,7 +290,5 @@ def create_dummy_security_groups(sender, instance=None, created=False, **kwargs)
             protocol='tcp',
             from_port=443,
             to_port=443,
-            ip_range='0.0.0.0',
-            netmask=0
+            cidr='0.0.0.0/0',
         )
-
