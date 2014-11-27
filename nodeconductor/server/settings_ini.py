@@ -66,6 +66,7 @@ config_defaults = {
         'path': os.path.join(work_dir, 'db.sqlite3'),
     },
     'zabbix': {
+        'host_group_id': '',
         'host_template_id': '',
         'password': '',
         'server_url': '',
@@ -384,6 +385,7 @@ NODECONDUCTOR = {
             'username': config.get('zabbix', 'username'),
             'password': config.get('zabbix', 'password'),
             'templateid': config.get('zabbix', 'host_template_id'),
+            'groupid': config.get('zabbix', 'host_group_id'),
             'interface_parameters': {
                 'ip': '0.0.0.0',
                 'main': 1,
