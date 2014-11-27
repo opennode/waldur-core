@@ -3,7 +3,10 @@ from __future__ import unicode_literals
 from itertools import groupby
 import logging
 import re
+import time
 
+from cinderclient import exceptions as cinder_exceptions
+from cinderclient.v1 import client as cinder_client
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -83,7 +86,6 @@ class OpenStackBackend(object):
                 nc_flavor.save()
                 logger.info('Updated existing flavor %s', nc_flavor.uuid)
 
-    # CloudProjectMembership related methods
     def pull_images(self, cloud_account):
         session = self.create_admin_session(cloud_account.auth_url)
         glance = self.create_glance_client(session)
@@ -150,6 +152,7 @@ class OpenStackBackend(object):
                 image.delete()
                 logger.info('Removed stale image %s, was pointing to', image, image.backend_id)
 
+    # CloudProjectMembership related methods
     def push_membership(self, membership):
         try:
             session = self.create_admin_session(membership.cloud.auth_url)
@@ -226,6 +229,7 @@ class OpenStackBackend(object):
             session = self.create_tenant_session(membership)
 
             nova = self.create_nova_client(session)
+            cinder = self.create_cinder_client(session)
             glance = self.create_glance_client(session)
             neutron = self.create_neutron_client(session)
 
@@ -248,18 +252,58 @@ class OpenStackBackend(object):
             backend_flavor = nova.flavors.get(instance.flavor.flavor_id)  # FIXME: flavor_id -> backend_id
             backend_image = glance.images.get(image.backend_id)
 
+            system_volume_name = '{0}-system'.format(instance.hostname)
+            logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
+
+            system_volume = cinder.volumes.create(
+                size=instance.flavor.disk / 1024,
+                display_name=system_volume_name,
+                display_description='',
+                imageRef=backend_image.id,
+            )
+
+            data_volume_name = '{0}-data'.format(instance.hostname)
+            logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
+            data_volume = cinder.volumes.create(
+                size=20,  # 20GiB should be enough for everybody :)
+                display_name=data_volume_name,
+                display_description='',
+            )
+
+            is_available = lambda v: v.status == 'available'
+
+            if not self._wait_for_volume_state(system_volume, cinder, is_available):
+                logger.error(
+                    'Failed to boot instance %s: timed out waiting for system volume to become available',
+                    instance.uuid, system_volume.id,
+                )
+                raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
+
+            if not self._wait_for_volume_state(data_volume, cinder, is_available):
+                logger.error(
+                    'Failed to boot instance %s: timed out waiting for data volume to become available',
+                    instance.uuid, data_volume.id,
+                )
+                raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
+
             server = nova.servers.create(
                 name=instance.hostname,
                 image=backend_image,
                 flavor=backend_flavor,
                 block_device_mapping_v2=[
                     {
-                        # 'boot_index': '0',
                         'destination_type': 'volume',
                         'device_type': 'disk',
-                        'source_type': 'image',
-                        'uuid': backend_image.id,
-                        'volume_size': 10,
+                        'source_type': 'volume',
+                        'uuid': system_volume.id,
+                        'delete_on_termination': True,
+                    },
+                    {
+                        'destination_type': 'volume',
+                        'device_type': 'disk',
+                        'source_type': 'volume',
+                        'uuid': data_volume.id,
+                        'delete_on_termination': True,
                     },
                     # This should have worked by creating an empty volume.
                     # But, as always, OpenStack doesn't work as advertised:
@@ -267,11 +311,12 @@ class OpenStackBackend(object):
                     # equivalent nova boot options would be
                     # --block-device source=blank,dest=volume,size=10,type=disk
                     # {
-                    # 'destination_type': 'blank',
+                    #     'destination_type': 'blank',
                     #     'device_type': 'disk',
                     #     'source_type': 'image',
                     #     'uuid': backend_image.id,
                     #     'volume_size': 10,
+                    #     'shutdown': 'remove',
                     # },
                 ],
                 nics=[
@@ -284,9 +329,15 @@ class OpenStackBackend(object):
             instance.save()
 
             if not self._wait_for_instance_status(instance, nova, 'ACTIVE'):
-                logger.error('Failed to boot instance %s', instance.uuid)
+                logger.error(
+                    'Failed to boot instance %s: timed out waiting for instance to become online',
+                    instance.uuid,
+                )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
+            # TODO: Update start_time
+            instance.save()
         except (glance_exceptions.ClientException,
+                cinder_exceptions.ClientException,
                 nova_exceptions.ClientException,
                 neutron_exceptions.NeutronClientException):
             logger.exception('Failed to boot instance %s', instance.uuid)
@@ -354,8 +405,6 @@ class OpenStackBackend(object):
             nova = self.create_nova_client(session)
             nova.servers.delete(instance.backend_id)
 
-            import time
-
             retries = 20
             poll_interval = 3
 
@@ -422,6 +471,7 @@ class OpenStackBackend(object):
         session.get_token()
         return session
 
+    # TODO: Remove it, reimplement url validation in some other way
     def get_credentials(self, keystone_url):
         nc_settings = getattr(settings, 'NODECONDUCTOR', {})
         openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
@@ -431,6 +481,35 @@ class OpenStackBackend(object):
         except StopIteration:
             logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
             six.reraise(CloudBackendError, CloudBackendError())
+
+    def create_cinder_client(self, session):
+        try:
+            # Starting from version 1.1.0 python-cinderclient
+            # supports keystone auth plugins
+            return cinder_client.Client(session=session)
+        except TypeError:
+            # Fallback for pre-1.1.0 version: username and password
+            # need to be specified explicitly.
+
+            # Since we know that Password auth plugin is used
+            # it is safe to extract username/password from there
+            auth_plugin = session.auth
+
+            kwargs = {
+                'auth_url': auth_plugin.auth_url,
+                'username': auth_plugin.username,
+                'api_key': auth_plugin.password,
+            }
+
+            # Either tenant_id or tenant_name will be set, the other one will be None
+            if auth_plugin.tenant_id is not None:
+                kwargs['tenant_id'] = auth_plugin.tenant_id
+            else:
+                # project_id is tenant_name, id doesn't make sense,
+                # pretty usual for OpenStack
+                kwargs['project_id'] = auth_plugin.tenant_name
+
+            return cinder_client.Client(**kwargs)
 
     def create_glance_client(self, session):
         auth_plugin = session.auth
@@ -529,12 +608,15 @@ class OpenStackBackend(object):
     def get_or_create_network(self, membership, neutron):
         network_name = self.get_tenant_name(membership)
 
+        logger.info('Creating network %s', network_name)
         if neutron.list_networks(name=network_name)['networks']:
             logger.info('Network %s already exists, using it instead', network_name)
             return
 
-        logger.info('Creating network %s', network_name)
-        network = {'name': network_name}
+        network = {
+            'name': network_name,
+            'tenant_id': membership.tenant_id,
+        }
 
         create_response = neutron.create_network({'networks': [network]})
         network_id = create_response['networks'][0]['id']
@@ -574,12 +656,24 @@ class OpenStackBackend(object):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
 
     def _wait_for_instance_status(self, instance, nova, status, retries=20, poll_interval=3):
-        import time
-
         for _ in range(retries):
             server = nova.servers.get(instance.backend_id)
 
             if server.status == status:
+                return True
+
+            time.sleep(poll_interval)
+        else:
+            return False
+
+    def _wait_for_volume_state(self, volume, cinder, state_predicate, retries=20, poll_interval=3):
+        if state_predicate(volume):
+            return True
+
+        for _ in range(retries):
+            volume = cinder.volumes.get(volume.id)
+
+            if state_predicate(volume):
                 return True
 
             time.sleep(poll_interval)
