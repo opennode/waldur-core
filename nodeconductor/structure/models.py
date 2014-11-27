@@ -373,26 +373,3 @@ def create_project_group_roles(sender, instance, created, **kwargs):
         with transaction.atomic():
             mgr_group = Group.objects.create(name='Role: {0} group mgr'.format(instance.uuid))
             instance.roles.create(role_type=ProjectGroupRole.MANAGER, permission_group=mgr_group)
-
-
-@receiver(
-    signals.post_save,
-    sender=Project,
-    dispatch_uid='nodeconductor.structure.models.create_project_zabbix_hostgroup',
-)
-def create_project_zabbix_hostgroup(sender, instance, created, **kwargs):
-    from nodeconductor.structure import tasks
-
-    if created:
-        tasks.create_zabbix_hostgroup.delay(instance.uuid.hex)
-
-
-@receiver(
-    signals.post_delete,
-    sender=Project,
-    dispatch_uid='nodeconductor.structure.models.delete_project_zabbix_hostgroup',
-)
-def delete_project_zabbix_hostgroup(sender, instance, **kwargs):
-    from nodeconductor.structure import tasks
-
-    tasks.delete_zabbix_hostgroup.delay(instance.uuid.hex)

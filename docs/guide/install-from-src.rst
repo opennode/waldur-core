@@ -88,6 +88,7 @@ Therefore configuration might look like this:
                 'password': 'zabbix',
                 'interface_parameters': {'ip': '0.0.0.0', 'main': 1, 'port': '10050', 'type': 1, 'useip': 1, 'dns': ''},
                 'templateid': '10106',
+                'templateid': '42',
                 'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
             }
         }
@@ -140,6 +141,9 @@ Therefore configuration might look like this:
 
           templateid
             Id of default Zabbix host template.
+
+          groupid
+            Id of default Zabbix host group.
 
           default_service_parameters
             Default parameters for Zabbix IT services

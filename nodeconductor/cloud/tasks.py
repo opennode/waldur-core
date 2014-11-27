@@ -3,14 +3,11 @@ from __future__ import unicode_literals
 import logging
 
 from celery import shared_task
-from django.contrib.auth import get_user_model
 
 from nodeconductor.cloud import models
 from nodeconductor.cloud.backend import CloudBackendError
 from nodeconductor.core import models as core_models
 from nodeconductor.core.tasks import tracked_processing
-from nodeconductor.structure import models as structure_models
-from nodeconductor.structure.filters import filter_queryset_for_user
 
 
 logger = logging.getLogger(__name__)

@@ -28,9 +28,9 @@ def create_zabbix_host_and_service(instance):
         zabbix_client = ZabbixApiClient()
         zabbix_client.create_host(instance)
         zabbix_client.create_service(instance)
-    except ZabbixError:
+    except ZabbixError as e:
         # task does not have to fail if something is wrong with zabbix
-        pass
+        logger.error('Zabbix host creation flow has broken', e, exc_info=1)
 
 
 def delete_zabbix_host_and_service(instance):
@@ -38,9 +38,10 @@ def delete_zabbix_host_and_service(instance):
         zabbix_client = ZabbixApiClient()
         zabbix_client.delete_host(instance)
         zabbix_client.delete_service(instance)
-    except ZabbixError:
+    except ZabbixError as e:
         # task does not have to fail if something is wrong with zabbix
-        pass
+        logger.error('Zabbix host deletion flow has broken', e, exc_info=1)
+
 
 
 @shared_task
