@@ -68,13 +68,24 @@ def sync_cloud_membership(membership_pk):
 
     # Propagate membership security groups
     try:
-        backend.push_membership_security_groups(membership)
+        backend.push_security_groups(membership)
     except CloudBackendError:
         logger.warn(
             'Failed to push security groups to cloud membership %s',
             membership.pk,
             exc_info=1,
         )
+
+    # Propagate security group rules
+    for security_group in membership.security_groups.all():
+        try:
+            backend.push_security_group_rules(security_group)
+        except CloudBackendError:
+            logger.warn(
+                'Failed to push security group %s rules',
+                security_group,
+                exc_info=1,
+            )
 
 
 @shared_task
