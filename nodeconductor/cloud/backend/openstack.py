@@ -228,13 +228,13 @@ class OpenStackBackend(object):
         extra_group_ids = backend_security_groups.keys()
 
         for nc_group in nc_security_groups:
-            if nc_group.os_security_group_id not in backend_security_groups:
+            if nc_group.backend_id not in backend_security_groups:
                 nonexistent_groups.append(nc_group)
             else:
-                backend_group = backend_security_groups[nc_group.os_security_group_id]
+                backend_group = backend_security_groups[nc_group.backend_id]
                 if not self._are_security_groups_equal(backend_group, nc_group):
                     unsynchronized_groups.append(nc_group)
-                extra_group_ids.remove(nc_group.os_security_group_id)
+                extra_group_ids.remove(nc_group.backend_id)
 
         # deleting extra security groups
         for backend_group_id in extra_group_ids:
@@ -252,7 +252,7 @@ class OpenStackBackend(object):
             try:
                 self.update_security_group(nc_group, nova)
             except nova_exceptions.ClientException:
-                logger.exception('Failed to update openstack security group with id %s', nc_group.os_security_group_id)
+                logger.exception('Failed to update openstack security group with id %s', nc_group.backend_id)
             else:
                 logger.info('Security group %s successfully updated in backend',  nc_group)
 
@@ -286,12 +286,12 @@ class OpenStackBackend(object):
         unsynchronized_groups = []
         # list of nc security groups, that have do not exist in openstack
         extra_groups = membership.security_groups.exclude(
-            os_security_group_id__in=[g.id for g in backend_security_groups])
+            backend_id__in=[g.id for g in backend_security_groups])
 
         with transaction.atomic():
             for backend_group in backend_security_groups:
                 try:
-                    nc_group = membership.security_groups.get(os_security_group_id=backend_group.id)
+                    nc_group = membership.security_groups.get(backend_id=backend_group.id)
                     if not self._are_security_groups_equal(backend_group, nc_group):
                         unsynchronized_groups.append(backend_group)
                 except membership.security_groups.model.DoesNotExist:
@@ -303,13 +303,13 @@ class OpenStackBackend(object):
 
             # synchronizing unsynchronized security groups
             for backend_group in unsynchronized_groups:
-                membership.security_groups.filter(os_security_group_id=backend_group.id).update(name=backend_group.name)
+                membership.security_groups.filter(backend_id=backend_group.id).update(name=backend_group.name)
             logger.info('Updated existing security groups in database')
 
             # creating non-existed security groups
             for backend_group in nonexistent_groups:
                 group = membership.security_groups.create(
-                    os_security_group_id=backend_group.id,
+                    backend_id=backend_group.id,
                     name=backend_group.name,
                 )
                 logger.info('Created new security groups %s in database', group.uuid)
@@ -323,9 +323,9 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, CloudBackendError())
 
         try:
-            backend_security_group = nova.security_groups.get(group_id=security_group.os_security_group_id)
+            backend_security_group = nova.security_groups.get(group_id=security_group.backend_id)
         except nova_exceptions.ClientException:
-            logger.exception('Failed to get openstack security group with id %s ', security_group.os_security_group_id)
+            logger.exception('Failed to get openstack security group with id %s ', security_group.backend_id)
             six.reraise(CloudBackendError, CloudBackendError())
 
         backend_rules = dict((rule['id'], rule) for rule in backend_security_group.rules)
@@ -338,13 +338,13 @@ class OpenStackBackend(object):
         extra_rule_ids = backend_rules.keys()
 
         for nc_rule in security_group.rules.all():
-            if nc_rule.os_security_group_rule_id not in backend_rules:
+            if nc_rule.backend_id not in backend_rules:
                 nonexistent_rules.append(nc_rule)
             else:
-                backend_rule = backend_rules[nc_rule.os_security_group_rule_id]
+                backend_rule = backend_rules[nc_rule.backend_id]
                 if not self._are_rules_equal(backend_rule, nc_rule):
                     unsynchronized_rules.append(nc_rule)
-                extra_rule_ids.remove(nc_rule.os_security_group_rule_id)
+                extra_rule_ids.remove(nc_rule.backend_id)
 
         # deleting extra rules
         for backend_rule_id in extra_rule_ids:
@@ -359,22 +359,22 @@ class OpenStackBackend(object):
 
         # deleting unsynchronized rules
         for nc_rule in unsynchronized_rules:
-            logger.debug('About to delete security group rule with id %s',  nc_rule.os_security_group_rule_id)
+            logger.debug('About to delete security group rule with id %s',  nc_rule.backend_id)
             try:
-                nova.security_group_rules.delete(nc_rule.os_security_group_rule_id)
+                nova.security_group_rules.delete(nc_rule.backend_id)
             except nova_exceptions.ClientException:
                 logger.exception('Failed to remove rule with id %s from security group %s in backend',
                                  backend_rule['id'], security_group)
             else:
                 logger.info('Security group rule with id %s successfully deleted in backend',
-                            nc_rule.os_security_group_rule_id)
+                            nc_rule.backend_id)
 
         # creating nonexistent and unsynchronized rules
         for nc_rule in unsynchronized_rules + nonexistent_rules:
             logger.debug('About to create security group rule with id %s in backend',  backend_rule_id)
             try:
                 nova.security_group_rules.create(
-                    parent_group_id=security_group.os_security_group_id,
+                    parent_group_id=security_group.backend_id,
                     ip_protocol=nc_rule.protocol,
                     from_port=nc_rule.from_port,
                     to_port=nc_rule.to_port,
@@ -395,9 +395,9 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, CloudBackendError())
 
         try:
-            backend_security_group = nova.security_groups.get(group_id=security_group.os_security_group_id)
+            backend_security_group = nova.security_groups.get(group_id=security_group.backend_id)
         except nova_exceptions.ClientException:
-            logger.exception('Failed to get openstack security group with id %s', security_group.os_security_group_id)
+            logger.exception('Failed to get openstack security group with id %s', security_group.backend_id)
             six.reraise(CloudBackendError, CloudBackendError())
 
         backend_rules = backend_security_group.rules
@@ -407,12 +407,12 @@ class OpenStackBackend(object):
         # list of openstack rules, that have wrong parameters in in nc
         unsynchronized_rules = []
         # list of nc rules, that have do not exist in openstack
-        extra_rules = security_group.rules.exclude(os_security_group_rule_id__in=[r['id'] for r in backend_rules])
+        extra_rules = security_group.rules.exclude(backend_id__in=[r['id'] for r in backend_rules])
 
         with transaction.atomic():
             for backend_rule in backend_rules:
                 try:
-                    nc_rule = security_group.rules.get(os_security_group_rule_id=backend_rule['id'])
+                    nc_rule = security_group.rules.get(backend_id=backend_rule['id'])
                     if not self._are_rules_equal(backend_rule, nc_rule):
                         unsynchronized_rules.append(backend_rule)
                 except security_group.rules.model.DoesNotExist:
@@ -424,7 +424,7 @@ class OpenStackBackend(object):
 
             # synchronizing unsynchronized rules
             for backend_rule in unsynchronized_rules:
-                security_group.rules.filter(os_security_group_rule_id=backend_rule['id']).update(
+                security_group.rules.filter(backend_id=backend_rule['id']).update(
                     from_port=backend_rule['from_port'],
                     to_port=backend_rule['to_port'],
                     protocol=backend_rule['ip_protocol'],
@@ -439,7 +439,7 @@ class OpenStackBackend(object):
                     to_port=backend_rule['to_port'],
                     protocol=backend_rule['ip_protocol'],
                     cidr=backend_rule['ip_range'].get('cidr', '0.0.0.0/0'),
-                    os_security_group_rule_id=backend_rule['id'],
+                    backend_id=backend_rule['id'],
                 )
                 logger.info('Created new security group rule %s in database', rule.uuid)
 
@@ -677,15 +677,15 @@ class OpenStackBackend(object):
     # Helper methods
     def create_security_group(self, security_group, nova):
         backend_security_group = nova.security_groups.create(name=security_group.name, description='')
-        security_group.os_security_group_id = backend_security_group.id
+        security_group.backend_id = backend_security_group.id
         security_group.save()
 
     def update_security_group(self, security_group, nova):
-        backend_security_group = nova.security_groups.find(id=security_group.os_security_group_id)
+        backend_security_group = nova.security_groups.find(id=security_group.backend_id)
         nova.security_groups.update(backend_security_group, name=security_group.name, description='')
 
-    def delete_security_group(self, os_security_group_id, nova):
-        nova.security_groups.delete(os_security_group_id)
+    def delete_security_group(self, backend_id, nova):
+        nova.security_groups.delete(backend_id)
 
     def create_admin_session(self, keystone_url):
         nc_settings = getattr(settings, 'NODECONDUCTOR', {})

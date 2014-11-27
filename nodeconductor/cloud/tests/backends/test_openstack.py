@@ -125,7 +125,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         group1 = mock.Mock()
         group2 = mock.Mock()
 
-        self.nova_client.security_groups.findall = mock.Mock(return_value=[])
+        self.nova_client.security_groups.list = mock.Mock(return_value=[])
         self.membership.security_groups.all = mock.Mock(return_value=[group1, group2])
 
         self.backend.push_security_groups(self.membership)
@@ -137,12 +137,12 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         group1 = mock.Mock()
         group1.name = 'group1'
         group1.id = 1
-        group1.os_security_group_id = 1
+        group1.backend_id = 1
         group2 = mock.Mock()
         group2.name = 'group2'
         group2.id = 1
 
-        self.nova_client.security_groups.findall = mock.Mock(return_value=[group2])
+        self.nova_client.security_groups.list = mock.Mock(return_value=[group2])
         self.membership.security_groups.all = mock.Mock(return_value=[group1])
 
         self.backend.push_security_groups(self.membership)
@@ -154,7 +154,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         group1.name = 'group1'
         group1.id = 1
 
-        self.nova_client.security_groups.findall = mock.Mock(return_value=[group1])
+        self.nova_client.security_groups.list = mock.Mock(return_value=[group1])
         self.membership.security_groups.all = mock.Mock(return_value=[])
 
         self.backend.push_security_groups(self.membership)

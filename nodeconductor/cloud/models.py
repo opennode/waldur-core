@@ -151,8 +151,8 @@ class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
     name = models.CharField(max_length=127)
 
     # OpenStack backend specific fields
-    os_security_group_id = models.CharField(max_length='128', blank=True,
-                                            help_text='Reference to a SecurityGroup in a remote cloud')
+    backend_id = models.CharField(max_length='128', blank=True,
+                                  help_text='Reference to a SecurityGroup in a remote cloud')
 
     def __str__(self):
         return self.name
@@ -177,7 +177,7 @@ class SecurityGroupRule(models.Model):
     cidr = models.CharField(max_length=32, null=True)
 
     # OpenStack backend specific fields
-    os_security_group_rule_id = models.CharField(max_length='128', blank=True)
+    backend_id = models.CharField(max_length='128', blank=True)
 
     def __str__(self):
         return '%s (%s): %s (%s -> %s)' % \
