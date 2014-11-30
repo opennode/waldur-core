@@ -68,8 +68,8 @@ class OpenStackBackend(object):
                 nc_flavor = cloud_account.flavors.create(
                     name=backend_flavor.name,
                     cores=backend_flavor.vcpus,
-                    ram=backend_flavor.ram * 1024,
-                    disk=backend_flavor.disk * 1024,
+                    ram=self.get_core_disk_size(backend_flavor.ram),
+                    disk=self.get_core_disk_size(backend_flavor.disk),
                     flavor_id=backend_flavor.id,
                 )
                 logger.info('Created new flavor %s', nc_flavor.uuid)
@@ -81,8 +81,8 @@ class OpenStackBackend(object):
 
                 nc_flavor.name = backend_flavor.name
                 nc_flavor.cores = backend_flavor.vcpus
-                nc_flavor.ram = backend_flavor.ram * 1024
-                nc_flavor.disk = backend_flavor.disk * 1024
+                nc_flavor.ram = self.get_core_ram_size(backend_flavor.ram)
+                nc_flavor.disk = self.get_core_disk_size(backend_flavor.disk)
                 nc_flavor.save()
                 logger.info('Updated existing flavor %s', nc_flavor.uuid)
 
@@ -256,7 +256,7 @@ class OpenStackBackend(object):
             logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
 
             system_volume = cinder.volumes.create(
-                size=instance.flavor.disk / 1024,
+                size=self.get_backend_disk_size(instance.system_volume_size),
                 display_name=system_volume_name,
                 display_description='',
                 imageRef=backend_image.id,
@@ -265,21 +265,21 @@ class OpenStackBackend(object):
             data_volume_name = '{0}-data'.format(instance.hostname)
             logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
             data_volume = cinder.volumes.create(
-                size=20,  # 20GiB should be enough for everybody :)
+                size=self.get_backend_disk_size(instance.data_volume_size),
                 display_name=data_volume_name,
                 display_description='',
             )
 
             is_available = lambda v: v.status == 'available'
 
-            if not self._wait_for_volume_state(system_volume, cinder, is_available):
+            if not self._wait_for_volume_state(system_volume.id, cinder, is_available):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for system volume to become available',
                     instance.uuid, system_volume.id,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
 
-            if not self._wait_for_volume_state(data_volume, cinder, is_available):
+            if not self._wait_for_volume_state(data_volume.id, cinder, is_available):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for data volume to become available',
                     instance.uuid, data_volume.id,
@@ -326,6 +326,8 @@ class OpenStackBackend(object):
             )
 
             instance.backend_id = server.id
+            instance.system_volume_id = system_volume.id
+            instance.data_volume_id = data_volume.id
             instance.save()
 
             if not self._wait_for_instance_status(instance, nova, 'ACTIVE'):
@@ -425,6 +427,79 @@ class OpenStackBackend(object):
         else:
             logger.info('Successfully deleted instance %s', instance.uuid)
 
+    def extend_disk(self, instance):
+        from nodeconductor.cloud.models import CloudProjectMembership
+
+        try:
+            membership = CloudProjectMembership.objects.get(
+                project=instance.project,
+                cloud=instance.flavor.cloud,
+            )
+
+            session = self.create_tenant_session(membership)
+
+            nova = self.create_nova_client(session)
+            cinder = self.create_cinder_client(session)
+
+            server_id = instance.backend_id
+
+            volume = cinder.volumes.get(instance.data_volume_id)
+
+            new_size = self.get_backend_disk_size(instance.data_volume_size)
+            if volume.size == new_size:
+                logger.info('Not extending volume %s: it is already of size %d',
+                            volume.id, new_size)
+                return
+            elif volume.size > new_size:
+                logger.warn('Not extending volume %s: desired size %d is less then current size %d',
+                            volume.id, new_size, volume.size)
+                return
+
+            nova.volumes.delete_server_volume(server_id, volume.id)
+
+            is_available = lambda v: v.status == 'available'
+
+            if not self._wait_for_volume_state(volume.id, cinder, is_available):
+                logger.error(
+                    'Failed to extend volume: timed out waiting volume %s to detach from instance %s',
+                    volume.id, instance.uuid,
+                )
+                raise CloudBackendError(
+                    'Timed out waiting volume %s to detach from instance %s'
+                    % volume.id, instance.uuid,
+                )
+
+            cinder.volumes.extend(volume, new_size)
+
+            if not self._wait_for_volume_state(volume.id, cinder, is_available):
+                logger.error(
+                    'Failed to extend volume: timed out waiting volume %s to extend',
+                    volume.id,
+                )
+                raise CloudBackendError(
+                    'Timed out waiting volume %s to extend'
+                    % volume.id,
+                )
+
+            nova.volumes.create_server_volume(server_id, volume.id, None)
+
+            is_in_use = lambda v: v.status == 'in-use'
+
+            if not self._wait_for_volume_state(volume.id, cinder, is_in_use):
+                logger.error(
+                    'Failed to extend volume: timed out waiting volume %s to attach to instance %s',
+                    volume.id, instance.uuid,
+                )
+                raise CloudBackendError(
+                    'Timed out waiting volume %s to attach to instance %s'
+                    % volume.id, instance.uuid,
+                )
+        except (nova_exceptions.ClientException, cinder_exceptions.ClientException):
+            logger.info('Failed to extend disk of an instance %s', instance.uuid)
+            six.reraise(CloudBackendError, CloudBackendError())
+        else:
+            logger.info('Successfully extended disk of an instance %s', instance.uuid)
+
     # Helper methods
     def create_admin_session(self, keystone_url):
         nc_settings = getattr(settings, 'NODECONDUCTOR', {})
@@ -481,6 +556,18 @@ class OpenStackBackend(object):
         except StopIteration:
             logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
             six.reraise(CloudBackendError, CloudBackendError())
+
+    def get_backend_disk_size(self, core_disk_size):
+        return core_disk_size / 1024
+
+    def get_backend_ram_size(self, core_ram_size):
+        return core_ram_size / 1024
+
+    def get_core_disk_size(self, backend_disk_size):
+        return backend_disk_size * 1024
+
+    def get_core_ram_size(self, backend_ram_size):
+        return backend_ram_size * 1024
 
     def create_cinder_client(self, session):
         try:
@@ -666,12 +753,9 @@ class OpenStackBackend(object):
         else:
             return False
 
-    def _wait_for_volume_state(self, volume, cinder, state_predicate, retries=20, poll_interval=3):
-        if state_predicate(volume):
-            return True
-
+    def _wait_for_volume_state(self, volume_id, cinder, state_predicate, retries=20, poll_interval=3):
         for _ in range(retries):
-            volume = cinder.volumes.get(volume.id)
+            volume = cinder.volumes.get(volume_id)
 
             if state_predicate(volume):
                 return True
