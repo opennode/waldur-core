@@ -155,7 +155,12 @@ class Instance(core_models.UuidMixin,
     state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
                      help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
+    # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255, blank=True)
+    system_volume_id = models.CharField(max_length=255, blank=True)
+    system_volume_size = models.PositiveIntegerField()
+    data_volume_id = models.CharField(max_length=255, blank=True)
+    data_volume_size = models.PositiveIntegerField(default=20 * 1024)
 
     @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
     def begin_provisioning(self):

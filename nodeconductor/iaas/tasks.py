@@ -84,8 +84,17 @@ def schedule_deleting(instance_uuid):
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
-def schedule_resizing(instance_uuid, **kwargs):
-    with transaction.atomic():
-        instance = models.Instance.objects.get(uuid=instance_uuid)
-        instance.flavor = cloud_models.Flavor.objects.get(uuid=kwargs['new_flavor'])
-        instance.save()
+def update_flavor(instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+
+    backend = instance.flavor.cloud.get_backend()
+    backend.update_flavor(instance)
+
+
+@shared_task
+@tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
+def extend_disk(instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+
+    backend = instance.flavor.cloud.get_backend()
+    backend.extend_disk(instance)

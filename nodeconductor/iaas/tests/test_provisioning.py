@@ -114,19 +114,55 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         response = self.client.delete(self._get_project_url(factories.InstanceFactory()))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    @unittest.skip('Requires extension via celery test runner')
-    def test_user_cannot_delete_instances_of_projects_he_is_administrator_of(self):
+    def test_user_can_delete_offline_instances_of_projects_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.delete(self._get_instance_url(self.admined_instance))
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        instance = self.admined_instance
 
-    @unittest.skip('Requires extension via celery test runner')
+        instance.state = Instance.States.OFFLINE
+        instance.save()
+
+        response = self.client.delete(self._get_instance_url(instance))
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+
+        reread_instance = Instance.objects.get(pk=instance.pk)
+
+        self.assertEqual(reread_instance.state, Instance.States.DELETION_SCHEDULED,
+                         'Instance should have been scheduled for deletion')
+
+    def test_user_cannot_delete_non_offline_instances_of_projects_he_is_administrator_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        # Check all states but deleted and offline
+        forbidden_states = [
+            state
+            for (state, _) in Instance.States.CHOICES
+            if state not in (Instance.States.DELETED, Instance.States.OFFLINE)
+        ]
+
+        for state in forbidden_states:
+            instance = factories.InstanceFactory(state=state)
+            instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+            response = self.client.delete(self._get_instance_url(instance))
+
+            self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+            try:
+                reread_instance = Instance.objects.get(pk=instance.pk)
+            except Instance.DoesNotExist:
+                self.fail('Instance should not have been deleted')
+            else:
+                self.assertEqual(
+                    reread_instance.state, instance.state,
+                    'Instance state should have stayed intact',
+                )
+
     def test_user_cannot_delete_instances_of_projects_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
         response = self.client.delete(self._get_instance_url(self.managed_instance))
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     # Mutation tests
     def test_user_can_change_description_of_instance_he_is_administrator_of(self):
@@ -190,7 +226,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         changed_instance = Instance.objects.get(pk=self.admined_instance.pk)
         self.assertEqual(changed_instance.description, 'changed description1')
 
-    def test_user_cannot_change_description_single_field__of_instance_he_is_manager_of(self):
+    def test_user_cannot_change_description_single_field_of_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
         data = {
@@ -211,129 +247,183 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         response = self.client.patch(self._get_instance_url(inaccessible_instance), data)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    @unittest.skip('Requires extension via celery test runner')
-    def test_user_cannot_change_flavor_of_stopped_instance_he_is_manager_of(self):
+    def test_user_can_change_flavor_of_stopped_instance_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
         new_flavor = cloud_factories.FlavorFactory(cloud=self.admined_instance.flavor.cloud)
 
-        data = {'flavor': str(new_flavor.uuid)}
+        data = {'flavor': self._get_flavor_url(new_flavor)}
 
         response = self.client.post(self._get_instance_url(self.admined_instance) + 'resize/', data)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
 
-        changed_instance = Instance.objects.get(pk=self.admined_instance.pk)
+        reread_instance = Instance.objects.get(pk=self.admined_instance.pk)
 
-        self.assertEqual(changed_instance.flavor, new_flavor)
+        self.assertEqual(reread_instance.flavor, new_flavor,
+                         'Flavor should have changed')
+        self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
+                         'Instance should have been scheduled to resize')
 
-    @unittest.skip('Requires extension via celery test runner')
+    def test_user_cannot_change_flavor_to_flavor_from_different_cloud(self):
+        self.client.force_authenticate(user=self.user)
+
+        instance = self.admined_instance
+
+        new_flavor = cloud_factories.FlavorFactory()
+
+        CloudProjectMembership.objects.create(
+            project=instance.project,
+            cloud=new_flavor.cloud,
+        )
+
+        data = {'flavor': self._get_flavor_url(new_flavor)}
+
+        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset({'flavor': 'New flavor is not within the same cloud'},
+                                      response.data)
+
+        reread_instance = Instance.objects.get(pk=instance.pk)
+
+        self.assertEqual(reread_instance.flavor, instance.flavor,
+                         'Flavor should not have changed')
+
     def test_user_cannot_change_flavor_of_stopped_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
-        new_flavor = cloud_factories.FlavorFactory(cloud=self.managed_instance.flavor.cloud)
+        instance = self.managed_instance
+        new_flavor = cloud_factories.FlavorFactory(cloud=instance.flavor.cloud)
 
-        data = {'flavor': str(new_flavor.uuid)}
+        data = {'flavor': self._get_flavor_url(new_flavor)}
 
-        response = self.client.post(self._get_instance_url(self.managed_instance) + 'resize/', data)
+        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        reread_instance = Instance.objects.get(pk=instance.pk)
+        self.assertEqual(reread_instance.flavor, instance.flavor,
+                         'Flavor should not have changed')
 
-    @unittest.skip('Requires extension via celery test runner')
-    def test_user_cannot_change_flavor_of_offline_instance_he_has_no_role_in(self):
+    def test_user_cannot_change_flavor_of_instance_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.user)
 
         inaccessible_instance = factories.InstanceFactory()
 
         new_flavor = cloud_factories.FlavorFactory(cloud=inaccessible_instance.flavor.cloud)
 
-        data = {'flavor': str(new_flavor.uuid)}
+        data = {'flavor': self._get_flavor_url(new_flavor)}
 
         response = self.client.post(self._get_instance_url(inaccessible_instance) + 'resize/', data)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        reread_instance = Instance.objects.get(pk=inaccessible_instance.pk)
+        self.assertEqual(reread_instance.flavor, inaccessible_instance.flavor,
+                         'Flavor should not have changed')
 
-    @unittest.skip('Requires extension via celery test runner')
-    def test_user_cannot_change_flavor_of_running_instance_he_is_administrator_of(self):
+    def test_user_cannot_change_flavor_of_non_offline_instance(self):
         self.client.force_authenticate(user=self.user)
 
-        forbidden_states = {
-            'starting': Instance.States.STARTING,
-            'stopping': Instance.States.STOPPING,
-            'online': Instance.States.ONLINE,
-        }
+        # Check all states but deleted and offline
+        forbidden_states = [
+            state
+            for (state, _) in Instance.States.CHOICES
+            if state not in (Instance.States.DELETED, Instance.States.OFFLINE)
+        ]
 
-        for state in forbidden_states.values():
-            admined_instance = factories.InstanceFactory(state=state)
+        for state in forbidden_states:
+            instance = factories.InstanceFactory(state=state)
 
-            admined_instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+            instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-            changed_flavor = cloud_factories.FlavorFactory(cloud=admined_instance.flavor.cloud)
+            changed_flavor = cloud_factories.FlavorFactory(cloud=instance.flavor.cloud)
 
-            data = {'flavor': str(changed_flavor.uuid)}
+            data = {'flavor': self._get_flavor_url(changed_flavor)}
 
-            response = self.client.post(self._get_instance_url(admined_instance) + 'resize/', data)
+            response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
 
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+            self.assertDictContainsSubset({'detail': 'Instance must be offline'}, response.data)
 
-    @unittest.skip('Requires extension via celery test runner')
+            reread_instance = Instance.objects.get(pk=instance.pk)
+            self.assertEqual(reread_instance.flavor, instance.flavor,
+                             'Flavor should not have changed')
+
     def test_user_cannot_change_flavor_of_running_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
-        forbidden_states = {
-            'starting': Instance.States.STARTING,
-            'stopping': Instance.States.STOPPING,
-            'online': Instance.States.ONLINE,
-        }
+        # Check all states but deleted and offline
+        forbidden_states = [
+            state
+            for (state, _) in Instance.States.CHOICES
+            if state != Instance.States.DELETED
+        ]
 
-        for state in forbidden_states.values():
+        for state in forbidden_states:
             managed_instance = factories.InstanceFactory(state=state)
 
-            managed_instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+            managed_instance.project.add_user(self.user, ProjectRole.MANAGER)
 
             new_flavor = cloud_factories.FlavorFactory(cloud=managed_instance.flavor.cloud)
 
-            data = {'flavor': str(new_flavor.uuid)}
+            data = {'flavor': self._get_flavor_url(new_flavor)}
 
             response = self.client.post(self._get_instance_url(managed_instance) + 'resize/', data)
 
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @unittest.skip('Requires extension via celery test runner')
-    def test_user_cannot_change_flavor_of_running_instance_he_has_no_role_in(self):
+    def test_user_cannot_change_flavor_and_disk_size_simultaneously(self):
         self.client.force_authenticate(user=self.user)
 
-        forbidden_states = {
-            'starting': Instance.States.STARTING,
-            'stopping': Instance.States.STOPPING,
-            'online': Instance.States.ONLINE,
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+
+        instance.project.add_user(self.user, ProjectRole.MANAGER)
+        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        new_flavor = cloud_factories.FlavorFactory(cloud=instance.flavor.cloud)
+
+        data = {
+            'flavor': self._get_flavor_url(new_flavor),
+            'disk_size': 100,
         }
 
-        for state in forbidden_states.values():
-            inaccessible_instance = factories.InstanceFactory(state=state)
+        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
 
-            new_flavor = cloud_factories.FlavorFactory(cloud=inaccessible_instance.flavor.cloud)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'non_field_errors': ['Cannot resize both disk size and flavor simultaneously']}, response.data)
 
-            data = {'flavor': str(new_flavor.uuid)}
+    def test_user_cannot_resize_with_empty_parameters(self):
+        self.client.force_authenticate(user=self.user)
 
-            response = self.client.post(self._get_instance_url(inaccessible_instance) + 'resize/', data)
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
 
-            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        instance.project.add_user(self.user, ProjectRole.MANAGER)
+        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-    # TODO: Requires extension via celery test runner
+        data = {}
+
+        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'non_field_errors': ['Either disk_size or flavor is required']}, response.data)
+
     def test_user_can_resize_disk_of_flavor_of_instance_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
-        admined_instance = factories.InstanceFactory()
-        admined_instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        instance = self.admined_instance
+        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-        data = {'disk_size': 1024}
-        response = self.client.post(self._get_instance_url(admined_instance) + 'resize/', data)
+        new_size = instance.data_volume_size + 1024
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = {'disk_size': new_size}
+        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
 
-        changed_flavor = Flavor.objects.get(uuid=admined_instance.flavor.uuid)
-        self.assertEqual(changed_flavor.disk, data['disk_size'])
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+
+        reread_instance = Instance.objects.get(pk=instance.pk)
+        self.assertEqual(reread_instance.data_volume_size, new_size)
 
     def test_user_cannot_resize_disk_of_flavor_of_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
@@ -341,13 +431,13 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         managed_instance = factories.InstanceFactory()
         managed_instance.project.add_user(self.user, ProjectRole.MANAGER)
 
-        self._ensure_cannot_resize_disk_of_flavor(managed_instance)
+        self._ensure_cannot_resize_disk_of_flavor(managed_instance, status.HTTP_403_FORBIDDEN)
 
     def test_user_cannot_resize_disk_of_flavor_of_instance_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.user)
 
         inaccessible_instance = factories.InstanceFactory()
-        self._ensure_cannot_resize_disk_of_flavor(inaccessible_instance)
+        self._ensure_cannot_resize_disk_of_flavor(inaccessible_instance, status.HTTP_404_NOT_FOUND)
 
     # Helpers method
     def _get_valid_payload(self, resource=None):
@@ -364,11 +454,11 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'ssh_public_key': self._get_ssh_public_key_url(resource.ssh_public_key)
         }
 
-    def _ensure_cannot_resize_disk_of_flavor(self, instance):
+    def _ensure_cannot_resize_disk_of_flavor(self, instance, expected_status):
         data = {'disk_size': 1024}
         response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, expected_status)
 
         changed_flavor = Flavor.objects.get(uuid=instance.flavor.uuid)
         self.assertNotEqual(changed_flavor.disk, data['disk_size'])
@@ -604,7 +694,7 @@ class InstanceListRetrieveTest(test.APITransactionTestCase):
         self.assertEqual(response.data['backups'][0]['url'], backup_factories.BackupFactory.get_url(backup))
 
 
-class InstaneUsageTest(test.APITransactionTestCase):
+class InstanceUsageTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
@@ -642,3 +732,4 @@ class InstaneUsageTest(test.APITransactionTestCase):
             self.assertEqual(response.data, expected_data)
             patched_cliend.get_item_stats.assert_called_once_with(
                 [self.instance], data['item'], data['from'], data['to'], data['datapoints'])
+

@@ -118,7 +118,7 @@ Examples of URLs:
 Resizing an instance
 --------------------
 
-To resize an instance, submit a POST request to the instance's RPC url, specifying also UUID of a target flavor.
+To resize an instance, submit a POST request to the instance's RPC url, specifying URI of a target flavor.
 Example of a valid request:
 
 
@@ -131,10 +131,10 @@ Example of a valid request:
     Host: example.com
 
     {
-        "flavor": "1ee385bc043249498cfeb8c7e3e079f0",
+        "flavor": "http://example.com/api/flavors/1ee385bc043249498cfeb8c7e3e079f0/",
     }
 
-To resize disk of the instance, submit a POST request to the instance's RPC url, specifying also size of the disk.
+To resize data disk of the instance, submit a POST request to the instance's RPC url, specifying size of the disk.
 Example of a valid request:
 
 
@@ -147,7 +147,7 @@ Example of a valid request:
     Host: example.com
 
     {
-        "disk_size": "1024",
+        "disk_size": 1024,
     }
 
 Deletion of an instance
