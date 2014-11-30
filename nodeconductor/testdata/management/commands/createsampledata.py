@@ -76,61 +76,14 @@ Arguments:
         [self.create_customer() for _ in range(3)]
 
     def add_sample_data(self):
-        self.stdout.write("""Generating data structures...
-             +---------------+  +-----------------+  +------------------+  +---------------+
-             | User          |  | User            |  | User             |  | User          |
-             | username: Bob |  | username: Alice |  | username: Walter |  | username: Zed |
-             | password: Bob |  | password: Alice |  | password: Walter |  | password: Zed |
-             +------+--------+  +--+---------+----+  | is_staff: yes    |  | (no roles)    |
-                    |              |         |       +-----------+------+  +---------------+
-                role:owner     role:owner role:owner             |
-                    |              |         |               role:owner
-                    |              |         |                   |
-           +--------+--------------+-+       |               +---+------------------------+      +---------------+
-           | Customer                |       |               | Customer                   +------+ Cloud account |
-           | name: Ministry of Bells |       +---------------+ name: Ministry of Whistles |      | cloud: Fractus|
-           +----+-----------------+--+                       +-----------+------------+---+      +---------------+
-                |                 |                                      |            |
-                |                 |   +---------------+                  |            |
-+---------------+---+             |   | User          |                  |       +----+-----------------+
-| Project Group     +-role:manager----+ username: Gus +----role:manager---------+ Project Group         +-------+
-| name: Bells Portal|             |   | password: Gus |                  |       | name: Whistles Portal|       |
-+--------------+----+             |   +---------------+                  |       +--------+-------------+       |
-               |                  |                                      |                |                     |
-               |   +--------------+--+     +---------------+             |                |                     |
-               |   | Cloud account   |     | Cloud account |             |                |                     |
-               |   | cloud: Stratus  |     | cloud: Cumulus+-------------+                |                     |
-               |   +---+-------------+     +---------+-----+                              |                 role:manager
-               |       |                   |         |                                    |                     |
-               |       |    +--------------+         |    +-------------------------------+                     |
-               |       |    |                        |    |                               |                     |
-            +--+-------+----+            +-----------+----+--+      +---------------------+------+              |
-            |Project        |            | Project           |      | Project                    |              |
-            |name: bells.org|            | name: whistles.org|      | name: intranet.whistles.org+-+role:admin+-+
-            +-+-------------+            +---------------+---+      +----+------------+----------+              |
-              +             +            +               +               +            +                         |
-          role:admin    role:manager role:admin      role:manager    role:admin   role:manager                  |
-              +             +            +               +               +            +                         |
-     +--------+----------+  |  +---------+------+    +---+------------+  |  +---------+-------+    +------------+---+
-     | User              |  |  | User           |    | User           |  |  | User            |    | User           |
-     | username: Charlie |  +--+ username: Dave |    | username: Erin +--+  | username: Frank |    | username: Harry|
-     | password: Charlie |     | password: Dave |    | password: Erin |     | password: Frank |    | password: Harry|
-     +-------------------+     +----------------+    +----------------+     +-----------------+    +----------------+
-
-
-Use cases covered:
- - Use case 2: User that is admin of a project -- Charlie, Dave, Erin
- - Use case 3: User that is manager of a project -- Dave, Erin, Frank
- - Use case 5: User has roles in several projects of the same customer -- Erin
- - Use case 6: User owns a customer -- Alice, Bob
- - Use case 7: Project group contains several projects -- Whistles Portal
- - Use case 9: User has roles in several projects of different customers -- Dave
- - Use case 12: User has no roles at all -- Zed
-
-
-Other use cases are covered with random data.
-""")
-
+        # Use cases covered:
+        #  - Use case 2: User that is admin of a project -- Charlie, Dave, Erin
+        #  - Use case 3: User that is manager of a project -- Dave, Erin, Frank
+        #  - Use case 5: User has roles in several projects of the same customer -- Erin
+        #  - Use case 6: User owns a customer -- Alice, Bob
+        #  - Use case 7: Project group contains several projects -- Whistles Portal
+        #  - Use case 9: User has roles in several projects of different customers -- Dave
+        #  - Use case 12: User has no roles at all -- Zed
         data = {
             'users': {
                 'Alice': {},
@@ -143,7 +96,6 @@ Other use cases are covered with random data.
                             "ArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9duD2C"
                             "05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
                             "vEAFdOJcqjyyH4FOGYa8usP1 charlie@example.com"),
-
                     }
                 },
                 'Dave': {
@@ -189,30 +141,10 @@ Other use cases are covered with random data.
                     'clouds': {
                         'Stratus': {
                             'flavors': {
-                                'm1.tiny': {
-                                    'cores': 1,
-                                    'ram': 512,
-                                    'disk': 1024,
-                                }
+                                'm1.tiny': { 'cores': 1, 'ram': 512, 'disk': 1024 },
                             },
                             'templates': {
-                                'CentOS 7 minimal jmHCYir': {
-                                    'os': 'CentOS 7',
-                                },
-                            },
-                        },
-                        'Cumulus': {
-                            'flavors': {
-                                'm1.small': {
-                                    'cores': 1,
-                                    'ram': 2048,
-                                    'disk': 10 * 1024,
-                                }
-                            },
-                            'templates': {
-                                'CentOS 6 x64 qsECMr': {
-                                    'os': 'CentOS 6.5',
-                                },
+                                'CentOS 7 minimal jmHCYir': { 'os': 'CentOS 7' },
                             },
                         },
                     },
@@ -223,7 +155,7 @@ Other use cases are covered with random data.
                                 'bells.org': {
                                     'admins': ['Charlie'],
                                     'managers': ['Dave'],
-                                    'connected_clouds': ['Stratus', 'Cumulus']
+                                    'connected_clouds': ['Stratus']
                                 },
                             },
                         },
@@ -232,32 +164,12 @@ Other use cases are covered with random data.
                 'Ministry of Whistles': {
                     'owners': ['Bob'],
                     'clouds': {
-                        'Fractus': {
-                            'flavors': {
-                                'm1.large': {
-                                    'cores': 4,
-                                    'ram': 8192,
-                                    'disk': 10 * 1024,
-                                }
-                            },
-                            'templates': {
-                                'Windows 3.11 pQzCuMQ': {
-                                    'os': 'Windows 3.11',
-                                },
-                            },
-                        },
                         'Cumulus': {
                             'flavors': {
-                                'm1.medium': {
-                                    'cores': 2,
-                                    'ram': 4096,
-                                    'disk': 10 * 1024,
-                                }
+                                'm1.medium': { 'cores': 2, 'ram': 4096, 'disk': 10 * 1024 },
                             },
                             'templates': {
-                                'Windows 3.11 jWxL': {
-                                    'os': 'Windows 3.11',
-                                },
+                                'Windows 3.11 jWxL': { 'os': 'Windows 3.11' },
                             }
                         },
                     },
@@ -282,8 +194,6 @@ Other use cases are covered with random data.
             },
         }
 
-        yuml = 'yUML diagram: http://yuml.me/diagram/class/'
-
         users = {}
         for username, user_params in data['users'].items():
             self.stdout.write('Creating user "%s"...' % username)
@@ -295,11 +205,6 @@ Other use cases are covered with random data.
                 self.stdout.write('Promoting user "%s" to staff...' % username)
                 users[username].is_staff = True
             users[username].save()
-
-            if users[username].is_staff:
-                yuml += '[User;username:%s;password:%s;is_staff:yes{bg:green}],' % (username, username)
-            else:
-                yuml += '[User;username:%s;password:%s],' % (username, username)
 
             if 'ssh_keys' in user_params:
                 for key_name in user_params['ssh_keys']:
@@ -317,7 +222,6 @@ Other use cases are covered with random data.
             for username in customer_params['owners']:
                 self.stdout.write('Adding user "%s" as owner of customer "%s"...' % (username, customer_name))
                 customer.add_user(users[username], CustomerRole.OWNER)
-                yuml += '[User;username:%s;password:%s]-role:owner->[Customer;name:%s],' % (username, username, customer_name)
 
             for cloud_name, cloud_params in customer_params['clouds'].items():
                 self.stdout.write('Creating cloud account "%s Cloud" for customer "%s"...' % (cloud_name, customer_name))
@@ -325,7 +229,6 @@ Other use cases are covered with random data.
                                                                                                    name=cloud_name)
                 cloud = customer_params['clouds'][cloud_name]
                 self.stdout.write('"%s Cloud" account %s.' % (cloud_name, "created" if was_created else "already exists"))
-                yuml += '[Customer;name:%s]-->[Cloud account;cloud:%s{bg:skyblue}],' % (customer_name, cloud_name)
 
                 for flavor_name in cloud_params['flavors']:
                     self.stdout.write('Creating flavor "%s" for cloud account "%s"...' % (flavor_name, cloud_name))
@@ -347,30 +250,24 @@ Other use cases are covered with random data.
                 self.stdout.write('Creating project group "%s" for customer "%s"...' % (project_group_name, customer_name))
                 project_group, was_created = customer.project_groups.get_or_create(name=project_group_name)
                 self.stdout.write('Project Group "%s" %s.' % (project_group_name, "created" if was_created else "already exists"))
-                yuml += '[Customer;name:%s]-->[Project Group;name:%s],' % (customer_name, project_group_name)
 
                 for username in project_group_params['managers']:
                     self.stdout.write('Adding user "%s" as manager of project group "%s"...' % (username, project_group_name))
                     project_group.add_user(users[username], ProjectGroupRole.MANAGER)
-                    yuml += '[Project Group;name:%s]<-role:manager-[User;username:%s;password:%s],' % \
-                            (project_group_name, username, username)
 
                 for project_name, project_params in project_group_params['projects'].items():
                     self.stdout.write('Creating project "%s" in project group "%s"...' % (project_name, project_group_name))
                     project, was_created = customer.projects.get_or_create(name=project_name)
                     project_group.projects.add(project)
                     self.stdout.write('Project "%s" %s.' % (project_name, "created" if was_created else "already exists"))
-                    yuml += '[Project Group;name:%s]-->[Project;name:%s],' % (project_group_name, project_name)
 
                     for username in project_params['admins']:
                         self.stdout.write('Adding user "%s" as admin of project "%s"...' % (username, project_name))
                         project.add_user(users[username], ProjectRole.ADMINISTRATOR)
-                        yuml += '[Project;name:%s]<-role:admin-[User;username:%s;password:%s],' % (project_name, username, username)
 
                     for username in project_params['managers']:
                         self.stdout.write('Adding user "%s" as manager of project "%s"...' % (username, project_name))
                         project.add_user(users[username], ProjectRole.MANAGER)
-                        yuml += '[Project;name:%s]<-role:manager-[User;username:%s;password:%s],' % (project_name, username, username)
 
                     for cloud_name in project_params['connected_clouds']:
                         self.stdout.write('Adding connection between "%s Cloud" cloud account and "%s" project...'
@@ -379,9 +276,6 @@ Other use cases are covered with random data.
                             cloud=customer_params['clouds'][cloud_name], project=project)
                         self.stdout.write('Connection between "%s Cloud" cloud account and "%s" project %s.'
                                           % (cloud_name, project_name, "created" if was_created else "already exists"))
-                        yuml += '[Cloud account;cloud:%s]-->[Project;name:%s],' % (cloud_name, project_name)
-
-        self.stdout.write(yuml)
 
     def create_cloud(self, customer):
         cloud_name = 'CloudAccount of %s (%s)' % (customer.name, random_string(10, 20, with_spaces=True))

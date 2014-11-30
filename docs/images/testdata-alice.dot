@@ -29,16 +29,13 @@ digraph {
 	c_mow -> pg_wp
 
 	c_mob -> ca_s
-	c_mob -> ca_c
 	c_mow -> ca_c
-	c_mow -> ca_f
 
 	pg_bp -> p_bo
 	pg_wp -> p_wo
 	pg_wp -> p_iwo
 
 	ca_s -> p_bo
-	ca_c -> p_bo
 	ca_c -> p_wo
 
 	Gus -> pg_bp [label="role: manager"]
