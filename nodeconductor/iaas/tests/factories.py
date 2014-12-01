@@ -92,6 +92,11 @@ class InstanceFactory(factory.DjangoModelFactory):
         '10.%s' % '.'.join('%s' % randint(0, 255) for _ in range(3)) for _ in range(3)))
     ssh_public_key = factory.SubFactory(SshPublicKeyFactory)
 
+    system_volume_id = factory.Sequence(lambda n: 'sys-vol-id-%s' % n)
+    system_volume_size = factory.LazyAttribute(lambda o: o.flavor.disk)
+    data_volume_id = factory.Sequence(lambda n: 'dat-vol-id-%s' % n)
+    data_volume_size = 20
+
     @factory.lazy_attribute
     def project(self):
         project = structure_factories.ProjectFactory()
