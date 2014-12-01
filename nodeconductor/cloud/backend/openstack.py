@@ -668,7 +668,7 @@ class OpenStackBackend(object):
                 nova.security_group_rules.delete(backend_rule_id)
             except nova_exceptions.ClientException:
                 logger.exception('Failed to remove rule with id %s from security group %s in backend',
-                                 backend_rule['id'], security_group)
+                                 backend_rule_id, security_group)
             else:
                 logger.info('Security group rule with id %s successfully deleted in backend',  backend_rule_id)
 
@@ -679,14 +679,14 @@ class OpenStackBackend(object):
                 nova.security_group_rules.delete(nc_rule.backend_id)
             except nova_exceptions.ClientException:
                 logger.exception('Failed to remove rule with id %s from security group %s in backend',
-                                 backend_rule['id'], security_group)
+                                 nc_rule.backend_id, security_group)
             else:
                 logger.info('Security group rule with id %s successfully deleted in backend',
                             nc_rule.backend_id)
 
         # creating nonexistent and unsynchronized rules
         for nc_rule in unsynchronized_rules + nonexistent_rules:
-            logger.debug('About to create security group rule with id %s in backend',  backend_rule_id)
+            logger.debug('About to create security group rule with id %s in backend',  nc_rule.id)
             try:
                 nova.security_group_rules.create(
                     parent_group_id=security_group.backend_id,
@@ -699,7 +699,7 @@ class OpenStackBackend(object):
                 logger.exception('Failed to create rule %s for security group %s in backend',
                                  nc_rule, security_group)
             else:
-                logger.info('Security group rule with id %s successfully created in backend',  backend_rule_id)
+                logger.info('Security group rule with id %s successfully created in backend',  nc_rule.id)
 
     def pull_security_group_rules(self, security_group, nova):
         backend_security_group = nova.security_groups.get(group_id=security_group.backend_id)
