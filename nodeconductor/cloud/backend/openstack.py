@@ -744,7 +744,7 @@ class OpenStackBackend(object):
                     cidr=backend_rule['ip_range'].get('cidr', '0.0.0.0/0'),
                     backend_id=backend_rule['id'],
                 )
-                logger.info('Created new security group rule %s in database', rule.uuid)
+                logger.info('Created new security group rule %s in database', rule.id)
 
     def create_admin_session(self, keystone_url):
         nc_settings = getattr(settings, 'NODECONDUCTOR', {})
