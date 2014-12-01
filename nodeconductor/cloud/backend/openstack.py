@@ -251,6 +251,7 @@ class OpenStackBackend(object):
             logger.debug('About to update security group %s in backend',  nc_group.uuid)
             try:
                 self.update_security_group(nc_group, nova)
+                self.push_security_group_rules(nc_group, nova)
             except nova_exceptions.ClientException:
                 logger.exception('Failed to update security group %s in backend', nc_group.uuid)
             else:
@@ -261,20 +262,11 @@ class OpenStackBackend(object):
             logger.debug('About to create security group %s in backend', nc_group.uuid)
             try:
                 self.create_security_group(nc_group, nova)
+                self.push_security_group_rules(nc_group, nova)
             except nova_exceptions.ClientException:
                 logger.exception('Failed to create openstack security group with for %s in backend', nc_group.uuid)
             else:
                 logger.info('Security group %s successfully created in backend', nc_group.uuid)
-
-        # pushing security groups rules:
-        for security_group in nc_security_groups:
-            logger.debug('About to push security group %s rules in backend', security_group.uuid)
-            try:
-                self.push_security_group_rules(security_group, nova)
-            except nova_exceptions.ClientException:
-                logger.exception('Failed to push security group %s rules in backend', security_group.uuid)
-            else:
-                logger.info('Security group %s rules were successfully pushed in backend', security_group.uuid)
 
     def pull_security_groups(self, membership):
         try:
@@ -313,26 +305,21 @@ class OpenStackBackend(object):
 
             # synchronizing unsynchronized security groups
             for backend_group in unsynchronized_groups:
-                membership.security_groups.filter(backend_id=backend_group.id).update(name=backend_group.name)
+                nc_security_group = membership.security_groups.get(backend_id=backend_group.id)
+                if backend_group.name != nc_security_group.name:
+                    nc_security_group.name = backend_group.name
+                    nc_security_group.save()
+                self.pull_security_group_rules(nc_security_group, nova)
             logger.info('Updated existing security groups in database')
 
             # creating non-existed security groups
             for backend_group in nonexistent_groups:
-                group = membership.security_groups.create(
+                nc_security_group = membership.security_groups.create(
                     backend_id=backend_group.id,
                     name=backend_group.name,
                 )
-                logger.info('Created new security groups %s in database', group.uuid)
-
-        # pulling security groups rules:
-        for security_group in membership.security_groups.all():
-            logger.debug('About to pull security group %s rules in database', security_group.uuid)
-            try:
-                self.pull_security_group_rules(security_group, nova)
-            except nova_exceptions.ClientException:
-                logger.exception('Failed to pull security group %s rules in database', security_group.uuid)
-            else:
-                logger.info('Security group %s rules were successfully pulled in database', security_group.uuid)
+                self.pull_security_group_rules(nc_security_group, nova)
+                logger.info('Created new security groups %s in database', nc_security_group.uuid)
 
     # Statistics methods:
     def get_resource_stats(self, auth_url):
@@ -573,7 +560,8 @@ class OpenStackBackend(object):
 
     def update_security_group(self, security_group, nova):
         backend_security_group = nova.security_groups.find(id=security_group.backend_id)
-        nova.security_groups.update(backend_security_group, name=security_group.name, description='')
+        if backend_security_group.name != security_group.name:
+            nova.security_groups.update(backend_security_group, name=security_group.name, description='')
 
     def delete_security_group(self, backend_id, nova):
         nova.security_groups.delete(backend_id)
@@ -952,4 +940,11 @@ class OpenStackBackend(object):
         return True
 
     def _are_security_groups_equal(self, backend_security_group, nc_security_group):
-        return backend_security_group.name == nc_security_group.name
+        if backend_security_group.name != nc_security_group.name:
+            return False
+        if len(backend_security_group.rules) != nc_security_group.rules.count():
+            return False
+        for backend_rule, nc_rule in zip(backend_security_group.rules, nc_security_group.rules.all()):
+            if not self._are_rules_equal(backend_rule, nc_rule):
+                return False
+        return True
