@@ -1,4 +1,5 @@
 import logging
+import sys
 
 from django.db import connections, DatabaseError
 from django.utils import six
@@ -36,9 +37,9 @@ class ZabbixDBClient(object):
             segment_list = self.format_time_and_value_to_segment_list(
                 time_and_value_list, segments_count, start_timestamp, end_timestamp)
             return segment_list
-        except DatabaseError:
+        except DatabaseError as e:
             logger.exception('Can not execute query the Zabbix DB.')
-            six.reraise(errors.ZabbixError, errors.ZabbixError())
+            six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
 
     def format_time_and_value_to_segment_list(self, time_and_value_list, segments_count, start_timestamp, end_timestamp):
         """
