@@ -411,7 +411,7 @@ NODECONDUCTOR = {
 }
 
 # Zabbix DB configuration
-if config.get('zabbix', 'HOST') != '':
+if config.get('zabbix', 'db_host') != '':
     DATABASES['zabbix'] = {
         'ENGINE': 'django.db.backends.mysql',
         'HOST': config.get('zabbix', 'db_host'),
