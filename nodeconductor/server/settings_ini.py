@@ -71,6 +71,12 @@ config_defaults = {
         'password': '',
         'server_url': '',
         'username': '',
+        # db
+        'db_host': '',
+        'db_name': 'zabbix',
+        'db_port': '3306',
+        'db_user': 'nodeconductor',
+        'db_password': 'nodeconductor'
     }
 }
 
@@ -404,3 +410,13 @@ NODECONDUCTOR = {
     }
 }
 
+# Zabbix DB configuration
+if config.get('zabbix', 'HOST') != '':
+    DATABASES['zabbix'] = {
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST': config.get('zabbix', 'db_host'),
+        'NAME': config.get('zabbix', 'db_name'),
+        'PORT': config.get('zabbix', 'db_port'),
+        'USER': config.get('zabbix', 'db_user'),
+        'PASSWORD': config.get('zabbix', 'db_password'),
+    }
