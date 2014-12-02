@@ -35,6 +35,7 @@ def generate_settings():
     config.set('zabbix', 'username', 'nodeconductor')
     config.set('zabbix', 'password', 'nodeconductor')
     config.set('zabbix', 'host_template_id', '10106')
+    config.set('zabbix', 'db_host', '')
 
     with open(os.path.join(config_dir, 'settings.ini'), 'w+') as f:
         config.write(f)
