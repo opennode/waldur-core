@@ -2,6 +2,7 @@ import logging
 
 from django.db import connections, DatabaseError
 from django.utils import six
+from pyzabbix import ZabbixAPIException
 
 from nodeconductor.monitoring.zabbix import errors, api_client
 
@@ -21,7 +22,12 @@ class ZabbixDBClient(object):
         self.zabbix_api_client = api_client.ZabbixApiClient()
 
     def get_item_stats(self, instances, item, start_timestamp, end_timestamp, segments_count):
-        host_ids = [self.zabbix_api_client.get_host(instance)['hostid'] for instance in instances]
+        host_ids = []
+        for instance in instances:
+            try:
+                host_ids.append(self.zabbix_api_client.get_host(instance)['hostid'])
+            except ZabbixAPIException as ze:
+                logger.warn('Failed to get a Zabbix host for instance %s' % instance.uuid)
         item_key = self.items[item]['key']
         item_table = self.items[item]['table']
         try:
@@ -31,7 +37,7 @@ class ZabbixDBClient(object):
                 time_and_value_list, segments_count, start_timestamp, end_timestamp)
             return segment_list
         except DatabaseError:
-            logger.exception("Can not execute query to zabbix db.")
+            logger.exception('Can not execute query the Zabbix DB.')
             six.reraise(errors.ZabbixError, errors.ZabbixError())
 
     def format_time_and_value_to_segment_list(self, time_and_value_list, segments_count, start_timestamp, end_timestamp):
