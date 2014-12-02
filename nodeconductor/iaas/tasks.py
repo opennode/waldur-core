@@ -4,16 +4,12 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from celery import shared_task
-from django.db import transaction
 
-from nodeconductor.core.tasks import tracked_processing, set_state
+from nodeconductor.core.tasks import tracked_processing
 from nodeconductor.core.log import EventLoggerAdapter
-from nodeconductor.cloud import models as cloud_models
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
-
-from celery.utils import log
 
 logger = logging.getLogger(__name__)
 event_log = EventLoggerAdapter(logger)
@@ -41,7 +37,6 @@ def delete_zabbix_host_and_service(instance):
     except ZabbixError as e:
         # task does not have to fail if something is wrong with zabbix
         logger.error('Zabbix host deletion flow has broken', e, exc_info=1)
-
 
 
 @shared_task

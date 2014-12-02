@@ -43,10 +43,6 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
                   'template', 'flavor', 'project', 'security_groups', 'ssh_public_key')
         lookup_field = 'uuid'
 
-    def __init__(self, *args, **kwargs):
-        super(InstanceCreateSerializer, self).__init__(*args, **kwargs)
-        self.user = kwargs['context']['user']
-
     def get_fields(self):
         fields = super(InstanceCreateSerializer, self).get_fields()
 

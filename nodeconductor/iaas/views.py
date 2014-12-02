@@ -98,9 +98,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     filter_class = InstanceFilter
 
     def get_serializer_class(self):
-        if self.request.method in ('POST'):
+        if self.request.method == 'POST':
             return serializers.InstanceCreateSerializer
-        elif self.request.method in ('PUT', 'PATCH',):
+        elif self.request.method in ('PUT', 'PATCH'):
             return serializers.InstanceUpdateSerializer
 
         return super(InstanceViewSet, self).get_serializer_class()
