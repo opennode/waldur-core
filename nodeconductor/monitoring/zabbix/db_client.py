@@ -2,9 +2,9 @@ import logging
 
 from django.db import connections, DatabaseError
 from django.utils import six
-from pyzabbix import ZabbixAPIException
 
 from nodeconductor.monitoring.zabbix import errors, api_client
+from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class ZabbixDBClient(object):
         for instance in instances:
             try:
                 host_ids.append(self.zabbix_api_client.get_host(instance)['hostid'])
-            except ZabbixAPIException as ze:
+            except ZabbixError:
                 logger.warn('Failed to get a Zabbix host for instance %s' % instance.uuid)
         item_key = self.items[item]['key']
         item_table = self.items[item]['table']
