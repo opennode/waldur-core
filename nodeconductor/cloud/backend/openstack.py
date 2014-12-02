@@ -410,6 +410,8 @@ class OpenStackBackend(object):
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
 
+            security_group_ids = instance.security_groups.values_list('security_group__backend_id', flat=True)
+
             server = nova.servers.create(
                 name=instance.hostname,
                 image=backend_image,
@@ -447,6 +449,7 @@ class OpenStackBackend(object):
                     {'net-id': network['id']}
                 ],
                 key_name=self.get_key_name(instance.ssh_public_key),
+                security_groups=security_group_ids,
             )
 
             instance.backend_id = server.id
