@@ -1,37 +1,40 @@
 from __future__ import unicode_literals
+from decimal import Decimal
 
 from django.core.management.base import BaseCommand, CommandError
-from nodeconductor.iaas.models import Template, TemplateMapping
 
-from nodeconductor.structure import models as structure_models
-from nodeconductor.cloud import models
+from nodeconductor.iaas.models import Template, TemplateMapping
 
 
 class Command(BaseCommand):
-    args = '<template image_uuid>'
-    help = """Create a template and map to an image UUID.
+    # TODO: refactor after moving to Django 1.7 to use argparse
+    args = '<template_name image_id>'
+    help = """Create a template and map to a provided image reference.
 
 Arguments:
-  template             template to create
-  image_uuid           image UUID to use for setting up template mapping"""
+  template_name       template name to update/create
+  image_id            image UUID to use for setting up template mapping"""
 
     def handle(self, *args, **options):
         if len(args) < 2:
-            self.stdout.write('Missing arguments.')
+            raise CommandError('Missing arguments.')
             return
 
         template_name = args[0]
-        image_uuid = args[1]
-        self.stdout.write('Creating a template %s and setting up a map to image %s...' % (template_name, image_uuid))
-        template, created = Template.objects.get_or_create(name=template_name)
-        if created:
-            template.os = template_name
-            template.is_active = True
-            template.monthly_fee = 20
-            template.setup_fee = 10
-            template.sla_level = 95
-            template.description = 'Sample template of %s linked to an image %s' % (template_name, image_uuid)
-            template.save()
+        image_id = args[1]
+        self.stdout.write('Creating a template %s and setting up a mapping to image %s...'
+                          % (template_name, image_id))
+        template, _ = Template.objects.get_or_create(
+            name=template_name,
+            defaults={
+                'os': template_name,
+                'is_active': True,
+                'monthly_fee': Decimal('20.0'),
+                'setup_fee': Decimal('10.0'),
+                'sla_level': Decimal('95.0'),
+                'description': 'Sample template of %s linked to an image %s' % (template_name, image_id)
+            },
+        )
 
-        mapping, created = TemplateMapping.objects.get_or_create(template=template, backend_image_id=image_uuid)
-        print mapping
+        mapping, _ = TemplateMapping.objects.get_or_create(template=template, backend_image_id=image_id)
+        self.stdout.write('Mapping created: %s' % mapping)
