@@ -12,6 +12,23 @@ class IsAdminOrReadOnly(BasePermission):
         )
 
 
+class IsAdminOrOwner(IsAdminOrReadOnly):
+    """
+    Allows access to admin users or account's owner.
+    For other users read-only access.
+    """
+
+    def has_permission(self, request, view):
+        user = request.user
+
+        if user.is_staff or request.method in SAFE_METHODS:
+            return True
+        elif view.suffix == 'List':
+            return False
+
+        return user == view.get_object() and request.method != 'DELETE'
+
+
 class FilteredCollaboratorsPermissionLogic(PermissionLogic):
     """
     Permission logic class for collaborators based permission system.

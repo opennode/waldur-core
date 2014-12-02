@@ -8,6 +8,7 @@ from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import status
 from rest_framework import viewsets as rf_viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
@@ -315,7 +316,8 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = serializers.UserSerializer
     lookup_field = 'uuid'
-    permission_classes = (rf_permissions.IsAuthenticated, permissions.IsAdminOrReadOnly)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          permissions.IsAdminOrOwner,)
     filter_class = UserFilter
 
     def get_queryset(self):
@@ -346,6 +348,9 @@ class UserViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_active=True)
         return queryset
 
+    @action()
+    def password(self, request, uuid=None):
+        return Response({'status': status.HTTP_200_OK})
 
 # TODO: cover filtering/ordering with tests
 class ProjectPermissionFilter(django_filters.FilterSet):

@@ -349,4 +349,9 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             del fields['is_active']
             del fields['is_staff']
 
+        if request.method in ('PUT', 'PATCH', 'POST'):
+            for field in fields:
+                if not user.is_staff and field not in ('email', 'organization'):
+                    fields[field].read_only = True
+
         return fields
