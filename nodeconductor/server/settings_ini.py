@@ -126,7 +126,7 @@ if config.get('global', 'db_backend') == 'mysql':
         'USER': config.get('mysql', 'user'),
         'PASSWORD': config.get('mysql', 'password'),
         # use case-sensitive collation
-        'OPTIONS' : {
+        'OPTIONS': {
             'init_command': 'SET COLLATION_CONNECTION=utf8_bin'
         }
     }
