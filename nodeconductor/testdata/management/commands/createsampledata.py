@@ -476,6 +476,7 @@ Arguments:
             external_ips=external_ips,
             start_time=timezone.now(),
             ssh_public_key=ssh_public_key,
+            system_volume_size=flavor.disk,
         )
 
         cmp = CloudProjectMembership.objects.get(project=project, cloud=flavor.cloud)
