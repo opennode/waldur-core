@@ -29,6 +29,11 @@ class ZabbixDBClient(object):
                 host_ids.append(self.zabbix_api_client.get_host(instance)['hostid'])
             except ZabbixError:
                 logger.warn('Failed to get a Zabbix host for instance %s' % instance.uuid)
+
+        # return an empty list if no hosts were found
+        if host_ids == []:
+            return []
+
         item_key = self.items[item]['key']
         item_table = self.items[item]['table']
         try:
@@ -81,19 +86,20 @@ class ZabbixDBClient(object):
             'SELECT hi.clock time, hi.value value '
             'FROM zabbix.items it JOIN zabbix.%(item_table)s hi on hi.itemid = it.itemid '
             'WHERE it.key_ in (%(item_keys)s) AND it.hostid in (%(host_ids)s) '
-            'AND hi.clock < %(end_timestamp)s  AND hi.clock >= %(start_timestamp)s '
+            'AND hi.clock < %(end_timestamp)s AND hi.clock >= %(start_timestamp)s '
             'GROUP BY hi.clock '
             'ORDER BY hi.clock'
         )
-        parametrs = {
+        parameters = {
             'item_keys': '"' + '", "'.join(item_keys) + '"',
             'start_timestamp': start_timestamp,
             'end_timestamp': end_timestamp,
             'host_ids': ','.join(str(host_id) for host_id in host_ids),
             'item_table': item_table
         }
-        query = query % parametrs
+        query = query % parameters
 
+        print query
         cursor = connections['zabbix'].cursor()
         cursor.execute(query)
         return cursor.fetchall()
