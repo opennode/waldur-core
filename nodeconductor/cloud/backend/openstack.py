@@ -238,24 +238,24 @@ class OpenStackBackend(object):
 
         # deleting extra security groups
         for backend_group_id in extra_group_ids:
-            logger.debug('About to delete security group with id %s in backend',  backend_group_id)
+            logger.debug('About to delete security group with id %s in backend', backend_group_id)
             try:
                 self.delete_security_group(backend_group_id, nova)
             except nova_exceptions.ClientException:
                 logger.exception('Failed to remove openstack security group with id %s in backend', backend_group_id)
             else:
-                logger.info('Security group with id %s successfully deleted in backend',  backend_group_id)
+                logger.info('Security group with id %s successfully deleted in backend', backend_group_id)
 
         # updating unsynchronized security groups
         for nc_group in unsynchronized_groups:
-            logger.debug('About to update security group %s in backend',  nc_group.uuid)
+            logger.debug('About to update security group %s in backend', nc_group.uuid)
             try:
                 self.update_security_group(nc_group, nova)
                 self.push_security_group_rules(nc_group, nova)
             except nova_exceptions.ClientException:
                 logger.exception('Failed to update security group %s in backend', nc_group.uuid)
             else:
-                logger.info('Security group %s successfully updated in backend',  nc_group.uuid)
+                logger.info('Security group %s successfully updated in backend', nc_group.uuid)
 
         # creating nonexistent and unsynchronized security groups
         for nc_group in nonexistent_groups:
@@ -435,7 +435,7 @@ class OpenStackBackend(object):
                     # equivalent nova boot options would be
                     # --block-device source=blank,dest=volume,size=10,type=disk
                     # {
-                    #     'destination_type': 'blank',
+                    # 'destination_type': 'blank',
                     #     'device_type': 'disk',
                     #     'source_type': 'image',
                     #     'uuid': backend_image.id,
@@ -663,18 +663,18 @@ class OpenStackBackend(object):
 
         # deleting extra rules
         for backend_rule_id in extra_rule_ids:
-            logger.debug('About to delete security group rule with id %s in backend',  backend_rule_id)
+            logger.debug('About to delete security group rule with id %s in backend', backend_rule_id)
             try:
                 nova.security_group_rules.delete(backend_rule_id)
             except nova_exceptions.ClientException:
                 logger.exception('Failed to remove rule with id %s from security group %s in backend',
                                  backend_rule_id, security_group)
             else:
-                logger.info('Security group rule with id %s successfully deleted in backend',  backend_rule_id)
+                logger.info('Security group rule with id %s successfully deleted in backend', backend_rule_id)
 
         # deleting unsynchronized rules
         for nc_rule in unsynchronized_rules:
-            logger.debug('About to delete security group rule with id %s',  nc_rule.backend_id)
+            logger.debug('About to delete security group rule with id %s', nc_rule.backend_id)
             try:
                 nova.security_group_rules.delete(nc_rule.backend_id)
             except nova_exceptions.ClientException:
@@ -686,7 +686,7 @@ class OpenStackBackend(object):
 
         # creating nonexistent and unsynchronized rules
         for nc_rule in unsynchronized_rules + nonexistent_rules:
-            logger.debug('About to create security group rule with id %s in backend',  nc_rule.id)
+            logger.debug('About to create security group rule with id %s in backend', nc_rule.id)
             try:
                 nova.security_group_rules.create(
                     parent_group_id=security_group.backend_id,
@@ -699,7 +699,7 @@ class OpenStackBackend(object):
                 logger.exception('Failed to create rule %s for security group %s in backend',
                                  nc_rule, security_group)
             else:
-                logger.info('Security group rule with id %s successfully created in backend',  nc_rule.id)
+                logger.info('Security group rule with id %s successfully created in backend', nc_rule.id)
 
     def pull_security_group_rules(self, security_group, nova):
         backend_security_group = nova.security_groups.get(group_id=security_group.backend_id)
