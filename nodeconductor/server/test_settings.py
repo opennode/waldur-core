@@ -39,6 +39,7 @@ NODECONDUCTOR = {
             'password': "zabbix",
             'interface_parameters': {"ip": "0.0.0.0", "main": 1, "port": "10050", "type": 1, "useip": 1, "dns": ""},
             'templateid': '10106',
+            'groupid': '8',
             'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
         }
     }

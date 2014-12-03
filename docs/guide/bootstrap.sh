@@ -16,7 +16,7 @@ service mysqld start
 service redis start
 
 # Create MySQL database
-mysql -e "CREATE DATABASE nodeconductor CHARACTER SET = utf8;"
+mysql -e "CREATE DATABASE nodeconductor CHARACTER SET = utf8 COLLATE = utf8_bin;"
 mysql -e "CREATE USER 'nodeconductor'@'localhost' IDENTIFIED BY 'nodeconductor';"
 mysql -e "GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'localhost';"
 

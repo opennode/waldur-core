@@ -56,6 +56,16 @@ Backup has a state, currently supported states are:
 - Erred
 - Deleted
 
+Backup actions
+--------------
+
+Each created backup supports several operations. Operations are listed below:
+
+- **/api/backup/<backup_uuid>/restore/** - restore a specified backup
+- **/api/backup/<backup_uuid>/delete/** - delete a specified backup
+
+If a backup is in a state that prohibits this operation, it will be returned in error message of the response.
+
 Backup schedules
 ----------------
 
@@ -90,6 +100,8 @@ Activating/deactivating a schedule
 
 A schedule can be it two states: active or not. Non-active states are not used for scheduling the new tasks.
 
-To activate a backup schedule, issue POST request to **/api/backup-schedules/<UUID>/activate/**.
+To activate a backup schedule, issue POST request to **/api/backup-schedules/<UUID>/activate/**. Note that
+if a schedule is already active, this will result in 404 code.
 
-To deactivate a backup schedule, issue POST request to **/api/backup-schedules/<UUID>/deactivate/**.
+To deactivate a backup schedule, issue POST request to **/api/backup-schedules/<UUID>/deactivate/**. Note that
+if a schedule was already deactivated, this will result in 404 code.

@@ -32,8 +32,9 @@ class ZabbixPublicApiTest(unittest.TestCase):
 
     def setUp(self):
         self.zabbix_parameters = settings.NODECONDUCTOR['MONITORING']['ZABBIX']
+
         self.api = get_mocked_zabbix_api()
-        self.zabbix_client = ZabbixApiClient(self.zabbix_parameters)
+        self.zabbix_client = ZabbixApiClient()
         self.zabbix_client.get_zabbix_api = Mock(return_value=self.api)
 
         self.project = Mock()
@@ -46,6 +47,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.instance.project = self.project
 
     # Host creation
+    @unittest.skip('Disabled as a single hostgroup is going to be used for now')
     def test_create_host_creates_group_if_it_does_not_exist(self):
         self.api.hostgroup.exists.return_value = False
 
@@ -55,6 +57,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.api.hostgroup.exists.assert_called_once_with(name=expected_group_name)
         self.api.hostgroup.create.assert_called_once_with({'name': expected_group_name})
 
+    @unittest.skip('Disabled as a single hostgroup is going to be used for now')
     def test_create_host_takes_group_if_it_exist(self):
         self.zabbix_client.create_host(self.instance)
 
@@ -72,7 +75,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.api.host.create.assert_called_once_with({
             "host": expected_host_name,
             "interfaces": [self.zabbix_parameters['interface_parameters']],
-            "groups": [{"groupid": 1}],
+            "groups": [{"groupid": '8'}],
             "templates": [{"templateid": self.zabbix_parameters['templateid']}],
         })
 

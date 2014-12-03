@@ -1,5 +1,5 @@
-Sharable services
------------------
+Shareable services
+------------------
 
 NodeConductor is designed to support multiple API-based services for access sharing. Services can range from IaaS to
 SaaS, the common denominator is the ability to control services over APIs. Currently supported services are listed below.
@@ -23,7 +23,7 @@ volumes are created:
 VM resize (flavor)
 ==================
 
-To change memory or cpu number, a flavor should be changed. Please note, that the disk size is not affected.
+To change memory or CPU number, a flavor should be changed. Please note, that the disk size is not affected.
 Change can happen only for a stopped VM.
 
 VM resize (disk)

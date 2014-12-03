@@ -40,7 +40,7 @@ def _project_data(project=None):
     }
 
 
-class ResourceQuotasTest(test.APISimpleTestCase):
+class ResourceQuotasTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.user = factories.UserFactory()
@@ -60,20 +60,6 @@ class ResourceQuotasTest(test.APISimpleTestCase):
         fields = ('vcpu', 'ram', 'storage', 'max_instances')
         for field in fields:
             self.assertEquals(getattr(expected_quota, field), context['resource_quota'][field])
-
-    def test_quota_creation_with_project(self):
-        customer = factories.CustomerFactory()
-        customer.add_user(self.user, models.CustomerRole.OWNER)
-        project = factories.ProjectFactory(customer=customer)
-        data = _project_data(project)
-        data['resource_quota'] = _resource_quota_data()
-
-        response = self.client.post(_project_list_url(), data=data)
-        self.assertEqual(response.status_code, 201)
-        context = json.loads(response.content)
-        fields = ('vcpu', 'ram', 'storage', 'max_instances')
-        for field in fields:
-            self.assertEquals(data['resource_quota'][field], str(context['resource_quota'][field]))
 
     def test_project_resource_quota_change(self):
         self.user.is_staff = True

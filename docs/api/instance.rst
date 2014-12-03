@@ -10,10 +10,11 @@ only see connected instances:
 Filtering of instance list is supported through HTTP query parameters, the following fields are supported:
 
 - ?hostname=<hostname>
-- ?customer_name
+- ?customer_name=<customer name>
 - ?state=<state symbol>
 - ?project=<project_name>
 - ?project_group=<project_group_name>
+- ?template_name=<template name>
 
 Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
 
@@ -22,6 +23,7 @@ Sorting is supported in ascending and descending order by specifying a field to 
 - ?o=project__customer__name - sort by customer name in ascending order
 - ?o=project__project_groups__name - sort by project group name
 - ?o=project__name - sort by project name
+- ?o=template__name - sort by template name
 
 
 Instance permissions
@@ -116,7 +118,7 @@ Examples of URLs:
 Resizing an instance
 --------------------
 
-To resize an instance, submit a POST request to the instance's RPC url, specifying also UUID of a target flavor.
+To resize an instance, submit a POST request to the instance's RPC url, specifying URI of a target flavor.
 Example of a valid request:
 
 
@@ -129,7 +131,23 @@ Example of a valid request:
     Host: example.com
 
     {
-        "flavor": "1ee385bc043249498cfeb8c7e3e079f0",
+        "flavor": "http://example.com/api/flavors/1ee385bc043249498cfeb8c7e3e079f0/",
+    }
+
+To resize data disk of the instance, submit a POST request to the instance's RPC url, specifying size of the disk.
+Example of a valid request:
+
+
+.. code-block:: http
+
+    POST /api/instances/6c9b01c251c24174a6691a1f894fae31/resize/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "disk_size": 1024,
     }
 
 Deletion of an instance

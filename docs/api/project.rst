@@ -21,7 +21,7 @@ Field filters:
 - ?vcpu=<number> - return a list of projects with a specified vcpu quota
 - ?ram=<number> - return a list of projects with a specified ram quota
 - ?storage=<number> - return a list of projects with a specified storage quota
-- ?max_instance=<number> - return a list of projects with a specified max_instance quota
+- ?max_instances=<number> - return a list of projects with a specified max_instance quota
 
 Sorting can be done by the following fields, specifying field name as a parameter to **?o=<field_name>**. To get a
 descending sorting prefix field name with a **-**.
@@ -61,12 +61,6 @@ Project resource quota is optional. Example of a valid request:
     {
         "name": "Project A",
         "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
-        "resource_quota": {
-                "vcpu": 2,
-                "ram": 2.0,
-                "storage": 36.15,
-                "max_instances": 11
-            },
     }
 
 

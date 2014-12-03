@@ -3,6 +3,10 @@ Create a new project quota
 
 A new project quota can be created within project by users with staff privilege (is_staff=True) or customer owners.
 
+The units of quotas relating to storage are defined in MiB_.
+
+.. _MiB: http://en.wikipedia.org/wiki/Mebibyte
+
 Example of a valid request (token is user specific):
 
 .. code-block:: http

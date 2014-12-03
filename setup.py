@@ -17,7 +17,7 @@ tests_requires = [
 
 install_requires = [
     'Celery>=3.1.15,<3.2',
-    'croniter==0.3.5',
+    'croniter>=0.3.4,<0.3.6',
     'Django>=1.6.5,<1.7',
     'django-auth-ldap==1.2.0',
     'django-filter==0.7',
@@ -29,8 +29,10 @@ install_requires = [
     'djangosaml2>=0.11.0,<0.12',
     'drf-extensions==0.2.6',
     'logan==0.5.9.1',
+    'python-cinderclient>=1.0.7,<=1.1.1',
     'python-glanceclient>=0.12.0,<0.13.0',
     'python-keystoneclient>=0.9.0,<0.11.2',
+    'python-neutronclient>=2.3.4,<2.4.0',
     'python-novaclient>=2.17.0,<2.19.0',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
@@ -40,7 +42,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.9.0',
+    version='0.10.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

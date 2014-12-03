@@ -6,11 +6,10 @@ import time
 from django.db import models as django_models
 from django.http import Http404
 import django_filters
-from django_fsm import TransitionNotAllowed
 from rest_framework import filters as rf_filter
 from rest_framework import mixins
 from rest_framework import permissions, status
-from rest_framework import viewsets
+from rest_framework import viewsets, views
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework_extensions.decorators import action, link
@@ -19,12 +18,12 @@ from nodeconductor.cloud.models import Cloud, Flavor
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
+from nodeconductor.core.utils import sort_dict
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
-from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import filters
 from nodeconductor.structure.filters import filter_queryset_for_user
-from nodeconductor.structure.models import ProjectRole
+from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, ResourceQuota
 
 
 logger = logging.getLogger(__name__)
@@ -48,6 +47,11 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
+    template_name = django_filters.CharFilter(
+        name='template__name',
+        lookup_type='icontains',
+    )
+
     hostname = django_filters.CharFilter(lookup_type='icontains')
     state = django_filters.CharFilter()
 
@@ -59,6 +63,7 @@ class InstanceFilter(django_filters.FilterSet):
             'state',
             'project',
             'project_group',
+            'template_name'
         ]
         order_by = [
             'hostname',
@@ -71,6 +76,8 @@ class InstanceFilter(django_filters.FilterSet):
             '-project__name',
             'project__project_groups__name',
             '-project__project_groups__name',
+            'template__name',
+            '-template__name',
         ]
 
 
@@ -91,8 +98,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
     filter_class = InstanceFilter
 
     def get_serializer_class(self):
-        if self.request.method in ('POST', 'PUT', 'PATCH'):
+        if self.request.method in ('POST'):
             return serializers.InstanceCreateSerializer
+        elif self.request.method in ('PUT', 'PATCH',):
+            return serializers.InstanceUpdateSerializer
 
         return super(InstanceViewSet, self).get_serializer_class()
 
@@ -109,44 +118,68 @@ class InstanceViewSet(mixins.CreateModelMixin,
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
         return queryset
 
-    def _get_instance_or_404(self, request, uuid):
-        # XXX: this should be testing for actions/role pairs as well
-        instance = filter_queryset_for_user(models.Instance.objects.filter(uuid=uuid), request.user).first()
-        if instance is None:
-            raise Http404()
-        return instance
+    def pre_save(self, obj):
+        super(InstanceViewSet, self).pre_save(obj)
+
+        if obj.pk is None:
+            obj.system_volume_size = obj.flavor.disk
+
+    def change_flavor(self, instance, flavor):
+        instance_cloud = instance.flavor.cloud
+
+        if flavor.cloud != instance_cloud:
+            return Response({'flavor': "New flavor is not within the same cloud"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        instance.flavor = flavor
+        instance.save()
+        # This is suboptimal, since it reads and writes instance twice
+        return self._schedule_transition(self.request, instance.uuid.hex, 'flavor change')
+
+    def resize_disk(self, instance, new_size):
+        if new_size <= instance.data_volume_size:
+            return Response({'disk_size': "Disk size must be strictly greater than the current one"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        instance.data_volume_size = new_size
+        instance.save()
+        # This is suboptimal, since it reads and writes instance twice
+        return self._schedule_transition(self.request, instance.uuid.hex, 'disk extension')
 
     def _schedule_transition(self, request, uuid, operation, **kwargs):
-        # Importing here to avoid circular imports
-        from nodeconductor.iaas import tasks
-        instance = self._get_instance_or_404(request, uuid)
+        instance = self.get_object()
 
-        is_admin = instance.project.roles.filter(permission_group__user=request.user,
-                                                 role_type=ProjectRole.ADMINISTRATOR).exists()
+        is_admin = instance.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
+
         if not is_admin:
             raise PermissionDenied()
 
+        # Importing here to avoid circular imports
+        from nodeconductor.core.tasks import set_state, StateChangeError
+        from nodeconductor.iaas import tasks
+
         supported_operations = {
             # code: (scheduled_celery_task, instance_marker_state)
-            'start': (instance.schedule_starting, tasks.schedule_starting),
-            'stop': (instance.schedule_stopping, tasks.schedule_stopping),
-            'destroy': (instance.schedule_deletion, tasks.schedule_deleting),
-            'resize': (instance.schedule_resizing, tasks.schedule_resizing),
+            'start': ('schedule_starting', tasks.schedule_starting),
+            'stop': ('schedule_stopping', tasks.schedule_stopping),
+            'destroy': ('schedule_deletion', tasks.schedule_deleting),
+            'flavor change': ('schedule_resizing', tasks.update_flavor),
+            'disk extension': ('schedule_resizing', tasks.extend_disk),
         }
 
-        logger.info('Scheduling provisioning instance with uuid %s', uuid)
-        processing_task = supported_operations[operation][1]
-        instance_schedule_transition = supported_operations[operation][0]
+        # logger.info('Scheduling %s of an instance with uuid %s', operation, uuid)
+        change_instance_state, processing_task = supported_operations[operation]
+
         try:
-            instance_schedule_transition()
-            instance.save()
+            set_state(models.Instance, uuid, change_instance_state)
             processing_task.delay(uuid, **kwargs)
-        except TransitionNotAllowed:
+        except StateChangeError:
             return Response({'status': 'Performing %s operation from instance state \'%s\' is not allowed'
-                            % (operation, instance.get_state_display())},
+                                       % (operation, instance.get_state_display())},
                             status=status.HTTP_409_CONFLICT)
 
-        return Response({'status': '%s was scheduled' % operation})
+        return Response({'status': '%s was scheduled' % operation},
+                        status=status.HTTP_202_ACCEPTED)
 
     @action()
     def stop(self, request, uuid=None):
@@ -161,46 +194,45 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     @action()
     def resize(self, request, uuid=None):
-        try:
-            instance = models.Instance.objects.get(uuid=uuid)
-        except models.Instance.DoesNotExist:
-            raise Http404()
+        instance = self.get_object()
 
-        try:
-            flavor_uuid = request.DATA['flavor']
-        except KeyError:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+        if instance.state != models.Instance.States.OFFLINE:
+            return Response({'detail': 'Instance must be offline'},
+                            status=status.HTTP_409_CONFLICT)
 
-        instance_cloud = instance.flavor.cloud
+        serializer = serializers.InstanceResizeSerializer(data=request.DATA)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        new_flavor = Flavor.objects.filter(cloud=instance_cloud, uuid=flavor_uuid)
+        obj = serializer.object
 
-        if new_flavor.exists():
-            return self._schedule_transition(request, uuid, 'resize', new_flavor=flavor_uuid)
+        changed_flavor = obj['flavor']
 
-        return Response({'status': "New flavor is not within the same cloud"},
-                        status=status.HTTP_400_BAD_REQUEST)
+        # Serializer makes sure that exactly one of the branches
+        # will match
+        if changed_flavor is not None:
+            return self.change_flavor(instance, changed_flavor)
+        else:
+            return self.resize_disk(instance, obj['disk_size'])
 
     @link()
     def usage(self, request, uuid):
-        zabbix_db_client = ZabbixDBClient()
-        if not 'item' in request.QUERY_PARAMS:
-            return Response({'status': "GET parameter 'item' have to be defined"}, status=status.HTTP_400_BAD_REQUEST)
-
-        item = request.QUERY_PARAMS['item']
-        if not item in zabbix_db_client.items:
-            return Response(
-                {'status': "GET parameter 'item' have to from list: %s" % zabbix_db_client.items.keys()},
-                status=status.HTTP_400_BAD_REQUEST)
+        instance = self.get_object()
 
         hour = 60 * 60
-        start_timestamp = int(request.QUERY_PARAMS.get('from', time.time() - hour))
-        end_timestamp = int(request.QUERY_PARAMS.get('to', time.time()))
-        segments_count = int(request.QUERY_PARAMS.get('datapoints', 6))
-        instance = self._get_instance_or_404(request, uuid)
+        data = {
+            'start_timestamp': request.QUERY_PARAMS.get('from', time.time() - hour),
+            'end_timestamp': request.QUERY_PARAMS.get('to', time.time()),
+            'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
+            'item': request.QUERY_PARAMS.get('item'),
+        }
 
-        segment_list = zabbix_db_client.get_item_stats(instance, item, start_timestamp, end_timestamp, segments_count)
-        return Response(segment_list, status=status.HTTP_200_OK)
+        serializer = serializers.UsageStatsSerializer(data=data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        stats = serializer.get_stats([instance])
+        return Response(stats, status=status.HTTP_200_OK)
 
 
 class TemplateViewSet(core_viewsets.ModelViewSet):
@@ -311,7 +343,7 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
 
     def get_queryset(self):
         if not self.request.user.is_staff:
-            raise Http404
+            raise Http404()
         queryset = super(TemplateLicenseViewSet, self).get_queryset()
         if 'customer' in self.request.QUERY_PARAMS:
             customer_uuid = self.request.QUERY_PARAMS['customer']
@@ -380,24 +412,153 @@ class ServiceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
-    name = django_filters.CharFilter(name='hostname', lookup_type='icontains')
+    hostname = django_filters.CharFilter(lookup_type='icontains')
+    customer_name = django_filters.CharFilter(
+        name='project__customer__name',
+        lookup_type='icontains'
+    )
+    template_name = django_filters.CharFilter(
+        name='template__name',
+        lookup_type='icontains'
+    )
     agreed_sla = django_filters.NumberFilter()
     actual_sla = django_filters.NumberFilter()
 
     class Meta(object):
         model = models.Instance
         fields = [
+            'hostname',
+            'template_name',
+            'customer_name',
             'project_name',
-            'name',
             'project_groups',
+            'agreed_sla',
+            'actual_sla',
         ]
+        order_by = [
+            'hostname',
+            'template__name',
+            'project__customer__name',
+            'project__name',
+            'project__project_groups__name',
+            'agreed_sla',
+            'actual_sla',
+            # desc
+            '-hostname',
+            '-template__name',
+            '-project__customer__name',
+            '-project__name',
+            '-project__project_groups__name',
+            '-agreed_sla',
+            '-actual_sla',
+        ]
+
 
 
 # XXX: This view has to be rewritten or removed after haystack implementation
 class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
-
     queryset = models.Instance.objects.all()
     serializer_class = serializers.ServiceSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
     filter_class = ServiceFilter
+
+
+class ResourceStatsView(views.APIView):
+
+    def _check_user(self, request):
+        if not request.user.is_staff:
+            raise PermissionDenied()
+
+    def _get_quotas_stats(self, clouds):
+        quotas_list = ResourceQuota.objects.filter(project_quota__clouds__in=clouds).values('vcpu', 'ram', 'storage')
+        return {
+            'vcpu_quota': sum([q['vcpu'] for q in quotas_list]),
+            'memory_quota': sum([q['ram'] for q in quotas_list]),
+            'storage_quota': sum([q['storage'] for q in quotas_list]),
+        }
+
+    def get(self, request, format=None):
+        self._check_user(request)
+        if not 'auth_url' in request.QUERY_PARAMS:
+            return Response('GET parameter "auth_url" have to be defined', status=status.HTTP_400_BAD_REQUEST)
+        auth_url = request.QUERY_PARAMS['auth_url']
+
+        try:
+            clouds = Cloud.objects.filter(auth_url=auth_url)
+            cloud_backend = clouds[0].get_backend()
+        except IndexError:
+            return Response('No clouds with auth url: %s' % auth_url, status=status.HTTP_400_BAD_REQUEST)
+
+        stats = cloud_backend.get_resource_stats(auth_url)
+        quotas_stats = self._get_quotas_stats(clouds)
+        stats.update(quotas_stats)
+
+        return Response(sort_dict(stats), status=status.HTTP_200_OK)
+
+
+class CustomerStatsView(views.APIView):
+
+    def get(self, request, format=None):
+        customer_statistics = []
+        customer_queryset = filter_queryset_for_user(Customer.objects.all(), request.user)
+        for customer in customer_queryset:
+            projects_count = filter_queryset_for_user(Project.objects.filter(customer=customer), request.user).count()
+            project_groups_count = filter_queryset_for_user(
+                ProjectGroup.objects.filter(customer=customer), request.user).count()
+            instances_count = filter_queryset_for_user(
+                models.Instance.objects.filter(project__customer=customer), request.user).count()
+            customer_statistics.append({
+                'name': customer.name, 'projects': projects_count,
+                'project_groups': project_groups_count, 'instances': instances_count
+            })
+
+        return Response(customer_statistics, status=status.HTTP_200_OK)
+
+
+class UsageStatsView(views.APIView):
+
+    aggregate_models = {
+        'customer': {'model': Customer, 'path': models.Instance.Permissions.customer_path},
+        'project_group': {'model': ProjectGroup, 'path': models.Instance.Permissions.project_group_path},
+        'project': {'model': Project, 'path': models.Instance.Permissions.project_path},
+    }
+
+    def _get_aggregate_queryset(self, request, aggregate_model_name):
+        model = self.aggregate_models[aggregate_model_name]['model']
+        return filter_queryset_for_user(model.objects.all(), request.user)
+
+    def _get_aggregate_filter(self, aggregate_model_name, obj):
+        path = self.aggregate_models[aggregate_model_name]['path']
+        return {path: obj}
+
+    def get(self, request, format=None):
+        usage_stats = []
+
+        aggregate_model_name = request.QUERY_PARAMS.get('aggregate', 'customer')
+        if aggregate_model_name not in self.aggregate_models.keys():
+            return Response(
+                'Get parameter "aggregate" can take only this values: ' % ', '.join(self.aggregate_models.keys()),
+                status=status.HTTP_400_BAD_REQUEST)
+
+        for aggregate_object in self._get_aggregate_queryset(request, aggregate_model_name):
+            instances = models.Instance.objects.filter(
+                **self._get_aggregate_filter(aggregate_model_name, aggregate_object))
+            if instances:
+                hour = 60 * 60
+                data = {
+                    'start_timestamp': request.QUERY_PARAMS.get('from', time.time() - hour),
+                    'end_timestamp': request.QUERY_PARAMS.get('to', time.time()),
+                    'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
+                    'item': request.QUERY_PARAMS.get('item'),
+                }
+
+                serializer = serializers.UsageStatsSerializer(data=data)
+                if not serializer.is_valid():
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+                stats = serializer.get_stats(instances)
+                usage_stats.append({'name': aggregate_object.name, 'datapoints': stats})
+            else:
+                usage_stats.append({'name': aggregate_object.name, 'datapoints': []})
+        return Response(usage_stats, status=status.HTTP_200_OK)

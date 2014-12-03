@@ -4,6 +4,7 @@ from mock import call, patch
 
 from django.core.urlresolvers import reverse, resolve
 from django.test import TransactionTestCase
+from django.utils import unittest
 from mock_django import mock_signal_receiver
 from rest_framework import status
 from rest_framework import test
@@ -183,21 +184,7 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
 
-    def test_group_manager_cannot_create_project_with_not_his_group(self):
-        self.client.force_authenticate(self.group_manager)
-
-        data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
-        data['project_groups'] = [factories.ProjectGroupFactory.get_url()]
-        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_group_manager_cannot_create_project_without_group(self):
-        self.client.force_authenticate(self.group_manager)
-
-        data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
-        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
+    @unittest.skip('Disabled as a single hostgroup is going to be used for now')
     def test_zabbix_hostgroup_creation_starts_on_project_creation(self):
         self.client.force_authenticate(self.staff)
 
@@ -222,6 +209,7 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         response = self.client.delete(factories.ProjectFactory.get_url())
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
+    @unittest.skip('Disabled as a single hostgroup is going to be used for now')
     def test_zabbix_hostgroup_deletion_starts_on_project_deletion(self):
         self.client.force_authenticate(self.staff)
 

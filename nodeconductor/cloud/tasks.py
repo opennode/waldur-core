@@ -3,14 +3,11 @@ from __future__ import unicode_literals
 import logging
 
 from celery import shared_task
-from django.contrib.auth import get_user_model
 
 from nodeconductor.cloud import models
 from nodeconductor.cloud.backend import CloudBackendError
 from nodeconductor.core import models as core_models
 from nodeconductor.core.tasks import tracked_processing
-from nodeconductor.structure import models as structure_models
-from nodeconductor.structure.filters import filter_queryset_for_user
 
 
 logger = logging.getLogger(__name__)
@@ -49,17 +46,6 @@ def sync_cloud_account(cloud_account_uuid):
     processing_state='begin_syncing',
     desired_state='set_in_sync',
 )
-def push_cloud_membership(membership_pk):
-    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
-    membership.cloud.get_backend().push_membership(membership)
-
-
-@shared_task
-@tracked_processing(
-    models.CloudProjectMembership,
-    processing_state='begin_syncing',
-    desired_state='set_in_sync',
-)
 def sync_cloud_membership(membership_pk):
     membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
 
@@ -79,6 +65,16 @@ def sync_cloud_membership(membership_pk):
                 public_key.uuid, membership.pk,
                 exc_info=1,
             )
+
+    # Propagate membership security groups
+    try:
+        backend.push_security_groups(membership)
+    except CloudBackendError:
+        logger.warn(
+            'Failed to push security groups to cloud membership %s',
+            membership.pk,
+            exc_info=1,
+        )
 
 
 @shared_task

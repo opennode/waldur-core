@@ -52,7 +52,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
         instance = object
         item_key = 'cpu'
 
-        segment_list = self.client.get_item_stats(instance, item_key, start_timestamp, end_timestamp, segments_count)
+        segment_list = self.client.get_item_stats([instance], item_key, start_timestamp, end_timestamp, segments_count)
 
         expected_segment_list = [
             {'from': 1415912624L, 'to': 1415912626L, 'value': 1},
@@ -62,7 +62,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.assertEquals(segment_list, expected_segment_list)
         self.client.zabbix_api_client.get_host.assert_called_once_with(instance)
 
-    def test_get_item_stats_raises_zabbix_error_on_db_error(self):
+    def test_get_item_stats_returns_empty_list_on_db_error(self):
         self.client.get_item_time_and_value_list = Mock(side_effect=DatabaseError)
 
-        self.assertRaises(ZabbixError, lambda: self.client.get_item_stats([], 'cpu', 1, 10, 2))
+        self.assertEqual(self.client.get_item_stats([], 'cpu', 1, 10, 2), [])

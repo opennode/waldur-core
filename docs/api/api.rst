@@ -94,3 +94,8 @@ VM instance management
 ======================
 
 .. include:: instance.rst
+
+Statistics
+==========
+
+.. include:: statistics.rst

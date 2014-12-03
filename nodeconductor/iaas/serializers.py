@@ -1,13 +1,14 @@
-from django.db import IntegrityError
+from __future__ import unicode_literals
 
 from rest_framework import serializers
-from rest_framework.exceptions import ParseError
 
 from nodeconductor.backup import serializers as backup_serializers
+from nodeconductor.cloud import models as cloud_models
 from nodeconductor.cloud import serializers as cloud_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
+from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import serializers as structure_serializers
 
 
@@ -21,10 +22,11 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
     )
     url = serializers.HyperlinkedRelatedField(source='security_group', lookup_field='uuid',
                                               view_name='security_group-detail')
+    description = serializers.Field(source='security_group.description')
 
     class Meta(object):
         model = models.InstanceSecurityGroup
-        fields = ('url', 'name', 'rules')
+        fields = ('url', 'name', 'rules', 'description')
         lookup_field = 'uuid'
         view_name = 'security_group-detail'
 
@@ -68,6 +70,47 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
         return attrs
 
 
+class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
+
+    security_groups = InstanceSecurityGroupSerializer(
+        many=True, required=False, allow_add_remove=True, read_only=False)
+
+    class Meta(object):
+        model = models.Instance
+        fields = ('url', 'hostname', 'description', 'security_groups',)
+        lookup_field = 'uuid'
+
+    def validate_security_groups(self, attrs, attr_name):
+        if attr_name in attrs and attrs[attr_name] is None:
+            del attrs[attr_name]
+        return attrs
+
+
+class InstanceResizeSerializer(PermissionFieldFilteringMixin,
+                               serializers.Serializer):
+    flavor = serializers.HyperlinkedRelatedField(
+        view_name='flavor-detail',
+        lookup_field='uuid',
+        queryset=cloud_models.Flavor.objects.all(),
+        required=False,
+    )
+    disk_size = serializers.IntegerField(min_value=1, required=False)
+
+    def get_filtered_field_names(self):
+        return 'flavor',
+
+    def validate(self, attrs):
+        flavor = attrs.get('flavor')
+        disk_size = attrs.get('disk_size')
+
+        if flavor is not None and disk_size is not None:
+            raise serializers.ValidationError("Cannot resize both disk size and flavor simultaneously")
+        if flavor is None and disk_size is None:
+            raise serializers.ValidationError("Either disk_size or flavor is required")
+
+        return attrs
+
+
 class InstanceLicenseSerializer(serializers.ModelSerializer):
 
     name = serializers.Field(source='template_license.name')
@@ -98,15 +141,16 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
     instance_licenses = InstanceLicenseSerializer(read_only=True)
     # special field for customer
     customer_abbreviation = serializers.Field(source='project.customer.abbreviation')
+    template_os = serializers.Field(source='template.os')
 
     class Meta(object):
         model = models.Instance
         fields = (
             'url', 'uuid', 'hostname', 'description', 'start_time',
-            'template', 'template_name',
-            'cloud', 'cloud_name',
+            'template', 'template_name', 'template_os',
+            'cloud', 'cloud_name', 'cloud_uuid',
             'flavor', 'flavor_name',
-            'project', 'project_name',
+            'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_abbreviation',
             'ssh_public_key', 'ssh_public_key_name',
             'project_groups',
@@ -114,9 +158,15 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'external_ips', 'internal_ips',
             'state',
             'backups', 'backup_schedules',
-            'instance_licenses'
+            'instance_licenses',
+            'system_volume_size',
+            'data_volume_size',
         )
-        read_only_fields = ('ssh_public_key',)
+        read_only_fields = (
+            'ssh_public_key',
+            'system_volume_size',
+            'data_volume_size',
+        )
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
@@ -262,12 +312,17 @@ class ServiceSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModel
     service_type = serializers.SerializerMethodField('get_service_type')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
-    name = serializers.Field(source="hostname")
+    template_name = serializers.Field(source='template.name')
+    customer_name = serializers.Field(source='project.customer.name')
 
     class Meta(object):
         model = models.Instance
         fields = (
-            'url', 'project_name', 'name', 'project_groups', 'agreed_sla', 'actual_sla',
+            'url',
+            'hostname', 'template_name',
+            'customer_name',
+            'project_name', 'project_groups',
+            'agreed_sla', 'actual_sla',
         )
         view_name = 'service-detail'
         lookup_field = 'uuid'
@@ -283,3 +338,24 @@ class ServiceSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModel
 
     def get_service_type(self, obj):
         return 'IaaS'
+
+
+class UsageStatsSerializer(serializers.Serializer):
+    segments_count = serializers.IntegerField()
+    start_timestamp = serializers.IntegerField()
+    end_timestamp = serializers.IntegerField()
+    item = serializers.CharField()
+
+    def validate_item(self, attrs, name):
+        item = attrs[name]
+        if not item in ZabbixDBClient.items:
+            raise serializers.ValidationError(
+                "GET parameter 'item' have to be from list: %s" % ZabbixDBClient.items.keys())
+        return attrs
+
+    def get_stats(self, instances):
+        self.attrs = self.data
+        zabbix_db_client = ZabbixDBClient()
+        return zabbix_db_client.get_item_stats(
+            instances, self.data['item'],
+            self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])
