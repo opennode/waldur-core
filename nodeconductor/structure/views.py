@@ -356,18 +356,15 @@ class UserViewSet(viewsets.ModelViewSet):
         except User.DoesNotExist:
             raise Http404()
 
-        if 'password' in request.DATA:
-            new_password = request.DATA['password']
+        serializer = serializers.PasswordSerializer(data=request.DATA)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # When the new password is None, the password will be set to an unusable password
-            # https://docs.djangoproject.com/en/1.6/ref/contrib/auth/#django.contrib.auth.models.User.set_password
-            user.set_password(new_password)
-            user.save()
+        user.set_password(request.DATA['password'])
+        user.save()
 
-            return Response({'detail': "Password has been successfully updated"},
-                            status=status.HTTP_200_OK)
-
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': "Password has been successfully updated"},
+                        status=status.HTTP_200_OK)
 
 
 # TODO: cover filtering/ordering with tests

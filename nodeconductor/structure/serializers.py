@@ -356,3 +356,18 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
                     fields[field].read_only = True
 
         return fields
+
+
+class PasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(min_length=7)
+
+    def validate(self, attrs):
+        password = attrs.get('password')
+
+        import re
+
+        if not re.search('\d+', password):
+            raise serializers.ValidationError("Password must contain one or more digits")
+
+        if not re.search('[^\W\d_]+', password):
+            raise serializers.ValidationError("Password must contain one or more upper- or lower-case characters")
