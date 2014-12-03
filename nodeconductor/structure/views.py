@@ -557,7 +557,7 @@ class ProjectGroupPermissionViewSet(rf_mixins.RetrieveModelMixin,
     def can_save(self, user_group):
         user = self.request.user
         if user.is_staff:
-            return
+            return True
 
         project_group = user_group.group.projectgrouprole.project_group
 
