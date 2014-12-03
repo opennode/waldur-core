@@ -24,7 +24,7 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
-from nodeconductor.cloud.backend import CloudBackendError
+from nodeconductor.cloud.backend import CloudBackendError, CloudBackendInternalError
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +109,7 @@ class OpenStackBackend(object):
                 .filter(backend_image_id__in=backend_images.keys())
                 .order_by('template__pk')
             )
+            print 'mapping_queryset', mapping_queryset
 
             mappings_grouped = groupby(mapping_queryset.iterator(), lambda m: m.template.pk)
 
@@ -256,7 +257,7 @@ class OpenStackBackend(object):
             logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
 
             system_volume = cinder.volumes.create(
-                size=instance.flavor.disk / 1024,
+                size=20,
                 display_name=system_volume_name,
                 display_description='',
                 imageRef=backend_image.id,
@@ -270,16 +271,14 @@ class OpenStackBackend(object):
                 display_description='',
             )
 
-            is_available = lambda v: v.status == 'available'
-
-            if not self._wait_for_volume_state(system_volume, cinder, is_available):
+            if not self._wait_for_volume_status(system_volume, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for system volume to become available',
                     instance.uuid, system_volume.id,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
 
-            if not self._wait_for_volume_state(data_volume, cinder, is_available):
+            if not self._wait_for_volume_status(data_volume, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for data volume to become available',
                     instance.uuid, data_volume.id,
@@ -328,7 +327,7 @@ class OpenStackBackend(object):
             instance.backend_id = server.id
             instance.save()
 
-            if not self._wait_for_instance_status(instance, nova, 'ACTIVE'):
+            if not self._wait_for_instance_status(server, nova, 'ACTIVE'):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for instance to become online',
                     instance.uuid,
@@ -339,7 +338,8 @@ class OpenStackBackend(object):
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
                 nova_exceptions.ClientException,
-                neutron_exceptions.NeutronClientException):
+                neutron_exceptions.NeutronClientException), e:
+            print e
             logger.exception('Failed to boot instance %s', instance.uuid)
             six.reraise(CloudBackendError, CloudBackendError())
         else:
@@ -358,8 +358,9 @@ class OpenStackBackend(object):
 
             nova = self.create_nova_client(session)
             nova.servers.start(instance.backend_id)
+            server = nova.servers.get(instance.backend_id)
 
-            if not self._wait_for_instance_status(instance, nova, 'ACTIVE'):
+            if not self._wait_for_instance_status(server, nova, 'ACTIVE'):
                 logger.error('Failed to start instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
         except nova_exceptions.ClientException:
@@ -381,8 +382,9 @@ class OpenStackBackend(object):
 
             nova = self.create_nova_client(session)
             nova.servers.stop(instance.backend_id)
+            server = nova.servers.get(instance.backend_id)
 
-            if not self._wait_for_instance_status(instance, nova, 'SHUTOFF'):
+            if not self._wait_for_instance_status(server, nova, 'SHUTOFF'):
                 logger.error('Failed to stop instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
         except nova_exceptions.ClientException:
@@ -424,6 +426,92 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, CloudBackendError())
         else:
             logger.info('Successfully deleted instance %s', instance.uuid)
+
+    def backup_instance(self, instance):
+        from nodeconductor.cloud.models import CloudProjectMembership
+
+        logger.debug('About to create instance %s backup', instance.uuid)
+        try:
+            membership = CloudProjectMembership.objects.get(
+                project=instance.project,
+                cloud=instance.flavor.cloud,
+            )
+
+            session = self.create_tenant_session(membership)
+
+            nova = self.create_nova_client(session)
+            cinder = self.create_cinder_client(session)
+
+            backups = []
+            attached_volumes = self.get_attached_volumes(instance.backend_id, nova)
+
+            for volume in attached_volumes:
+                snapshot = self.create_snapshot(volume.id, cinder)
+                temporary_volume = self.create_temp_volume(snapshot, cinder)
+                backup = self.create_volume_backup(temporary_volume, volume.device, cinder)
+                backups.append(backup)
+                self.delete_temporary_volume(temporary_volume, cinder)
+                self.delete_temporary_snapshot(snapshot, cinder)
+        except (nova_exceptions.ClientException, cinder_exceptions.ClientException,
+                keystone_exceptions.ClientException, CloudBackendInternalError):
+            logger.exception('Failed to create backup for instance %s', instance.uuid)
+            six.reraise(CloudBackendError, CloudBackendError())
+
+        logger.info('Successfully created backup for instance %s', instance.uuid)
+        return backups
+
+    def restore_instance(self, instance, instance_backup_ids):
+        from nodeconductor.cloud.models import CloudProjectMembership
+
+        logger.debug('About to restore instance %s backup', instance.uuid)
+        try:
+            membership = CloudProjectMembership.objects.get(
+                project=instance.project,
+                cloud=instance.flavor.cloud,
+            )
+
+            session = self.create_tenant_session(membership)
+
+            nova = self.create_nova_client(session)
+            cinder = self.create_cinder_client(session)
+
+            restored_volumes = {}
+
+            for backup_id in instance_backup_ids:
+                restore = self.restore_volume_backup(backup_id, cinder)
+                volume = self.get_device_mapping(backup_id, restore, cinder)
+                restored_volumes.update(volume)
+
+            print restored_volumes
+            new_vm = self.create_vm(instance.backend_id, restored_volumes, nova)
+        except (cinder_exceptions.ClientException, keystone_exceptions.ClientException,
+                CloudBackendInternalError, nova_exceptions.ClientException):
+            logger.exception('Failed to restore backup for instance %s', instance.uuid)
+            six.reraise(CloudBackendError, CloudBackendError())
+
+        logger.info('Successfully restored backup for instance %s', instance.uuid)
+        return new_vm
+
+    def delete_instance_backups(self, instance, instance_backup_ids):
+        from nodeconductor.cloud.models import CloudProjectMembership
+
+        logger.debug('About to delete instance %s backup', instance.uuid)
+        try:
+            membership = CloudProjectMembership.objects.get(
+                project=instance.project,
+                cloud=instance.flavor.cloud,
+            )
+
+            session = self.create_tenant_session(membership)
+            cinder = self.create_cinder_client(session)
+
+            for backup_id in instance_backup_ids:
+                self.delete_backup(backup_id, cinder)
+        except (cinder_exceptions.ClientException, keystone_exceptions.ClientException, CloudBackendInternalError):
+            logger.exception('Failed to delete backup for instance %s', instance.uuid)
+            six.reraise(CloudBackendError, CloudBackendError())
+
+        logger.info('Successfully deleted backup for instance %s', instance.uuid)
 
     # Helper methods
     def create_admin_session(self, keystone_url):
@@ -655,27 +743,271 @@ class OpenStackBackend(object):
     def get_tenant_name(self, membership):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
 
-    def _wait_for_instance_status(self, instance, nova, status, retries=20, poll_interval=3):
-        for _ in range(retries):
-            server = nova.servers.get(instance.backend_id)
+    def _wait_for_instance_status(self, server, nova, complete_status,
+                                  error_status=None, retries=20, poll_interval=3):
+        return self._wait_for_object_status(
+            server, nova.servers.get, complete_status, error_status, retries, poll_interval)
 
-            if server.status == status:
+    def _wait_for_volume_status(self, volume, cinder, complete_status,
+                                error_status=None, retries=20, poll_interval=3):
+        return self._wait_for_object_status(
+            volume, cinder.volumes.get, complete_status, error_status, retries, poll_interval)
+
+    def _wait_for_snapshot_status(self, snapshot, cinder, complete_status, error_status, retries=20, poll_interval=3):
+        return self._wait_for_object_status(
+            snapshot, cinder.volume_snapshots.get, complete_status, error_status, retries, poll_interval)
+
+    def _wait_for_backup_status(self, backup, cinder, complete_status, error_status, retries=20, poll_interval=3):
+        return self._wait_for_object_status(
+            backup, cinder.backups.get, complete_status, error_status, retries, poll_interval)
+
+    def _wait_for_object_status(self, obj, client_get_method, complete_status, error_status=None,
+                                retries=20, poll_interval=3):
+        complete_state_predicate = lambda o: o.status == complete_status
+        if error_status is not None:
+            error_state_predicate = lambda o: o.status == error_status
+        else:
+            error_state_predicate = None
+        return self._wait_for_object_state(
+            obj, client_get_method, complete_state_predicate, error_state_predicate, retries, poll_interval)
+
+    def _wait_for_object_state(self, obj, client_get_method, complete_state_predicate,
+                               error_state_predicate=None, retries=20, poll_interval=3):
+        for _ in range(retries):
+            obj = client_get_method(obj.id)
+
+            if complete_state_predicate(obj):
                 return True
+
+            if error_state_predicate is not None and error_state_predicate(obj):
+                return False
 
             time.sleep(poll_interval)
         else:
             return False
 
-    def _wait_for_volume_state(self, volume, cinder, state_predicate, retries=20, poll_interval=3):
-        if state_predicate(volume):
-            return True
+    def get_attached_volumes(self, server_id, nova):
+        """
+        Returns attached volumes for specified vm instance
 
-        for _ in range(retries):
-            volume = cinder.volumes.get(volume.id)
+        :param server_id: vm instance id
+        :type server_id: str
+        :returns: list of class 'Volume'
+        :rtype: list
+        """
+        return nova.volumes.get_server_volumes(server_id)
 
-            if state_predicate(volume):
-                return True
+    def create_snapshot(self, volume_id, cinder):
+        """
+        Create snapshot from volume
 
-            time.sleep(poll_interval)
+        :param: volume id
+        :type volume_id: str
+        :returns: snapshot id
+        :rtype: str
+        """
+        snapshot = cinder.volume_snapshots.create(
+            volume_id, force=True, display_name='snapshot_from_volume_%s' % volume_id)
+
+        logger.debug('About to create temporary snapshot %s' % snapshot.id)
+
+        if not self._wait_for_snapshot_status(snapshot, cinder, 'available', 'error'):
+            logger.exception('Timed out creating new snapshot for volume: %s', volume_id)
+            raise CloudBackendInternalError()
+
+        logger.info('Temporary snapshot successfully created with id: %s' % snapshot.id)
+
+        return snapshot.id
+
+    def delete_temporary_snapshot(self, snapshot_id, cinder):
+        """
+        Delete temporary snapshot
+
+        :param snapshot_id: snapshot id
+        :type snapshot_id: str
+        """
+        snapshot = cinder.volume_snapshots.get(snapshot_id)
+
+        logger.debug('About to delete temporary snapshot %s' % snapshot.id)
+
+        if not self._wait_for_snapshot_status(snapshot, cinder, 'available', 'error', poll_interval=20):
+            logger.exception('Timed out waiting snapshot %s availability', snapshot_id)
+            raise CloudBackendInternalError()
         else:
-            return False
+            cinder.volume_snapshots.delete(snapshot_id)
+            logger.info('Temporary snapshot successfully deleted.')
+
+    def create_temp_volume(self, snapshot_id, cinder):
+        """
+        Create temporary volume from snapshot
+
+        :param snapshot_id: snapshot id
+        :type snapshot_id: str
+        :returns: volume id
+        :rtype: str
+        """
+        snapshot = cinder.volume_snapshots.get(snapshot_id)
+        volume_size = snapshot.size
+        volume_name = 'Backup volume_%s' % snapshot.volume_id
+
+        logger.debug('About to creating temporary volume from snapshot %s', snapshot_id)
+        temporary_volume = cinder.volumes.create(volume_size, snapshot_id=snapshot_id,
+                                                 display_name=volume_name)
+
+        logger.debug('About to create temporary volume %s' % temporary_volume.id)
+
+        if not self._wait_for_volume_status(temporary_volume, cinder, 'available', 'error'):
+            logger.exception('Timed out creating temporary volume: %s', temporary_volume.id)
+            raise CloudBackendInternalError()
+
+        logger.info('Temporary volume successfully created with id: %s' % temporary_volume.id)
+
+        return temporary_volume.id
+
+    def delete_temporary_volume(self, volume_id, cinder):
+        """
+        Delete temporary volume
+
+        :param volume_id: volume ID
+        :type volume_id: str
+        """
+        volume = cinder.volumes.get(volume_id)
+
+        logger.debug('About to delete volume %s' % volume.id)
+
+        if not self._wait_for_volume_status(volume, cinder, 'available', 'error', poll_interval=20):
+            logger.exception('Timed out waiting volume %s availability', volume_id)
+            raise CloudBackendInternalError()
+        else:
+            cinder.volumes.delete(volume_id)
+            logger.info('Volume successfully deleted.')
+
+    def get_backup_info(self, backup_id, cinder):
+        """
+        Returns backup info
+
+        :param backup_id: backup id
+        :type backup_id: str
+        :returns: backup info dict
+        :rtype: dict
+        """
+        backup_info = cinder.backups.get(backup_id)
+
+        return {
+            'name': backup_info.name,
+            'status': backup_info.status,
+            'description': backup_info.description
+        }
+
+    def create_volume_backup(self, volume_id, bckp_desc, cinder):
+        """
+        Create backup from temporary volume
+
+        :param volume_id: temporary volume id
+        :type volume_id: str
+        :param bckp_desc: backup description
+        :type bckp_desc: str
+        :returns: backup id
+        :rtype: str
+        """
+        volume = cinder.volumes.get(volume_id)
+        backup_name = 'Backup_created_from_volume_%s' % volume_id
+
+        logger.debug('About to create backup from temporary volume %s' % volume.id)
+
+        if not self._wait_for_volume_status(volume, cinder, 'available', 'error'):
+            logger.exception('Timed out waiting volume %s availability', volume_id)
+            raise CloudBackendInternalError()
+        else:
+            backup_volume = cinder.backups.create(volume_id, name=backup_name, description=bckp_desc)
+            logger.info('Backup from temporary volume %s was created successfully', volume_id)
+            return backup_volume.id
+
+    def restore_volume_backup(self, backup_id, cinder):
+        """
+        Restore volume from backup
+
+        :param backup_id: backup id
+        :type backup_id: str
+        :returns: volume id
+        :rtype: str
+        """
+        backup = cinder.backups.get(backup_id)
+
+        logger.debug('About to restore backup %s' % backup_id)
+
+        if not self._wait_for_backup_status(backup, cinder, 'available', 'error'):
+            logger.exception('Timed out waiting backup %s availability', backup_id)
+            raise CloudBackendInternalError()
+        else:
+            restore = cinder.restores.restore(backup_id)
+
+            logger.debug('About to restore volume from backup %s', backup_id)
+            volume = cinder.volumes.get(restore.volume_id)
+
+            if not self._wait_for_volume_status(volume, cinder, 'available', 'error_restoring', poll_interval=20):
+                logger.exception('Timed out waiting volume %s restoring', backup_id)
+                raise CloudBackendInternalError()
+
+            logger.info('Restored volume %s: ', volume.id)
+        logger.info('Restored backup %s: ', backup_id)
+        return volume.id
+
+    def delete_backup(self, backup_id, cinder):
+        """
+        :param backup_id: backup id
+        :type backup_id: str
+        """
+        backup = cinder.backups.get(backup_id)
+
+        logger.debug('About to delete backup %s' % backup_id)
+
+        if not self._wait_for_backup_status(backup, cinder, 'available', 'error'):
+            logger.exception('Timed out waiting backup %s availability. Status:', backup_id, backup.status)
+            raise CloudBackendInternalError()
+        else:
+            cinder.backups.delete(backup_id)
+
+        logger.info('Deleted backup %s: ', backup_id)
+
+    def get_device_mapping(self, backup_id, volume_id, cinder):
+        """
+        Restore volume from backup
+
+        :param backup_id: backup id
+        :type backup_id: str
+        :param volume_id: volume id
+        :type volume_id: str
+        :returns: device mapping dict
+        :rtype: dict
+        """
+        backup_description = cinder.backups.get(backup_id).description
+
+        return {
+            str(backup_description): str(volume_id)
+        }
+
+    def create_vm(self, server_id, device_map, nova):
+        """
+        Create new vm instance using restored volumes
+        :param server_id: vm instance id
+        :type server_id: str
+        :returns: vm instance id
+        :rtype: str
+        """
+        server = nova.servers.get(server_id)
+        new_server_name = 'Restored_%s' % server.name
+        flavor = nova.flavors.get(server.flavor.get('id'))
+
+        new_server = nova.servers.create(new_server_name, None, flavor, block_device_mapping=device_map)
+
+        logger.debug('About to create new vm instance %s' % new_server.id)
+
+        # TODO: ask about complete status
+        while new_server.status == 'BUILD':
+            time.sleep(5)
+            new_server = nova.servers.get(new_server.id)
+
+        logger.info('VM instance %s creation completed' % new_server.id)
+
+        return new_server.id
