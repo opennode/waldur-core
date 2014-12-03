@@ -1,11 +1,14 @@
 from __future__ import unicode_literals
 
+import unittest
+
 from django.core.urlresolvers import reverse
 
 from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.core.models import User
+from nodeconductor.structure.serializers import PasswordSerializer
 from nodeconductor.structure.tests import factories
 
 
@@ -134,6 +137,20 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
             user = User.objects.get(uuid=self.users[user].uuid)
             self.assertTrue(user.check_password(data['password']))
 
+    # Deletion tests
+    def user_cannot_delete_his_account(self):
+        self._ensure_user_cannot_delete_account(self.users['owner'], self.users['owner'])
+
+    def user_cannot_delete_other_account(self):
+        self._ensure_user_cannot_delete_account(self.users['not_owner'], self.users['owner'])
+
+    def test_staff_user_can_delete_any_account(self):
+        self.client.force_authenticate(user=self.users['staff'])
+
+        for user in self.users:
+            response = self.client.delete(self._get_user_url(self.users[user]))
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
     # Helper methods
     def _get_valid_payload(self, account=None):
         account = account or factories.UserFactory.build()
@@ -148,20 +165,6 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
             'is_active': account.is_active,
             'is_superuser': account.is_superuser,
         }
-
-    # Deletion tests
-    def user_cannot_delete_his_account(self):
-        self._ensure_user_cannot_delete_account(self.users['owner'], self.users['owner'])
-
-    def user_cannot_delete_other_account(self):
-        self._ensure_user_cannot_delete_account(self.users['not_owner'], self.users['owner'])
-
-    def test_staff_user_can_delete_any_account(self):
-        self.client.force_authenticate(user=self.users['staff'])
-
-        for user in self.users:
-            response = self.client.delete(self._get_user_url(self.users[user]))
-            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def _ensure_user_can_change_field(self, user, field_name, data):
         self.client.force_authenticate(user)
@@ -186,3 +189,41 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
 
         response = self.client.delete(self._get_user_url(account))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class PasswordSerializerTest(unittest.TestCase):
+    def test_short_password_raises_validation_error(self):
+        data = {'password': '123abc'}
+
+        serializer = PasswordSerializer(data=data)
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('Ensure this value has at least 7 characters (it has 6).',
+                      serializer.errors['password'])
+
+    def test_password_without_digits_raises_validation_error(self):
+        data = {'password': 'abcdefg'}
+
+        serializer = PasswordSerializer(data=data)
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('Password must contain one or more digits',
+                      serializer.errors['non_field_errors'])
+
+    def test_password_without_characters_raises_validation_error(self):
+        data = {'password': '1234567'}
+
+        serializer = PasswordSerializer(data=data)
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('Password must contain one or more upper- or lower-case characters',
+                      serializer.errors['non_field_errors'])
+
+    def test_empty_password_field_raises_validation_error(self):
+        data = {'password': ''}
+
+        serializer = PasswordSerializer(data=data)
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('This field is required.',
+                      serializer.errors['password'])
