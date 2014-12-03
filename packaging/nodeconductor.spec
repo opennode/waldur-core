@@ -17,7 +17,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.9.0
+Version: 0.10.0
 Release: 1
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -145,7 +145,7 @@ Next steps:
 
 3. Create database (if not yet done):
 
-    CREATE DATABASE nodeconductor CHARACTER SET = utf8;
+    CREATE DATABASE nodeconductor CHARACTER SET = utf8 COLLATE = utf8_bin;
     CREATE USER 'nodeconductor'@'%' IDENTIFIED BY 'nodeconductor';
     GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'%';
 
@@ -177,6 +177,9 @@ All done. Happy NodeConducting!
 EOF
 
 %changelog
+* Wed Dec 3 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.10.0-1
+- New upstream release
+
 * Mon Nov 18 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.9.0-1
 - New upstream release
 
