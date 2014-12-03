@@ -55,9 +55,9 @@ class Template(core_models.UuidMixin,
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
     """
     name = models.CharField(max_length=100, unique=True)
-    os = models.CharField(max_length=100)
+    os = models.CharField(max_length=100, null=True, blank=True)
     is_active = models.BooleanField(default=False)
-    sla_level = models.DecimalField(max_digits=6, decimal_places=4,     null=True, blank=True,)
+    sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                     validators=[MinValueValidator(Decimal('0.1')),
                                                 MaxValueValidator(Decimal('100000.0'))])
@@ -78,7 +78,7 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
     backend_image_id = models.CharField(max_length=255)
 
     def __str__(self):
-        return '{0} <-> {1}'.format(self.template.name, self.description)
+        return '{0} <-> {1}'.format(self.template.name, self.backend_image_id)
 
 
 @python_2_unicode_compatible
@@ -155,7 +155,12 @@ class Instance(core_models.UuidMixin,
     state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
                      help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
+    # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255, blank=True)
+    system_volume_id = models.CharField(max_length=255, blank=True)
+    system_volume_size = models.PositiveIntegerField()
+    data_volume_id = models.CharField(max_length=255, blank=True)
+    data_volume_size = models.PositiveIntegerField(default=20 * 1024)
 
     @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
     def begin_provisioning(self):

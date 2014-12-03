@@ -1,9 +1,11 @@
 import logging
+import sys
 
 from django.db import connections, DatabaseError
 from django.utils import six
 
 from nodeconductor.monitoring.zabbix import errors, api_client
+from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
 
 logger = logging.getLogger(__name__)
@@ -21,7 +23,17 @@ class ZabbixDBClient(object):
         self.zabbix_api_client = api_client.ZabbixApiClient()
 
     def get_item_stats(self, instances, item, start_timestamp, end_timestamp, segments_count):
-        host_ids = [self.zabbix_api_client.get_host(instance)['hostid'] for instance in instances]
+        host_ids = []
+        for instance in instances:
+            try:
+                host_ids.append(self.zabbix_api_client.get_host(instance)['hostid'])
+            except ZabbixError:
+                logger.warn('Failed to get a Zabbix host for instance %s' % instance.uuid)
+
+        # return an empty list if no hosts were found
+        if host_ids == []:
+            return []
+
         item_key = self.items[item]['key']
         item_table = self.items[item]['table']
         try:
@@ -30,9 +42,9 @@ class ZabbixDBClient(object):
             segment_list = self.format_time_and_value_to_segment_list(
                 time_and_value_list, segments_count, start_timestamp, end_timestamp)
             return segment_list
-        except DatabaseError:
-            logger.exception("Can not execute query to zabbix db.")
-            six.reraise(errors.ZabbixError, errors.ZabbixError())
+        except DatabaseError as e:
+            logger.exception('Can not execute query the Zabbix DB.')
+            six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
 
     def format_time_and_value_to_segment_list(self, time_and_value_list, segments_count, start_timestamp, end_timestamp):
         """
@@ -74,19 +86,20 @@ class ZabbixDBClient(object):
             'SELECT hi.clock time, hi.value value '
             'FROM zabbix.items it JOIN zabbix.%(item_table)s hi on hi.itemid = it.itemid '
             'WHERE it.key_ in (%(item_keys)s) AND it.hostid in (%(host_ids)s) '
-            'AND hi.clock < %(end_timestamp)s  AND hi.clock >= %(start_timestamp)s '
+            'AND hi.clock < %(end_timestamp)s AND hi.clock >= %(start_timestamp)s '
             'GROUP BY hi.clock '
             'ORDER BY hi.clock'
         )
-        parametrs = {
+        parameters = {
             'item_keys': '"' + '", "'.join(item_keys) + '"',
             'start_timestamp': start_timestamp,
             'end_timestamp': end_timestamp,
             'host_ids': ','.join(str(host_id) for host_id in host_ids),
             'item_table': item_table
         }
-        query = query % parametrs
+        query = query % parameters
 
+        print query
         cursor = connections['zabbix'].cursor()
         cursor.execute(query)
         return cursor.fetchall()

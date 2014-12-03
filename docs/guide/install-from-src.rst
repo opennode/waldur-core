@@ -146,8 +146,24 @@ Therefore configuration might look like this:
             Id of default Zabbix host group.
 
           default_service_parameters
-            Default parameters for Zabbix IT services
+            Default parameters for Zabbix IT services.
             Have to contain keys: 'algorithm', 'showsla', 'sortorder', 'goodsla'.
+
+          db_host
+            Hostname of the Zabbix database.
+
+          db_port
+            Port of the Zabbix database.
+
+          db_user
+            User for connecting to Zabbix database.
+
+          db_password
+            Password for connecting to Zabbix database.
+
+          db_name
+            Zabbix database name.
+
 
 
 .. _Django: https://www.djangoproject.com/

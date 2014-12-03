@@ -151,8 +151,8 @@ class SecurityGroup(UuidMixin, DescribableMixin, models.Model):
     name = models.CharField(max_length=127)
 
     # OpenStack backend specific fields
-    os_security_group_id = models.CharField(max_length='128', blank=True,
-                                            help_text='Reference to a SecurityGroup in a remote cloud')
+    backend_id = models.CharField(max_length='128', blank=True,
+                                  help_text='Reference to a SecurityGroup in a remote cloud')
 
     def __str__(self):
         return self.name
@@ -171,20 +171,17 @@ class SecurityGroupRule(models.Model):
 
     group = models.ForeignKey(SecurityGroup, related_name='rules')
 
-    protocol = models.CharField(max_length=3, choices=PROTOCOL_CHOICES)
-    from_port = models.IntegerField(validators=[MaxValueValidator(65535),
-                                                MinValueValidator(1)])
-    to_port = models.IntegerField(validators=[MaxValueValidator(65535),
-                                              MinValueValidator(1)])
-    ip_range = models.IPAddressField()
-    netmask = models.SmallIntegerField(null=False)
+    protocol = models.CharField(max_length=3, choices=PROTOCOL_CHOICES, null=True)
+    from_port = models.IntegerField(validators=[MaxValueValidator(65535), MinValueValidator(1)], null=True)
+    to_port = models.IntegerField(validators=[MaxValueValidator(65535), MinValueValidator(1)], null=True)
+    cidr = models.CharField(max_length=32, null=True)
 
     # OpenStack backend specific fields
-    os_security_group_rule_id = models.CharField(max_length='128', blank=True)
+    backend_id = models.CharField(max_length='128', blank=True)
 
     def __str__(self):
-        return '%s (%s): %s/%s (%s -> %s)' % \
-               (self.group, self.protocol, self.ip_range, self.netmask, self.from_port, self.to_port)
+        return '%s (%s): %s (%s -> %s)' % \
+               (self.group, self.protocol, self.cidr, self.from_port, self.to_port)
 
 
 # Signal handlers
@@ -281,8 +278,7 @@ def create_dummy_security_groups(sender, instance=None, created=False, **kwargs)
             protocol='tcp',
             from_port=80,
             to_port=80,
-            ip_range='0.0.0.0',
-            netmask=0
+            cidr='0.0.0.0/0',
         )
 
         # group https
@@ -294,7 +290,5 @@ def create_dummy_security_groups(sender, instance=None, created=False, **kwargs)
             protocol='tcp',
             from_port=443,
             to_port=443,
-            ip_range='0.0.0.0',
-            netmask=0
+            cidr='0.0.0.0/0',
         )
-

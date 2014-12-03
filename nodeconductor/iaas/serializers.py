@@ -1,6 +1,9 @@
+from __future__ import unicode_literals
+
 from rest_framework import serializers
 
 from nodeconductor.backup import serializers as backup_serializers
+from nodeconductor.cloud import models as cloud_models
 from nodeconductor.cloud import serializers as cloud_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
@@ -83,6 +86,31 @@ class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
         return attrs
 
 
+class InstanceResizeSerializer(PermissionFieldFilteringMixin,
+                               serializers.Serializer):
+    flavor = serializers.HyperlinkedRelatedField(
+        view_name='flavor-detail',
+        lookup_field='uuid',
+        queryset=cloud_models.Flavor.objects.all(),
+        required=False,
+    )
+    disk_size = serializers.IntegerField(min_value=1, required=False)
+
+    def get_filtered_field_names(self):
+        return 'flavor',
+
+    def validate(self, attrs):
+        flavor = attrs.get('flavor')
+        disk_size = attrs.get('disk_size')
+
+        if flavor is not None and disk_size is not None:
+            raise serializers.ValidationError("Cannot resize both disk size and flavor simultaneously")
+        if flavor is None and disk_size is None:
+            raise serializers.ValidationError("Either disk_size or flavor is required")
+
+        return attrs
+
+
 class InstanceLicenseSerializer(serializers.ModelSerializer):
 
     name = serializers.Field(source='template_license.name')
@@ -130,9 +158,15 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'external_ips', 'internal_ips',
             'state',
             'backups', 'backup_schedules',
-            'instance_licenses'
+            'instance_licenses',
+            'system_volume_size',
+            'data_volume_size',
         )
-        read_only_fields = ('ssh_public_key',)
+        read_only_fields = (
+            'ssh_public_key',
+            'system_volume_size',
+            'data_volume_size',
+        )
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
