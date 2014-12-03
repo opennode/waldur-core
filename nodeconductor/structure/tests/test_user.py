@@ -106,8 +106,10 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
 
         response = self.client.post(self._get_user_password_url(self.users['owner']), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual('Password has been successfully updated', response.data['detail'])
 
-        self.assertFalse(self.users['owner'].check_password(data['password']))
+        user = User.objects.get(uuid=self.users['owner'].uuid)
+        self.assertTrue(user.check_password(data['password']))
 
     def test_user_cannot_change_other_account_password(self):
         self.client.force_authenticate(self.users['not_owner'])
@@ -117,7 +119,8 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
         response = self.client.post(self._get_user_password_url(self.users['owner']), data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.assertFalse(self.users['not_owner'].check_password(data['password']))
+        user = User.objects.get(uuid=self.users['owner'].uuid)
+        self.assertFalse(user.check_password(data['password']))
 
     def test_staff_user_can_change_any_accounts_password(self):
         self.client.force_authenticate(self.users['staff'])
@@ -128,7 +131,8 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
             response = self.client.post(self._get_user_password_url(self.users[user]), data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-            self.assertTrue(self.users[user].check_password(data['password']))
+            user = User.objects.get(uuid=self.users[user].uuid)
+            self.assertTrue(user.check_password(data['password']))
 
     # Helper methods
     def _get_valid_payload(self, account=None):
@@ -144,6 +148,20 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
             'is_active': account.is_active,
             'is_superuser': account.is_superuser,
         }
+
+    # Deletion tests
+    def user_cannot_delete_his_account(self):
+        self._ensure_user_cannot_delete_account(self.users['owner'], self.users['owner'])
+
+    def user_cannot_delete_other_account(self):
+        self._ensure_user_cannot_delete_account(self.users['not_owner'], self.users['owner'])
+
+    def test_staff_user_can_delete_any_account(self):
+        self.client.force_authenticate(user=self.users['staff'])
+
+        for user in self.users:
+            response = self.client.delete(self._get_user_url(self.users[user]))
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def _ensure_user_can_change_field(self, user, field_name, data):
         self.client.force_authenticate(user)
@@ -162,3 +180,9 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
 
         new_value = getattr(User.objects.get(uuid=self.users['not_owner'].uuid), field_name)
         self.assertNotEqual(new_value, data[field_name])
+
+    def _ensure_user_cannot_delete_account(self, user, account):
+        self.client.force_authenticate(user=user)
+
+        response = self.client.delete(self._get_user_url(account))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

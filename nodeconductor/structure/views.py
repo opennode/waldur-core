@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.contrib import auth
 from django.db.models.query_utils import Q
+from django.http.response import Http404
 import django_filters
 from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
@@ -350,7 +351,24 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action()
     def password(self, request, uuid=None):
-        return Response({'status': status.HTTP_200_OK})
+        try:
+            user = User.objects.get(uuid=uuid)
+        except User.DoesNotExist:
+            raise Http404()
+
+        if 'password' in request.DATA:
+            new_password = request.DATA['password']
+
+            # When the new password is None, the password will be set to an unusable password
+            # https://docs.djangoproject.com/en/1.6/ref/contrib/auth/#django.contrib.auth.models.User.set_password
+            user.set_password(new_password)
+            user.save()
+
+            return Response({'detail': "Password has been successfully updated"},
+                            status=status.HTTP_200_OK)
+
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
 
 # TODO: cover filtering/ordering with tests
 class ProjectPermissionFilter(django_filters.FilterSet):

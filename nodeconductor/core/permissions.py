@@ -23,10 +23,10 @@ class IsAdminOrOwner(IsAdminOrReadOnly):
 
         if user.is_staff or request.method in SAFE_METHODS:
             return True
-        elif view.suffix == 'List':
+        elif view.suffix == 'List' or request.method == 'DELETE':
             return False
 
-        return user == view.get_object() and request.method != 'DELETE'
+        return user == view.get_object()
 
 
 class FilteredCollaboratorsPermissionLogic(PermissionLogic):

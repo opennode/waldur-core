@@ -306,6 +306,7 @@ class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFiltering
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     project_groups = serializers.SerializerMethodField('user_project_groups')
     email = serializers.EmailField()
+    password = serializers.CharField(source='password', read_only=True)
 
     def user_project_groups(self, obj):
         request = self.context.get('request')
@@ -325,7 +326,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = User
         fields = ('url',
-                  'uuid', 'username',
+                  'uuid', 'username', 'password',
                   'full_name', 'native_name',
                   'job_title', 'email', 'organization', 'phone_number',
                   'civil_number',
