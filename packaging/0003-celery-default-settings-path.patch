@@ -1,0 +1,12 @@
+--- a/nodeconductor/server/celery.py
++++ b/nodeconductor/server/celery.py
+@@ -6,7 +6,7 @@ from celery import Celery
+ from django.conf import settings
+ 
+ # set the default Django settings module for the 'celery' program.
+-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nodeconductor.server.settings')  # XXX:
++os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nodeconductor.server.settings_ini')  # XXX:
+ 
+ app = Celery('nodeconductor')
+ 
+
