@@ -23,6 +23,7 @@ License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: logrotate
 Requires: MySQL-python
+Requires: openssl  # needed to generate SAML2 keys during install
 Requires: python-celery >= 3.1.15, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.6.5
@@ -44,7 +45,7 @@ Requires: python-novaclient >= 1:2.17.0, python-novaclient < 1:2.19.0
 Requires: python-redis = 2.10.3
 Requires: python-south = 0.8.4
 Requires: python-zabbix >= 0.7.2
-Requires: xmlsec1-openssl
+Requires: xmlsec1-openssl  # needed for SAML2
 
 Source0: %{name}-%{version}.tar.gz
 
