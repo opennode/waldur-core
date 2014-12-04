@@ -25,6 +25,7 @@ from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGro
 
 User = auth.get_user_model()
 
+
 class CustomerFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
         lookup_type='icontains',

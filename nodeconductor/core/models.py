@@ -161,7 +161,9 @@ class SshPublicKey(UuidMixin, models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_index=True)
     name = models.CharField(max_length=50, blank=True)
     fingerprint = models.CharField(max_length=47)  # In ideal world should be unique
-    public_key = models.TextField(max_length=2000, validators=[validate_ssh_public_key])
+    public_key = models.TextField(
+        validators=[validators.MaxLengthValidator(2000), validate_ssh_public_key]
+    )
 
     class Meta(object):
         unique_together = ('user', 'name')
