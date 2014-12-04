@@ -561,7 +561,6 @@ class OpenStackBackend(object):
         from nodeconductor.cloud.models import CloudProjectMembership
         from nodeconductor.cloud.models import SecurityGroup
 
-        # logger.info('About to delete instance %s', instance.uuid)
         try:
             membership = CloudProjectMembership.objects.get(
                 project=instance.project,
@@ -575,30 +574,38 @@ class OpenStackBackend(object):
             backend_groups = nova.servers.list_security_group(server_id)
             backend_ids = set(g.id for g in backend_groups)
 
-            # nc_groups = SecurityGroup.objects.filter(instance_groups__instance__backend_id=server_id)
             nc_ids = set(
                 SecurityGroup.objects
                 .filter(instance_groups__instance__backend_id=server_id)
+                .exclude(backend_id='')
                 .values_list('backend_id', flat=True)
             )
-            # nc_ids = set(nc_groups.keys())
 
-
-            # TODO: Handle possible exceptions
             # remove stale groups
             for group_id in backend_ids - nc_ids:
-                nova.servers.remove_security_group(server_id, group_id)
+                try:
+                    nova.servers.remove_security_group(server_id, group_id)
+                except nova_exceptions.ClientException:
+                    logger.exception('Failed remove security group %s from instance %s',
+                                     group_id, server_id)
+                else:
+                    logger.info('Removed security group %s from instance %s',
+                                group_id, server_id)
 
             # add missing groups
             for group_id in nc_ids - backend_ids:
-                nova.servers.add_security_group(server_id, group_id)
+                try:
+                    nova.servers.add_security_group(server_id, group_id)
+                except nova_exceptions.ClientException:
+                    logger.exception('Failed add security group %s to instance %s',
+                                     group_id, server_id)
+                else:
+                    logger.info('Added security group %s to instance %s',
+                                group_id, server_id)
 
         except keystone_exceptions.ClientException:
             logger.exception('Failed to create nova client')
             six.reraise(CloudBackendError, CloudBackendError())
-
-        pass
-        # TODO
 
     def extend_disk(self, instance):
         from nodeconductor.cloud.models import CloudProjectMembership
