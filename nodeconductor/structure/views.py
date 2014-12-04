@@ -356,11 +356,12 @@ class UserViewSet(viewsets.ModelViewSet):
         except User.DoesNotExist:
             raise Http404()
 
-        serializer = serializers.PasswordSerializer(data=request.DATA)
+        password_data = request.DATA
+        serializer = serializers.PasswordSerializer(data=password_data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user.set_password(request.DATA['password'])
+        user.set_password(password_data['password'])
         user.save()
 
         return Response({'detail': "Password has been successfully updated"},

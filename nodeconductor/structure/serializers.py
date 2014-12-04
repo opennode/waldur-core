@@ -306,7 +306,6 @@ class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFiltering
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     project_groups = serializers.SerializerMethodField('user_project_groups')
     email = serializers.EmailField()
-    password = serializers.CharField(source='password', read_only=True)
 
     def user_project_groups(self, obj):
         request = self.context.get('request')
@@ -326,7 +325,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = User
         fields = ('url',
-                  'uuid', 'username', 'password',
+                  'uuid', 'username',
                   'full_name', 'native_name',
                   'job_title', 'email', 'organization', 'phone_number',
                   'civil_number',
@@ -334,7 +333,11 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
                   'is_staff', 'is_active',
                   'project_groups',
         )
-        read_only_fields = ('uuid', 'is_staff',)
+        read_only_fields = (
+            'uuid',
+            'is_staff',
+            'username', 'civil_number',
+        )
         lookup_field = 'uuid'
 
     def get_fields(self):
@@ -349,11 +352,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         if not user.is_staff:
             del fields['is_active']
             del fields['is_staff']
-
-        if request.method in ('PUT', 'PATCH', 'POST'):
-            for field in fields:
-                if not user.is_staff and field not in ('email', 'organization'):
-                    fields[field].read_only = True
+            fields['description'].read_only = True
 
         return fields
 
