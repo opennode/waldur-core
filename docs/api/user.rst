@@ -64,3 +64,53 @@ Example of a creation request is below.
         "description": "",
         "organization": "",
     }
+
+Updating a user
+---------------
+
+User fields can be updated by account owner or user with staff privilege (is_staff=True).
+Following user fields can be updated:
+
+- organization
+- full_name
+- native_name
+- job_title
+- organization
+- phone_number
+- email
+
+Can be done by PUTing a new data to the user URI, i.e. **api/users/<UUID>** by staff user or account owner.
+Valid request example (token is user specific):
+
+.. code-block:: http
+
+    PUT /api/users/e0c058d06864441fb4f1c40dee5dd4fd/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "email": "example@example.com",
+        "organization": "Bells organization",
+    }
+
+Changing password
+-----------------
+
+To change a user password, submit a POST request to the user's RPC url, specifying new password
+by staff user or account owner.
+
+Example of a valid request:
+
+.. code-block:: http
+
+    POST /api/users/e0c058d06864441fb4f1c40dee5dd4fd/password/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "password": "nQvqHzeP123",
+    }

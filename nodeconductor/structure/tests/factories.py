@@ -39,6 +39,15 @@ class UserFactory(factory.DjangoModelFactory):
             user = UserFactory()
         return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})
 
+    @classmethod
+    def get_password_url(self, user):
+        return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid}) + 'password/'
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('user-list')
+
+
 
 class CustomerFactory(factory.DjangoModelFactory):
     class Meta(object):
