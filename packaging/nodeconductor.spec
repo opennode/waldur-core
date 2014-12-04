@@ -21,9 +21,11 @@ Version: 0.10.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
+# openssl package is needed to generate SAML2 keys during NodeConductor install
+# xmlsec1-openssl is needed for SAML2 features to work
 Requires: logrotate
 Requires: MySQL-python
-Requires: openssl  # needed to generate SAML2 keys during install
+Requires: openssl
 Requires: python-celery >= 3.1.15, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.6.5
@@ -45,7 +47,7 @@ Requires: python-novaclient >= 1:2.17.0, python-novaclient < 1:2.19.0
 Requires: python-redis = 2.10.3
 Requires: python-south = 0.8.4
 Requires: python-zabbix >= 0.7.2
-Requires: xmlsec1-openssl  # needed for SAML2
+Requires: xmlsec1-openssl
 
 Source0: %{name}-%{version}.tar.gz
 
