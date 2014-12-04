@@ -185,7 +185,7 @@ EOF
 * Wed Dec 3 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.10.0-1
 - New upstream release
 
-* Mon Nov 18 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.9.0-1
+* Tue Nov 18 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.9.0-1
 - New upstream release
 
 * Mon Nov 10 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.8.0-1
