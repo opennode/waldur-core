@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from rest_framework import serializers
+from rest_framework.reverse import reverse
 
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.cloud import models as cloud_models
@@ -8,6 +9,7 @@ from nodeconductor.cloud import serializers as cloud_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
 from nodeconductor.iaas import models
+from nodeconductor.iaas.models import Instance
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import serializers as structure_serializers
 
@@ -161,6 +163,7 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'instance_licenses',
             'system_volume_size',
             'data_volume_size',
+            'agreed_sla'
         )
         read_only_fields = (
             'ssh_public_key',
@@ -304,40 +307,63 @@ class PurchaseSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedMode
         return 'project.customer', 'project'
 
 
-# XXX: this serializer have to be removed after haystack implementation
-class ServiceSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
-
-    agreed_sla = serializers.SerializerMethodField('get_agreed_sla')
-    actual_sla = serializers.SerializerMethodField('get_actual_sla')
+class ServiceSerializer(serializers.Serializer):
+    url = serializers.SerializerMethodField('get_service_url')
     service_type = serializers.SerializerMethodField('get_service_type')
-    project_groups = structure_serializers.BasicProjectGroupSerializer(
-        source='project.project_groups', many=True, read_only=True)
-    template_name = serializers.Field(source='template.name')
-    customer_name = serializers.Field(source='project.customer.name')
+    hostname = serializers.Field()
+    agreed_sla = serializers.Field()
+    actual_sla = serializers.Field(source='slas__value')
+    template_name = serializers.Field(source='template__name')
+    customer_name = serializers.Field(source='project__customer__name')
+    project_name = serializers.Field(source='project__name')
+    project_groups = serializers.SerializerMethodField('get_project_groups')
 
     class Meta(object):
-        model = models.Instance
         fields = (
             'url',
             'hostname', 'template_name',
             'customer_name',
             'project_name', 'project_groups',
             'agreed_sla', 'actual_sla',
+            'service_type'
         )
         view_name = 'service-detail'
         lookup_field = 'uuid'
 
-    def get_related_paths(self):
-        return 'project',
-
-    def get_agreed_sla(self, obj):
-        return 100
-
-    def get_actual_sla(self, obj):
-        return 97
-
     def get_service_type(self, obj):
         return 'IaaS'
+
+    def get_service_url(self, obj):
+        try:
+            request = self.context['request']
+        except AttributeError:
+            raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
+
+        # TODO: this could use something similar to backup's generic model for all resources
+        view_name = 'service-detail'
+        service_instance = Instance.objects.get(uuid=obj['uuid'])
+        hyperlinked_field = serializers.HyperlinkedRelatedField(
+            view_name=view_name,
+            lookup_field='uuid',
+            read_only=True,
+        )
+        return hyperlinked_field.get_url(service_instance, view_name, request, format=None)
+
+    # TODO: this shouldn't come from this endpoint, but UI atm depends on it
+    def get_project_groups(self, obj):
+        try:
+            request = self.context['request']
+        except AttributeError:
+            raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
+
+        service_instance = Instance.objects.get(uuid=obj['uuid'])
+        groups = structure_serializers.BasicProjectGroupSerializer(
+            service_instance.project.project_groups.all(),
+            many=True,
+            read_only=True,
+            context={'request': request}
+        )
+        return groups.data
 
 
 class UsageStatsSerializer(serializers.Serializer):

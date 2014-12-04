@@ -21,4 +21,4 @@ Ordering can be done by the following fields (prefix with **-** for descending o
 - ?o=project__name
 - ?o=project__project_groups__name
 - ?o=agreed_sla
-- ?o=actual_sla
+- ?o=slas__value  (order by actual_sla field)

@@ -56,8 +56,10 @@ class TemplateAdmin(admin.ModelAdmin):
         ImageInline,
     )
     ordering = ('name', )
+    list_display = ['name', 'uuid', 'sla_level']
 
 
 admin.site.register(models.Instance, InstanceAdmin)
 admin.site.register(models.Template, TemplateAdmin)
 admin.site.register(models.Purchase, PurchaseAdmin)
+admin.site.register(models.InstanceSlaHistory)
