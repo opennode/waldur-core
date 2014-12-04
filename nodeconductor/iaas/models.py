@@ -11,7 +11,7 @@ from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext as _
-from django_fsm import FSMField
+from django_fsm import FSMIntegerField
 from django_fsm import transition
 
 from nodeconductor.backup import models as backup_models
@@ -98,27 +98,27 @@ class Instance(core_models.UuidMixin,
         project_group_path = 'project__project_groups'
 
     class States(object):
-        PROVISIONING_SCHEDULED = 'p'
-        PROVISIONING = 'P'
+        PROVISIONING_SCHEDULED = 1
+        PROVISIONING = 2
 
-        ONLINE = '+'
-        OFFLINE = '-'
+        ONLINE = 3
+        OFFLINE = 4
 
-        STARTING_SCHEDULED = 'a'
-        STARTING = 'A'
+        STARTING_SCHEDULED = 5
+        STARTING = 6
 
-        STOPPING_SCHEDULED = 'o'
-        STOPPING = 'O'
+        STOPPING_SCHEDULED = 7
+        STOPPING = 8
 
-        ERRED = 'e'
+        ERRED = 9
 
-        DELETION_SCHEDULED = 'd'
-        DELETING = 'D'
+        DELETION_SCHEDULED = 10
+        DELETING = 11
 
-        DELETED = 'x'
+        DELETED = 12
 
-        RESIZING_SCHEDULED = 'r'
-        RESIZING = 'R'
+        RESIZING_SCHEDULED = 13
+        RESIZING = 14
 
         CHOICES = (
             (PROVISIONING_SCHEDULED, _('Provisioning Scheduled')),
@@ -152,7 +152,7 @@ class Instance(core_models.UuidMixin,
     start_time = models.DateTimeField(blank=True, null=True)
     ssh_public_key = models.ForeignKey(core_models.SshPublicKey, related_name='instances')
 
-    state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
+    state = FSMIntegerField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
                      help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
     # OpenStack backend specific fields
