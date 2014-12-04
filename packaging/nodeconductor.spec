@@ -18,15 +18,15 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.10.0
-Release: 1
+Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 Requires: logrotate
 Requires: MySQL-python
 Requires: python-celery >= 3.1.15, python-celery < 3.2
-Requires: python-croniter = 0.3.5
-Requires: python-django16 >= 1.6.5
-Requires: python-django-auth-ldap >= 1.2.0
+Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
+Requires: python-django >= 1.6.5
+Requires: python-django-auth-ldap = 1.2.0
 Requires: python-django-filter = 0.7
 Requires: python-django-fsm = 2.2.0
 Requires: python-django-permission = 0.8.2
@@ -179,6 +179,9 @@ All done. Happy NodeConducting!
 EOF
 
 %changelog
+* Thu Dec 4 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.10.0-1.el7
+- Dependencies fixed for CentOS 7
+
 * Wed Dec 3 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.10.0-1
 - New upstream release
 
