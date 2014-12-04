@@ -72,6 +72,11 @@ User fields can be updated by account owner or user with staff privilege (is_sta
 Following user fields can be updated:
 
 - organization
+- full_name
+- native_name
+- job_title
+- organization
+- phone_number
 - email
 
 Can be done by PUTing a new data to the user URI, i.e. **api/users/<UUID>** by staff user or account owner.
