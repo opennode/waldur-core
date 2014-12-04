@@ -1,5 +1,7 @@
+import calendar
 from decimal import Decimal
 import logging
+import datetime
 
 from celery import shared_task
 
@@ -10,17 +12,44 @@ from nodeconductor.monitoring.zabbix.errors import ZabbixError
 logger = logging.getLogger(__name__)
 
 
+def add_months(source_date, months):
+    month = source_date.month - 1 + months
+    year = source_date.year + month / 12
+    month = month % 12 + 1
+    day = min(source_date.day, calendar.monthrange(year, month)[1])
+    return datetime.datetime.strptime('%s/%s/%s' % (day, month, year), '%d/%m/%Y')
+
+
 @shared_task
-def update_instance_sla():
+def update_instance_sla(sla_type):
+    if sla_type not in ('yearly', 'monthly'):
+        logger.error('Requested unknown SLA type: %s' % sla_type)
+        return
+
+    dt = datetime.datetime.now()
+
+    if sla_type == 'yearly':
+        period = dt.year
+        start_time = int(datetime.datetime.strptime('01/01/%s' % dt.year, '%d/%m/%Y').strftime("%s"))
+        end_time = int(datetime.datetime.strptime('01/01/%s' % (dt.year + 1), '%d/%m/%Y').strftime("%s"))
+    else:  # it's a monthly SLA update
+        period = '%s-%s' % (dt.month, dt.year)
+        month_start = datetime.datetime.strptime('01/%s/%s' % (dt.month, dt.year),
+                                                    '%d/%m/%Y')
+        start_time = int(month_start.strftime("%s"))
+        end_time = int(add_months(month_start, 1).strftime("%s"))
+
     instances = Instance.objects.exclude(state__in=(Instance.States.DELETED, Instance.States.DELETING))
     zabbix_client = ZabbixApiClient()
     for instance in instances:
         try:
-            logger.debug('Updating SLAs for instance %s' % instance)
-            current_sla = zabbix_client.get_current_service_sla(instance, start_time=1417023243, end_time=1417723243)
+            logger.debug('Updating %s SLAs for instance %s. Period: %s, start_time: %s, end_time: %s' % (
+                sla_type, instance, period, start_time, end_time
+            ))
+            current_sla = zabbix_client.get_current_service_sla(instance, start_time=start_time, end_time=end_time)
             entry, _ = InstanceSlaHistory.objects.get_or_create(
                 instance=instance,
-                period='12'
+                period=period
             )
             entry.value = Decimal(current_sla)
             entry.save()
