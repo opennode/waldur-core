@@ -1,4 +1,4 @@
-REST Permissions
+REST permissions
 ================
 
 
@@ -32,14 +32,14 @@ To register permissions for the through-models, one can use a convenience functi
 Permissions for creation/deletion/update
 ----------------------------------------
 
-CRU permissions are implemented using django-permission_ . Filters for allowered modifiers are defined in **perms.py**
+CRU permissions are implemented using django-permission_ . Filters for allowed modifiers are defined in ``perms.py``
 in each of the applications.
 
 Advanced validation for CRUD
 ----------------------------
 
-If validation logic is based on the payload of request (not user role/endpoint), pre_save/pre_delete methods of a
-ViewSet should be used.
+If validation logic is based on the payload of request (not user role/endpoint), ``pre_save`` and ``pre_delete``
+methods of a ViewSet should be used.
 
 .. _django-permission: https://pypi.python.org/pypi/django-permission/
 

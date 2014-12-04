@@ -2,15 +2,15 @@ Managed entities
 ================
 
 Managed entities are entities for which NodeConductor's database is considered an authoritative source of information.
-By means of REST api the user defines the desired state of the entities.
-NodeConductor's jobs is then to make the backend (OpenStack, Github, Jira, etc) reflect
+By means of REST API the user defines the desired state of the entities.
+NodeConductor's jobs is then to make the backend (OpenStack, GitHub, JIRA, etc) reflect
 the desired state as close as possible.
 
 Since making changes to a backend can take a long time, they are done in background tasks.
 
 Here's a proper way to deal with managed entities:
 
-* within the scope of REST api request:
+* within the scope of REST API request:
 
  #. introduce the change (create, delete or edit an entity)
     to the NodeConductor's database;
@@ -27,4 +27,4 @@ Here's a proper way to deal with managed entities:
  #. transactionally update the its state to reflect that it not being updated anymore.
 
 Using the above flow makes it possible for user to get immediate feedback
-from an initial REST api call and then query state changes of the entity.
+from an initial REST API call and then query state changes of the entity.
