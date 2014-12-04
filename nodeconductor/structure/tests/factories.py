@@ -48,7 +48,6 @@ class UserFactory(factory.DjangoModelFactory):
         return 'http://testserver' + reverse('user-list')
 
 
-
 class CustomerFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.Customer
