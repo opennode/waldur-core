@@ -291,7 +291,7 @@ class Instance(core_models.UuidMixin,
 class InstanceSlaHistory(models.Model):
     period = models.CharField(max_length=10)
     instance = models.ForeignKey(Instance, related_name='slas')
-    value = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
+    value = models.DecimalField(max_digits=11, decimal_places=4, null=True, blank=True)
 
     def __str__(self):
         return 'SLA for %s during %s: %s' % (self.instance, self.period, self.value)

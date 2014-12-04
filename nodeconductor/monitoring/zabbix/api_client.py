@@ -118,8 +118,14 @@ class ZabbixApiClient(object):
         try:
             service_name = self.get_service_name(instance)
             api = self.get_zabbix_api()
-            service_id = api.service.get(filter={'name': service_name})[0]['serviceid']
-            sla = self.service.getsla(
+            service_data = api.service.get(filter={'name': service_name})
+            if len(service_data) != 1:
+                raise ZabbixAPIException('Exactly one result is expected for service name %s'
+                                         ', instead received %s. Instance: %s'
+                                         % (service_name, len(service_data), instance)
+                )
+            service_id = service_data[0]['serviceid']
+            sla = api.service.getsla(
                 filter={'serviceids': service_id},
                 intervals={'from': start_time, 'to': end_time}
             )[service_id]['sla'][0]['sla']
@@ -177,7 +183,7 @@ class ZabbixApiClient(object):
         return '%s_%s' % (project.name, project.uuid)
 
     def get_service_name(self, instance):
-        return 'Uptime of %s' % instance.backend_id
+        return 'Availability of %s' % instance.backend_id
 
     def get_template_triggerid(self, api, templateid):
         try:

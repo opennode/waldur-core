@@ -2,6 +2,7 @@
 from nodeconductor.server.base_settings import *
 
 import os
+from datetime import timedelta
 import saml2
 
 from ConfigParser import RawConfigParser
@@ -416,3 +417,13 @@ if config.get('zabbix', 'db_host') != '':
         'USER': config.get('zabbix', 'db_user'),
         'PASSWORD': config.get('zabbix', 'db_password'),
     }
+
+# Regular tasks
+CELERYBEAT_SCHEDULE = {
+    'update-instance-slas': {
+        'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
+        'schedule': timedelta(hours=2),
+    },
+}
+
+CELERY_TIMEZONE = 'UTC'

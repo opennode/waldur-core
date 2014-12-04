@@ -4,11 +4,9 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from celery import shared_task
-from django.db import transaction
 
-from nodeconductor.core.tasks import tracked_processing, set_state
+from nodeconductor.core.tasks import tracked_processing
 from nodeconductor.core.log import EventLoggerAdapter
-from nodeconductor.cloud import models as cloud_models
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
