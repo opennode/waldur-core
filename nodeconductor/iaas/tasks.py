@@ -94,3 +94,11 @@ def extend_disk(instance_uuid):
 
     backend = instance.flavor.cloud.get_backend()
     backend.extend_disk(instance)
+
+
+@shared_task
+def push_instance_security_groups(instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+
+    backend = instance.flavor.cloud.get_backend()
+    backend.push_instance_security_groups(instance)

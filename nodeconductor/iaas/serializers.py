@@ -73,13 +73,19 @@ class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'description', 'security_groups',)
+        # fields = ('url', 'hostname', 'description')
+        fields = ('url', 'hostname', 'description', 'security_groups')
         lookup_field = 'uuid'
 
     def validate_security_groups(self, attrs, attr_name):
         if attr_name in attrs and attrs[attr_name] is None:
             del attrs[attr_name]
         return attrs
+
+
+class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
+    security_groups = InstanceSecurityGroupSerializer(
+        many=True, required=False, read_only=False)
 
 
 class InstanceResizeSerializer(PermissionFieldFilteringMixin,
