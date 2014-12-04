@@ -1,8 +1,6 @@
 from __future__ import unicode_literals
 
-import unittest
-
-from django.core.urlresolvers import reverse
+from django.utils import unittest
 
 from rest_framework import status
 from rest_framework import test
@@ -12,18 +10,7 @@ from nodeconductor.structure.serializers import PasswordSerializer
 from nodeconductor.structure.tests import factories
 
 
-class UrlResolverMixin(object):
-    def _get_user_list_url(self):
-        return 'http://testserver' + reverse('user-list')
-
-    def _get_user_url(self, user):
-        return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})
-
-    def _get_user_password_url(self, user):
-        return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid}) + 'password/'
-
-
-class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
+class UserPermissionApiTest(test.APISimpleTestCase):
     def setUp(self):
         self.users = {
             'staff': factories.UserFactory(is_staff=True),
@@ -33,26 +20,26 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
 
     # List filtration tests
     def test_anonymous_user_cannot_list_accounts(self):
-        response = self.client.get(self._get_user_list_url())
+        response = self.client.get(factories.UserFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_authorized_user_can_list_accounts(self):
         self.client.force_authenticate(self.users['owner'])
 
-        response = self.client.get(self._get_user_list_url())
+        response = self.client.get(factories.UserFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_staff_user_can_list_accounts(self):
         self.client.force_authenticate(user=self.users['staff'])
 
-        response = self.client.get(self._get_user_list_url())
+        response = self.client.get(factories.UserFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     # Creation tests
     def test_anonymous_user_cannot_create_account(self):
         data = self._get_valid_payload()
 
-        response = self.client.post(self._get_user_list_url(), data)
+        response = self.client.post(factories.UserFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_authorized_user_cannot_create_account(self):
@@ -60,7 +47,7 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
 
         data = self._get_valid_payload()
 
-        response = self.client.post(self._get_user_list_url(), data)
+        response = self.client.post(factories.UserFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_staff_user_can_create_account(self):
@@ -68,7 +55,7 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
 
         data = self._get_valid_payload()
 
-        response = self.client.post(self._get_user_list_url(), data)
+        response = self.client.post(factories.UserFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     # Manipulation tests
@@ -98,7 +85,7 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
         self.client.force_authenticate(user=self.users['staff'])
         data = self._get_valid_payload()
 
-        response = self.client.put(self._get_user_url(self.users['staff']), data)
+        response = self.client.put(factories.UserFactory.get_url(self.users['staff']), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     # Password changing tests
@@ -107,7 +94,7 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
 
         data = {'password': 'nQvqHzeP123'}
 
-        response = self.client.post(self._get_user_password_url(self.users['owner']), data)
+        response = self.client.post(factories.UserFactory.get_password_url(self.users['owner']), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual('Password has been successfully updated', response.data['detail'])
 
@@ -119,7 +106,7 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
 
         data = {'password': 'nQvqHzeP123'}
 
-        response = self.client.post(self._get_user_password_url(self.users['owner']), data)
+        response = self.client.post(factories.UserFactory.get_password_url(self.users['owner']), data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         user = User.objects.get(uuid=self.users['owner'].uuid)
@@ -131,7 +118,7 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
         data = {'password': 'nQvqHzeP123'}
 
         for user in self.users:
-            response = self.client.post(self._get_user_password_url(self.users[user]), data)
+            response = self.client.post(factories.UserFactory.get_password_url(self.users[user]), data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
             user = User.objects.get(uuid=self.users[user].uuid)
@@ -148,7 +135,7 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
         self.client.force_authenticate(user=self.users['staff'])
 
         for user in self.users:
-            response = self.client.delete(self._get_user_url(self.users[user]))
+            response = self.client.delete(factories.UserFactory.get_url(self.users[user]))
             self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     # Helper methods
@@ -169,7 +156,7 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
     def _ensure_user_can_change_field(self, user, field_name, data):
         self.client.force_authenticate(user)
 
-        response = self.client.put(self._get_user_url(user), data)
+        response = self.client.put(factories.UserFactory.get_url(user), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         new_value = getattr(User.objects.get(uuid=user.uuid), field_name)
@@ -178,7 +165,7 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
     def _ensure_user_cannot_change_field(self, user, field_name, data):
         self.client.force_authenticate(user)
 
-        response = self.client.put(self._get_user_url(self.users['not_owner']), data)
+        response = self.client.put(factories.UserFactory.get_url(self.users['not_owner']), data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         new_value = getattr(User.objects.get(uuid=self.users['not_owner'].uuid), field_name)
@@ -187,7 +174,7 @@ class UserPermissionApiTest(UrlResolverMixin, test.APISimpleTestCase):
     def _ensure_user_cannot_delete_account(self, user, account):
         self.client.force_authenticate(user=user)
 
-        response = self.client.delete(self._get_user_url(account))
+        response = self.client.delete(factories.UserFactory.get_url(account))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
