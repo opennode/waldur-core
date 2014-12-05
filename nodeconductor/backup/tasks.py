@@ -14,7 +14,8 @@ def process_backup_task(backup_uuid):
         backup = models.Backup.objects.get(uuid=backup_uuid)
         source = backup.backup_source
         if source is not None:
-            backup.backup_source.get_backup_strategy().backup()
+            backup.additional_data = backup.get_strategy().backup(backup.backup_source)
+            backup.save()
         else:
             logger.exception('Process backup task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:
@@ -22,12 +23,12 @@ def process_backup_task(backup_uuid):
 
 
 @shared_task
-def restoration_task(backup_uuid, replace_original=False):
+def restoration_task(backup_uuid):
     try:
         backup = models.Backup.objects.get(uuid=backup_uuid)
         source = backup.backup_source
         if source is not None:
-            backup.backup_source.get_backup_strategy().restore(replace_original)
+            backup.get_strategy().restore(backup.backup_source, backup.additional_data)
         else:
             logger.exception('Restoration task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:
@@ -40,7 +41,7 @@ def deletion_task(backup_uuid):
         backup = models.Backup.objects.get(uuid=backup_uuid)
         source = backup.backup_source
         if source is not None:
-            backup.backup_source.get_backup_strategy().delete()
+            backup.get_strategy().delete(backup.backup_source, backup.additional_data)
         else:
             logger.exception('Restoration task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:

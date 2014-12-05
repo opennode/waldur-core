@@ -4,7 +4,7 @@ from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.backup import models, backup_registry
+from nodeconductor.backup import models
 from nodeconductor.backup.tests import factories
 from nodeconductor.core.tests import helpers
 from nodeconductor.structure.tests import factories as structure_factories
@@ -32,16 +32,14 @@ def _backup_schedule_list_url():
 class BackupUsageTest(test.APITransactionTestCase):
 
     def setUp(self):
-        # only for test lets make backupschedule backupable
-        backup_registry.BACKUP_REGISTRY = {'Schedule': 'backup_backupschedule'}
         self.user = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
         self.client.force_authenticate(user=self.user)
 
     def test_backup_manually_create(self):
         # success:
-        backupable = factories.BackupScheduleFactory()
+        backupable = iaas_factories.InstanceFactory()
         backup_data = {
-            'backup_source': _backup_schedule_url(backupable),
+            'backup_source': iaas_factories.InstanceFactory.get_url(backupable),
         }
         url = _backup_list_url()
         response = self.client.post(url, data=backup_data)
@@ -75,16 +73,14 @@ class BackupUsageTest(test.APITransactionTestCase):
 class BackupScheduleUsageTest(test.APISimpleTestCase):
 
     def setUp(self):
-        # only for test lets make backupschedule backupable
-        backup_registry.BACKUP_REGISTRY = {'Schedule': 'backup_backupschedule'}
         self.user = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
         self.client.force_authenticate(user=self.user)
 
     def test_backup_schedule_creation(self):
-        backupable = factories.BackupScheduleFactory()
+        backupable = iaas_factories.InstanceFactory()
         backup_schedule_data = {
             'retention_time': 3,
-            'backup_source': _backup_schedule_url(backupable),
+            'backup_source': iaas_factories.InstanceFactory.get_url(backupable),
             'schedule': '*/5 * * * *',
             'maximal_number_of_backups': 3,
         }
@@ -123,9 +119,6 @@ class BackupListPermissionsTest(helpers.ListPermissionsTest):
 
     url = _backup_list_url()
 
-    def setUp(self):
-        backup_registry.BACKUP_REGISTRY = {'Instance': 'iaas_instance'}
-
     def get_users_and_expected_results(self):
         instance = iaas_factories.InstanceFactory()
         backup1 = factories.BackupFactory(backup_source=instance)
@@ -153,7 +146,6 @@ class BackupListPermissionsTest(helpers.ListPermissionsTest):
 class BackupPermissionsTest(helpers.PermissionsTest):
 
     def setUp(self):
-        backup_registry.BACKUP_REGISTRY = {'Instance': 'iaas_instance'}
         self.user_with_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
         self.user_without_permission = structure_factories.UserFactory.create()
 
@@ -180,9 +172,6 @@ class BackupScheduleListPermissionsTest(helpers.ListPermissionsTest):
 
     url = _backup_schedule_list_url()
 
-    def setUp(self):
-        backup_registry.BACKUP_REGISTRY = {'Instance': 'iaas_instance'}
-
     def get_users_and_expected_results(self):
         instance = iaas_factories.InstanceFactory()
         schedule = factories.BackupScheduleFactory(backup_source=instance)
@@ -208,9 +197,6 @@ class BackupSchedulePermissionsTest(helpers.PermissionsTest):
 
     def setUp(self):
         super(BackupSchedulePermissionsTest, self).setUp()
-        backup_registry.BACKUP_REGISTRY = {
-            'Instance': 'iaas_instance'
-        }
         self.user_with_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
         self.user_without_permission = structure_factories.UserFactory.create()
 

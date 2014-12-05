@@ -3,14 +3,14 @@ import factory
 from django.core.urlresolvers import reverse
 
 from nodeconductor.backup import models
-from nodeconductor.cloud.tests.factories import FlavorFactory
+from nodeconductor.iaas.tests import factories as iaas_factories
 
 
 class BackupScheduleFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.BackupSchedule
 
-    backup_source = factory.SubFactory(FlavorFactory)
+    backup_source = factory.SubFactory(iaas_factories.InstanceFactory)
     retention_time = 10
     is_active = True
     maximal_number_of_backups = 3

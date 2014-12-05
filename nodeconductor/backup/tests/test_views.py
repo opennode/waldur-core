@@ -1,9 +1,12 @@
 from __future__ import unicode_literals
 
+from mock import Mock
+
 from django.test import TestCase
 
-from nodeconductor.backup import views, models, backup_registry
+from nodeconductor.backup import views, models
 from nodeconductor.backup.tests import factories
+from nodeconductor.iaas.tests import factories as iaas_factories
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -19,11 +22,10 @@ class BackupPermissionFilterTest(TestCase):
             backup_ids, self.filter._get_user_visible_model_instances_ids(self.user, models.Backup))
 
     def test_filter_queryset(self):
-        # only for test lets make backupschedule backupable
-        backup_registry.BACKUP_REGISTRY = {'Schedule': 'backup_backupschedule'}
-        backupable = factories.BackupScheduleFactory()
+        backupable = iaas_factories.InstanceFactory()
         factories.BackupFactory(backup_source=backupable)
-        mocked_request = type(str('MockedRequest'), (object,), {'user': self.user})()
+        mocked_request = Mock()
+        mocked_request.user = self.user
         # user can view backupable:
         self.filter._get_user_visible_model_instances_ids = lambda u, m: [backupable.id]
         filtered = self.filter.filter_queryset(mocked_request, models.Backup.objects.all(), None)
@@ -42,13 +44,15 @@ class BackupViewSetTest(TestCase):
 
     def test_restore(self):
         backup = factories.BackupFactory(state=models.Backup.States.READY)
-        request = type(str('MockedRequest'), (object, ), {'DATA': {'replace_original': True}, 'user': self.user})
+        request = Mock()
+        request.DATA = {'user': self.user}
         response = self.view.restore(request, backup.uuid)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.RESTORING)
 
     def test_delete(self):
-        request = type(str('MockedRequest'), (object, ), {'user': self.user})
+        request = Mock()
+        request.user = self.user
         backup = factories.BackupFactory(state=models.Backup.States.READY)
         response = self.view.delete(request, backup.uuid)
         self.assertEqual(response.status_code, 200)

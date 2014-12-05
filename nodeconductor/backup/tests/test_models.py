@@ -16,7 +16,7 @@ class BackupScheduleTest(TestCase):
 
     def test_update_next_trigger_at(self):
         now = timezone.now()
-        schedule = factories.BackupScheduleFactory.build()
+        schedule = factories.BackupScheduleFactory()
         schedule.schedule = '*/10 * * * *'
         schedule._update_next_trigger_at()
         self.assertTrue(schedule.next_trigger_at)
@@ -104,7 +104,7 @@ class BackupTest(TestCase):
     def test_start_restoration(self, mocked_task):
         backup = factories.BackupFactory()
         backup.start_restoration()
-        mocked_task.assert_called_with(backup.uuid.hex, replace_original=False)
+        mocked_task.assert_called_with(backup.uuid.hex)
         self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.RESTORING)
 

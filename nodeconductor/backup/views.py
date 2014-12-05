@@ -12,7 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 
 from nodeconductor.core import viewsets
-from nodeconductor.backup import models, serializers, backup_registry
+from nodeconductor.backup import models, serializers, utils
 from nodeconductor.structure import filters as structure_filters
 
 
@@ -27,7 +27,8 @@ class BackupPermissionFilter():
         Filter backups with source to which user has view access
         """
         q_query = Q()
-        for model in backup_registry.get_backupable_models():
+        for strategy in utils.get_backup_strategies().values():
+            model = strategy.get_model()
             model_content_type = ct_models.ContentType.objects.get_for_model(model)
             instances_ids = self._get_user_visible_model_instances_ids(request.user, model)
             q_query |= (Q(content_type=model_content_type) & Q(object_id__in=instances_ids))
@@ -93,10 +94,9 @@ class BackupViewSet(viewsets.CreateModelViewSet):
     @action()
     def restore(self, request, uuid):
         backup = self._get_backup(request.user, uuid)
-        replace_original = request.DATA.get('replace_original', False)
         try:
-            backup.start_restoration(replace_original=replace_original)
-        except TransitionNotAllowed as t:
+            backup.start_restoration()
+        except TransitionNotAllowed:
             return Response('Cannot restore a backup in state \'%s\'' % backup.get_state_display(),
                             status=status.HTTP_400_BAD_REQUEST)
         return Response({'status': 'Backup restoration process was started'})
@@ -106,7 +106,7 @@ class BackupViewSet(viewsets.CreateModelViewSet):
         backup = self._get_backup(request.user, uuid)
         try:
             backup.start_deletion()
-        except TransitionNotAllowed as t:
+        except TransitionNotAllowed:
             return Response('Cannot delete a backup in state \'%s\'' % backup.get_state_display(),
                             status=status.HTTP_400_BAD_REQUEST)
 
