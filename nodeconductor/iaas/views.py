@@ -103,9 +103,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     filter_class = InstanceFilter
 
     def get_serializer_class(self):
-        if self.request.method in ('POST'):
+        if self.request.method == 'POST':
             return serializers.InstanceCreateSerializer
-        elif self.request.method in ('PUT', 'PATCH',):
+        elif self.request.method in ('PUT', 'PATCH'):
             return serializers.InstanceUpdateSerializer
 
         return super(InstanceViewSet, self).get_serializer_class()
@@ -127,7 +127,49 @@ class InstanceViewSet(mixins.CreateModelMixin,
         super(InstanceViewSet, self).pre_save(obj)
 
         if obj.pk is None:
+            # Create flow
             obj.system_volume_size = obj.flavor.disk
+            obj.agreed_sla = obj.template.sla_level
+        else:
+            # Update flow
+            related_data = getattr(self.object, '_related_data', {})
+
+            self.new_security_group_ids = set(
+                isg.security_group_id
+                for isg in related_data.get('security_groups', [])
+            )
+
+            # Prevent DRF from trashing m2m security_group relation
+            try:
+                del related_data['security_groups']
+            except KeyError:
+                pass
+
+    def post_save(self, obj, created=False):
+        super(InstanceViewSet, self).post_save(obj, created)
+        if created:
+            return
+
+        # We care only about update flow
+        old_security_groups = dict(
+            (isg.security_group_id, isg)
+            for isg in self.object.security_groups.all()
+        )
+
+        # Remove stale security groups
+        for security_group_id, isg in old_security_groups.items():
+            if security_group_id not in self.new_security_group_ids:
+                isg.delete()
+
+        # Add missing ones
+        for security_group_id in self.new_security_group_ids - set(old_security_groups.keys()):
+            models.InstanceSecurityGroup.objects.create(
+                instance=self.object,
+                security_group_id=security_group_id,
+            )
+
+        from nodeconductor.iaas.tasks import push_instance_security_groups
+        push_instance_security_groups.delay(self.object.uuid.hex)
             obj.agreed_sla = obj.template.sla_level
 
     def change_flavor(self, instance, flavor):

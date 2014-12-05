@@ -11,8 +11,6 @@ from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
-from celery.utils import log
-
 logger = logging.getLogger(__name__)
 event_log = EventLoggerAdapter(logger)
 
@@ -39,7 +37,6 @@ def delete_zabbix_host_and_service(instance):
     except ZabbixError as e:
         # task does not have to fail if something is wrong with zabbix
         logger.error('Zabbix host deletion flow has broken', e, exc_info=1)
-
 
 
 @shared_task
@@ -97,3 +94,11 @@ def extend_disk(instance_uuid):
 
     backend = instance.flavor.cloud.get_backend()
     backend.extend_disk(instance)
+
+
+@shared_task
+def push_instance_security_groups(instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+
+    backend = instance.flavor.cloud.get_backend()
+    backend.push_instance_security_groups(instance)
