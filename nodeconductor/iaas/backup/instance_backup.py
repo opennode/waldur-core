@@ -34,10 +34,12 @@ class InstanceBackupStrategy(BackupStrategy):
             six.reraise(BackupStrategyExecutionError, BackupStrategyExecutionError())
 
     @classmethod
-    def delete(cls, instance, additional_data=None):
+    def delete(cls, instance, backup_ids):
         try:
+            if backup_ids:
+                backup_ids = backup_ids.split(',')
             backend = cls._get_backend(instance)
-            backend.delete_instance(instance)
+            backend.delete_instance(instance, backup_ids)
         except CloudBackendError:
             six.reraise(BackupStrategyExecutionError, BackupStrategyExecutionError())
 

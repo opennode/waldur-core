@@ -8,7 +8,7 @@ from django.utils import timezone, six
 from django.utils.encoding import python_2_unicode_compatible
 from django.contrib.contenttypes import models as ct_models
 from django.contrib.contenttypes import generic as ct_generic
-from django_fsm import FSMField, transition
+from django_fsm import transition, FSMIntegerField
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core import fields as core_fields
@@ -130,12 +130,12 @@ class Backup(core_models.UuidMixin,
     created_at = models.DateTimeField(auto_now_add=True)
 
     class States(object):
-        READY = 'd'
-        BACKING_UP = 'p'
-        RESTORING = 'r'
-        DELETING = 'l'
-        ERRED = 'e'
-        DELETED = 'x'
+        READY = 1
+        BACKING_UP = 2
+        RESTORING = 3
+        DELETING = 4
+        ERRED = 5
+        DELETED = 6
 
     STATE_CHOICES = (
         (States.READY, 'Ready'),
@@ -146,7 +146,7 @@ class Backup(core_models.UuidMixin,
         (States.DELETED, 'Deleted'),
     )
 
-    state = FSMField(default=States.READY, max_length=1, choices=STATE_CHOICES)
+    state = FSMIntegerField(default=States.READY, choices=STATE_CHOICES)
     result_id = models.CharField(max_length=63, null=True)
     # TODO: use https://github.com/bradjasper/django-jsonfield after python update (to 2.7)
     additional_data = models.TextField(

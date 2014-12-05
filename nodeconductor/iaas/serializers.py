@@ -1,6 +1,9 @@
+from __future__ import unicode_literals
+
 from rest_framework import serializers
 
 from nodeconductor.backup import serializers as backup_serializers
+from nodeconductor.cloud import models as cloud_models
 from nodeconductor.cloud import serializers as cloud_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
@@ -19,10 +22,11 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
     )
     url = serializers.HyperlinkedRelatedField(source='security_group', lookup_field='uuid',
                                               view_name='security_group-detail')
+    description = serializers.Field(source='security_group.description')
 
     class Meta(object):
         model = models.InstanceSecurityGroup
-        fields = ('url', 'name', 'rules')
+        fields = ('url', 'name', 'rules', 'description')
         lookup_field = 'uuid'
         view_name = 'security_group-detail'
 
@@ -38,10 +42,6 @@ class InstanceCreateSerializer(PermissionFieldFilteringMixin,
         fields = ('url', 'hostname', 'description',
                   'template', 'flavor', 'project', 'security_groups', 'ssh_public_key')
         lookup_field = 'uuid'
-
-    def __init__(self, *args, **kwargs):
-        super(InstanceCreateSerializer, self).__init__(*args, **kwargs)
-        self.user = kwargs['context']['user']
 
     def get_fields(self):
         fields = super(InstanceCreateSerializer, self).get_fields()
@@ -73,12 +73,43 @@ class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'description', 'security_groups',)
+        # fields = ('url', 'hostname', 'description')
+        fields = ('url', 'hostname', 'description', 'security_groups')
         lookup_field = 'uuid'
 
     def validate_security_groups(self, attrs, attr_name):
         if attr_name in attrs and attrs[attr_name] is None:
             del attrs[attr_name]
+        return attrs
+
+
+class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
+    security_groups = InstanceSecurityGroupSerializer(
+        many=True, required=False, read_only=False)
+
+
+class InstanceResizeSerializer(PermissionFieldFilteringMixin,
+                               serializers.Serializer):
+    flavor = serializers.HyperlinkedRelatedField(
+        view_name='flavor-detail',
+        lookup_field='uuid',
+        queryset=cloud_models.Flavor.objects.all(),
+        required=False,
+    )
+    disk_size = serializers.IntegerField(min_value=1, required=False)
+
+    def get_filtered_field_names(self):
+        return 'flavor',
+
+    def validate(self, attrs):
+        flavor = attrs.get('flavor')
+        disk_size = attrs.get('disk_size')
+
+        if flavor is not None and disk_size is not None:
+            raise serializers.ValidationError("Cannot resize both disk size and flavor simultaneously")
+        if flavor is None and disk_size is None:
+            raise serializers.ValidationError("Either disk_size or flavor is required")
+
         return attrs
 
 
@@ -129,9 +160,15 @@ class InstanceSerializer(RelatedResourcesFieldMixin,
             'external_ips', 'internal_ips',
             'state',
             'backups', 'backup_schedules',
-            'instance_licenses'
+            'instance_licenses',
+            'system_volume_size',
+            'data_volume_size',
         )
-        read_only_fields = ('ssh_public_key',)
+        read_only_fields = (
+            'ssh_public_key',
+            'system_volume_size',
+            'data_volume_size',
+        )
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):

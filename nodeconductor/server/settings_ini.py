@@ -71,6 +71,12 @@ config_defaults = {
         'password': '',
         'server_url': '',
         'username': '',
+        # db
+        'db_host': '',
+        'db_name': 'zabbix',
+        'db_port': '3306',
+        'db_user': 'nodeconductor',
+        'db_password': 'nodeconductor'
     }
 }
 
@@ -125,10 +131,6 @@ if config.get('global', 'db_backend') == 'mysql':
         'PORT': config.get('mysql', 'port'),
         'USER': config.get('mysql', 'user'),
         'PASSWORD': config.get('mysql', 'password'),
-        # use case-sensitive collation
-        'OPTIONS' : {
-            'init_command': 'SET COLLATION_CONNECTION=utf8_bin'
-        }
     }
 elif config.has_section('sqlite3'):
     DATABASES['default'] = {
@@ -404,3 +406,13 @@ NODECONDUCTOR = {
     }
 }
 
+# Zabbix DB configuration
+if config.get('zabbix', 'db_host') != '':
+    DATABASES['zabbix'] = {
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST': config.get('zabbix', 'db_host'),
+        'NAME': config.get('zabbix', 'db_name'),
+        'PORT': config.get('zabbix', 'db_port'),
+        'USER': config.get('zabbix', 'db_user'),
+        'PASSWORD': config.get('zabbix', 'db_password'),
+    }

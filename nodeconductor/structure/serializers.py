@@ -333,7 +333,11 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
                   'is_staff', 'is_active',
                   'project_groups',
         )
-        read_only_fields = ('uuid', 'is_staff',)
+        read_only_fields = (
+            'uuid',
+            'is_staff',
+            'username', 'civil_number',
+        )
         lookup_field = 'uuid'
 
     def get_fields(self):
@@ -348,5 +352,21 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         if not user.is_staff:
             del fields['is_active']
             del fields['is_staff']
+            fields['description'].read_only = True
 
         return fields
+
+
+class PasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(min_length=7)
+
+    def validate(self, attrs):
+        password = attrs.get('password')
+
+        import re
+
+        if not re.search('\d+', password):
+            raise serializers.ValidationError("Password must contain one or more digits")
+
+        if not re.search('[^\W\d_]+', password):
+            raise serializers.ValidationError("Password must contain one or more upper- or lower-case characters")

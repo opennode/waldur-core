@@ -56,9 +56,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.user = structure_factories.UserFactory.create()
         self.client.force_authenticate(self.user)
 
-        self.instance = factories.InstanceFactory()
-        self.instance.ssh_public_key.user = self.user
-        self.instance.ssh_public_key.save()
+        self.instance = factories.InstanceFactory(ssh_public_key__user=self.user)
         self.instance.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
 
         self.instance_security_groups = factories.InstanceSecurityGroupFactory.create_batch(2, instance=self.instance)
@@ -82,11 +80,35 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_change_instance_security_groups_single_field(self):
-        data = {'security_groups': [self._get_valid_security_group_payload(g.security_group)
-                                    for g in self.instance_security_groups]}
+        from nodeconductor.cloud.models import CloudProjectMembership
+        from nodeconductor.iaas.models import Instance
+
+        membership = CloudProjectMembership.objects.get(
+            project=self.instance.project,
+            cloud=self.instance.flavor.cloud,
+        )
+        new_security_group = cloud_factories.SecurityGroupFactory(
+            name='test-group',
+            cloud_project_membership=membership,
+        )
+
+        data = {
+            'security_groups': [
+                self._get_valid_security_group_payload(new_security_group),
+            ]
+        }
 
         response = self.client.patch(_instance_url(self.instance), data=data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        reread_instance = Instance.objects.get(pk=self.instance.pk)
+        reread_security_groups = [
+            isg.security_group
+            for isg in reread_instance.security_groups.all()
+        ]
+
+        self.assertEquals(reread_security_groups, [new_security_group],
+                          'Security groups should have changed')
 
     def test_change_instance_security_groups(self):
         response = self.client.get(_instance_url(self.instance))

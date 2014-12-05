@@ -4,16 +4,12 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from celery import shared_task
-from django.db import transaction
 
-from nodeconductor.core.tasks import tracked_processing, set_state
+from nodeconductor.core.tasks import tracked_processing
 from nodeconductor.core.log import EventLoggerAdapter
-from nodeconductor.cloud import models as cloud_models
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
-
-from celery.utils import log
 
 logger = logging.getLogger(__name__)
 event_log = EventLoggerAdapter(logger)
@@ -41,7 +37,6 @@ def delete_zabbix_host_and_service(instance):
     except ZabbixError as e:
         # task does not have to fail if something is wrong with zabbix
         logger.error('Zabbix host deletion flow has broken', e, exc_info=1)
-
 
 
 @shared_task
@@ -85,8 +80,25 @@ def schedule_deleting(instance_uuid):
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
-def schedule_resizing(instance_uuid, **kwargs):
-    with transaction.atomic():
-        instance = models.Instance.objects.get(uuid=instance_uuid)
-        instance.flavor = cloud_models.Flavor.objects.get(uuid=kwargs['new_flavor'])
-        instance.save()
+def update_flavor(instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+
+    backend = instance.flavor.cloud.get_backend()
+    backend.update_flavor(instance)
+
+
+@shared_task
+@tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
+def extend_disk(instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+
+    backend = instance.flavor.cloud.get_backend()
+    backend.extend_disk(instance)
+
+
+@shared_task
+def push_instance_security_groups(instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+
+    backend = instance.flavor.cloud.get_backend()
+    backend.push_instance_security_groups(instance)

@@ -98,9 +98,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     filter_class = InstanceFilter
 
     def get_serializer_class(self):
-        if self.request.method in ('POST'):
+        if self.request.method == 'POST':
             return serializers.InstanceCreateSerializer
-        elif self.request.method in ('PUT', 'PATCH',):
+        elif self.request.method in ('PUT', 'PATCH'):
             return serializers.InstanceUpdateSerializer
 
         return super(InstanceViewSet, self).get_serializer_class()
@@ -118,41 +118,74 @@ class InstanceViewSet(mixins.CreateModelMixin,
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
         return queryset
 
-    def change_flavor(self, instance, flavor_uuid):
-        new_flavor = filter_queryset_for_user(Flavor.objects.all(), self.request.user).filter(uuid=flavor_uuid)
+    def pre_save(self, obj):
+        super(InstanceViewSet, self).pre_save(obj)
 
-        if not new_flavor.exists():
-            return Response({'status': "No flavor with uuid %s" % flavor_uuid}, status=status.HTTP_400_BAD_REQUEST)
+        if obj.pk is None:
+            # Create flow
+            obj.system_volume_size = obj.flavor.disk
+        else:
+            # Update flow
+            related_data = getattr(self.object, '_related_data', {})
 
+            self.new_security_group_ids = set(
+                isg.security_group_id
+                for isg in related_data.get('security_groups', [])
+            )
+
+            # Prevent DRF from trashing m2m security_group relation
+            try:
+                del related_data['security_groups']
+            except KeyError:
+                pass
+
+    def post_save(self, obj, created=False):
+        super(InstanceViewSet, self).post_save(obj, created)
+        if created:
+            return
+
+        # We care only about update flow
+        old_security_groups = dict(
+            (isg.security_group_id, isg)
+            for isg in self.object.security_groups.all()
+        )
+
+        # Remove stale security groups
+        for security_group_id, isg in old_security_groups.items():
+            if security_group_id not in self.new_security_group_ids:
+                isg.delete()
+
+        # Add missing ones
+        for security_group_id in self.new_security_group_ids - set(old_security_groups.keys()):
+            models.InstanceSecurityGroup.objects.create(
+                instance=self.object,
+                security_group_id=security_group_id,
+            )
+
+        from nodeconductor.iaas.tasks import push_instance_security_groups
+        push_instance_security_groups.delay(self.object.uuid.hex)
+
+    def change_flavor(self, instance, flavor):
         instance_cloud = instance.flavor.cloud
-        if new_flavor.first().cloud == instance_cloud:
-            return self._schedule_transition(self.request, instance.uuid, 'resize', new_flavor=flavor_uuid)
 
-        return Response({'status': "New flavor is not within the same cloud"},
-                        status=status.HTTP_400_BAD_REQUEST)
-
-    def resize_disk(self, instance, new_size):
-        # TODO: Move to the background task
-        is_admin = instance.project.roles.filter(permission_group__user=self.request.user,
-                                                 role_type=ProjectRole.ADMINISTRATOR).exists()
-        if not is_admin:
-            raise PermissionDenied()
-
-        try:
-            new_size = int(new_size)
-
-            if new_size < 0:
-                raise ValueError
-        except ValueError:
-            return Response({'status': "Disk size should be positive integer"},
+        if flavor.cloud != instance_cloud:
+            return Response({'flavor': "New flavor is not within the same cloud"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        old_size = instance.flavor.disk
-        instance.flavor.disk = new_size
-        instance.flavor.save()
+        instance.flavor = flavor
+        instance.save()
+        # This is suboptimal, since it reads and writes instance twice
+        return self._schedule_transition(self.request, instance.uuid.hex, 'flavor change')
 
-        return Response({'status': "Disk was successfully resized from %s MiB to %s MiB"
-                                   % (old_size, new_size)}, status=status.HTTP_200_OK)
+    def resize_disk(self, instance, new_size):
+        if new_size <= instance.data_volume_size:
+            return Response({'disk_size': "Disk size must be strictly greater than the current one"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        instance.data_volume_size = new_size
+        instance.save()
+        # This is suboptimal, since it reads and writes instance twice
+        return self._schedule_transition(self.request, instance.uuid.hex, 'disk extension')
 
     def _schedule_transition(self, request, uuid, operation, **kwargs):
         instance = self.get_object()
@@ -171,7 +204,8 @@ class InstanceViewSet(mixins.CreateModelMixin,
             'start': ('schedule_starting', tasks.schedule_starting),
             'stop': ('schedule_stopping', tasks.schedule_stopping),
             'destroy': ('schedule_deletion', tasks.schedule_deleting),
-            'resize': ('schedule_resizing', tasks.schedule_resizing),
+            'flavor change': ('schedule_resizing', tasks.update_flavor),
+            'disk extension': ('schedule_resizing', tasks.extend_disk),
         }
 
         # logger.info('Scheduling %s of an instance with uuid %s', operation, uuid)
@@ -185,7 +219,8 @@ class InstanceViewSet(mixins.CreateModelMixin,
                                        % (operation, instance.get_state_display())},
                             status=status.HTTP_409_CONFLICT)
 
-        return Response({'status': '%s was scheduled' % operation})
+        return Response({'status': '%s was scheduled' % operation},
+                        status=status.HTTP_202_ACCEPTED)
 
     @action()
     def stop(self, request, uuid=None):
@@ -200,17 +235,26 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     @action()
     def resize(self, request, uuid=None):
-        try:
-            instance = models.Instance.objects.get(uuid=uuid)
-        except models.Instance.DoesNotExist:
-            raise Http404()
+        instance = self.get_object()
 
-        if 'flavor' in request.DATA:
-            return self.change_flavor(instance, self.request.DATA['flavor'])
-        elif 'disk_size' in request.DATA:
-            return self.resize_disk(instance, self.request.DATA['disk_size'])
+        if instance.state != models.Instance.States.OFFLINE:
+            return Response({'detail': 'Instance must be offline'},
+                            status=status.HTTP_409_CONFLICT)
 
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        serializer = serializers.InstanceResizeSerializer(data=request.DATA)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        obj = serializer.object
+
+        changed_flavor = obj['flavor']
+
+        # Serializer makes sure that exactly one of the branches
+        # will match
+        if changed_flavor is not None:
+            return self.change_flavor(instance, changed_flavor)
+        else:
+            return self.resize_disk(instance, obj['disk_size'])
 
     @link()
     def usage(self, request, uuid):

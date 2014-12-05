@@ -12,7 +12,7 @@ from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext as _
-from django_fsm import FSMField
+from django_fsm import FSMIntegerField
 from django_fsm import transition
 
 from nodeconductor.cloud import models as cloud_models
@@ -55,9 +55,9 @@ class Template(core_models.UuidMixin,
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
     """
     name = models.CharField(max_length=100, unique=True)
-    os = models.CharField(max_length=100)
+    os = models.CharField(max_length=100, null=True, blank=True)
     is_active = models.BooleanField(default=False)
-    sla_level = models.DecimalField(max_digits=6, decimal_places=4,     null=True, blank=True,)
+    sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                     validators=[MinValueValidator(Decimal('0.1')),
                                                 MaxValueValidator(Decimal('100000.0'))])
@@ -78,7 +78,7 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
     backend_image_id = models.CharField(max_length=255)
 
     def __str__(self):
-        return '{0} <-> {1}'.format(self.template.name, self.description)
+        return '{0} <-> {1}'.format(self.template.name, self.backend_image_id)
 
 
 @python_2_unicode_compatible
@@ -97,27 +97,27 @@ class Instance(core_models.UuidMixin,
         project_group_path = 'project__project_groups'
 
     class States(object):
-        PROVISIONING_SCHEDULED = 'p'
-        PROVISIONING = 'P'
+        PROVISIONING_SCHEDULED = 1
+        PROVISIONING = 2
 
-        ONLINE = '+'
-        OFFLINE = '-'
+        ONLINE = 3
+        OFFLINE = 4
 
-        STARTING_SCHEDULED = 'a'
-        STARTING = 'A'
+        STARTING_SCHEDULED = 5
+        STARTING = 6
 
-        STOPPING_SCHEDULED = 'o'
-        STOPPING = 'O'
+        STOPPING_SCHEDULED = 7
+        STOPPING = 8
 
-        ERRED = 'e'
+        ERRED = 9
 
-        DELETION_SCHEDULED = 'd'
-        DELETING = 'D'
+        DELETION_SCHEDULED = 10
+        DELETING = 11
 
-        DELETED = 'x'
+        DELETED = 12
 
-        RESIZING_SCHEDULED = 'r'
-        RESIZING = 'R'
+        RESIZING_SCHEDULED = 13
+        RESIZING = 14
 
         CHOICES = (
             (PROVISIONING_SCHEDULED, _('Provisioning Scheduled')),
@@ -154,10 +154,15 @@ class Instance(core_models.UuidMixin,
     start_time = models.DateTimeField(blank=True, null=True)
     ssh_public_key = models.ForeignKey(core_models.SshPublicKey, related_name='instances')
 
-    state = FSMField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
+    state = FSMIntegerField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
                      help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
+    # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255, blank=True)
+    system_volume_id = models.CharField(max_length=255, blank=True)
+    system_volume_size = models.PositiveIntegerField()
+    data_volume_id = models.CharField(max_length=255, blank=True)
+    data_volume_size = models.PositiveIntegerField(default=20 * 1024)
 
     @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
     def begin_provisioning(self):

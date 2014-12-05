@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models
@@ -8,6 +9,7 @@ from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+
 
 from nodeconductor.core.models import UuidMixin, DescribableMixin
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
@@ -22,8 +24,7 @@ class Customer(UuidMixin, models.Model):
 
     name = models.CharField(max_length=160)
     abbreviation = models.CharField(max_length=8)
-    contact_details = models.TextField()
-    # XXX: How do we tell customers with same names from each other?
+    contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
