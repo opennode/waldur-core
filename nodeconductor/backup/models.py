@@ -208,6 +208,10 @@ class Backup(core_models.UuidMixin,
         self._confirm_deletion()
         self.__save()
 
+    def erred(self):
+        self._erred()
+        self.__save()
+
     def get_strategy(self):
         try:
             return utils.get_object_backup_strategy(self.backup_source)

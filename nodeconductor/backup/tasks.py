@@ -21,7 +21,7 @@ def process_backup_task(backup_uuid):
                 backup.confirm_backup()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to perform backup for backup source: %s', backup.backup_source)
-                backup._erred()
+                backup.erred()
             else:
                 logger.info('Successfully performed backup for backup source: %s', backup.backup_source)
         else:
@@ -42,7 +42,7 @@ def restoration_task(backup_uuid):
                 backup.confirm_restoration()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to restore backup for backup source: %s', backup.backup_source)
-                backup._erred()
+                backup.erred()
             else:
                 logger.info('Successfully restored backup for backup source: %s', backup.backup_source)
         else:
@@ -63,7 +63,7 @@ def deletion_task(backup_uuid):
                 backup.confirm_deletion()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to delete backup for backup source: %s', backup.backup_source)
-                backup._erred()
+                backup.erred()
             else:
                 logger.info('Successfully deleted backup for backup source: %s', backup.backup_source)
         else:

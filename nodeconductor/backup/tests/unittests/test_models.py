@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from datetime import timedelta
-from mock import patch, MagicMock
+from mock import patch
 
 from django.db import IntegrityError
 from django.test import TestCase
@@ -9,7 +9,6 @@ from django.utils import timezone
 
 from nodeconductor.backup.tests import factories
 from nodeconductor.backup import models
-from nodeconductor.backup import tasks
 
 
 class BackupScheduleTest(TestCase):
