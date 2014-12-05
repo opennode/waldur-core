@@ -115,39 +115,3 @@ class BackupTest(TestCase):
         mocked_task.assert_called_with(backup.uuid.hex)
         self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.DELETING)
-
-    def test_check_task_result(self):
-        backup = factories.BackupFactory()
-        # result is ready:
-        task = type(str('MockedTask'), (object, ), {'AsyncResult': self.MockedAsyncResult(True)})
-        mocked_func = MagicMock()
-        backup._check_task_result(task, mocked_func)
-        mocked_func.assert_called_with()
-        # result is not ready:
-        task = type(str('MockedTask'), (object, ), {'AsyncResult': self.MockedAsyncResult(False)})
-        mocked_func = MagicMock()
-        backup._check_task_result(task, mocked_func)
-        self.assertFalse(mocked_func.called)
-        # no result:
-        task = type(str('MockedTask'), (object, ), {'AsyncResult': self.MockedAsyncResult(True, is_none=True)})
-        mocked_func = MagicMock()
-        backup._check_task_result(task, mocked_func)
-        self.assertFalse(mocked_func.called)
-        self.assertEqual(backup.state, models.Backup.States.ERRED)
-
-    def test_poll_current_state(self):
-        # backup
-        backup = factories.BackupFactory(state=models.Backup.States.BACKING_UP)
-        backup._check_task_result = MagicMock()
-        backup.poll_current_state()
-        backup._check_task_result.assert_called_with(tasks.process_backup_task, backup._confirm_backup)
-        # restoration
-        backup = factories.BackupFactory(state=models.Backup.States.RESTORING)
-        backup._check_task_result = MagicMock()
-        backup.poll_current_state()
-        backup._check_task_result.assert_called_with(tasks.restoration_task, backup._confirm_restoration)
-        # deletion
-        backup = factories.BackupFactory(state=models.Backup.States.DELETING)
-        backup._check_task_result = MagicMock()
-        backup.poll_current_state()
-        backup._check_task_result.assert_called_with(tasks.deletion_task, backup._confirm_deletion)

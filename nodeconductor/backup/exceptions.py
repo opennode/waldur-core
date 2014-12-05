@@ -10,3 +10,7 @@ class BackupStrategyNotFoundError(BackupError):
     Backup strategy for given backup source doest not exist
     """
     pass
+
+
+class BackupStrategyExecutionError(BackupError):
+    pass

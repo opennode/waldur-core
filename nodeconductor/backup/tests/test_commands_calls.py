@@ -1,5 +1,4 @@
 from datetime import timedelta
-from mock import patch
 
 from django.test import TestCase
 from django.core.management import call_command
@@ -45,27 +44,3 @@ class ExecuteScheduleCommandTest(TestCase):
     def test_command_does_not_create_backups_created_for_schedule_with_next_trigger_in_future(self):
         call_command('execute_schedules')
         self.assertEqual(self.future_schedule.backups.count(), 0)
-
-
-class PollBackupsCommandTest(TestCase):
-
-    def setUp(self):
-        states = models.Backup.States
-        self.backuping_backup = factories.BackupFactory(state=states.BACKING_UP, result_id='bid')
-        self.restoring_backup = factories.BackupFactory(state=states.RESTORING, result_id='rid')
-        self.deleting_backup = factories.BackupFactory(state=states.DELETING, result_id='did')
-
-    def test_command_looks_at_executing_backup_task_result(self):
-        with patch('nodeconductor.backup.tasks.process_backup_task.AsyncResult') as patched:
-            call_command('poll_backups')
-            patched.assert_called_with(self.backuping_backup.result_id)
-
-    def test_command_looks_at_restoring_backup_task_result(self):
-        with patch('nodeconductor.backup.tasks.restoration_task.AsyncResult') as patched:
-            call_command('poll_backups')
-            patched.assert_called_with(self.restoring_backup.result_id)
-
-    def test_command_looks_at_deleting_backup_task_result(self):
-        with patch('nodeconductor.backup.tasks.deletion_task.AsyncResult') as patched:
-            call_command('poll_backups')
-            patched.assert_called_with(self.deleting_backup.result_id)

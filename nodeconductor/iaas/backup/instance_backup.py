@@ -1,4 +1,8 @@
+from django.utils import six
+
 from nodeconductor.backup.models import BackupStrategy
+from nodeconductor.backup.exceptions import BackupStrategyExecutionError
+from nodeconductor.cloud.backend import CloudBackendError
 from nodeconductor.iaas.models import Instance
 
 
@@ -10,23 +14,32 @@ class InstanceBackupStrategy(BackupStrategy):
 
     @classmethod
     def backup(cls, instance):
-        backend = cls._get_backend(instance)
-        backup_ids = backend.backup_instance(instance)
-        return ','.join(backup_ids)
+        try:
+            backend = cls._get_backend(instance)
+            backup_ids = backend.backup_instance(instance)
+            return ','.join(backup_ids)
+        except CloudBackendError:
+            six.reraise(BackupStrategyExecutionError, BackupStrategyExecutionError())
 
     @classmethod
     def restore(cls, instance, backup_ids):
-        if backup_ids:
-            backup_ids = backup_ids.split(',')
-        backend = cls._get_backend(instance)
-        vm = backend.restore_instance(instance, backup_ids)
-        instance.backend_id = vm.id
-        instance.save()
+        try:
+            if backup_ids:
+                backup_ids = backup_ids.split(',')
+            backend = cls._get_backend(instance)
+            vm = backend.restore_instance(instance, backup_ids)
+            instance.backend_id = vm.id
+            instance.save()
+        except CloudBackendError:
+            six.reraise(BackupStrategyExecutionError, BackupStrategyExecutionError())
 
     @classmethod
     def delete(cls, instance, additional_data=None):
-        backend = cls._get_backend(instance)
-        backend.delete_instance(instance)
+        try:
+            backend = cls._get_backend(instance)
+            backend.delete_instance(instance)
+        except CloudBackendError:
+            six.reraise(BackupStrategyExecutionError, BackupStrategyExecutionError())
 
     # Helpers
     @classmethod

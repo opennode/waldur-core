@@ -168,9 +168,8 @@ class Backup(core_models.UuidMixin,
         from nodeconductor.backup import tasks
 
         self._starting_backup()
-        result = tasks.process_backup_task.delay(self.uuid.hex)
-        self.result_id = result.id
         self.__save()
+        tasks.process_backup_task.delay(self.uuid.hex)
 
     def start_restoration(self):
         """
@@ -180,9 +179,8 @@ class Backup(core_models.UuidMixin,
         from nodeconductor.backup import tasks
 
         self._starting_restoration()
-        result = tasks.restoration_task.delay(self.uuid.hex)
-        self.result_id = result.id
         self.__save()
+        tasks.restoration_task.delay(self.uuid.hex)
 
     def start_deletion(self):
         """
@@ -191,33 +189,24 @@ class Backup(core_models.UuidMixin,
         from nodeconductor.backup import tasks
 
         self._starting_deletion()
-        result = tasks.deletion_task.delay(self.uuid.hex)
-        self.result_id = result.id
+        self.__save()
+        tasks.deletion_task.delay(self.uuid.hex)
+
+    def set_additional_data(self, additional_data):
+        self.additional_data = additional_data
         self.__save()
 
-    def poll_current_state(self):
-        """
-        Checks status of the backup task. Updates the backup state on task completion.
-        """
-        from nodeconductor.backup import tasks
-
-        if self.state == self.States.BACKING_UP:
-            self._check_task_result(tasks.process_backup_task, self._confirm_backup)
-        elif self.state == self.States.RESTORING:
-            self._check_task_result(tasks.restoration_task, self._confirm_restoration)
-        elif self.state == self.States.DELETING:
-            self._check_task_result(tasks.deletion_task, self._confirm_deletion)
+    def confirm_backup(self):
+        self._confirm_backup()
         self.__save()
 
-    def _check_task_result(self, task, confirm_function):
-        """
-        Gets task result by its id. If it is ready - executes confirm function
-        """
-        result = task.AsyncResult(self.result_id)
-        if result is None:
-            self._erred()
-        elif result.ready():
-            confirm_function()
+    def confirm_restoration(self):
+        self._confirm_restoration()
+        self.__save()
+
+    def confirm_deletion(self):
+        self._confirm_deletion()
+        self.__save()
 
     def get_strategy(self):
         try:
