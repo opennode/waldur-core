@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from itertools import groupby
 import logging
+from operator import itemgetter
 import re
 import time
 
@@ -23,6 +24,7 @@ from neutronclient.client import exceptions as neutron_exceptions
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
+from ordereddict import OrderedDict
 
 from nodeconductor.cloud.backend import CloudBackendError, CloudBackendInternalError
 
@@ -109,7 +111,6 @@ class OpenStackBackend(object):
                 .filter(backend_image_id__in=backend_images.keys())
                 .order_by('template__pk')
             )
-            print 'mapping_queryset', mapping_queryset
 
             mappings_grouped = groupby(mapping_queryset.iterator(), lambda m: m.template.pk)
 
@@ -338,8 +339,7 @@ class OpenStackBackend(object):
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
                 nova_exceptions.ClientException,
-                neutron_exceptions.NeutronClientException), e:
-            print e
+                neutron_exceptions.NeutronClientException):
             logger.exception('Failed to boot instance %s', instance.uuid)
             six.reraise(CloudBackendError, CloudBackendError())
         else:
@@ -475,14 +475,15 @@ class OpenStackBackend(object):
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
 
-            restored_volumes = {}
+            restored_volumes = []
 
             for backup_id in instance_backup_ids:
-                restore = self.restore_volume_backup(backup_id, cinder)
-                volume = self.get_device_mapping(backup_id, restore, cinder)
-                restored_volumes.update(volume)
+                restored_volume = self.restore_volume_backup(backup_id, cinder)
+                backup = cinder.backups.get(backup_id)
+                restored_volumes.append((str(backup.description), str(restored_volume)))
 
-            print restored_volumes
+            restored_volumes = OrderedDict(sorted(restored_volumes, key=itemgetter(0)))
+
             new_vm = self.create_vm(instance.backend_id, restored_volumes, nova)
         except (cinder_exceptions.ClientException, keystone_exceptions.ClientException,
                 CloudBackendInternalError, nova_exceptions.ClientException):
@@ -969,23 +970,6 @@ class OpenStackBackend(object):
             cinder.backups.delete(backup_id)
 
         logger.info('Deleted backup %s: ', backup_id)
-
-    def get_device_mapping(self, backup_id, volume_id, cinder):
-        """
-        Restore volume from backup
-
-        :param backup_id: backup id
-        :type backup_id: str
-        :param volume_id: volume id
-        :type volume_id: str
-        :returns: device mapping dict
-        :rtype: dict
-        """
-        backup_description = cinder.backups.get(backup_id).description
-
-        return {
-            str(backup_description): str(volume_id)
-        }
 
     def create_vm(self, server_id, device_map, nova):
         """
