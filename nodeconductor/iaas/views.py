@@ -170,7 +170,6 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         from nodeconductor.iaas.tasks import push_instance_security_groups
         push_instance_security_groups.delay(self.object.uuid.hex)
-            obj.agreed_sla = obj.template.sla_level
 
     def change_flavor(self, instance, flavor):
         instance_cloud = instance.flavor.cloud
