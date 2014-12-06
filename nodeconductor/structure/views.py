@@ -386,10 +386,14 @@ class ProjectPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
+    role = django_filters.NumberFilter(
+        name='group__projectrole__role_type',
+    )
 
     class Meta(object):
         model = User.groups.through
         fields = [
+            'role',
             'project',
             'username',
             'full_name',
@@ -521,10 +525,14 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
+    role = django_filters.NumberFilter(
+        name='group__projectgrouprole__role_type',
+    )
 
     class Meta(object):
         model = User.groups.through
         fields = [
+            'role',
             'project_group',
             'username',
             'full_name',
@@ -665,10 +673,14 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
+    role = django_filters.NumberFilter(
+        name='group__customerrole__role_type',
+    )
 
     class Meta(object):
         model = User.groups.through
         fields = [
+            'role',
             'customer',
             'username',
             'full_name',
