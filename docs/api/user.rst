@@ -56,7 +56,7 @@ Example of a creation request is below.
     {
         "username": "sample-user",
         "full_name": "full name",
-        "native_name": "фул нейм",
+        "native_name": "täisnimi",
         "job_title": "senior cleaning manager",
         "email": "example@example.com",
         "civil_number": "12121212",
