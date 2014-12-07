@@ -4,7 +4,7 @@ from django.core.urlresolvers import reverse, resolve, Resolver404
 from rest_framework import serializers
 from rest_framework.relations import RelatedField
 
-from nodeconductor.backup import models, backup_registry
+from nodeconductor.backup import models, utils
 
 
 class RelatedBackupField(RelatedField):
@@ -62,7 +62,7 @@ class RelatedBackupField(RelatedField):
             obj = model.objects.get(**match.kwargs)
         except Resolver404:
             raise ValidationError("Can`t restore object from url: %s" % data)
-        if not obj.__class__ in backup_registry.get_backupable_models():
+        if not utils.has_object_backup_strategy(obj):
             raise ValidationError('%s object is unbackupable' % str(obj))
         return obj
 
@@ -72,7 +72,7 @@ class RelatedBackupField(RelatedField):
         super(RelatedField, self).initialize(parent, field_name)
         # XXX ideally this queryset has to return all available for generic key instances
         # Now we just take first backupable model and return all its instances
-        model = backup_registry.get_backupable_models()[0]
+        model = utils.get_backup_strategies().values()[0].get_model()
         self.queryset = model.objects.all()
 
 

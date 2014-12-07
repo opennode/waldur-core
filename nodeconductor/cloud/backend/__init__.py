@@ -6,6 +6,16 @@ class CloudBackendError(Exception):
     pass
 
 
+class CloudBackendInternalError(Exception):
+    """
+    Exception for errors in helpers.
+
+    This exception will be raised if error happens, but cloud client
+    did not raise any exception. It has be caught by public methods.
+    """
+    pass
+
+
 class AbstractCloudBackend(object):
     """
     TODO: Document me

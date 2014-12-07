@@ -4,6 +4,7 @@ import logging
 from decimal import Decimal
 
 from django.conf import settings
+from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -14,7 +15,6 @@ from django.utils.translation import ugettext as _
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 
-from nodeconductor.backup import models as backup_models
 from nodeconductor.cloud import models as cloud_models
 from nodeconductor.core import fields
 from nodeconductor.core import models as core_models
@@ -84,7 +84,6 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
-               backup_models.BackupableMixin,
                models.Model):
     """
     A generalization of a single virtual machine.
@@ -142,6 +141,9 @@ class Instance(core_models.UuidMixin,
             (RESIZING_SCHEDULED, _('Resizing Scheduled')),
             (RESIZING, _('Resizing')),
         )
+    # XXX: ideally this fields have to be added somewhere in iaas.backup module
+    backups = ct_generic.GenericRelation('backup.Backup')
+    backup_schedules = ct_generic.GenericRelation('backup.BackupSchedule')
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
@@ -236,34 +238,6 @@ class Instance(core_models.UuidMixin,
             'name': self.hostname,
             'status': self.get_state_display(),
         }
-
-    def get_backup_strategy(self):
-        """
-        Fake backup strategy
-        """
-        import os
-
-        class FakeStrategy(backup_models.BackupStrategy):
-
-            @classmethod
-            def backup(cls):
-                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(self.uuid) + '.txt')
-                with open(filename, 'wb+') as f:
-                    f.write('Backing up: %s' % str(self))
-
-            @classmethod
-            def restore(cls, replace_original):
-                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(self.uuid) + '.txt')
-                with open(filename, 'wb+') as f:
-                    f.write('Restoring: %s' % str(self))
-
-            @classmethod
-            def delete(cls):
-                filename = os.path.join(settings.BASE_DIR, 'backup_' + str(self.uuid) + '.txt')
-                with open(filename, 'wb+') as f:
-                    f.write('Deleting: %s' % str(self))
-
-        return FakeStrategy
 
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)
