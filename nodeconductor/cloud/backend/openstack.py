@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from itertools import groupby
 import logging
+from ordereddict import OrderedDict
 from operator import itemgetter
 import re
 import time
@@ -24,7 +25,6 @@ from neutronclient.client import exceptions as neutron_exceptions
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
-from ordereddict import OrderedDict
 
 from nodeconductor.cloud.backend import CloudBackendError, CloudBackendInternalError
 
@@ -414,10 +414,11 @@ class OpenStackBackend(object):
 
             server = nova.servers.create(
                 name=instance.hostname,
-                image=backend_image,
+                image=None,  # Boot from volume, see boot_index below
                 flavor=backend_flavor,
                 block_device_mapping_v2=[
                     {
+                        'boot_index': 0,
                         'destination_type': 'volume',
                         'device_type': 'disk',
                         'source_type': 'volume',
@@ -578,8 +579,9 @@ class OpenStackBackend(object):
             attached_volumes = self.get_attached_volumes(instance.backend_id, nova)
 
             for volume in attached_volumes:
+                # TODO: Consider using context managers to avoid having resource remnants
                 snapshot = self.create_snapshot(volume.id, cinder)
-                temporary_volume = self.create_temp_volume(snapshot, cinder)
+                temporary_volume = self.create_temporary_volume(snapshot, cinder)
                 backup = self.create_volume_backup(temporary_volume, volume.device, cinder)
                 backups.append(backup)
                 self.delete_temporary_volume(temporary_volume, cinder)
@@ -707,6 +709,8 @@ class OpenStackBackend(object):
                 cloud=instance.flavor.cloud,
             )
 
+            session = self.create_tenant_session(membership)
+
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
 
@@ -726,9 +730,7 @@ class OpenStackBackend(object):
 
             nova.volumes.delete_server_volume(server_id, volume.id)
 
-            is_available = lambda v: v.status == 'available'
-
-            if not self._wait_for_volume_state(volume.id, cinder, is_available):
+            if not self._wait_for_volume_status(volume, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to extend volume: timed out waiting volume %s to detach from instance %s',
                     volume.id, instance.uuid,
@@ -740,7 +742,7 @@ class OpenStackBackend(object):
 
             cinder.volumes.extend(volume, new_size)
 
-            if not self._wait_for_volume_state(volume.id, cinder, is_available):
+            if not self._wait_for_volume_status(volume, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to extend volume: timed out waiting volume %s to extend',
                     volume.id,
@@ -752,9 +754,7 @@ class OpenStackBackend(object):
 
             nova.volumes.create_server_volume(server_id, volume.id, None)
 
-            is_in_use = lambda v: v.status == 'in-use'
-
-            if not self._wait_for_volume_state(volume.id, cinder, is_in_use):
+            if not self._wait_for_volume_status(volume, cinder, 'in-use', 'error'):
                 logger.error(
                     'Failed to extend volume: timed out waiting volume %s to attach to instance %s',
                     volume.id, instance.uuid,
@@ -1153,26 +1153,21 @@ class OpenStackBackend(object):
         if error_status is not None:
             error_state_predicate = lambda o: o.status == error_status
         else:
-            error_state_predicate = None
-        return self._wait_for_object_state(
-            obj, client_get_method, complete_state_predicate, error_state_predicate, retries, poll_interval)
+            error_state_predicate = lambda _: False
 
-    def _wait_for_object_state(self, obj, client_get_method, complete_state_predicate,
-                               error_state_predicate=None, retries=20, poll_interval=3):
         for _ in range(retries):
             obj = client_get_method(obj.id)
 
             if complete_state_predicate(obj):
                 return True
 
-            if error_state_predicate is not None and error_state_predicate(obj):
+            if error_state_predicate(obj):
                 return False
 
             time.sleep(poll_interval)
         else:
             return False
 
-<<<<<<< HEAD
     def get_attached_volumes(self, server_id, nova):
         """
         Returns attached volumes for specified vm instance
@@ -1183,11 +1178,6 @@ class OpenStackBackend(object):
         :rtype: list
         """
         return nova.volumes.get_server_volumes(server_id)
-=======
-    def _wait_for_volume_state(self, volume_id, cinder, state_predicate, retries=20, poll_interval=3):
-        for _ in range(retries):
-            volume = cinder.volumes.get(volume_id)
->>>>>>> 9aad2f500ccd5c5318a9f77584f6d4a80af34206
 
     def create_snapshot(self, volume_id, cinder):
         """
@@ -1204,10 +1194,10 @@ class OpenStackBackend(object):
         logger.debug('About to create temporary snapshot %s' % snapshot.id)
 
         if not self._wait_for_snapshot_status(snapshot, cinder, 'available', 'error'):
-            logger.exception('Timed out creating new snapshot for volume: %s', volume_id)
+            logger.error('Timed out creating snapshot for volume %s', volume_id)
             raise CloudBackendInternalError()
 
-        logger.info('Temporary snapshot successfully created with id: %s' % snapshot.id)
+        logger.info('Successfully created snapshot %s for volume %s', snapshot.id, volume_id)
 
         return snapshot.id
 
@@ -1220,17 +1210,16 @@ class OpenStackBackend(object):
         """
         snapshot = cinder.volume_snapshots.get(snapshot_id)
 
-        logger.debug('About to delete temporary snapshot %s' % snapshot.id)
+        logger.debug('About to delete temporary snapshot %s', snapshot.id)
 
         if not self._wait_for_snapshot_status(snapshot, cinder, 'available', 'error', poll_interval=20):
-            logger.exception('Timed out waiting snapshot %s availability', snapshot_id)
+            logger.exception('Timed out waiting for snapshot %s to become available', snapshot_id)
             raise CloudBackendInternalError()
-        else:
-<<<<<<< HEAD
-            cinder.volume_snapshots.delete(snapshot_id)
-            logger.info('Temporary snapshot successfully deleted.')
 
-    def create_temp_volume(self, snapshot_id, cinder):
+        cinder.volume_snapshots.delete(snapshot_id)
+        logger.info('Successfully deletet temporary snapshot %s', snapshot_id)
+
+    def create_temporary_volume(self, snapshot_id, cinder):
         """
         Create temporary volume from snapshot
 
@@ -1243,17 +1232,16 @@ class OpenStackBackend(object):
         volume_size = snapshot.size
         volume_name = 'Backup volume_%s' % snapshot.volume_id
 
-        logger.debug('About to creating temporary volume from snapshot %s', snapshot_id)
+        logger.debug('About to create temporary volume from snapshot %s', snapshot_id)
         temporary_volume = cinder.volumes.create(volume_size, snapshot_id=snapshot_id,
                                                  display_name=volume_name)
 
-        logger.debug('About to create temporary volume %s' % temporary_volume.id)
-
         if not self._wait_for_volume_status(temporary_volume, cinder, 'available', 'error'):
-            logger.exception('Timed out creating temporary volume: %s', temporary_volume.id)
+            logger.error('Timed out creating temporary volume from snapshot %s', snapshot_id)
             raise CloudBackendInternalError()
 
-        logger.info('Temporary volume successfully created with id: %s' % temporary_volume.id)
+        logger.info('Successfully created temporary volume %s from snapshot %s',
+                    temporary_volume.id, snapshot_id)
 
         return temporary_volume.id
 
@@ -1267,13 +1255,12 @@ class OpenStackBackend(object):
         volume = cinder.volumes.get(volume_id)
 
         logger.debug('About to delete volume %s' % volume.id)
-
         if not self._wait_for_volume_status(volume, cinder, 'available', 'error', poll_interval=20):
             logger.exception('Timed out waiting volume %s availability', volume_id)
             raise CloudBackendInternalError()
-        else:
-            cinder.volumes.delete(volume_id)
-            logger.info('Volume successfully deleted.')
+
+        cinder.volumes.delete(volume_id)
+        logger.info('Volume successfully deleted.')
 
     def get_backup_info(self, backup_id, cinder):
         """
@@ -1311,10 +1298,10 @@ class OpenStackBackend(object):
         if not self._wait_for_volume_status(volume, cinder, 'available', 'error'):
             logger.exception('Timed out waiting volume %s availability', volume_id)
             raise CloudBackendInternalError()
-        else:
-            backup_volume = cinder.backups.create(volume_id, name=backup_name, description=bckp_desc)
-            logger.info('Backup from temporary volume %s was created successfully', volume_id)
-            return backup_volume.id
+
+        backup_volume = cinder.backups.create(volume_id, name=backup_name, description=bckp_desc)
+        logger.info('Backup from temporary volume %s was created successfully', volume_id)
+        return backup_volume.id
 
     def restore_volume_backup(self, backup_id, cinder):
         """
@@ -1332,18 +1319,18 @@ class OpenStackBackend(object):
         if not self._wait_for_backup_status(backup, cinder, 'available', 'error'):
             logger.exception('Timed out waiting backup %s availability', backup_id)
             raise CloudBackendInternalError()
-        else:
-            restore = cinder.restores.restore(backup_id)
 
-            logger.debug('About to restore volume from backup %s', backup_id)
-            volume = cinder.volumes.get(restore.volume_id)
+        restore = cinder.restores.restore(backup_id)
 
-            if not self._wait_for_volume_status(volume, cinder, 'available', 'error_restoring', poll_interval=20):
-                logger.exception('Timed out waiting volume %s restoring', backup_id)
-                raise CloudBackendInternalError()
+        logger.debug('About to restore volume from backup %s', backup_id)
+        volume = cinder.volumes.get(restore.volume_id)
 
-            logger.info('Restored volume %s: ', volume.id)
-        logger.info('Restored backup %s: ', backup_id)
+        if not self._wait_for_volume_status(volume, cinder, 'available', 'error_restoring', poll_interval=20):
+            logger.exception('Timed out waiting volume %s restoring', backup_id)
+            raise CloudBackendInternalError()
+
+        logger.info('Restored volume %s', volume.id)
+        logger.info('Restored backup %s', backup_id)
         return volume.id
 
     def delete_backup(self, backup_id, cinder):
@@ -1361,7 +1348,7 @@ class OpenStackBackend(object):
         else:
             cinder.backups.delete(backup_id)
 
-        logger.info('Deleted backup %s: ', backup_id)
+        logger.info('Deleted backup %s', backup_id)
 
     def create_vm(self, server_id, device_map, nova):
         """
@@ -1387,8 +1374,6 @@ class OpenStackBackend(object):
         logger.info('VM instance %s creation completed' % new_server.id)
 
         return new_server.id
-=======
-            return False
 
     def _are_rules_equal(self, backend_rule, nc_rule):
         """
@@ -1413,4 +1398,3 @@ class OpenStackBackend(object):
             if not self._are_rules_equal(backend_rule, nc_rule):
                 return False
         return True
->>>>>>> 9aad2f500ccd5c5318a9f77584f6d4a80af34206
