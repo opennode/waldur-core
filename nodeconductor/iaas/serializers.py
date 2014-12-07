@@ -338,7 +338,7 @@ class ServiceSerializer(serializers.Serializer):
     def get_service_url(self, obj):
         try:
             request = self.context['request']
-        except AttributeError:
+        except (KeyError, AttributeError):
             raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
 
         # TODO: this could use something similar to backup's generic model for all resources
@@ -355,7 +355,7 @@ class ServiceSerializer(serializers.Serializer):
     def get_project_groups(self, obj):
         try:
             request = self.context['request']
-        except AttributeError:
+        except (KeyError, AttributeError):
             raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
 
         service_instance = Instance.objects.get(uuid=obj['uuid'])
