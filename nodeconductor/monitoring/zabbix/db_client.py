@@ -99,7 +99,6 @@ class ZabbixDBClient(object):
         }
         query = query % parameters
 
-        print query
         cursor = connections['zabbix'].cursor()
         cursor.execute(query)
         return cursor.fetchall()
