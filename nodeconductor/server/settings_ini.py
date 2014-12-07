@@ -431,5 +431,3 @@ CELERYBEAT_SCHEDULE = {
         'args': ('yearly',)
     },
 }
-
-CELERY_TIMEZONE = 'UTC'
