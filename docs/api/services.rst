@@ -22,3 +22,16 @@ Ordering can be done by the following fields (prefix with **-** for descending o
 - ?o=project__project_groups__name
 - ?o=agreed_sla
 - ?o=slas__value  (order by actual_sla field)
+
+
+SLA periods
++++++++++++
+
+Service list is displaying current SLAs for each of the items. By default, SLA period is set to the current month. To
+change the period pass it as a query argument:
+
+- ?period=YYYY-MM - return a list with SLAs for a given month
+- ?period=YYYY - return a list with SLAs for a given year
+
+In all cases all currently running services are returned, if SLA for the given period is not known or not present, it
+will be shown as **null** in the response.
