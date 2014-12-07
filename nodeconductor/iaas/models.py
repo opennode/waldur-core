@@ -152,8 +152,10 @@ class Instance(core_models.UuidMixin,
     start_time = models.DateTimeField(blank=True, null=True)
     ssh_public_key = models.ForeignKey(core_models.SshPublicKey, related_name='instances')
 
-    state = FSMIntegerField(default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
-                     help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
+    state = FSMIntegerField(
+        default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
+        help_text="WARNING! Should not be changed manually unless you really know what you are doing."
+    )
 
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255, blank=True)
@@ -161,6 +163,9 @@ class Instance(core_models.UuidMixin,
     system_volume_size = models.PositiveIntegerField()
     data_volume_id = models.CharField(max_length=255, blank=True)
     data_volume_size = models.PositiveIntegerField(default=20 * 1024)
+
+    # Services specific fields
+    agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
 
     @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
     def begin_provisioning(self):
@@ -281,6 +286,15 @@ class Instance(core_models.UuidMixin,
         if created:
             self._init_instance_licenses()
 
+
+@python_2_unicode_compatible
+class InstanceSlaHistory(models.Model):
+    period = models.CharField(max_length=10)
+    instance = models.ForeignKey(Instance, related_name='slas')
+    value = models.DecimalField(max_digits=11, decimal_places=4, null=True, blank=True)
+
+    def __str__(self):
+        return 'SLA for %s during %s: %s' % (self.instance, self.period, self.value)
 
 @python_2_unicode_compatible
 class TemplateLicense(core_models.UuidMixin, models.Model):

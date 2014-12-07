@@ -2,10 +2,14 @@ from __future__ import unicode_literals
 
 import logging
 import time
+import datetime
 
 from django.db import models as django_models
+from django.db.models import Q
 from django.http import Http404
+
 import django_filters
+
 from rest_framework import filters as rf_filter
 from rest_framework import mixins
 from rest_framework import permissions, status
@@ -14,13 +18,14 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework_extensions.decorators import action, link
 
-from nodeconductor.cloud.models import Cloud, Flavor
+from nodeconductor.cloud.models import Cloud
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.core.utils import sort_dict
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
+from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.structure import filters
 from nodeconductor.structure.filters import filter_queryset_for_user
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, ResourceQuota
@@ -124,6 +129,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         if obj.pk is None:
             # Create flow
             obj.system_volume_size = obj.flavor.disk
+            obj.agreed_sla = obj.template.sla_level
         else:
             # Update flow
             related_data = getattr(self.object, '_related_data', {})
@@ -463,7 +469,7 @@ class ServiceFilter(django_filters.FilterSet):
         lookup_type='icontains'
     )
     agreed_sla = django_filters.NumberFilter()
-    actual_sla = django_filters.NumberFilter()
+    actual_sla = django_filters.NumberFilter(name='slas__value')
 
     class Meta(object):
         model = models.Instance
@@ -483,7 +489,7 @@ class ServiceFilter(django_filters.FilterSet):
             'project__name',
             'project__project_groups__name',
             'agreed_sla',
-            'actual_sla',
+            'slas__value',
             # desc
             '-hostname',
             '-template__name',
@@ -491,18 +497,42 @@ class ServiceFilter(django_filters.FilterSet):
             '-project__name',
             '-project__project_groups__name',
             '-agreed_sla',
-            '-actual_sla',
+            '-slas__value',
         ]
-
 
 
 # XXX: This view has to be rewritten or removed after haystack implementation
 class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
-    queryset = models.Instance.objects.all()
-    serializer_class = serializers.ServiceSerializer
+    queryset = models.Instance.objects.exclude(
+        state__in=(
+            models.Instance.States.DELETED,
+            models.Instance.States.DELETING,
+        )
+    )
+    serializer_class = ServiceSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
     filter_class = ServiceFilter
+
+    def get_queryset(self):
+        queryset = super(ServiceViewSet, self).get_queryset()
+
+        period = self.request.QUERY_PARAMS.get('period')
+        if period is None:
+            today = datetime.date.today()
+            period = '%s-%s' % (today.year, today.month)
+
+        queryset = queryset.filter(Q(slas__period=period) | Q(slas__period=None)).\
+            values(
+                'uuid',
+                'hostname',
+                'template__name',
+                'agreed_sla',
+                'slas__value', 'slas__period',
+                'project__customer__name',
+                'project__name'
+            )
+        return queryset
 
 
 class ResourceStatsView(views.APIView):

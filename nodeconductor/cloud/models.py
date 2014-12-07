@@ -196,7 +196,7 @@ def get_related_clouds(obj, request):
 
     from nodeconductor.cloud.serializers import BasicCloudSerializer
 
-    serializer_instance = BasicCloudSerializer(related_clouds, context={'request': request})
+    serializer_instance = BasicCloudSerializer(related_clouds, many=True, context={'request': request})
 
     return serializer_instance.data
 

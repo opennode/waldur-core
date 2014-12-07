@@ -84,7 +84,7 @@ class CustomerSerializer(core_serializers.CollectedFieldsMixin,
             return None
 
         queryset = filter_queryset_for_user(objects, user)
-        serializer_instance = serializer(queryset, context={'request': self.context['request']})
+        serializer_instance = serializer(queryset, many=True, context={'request': self.context['request']})
         return serializer_instance.data
 
     def get_customer_projects(self, obj):

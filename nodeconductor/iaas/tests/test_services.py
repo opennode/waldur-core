@@ -31,12 +31,13 @@ def _service_to_dict(service):
         'template_name': service.template.name,
         'customer_name': service.project.customer.name,
         'project_groups': project_groups,
-        'actual_sla': 97,
-        'agreed_sla': 100,
+        'actual_sla': None,
+        'agreed_sla': service.agreed_sla,
+        'service_type': 'IaaS',
     }
 
 
-class ServicesListRetreiveTest(test.APISimpleTestCase):
+class ServicesListRetrieveTest(test.APISimpleTestCase):
 
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
