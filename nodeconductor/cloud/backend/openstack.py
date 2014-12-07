@@ -414,10 +414,11 @@ class OpenStackBackend(object):
 
             server = nova.servers.create(
                 name=instance.hostname,
-                image=backend_image,
+                image=None,  # Boot from volume, see boot_index below
                 flavor=backend_flavor,
                 block_device_mapping_v2=[
                     {
+                        'boot_index': 0,
                         'destination_type': 'volume',
                         'device_type': 'disk',
                         'source_type': 'volume',
