@@ -477,6 +477,7 @@ Arguments:
             start_time=timezone.now(),
             ssh_public_key=ssh_public_key,
             system_volume_size=flavor.disk,
+            agreed_sla=template.sla_level,
         )
 
         cmp = CloudProjectMembership.objects.get(project=project, cloud=flavor.cloud)
