@@ -5,7 +5,7 @@ from mock import patch
 
 from django.db import IntegrityError
 from django.test import TestCase
-from django.utils import timezone
+from django.utils import timezone, unittest
 
 from nodeconductor.backup.tests import factories
 from nodeconductor.backup import models
