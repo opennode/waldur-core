@@ -59,7 +59,20 @@ class TemplateAdmin(admin.ModelAdmin):
     list_display = ['name', 'uuid', 'sla_level']
 
 
+class InstanceSlaHistoryEventsInline(admin.TabularInline):
+    model = models.InstanceSlaHistoryEvents
+    fields = ('timestamp', 'state')
+    ordering = ('timestamp', )
+    readonly_fields = fields
+
+
+class InstanceSlaHistoryAdmin(admin.ModelAdmin):
+    inlines = (
+        InstanceSlaHistoryEventsInline,
+    )
+
+
 admin.site.register(models.Instance, InstanceAdmin)
 admin.site.register(models.Template, TemplateAdmin)
 admin.site.register(models.Purchase, PurchaseAdmin)
-admin.site.register(models.InstanceSlaHistory)
+admin.site.register(models.InstanceSlaHistory, InstanceSlaHistoryAdmin)

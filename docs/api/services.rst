@@ -35,3 +35,30 @@ change the period pass it as a query argument:
 
 In all cases all currently running services are returned, if SLA for the given period is not known or not present, it
 will be shown as **null** in the response.
+
+SLA events
+++++++++++
+
+Service SLAs are connected with occurrences of events. To get a list of such events issue a GET request to
+*/services/<service_uuid>/events/*. Optionally period can be supplied using the format defined above.
+
+The output contains a list of states and timestamps when the state was reached.
+
+Example output:
+
+.. code-block:: javascript
+
+    [
+        {
+            "timestamp": 1418043540, 
+            "state": "U"
+        },
+        {
+            "timestamp": 1417928550,
+            "state": "D"
+        },
+        {
+            "timestamp": 1417928490,
+            "state": "U"
+        }
+    ]

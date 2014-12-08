@@ -327,7 +327,7 @@ class ServiceSerializer(serializers.Serializer):
             'customer_name',
             'project_name', 'project_groups',
             'agreed_sla', 'actual_sla',
-            'service_type'
+            'service_type',
         )
         view_name = 'service-detail'
         lookup_field = 'uuid'
@@ -387,3 +387,8 @@ class UsageStatsSerializer(serializers.Serializer):
         return zabbix_db_client.get_item_stats(
             instances, self.data['item'],
             self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])
+
+
+class SlaHistoryEventSerializer(serializers.Serializer):
+    timestamp = serializers.IntegerField()
+    state = serializers.CharField()
