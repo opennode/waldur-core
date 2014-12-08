@@ -38,6 +38,10 @@ class OpenStackBackend(object):
         # There's nothing to push for OpenStack
         pass
 
+    def pull_cloud_account(self, cloud_account):
+        self.pull_flavors(cloud_account)
+        self.pull_images(cloud_account)
+
     def pull_flavors(self, cloud_account):
         session = self.create_admin_session(cloud_account.auth_url)
         nova = self.create_nova_client(session)

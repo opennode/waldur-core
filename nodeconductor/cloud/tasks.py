@@ -19,25 +19,12 @@ logger = logging.getLogger(__name__)
     processing_state='begin_syncing',
     desired_state='set_in_sync',
 )
-def push_cloud_account(cloud_uuid):
-    cloud = models.Cloud.objects.get(uuid=cloud_uuid)
-    cloud.get_backend().push_cloud_account(cloud)
-
-
-@shared_task
-@tracked_processing(
-    models.Cloud,
-    processing_state='begin_syncing',
-    desired_state='set_in_sync',
-)
 def sync_cloud_account(cloud_account_uuid):
     cloud = models.Cloud.objects.get(uuid=cloud_account_uuid)
 
     backend = cloud.get_backend()
     backend.push_cloud_account(cloud)
-
-    backend.pull_flavors(cloud)
-    backend.pull_images(cloud)
+    backend.pull_cloud_account(cloud)
 
 
 @shared_task
