@@ -32,6 +32,8 @@ class CloudAdmin(admin.ModelAdmin):
     actions = ['pull_clouds']
 
     def pull_clouds(self, request, queryset):
+        # TODO: Extract to a service
+
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
 
         tasks_scheduled = 0
@@ -54,7 +56,64 @@ class CloudAdmin(admin.ModelAdmin):
 
         self.message_user(request, message)
 
-    pull_clouds.short_description = "Update from backend"
+    pull_clouds.short_description = "Update selected cloud accounts from backend"
+
+
+# noinspection PyMethodMayBeStatic
+class CloudProjectMembershipAdmin(admin.ModelAdmin):
+    readonly_fields = ('cloud', 'project')
+    list_display = ('get_cloud_name', 'get_customer_name', 'get_project_name')
+    ordering = ('cloud__customer__name', 'project__name', 'cloud__name')
+    list_display_links = ('get_cloud_name',)
+    search_fields = ('cloud__customer__name', 'project__name', 'cloud__name')
+
+    actions = ['pull_cloud_memberships']
+
+    def get_queryset(self, request):
+        queryset = super(CloudProjectMembershipAdmin, self).get_queryset(request)
+        return queryset.select_related('cloud', 'project', 'project__customer')
+
+    def pull_cloud_memberships(self, request, queryset):
+        # TODO: Extract to a service
+
+        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
+
+        tasks_scheduled = 0
+
+        for membership in queryset.iterator():
+            membership.schedule_syncing()
+            membership.save()
+
+            tasks.pull_cloud_membership.delay(membership.pk)
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'One cloud project membership scheduled for update',
+            '%(tasks_scheduled)d cloud project memberships scheduled for update',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    pull_cloud_memberships.short_description = "Update selected cloud project memberships from backend"
+
+    def get_cloud_name(self, obj):
+        return obj.cloud.name
+
+    get_cloud_name.short_description = 'Cloud'
+
+    def get_project_name(self, obj):
+        return obj.project.name
+
+    get_project_name.short_description = 'Project'
+
+    def get_customer_name(self, obj):
+        return obj.cloud.customer.name
+
+    get_customer_name.short_description = 'Customer'
 
 
 class InstanceAdmin(admin.ModelAdmin):
@@ -118,6 +177,7 @@ class SecurityGroupAdmin(admin.ModelAdmin):
 
 
 admin.site.register(cloud_models.Cloud, CloudAdmin)
+admin.site.register(cloud_models.CloudProjectMembership, CloudProjectMembershipAdmin)
 admin.site.register(models.Instance, InstanceAdmin)
 admin.site.register(models.InstanceSlaHistory)
 admin.site.register(models.Purchase, PurchaseAdmin)
