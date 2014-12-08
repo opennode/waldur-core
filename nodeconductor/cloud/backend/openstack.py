@@ -325,7 +325,7 @@ class OpenStackBackend(object):
                     name=backend_group.name,
                 )
                 self.pull_security_group_rules(nc_security_group, nova)
-                logger.info('Created new security groups %s in database', nc_security_group.uuid)
+                logger.info('Created new security group %s in database', nc_security_group.uuid)
 
     # Statistics methods:
     def get_resource_stats(self, auth_url):
