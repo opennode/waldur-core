@@ -6,6 +6,7 @@ import logging
 from celery import shared_task
 
 from nodeconductor.core import models as core_models
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import tracked_processing
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
@@ -113,9 +114,23 @@ def push_instance_security_groups(instance_uuid):
     processing_state='begin_syncing',
     desired_state='set_in_sync',
 )
-def push_cloud_account(cloud_uuid):
-    cloud = models.Cloud.objects.get(uuid=cloud_uuid)
-    cloud.get_backend().push_cloud_account(cloud)
+def pull_cloud_account(cloud_account_uuid):
+    cloud_account = models.Cloud.objects.get(uuid=cloud_account_uuid)
+
+    backend = cloud_account.get_backend()
+    backend.pull_cloud_account(cloud_account)
+
+
+@shared_task
+def pull_cloud_accounts():
+    # TODO: Extract to a service
+    queryset = models.Cloud.objects.filter(state=SynchronizationStates.IN_SYNC)
+
+    for cloud_account in queryset.iterator():
+        cloud_account.schedule_syncing()
+        cloud_account.save()
+
+        pull_cloud_account.delay(cloud_account.uuid.hex)
 
 
 @shared_task
@@ -129,9 +144,33 @@ def sync_cloud_account(cloud_account_uuid):
 
     backend = cloud.get_backend()
     backend.push_cloud_account(cloud)
+    backend.pull_cloud_account(cloud)
 
-    backend.pull_flavors(cloud)
-    backend.pull_images(cloud)
+
+@shared_task
+@tracked_processing(
+    models.CloudProjectMembership,
+    processing_state='begin_syncing',
+    desired_state='set_in_sync',
+)
+def pull_cloud_membership(membership_pk):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+
+    backend = membership.cloud.get_backend()
+    backend.pull_security_groups(membership)
+    # TODO: pull_instances
+
+
+@shared_task
+def pull_cloud_memberships():
+    # TODO: Extract to a service
+    queryset = models.CloudProjectMembership.objects.filter(state=SynchronizationStates.IN_SYNC)
+
+    for membership in queryset.iterator():
+        membership.schedule_syncing()
+        membership.save()
+
+        pull_cloud_membership.delay(membership.pk)
 
 
 @shared_task
