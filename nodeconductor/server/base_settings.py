@@ -3,6 +3,7 @@ Django base settings for nodeconductor project.
 """
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+from datetime import timedelta
 import os
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
@@ -117,3 +118,16 @@ CELERY_RESULT_BACKEND = 'redis://localhost'
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_RESULT_SERIALIZER = 'json'
+
+# Regular tasks
+CELERYBEAT_SCHEDULE = {
+    'update-instance-monthly-slas': {
+        'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
+        'schedule': timedelta(hours=2),
+        'args': ('monthly',),
+    },
+    'update-instance-yearly-slas': {
+        'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
+        'schedule': timedelta(days=15),
+        'args': ('yearly',),
+    },
