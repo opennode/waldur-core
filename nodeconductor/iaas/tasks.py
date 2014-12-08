@@ -5,6 +5,7 @@ import logging
 
 from celery import shared_task
 
+from nodeconductor.cloud import models as cloud_models
 from nodeconductor.core.tasks import tracked_processing
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
@@ -102,3 +103,16 @@ def push_instance_security_groups(instance_uuid):
 
     backend = instance.flavor.cloud.get_backend()
     backend.push_instance_security_groups(instance)
+
+
+@shared_task
+@tracked_processing(
+    cloud_models.Cloud,
+    processing_state='begin_syncing',
+    desired_state='set_in_sync',
+)
+def pull_cloud_account(cloud_account_uuid):
+    cloud_account = cloud_models.Cloud.objects.get(uuid=cloud_account_uuid)
+
+    backend = cloud_account.get_backend()
+    backend.pull_cloud_account(cloud_account)
