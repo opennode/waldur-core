@@ -1,6 +1,5 @@
 from django.test import TestCase
 
-from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -21,8 +20,8 @@ class LicenseTest(TestCase):
         self.project_group = structure_factories.ProjectGroupFactory()
         self.project_group.projects.add(self.project)
         # cloud and image
-        self.cloud = cloud_factories.CloudFactory()
-        cloud_factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
+        self.cloud = factories.CloudFactory()
+        factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
         self.image = factories.ImageFactory(cloud=self.cloud, template=self.template)
 
     def test_get_projects(self):

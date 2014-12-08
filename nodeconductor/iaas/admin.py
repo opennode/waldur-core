@@ -59,7 +59,35 @@ class TemplateAdmin(admin.ModelAdmin):
     list_display = ['name', 'uuid', 'sla_level']
 
 
+class FlavorInline(admin.TabularInline):
+    model = models.Flavor
+    extra = 1
+
+
+class CloudAdmin(admin.ModelAdmin):
+    inlines = (
+        FlavorInline,
+    )
+    list_display = ('name', 'customer')
+    ordering = ('name', 'customer')
+
+
+class SecurityGroupRuleInline(admin.TabularInline):
+    model = models.SecurityGroupRule
+    extra = 1
+
+
+class SecurityGroupAdmin(admin.ModelAdmin):
+    inlines = (
+        SecurityGroupRuleInline,
+    )
+    list_display = ('cloud_project_membership', 'name')
+    ordering = ('cloud_project_membership', 'name')
+
+
 admin.site.register(models.Instance, InstanceAdmin)
 admin.site.register(models.Template, TemplateAdmin)
 admin.site.register(models.Purchase, PurchaseAdmin)
 admin.site.register(models.InstanceSlaHistory)
+admin.site.register(models.Cloud, CloudAdmin)
+admin.site.register(models.SecurityGroup, SecurityGroupAdmin)

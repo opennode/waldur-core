@@ -26,7 +26,6 @@ INSTALLED_APPS = (
     'nodeconductor.backup',
     'nodeconductor.monitoring',
     'nodeconductor.structure',
-    'nodeconductor.cloud',
     'nodeconductor.iaas',
     'nodeconductor.ldapsync',
 

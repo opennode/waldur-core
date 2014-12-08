@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from django.core.management.base import BaseCommand, CommandError
 
 from nodeconductor.structure import models as structure_models
-from nodeconductor.cloud import models
+from nodeconductor.iaas import models
 
 
 class Command(BaseCommand):

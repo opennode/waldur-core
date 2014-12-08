@@ -1,7 +1,7 @@
 from django.core.urlresolvers import reverse
 from rest_framework import test, status
 
-from nodeconductor.cloud.tests import factories as cloud_factories
+from nodeconductor.iaas import models
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
@@ -80,14 +80,11 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_change_instance_security_groups_single_field(self):
-        from nodeconductor.cloud.models import CloudProjectMembership
-        from nodeconductor.iaas.models import Instance
-
-        membership = CloudProjectMembership.objects.get(
+        membership = models.CloudProjectMembership.objects.get(
             project=self.instance.project,
             cloud=self.instance.flavor.cloud,
         )
-        new_security_group = cloud_factories.SecurityGroupFactory(
+        new_security_group = factories.SecurityGroupFactory(
             name='test-group',
             cloud_project_membership=membership,
         )
@@ -101,7 +98,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         response = self.client.patch(_instance_url(self.instance), data=data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        reread_instance = Instance.objects.get(pk=self.instance.pk)
+        reread_instance = models.Instance.objects.get(pk=self.instance.pk)
         reread_security_groups = [
             isg.security_group
             for isg in reread_instance.security_groups.all()
@@ -130,7 +127,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
     # Helper methods
     def _get_valid_security_group_payload(self, security_group=None):
         if security_group is None:
-            security_group = cloud_factories.SecurityGroupFactory()
+            security_group = factories.SecurityGroupFactory()
         return {
             'url': _security_group_url(security_group),
         }
