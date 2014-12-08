@@ -38,6 +38,10 @@ class OpenStackBackend(object):
         # There's nothing to push for OpenStack
         pass
 
+    def pull_cloud_account(self, cloud_account):
+        self.pull_flavors(cloud_account)
+        self.pull_images(cloud_account)
+
     def pull_flavors(self, cloud_account):
         session = self.create_admin_session(cloud_account.auth_url)
         nova = self.create_nova_client(session)
@@ -321,7 +325,7 @@ class OpenStackBackend(object):
                     name=backend_group.name,
                 )
                 self.pull_security_group_rules(nc_security_group, nova)
-                logger.info('Created new security groups %s in database', nc_security_group.uuid)
+                logger.info('Created new security group %s in database', nc_security_group.uuid)
 
     # Statistics methods:
     def get_resource_stats(self, auth_url):
