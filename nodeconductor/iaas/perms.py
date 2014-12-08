@@ -16,4 +16,6 @@ PERMISSION_LOGICS = (
     ('iaas.Image', StaffPermissionLogic(any_permission=True)),
     ('iaas.TemplateLicense', StaffPermissionLogic(any_permission=True)),
     ('iaas.InstanceSlaHistory', StaffPermissionLogic(any_permission=True)),
+    ('iaas.InstanceSlaHistoryEvents', StaffPermissionLogic(any_permission=True)),
+
 )

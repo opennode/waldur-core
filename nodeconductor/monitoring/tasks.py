@@ -46,12 +46,22 @@ def update_instance_sla(sla_type):
             logger.debug('Updating %s SLAs for instance %s. Period: %s, start_time: %s, end_time: %s' % (
                 sla_type, instance, period, start_time, end_time
             ))
-            current_sla = zabbix_client.get_current_service_sla(instance, start_time=start_time, end_time=end_time)
+            current_sla, events = zabbix_client.get_current_service_sla(instance, start_time=start_time, end_time=end_time)
             entry, _ = InstanceSlaHistory.objects.get_or_create(
                 instance=instance,
                 period=period
             )
             entry.value = Decimal(current_sla)
             entry.save()
+
+            # update connected events
+            for event in events:
+                event_state = 'U' if int(event['value']) == 0 else 'D'
+                entry.events.get_or_create(
+                    timestamp=int(event['timestamp']),
+                    state=event_state
+                )
         except ZabbixError as e:
+            logger.warning('Zabbix error when updating current SLA values for %s. Reason: %s' % (instance, e))
+        except Exception as e:
             logger.warning('Failed to update current SLA values for %s. Reason: %s' % (instance, e))
