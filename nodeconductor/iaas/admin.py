@@ -1,6 +1,10 @@
 from django.contrib import admin
+from django.utils.translation import ungettext
 
+from nodeconductor.cloud import models as cloud_models
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.iaas import models
+from nodeconductor.iaas import tasks
 
 
 # Inspired by Django Snippet https://djangosnippets.org/snippets/2629/
@@ -10,6 +14,47 @@ class ReadonlyInlineMixin(object):
 
     def has_add_permission(self, request):
         return False
+
+
+class FlavorInline(admin.TabularInline):
+    model = cloud_models.Flavor
+    extra = 1
+
+
+# noinspection PyMethodMayBeStatic
+class CloudAdmin(admin.ModelAdmin):
+    inlines = (
+        FlavorInline,
+    )
+    list_display = ('name', 'customer')
+    ordering = ('name', 'customer')
+
+    actions = ['pull_clouds']
+
+    def pull_clouds(self, request, queryset):
+        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
+
+        tasks_scheduled = 0
+
+        for cloud_account in queryset.iterator():
+            cloud_account.schedule_syncing()
+            cloud_account.save()
+
+            tasks.pull_cloud_account.delay(cloud_account.uuid.hex)
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'One cloud account scheduled for update',
+            '%(tasks_scheduled)d cloud accounts scheduled for update',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    pull_clouds.short_description = "Update from backend"
 
 
 class InstanceAdmin(admin.ModelAdmin):
@@ -59,7 +104,22 @@ class TemplateAdmin(admin.ModelAdmin):
     list_display = ['name', 'uuid', 'sla_level']
 
 
+class SecurityGroupRuleInline(admin.TabularInline):
+    model = cloud_models.SecurityGroupRule
+    extra = 1
+
+
+class SecurityGroupAdmin(admin.ModelAdmin):
+    inlines = (
+        SecurityGroupRuleInline,
+    )
+    list_display = ('cloud_project_membership', 'name')
+    ordering = ('cloud_project_membership', 'name')
+
+
+admin.site.register(cloud_models.Cloud, CloudAdmin)
 admin.site.register(models.Instance, InstanceAdmin)
-admin.site.register(models.Template, TemplateAdmin)
-admin.site.register(models.Purchase, PurchaseAdmin)
 admin.site.register(models.InstanceSlaHistory)
+admin.site.register(models.Purchase, PurchaseAdmin)
+admin.site.register(cloud_models.SecurityGroup, SecurityGroupAdmin)
+admin.site.register(models.Template, TemplateAdmin)
