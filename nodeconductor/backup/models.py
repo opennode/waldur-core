@@ -147,7 +147,6 @@ class Backup(core_models.UuidMixin,
     )
 
     state = FSMIntegerField(default=States.READY, choices=STATE_CHOICES)
-    result_id = models.CharField(max_length=63, null=True)
     # TODO: use https://github.com/bradjasper/django-jsonfield after python update (to 2.7)
     additional_data = models.TextField(
         null=True, blank=True,
