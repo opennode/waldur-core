@@ -389,6 +389,21 @@ class InstanceSlaHistory(models.Model):
 
 
 @python_2_unicode_compatible
+class InstanceSlaHistoryEvents(models.Model):
+    EVENTS = (
+        ('U', 'DOWN'),
+        ('D', 'UP'),
+    )
+
+    instance = models.ForeignKey(InstanceSlaHistory, related_name='events')
+    timestamp = models.IntegerField()
+    state = models.CharField(max_length=1, choices=EVENTS)
+
+    def __str__(self):
+        return '%s - %s' % (self.timestamp, self.state)
+
+
+@python_2_unicode_compatible
 class TemplateLicense(core_models.UuidMixin, models.Model):
     class Services(object):
         IAAS = 'IaaS'

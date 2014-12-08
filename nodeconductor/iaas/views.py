@@ -514,13 +514,17 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
     filter_class = ServiceFilter
 
-    def get_queryset(self):
-        queryset = super(ServiceViewSet, self).get_queryset()
-
+    def _get_period(self):
         period = self.request.QUERY_PARAMS.get('period')
         if period is None:
             today = datetime.date.today()
             period = '%s-%s' % (today.year, today.month)
+        return period
+
+    def get_queryset(self):
+        queryset = super(ServiceViewSet, self).get_queryset()
+
+        period = self._get_period()
 
         queryset = queryset.filter(Q(slas__period=period) | Q(slas__period=None)).\
             values(
@@ -533,6 +537,22 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
                 'project__name'
             )
         return queryset
+
+    @link()
+    def events(self, request, uuid):
+        service = self.get_object()
+        period = self._get_period()
+        # TODO: this should use a generic service model
+        history = get_object_or_404(models.InstanceSlaHistory, instance__uuid=service['uuid'], period=period)
+
+        history_events = history.events.all().order_by('-timestamp').values('timestamp', 'state')
+
+        serializer = serializers.SlaHistoryEventSerializer(data=history_events,
+                                                           many=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ResourceStatsView(views.APIView):

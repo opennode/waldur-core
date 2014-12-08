@@ -129,7 +129,14 @@ class ZabbixApiClient(object):
                 filter={'serviceids': service_id},
                 intervals={'from': start_time, 'to': end_time}
             )[service_id]['sla'][0]['sla']
-            return sla
+
+            # get service details
+            service = api.service.get(output='extend', serviceids=service_id)[0]
+            service_trigger_id = service['triggerid']
+
+            # retrieve trigger events
+            events = self.get_trigger_events(api, service_trigger_id, start_time, end_time)
+            return sla, events
         except ZabbixAPIException as e:
             logger.exception('Can not get Zabbix IT service SLA value.')
             six.reraise(ZabbixError, e)
@@ -246,3 +253,17 @@ class ZabbixApiClient(object):
             return True
         except IndexError:
             return False
+
+    def get_trigger_events(self, api, trigger_id, start_time, end_time):
+        try:
+            event_data = api.event.get(
+                output='extend',
+                objectids=trigger_id,
+                time_from=start_time,
+                time_till=end_time,
+                sortfield=["clock"],
+                sortorder="ASC")
+            return [{'timestamp': e['clock'], 'value': e['value']} for e in event_data]
+        except ZabbixAPIException as e:
+            logger.exception('Could not retrieve trigger %s events.' % trigger_id)
+            six.reraise(ZabbixError, e)

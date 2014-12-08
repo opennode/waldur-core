@@ -180,10 +180,23 @@ class SecurityGroupAdmin(admin.ModelAdmin):
     ordering = ('cloud_project_membership', 'name')
 
 
+class InstanceSlaHistoryEventsInline(admin.TabularInline):
+    model = models.InstanceSlaHistoryEvents
+    fields = ('timestamp', 'state')
+    ordering = ('timestamp', )
+    readonly_fields = fields
+
+
+class InstanceSlaHistoryAdmin(admin.ModelAdmin):
+    inlines = (
+        InstanceSlaHistoryEventsInline,
+    )
+
+
 admin.site.register(models.Cloud, CloudAdmin)
 admin.site.register(models.CloudProjectMembership, CloudProjectMembershipAdmin)
 admin.site.register(models.Instance, InstanceAdmin)
-admin.site.register(models.InstanceSlaHistory)
 admin.site.register(models.Purchase, PurchaseAdmin)
 admin.site.register(models.SecurityGroup, SecurityGroupAdmin)
 admin.site.register(models.Template, TemplateAdmin)
+admin.site.register(models.InstanceSlaHistory, InstanceSlaHistoryAdmin)
