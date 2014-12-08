@@ -6,6 +6,7 @@ import logging
 from celery import shared_task
 
 from nodeconductor.cloud import models as cloud_models
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import tracked_processing
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
@@ -119,6 +120,18 @@ def pull_cloud_account(cloud_account_uuid):
 
 
 @shared_task
+def pull_cloud_accounts():
+    # TODO: Extract to a service
+    queryset = cloud_models.Cloud.objects.filter(state=SynchronizationStates.IN_SYNC)
+
+    for cloud_account in queryset.iterator():
+        cloud_account.schedule_syncing()
+        cloud_account.save()
+
+        pull_cloud_account.delay(cloud_account.uuid.hex)
+
+
+@shared_task
 @tracked_processing(
     cloud_models.CloudProjectMembership,
     processing_state='begin_syncing',
@@ -130,3 +143,15 @@ def pull_cloud_membership(membership_pk):
     backend = membership.cloud.get_backend()
     backend.pull_security_groups(membership)
     # TODO: pull_instances
+
+
+@shared_task
+def pull_cloud_memberships():
+    # TODO: Extract to a service
+    queryset = cloud_models.CloudProjectMembership.objects.filter(state=SynchronizationStates.IN_SYNC)
+
+    for membership in queryset.iterator():
+        membership.schedule_syncing()
+        membership.save()
+
+        pull_cloud_membership.delay(membership.pk)

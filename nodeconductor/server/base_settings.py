@@ -131,3 +131,15 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(days=15),
         'args': ('yearly',),
     },
+
+    'pull-cloud-accounts': {
+        'task': 'nodeconductor.iaas.tasks.pull_cloud_accounts',
+        'schedule': timedelta(days=1),
+        'args': (),
+    },
+    'pull-cloud-project-memberships': {
+        'task': 'nodeconductor.iaas.tasks.pull_cloud_memberships',
+        'schedule': timedelta(hours=1),
+        'args': (),
+    },
+}
