@@ -116,3 +116,17 @@ def pull_cloud_account(cloud_account_uuid):
 
     backend = cloud_account.get_backend()
     backend.pull_cloud_account(cloud_account)
+
+
+@shared_task
+@tracked_processing(
+    cloud_models.CloudProjectMembership,
+    processing_state='begin_syncing',
+    desired_state='set_in_sync',
+)
+def pull_cloud_membership(membership_pk):
+    membership = cloud_models.CloudProjectMembership.objects.get(pk=membership_pk)
+
+    backend = membership.cloud.get_backend()
+    backend.pull_security_groups(membership)
+    # TODO: pull_instances
