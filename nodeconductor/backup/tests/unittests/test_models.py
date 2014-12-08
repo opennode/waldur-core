@@ -72,8 +72,6 @@ class BackupScheduleTest(TestCase):
 
 class BackupTest(TestCase):
 
-    mocked_task_result = type(str('MockedTaskResult'), (object, ), {'id': 'result_id'})
-
     class MockedAsyncResult(object):
 
         def __call__(self, *args):
@@ -91,29 +89,23 @@ class BackupTest(TestCase):
         with self.assertRaises(IntegrityError):
             backup.save()
 
-    @unittest.skip('FIXME')
-    @patch('nodeconductor.backup.tasks.process_backup_task.delay', return_value=mocked_task_result)
+    @patch('nodeconductor.backup.tasks.process_backup_task.delay')
     def test_start_backup(self, mocked_task):
         backup = factories.BackupFactory()
         backup.start_backup()
         mocked_task.assert_called_with(backup.uuid.hex)
-        self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.BACKING_UP)
 
-    @unittest.skip('FIXME')
-    @patch('nodeconductor.backup.tasks.restoration_task.delay', return_value=mocked_task_result)
+    @patch('nodeconductor.backup.tasks.restoration_task.delay')
     def test_start_restoration(self, mocked_task):
         backup = factories.BackupFactory()
         backup.start_restoration()
         mocked_task.assert_called_with(backup.uuid.hex)
-        self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.RESTORING)
 
-    @unittest.skip('FIXME')
-    @patch('nodeconductor.backup.tasks.deletion_task.delay', return_value=mocked_task_result)
+    @patch('nodeconductor.backup.tasks.deletion_task.delay')
     def test_start_deletion(self, mocked_task):
         backup = factories.BackupFactory()
         backup.start_deletion()
         mocked_task.assert_called_with(backup.uuid.hex)
-        self.assertEqual(backup.result_id, BackupTest.mocked_task_result().id)
         self.assertEqual(backup.state, models.Backup.States.DELETING)

@@ -39,7 +39,6 @@ class InstanceBackupStrategyTestCase(unittest.TestCase):
         self.assertEqual(self.instance.backend_id, self.restored_vm.id)
         self.instance.save.assert_called_once_with()
 
-    @unittest.skip('FIXME')
     def test_strategy_delete_method_calls_backend_delete_instance_method(self):
         InstanceBackupStrategy.delete(self.instance, self.additional_data)
-        self.mocked_backed.delete_instance.assert_called_once_with(self.instance)
+        self.mocked_backed.delete_instance_backup.assert_called_once_with(self.instance, self.backup_ids)

@@ -627,7 +627,7 @@ class OpenStackBackend(object):
             logger.info('Successfully restored backup for instance %s', instance.uuid)
         return new_vm
 
-    def delete_instance_backups(self, instance, instance_backup_ids):
+    def delete_instance_backup(self, instance, instance_backup_ids):
         from nodeconductor.cloud.models import CloudProjectMembership
 
         logger.debug('About to delete instance %s backup', instance.uuid)
