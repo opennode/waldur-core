@@ -268,8 +268,8 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         hour = 60 * 60
         data = {
-            'start_timestamp': request.QUERY_PARAMS.get('from', time.time() - hour),
-            'end_timestamp': request.QUERY_PARAMS.get('to', time.time()),
+            'start_timestamp': request.QUERY_PARAMS.get('from', int(time.time() - hour)),
+            'end_timestamp': request.QUERY_PARAMS.get('to', int(time.time())),
             'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
             'item': request.QUERY_PARAMS.get('item'),
         }
