@@ -258,17 +258,27 @@ class Instance(core_models.UuidMixin,
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
-    flavor = models.ForeignKey(Flavor, related_name='+', on_delete=models.PROTECT)
     project = models.ForeignKey(structure_models.Project, related_name='instances')
     external_ips = fields.IPsField(max_length=256)
     internal_ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
-    ssh_public_key = models.ForeignKey(core_models.SshPublicKey, related_name='instances')
 
     state = FSMIntegerField(
         default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
         help_text="WARNING! Should not be changed manually unless you really know what you are doing."
     )
+
+    # fields, defined by flavor
+    flavor = models.ForeignKey(Flavor, related_name='+', null=True, on_delete=models.SET_NULL)
+    cores = models.PositiveSmallIntegerField()
+    ram = models.PositiveSmallIntegerField()
+    cloud = models.ForeignKey(Cloud, related_name='instances')
+
+    # fields, defined by ssh public key
+    ssh_public_key = models.ForeignKey(
+        core_models.SshPublicKey, related_name='instances', null=True, on_delete=models.SET_NULL)
+    ssh_public_key_name = models.CharField(max_length=50, blank=True)
+    ssh_public_key_fingerprint = models.CharField(max_length=47)
 
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255, blank=True)
