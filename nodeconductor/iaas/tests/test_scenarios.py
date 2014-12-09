@@ -1,15 +1,14 @@
 from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
-from django.utils import unittest
 from mock import patch
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.iaas import serializers
+from nodeconductor.iaas.tests import factories
 from nodeconductor.structure import models as structure_models
-from nodeconductor.cloud.tests import factories
-from nodeconductor.cloud import serializers
+from nodeconductor.structure.tests import factories as structure_factories
 
 
 def _cloud_url(cloud, action=None):
@@ -50,7 +49,7 @@ class CloudTest(test.APISimpleTestCase):
     def test_cloud_sync(self):
         cloud = factories.CloudFactory(customer=self.customer)
         self.client.force_authenticate(user=self.owner)
-        with patch('nodeconductor.cloud.models.Cloud.sync') as patched_method:
+        with patch('nodeconductor.iaas.models.Cloud.sync') as patched_method:
             response = self.client.post(_cloud_url(cloud, action='sync'))
             patched_method.assert_called_with()
             self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -95,7 +94,7 @@ class CloudTest(test.APISimpleTestCase):
         self.assertItemsEqual(response.data.keys(), serializers.CloudSerializer.Meta.fields)
 
 
-class SecurityGroupTest(test.APISimpleTestCase):
+class SecurityGroupTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.admin = structure_factories.UserFactory()

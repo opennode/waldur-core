@@ -187,7 +187,7 @@ class CollectedFieldsMixin(object):
             except AttributeError:
                 pass
 
-            from nodeconductor.cloud.serializers import BasicCloudSerializer
+            from nodeconductor.iaas.serializers import BasicCloudSerializer
             serializer_instance = BasicCloudSerializer(customer_clouds, context={'request': request})
 
             return serializer_instance.data

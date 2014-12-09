@@ -4,7 +4,7 @@ from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.cloud.tests import factories
+from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 

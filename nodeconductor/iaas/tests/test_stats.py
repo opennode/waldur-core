@@ -2,8 +2,7 @@ from django.core.urlresolvers import reverse
 from mock import patch, Mock
 from rest_framework import test, status
 
-from nodeconductor.cloud import models as cloud_models
-from nodeconductor.cloud.tests import factories as cloud_factories
+from nodeconductor.iaas import models
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
@@ -14,8 +13,8 @@ class CustomerStatsTest(test.APITransactionTestCase):
     def setUp(self):
         self.customer = structure_factories.CustomerFactory()
         self.other_customer = structure_factories.CustomerFactory()
-        cloud = cloud_factories.CloudFactory(customer=self.customer)
-        flavor = cloud_factories.FlavorFactory(cloud=cloud)
+        cloud = factories.CloudFactory(customer=self.customer)
+        flavor = factories.FlavorFactory(cloud=cloud)
 
         self.staff = structure_factories.UserFactory(is_staff=True)
         self.admin = structure_factories.UserFactory()
@@ -206,9 +205,9 @@ class ResourceStatsTest(test.APITransactionTestCase):
         self.project_quota2 = structure_factories.ResourceQuotaFactory()
         self.project2 = structure_factories.ProjectFactory(resource_quota=self.project_quota2)
 
-        self.cloud = cloud_factories.CloudFactory(auth_url=self.auth_url)
-        cloud_models.CloudProjectMembership.objects.create(cloud=self.cloud, project=self.project1, tenant_id='1')
-        cloud_models.CloudProjectMembership.objects.create(cloud=self.cloud, project=self.project2, tenant_id='2')
+        self.cloud = factories.CloudFactory(auth_url=self.auth_url)
+        models.CloudProjectMembership.objects.create(cloud=self.cloud, project=self.project1, tenant_id='1')
+        models.CloudProjectMembership.objects.create(cloud=self.cloud, project=self.project2, tenant_id='2')
 
         self.user = structure_factories.UserFactory()
         self.staff = structure_factories.UserFactory(is_staff=True)
@@ -248,7 +247,7 @@ class ResourceStatsTest(test.APITransactionTestCase):
         })
         mocked_backend.get_resource_stats = Mock(return_value=expected_result)
 
-        with patch('nodeconductor.cloud.models.Cloud.get_backend', return_value=mocked_backend):
+        with patch('nodeconductor.iaas.models.Cloud.get_backend', return_value=mocked_backend):
             self.client.force_authenticate(self.staff)
 
             response = self.client.get(self.url, {'auth_url': self.auth_url})

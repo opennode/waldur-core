@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.cloud.models import Cloud, CloudProjectMembership, IpMapping
+from nodeconductor.iaas.models import Cloud, CloudProjectMembership, IpMapping
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
 from nodeconductor.structure.models import *

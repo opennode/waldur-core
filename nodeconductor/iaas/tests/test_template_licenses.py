@@ -5,7 +5,6 @@ from django.core.urlresolvers import reverse
 from rest_framework import test
 from rest_framework import status
 
-from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.core.tests import helpers
 from nodeconductor.iaas import models
 from nodeconductor.iaas.tests import factories
@@ -59,8 +58,8 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
         self.project_group = structure_factories.ProjectGroupFactory()
         self.project_group.projects.add(self.project)
         # cloud and template
-        self.cloud = cloud_factories.CloudFactory(customer=self.customer)
-        cloud_factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
+        self.cloud = factories.CloudFactory(customer=self.customer)
+        factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
         self.template = factories.TemplateFactory(os='OS')
         factories.ImageFactory(cloud=self.cloud, template=self.template)
         # license
@@ -176,7 +175,7 @@ class LicenseStatsTests(test.APITransactionTestCase):
             name='first_template_license', license_type='first license type')
         self.second_template_license = factories.TemplateLicenseFactory(
             name='second_template_license', license_type='second license type')
-        cloud = cloud_factories.CloudFactory(customer=self.customer)
+        cloud = factories.CloudFactory(customer=self.customer)
         self.template = factories.TemplateFactory()
         factories.ImageFactory(cloud=cloud, template=self.template)
 
@@ -300,8 +299,8 @@ class LicensePermissionsTest(helpers.PermissionsTest):
         self.project_group = structure_factories.ProjectGroupFactory()
         self.project_group.projects.add(self.project)
         # cloud and template
-        self.cloud = cloud_factories.CloudFactory()
-        cloud_factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
+        self.cloud = factories.CloudFactory()
+        factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
         template = factories.TemplateFactory()
         factories.ImageFactory(cloud=self.cloud, template=template)
         # license

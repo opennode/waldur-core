@@ -2,7 +2,7 @@ from django.contrib import admin
 from django import forms
 
 from nodeconductor.structure import models
-from nodeconductor.cloud.models import Cloud
+from nodeconductor.iaas.models import Cloud
 
 
 class CloudAdminForm(forms.ModelForm):

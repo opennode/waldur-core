@@ -26,7 +26,7 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
-from nodeconductor.cloud.backend import CloudBackendError, CloudBackendInternalError
+from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,10 @@ class OpenStackBackend(object):
     def push_cloud_account(self, cloud_account):
         # There's nothing to push for OpenStack
         pass
+
+    def pull_cloud_account(self, cloud_account):
+        self.pull_flavors(cloud_account)
+        self.pull_images(cloud_account)
 
     def pull_flavors(self, cloud_account):
         session = self.create_admin_session(cloud_account.auth_url)
@@ -321,7 +325,7 @@ class OpenStackBackend(object):
                     name=backend_group.name,
                 )
                 self.pull_security_group_rules(nc_security_group, nova)
-                logger.info('Created new security groups %s in database', nc_security_group.uuid)
+                logger.info('Created new security group %s in database', nc_security_group.uuid)
 
     # Statistics methods:
     def get_resource_stats(self, auth_url):
@@ -339,7 +343,7 @@ class OpenStackBackend(object):
 
     # Instance related methods
     def provision_instance(self, instance):
-        from nodeconductor.cloud.models import CloudProjectMembership
+        from nodeconductor.iaas.models import CloudProjectMembership
 
         logger.info('About to boot instance %s', instance.uuid)
         try:
@@ -476,7 +480,7 @@ class OpenStackBackend(object):
             logger.info('Successfully booted instance %s', instance.uuid)
 
     def start_instance(self, instance):
-        from nodeconductor.cloud.models import CloudProjectMembership
+        from nodeconductor.iaas.models import CloudProjectMembership
 
         logger.debug('About to start instance %s', instance.uuid)
         try:
@@ -501,7 +505,7 @@ class OpenStackBackend(object):
             logger.info('Successfully started instance %s', instance.uuid)
 
     def stop_instance(self, instance):
-        from nodeconductor.cloud.models import CloudProjectMembership
+        from nodeconductor.iaas.models import CloudProjectMembership
 
         logger.debug('About to stop instance %s', instance.uuid)
         try:
@@ -526,7 +530,7 @@ class OpenStackBackend(object):
             logger.info('Successfully stopped instance %s', instance.uuid)
 
     def delete_instance(self, instance):
-        from nodeconductor.cloud.models import CloudProjectMembership
+        from nodeconductor.iaas.models import CloudProjectMembership
 
         logger.info('About to delete instance %s', instance.uuid)
         try:
@@ -561,7 +565,7 @@ class OpenStackBackend(object):
             logger.info('Successfully deleted instance %s', instance.uuid)
 
     def backup_instance(self, instance):
-        from nodeconductor.cloud.models import CloudProjectMembership
+        from nodeconductor.iaas.models import CloudProjectMembership
 
         logger.debug('About to create instance %s backup', instance.uuid)
         try:
@@ -595,7 +599,7 @@ class OpenStackBackend(object):
         return backups
 
     def restore_instance(self, instance, instance_backup_ids):
-        from nodeconductor.cloud.models import CloudProjectMembership
+        from nodeconductor.iaas.models import CloudProjectMembership
 
         logger.debug('About to restore instance %s backup', instance.uuid)
         try:
@@ -628,7 +632,7 @@ class OpenStackBackend(object):
         return new_vm
 
     def delete_instance_backup(self, instance, instance_backup_ids):
-        from nodeconductor.cloud.models import CloudProjectMembership
+        from nodeconductor.iaas.models import CloudProjectMembership
 
         logger.debug('About to delete instance %s backup', instance.uuid)
 
@@ -650,8 +654,8 @@ class OpenStackBackend(object):
             logger.info('Successfully deleted backup for instance %s', instance.uuid)
 
     def push_instance_security_groups(self, instance):
-        from nodeconductor.cloud.models import CloudProjectMembership
-        from nodeconductor.cloud.models import SecurityGroup
+        from nodeconductor.iaas.models import CloudProjectMembership
+        from nodeconductor.iaas.models import SecurityGroup
 
         try:
             membership = CloudProjectMembership.objects.get(
@@ -701,7 +705,7 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, CloudBackendError())
 
     def extend_disk(self, instance):
-        from nodeconductor.cloud.models import CloudProjectMembership
+        from nodeconductor.iaas.models import CloudProjectMembership
 
         try:
             membership = CloudProjectMembership.objects.get(

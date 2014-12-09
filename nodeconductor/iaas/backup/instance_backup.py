@@ -2,7 +2,7 @@ from django.utils import six
 
 from nodeconductor.backup.models import BackupStrategy
 from nodeconductor.backup.exceptions import BackupStrategyExecutionError
-from nodeconductor.cloud.backend import CloudBackendError
+from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.models import Instance
 
 

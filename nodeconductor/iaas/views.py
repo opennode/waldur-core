@@ -11,25 +11,24 @@ from django.shortcuts import get_object_or_404
 
 import django_filters
 
-from rest_framework import filters as rf_filter
+from rest_framework import exceptions
+from rest_framework import filters
 from rest_framework import mixins
 from rest_framework import permissions, status
 from rest_framework import viewsets, views
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework_extensions.decorators import action, link
 
-from nodeconductor.cloud.models import Cloud
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.core.utils import sort_dict
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
+from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
-from nodeconductor.structure import filters
-from nodeconductor.structure.filters import filter_queryset_for_user
-from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, ResourceQuota
+from nodeconductor.structure import filters as structure_filters
+from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, ResourceQuota, CustomerRole
 
 
 logger = logging.getLogger(__name__)
@@ -99,7 +98,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
+    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = InstanceFilter
 
@@ -200,7 +199,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         is_admin = instance.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
 
         if not is_admin:
-            raise PermissionDenied()
+            raise exceptions.PermissionDenied()
 
         # Importing here to avoid circular imports
         from nodeconductor.core.tasks import set_state, StateChangeError
@@ -312,12 +311,12 @@ class TemplateViewSet(core_viewsets.ModelViewSet):
         if self.request.method == 'GET':
             cloud_uuid = self.request.QUERY_PARAMS.get('cloud')
             if cloud_uuid is not None:
-                cloud_queryset = filter_queryset_for_user(
-                    Cloud.objects.all(), user)
+                cloud_queryset = structure_filters.filter_queryset_for_user(
+                    models.Cloud.objects.all(), user)
 
                 try:
                     cloud = cloud_queryset.get(uuid=cloud_uuid)
-                except Cloud.DoesNotExist:
+                except models.Cloud.DoesNotExist:
                     return queryset.none()
 
                 queryset = queryset.filter(images__cloud=cloud)
@@ -356,7 +355,7 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
     queryset = core_models.SshPublicKey.objects.all()
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
-    filter_backends = (rf_filter.DjangoFilterBackend,)
+    filter_backends = (filters.DjangoFilterBackend,)
     filter_class = SshKeyFilter
 
     def pre_save(self, key):
@@ -376,7 +375,7 @@ class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
     queryset = models.Purchase.objects.all()
     serializer_class = serializers.PurchaseSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter,)
+    filter_backends = (structure_filters.GenericRoleFilter,)
 
 
 class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
@@ -410,7 +409,7 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
 
     @link(is_for_list=True)
     def stats(self, request):
-        queryset = filters.filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
+        queryset = structure_filters.filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
         queryset = self._filter_queryset(queryset)
 
         aggregate_parameters = self.request.QUERY_PARAMS.getlist('aggregate', [])
@@ -512,7 +511,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     )
     serializer_class = ServiceSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend)
+    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
     filter_class = ServiceFilter
 
     def _get_period(self):
@@ -560,7 +559,7 @@ class ResourceStatsView(views.APIView):
 
     def _check_user(self, request):
         if not request.user.is_staff:
-            raise PermissionDenied()
+            raise exceptions.PermissionDenied()
 
     def _get_quotas_stats(self, clouds):
         quotas_list = ResourceQuota.objects.filter(project_quota__clouds__in=clouds).values('vcpu', 'ram', 'storage')
@@ -577,7 +576,7 @@ class ResourceStatsView(views.APIView):
         auth_url = request.QUERY_PARAMS['auth_url']
 
         try:
-            clouds = Cloud.objects.filter(auth_url=auth_url)
+            clouds = models.Cloud.objects.filter(auth_url=auth_url)
             cloud_backend = clouds[0].get_backend()
         except IndexError:
             return Response('No clouds with auth url: %s' % auth_url, status=status.HTTP_400_BAD_REQUEST)
@@ -593,12 +592,13 @@ class CustomerStatsView(views.APIView):
 
     def get(self, request, format=None):
         customer_statistics = []
-        customer_queryset = filter_queryset_for_user(Customer.objects.all(), request.user)
+        customer_queryset = structure_filters.filter_queryset_for_user(Customer.objects.all(), request.user)
         for customer in customer_queryset:
-            projects_count = filter_queryset_for_user(Project.objects.filter(customer=customer), request.user).count()
-            project_groups_count = filter_queryset_for_user(
+            projects_count = structure_filters.filter_queryset_for_user(
+                Project.objects.filter(customer=customer), request.user).count()
+            project_groups_count = structure_filters.filter_queryset_for_user(
                 ProjectGroup.objects.filter(customer=customer), request.user).count()
-            instances_count = filter_queryset_for_user(
+            instances_count = structure_filters.filter_queryset_for_user(
                 models.Instance.objects.filter(project__customer=customer), request.user).count()
             customer_statistics.append({
                 'name': customer.name, 'projects': projects_count,
@@ -618,7 +618,7 @@ class UsageStatsView(views.APIView):
 
     def _get_aggregate_queryset(self, request, aggregate_model_name):
         model = self.aggregate_models[aggregate_model_name]['model']
-        return filter_queryset_for_user(model.objects.all(), request.user)
+        return structure_filters.filter_queryset_for_user(model.objects.all(), request.user)
 
     def _get_aggregate_filter(self, aggregate_model_name, obj):
         path = self.aggregate_models[aggregate_model_name]['path']
@@ -654,3 +654,151 @@ class UsageStatsView(views.APIView):
             else:
                 usage_stats.append({'name': aggregate_object.name, 'datapoints': []})
         return Response(usage_stats, status=status.HTTP_200_OK)
+
+
+class FlavorViewSet(core_viewsets.ReadOnlyModelViewSet):
+    """List of VM instance flavors that are accessible by this user.
+
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#flavor-management
+    """
+
+    queryset = models.Flavor.objects.all()
+    serializer_class = serializers.FlavorSerializer
+    lookup_field = 'uuid'
+    filter_backends = (structure_filters.GenericRoleFilter,)
+
+
+class CloudViewSet(core_viewsets.ModelViewSet):
+    """List of clouds that are accessible by this user.
+
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#cloud-model
+    """
+
+    queryset = models.Cloud.objects.all().prefetch_related('flavors')
+    serializer_class = serializers.CloudSerializer
+    lookup_field = 'uuid'
+    filter_backends = (structure_filters.GenericRoleFilter,)
+    permission_classes = (permissions.IsAuthenticated,
+                          permissions.DjangoObjectPermissions)
+
+    def _check_permission(self, cloud):
+        """
+        Raises PermissionDenied exception if user does not have permission to cloud
+        """
+        if not self.request.user.is_staff and not cloud.customer.roles.filter(
+                permission_group__user=self.request.user, role_type=CustomerRole.OWNER).exists():
+            raise exceptions.PermissionDenied()
+
+    def pre_save(self, cloud):
+        super(CloudViewSet, self).pre_save(cloud)
+        self._check_permission(cloud)
+
+    def post_save(self, obj, created=False):
+        if created:
+            tasks.sync_cloud_account.delay(obj.uuid.hex)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return serializers.CloudCreateSerializer
+
+        return super(CloudViewSet, self).get_serializer_class()
+
+    @action()
+    def sync(self, request, uuid):
+        """
+        Starts cloud synchronization
+        """
+        cloud = get_object_or_404(models.Cloud, uuid=uuid)
+        self._check_permission(cloud)
+        cloud.sync()
+        return Response({'status': "Cloud synchronization was scheduled"}, status=200)
+
+
+class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
+                                    mixins.RetrieveModelMixin,
+                                    mixins.DestroyModelMixin,
+                                    core_mixins.ListModelMixin,
+                                    viewsets.GenericViewSet):
+    """
+    List of project-cloud connections
+
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#link-cloud-to-a-project
+    """
+    queryset = models.CloudProjectMembership.objects.all()
+    serializer_class = serializers.CloudProjectMembershipSerializer
+    filter_backends = (structure_filters.GenericRoleFilter,)
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+
+    def post_save(self, obj, created=False):
+        if created:
+            tasks.sync_cloud_membership.delay(obj.pk)
+
+
+class SecurityGroupFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(
+        name='name',
+        lookup_type='icontains',
+    )
+    description = django_filters.CharFilter(
+        name='description',
+        lookup_type='icontains',
+    )
+    cloud = django_filters.CharFilter(
+        name='cloud_project_membership__cloud__uuid',
+    )
+    project = django_filters.CharFilter(
+        name='cloud_project_membership__project__uuid',
+    )
+
+    class Meta(object):
+        model = models.SecurityGroup
+        fields = [
+            'name',
+            'description',
+            'cloud',
+            'project'
+        ]
+
+
+class SecurityGroupViewSet(core_viewsets.ReadOnlyModelViewSet):
+    """
+    List of security groups
+
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#security-group-management
+    """
+    queryset = models.SecurityGroup.objects.all()
+    serializer_class = serializers.SecurityGroupSerializer
+    lookup_field = 'uuid'
+    permission_classes = (permissions.IsAuthenticated,
+                          permissions.DjangoObjectPermissions)
+    filter_class = SecurityGroupFilter
+    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend,)
+
+
+class IpMappingFilter(django_filters.FilterSet):
+    project = django_filters.CharFilter(
+        name='project__uuid',
+    )
+
+    class Meta(object):
+        model = models.IpMapping
+        fields = [
+            'project',
+            'private_ip',
+            'public_ip',
+        ]
+
+
+class IpMappingViewSet(core_viewsets.ModelViewSet):
+    """
+    List of mappings between public IPs and private IPs
+
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#ip-mappings
+    """
+    queryset = models.IpMapping.objects.all()
+    serializer_class = serializers.IpMappingSerializer
+    lookup_field = 'uuid'
+    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend,)
+    permission_classes = (permissions.IsAuthenticated,
+                          permissions.DjangoObjectPermissions)
+    filter_class = IpMappingFilter

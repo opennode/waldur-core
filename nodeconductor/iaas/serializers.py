@@ -1,23 +1,147 @@
 from __future__ import unicode_literals
 
-from rest_framework import serializers
-from rest_framework.reverse import reverse
+from django.db import IntegrityError
+from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
-from nodeconductor.cloud import models as cloud_models
-from nodeconductor.cloud import serializers as cloud_serializers
-from nodeconductor.core import models as core_models
-from nodeconductor.core.serializers import PermissionFieldFilteringMixin, RelatedResourcesFieldMixin, IPsField
+from nodeconductor.core import models as core_models, serializers as core_serializers
 from nodeconductor.iaas import models
-from nodeconductor.iaas.models import Instance
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
-from nodeconductor.structure import serializers as structure_serializers
+from nodeconductor.structure import serializers as structure_serializers, models as structure_models
+
+
+class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
+    class Meta(core_serializers.BasicInfoSerializer.Meta):
+        model = models.Cloud
+
+
+class BasicFlavorSerializer(core_serializers.BasicInfoSerializer):
+    class Meta(core_serializers.BasicInfoSerializer.Meta):
+        model = models.Flavor
+
+
+class FlavorSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = models.Flavor
+        fields = ('url', 'uuid', 'name', 'ram', 'disk', 'cores')
+        lookup_field = 'uuid'
+
+
+class CloudCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
+                            serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = models.Cloud
+        fields = ('uuid', 'url', 'name', 'customer', 'auth_url')
+
+        lookup_field = 'uuid'
+
+    def get_filtered_field_names(self):
+        return 'customer',
+
+
+class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
+                      core_serializers.RelatedResourcesFieldMixin,
+                      serializers.HyperlinkedModelSerializer):
+    flavors = FlavorSerializer(many=True, read_only=True)
+    projects = structure_serializers.BasicProjectSerializer(many=True, read_only=True)
+
+    class Meta(object):
+        model = models.Cloud
+        fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects', 'auth_url')
+        lookup_field = 'uuid'
+
+    public_fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects', 'auth_url')
+
+    def get_filtered_field_names(self):
+        return 'customer',
+
+    def get_related_paths(self):
+        return 'customer',
+
+    def to_native(self, obj):
+        # a workaround for DRF's webui bug
+        if obj is None:
+            return
+
+        native = super(CloudSerializer, self).to_native(obj)
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return native
+
+        if not user.is_superuser:
+            is_customer_owner = obj.customer.roles.filter(
+                permission_group__user=user, role_type=structure_models.CustomerRole.OWNER).exists()
+            if not is_customer_owner:
+                for field_name in native:
+                    if field_name not in self.public_fields:
+                        del native[field_name]
+        return native
+
+
+class UniqueConstraintError(exceptions.APIException):
+    status_code = status.HTTP_302_FOUND
+    default_detail = 'Entity already exists.'
+
+
+class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFilteringMixin,
+                                       core_serializers.RelatedResourcesFieldMixin,
+                                       serializers.HyperlinkedModelSerializer):
+
+    class Meta(object):
+        model = models.CloudProjectMembership
+        fields = (
+            'url',
+            'project', 'project_name',
+            'cloud', 'cloud_name',
+        )
+        view_name = 'cloudproject_membership-detail'
+
+    def get_filtered_field_names(self):
+        return 'project', 'cloud'
+
+    def get_related_paths(self):
+        return 'project', 'cloud'
+
+    def save(self, **kwargs):
+        try:
+            return super(CloudProjectMembershipSerializer, self).save(**kwargs)
+        except IntegrityError:
+            # unique constraint validation
+            # TODO: Should be done on a higher level
+            raise UniqueConstraintError()
+
+
+class BasicSecurityGroupRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.SecurityGroupRule
+        fields = ('protocol', 'from_port', 'to_port', 'cidr')
+
+
+class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
+
+    rules = BasicSecurityGroupRuleSerializer(read_only=True)
+    cloud_project_membership = CloudProjectMembershipSerializer()
+
+    class Meta(object):
+        model = models.SecurityGroup
+        fields = ('url', 'uuid', 'name', 'description', 'rules', 'cloud_project_membership')
+        lookup_field = 'uuid'
+        view_name = 'security_group-detail'
+
+
+class IpMappingSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = models.IpMapping
+        fields = ('url', 'uuid', 'public_ip', 'private_ip', 'project')
+        lookup_field = 'uuid'
+        view_name = 'ip_mapping-detail'
 
 
 class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
     name = serializers.Field(source='security_group.name')
-    rules = cloud_serializers.BasicSecurityGroupRuleSerializer(
+    rules = BasicSecurityGroupRuleSerializer(
         source='security_group.rules',
         many=True,
         read_only=True
@@ -33,7 +157,7 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
         view_name = 'security_group-detail'
 
 
-class InstanceCreateSerializer(PermissionFieldFilteringMixin,
+class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                                serializers.HyperlinkedModelSerializer):
 
     security_groups = InstanceSecurityGroupSerializer(
@@ -90,12 +214,12 @@ class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
         many=True, required=False, read_only=False)
 
 
-class InstanceResizeSerializer(PermissionFieldFilteringMixin,
+class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
                                serializers.Serializer):
     flavor = serializers.HyperlinkedRelatedField(
         view_name='flavor-detail',
         lookup_field='uuid',
-        queryset=cloud_models.Flavor.objects.all(),
+        queryset=models.Flavor.objects.all(),
         required=False,
     )
     disk_size = serializers.IntegerField(min_value=1, required=False)
@@ -129,14 +253,14 @@ class InstanceLicenseSerializer(serializers.ModelSerializer):
         lookup_field = 'uuid'
 
 
-class InstanceSerializer(RelatedResourcesFieldMixin,
-                         PermissionFieldFilteringMixin,
+class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
+                         core_serializers.PermissionFieldFilteringMixin,
                          serializers.HyperlinkedModelSerializer):
     state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='project.project_groups', many=True, read_only=True)
-    external_ips = IPsField(source='external_ips', read_only=True)
-    internal_ips = IPsField(source='internal_ips', read_only=True)
+    external_ips = core_serializers.IPsField(source='external_ips', read_only=True)
+    internal_ips = core_serializers.IPsField(source='internal_ips', read_only=True)
     ssh_public_key_name = serializers.Field(source='ssh_public_key.name')
     backups = backup_serializers.BackupSerializer()
     backup_schedules = backup_serializers.BackupScheduleSerializer()
@@ -285,7 +409,7 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
 
-class PurchaseSerializer(RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
+class PurchaseSerializer(core_serializers.RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
     user = serializers.HyperlinkedRelatedField(
         source='user',
         view_name='user-detail',
@@ -343,7 +467,7 @@ class ServiceSerializer(serializers.Serializer):
 
         # TODO: this could use something similar to backup's generic model for all resources
         view_name = 'service-detail'
-        service_instance = Instance.objects.get(uuid=obj['uuid'])
+        service_instance = models.Instance.objects.get(uuid=obj['uuid'])
         hyperlinked_field = serializers.HyperlinkedRelatedField(
             view_name=view_name,
             lookup_field='uuid',
@@ -358,7 +482,7 @@ class ServiceSerializer(serializers.Serializer):
         except (KeyError, AttributeError):
             raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
 
-        service_instance = Instance.objects.get(uuid=obj['uuid'])
+        service_instance = models.Instance.objects.get(uuid=obj['uuid'])
         groups = structure_serializers.BasicProjectGroupSerializer(
             service_instance.project.project_groups.all(),
             many=True,

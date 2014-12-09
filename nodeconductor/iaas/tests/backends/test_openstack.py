@@ -5,15 +5,12 @@ import collections
 from django.test import TransactionTestCase
 from django.utils import unittest
 from keystoneclient import exceptions as keystone_exceptions
-from novaclient import exceptions as nova_exceptions
 import mock
 
-from nodeconductor.cloud.backend import CloudBackendError
-from nodeconductor.cloud.backend.openstack import OpenStackBackend
-from nodeconductor.cloud.models import Flavor
-from nodeconductor.cloud.tests import factories
-from nodeconductor.iaas.models import Image
-from nodeconductor.iaas.tests import factories as iaas_factories
+from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.iaas.backend.openstack import OpenStackBackend
+from nodeconductor.iaas.models import Image, Flavor
+from nodeconductor.iaas.tests import factories
 
 NovaFlavor = collections.namedtuple('NovaFlavor',
                                     ['id', 'name', 'vcpus', 'ram', 'disk'])
@@ -276,7 +273,7 @@ class OpenStackBackendFlavorApiTest(TransactionTestCase):
 
     def test_pull_flavors_doesnt_delete_flavors_linked_to_instances(self):
         # Given
-        iaas_factories.InstanceFactory.create(flavor=self.flavors[1])
+        factories.InstanceFactory.create(flavor=self.flavors[1])
 
         self.nova_client.flavors.findall.return_value = [
             nc_flavor_to_nova_flavor(self.flavors[0]),
@@ -312,15 +309,15 @@ class OpenStackBackendImageApiTest(TransactionTestCase):
         #
 
         self.cloud_account = factories.CloudFactory()
-        self.templates = iaas_factories.TemplateFactory.create_batch(3)
+        self.templates = factories.TemplateFactory.create_batch(3)
 
         self.template_mappings = (
-            iaas_factories.TemplateMappingFactory.create_batch(2, template=self.templates[0]) +
-            iaas_factories.TemplateMappingFactory.create_batch(2, template=self.templates[1]) +
-            iaas_factories.TemplateMappingFactory.create_batch(1, template=self.templates[2])
+            factories.TemplateMappingFactory.create_batch(2, template=self.templates[0]) +
+            factories.TemplateMappingFactory.create_batch(2, template=self.templates[1]) +
+            factories.TemplateMappingFactory.create_batch(1, template=self.templates[2])
         )
 
-        self.image = iaas_factories.ImageFactory(
+        self.image = factories.ImageFactory(
             cloud=self.cloud_account,
             template=self.template_mappings[0].template,
             backend_id=self.template_mappings[0].backend_image_id,
