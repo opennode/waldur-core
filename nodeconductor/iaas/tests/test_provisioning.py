@@ -571,6 +571,12 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_cannot_create_instance_with_empty_flavor(self):
         self.assert_field_non_empty('flavor')
 
+    def test_cannot_create_instance_without_ssh_public_key(self):
+        self.assert_field_required('ssh_public_key')
+
+    def test_cannot_create_instance_with_empty_ssh_public_key(self):
+        self.assert_field_non_empty('ssh_public_key')
+
     def test_cannot_create_instance_with_negative_volume_size(self):
         self.skipTest("Not implemented yet")
 
@@ -729,3 +735,27 @@ class InstanceUsageTest(test.APITransactionTestCase):
             self.assertEqual(response.data, expected_data)
             patched_cliend.get_item_stats.assert_called_once_with(
                 [self.instance], data['item'], data['from'], data['to'], data['datapoints'])
+
+
+class InstanceCascadeDeletionTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        # given
+        self.instance = factories.InstanceFactory()
+
+    def when(self, obj):
+        obj.delete()
+
+    def test_isntance_will_not_be_deleted_on_ssh_pulic_key_deletion(self):
+        self.when(self.instance.ssh_public_key)
+        # then
+        self.assertTrue(
+            Instance.objects.filter(pk=self.instance.pk).exists(),
+            'Instance should exist in database after it ssh public key was deleted')
+
+    def test_isntance_will_not_be_deleted_on_flavor_deletion(self):
+        self.when(self.instance.flavor)
+        # then
+        self.assertTrue(
+            Instance.objects.filter(pk=self.instance.pk).exists(),
+            'Instance should exist in database after it flavor was deleted')
