@@ -44,6 +44,16 @@ Project permissions
 - Project administrators can list all the projects they are administrators in.
 - Project managers can list all the projects they are managers in.
 
+Optional filters are:
+
+- ?username - matching of a related to the project user username
+- ?full_name - matching of a related to the project user full name
+- ?native_name - matching of a related to the project user native name
+- ?project_group - matching of a project uuid
+- ?role - matching of a user role type in a project:
+    * 0 - admin
+    * 1 - manager
+
 Create a new project
 --------------------
 

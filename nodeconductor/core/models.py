@@ -15,7 +15,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from django_fsm import FSMField, transition
+from django_fsm import transition, FSMIntegerField
 from rest_framework.authtoken.models import Token
 from uuidfield import UUIDField
 
@@ -161,7 +161,9 @@ class SshPublicKey(UuidMixin, models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_index=True)
     name = models.CharField(max_length=50, blank=True)
     fingerprint = models.CharField(max_length=47)  # In ideal world should be unique
-    public_key = models.TextField(max_length=2000, validators=[validate_ssh_public_key])
+    public_key = models.TextField(
+        validators=[validators.MaxLengthValidator(2000), validate_ssh_public_key]
+    )
 
     class Meta(object):
         unique_together = ('user', 'name')
@@ -194,10 +196,10 @@ class SshPublicKey(UuidMixin, models.Model):
 
 
 class SynchronizationStates(object):
-    SYNCING_SCHEDULED = 'u'
-    SYNCING = 'U'
-    IN_SYNC = 's'
-    ERRED = 'e'
+    SYNCING_SCHEDULED = 1
+    SYNCING = 2
+    IN_SYNC = 3
+    ERRED = 4
 
     CHOICES = (
         (SYNCING_SCHEDULED, _('Sync Scheduled')),
@@ -211,8 +213,7 @@ class SynchronizableMixin(models.Model):
     class Meta(object):
         abstract = True
 
-    state = FSMField(
-        max_length=1,
+    state = FSMIntegerField(
         default=SynchronizationStates.SYNCING_SCHEDULED,
         choices=SynchronizationStates.CHOICES,
     )

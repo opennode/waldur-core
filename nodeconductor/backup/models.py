@@ -1,18 +1,18 @@
 from __future__ import unicode_literals
+
 from datetime import datetime, timedelta
 
+from croniter.croniter import croniter
 from django.db import models, IntegrityError
-from django.utils import timezone
+from django.utils import timezone, six
 from django.utils.encoding import python_2_unicode_compatible
 from django.contrib.contenttypes import models as ct_models
 from django.contrib.contenttypes import generic as ct_generic
-
-from django_fsm import FSMField, transition
-from croniter.croniter import croniter
+from django_fsm import transition, FSMIntegerField
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core import fields as core_fields
-from nodeconductor.backup import managers
+from nodeconductor.backup import managers, exceptions, utils
 
 
 class BackupSourceAbstractModel(models.Model):
@@ -130,12 +130,12 @@ class Backup(core_models.UuidMixin,
     created_at = models.DateTimeField(auto_now_add=True)
 
     class States(object):
-        READY = 'd'
-        BACKING_UP = 'p'
-        RESTORING = 'r'
-        DELETING = 'l'
-        ERRED = 'e'
-        DELETED = 'x'
+        READY = 1
+        BACKING_UP = 2
+        RESTORING = 3
+        DELETING = 4
+        ERRED = 5
+        DELETED = 6
 
     STATE_CHOICES = (
         (States.READY, 'Ready'),
@@ -146,8 +146,11 @@ class Backup(core_models.UuidMixin,
         (States.DELETED, 'Deleted'),
     )
 
-    state = FSMField(default=States.READY, max_length=1, choices=STATE_CHOICES)
-    result_id = models.CharField(max_length=63, null=True)
+    state = FSMIntegerField(default=States.READY, choices=STATE_CHOICES)
+    # TODO: use https://github.com/bradjasper/django-jsonfield after python update (to 2.7)
+    additional_data = models.TextField(
+        null=True, blank=True,
+        help_text='Additional information about backup, can be used for backup restoration or deletion')
 
     objects = managers.BackupManager()
 
@@ -164,11 +167,10 @@ class Backup(core_models.UuidMixin,
         from nodeconductor.backup import tasks
 
         self._starting_backup()
-        result = tasks.process_backup_task.delay(self.uuid.hex)
-        self.result_id = result.id
         self.__save()
+        tasks.process_backup_task.delay(self.uuid.hex)
 
-    def start_restoration(self, replace_original=False):
+    def start_restoration(self):
         """
         Starts backup restoration task.
         If 'replace_original' is True, should attempt to rewrite the latest state. False by default.
@@ -176,9 +178,8 @@ class Backup(core_models.UuidMixin,
         from nodeconductor.backup import tasks
 
         self._starting_restoration()
-        result = tasks.restoration_task.delay(self.uuid.hex, replace_original=False)
-        self.result_id = result.id
         self.__save()
+        tasks.restoration_task.delay(self.uuid.hex)
 
     def start_deletion(self):
         """
@@ -187,33 +188,34 @@ class Backup(core_models.UuidMixin,
         from nodeconductor.backup import tasks
 
         self._starting_deletion()
-        result = tasks.deletion_task.delay(self.uuid.hex)
-        self.result_id = result.id
+        self.__save()
+        tasks.deletion_task.delay(self.uuid.hex)
+
+    def set_additional_data(self, additional_data):
+        self.additional_data = additional_data
         self.__save()
 
-    def poll_current_state(self):
-        """
-        Checks status of the backup task. Updates the backup state on task completion.
-        """
-        from nodeconductor.backup import tasks
-
-        if self.state == self.States.BACKING_UP:
-            self._check_task_result(tasks.process_backup_task, self._confirm_backup)
-        elif self.state == self.States.RESTORING:
-            self._check_task_result(tasks.restoration_task, self._confirm_restoration)
-        elif self.state == self.States.DELETING:
-            self._check_task_result(tasks.deletion_task, self._confirm_deletion)
+    def confirm_backup(self):
+        self._confirm_backup()
         self.__save()
 
-    def _check_task_result(self, task, confirm_function):
-        """
-        Gets task result by its id. If it is ready - executes confirm function
-        """
-        result = task.AsyncResult(self.result_id)
-        if result is None:
-            self._erred()
-        elif result.ready():
-            confirm_function()
+    def confirm_restoration(self):
+        self._confirm_restoration()
+        self.__save()
+
+    def confirm_deletion(self):
+        self._confirm_deletion()
+        self.__save()
+
+    def erred(self):
+        self._erred()
+        self.__save()
+
+    def get_strategy(self):
+        try:
+            return utils.get_object_backup_strategy(self.backup_source)
+        except KeyError:
+            six.reraise(exceptions.BackupStrategyNotFoundError, exceptions.BackupStrategyNotFoundError())
 
     @transition(field=state, source=States.READY, target=States.BACKING_UP)
     def _starting_backup(self):
@@ -256,38 +258,26 @@ class Backup(core_models.UuidMixin,
             return super(Backup, self).save(*args, **kwargs)
 
 
-class BackupableMixin(models.Model):
-    """
-    Mixin to mark model that model can be backed up and require model to implement
-    a get_backup_strategy() function for Model-specific backup approach.
-    """
-    class Meta(object):
-        abstract = True
-
-    backups = ct_generic.GenericRelation('Backup')
-    backup_schedules = ct_generic.GenericRelation('BackupSchedule')
-
-    def get_backup_strategy(self):
-        raise NotImplementedError(
-            'Implement get_backup_strategy() that would return a method for backing up instance of a model.')
-
-
 class BackupStrategy(object):
     """
     A parent class for the model-specific backup strategies.
     """
+    @classmethod
+    def get_model(cls):
+        raise NotImplementedError(
+            'Implement get_model() that would return model.')
 
     @classmethod
-    def backup(self):
+    def backup(cls, backup_source):
         raise NotImplementedError(
             'Implement backup() that would perform backup of a model.')
 
     @classmethod
-    def restore(self, replace_original):
+    def restore(cls, backup_source, additional_data):
         raise NotImplementedError(
             'Implement restore() that would perform backup of a model.')
 
     @classmethod
-    def delete(self):
+    def delete(cls, backup_source, additional_data):
         raise NotImplementedError(
             'Implement delete() that would perform backup of a model.')

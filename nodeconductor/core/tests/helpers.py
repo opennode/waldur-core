@@ -90,7 +90,7 @@ class PermissionsTest(test.APITransactionTestCase):
                     % (user, url, method, response.status_code))
 
 
-class ListPermissionsTest(test.APISimpleTestCase):
+class ListPermissionsTest(test.APITransactionTestCase):
     """
     Abstract class that tests what objects user receive in list.
 
@@ -115,11 +115,10 @@ class ListPermissionsTest(test.APISimpleTestCase):
 
             self.client.force_authenticate(user=user)
             response = self.client.get(self.url)
-            context = json.loads(response.content)
             self.assertEqual(
-                len(expected_results), len(context),
+                len(expected_results), len(response.data),
                 'User %s receive wrong number of objects. Expected: %s, received %s'
-                % (user, len(expected_results), len(context)))
-            for actual, expected in zip(context, expected_results):
+                % (user, len(expected_results), len(response.data)))
+            for actual, expected in zip(response.data, expected_results):
                 for key, value in expected.iteritems():
                     self.assertEqual(actual[key], value)

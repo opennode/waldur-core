@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.cloud.models import Cloud, CloudProjectMembership, IpMapping
+from nodeconductor.iaas.models import Cloud, CloudProjectMembership, IpMapping
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
 from nodeconductor.structure.models import *
@@ -296,14 +296,14 @@ Arguments:
             cores=2,
             ram=1024 * 1024,
             disk=45 * 1024,
-            flavor_id='cld1'
+            backend_id='cld1',
         )
         cloud.flavors.create(
             name='x2.xx of cloud %s' % cloud.uuid,
             cores=4,
             ram=2048 * 1024,
             disk=90 * 1024,
-            flavor_id='cld2'
+            backend_id='cld2',
         )
 
         # add templates
@@ -477,6 +477,7 @@ Arguments:
             start_time=timezone.now(),
             ssh_public_key=ssh_public_key,
             system_volume_size=flavor.disk,
+            agreed_sla=template.sla_level,
         )
 
         cmp = CloudProjectMembership.objects.get(project=project, cloud=flavor.cloud)

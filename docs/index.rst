@@ -37,7 +37,8 @@ Developing NodeConductor
 .. toctree::
    :maxdepth: 1
 
-   developer
+   developer/developer
+   developer/sample-data
 
 
 License
