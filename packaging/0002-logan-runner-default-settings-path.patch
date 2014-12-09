@@ -5,7 +5,7 @@
      run_app(
          project='nodeconductor',
 -        default_config_path='~/.nodeconductor/settings.py',
-+        default_config_path='/usr/lib/python2.6/site-packages/nodeconductor/server/settings_ini.py',
++        default_config_path='/usr/lib/python2.7/site-packages/nodeconductor/server/settings_ini.py',
          default_settings='nodeconductor.server.base_settings',
          settings_initializer=generate_settings,
          settings_envvar='NODECONDUCTOR_CONF',

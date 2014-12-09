@@ -150,7 +150,7 @@ Next steps:
 
 3. Create database (if not yet done):
 
-    CREATE DATABASE nodeconductor CHARACTER SET = utf8 COLLATE = utf8_bin;
+    CREATE DATABASE nodeconductor CHARACTER SET = utf8;
     CREATE USER 'nodeconductor'@'%' IDENTIFIED BY 'nodeconductor';
     GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'%';
 
