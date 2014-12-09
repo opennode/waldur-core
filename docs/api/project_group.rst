@@ -62,6 +62,15 @@ manager.
 
 Management is done through **api/project-group-permissions/** endpoint.
 
+Optional filters are:
+
+- ?username - matching of a project group manager username
+- ?full_name - matching of a project group manager full name
+- ?native_name - matching of a project group manager native name
+- ?project_group - matching of a project group uuid
+- ?role - matching of a user role type in a project group:
+    * 0 - manager
+
 To list all visible links, run a GET query against a list.
 
 .. code-block:: http

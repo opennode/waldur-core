@@ -1,17 +1,14 @@
 from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
-from django.utils import unittest
 from mock import patch, Mock
 from rest_framework import status
 from rest_framework import test
 
 from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
-from nodeconductor.cloud.models import CloudProjectMembership, Flavor
-from nodeconductor.cloud.tests import factories as cloud_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
-from nodeconductor.iaas.models import Instance
+from nodeconductor.iaas.models import Instance, CloudProjectMembership, Flavor
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
@@ -186,9 +183,9 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         # new sec group
         cloud_project_membership = CloudProjectMembership.objects.get(cloud=self.admined_instance.flavor.cloud,
                                                                       project=self.admined_instance.project)
-        security_group = cloud_factories.SecurityGroupFactory(cloud_project_membership=cloud_project_membership)
+        security_group = factories.SecurityGroupFactory(cloud_project_membership=cloud_project_membership)
         data['security_groups'] = [
-            {'url': cloud_factories.SecurityGroupFactory.get_url(security_group)}
+            {'url': factories.SecurityGroupFactory.get_url(security_group)}
         ]
 
         response = self.client.put(self._get_instance_url(self.admined_instance), data)
@@ -250,7 +247,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_user_can_change_flavor_of_stopped_instance_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
-        new_flavor = cloud_factories.FlavorFactory(cloud=self.admined_instance.flavor.cloud)
+        new_flavor = factories.FlavorFactory(cloud=self.admined_instance.flavor.cloud)
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -270,7 +267,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         instance = self.admined_instance
 
-        new_flavor = cloud_factories.FlavorFactory()
+        new_flavor = factories.FlavorFactory()
 
         CloudProjectMembership.objects.create(
             project=instance.project,
@@ -294,7 +291,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.user)
 
         instance = self.managed_instance
-        new_flavor = cloud_factories.FlavorFactory(cloud=instance.flavor.cloud)
+        new_flavor = factories.FlavorFactory(cloud=instance.flavor.cloud)
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -310,7 +307,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         inaccessible_instance = factories.InstanceFactory()
 
-        new_flavor = cloud_factories.FlavorFactory(cloud=inaccessible_instance.flavor.cloud)
+        new_flavor = factories.FlavorFactory(cloud=inaccessible_instance.flavor.cloud)
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -336,7 +333,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
             instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-            changed_flavor = cloud_factories.FlavorFactory(cloud=instance.flavor.cloud)
+            changed_flavor = factories.FlavorFactory(cloud=instance.flavor.cloud)
 
             data = {'flavor': self._get_flavor_url(changed_flavor)}
 
@@ -364,7 +361,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
             managed_instance.project.add_user(self.user, ProjectRole.MANAGER)
 
-            new_flavor = cloud_factories.FlavorFactory(cloud=managed_instance.flavor.cloud)
+            new_flavor = factories.FlavorFactory(cloud=managed_instance.flavor.cloud)
 
             data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -380,7 +377,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         instance.project.add_user(self.user, ProjectRole.MANAGER)
         instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-        new_flavor = cloud_factories.FlavorFactory(cloud=instance.flavor.cloud)
+        new_flavor = factories.FlavorFactory(cloud=instance.flavor.cloud)
 
         data = {
             'flavor': self._get_flavor_url(new_flavor),
@@ -474,12 +471,12 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.instance_list_url = reverse('instance-list')
 
-        cloud = cloud_factories.CloudFactory()
+        cloud = factories.CloudFactory()
 
         self.template = factories.TemplateFactory()
-        self.flavor = cloud_factories.FlavorFactory(cloud=cloud)
+        self.flavor = factories.FlavorFactory(cloud=cloud)
         self.project = structure_factories.ProjectFactory()
-        cloud_factories.CloudProjectMembershipFactory(cloud=cloud, project=self.project)
+        factories.CloudProjectMembershipFactory(cloud=cloud, project=self.project)
         self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
@@ -526,9 +523,9 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_cannot_create_instance_with_flavor_not_from_supplied_project(self):
         data = self.get_valid_data()
 
-        another_flavor = cloud_factories.FlavorFactory()
+        another_flavor = factories.FlavorFactory()
         another_project = structure_factories.ProjectFactory()
-        cloud_factories.CloudProjectMembershipFactory(project=another_project, cloud=another_flavor.cloud)
+        factories.CloudProjectMembershipFactory(project=another_project, cloud=another_flavor.cloud)
 
         another_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
@@ -540,7 +537,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
     def test_cannot_create_instance_with_flavor_not_from_clouds_allowed_for_users_projects(self):
         data = self.get_valid_data()
-        others_flavor = cloud_factories.FlavorFactory()
+        others_flavor = factories.FlavorFactory()
         data['flavor'] = self._get_flavor_url(others_flavor)
 
         response = self.client.post(self.instance_list_url, data)
@@ -732,4 +729,3 @@ class InstanceUsageTest(test.APITransactionTestCase):
             self.assertEqual(response.data, expected_data)
             patched_cliend.get_item_stats.assert_called_once_with(
                 [self.instance], data['item'], data['from'], data['to'], data['datapoints'])
-

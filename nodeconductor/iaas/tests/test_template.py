@@ -4,8 +4,7 @@ from rest_framework import status
 from rest_framework import test
 from rest_framework.reverse import reverse
 
-from nodeconductor.cloud.tests import factories as cloud_factories
-from nodeconductor.iaas.tests import factories as iaas_factories
+from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -20,8 +19,8 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
         }
 
         self.templates = {
-            'active': iaas_factories.TemplateFactory.create_batch(4, is_active=True),
-            'inactive': [iaas_factories.TemplateFactory(is_active=False)],
+            'active': factories.TemplateFactory.create_batch(4, is_active=True),
+            'inactive': [factories.TemplateFactory(is_active=False)],
         }
 
         #  Uadmin<-->P0      P1<--->Umgr
@@ -50,11 +49,11 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
         project_group.projects.add(project2)
         project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
-        self.clouds = cloud_factories.CloudFactory.create_batch(4, customer=project1.customer)
-        cloud_factories.CloudProjectMembershipFactory(project=project1, cloud=self.clouds[0])
-        cloud_factories.CloudProjectMembershipFactory(project=project1, cloud=self.clouds[1])
-        cloud_factories.CloudProjectMembershipFactory(project=project2, cloud=self.clouds[2])
-        cloud_factories.CloudProjectMembershipFactory(project=project2, cloud=self.clouds[3])
+        self.clouds = factories.CloudFactory.create_batch(4, customer=project1.customer)
+        factories.CloudProjectMembershipFactory(project=project1, cloud=self.clouds[0])
+        factories.CloudProjectMembershipFactory(project=project1, cloud=self.clouds[1])
+        factories.CloudProjectMembershipFactory(project=project2, cloud=self.clouds[2])
+        factories.CloudProjectMembershipFactory(project=project2, cloud=self.clouds[3])
 
         for t, c in (
                 (0, 0),
@@ -64,7 +63,7 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
                 (2, 2),
                 (3, 3),
         ):
-            iaas_factories.ImageFactory(template=self.templates['active'][t], cloud=self.clouds[c])
+            factories.ImageFactory(template=self.templates['active'][t], cloud=self.clouds[c])
 
     # List filtration tests
     def test_anonymous_user_cannot_list_templates(self):
@@ -151,7 +150,7 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
         for role in ('admin', 'group_manager'):
             self.client.force_authenticate(user=self.users[role])
 
-            cloud = cloud_factories.CloudFactory()
+            cloud = factories.CloudFactory()
             response = self.client.get(reverse('template-list'),
                                        {'cloud': cloud.uuid})
             self.assertEqual(response.status_code, status.HTTP_200_OK)

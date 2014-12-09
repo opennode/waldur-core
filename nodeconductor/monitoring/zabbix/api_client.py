@@ -1,3 +1,4 @@
+import sys
 import logging
 
 import requests
@@ -25,9 +26,9 @@ class ZabbixApiClient(object):
             if not hosts:
                 raise ZabbixError('There is no host for instance %s' % instance)
             return hosts[0]
-        except ZabbixAPIException:
+        except ZabbixAPIException as e:
             logger.exception('Can not get Zabbix host for instance %s', instance)
-            six.reraise(ZabbixError, ZabbixError())
+            six.reraise(ZabbixError, e)
 
     def create_host(self, instance):
         try:
@@ -42,7 +43,7 @@ class ZabbixApiClient(object):
         except ZabbixAPIException as e:
             message = 'Can not create Zabbix host for instance %s. %s: %s' % (instance, e.__class__.__name__, e)
             logger.exception(message)
-            six.reraise(ZabbixError, ZabbixError())
+            six.reraise(ZabbixError, e)
 
     def delete_host(self, instance):
         try:
@@ -52,9 +53,9 @@ class ZabbixApiClient(object):
             if not deleted:
                 logger.warn('Can not delete zabbix host for instance %s. It does not exist.', instance)
 
-        except ZabbixAPIException:
+        except ZabbixAPIException as e:
             logger.exception('Can not delete zabbix host.')
-            six.reraise(ZabbixError, ZabbixError())
+            six.reraise(ZabbixError, e)
 
     def create_hostgroup(self, project):
         try:
@@ -65,9 +66,9 @@ class ZabbixApiClient(object):
             if not created:
                 logger.warn('Can not create new Zabbix hostgroup for project %s. It already exists.', project)
 
-        except ZabbixAPIException:
+        except ZabbixAPIException as e:
             logger.exception('Can not create Zabbix hostgroup for project %s', project)
-            six.reraise(ZabbixError, ZabbixError())
+            six.reraise(ZabbixError, e)
 
     def delete_hostgroup(self, project):
         try:
@@ -77,9 +78,9 @@ class ZabbixApiClient(object):
             if not deleted:
                 logger.warn('Can not delete Zabbix hostgroup for project %s. It does not exist.', project)
 
-        except ZabbixAPIException:
+        except ZabbixAPIException as e:
             logger.exception('Can not delete Zabbix hostgroup.')
-            six.reraise(ZabbixError, ZabbixError())
+            six.reraise(ZabbixError, e)
 
     def create_service(self, instance):
         try:
@@ -97,9 +98,9 @@ class ZabbixApiClient(object):
                     'Can not create new Zabbix service for instance %s. Service with name %s already exists',
                     (instance, name))
 
-        except ZabbixAPIException:
+        except ZabbixAPIException as e:
             logger.exception('Can not create Zabbix IT service.')
-            six.reraise(ZabbixError, ZabbixError())
+            six.reraise(ZabbixError, e)
 
     def delete_service(self, instance):
         try:
@@ -109,9 +110,36 @@ class ZabbixApiClient(object):
             if not deleted:
                 logger.warn('Can not delete Zabbix service for instance %s. Service with name does not exist', instance)
 
-        except ZabbixAPIException:
+        except ZabbixAPIException as e:
             logger.exception('Can not delete Zabbix IT service.')
-            six.reraise(ZabbixError, ZabbixError())
+            six.reraise(ZabbixError, e)
+
+    def get_current_service_sla(self, instance, start_time, end_time):
+        try:
+            service_name = self.get_service_name(instance)
+            api = self.get_zabbix_api()
+            service_data = api.service.get(filter={'name': service_name})
+            if len(service_data) != 1:
+                raise ZabbixAPIException('Exactly one result is expected for service name %s'
+                                         ', instead received %s. Instance: %s'
+                                         % (service_name, len(service_data), instance)
+                )
+            service_id = service_data[0]['serviceid']
+            sla = api.service.getsla(
+                filter={'serviceids': service_id},
+                intervals={'from': start_time, 'to': end_time}
+            )[service_id]['sla'][0]['sla']
+
+            # get service details
+            service = api.service.get(output='extend', serviceids=service_id)[0]
+            service_trigger_id = service['triggerid']
+
+            # retrieve trigger events
+            events = self.get_trigger_events(api, service_trigger_id, start_time, end_time)
+            return sla, events
+        except ZabbixAPIException as e:
+            logger.exception('Can not get Zabbix IT service SLA value.')
+            six.reraise(ZabbixError, e)
 
     # Helpers:
     def init_config_parameters(self):
@@ -143,9 +171,9 @@ class ZabbixApiClient(object):
                     'sortorder': 1,
                     'goodsla': 95
                 })
-        except KeyError:
+        except KeyError as e:
             logger.exception('Failed to find all necessary Zabbix parameters in settings')
-            six.reraise(ZabbixError, ZabbixError())
+            six.reraise(ZabbixError, e)
 
     def get_zabbix_api(self):
         unsafe_session = requests.Session()
@@ -162,7 +190,7 @@ class ZabbixApiClient(object):
         return '%s_%s' % (project.name, project.uuid)
 
     def get_service_name(self, instance):
-        return 'Uptime of %s' % instance.backend_id
+        return 'Availability of %s' % instance.backend_id
 
     def get_template_triggerid(self, api, templateid):
         try:
@@ -225,3 +253,17 @@ class ZabbixApiClient(object):
             return True
         except IndexError:
             return False
+
+    def get_trigger_events(self, api, trigger_id, start_time, end_time):
+        try:
+            event_data = api.event.get(
+                output='extend',
+                objectids=trigger_id,
+                time_from=start_time,
+                time_till=end_time,
+                sortfield=["clock"],
+                sortorder="ASC")
+            return [{'timestamp': e['clock'], 'value': e['value']} for e in event_data]
+        except ZabbixAPIException as e:
+            logger.exception('Could not retrieve trigger %s events.' % trigger_id)
+            six.reraise(ZabbixError, e)

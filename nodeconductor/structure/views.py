@@ -2,12 +2,14 @@ from __future__ import unicode_literals
 
 from django.contrib import auth
 from django.db.models.query_utils import Q
+from django.http.response import Http404
 import django_filters
 from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import status
 from rest_framework import viewsets as rf_viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
@@ -22,6 +24,7 @@ from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGro
 
 
 User = auth.get_user_model()
+
 
 class CustomerFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
@@ -315,7 +318,8 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = serializers.UserSerializer
     lookup_field = 'uuid'
-    permission_classes = (rf_permissions.IsAuthenticated, permissions.IsAdminOrReadOnly)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          permissions.IsAdminOrOwner,)
     filter_class = UserFilter
 
     def get_queryset(self):
@@ -346,6 +350,24 @@ class UserViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_active=True)
         return queryset
 
+    @action()
+    def password(self, request, uuid=None):
+        try:
+            user = User.objects.get(uuid=uuid)
+        except User.DoesNotExist:
+            raise Http404()
+
+        password_data = request.DATA
+        serializer = serializers.PasswordSerializer(data=password_data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(password_data['password'])
+        user.save()
+
+        return Response({'detail': "Password has been successfully updated"},
+                        status=status.HTTP_200_OK)
+
 
 # TODO: cover filtering/ordering with tests
 class ProjectPermissionFilter(django_filters.FilterSet):
@@ -364,10 +386,14 @@ class ProjectPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
+    role = django_filters.NumberFilter(
+        name='group__projectrole__role_type',
+    )
 
     class Meta(object):
         model = User.groups.through
         fields = [
+            'role',
             'project',
             'username',
             'full_name',
@@ -499,10 +525,14 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
+    role = django_filters.NumberFilter(
+        name='group__projectgrouprole__role_type',
+    )
 
     class Meta(object):
         model = User.groups.through
         fields = [
+            'role',
             'project_group',
             'username',
             'full_name',
@@ -643,10 +673,14 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
+    role = django_filters.NumberFilter(
+        name='group__customerrole__role_type',
+    )
 
     class Meta(object):
         model = User.groups.through
         fields = [
+            'role',
             'customer',
             'username',
             'full_name',

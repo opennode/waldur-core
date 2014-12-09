@@ -21,4 +21,44 @@ Ordering can be done by the following fields (prefix with **-** for descending o
 - ?o=project__name
 - ?o=project__project_groups__name
 - ?o=agreed_sla
-- ?o=actual_sla
+- ?o=slas__value  (order by actual_sla field)
+
+
+SLA periods
++++++++++++
+
+Service list is displaying current SLAs for each of the items. By default, SLA period is set to the current month. To
+change the period pass it as a query argument:
+
+- ?period=YYYY-MM - return a list with SLAs for a given month
+- ?period=YYYY - return a list with SLAs for a given year
+
+In all cases all currently running services are returned, if SLA for the given period is not known or not present, it
+will be shown as **null** in the response.
+
+SLA events
+++++++++++
+
+Service SLAs are connected with occurrences of events. To get a list of such events issue a GET request to
+*/services/<service_uuid>/events/*. Optionally period can be supplied using the format defined above.
+
+The output contains a list of states and timestamps when the state was reached.
+
+Example output:
+
+.. code-block:: javascript
+
+    [
+        {
+            "timestamp": 1418043540, 
+            "state": "U"
+        },
+        {
+            "timestamp": 1417928550,
+            "state": "D"
+        },
+        {
+            "timestamp": 1417928490,
+            "state": "U"
+        }
+    ]

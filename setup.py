@@ -29,6 +29,7 @@ install_requires = [
     'djangosaml2>=0.11.0,<0.12',
     'drf-extensions==0.2.6',
     'logan==0.5.9.1',
+    'ordereddict==1.1',
     'python-cinderclient>=1.0.7,<=1.1.1',
     'python-glanceclient>=0.12.0,<0.13.0',
     'python-keystoneclient>=0.9.0,<0.11.2',
@@ -42,7 +43,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.10.0',
+    version='0.11.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
@@ -55,7 +56,8 @@ setup(
         'dev': dev_requires,
     },
     entry_points={
-        'console_scripts': ('nodeconductor = nodeconductor.server.logan_runner:main',)
+        'console_scripts': ('nodeconductor = nodeconductor.server.logan_runner:main',),
+        'backup_strategies': ('Instance = nodeconductor.iaas.backup.instance_backup:InstanceBackupStrategy', )
     },
     tests_require=tests_requires,
     test_suite='nodeconductor.server.test_runner.run_tests',
