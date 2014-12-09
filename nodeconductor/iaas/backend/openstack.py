@@ -51,7 +51,7 @@ class OpenStackBackend(object):
 
         with transaction.atomic():
             nc_flavors = cloud_account.flavors.all()
-            nc_flavors = dict(((f.flavor_id, f) for f in nc_flavors))
+            nc_flavors = dict(((f.backend_id, f) for f in nc_flavors))
 
             backend_ids = set(backend_flavors.keys())
             nc_ids = set(nc_flavors.keys())
@@ -78,7 +78,7 @@ class OpenStackBackend(object):
                     cores=backend_flavor.vcpus,
                     ram=self.get_core_disk_size(backend_flavor.ram),
                     disk=self.get_core_disk_size(backend_flavor.disk),
-                    flavor_id=backend_flavor.id,
+                    backend_id=backend_flavor.id,
                 )
                 logger.info('Created new flavor %s in database', nc_flavor.uuid)
 
@@ -379,7 +379,7 @@ class OpenStackBackend(object):
 
             network = matching_networks[0]
 
-            backend_flavor = nova.flavors.get(instance.flavor.flavor_id)  # FIXME: flavor_id -> backend_id
+            backend_flavor = nova.flavors.get(instance.flavor.backend_id)
             backend_image = glance.images.get(image.backend_id)
 
             system_volume_name = '{0}-system'.format(instance.hostname)

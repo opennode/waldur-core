@@ -22,12 +22,12 @@ GlanceImage = collections.namedtuple(
 
 
 def next_unique_flavor_id():
-    return factories.FlavorFactory.build().flavor_id
+    return factories.FlavorFactory.build().backend_id
 
 
 def nc_flavor_to_nova_flavor(flavor):
     return NovaFlavor(
-        id=flavor.flavor_id,
+        id=flavor.backend_id,
         name=flavor.name,
         vcpus=flavor.cores,
         ram=flavor.ram / 1024,
@@ -218,7 +218,7 @@ class OpenStackBackendFlavorApiTest(TransactionTestCase):
 
         # Then
         try:
-            stored_flavor = self.cloud_account.flavors.get(flavor_id=new_flavor.id)
+            stored_flavor = self.cloud_account.flavors.get(backend_id=new_flavor.id)
 
             self.assertEqual(stored_flavor.name, new_flavor.name)
             self.assertEqual(stored_flavor.cores, new_flavor.vcpus)
@@ -249,7 +249,7 @@ class OpenStackBackendFlavorApiTest(TransactionTestCase):
 
         # Then
         for updated_flavor in backend_flavors:
-            stored_flavor = self.cloud_account.flavors.get(flavor_id=updated_flavor.id)
+            stored_flavor = self.cloud_account.flavors.get(backend_id=updated_flavor.id)
 
             self.assertEqual(stored_flavor.name, updated_flavor.name)
             self.assertEqual(stored_flavor.cores, updated_flavor.vcpus)
@@ -267,7 +267,7 @@ class OpenStackBackendFlavorApiTest(TransactionTestCase):
 
         # Then
         is_present = self.cloud_account.flavors.filter(
-            flavor_id=self.flavors[1].flavor_id).exists()
+            backend_id=self.flavors[1].backend_id).exists()
 
         self.assertFalse(is_present, 'Flavor should have been deleted from the database')
 
@@ -284,7 +284,7 @@ class OpenStackBackendFlavorApiTest(TransactionTestCase):
 
         # Then
         is_present = self.cloud_account.flavors.filter(
-            flavor_id=self.flavors[1].flavor_id).exists()
+            backend_id=self.flavors[1].backend_id).exists()
 
         self.assertTrue(is_present, 'Flavor should have not been deleted from the database')
 
