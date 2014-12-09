@@ -76,12 +76,6 @@ class Cloud(core_models.UuidMixin, core_models.SynchronizableMixin, models.Model
     def __str__(self):
         return self.name
 
-    #
-    def sync(self):
-        """
-        Synchronizes nodeconductor cloud with real cloud account
-        """
-
 
 @python_2_unicode_compatible
 class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):

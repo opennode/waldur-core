@@ -32,14 +32,3 @@ class CloudViewSetTest(TestCase):
         mocked_request = type(str('MockedRequest'), (object,), {'user': user})
         self.view.request = mocked_request
         self.assertRaises(PermissionDenied, lambda: self.view._check_permission(cloud))
-
-    def test_sync(self):
-        customer = structure_factories.CustomerFactory()
-        owner = structure_factories.UserFactory()
-        customer.add_user(owner, structure_models.CustomerRole.OWNER)
-
-        cloud = factories.CloudFactory(customer=customer)
-        mocked_request = type(str('MockedRequest'), (object,), {'user': owner})
-        self.view.request = mocked_request
-        response = self.view.sync(request=mocked_request, uuid=cloud.uuid)
-        self.assertEqual(response.status_code, 200)
