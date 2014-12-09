@@ -703,16 +703,6 @@ class CloudViewSet(core_viewsets.ModelViewSet):
 
         return super(CloudViewSet, self).get_serializer_class()
 
-    @action()
-    def sync(self, request, uuid):
-        """
-        Starts cloud synchronization
-        """
-        cloud = get_object_or_404(models.Cloud, uuid=uuid)
-        self._check_permission(cloud)
-        cloud.sync()
-        return Response({'status': "Cloud synchronization was scheduled"}, status=200)
-
 
 class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,

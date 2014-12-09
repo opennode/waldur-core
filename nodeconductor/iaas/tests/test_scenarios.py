@@ -46,22 +46,6 @@ class CloudTest(test.APISimpleTestCase):
         self.expected_public_fields = (
             'auth_url', 'uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
 
-    def test_cloud_sync(self):
-        cloud = factories.CloudFactory(customer=self.customer)
-        self.client.force_authenticate(user=self.owner)
-        with patch('nodeconductor.iaas.models.Cloud.sync') as patched_method:
-            response = self.client.post(_cloud_url(cloud, action='sync'))
-            patched_method.assert_called_with()
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-    # XXX This method have to be moved to cloud permissions test
-    def test_cloud_sync_permission(self):
-        user = structure_factories.UserFactory()
-        cloud = factories.CloudFactory()
-        self.client.force_authenticate(user=user)
-        response = self.client.post(_cloud_url(cloud, action='sync'))
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
     def test_admin_can_view_only_cloud_public_fields(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.get(_cloud_url(self.cloud))
