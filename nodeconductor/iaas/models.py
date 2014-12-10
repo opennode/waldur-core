@@ -269,16 +269,13 @@ class Instance(core_models.UuidMixin,
     )
 
     # fields, defined by flavor
-    flavor = models.ForeignKey(Flavor, related_name='+', null=True, on_delete=models.SET_NULL)
     cores = models.PositiveSmallIntegerField()
     ram = models.PositiveSmallIntegerField()
     cloud = models.ForeignKey(Cloud, related_name='instances')
 
     # fields, defined by ssh public key
-    ssh_public_key = models.ForeignKey(
-        core_models.SshPublicKey, related_name='instances', null=True, on_delete=models.SET_NULL)
-    ssh_public_key_name = models.CharField(max_length=50, blank=True)
-    ssh_public_key_fingerprint = models.CharField(max_length=47)
+    key_name = models.CharField(max_length=50, blank=True)
+    key_fingerprint = models.CharField(max_length=47)
 
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255, blank=True)
@@ -375,25 +372,21 @@ class Instance(core_models.UuidMixin,
                 monthly_fee=template_license.monthly_fee,
             )
 
-    def _copy_ssh_public_key_attributes(self):
-        self.ssh_public_key_name = self.ssh_public_key.name
-        self.ssh_public_key_fingerprint = self.ssh_public_key.fingerprint
+    # def _copy_ssh_public_key_attributes(self):
+    #     self.ssh_public_key_name = self.ssh_public_key.name
+    #     self.ssh_public_key_fingerprint = self.ssh_public_key.fingerprint
 
-    def _copy_flavor_attributes(self):
-        self.system_volume_size = self.flavor.disk
-        self.cores = self.flavor.cores
-        self.ram = self.flavor.ram
-        self.cloud = self.flavor.cloud
+    # def _copy_flavor_attributes(self):
+    #     self.system_volume_size = self.flavor.disk
+    #     self.cores = self.flavor.cores
+    #     self.ram = self.flavor.ram
+    #     self.cloud = self.flavor.cloud
 
-    def _copy_template_attributes(self):
-        self.agreed_sla = self.template.sla_level
+    # def _copy_template_attributes(self):
+    #     self.agreed_sla = self.template.sla_level
 
     def save(self, *args, **kwargs):
         created = self.pk is None
-        if created:
-            self._copy_template_attributes()
-            self._copy_flavor_attributes()
-            self._copy_ssh_public_key_attributes()
         super(Instance, self).save(*args, **kwargs)
         if created:
             self._init_instance_licenses()
