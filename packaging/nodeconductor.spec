@@ -1,15 +1,14 @@
-%define __celeryd_run_dir %{_localstatedir}/run/%{name}-celeryd
 %define __conf_dir %{_sysconfdir}/%{name}
 %define __data_dir %{_datadir}/%{name}
-%define __init_dir %{_sysconfdir}/init.d
 %define __log_dir %{_localstatedir}/log/%{name}
 %define __logrotate_dir %{_sysconfdir}/logrotate.d
+%define __run_dir %{_localstatedir}/run/%{name}
 %define __saml2_conf_dir %{__conf_dir}/saml2
-%define __system_conf_dir %{_sysconfdir}/sysconfig
 %define __work_dir %{_sharedstatedir}/%{name}
 
-%define __celeryd_conf_file %{__system_conf_dir}/%{name}-celeryd
-%define __celeryd_init_file %{__init_dir}/%{name}-celeryd
+%define __celery_conf_file %{__conf_dir}/celery.conf
+%define __celery_systemd_unit_file %{_unit_dir}/%{name}-celery.service
+%define __celerybeat_systemd_unit_file %{_unit_dir}/%{name}-celerybeat.service
 %define __conf_file %{__conf_dir}/settings.ini
 %define __logrotate_conf_file %{__logrotate_dir}/%{name}
 %define __saml2_cert_file %{__saml2_conf_dir}/dummy.crt
@@ -17,7 +16,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.10.0
+Version: 0.11.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -59,7 +58,9 @@ Patch0004: 0004-default-settings-ini-path.patch
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
+# systemd package provides _unitdir RPM macro
 BuildRequires: python-setuptools
+BuildRequires: systemd
 
 %description
 NodeConductor is a infrastructure and application management server developed by OpenNode.
@@ -79,19 +80,19 @@ python setup.py build
 rm -rf %{buildroot}
 python setup.py install --single-version-externally-managed -O1 --root=%{buildroot} --record=INSTALLED_FILES
 
-mkdir -p %{buildroot}%{__celeryd_run_dir}
-echo "%{__celeryd_run_dir}" >> INSTALLED_FILES
+mkdir -p %{buildroot}%{_unitdir}
+cp packaging%{__celery_systemd_unit_file} %{buildroot}%{__celery_systemd_unit_file}
+echo "%{__celery_systemd_unit_file}" >> INSTALLED_FILES
+cp packaging%{__celerybeat_systemd_unit_file} %{buildroot}%{__celerybeat_systemd_unit_file}
+echo "%{__celerybeat_systemd_unit_file}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__conf_dir}
 echo "%{__conf_dir}" >> INSTALLED_FILES
+cp packaging%{__celery_conf_file} %{buildroot}%{__celery_conf_file}
 cp packaging%{__conf_file} %{buildroot}%{__conf_file}
 
 mkdir -p %{buildroot}%{__data_dir}/static
 echo "%{__data_dir}" >> INSTALLED_FILES
-
-mkdir -p %{buildroot}%{__init_dir}
-cp packaging%{__celeryd_init_file} %{buildroot}%{__celeryd_init_file}
-echo "%{__celeryd_init_file}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__log_dir}
 echo "%{__log_dir}" >> INSTALLED_FILES
@@ -100,13 +101,13 @@ mkdir -p %{buildroot}%{__logrotate_dir}
 cp packaging%{__logrotate_conf_file} %{buildroot}%{__logrotate_conf_file}
 echo "%{__logrotate_dir}/%{name}" >> INSTALLED_FILES
 
+mkdir -p %{buildroot}%{__run_dir}/celery
+mkdir -p %{buildroot}%{__run_dir}/celerybeat
+echo "%{__run_dir}" >> INSTALLED_FILES
+
 mkdir -p %{buildroot}%{__saml2_conf_dir}
 # TODO: Maybe use attribute-maps from PySAML2
 cp -r attribute-maps %{buildroot}%{__saml2_conf_dir}/
-
-mkdir -p %{buildroot}%{__system_conf_dir}
-cp packaging%{__celeryd_conf_file} %{buildroot}%{__celeryd_conf_file}
-echo "%{__celeryd_conf_file}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__work_dir}
 echo "%{__work_dir}" >> INSTALLED_FILES
@@ -118,8 +119,8 @@ rm -rf %{buildroot}
 
 %files -f INSTALLED_FILES_CLEAN
 %defattr(-,root,root,-)
+%config(noreplace) %{__celery_conf_file}
 %config(noreplace) %{__conf_file}
-%config(noreplace) %{__celeryd_conf_file}
 
 %post
 echo "[nodeconductor] Generating secret key..."
@@ -131,7 +132,7 @@ if [ ! -f %{__saml2_cert_file} -a ! -f %{__saml2_key_file} ]; then
 fi
 
 useradd --home %{__work_dir} --shell /sbin/nologin --system --user-group %{name}
-chown -R %{name}:%{name} %{__celeryd_run_dir}
+chown -R %{name}:%{name} %{__run_dir}
 chown -R %{name}:%{name} %{__log_dir}
 chmod -R g+w %{__log_dir}
 chown -R %{name}:%{name} %{__work_dir}
@@ -164,7 +165,8 @@ Note: you will need to run this again on next NodeConductor update.
 
 5. Start task queue backend:
 
-    service nodeconductor-celeryd start
+    systemctl start nodeconductor-celery
+    systemctl start nodeconductor-celerybeat
 
 6. Create first superuser (if needed and not yet done):
 
@@ -182,6 +184,10 @@ All done. Happy NodeConducting!
 EOF
 
 %changelog
+* Wed Dec 10 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.11.0-1.el7
+- New upstream release
+- Celery startup scripts replaced with systemd units
+
 * Thu Dec 4 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.10.0-1.el7
 - Dependencies fixed for CentOS 7
 
