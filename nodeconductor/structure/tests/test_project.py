@@ -184,16 +184,6 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
 
-    @unittest.skip('Disabled as a single hostgroup is going to be used for now')
-    def test_zabbix_hostgroup_creation_starts_on_project_creation(self):
-        self.client.force_authenticate(self.staff)
-
-        data = _get_valid_project_payload()
-        with patch('nodeconductor.structure.tasks.create_zabbix_hostgroup.delay') as patched_task:
-            response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-            self.assertTrue(patched_task.called, 'Zabbix hostgroup creation task should be called')
-
     # Update tests:
     def test_user_can_change_single_project_field(self):
         self.client.force_authenticate(self.staff)
@@ -208,15 +198,6 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
 
         response = self.client.delete(factories.ProjectFactory.get_url())
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-    @unittest.skip('Disabled as a single hostgroup is going to be used for now')
-    def test_zabbix_hostgroup_deletion_starts_on_project_deletion(self):
-        self.client.force_authenticate(self.staff)
-
-        with patch('nodeconductor.structure.tasks.delete_zabbix_hostgroup.delay') as patched_task:
-            response = self.client.delete(factories.ProjectFactory.get_url())
-            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-            self.assertTrue(patched_task.called, 'Zabbix hostgroup deletion task should be called')
 
 
 class ProjectApiPermissionTest(test.APITransactionTestCase):
