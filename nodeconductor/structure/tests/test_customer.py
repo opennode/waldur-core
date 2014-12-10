@@ -532,4 +532,3 @@ class CustomerListTest(test.APITransactionTestCase):
         self.assertEqual(
             response.data[0]['project_groups'][0]['uuid'], self.project_group.uuid.hex,
             'Customer list response should contain related project groups uuid')
-
