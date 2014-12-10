@@ -62,6 +62,10 @@ class CustomerFactory(factory.DjangoModelFactory):
             customer = CustomerFactory()
         return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
 
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('customer-list')
+
 
 class ProjectFactory(factory.DjangoModelFactory):
     class Meta(object):
