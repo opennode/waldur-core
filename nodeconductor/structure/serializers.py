@@ -28,6 +28,7 @@ class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
 class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.ProjectGroup
+        fields = ('url', 'name', 'uuid')
 
 
 class ResourceQuotaSerializer(serializers.ModelSerializer):
