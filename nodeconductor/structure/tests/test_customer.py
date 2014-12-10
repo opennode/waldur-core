@@ -431,7 +431,6 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
             self.assertDictContainsSubset({'detail': 'Cannot delete customer with existing projects'},
                                           response.data)
 
-
     # Creation tests
     def test_user_cannot_create_customer_if_he_is_not_staff(self):
         self.client.force_authenticate(user=self.users['not_owner'])
@@ -512,3 +511,25 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
             response = self.client.patch(self._get_customer_url(customer), data)
             self.assertEqual(response.status_code, status_code)
+
+
+class CustomerListTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.customer = factories.CustomerFactory()
+        self.project_group = factories.ProjectGroupFactory(customer=self.customer)
+        self.staff = factories.UserFactory(is_staff=True)
+
+    def get_list_response(self, user):
+        self.client.force_authenticate(user)
+        return self.client.get(factories.CustomerFactory.get_list_url())
+
+    def test_customer_list_returns_project_group_uuids(self):
+        # when
+        response = self.get_list_response(self.staff)
+        # then
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data[0]['project_groups'][0]['uuid'], self.project_group.uuid.hex,
+            'Customer list response should contain related project groups uuid')
+
