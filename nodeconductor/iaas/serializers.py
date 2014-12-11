@@ -208,12 +208,11 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
     def restore_object(self, attrs, instance=None):
         assert instance is None, 'Cannot update instances with InstanceCreateSerializer'
 
-        key = attrs.get('ssh_public_key')
+        key = attrs['ssh_public_key']
         attrs['key_name'] = key.name
         attrs['key_fingerprint'] = key.fingerprint
 
-        # same for flavor
-        flavor = attrs.get('flavor')
+        flavor = attrs['flavor']
         attrs['cores'] = flavor.cores
         attrs['ram'] = flavor.ram
         attrs['system_volume_size'] = flavor.disk
