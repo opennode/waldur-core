@@ -181,7 +181,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         data = self._get_valid_payload(self.admined_instance)
 
         # new sec group
-        cloud_project_membership = CloudProjectMembership.objects.get(cloud=self.admined_instance.flavor.cloud,
+        cloud_project_membership = CloudProjectMembership.objects.get(cloud=self.admined_instance.cloud,
                                                                       project=self.admined_instance.project)
         security_group = factories.SecurityGroupFactory(cloud_project_membership=cloud_project_membership)
         data['security_groups'] = [
@@ -247,7 +247,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_user_can_change_flavor_of_stopped_instance_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
-        new_flavor = factories.FlavorFactory(cloud=self.admined_instance.flavor.cloud)
+        new_flavor = factories.FlavorFactory(
+            cloud=self.admined_instance.cloud, disk=self.admined_instance.system_volume_size+1)
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -257,8 +258,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         reread_instance = Instance.objects.get(pk=self.admined_instance.pk)
 
-        self.assertEqual(reread_instance.flavor, new_flavor,
-                         'Flavor should have changed')
+        self.assertEqual(reread_instance.system_volume_size, new_flavor.disk,
+                         'Instance system_volume_size should have changed')
         self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
                          'Instance should have been scheduled to resize')
 
@@ -267,7 +268,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         instance = self.admined_instance
 
-        new_flavor = factories.FlavorFactory()
+        new_flavor = factories.FlavorFactory(disk=self.admined_instance.system_volume_size+1)
 
         CloudProjectMembership.objects.create(
             project=instance.project,
@@ -284,14 +285,15 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         reread_instance = Instance.objects.get(pk=instance.pk)
 
-        self.assertEqual(reread_instance.flavor, instance.flavor,
-                         'Flavor should not have changed')
+        self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
+                         'Instance system_volume_size not have changed')
 
     def test_user_cannot_change_flavor_of_stopped_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
         instance = self.managed_instance
-        new_flavor = factories.FlavorFactory(cloud=instance.flavor.cloud)
+        new_flavor = factories.FlavorFactory(
+            cloud=instance.cloud, disk=self.admined_instance.system_volume_size+1)
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -299,15 +301,16 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         reread_instance = Instance.objects.get(pk=instance.pk)
-        self.assertEqual(reread_instance.flavor, instance.flavor,
-                         'Flavor should not have changed')
+        self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
+                         'Instance system_volume_size not have changed')
 
     def test_user_cannot_change_flavor_of_instance_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.user)
 
         inaccessible_instance = factories.InstanceFactory()
 
-        new_flavor = factories.FlavorFactory(cloud=inaccessible_instance.flavor.cloud)
+        new_flavor = factories.FlavorFactory(
+            cloud=inaccessible_instance.cloud, disk=self.admined_instance.system_volume_size+1)
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -315,8 +318,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         reread_instance = Instance.objects.get(pk=inaccessible_instance.pk)
-        self.assertEqual(reread_instance.flavor, inaccessible_instance.flavor,
-                         'Flavor should not have changed')
+        self.assertEqual(reread_instance.system_volume_size, inaccessible_instance.system_volume_size,
+                         'Instance system_volume_size not have changed')
 
     def test_user_cannot_change_flavor_of_non_offline_instance(self):
         self.client.force_authenticate(user=self.user)
@@ -333,7 +336,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
             instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-            changed_flavor = factories.FlavorFactory(cloud=instance.flavor.cloud)
+            changed_flavor = factories.FlavorFactory(cloud=instance.cloud)
 
             data = {'flavor': self._get_flavor_url(changed_flavor)}
 
@@ -343,8 +346,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             self.assertDictContainsSubset({'detail': 'Instance must be offline'}, response.data)
 
             reread_instance = Instance.objects.get(pk=instance.pk)
-            self.assertEqual(reread_instance.flavor, instance.flavor,
-                             'Flavor should not have changed')
+        self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
+                         'Instance system_volume_size not have changed')
 
     def test_user_cannot_change_flavor_of_running_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
@@ -361,7 +364,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
             managed_instance.project.add_user(self.user, ProjectRole.MANAGER)
 
-            new_flavor = factories.FlavorFactory(cloud=managed_instance.flavor.cloud)
+            new_flavor = factories.FlavorFactory(cloud=managed_instance.cloud)
 
             data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -377,7 +380,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         instance.project.add_user(self.user, ProjectRole.MANAGER)
         instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-        new_flavor = factories.FlavorFactory(cloud=instance.flavor.cloud)
+        new_flavor = factories.FlavorFactory(cloud=instance.cloud)
 
         data = {
             'flavor': self._get_flavor_url(new_flavor),
@@ -439,16 +442,16 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     # Helpers method
     def _get_valid_payload(self, resource=None):
         resource = resource or factories.InstanceFactory()
-        resource.ssh_public_key.user = self.user
-        resource.ssh_public_key.save()
+        ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
+        flavor = factories.FlavorFactory(cloud=resource.cloud)
 
         return {
             'hostname': resource.hostname,
             'description': resource.description,
             'project': self._get_project_url(resource.project),
             'template': self._get_template_url(resource.template),
-            'flavor': self._get_flavor_url(resource.flavor),
-            'ssh_public_key': self._get_ssh_public_key_url(resource.ssh_public_key)
+            'flavor': self._get_flavor_url(flavor),
+            'ssh_public_key': self._get_ssh_public_key_url(ssh_public_key)
         }
 
     def _ensure_cannot_resize_disk_of_flavor(self, instance, expected_status):
@@ -457,8 +460,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, expected_status)
 
-        changed_flavor = Flavor.objects.get(uuid=instance.flavor.uuid)
-        self.assertNotEqual(changed_flavor.disk, data['disk_size'])
+        reread_instance = Instance.objects.get(uuid=instance.uuid)
+        self.assertNotEqual(reread_instance.system_volume_size, data['disk_size'])
 
 
 # XXX: What should happen to existing instances when their project is removed?
@@ -735,27 +738,3 @@ class InstanceUsageTest(test.APITransactionTestCase):
             self.assertEqual(response.data, expected_data)
             patched_cliend.get_item_stats.assert_called_once_with(
                 [self.instance], data['item'], data['from'], data['to'], data['datapoints'])
-
-
-class InstanceCascadeDeletionTest(test.APITransactionTestCase):
-
-    def setUp(self):
-        # given
-        self.instance = factories.InstanceFactory()
-
-    def when(self, obj):
-        obj.delete()
-
-    def test_isntance_will_not_be_deleted_on_ssh_pulic_key_deletion(self):
-        self.when(self.instance.ssh_public_key)
-        # then
-        self.assertTrue(
-            Instance.objects.filter(pk=self.instance.pk).exists(),
-            'Instance should exist in database after it ssh public key was deleted')
-
-    def test_isntance_will_not_be_deleted_on_flavor_deletion(self):
-        self.when(self.instance.flavor)
-        # then
-        self.assertTrue(
-            Instance.objects.filter(pk=self.instance.pk).exists(),
-            'Instance should exist in database after it flavor was deleted')
