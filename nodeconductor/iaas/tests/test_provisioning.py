@@ -346,8 +346,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             self.assertDictContainsSubset({'detail': 'Instance must be offline'}, response.data)
 
             reread_instance = Instance.objects.get(pk=instance.pk)
-        self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
-                         'Instance system_volume_size not have changed')
+            self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
+                             'Instance system_volume_size not have changed')
 
     def test_user_cannot_change_flavor_of_running_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
