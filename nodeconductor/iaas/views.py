@@ -126,11 +126,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def pre_save(self, obj):
         super(InstanceViewSet, self).pre_save(obj)
 
-        if obj.pk is None:
-            # Create flow
-            obj.system_volume_size = obj.flavor.disk
-            obj.agreed_sla = obj.template.sla_level
-        else:
+        if obj.pk is not None:
             # Update flow
             related_data = getattr(self.object, '_related_data', {})
 
@@ -148,6 +144,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def post_save(self, obj, created=False):
         super(InstanceViewSet, self).post_save(obj, created)
         if created:
+            tasks.schedule_provisioning.delay(obj.uuid.hex, backend_flavor_id=obj.flavor.backend_id)
             return
 
         # We care only about update flow
@@ -172,13 +169,15 @@ class InstanceViewSet(mixins.CreateModelMixin,
         push_instance_security_groups.delay(self.object.uuid.hex)
 
     def change_flavor(self, instance, flavor):
-        instance_cloud = instance.flavor.cloud
+        instance_cloud = instance.cloud
 
         if flavor.cloud != instance_cloud:
             return Response({'flavor': "New flavor is not within the same cloud"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        instance.flavor = flavor
+        instance.system_volume_size = flavor.disk
+        instance.ram = flavor.ram
+        instance.cores = flavor.cores
         instance.save()
         # This is suboptimal, since it reads and writes instance twice
         return self._schedule_transition(self.request, instance.uuid.hex, 'flavor change')

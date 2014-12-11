@@ -342,17 +342,17 @@ class OpenStackBackend(object):
         return stats
 
     # Instance related methods
-    def provision_instance(self, instance):
+    def provision_instance(self, instance, backend_flavor_id):
         from nodeconductor.iaas.models import CloudProjectMembership
 
         logger.info('About to boot instance %s', instance.uuid)
         try:
             membership = CloudProjectMembership.objects.get(
                 project=instance.project,
-                cloud=instance.flavor.cloud,
+                cloud=instance.cloud,
             )
 
-            image = instance.flavor.cloud.images.get(
+            image = instance.cloud.images.get(
                 template=instance.template,
             )
 
@@ -379,7 +379,7 @@ class OpenStackBackend(object):
 
             network = matching_networks[0]
 
-            backend_flavor = nova.flavors.get(instance.flavor.backend_id)
+            backend_flavor = nova.flavors.get(backend_flavor_id)
             backend_image = glance.images.get(image.backend_id)
 
             system_volume_name = '{0}-system'.format(instance.hostname)
@@ -486,7 +486,7 @@ class OpenStackBackend(object):
         try:
             membership = CloudProjectMembership.objects.get(
                 project=instance.project,
-                cloud=instance.flavor.cloud,
+                cloud=instance.cloud,
             )
 
             session = self.create_tenant_session(membership)
@@ -511,7 +511,7 @@ class OpenStackBackend(object):
         try:
             membership = CloudProjectMembership.objects.get(
                 project=instance.project,
-                cloud=instance.flavor.cloud,
+                cloud=instance.cloud,
             )
 
             session = self.create_tenant_session(membership)
@@ -536,7 +536,7 @@ class OpenStackBackend(object):
         try:
             membership = CloudProjectMembership.objects.get(
                 project=instance.project,
-                cloud=instance.flavor.cloud,
+                cloud=instance.cloud,
             )
 
             session = self.create_tenant_session(membership)
@@ -571,7 +571,7 @@ class OpenStackBackend(object):
         try:
             membership = CloudProjectMembership.objects.get(
                 project=instance.project,
-                cloud=instance.flavor.cloud,
+                cloud=instance.cloud,
             )
 
             session = self.create_tenant_session(membership)
@@ -605,7 +605,7 @@ class OpenStackBackend(object):
         try:
             membership = CloudProjectMembership.objects.get(
                 project=instance.project,
-                cloud=instance.flavor.cloud,
+                cloud=instance.cloud,
             )
 
             session = self.create_tenant_session(membership)
@@ -639,7 +639,7 @@ class OpenStackBackend(object):
         try:
             membership = CloudProjectMembership.objects.get(
                 project=instance.project,
-                cloud=instance.flavor.cloud,
+                cloud=instance.cloud,
             )
 
             session = self.create_tenant_session(membership)
@@ -660,7 +660,7 @@ class OpenStackBackend(object):
         try:
             membership = CloudProjectMembership.objects.get(
                 project=instance.project,
-                cloud=instance.flavor.cloud,
+                cloud=instance.cloud,
             )
 
             session = self.create_tenant_session(membership)
@@ -710,7 +710,7 @@ class OpenStackBackend(object):
         try:
             membership = CloudProjectMembership.objects.get(
                 project=instance.project,
-                cloud=instance.flavor.cloud,
+                cloud=instance.cloud,
             )
 
             session = self.create_tenant_session(membership)

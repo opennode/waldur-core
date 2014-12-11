@@ -271,23 +271,6 @@ class OpenStackBackendFlavorApiTest(TransactionTestCase):
 
         self.assertFalse(is_present, 'Flavor should have been deleted from the database')
 
-    def test_pull_flavors_doesnt_delete_flavors_linked_to_instances(self):
-        # Given
-        factories.InstanceFactory.create(flavor=self.flavors[1])
-
-        self.nova_client.flavors.findall.return_value = [
-            nc_flavor_to_nova_flavor(self.flavors[0]),
-        ]
-
-        # When
-        self.backend.pull_flavors(self.cloud_account)
-
-        # Then
-        is_present = self.cloud_account.flavors.filter(
-            backend_id=self.flavors[1].backend_id).exists()
-
-        self.assertTrue(is_present, 'Flavor should have not been deleted from the database')
-
 
 class OpenStackBackendImageApiTest(TransactionTestCase):
     def setUp(self):

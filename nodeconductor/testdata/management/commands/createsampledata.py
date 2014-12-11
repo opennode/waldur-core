@@ -478,14 +478,17 @@ Arguments:
         instance = Instance.objects.create(
             hostname='host %s' % random.randint(0, 255),
             project=project,
-            flavor=flavor,
             template=template,
             internal_ips=internal_ips,
             external_ips=external_ips,
             start_time=timezone.now(),
-            ssh_public_key=ssh_public_key,
             system_volume_size=flavor.disk,
             agreed_sla=template.sla_level,
+            cloud=flavor.cloud,
+            ram=flavor.ram,
+            cores=flavor.cores,
+            key_name=ssh_public_key.name,
+            key_fingerprint=ssh_public_key.fingerprint,
         )
 
         cmp = CloudProjectMembership.objects.get(project=project, cloud=flavor.cloud)

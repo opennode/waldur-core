@@ -171,23 +171,29 @@ class InstanceFactory(factory.DjangoModelFactory):
 
     hostname = factory.Sequence(lambda n: 'host%s' % n)
     template = factory.SubFactory(TemplateFactory)
-    flavor = factory.SubFactory(FlavorFactory)
+
     start_time = factory.LazyAttribute(lambda o: timezone.now())
     external_ips = factory.LazyAttribute(lambda o: ','.join('.'.join(
         '%s' % randint(0, 255) for _ in range(4)) for _ in range(3)))
     internal_ips = factory.LazyAttribute(lambda o: ','.join(
         '10.%s' % '.'.join('%s' % randint(0, 255) for _ in range(3)) for _ in range(3)))
-    ssh_public_key = factory.SubFactory(SshPublicKeyFactory)
+
+    cores = factory.Sequence(lambda n: n)
+    ram = factory.Sequence(lambda n: n)
+    cloud = factory.SubFactory(CloudFactory)
+
+    key_name = factory.Sequence(lambda n: 'instance key%s' % n)
+    key_fingerprint = factory.Sequence(lambda n: 'instance key fingerprint%s' % n)
 
     system_volume_id = factory.Sequence(lambda n: 'sys-vol-id-%s' % n)
-    system_volume_size = factory.LazyAttribute(lambda o: o.flavor.disk)
+    system_volume_size = factory.Sequence(lambda n: n)
     data_volume_id = factory.Sequence(lambda n: 'dat-vol-id-%s' % n)
     data_volume_size = 20
 
     @factory.lazy_attribute
     def project(self):
         project = structure_factories.ProjectFactory()
-        CloudProjectMembershipFactory(project=project, cloud=self.flavor.cloud)
+        CloudProjectMembershipFactory(project=project, cloud=self.cloud)
         return project
 
     @classmethod

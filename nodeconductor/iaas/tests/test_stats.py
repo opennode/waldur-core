@@ -14,7 +14,6 @@ class CustomerStatsTest(test.APITransactionTestCase):
         self.customer = structure_factories.CustomerFactory()
         self.other_customer = structure_factories.CustomerFactory()
         cloud = factories.CloudFactory(customer=self.customer)
-        flavor = factories.FlavorFactory(cloud=cloud)
 
         self.staff = structure_factories.UserFactory(is_staff=True)
         self.admin = structure_factories.UserFactory()
@@ -32,8 +31,8 @@ class CustomerStatsTest(test.APITransactionTestCase):
         self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
         self.admin_project.add_user(self.admin, structure_models.ProjectRole.ADMINISTRATOR)
 
-        self.manager_instances = factories.InstanceFactory.create_batch(2, project=self.manager_project, flavor=flavor)
-        self.admins_instances = factories.InstanceFactory.create_batch(2, project=self.admin_project, flavor=flavor)
+        self.manager_instances = factories.InstanceFactory.create_batch(2, project=self.manager_project, cloud=cloud)
+        self.admins_instances = factories.InstanceFactory.create_batch(2, project=self.admin_project, cloud=cloud)
 
         self.url = reverse('stats_customer')
 
