@@ -29,46 +29,6 @@ class CronScheduleField(models.CharField):
             raise ValidationError(e.message)
 
 
-# XXX This field is unused
-
-class HyperlinkedGenericRelatedField(relations.HyperlinkedRelatedField):
-
-    def from_native(self, value):
-        # Convert URL -> model instance pk
-        # TODO: Use values_list
-        # queryset = self.queryset
-        # if queryset is None:
-        #     raise Exception('Writable related fields must include a `queryset` argument')
-
-        try:
-            http_prefix = value.startswith(('http:', 'https:'))
-        except AttributeError:
-            msg = self.error_messages['incorrect_type']
-            raise ValidationError(msg % type(value).__name__)
-
-        if http_prefix:
-            # If needed convert absolute URLs to relative path
-            value = urlparse.urlparse(value).path
-            prefix = get_script_prefix()
-            if value.startswith(prefix):
-                value = '/' + value[len(prefix):]
-
-        try:
-            match = resolve(value)
-        except Exception:
-            raise ValidationError(self.error_messages['no_match'])
-
-        if match.view_name != self.view_name:
-            raise ValidationError(self.error_messages['incorrect_match'])
-
-        try:
-            return 'hui'
-            # return self.get_object(queryset, match.view_name,
-            #                        match.args, match.kwargs)
-        except (ObjectDoesNotExist, TypeError, ValueError):
-            raise ValidationError(self.error_messages['does_not_exist'])
-
-
 comma_separated_string_list_re = re.compile('^((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(,\s+)?)+')
 validate_comma_separated_string_list = validators.RegexValidator(comma_separated_string_list_re,
                                                                  _(u'Enter ips separated by commas.'), 'invalid')

@@ -23,7 +23,7 @@ class Customer(UuidMixin, models.Model):
         project_group_path = 'project_groups'
 
     name = models.CharField(max_length=160)
-    abbreviation = models.CharField(max_length=8)
+    abbreviation = models.CharField(max_length=8, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
 
     def add_user(self, user, role_type):

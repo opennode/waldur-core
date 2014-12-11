@@ -138,13 +138,14 @@ Arguments:
             'customers': {
                 'Ministry of Bells': {
                     'owners': ['Alice', 'Bob'],
+                    'abbreviation': 'MoB',
                     'clouds': {
                         'Stratus': {
                             'flavors': {
-                                'm1.tiny': { 'cores': 1, 'ram': 512, 'disk': 1024 },
+                                'm1.tiny': {'cores': 1, 'ram': 512, 'disk': 1024},
                             },
                             'templates': {
-                                'CentOS 7 minimal jmHCYir': { 'os': 'CentOS 7' },
+                                'CentOS 7 minimal jmHCYir': {'os': 'CentOS 7'},
                             },
                         },
                     },
@@ -163,13 +164,14 @@ Arguments:
                 },
                 'Ministry of Whistles': {
                     'owners': ['Bob'],
+                    'abbreviation': 'MoW',
                     'clouds': {
                         'Cumulus': {
                             'flavors': {
-                                'm1.medium': { 'cores': 2, 'ram': 4096, 'disk': 10 * 1024 },
+                                'm1.medium': {'cores': 2, 'ram': 4096, 'disk': 10 * 1024},
                             },
                             'templates': {
-                                'Windows 3.11 jWxL': { 'os': 'Windows 3.11' },
+                                'Windows 3.11 jWxL': {'os': 'Windows 3.11'},
                             }
                         },
                     },
@@ -218,6 +220,12 @@ Arguments:
             self.stdout.write('Creating customer "%s"...' % customer_name)
             customer, was_created = Customer.objects.get_or_create(name=customer_name)
             self.stdout.write('Customer "%s" %s.' % (customer_name, "created" if was_created else "already exists"))
+
+            if 'abbreviation' in customer_params:
+                abbreviation = customer_params['abbreviation']
+                self.stdout.write('Setting abbreviation of a customer "%s"...' % abbreviation)
+                customer.abbreviation = abbreviation
+                customer.save()
 
             for username in customer_params['owners']:
                 self.stdout.write('Adding user "%s" as owner of customer "%s"...' % (username, customer_name))

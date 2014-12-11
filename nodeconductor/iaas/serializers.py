@@ -465,6 +465,7 @@ class ServiceSerializer(serializers.Serializer):
     url = serializers.SerializerMethodField('get_service_url')
     service_type = serializers.SerializerMethodField('get_service_type')
     hostname = serializers.Field()
+    uuid = serializers.Field()
     agreed_sla = serializers.Field()
     actual_sla = serializers.Field(source='slas__value')
     template_name = serializers.Field(source='template__name')
@@ -475,6 +476,7 @@ class ServiceSerializer(serializers.Serializer):
     class Meta(object):
         fields = (
             'url',
+            'uuid',
             'hostname', 'template_name',
             'customer_name',
             'project_name', 'project_groups',
