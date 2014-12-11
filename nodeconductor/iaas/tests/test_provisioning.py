@@ -8,7 +8,7 @@ from rest_framework import test
 from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
-from nodeconductor.iaas.models import Instance, CloudProjectMembership, Flavor
+from nodeconductor.iaas.models import Instance, CloudProjectMembership
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
@@ -658,6 +658,23 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('instance_licenses', response.data)
         self.assertEqual(response.data['instance_licenses'][0]['name'], instance_license.template_license.name)
+
+    def test_flavor_fields_is_copied_to_instance_on_intance_creation(self):
+        response = self.client.post(self.instance_list_url, self.get_valid_data())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        instance = Instance.objects.get(uuid=response.data['uuid'])
+        self.assertEqual(instance.system_volume_size, self.flavor.disk)
+        self.assertEqual(instance.ram, self.flavor.ram)
+        self.assertEqual(instance.cores, self.flavor.cores)
+
+    def test_ssh_public_key_is_copied_to_instance_on_instance_creation(self):
+        response = self.client.post(self.instance_list_url, self.get_valid_data())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        instance = Instance.objects.get(uuid=response.data['uuid'])
+        self.assertEqual(instance.key_name, self.ssh_public_key.name)
+        self.assertEqual(instance.key_fingerprint, self.ssh_public_key.fingerprint)
 
     # Helper methods
     def get_valid_data(self):
