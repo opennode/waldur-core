@@ -248,7 +248,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.user)
 
         new_flavor = factories.FlavorFactory(
-            cloud=self.admined_instance.cloud, disk=self.admined_instance.system_volume_size+1)
+            cloud=self.admined_instance.cloud, disk=self.admined_instance.system_volume_size + 1)
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -268,7 +268,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         instance = self.admined_instance
 
-        new_flavor = factories.FlavorFactory(disk=self.admined_instance.system_volume_size+1)
+        new_flavor = factories.FlavorFactory(disk=self.admined_instance.system_volume_size + 1)
 
         CloudProjectMembership.objects.create(
             project=instance.project,
@@ -293,7 +293,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         instance = self.managed_instance
         new_flavor = factories.FlavorFactory(
-            cloud=instance.cloud, disk=self.admined_instance.system_volume_size+1)
+            cloud=instance.cloud, disk=self.admined_instance.system_volume_size + 1)
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -310,7 +310,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         inaccessible_instance = factories.InstanceFactory()
 
         new_flavor = factories.FlavorFactory(
-            cloud=inaccessible_instance.cloud, disk=self.admined_instance.system_volume_size+1)
+            cloud=inaccessible_instance.cloud, disk=self.admined_instance.system_volume_size + 1)
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
