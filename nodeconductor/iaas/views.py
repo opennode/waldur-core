@@ -149,6 +149,19 @@ class InstanceViewSet(mixins.CreateModelMixin,
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
         return queryset
 
+    def _validate_template(self, cloud, template):
+        image = models.Image.objects.filter(cloud=cloud, template=template)
+
+        if not image.exists():
+            raise exceptions.PermissionDenied("'%s' cloud must have an image that implements '%s' template"
+                                              % (cloud, template))
+
+    def _validate_flavor(self, cloud, flavor):
+        cloud_flavor = models.Flavor.objects.filter(uuid=flavor.uuid, cloud=cloud)
+
+        if not cloud_flavor.exists():
+            raise exceptions.PermissionDenied("'%s' flavor is not within '%s' cloud" % (flavor, cloud))
+
     def pre_save(self, obj):
         super(InstanceViewSet, self).pre_save(obj)
 
@@ -166,6 +179,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
                 del related_data['security_groups']
             except KeyError:
                 pass
+
+        if self.request.method == 'POST':
+            self._validate_template(obj.cloud, obj.template)
+            self._validate_flavor(obj.cloud, obj.flavor)
 
     def post_save(self, obj, created=False):
         super(InstanceViewSet, self).post_save(obj, created)
