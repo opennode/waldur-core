@@ -348,7 +348,7 @@ class Instance(core_models.UuidMixin,
         # since later the cloud might get removed from this project
         # and the validation will prevent even changing the state.
         if self.state == self.States.PROVISIONING_SCHEDULED:
-            if not self.project.clouds.filter(pk=self.flavor.cloud.pk).exists():
+            if not self.project.clouds.filter(pk=self.cloud.pk).exists():
                 raise ValidationError("Flavor is not within project's clouds.")
 
     def __str__(self):
@@ -371,19 +371,6 @@ class Instance(core_models.UuidMixin,
                 setup_fee=template_license.setup_fee,
                 monthly_fee=template_license.monthly_fee,
             )
-
-    # def _copy_ssh_public_key_attributes(self):
-    #     self.ssh_public_key_name = self.ssh_public_key.name
-    #     self.ssh_public_key_fingerprint = self.ssh_public_key.fingerprint
-
-    # def _copy_flavor_attributes(self):
-    #     self.system_volume_size = self.flavor.disk
-    #     self.cores = self.flavor.cores
-    #     self.ram = self.flavor.ram
-    #     self.cloud = self.flavor.cloud
-
-    # def _copy_template_attributes(self):
-    #     self.agreed_sla = self.template.sla_level
 
     def save(self, *args, **kwargs):
         created = self.pk is None
@@ -562,20 +549,6 @@ class IpMapping(core_models.UuidMixin, models.Model):
     public_ip = models.IPAddressField(null=False)
     private_ip = models.IPAddressField(null=False)
     project = models.ForeignKey(structure_models.Project, related_name='ip_mappings')
-
-
-# Signal handlers
-@receiver(
-    signals.post_save,
-    sender=Instance,
-    dispatch_uid='nodeconductor.iaas.models.auto_start_instance',
-)
-def provision_instance(sender, instance=None, created=False, **kwargs):
-    if created:
-        # Importing here to avoid circular imports
-        from nodeconductor.iaas import tasks
-
-        tasks.schedule_provisioning.delay(instance.uuid.hex)
 
 
 def get_related_clouds(obj, request):
