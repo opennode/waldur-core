@@ -144,7 +144,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def post_save(self, obj, created=False):
         super(InstanceViewSet, self).post_save(obj, created)
         if created:
-            tasks.schedule_provisioning.delay(obj.uuid.hex, flavor_id=obj.flavor.backend_id)
+            tasks.schedule_provisioning.delay(obj.uuid.hex, backend_flavor_id=obj.flavor.backend_id)
             return
 
         # We care only about update flow

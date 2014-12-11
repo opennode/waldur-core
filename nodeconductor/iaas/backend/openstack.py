@@ -342,7 +342,7 @@ class OpenStackBackend(object):
         return stats
 
     # Instance related methods
-    def provision_instance(self, instance, flavor_id):
+    def provision_instance(self, instance, backend_flavor_id):
         from nodeconductor.iaas.models import CloudProjectMembership
 
         logger.info('About to boot instance %s', instance.uuid)
@@ -379,7 +379,7 @@ class OpenStackBackend(object):
 
             network = matching_networks[0]
 
-            backend_flavor = nova.flavors.get(flavor_id)
+            backend_flavor = nova.flavors.get(backend_flavor_id)
             backend_image = glance.images.get(image.backend_id)
 
             system_volume_name = '{0}-system'.format(instance.hostname)
