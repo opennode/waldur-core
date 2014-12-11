@@ -179,7 +179,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'description',
+        fields = ('url', 'uuid', 'hostname', 'description',
                   'template', 'project', 'security_groups', 'flavor', 'ssh_public_key')
         lookup_field = 'uuid'
 
