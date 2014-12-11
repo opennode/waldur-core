@@ -252,12 +252,23 @@ class Instance(core_models.UuidMixin,
             (RESIZING_SCHEDULED, _('Resizing Scheduled')),
             (RESIZING, _('Resizing')),
         )
+
+        # Stable instances are the ones for which
+        # no tasks are scheduled or are in progress
+
+        STABLE_STATES = set([ONLINE, OFFLINE, ERRED])
+        UNSTABLE_STATES = set([
+            s for (s, _) in CHOICES
+            if s not in STABLE_STATES
+        ])
+
     # XXX: ideally this fields have to be added somewhere in iaas.backup module
     backups = ct_generic.GenericRelation('backup.Backup')
     backup_schedules = ct_generic.GenericRelation('backup.BackupSchedule')
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
+    # FIXME: Link to CloudProjectMembership instead of flavor+projects after NC-178
     flavor = models.ForeignKey(Flavor, related_name='+', on_delete=models.PROTECT)
     project = models.ForeignKey(structure_models.Project, related_name='instances')
     external_ips = fields.IPsField(max_length=256)

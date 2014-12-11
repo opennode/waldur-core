@@ -158,7 +158,7 @@ def pull_cloud_membership(membership_pk):
 
     backend = membership.cloud.get_backend()
     backend.pull_security_groups(membership)
-    # TODO: pull_instances
+    backend.pull_instances(membership)
 
 
 @shared_task

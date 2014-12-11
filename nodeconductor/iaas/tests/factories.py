@@ -184,6 +184,8 @@ class InstanceFactory(factory.DjangoModelFactory):
     data_volume_id = factory.Sequence(lambda n: 'dat-vol-id-%s' % n)
     data_volume_size = 20
 
+    backend_id = factory.Sequence(lambda n: 'instance-id%s' % n)
+
     @factory.lazy_attribute
     def project(self):
         project = structure_factories.ProjectFactory()
