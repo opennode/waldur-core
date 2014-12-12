@@ -520,9 +520,9 @@ class ServiceSerializer(serializers.Serializer):
 
 
 class UsageStatsSerializer(serializers.Serializer):
-    segments_count = serializers.IntegerField()
-    start_timestamp = serializers.IntegerField()
-    end_timestamp = serializers.IntegerField()
+    segments_count = serializers.IntegerField(min_value=0)
+    start_timestamp = serializers.IntegerField(min_value=0)
+    end_timestamp = serializers.IntegerField(min_value=0)
     item = serializers.CharField()
 
     def validate_item(self, attrs, name):
