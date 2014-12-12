@@ -206,8 +206,6 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         return attrs
 
     def restore_object(self, attrs, instance=None):
-        assert instance is None, 'Cannot update instances with InstanceCreateSerializer'
-
         key = attrs['ssh_public_key']
         attrs['key_name'] = key.name
         attrs['key_fingerprint'] = key.fingerprint
