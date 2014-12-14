@@ -33,17 +33,21 @@ class UrlResolverMixin(object):
 
 class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def setUp(self):
-        self.user = structure_factories.UserFactory.create()
+        self.user = structure_factories.UserFactory()
 
+        # User admins managed_instance through its project
+        # User manages managed_instance through its project group
         self.admined_instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+        self.managed_instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
 
-        project = structure_factories.ProjectFactory()
-        project_group = structure_factories.ProjectGroupFactory()
-        project_group.projects.add(project)
-        self.managed_instance = factories.InstanceFactory(state=Instance.States.OFFLINE, project=project)
+        admined_project = self.admined_instance.cloud_project_membership.project
+        admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-        self.admined_instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
-        project_group.add_user(self.user, ProjectGroupRole.MANAGER)
+        project = self.managed_instance.cloud_project_membership.project
+        managed_project_group = structure_factories.ProjectGroupFactory()
+        managed_project_group.projects.add(project)
+
+        managed_project_group.add_user(self.user, ProjectGroupRole.MANAGER)
 
     # List filtration tests
     def test_anonymous_user_cannot_list_instances(self):
@@ -139,7 +143,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         for state in forbidden_states:
             instance = factories.InstanceFactory(state=state)
-            instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+            instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
             response = self.client.delete(self._get_instance_url(instance))
 
@@ -181,8 +185,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         data = self._get_valid_payload(self.admined_instance)
 
         # new sec group
-        cloud_project_membership = CloudProjectMembership.objects.get(cloud=self.admined_instance.cloud,
-                                                                      project=self.admined_instance.project)
+        cloud_project_membership = self.admined_instance.cloud_project_membership
         security_group = factories.SecurityGroupFactory(cloud_project_membership=cloud_project_membership)
         data['security_groups'] = [
             {'url': factories.SecurityGroupFactory.get_url(security_group)}
@@ -248,7 +251,9 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.user)
 
         new_flavor = factories.FlavorFactory(
-            cloud=self.admined_instance.cloud, disk=self.admined_instance.system_volume_size + 1)
+            cloud=self.admined_instance.cloud_project_membership.cloud,
+            disk=self.admined_instance.system_volume_size + 1,
+        )
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -271,7 +276,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         new_flavor = factories.FlavorFactory(disk=self.admined_instance.system_volume_size + 1)
 
         CloudProjectMembership.objects.create(
-            project=instance.project,
+            project=instance.cloud_project_membership.project,
             cloud=new_flavor.cloud,
         )
 
@@ -293,7 +298,9 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         instance = self.managed_instance
         new_flavor = factories.FlavorFactory(
-            cloud=instance.cloud, disk=self.admined_instance.system_volume_size + 1)
+            cloud=instance.cloud_project_membership.cloud,
+            disk=self.admined_instance.system_volume_size + 1,
+        )
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -310,7 +317,9 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         inaccessible_instance = factories.InstanceFactory()
 
         new_flavor = factories.FlavorFactory(
-            cloud=inaccessible_instance.cloud, disk=self.admined_instance.system_volume_size + 1)
+            cloud=inaccessible_instance.cloud_project_membership.cloud,
+            disk=self.admined_instance.system_volume_size + 1,
+        )
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -333,10 +342,11 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         for state in forbidden_states:
             instance = factories.InstanceFactory(state=state)
+            membership = instance.cloud_project_membership
 
-            instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+            membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-            changed_flavor = factories.FlavorFactory(cloud=instance.cloud)
+            changed_flavor = factories.FlavorFactory(cloud=membership.cloud)
 
             data = {'flavor': self._get_flavor_url(changed_flavor)}
 
@@ -361,10 +371,11 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         for state in forbidden_states:
             managed_instance = factories.InstanceFactory(state=state)
+            membership = managed_instance.cloud_project_membership
 
-            managed_instance.project.add_user(self.user, ProjectRole.MANAGER)
+            membership.project.add_user(self.user, ProjectRole.MANAGER)
 
-            new_flavor = factories.FlavorFactory(cloud=managed_instance.cloud)
+            new_flavor = factories.FlavorFactory(cloud=membership.cloud)
 
             data = {'flavor': self._get_flavor_url(new_flavor)}
 
@@ -377,10 +388,12 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
 
-        instance.project.add_user(self.user, ProjectRole.MANAGER)
-        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        cloud = instance.cloud_project_membership.cloud
+        project = instance.cloud_project_membership.project
+        project.add_user(self.user, ProjectRole.MANAGER)
+        project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-        new_flavor = factories.FlavorFactory(cloud=instance.cloud)
+        new_flavor = factories.FlavorFactory(cloud=cloud)
 
         data = {
             'flavor': self._get_flavor_url(new_flavor),
@@ -397,9 +410,10 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.user)
 
         instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+        project = instance.cloud_project_membership.project
 
-        instance.project.add_user(self.user, ProjectRole.MANAGER)
-        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        project.add_user(self.user, ProjectRole.MANAGER)
+        project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         data = {}
 
@@ -413,7 +427,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.user)
 
         instance = self.admined_instance
-        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         new_size = instance.data_volume_size + 1024
 
@@ -429,7 +443,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.user)
 
         managed_instance = factories.InstanceFactory()
-        managed_instance.project.add_user(self.user, ProjectRole.MANAGER)
+        managed_instance.cloud_project_membership.project.add_user(self.user, ProjectRole.MANAGER)
 
         self._ensure_cannot_resize_disk_of_flavor(managed_instance, status.HTTP_403_FORBIDDEN)
 
@@ -443,12 +457,14 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def _get_valid_payload(self, resource=None):
         resource = resource or factories.InstanceFactory()
         ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
-        flavor = factories.FlavorFactory(cloud=resource.cloud)
+        membership = resource.cloud_project_membership
+
+        flavor = factories.FlavorFactory(cloud=membership.cloud)
 
         return {
             'hostname': resource.hostname,
             'description': resource.description,
-            'project': self._get_project_url(resource.project),
+            'project': self._get_project_url(membership.project),
             'template': self._get_template_url(resource.template),
             'flavor': self._get_flavor_url(flavor),
             'ssh_public_key': self._get_ssh_public_key_url(ssh_public_key)
@@ -536,7 +552,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         response = self.client.post(self.instance_list_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'__all__': ["Flavor is not within project's clouds."]}, response.data)
+        self.assertDictContainsSubset({'non_field_errors': ["Flavor is not within project's clouds."]}, response.data)
 
     def test_cannot_create_instance_with_flavor_not_from_clouds_allowed_for_users_projects(self):
         data = self.get_valid_data()
@@ -621,7 +637,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
     def test_instance_api_contains_valid_external_ips_field(self):
         instance = factories.InstanceFactory()
-        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         response = self.client.get(self._get_instance_url(instance))
 
@@ -632,7 +648,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
     def test_instance_api_contains_valid_internal_ips_field(self):
         instance = factories.InstanceFactory()
-        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         response = self.client.get(self._get_instance_url(instance))
 
@@ -649,9 +665,9 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(template_license.instance_licenses.count(), 1)
 
-    def test_instance_licenses_exist_in_instance_retreive_request(self):
+    def test_instance_licenses_exist_in_instance_retrieve_request(self):
         instance = factories.InstanceFactory()
-        instance.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
         instance_license = factories.InstanceLicenseFactory(instance=instance)
 
         response = self.client.get(self._get_instance_url(instance))

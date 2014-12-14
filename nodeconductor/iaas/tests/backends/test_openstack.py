@@ -570,6 +570,7 @@ class OpenStackBackendInstanceApiTest(TransactionTestCase):
                          'No instances should have been deleted from the database')
 
     # Creation tests
+    @unittest.skip("Not implemented yet")
     def test_pull_instances_creates_instances_missing_in_database(self):
         # Given
         self.given_minimal_importable_instance()
@@ -619,13 +620,8 @@ class OpenStackBackendInstanceApiTest(TransactionTestCase):
 
     def _get_membership_params(self):
         return dict(
-            # TODO: Merge these fields to cloud_project_membership after NC-178
-            cloud=self.membership.cloud,
-            project=self.membership.project,
-
             # XXX: Should we introduce ProjectMember mixin?
-            # XXX: Should we introduce CloudProjectMember mixin?
-            # cloud_project_membership=self.membership,
+            cloud_project_membership=self.membership,
         )
 
 

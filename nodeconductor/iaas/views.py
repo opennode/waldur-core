@@ -169,7 +169,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         push_instance_security_groups.delay(self.object.uuid.hex)
 
     def change_flavor(self, instance, flavor):
-        instance_cloud = instance.cloud
+        instance_cloud = instance.cloud_project_membership.cloud
 
         if flavor.cloud != instance_cloud:
             return Response({'flavor': "New flavor is not within the same cloud"},
@@ -194,8 +194,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     def _schedule_transition(self, request, uuid, operation, **kwargs):
         instance = self.get_object()
+        membership = instance.cloud_project_membership
 
-        is_admin = instance.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
+        is_admin = membership.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
 
         if not is_admin:
             raise exceptions.PermissionDenied()
@@ -412,28 +413,34 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
         queryset = self._filter_queryset(queryset)
 
         aggregate_parameters = self.request.QUERY_PARAMS.getlist('aggregate', [])
-        aggregate_paramenter_to_field_map = {
-            'project': ['instance__project__uuid', 'instance__project__name'],
-            'project_group': ['instance__project__project_groups__uuid', 'instance__project__project_groups__name'],
+        aggregate_parameter_to_field_map = {
+            'project': [
+                'instance__cloud_project_membership__project__uuid',
+                'instance__cloud_project_membership__project__name',
+            ],
+            'project_group': [
+                'instance__cloud_project_membership__project__project_groups__uuid',
+                'instance__cloud_project_membership__project__project_groups__name',
+            ],
             'type': ['template_license__license_type'],
             'name': ['template_license__name'],
         }
 
         aggregate_fields = []
         for aggregate_parameter in aggregate_parameters:
-            if aggregate_parameter not in aggregate_paramenter_to_field_map:
+            if aggregate_parameter not in aggregate_parameter_to_field_map:
                 return Response('Licenses statistics can not be aggregated by %s' % aggregate_parameter,
                                 status=status.HTTP_400_BAD_REQUEST)
-            aggregate_fields += aggregate_paramenter_to_field_map[aggregate_parameter]
+            aggregate_fields += aggregate_parameter_to_field_map[aggregate_parameter]
 
         queryset = queryset.values(*aggregate_fields).annotate(count=django_models.Count('id', distinct=True))
         # This hack can be removed when https://code.djangoproject.com/ticket/16735 will be closed
         # Replace databases paths by normal names. Ex: instance__project__uuid is replaced by project_uuid
         name_replace_map = {
-            'instance__project__uuid': 'project_uuid',
-            'instance__project__name': 'project_name',
-            'instance__project__project_groups__uuid': 'project_group_uuid',
-            'instance__project__project_groups__name': 'project_group_name',
+            'instance__cloud_project_membership__project__uuid': 'project_uuid',
+            'instance__cloud_project_membership__project__name': 'project_name',
+            'instance__cloud_project_membership__project__project_groups__uuid': 'project_group_uuid',
+            'instance__cloud_project_membership__project__project_groups__name': 'project_group_name',
             'template_license__license_type': 'type',
             'template_license__name': 'name'
         }
@@ -532,8 +539,8 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
                 'template__name',
                 'agreed_sla',
                 'slas__value', 'slas__period',
-                'project__customer__name',
-                'project__name'
+                'cloud_project_membership__project__customer__name',
+                'cloud_project_membership__project__name',
             )
         return queryset
 
@@ -598,7 +605,7 @@ class CustomerStatsView(views.APIView):
             project_groups_count = structure_filters.filter_queryset_for_user(
                 ProjectGroup.objects.filter(customer=customer), request.user).count()
             instances_count = structure_filters.filter_queryset_for_user(
-                models.Instance.objects.filter(project__customer=customer), request.user).count()
+                models.Instance.objects.filter(cloud_project_membership__project__customer=customer), request.user).count()
             customer_statistics.append({
                 'name': customer.name, 'projects': projects_count,
                 'project_groups': project_groups_count, 'instances': instances_count

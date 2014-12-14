@@ -104,6 +104,13 @@ class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
         return '{0} | {1}'.format(self.cloud.name, self.project.name)
 
 
+class CloudProjectMember(models.Model):
+    class Meta(object):
+        abstract = True
+
+    cloud_project_membership = models.ForeignKey(CloudProjectMembership, related_name='+')
+
+
 @python_2_unicode_compatible
 class Flavor(core_models.UuidMixin, models.Model):
     """
@@ -195,6 +202,7 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
+               CloudProjectMember,
                models.Model):
     """
     A generalization of a single virtual machine.
@@ -203,9 +211,9 @@ class Instance(core_models.UuidMixin,
     it can be either a fully virtualized instance, or a container.
     """
     class Permissions(object):
-        customer_path = 'project__customer'
-        project_path = 'project'
-        project_group_path = 'project__project_groups'
+        customer_path = 'cloud_project_membership__project__customer'
+        project_path = 'cloud_project_membership__project'
+        project_group_path = 'cloud_project_membership__project__project_groups'
 
     class States(object):
         PROVISIONING_SCHEDULED = 1
@@ -268,9 +276,9 @@ class Instance(core_models.UuidMixin,
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
-    # FIXME: Link to CloudProjectMembership instead of flavor+projects after NC-178
-    cloud = models.ForeignKey(Cloud, related_name='instances')
-    project = models.ForeignKey(structure_models.Project, related_name='instances')
+    # # FIXME: Link to CloudProjectMembership instead of flavor+projects after NC-178
+    # cloud = models.ForeignKey(Cloud, related_name='instances')
+    # project = models.ForeignKey(structure_models.Project, related_name='instances')
     external_ips = fields.IPsField(max_length=256)
     internal_ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
@@ -353,14 +361,6 @@ class Instance(core_models.UuidMixin,
     @transition(field=state, source='*', target=States.ERRED)
     def set_erred(self):
         pass
-
-    def clean(self):
-        # Only check while trying to provisioning instance,
-        # since later the cloud might get removed from this project
-        # and the validation will prevent even changing the state.
-        if self.state == self.States.PROVISIONING_SCHEDULED:
-            if not self.project.clouds.filter(pk=self.cloud.pk).exists():
-                raise ValidationError("Flavor is not within project's clouds.")
 
     def __str__(self):
         return _('%(name)s - %(status)s') % {
@@ -461,9 +461,9 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
                                                   MaxValueValidator(Decimal('1000.0'))])
 
     class Permissions(object):
-        customer_path = 'instance__project__customer'
-        project_path = 'instance__project'
-        project_group_path = 'instance__project__project_groups'
+        customer_path = 'instance__cloud_project_membership__project__customer'
+        project_path = 'instance__cloud_project_membership__project'
+        project_group_path = 'instance__cloud_project_membership__project__project_groups'
 
     def __str__(self):
         return 'License: %s for %s' % (self.template_license, self.instance)
@@ -492,7 +492,10 @@ class Purchase(core_models.UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class SecurityGroup(core_models.UuidMixin, core_models.DescribableMixin, models.Model):
+class SecurityGroup(core_models.UuidMixin,
+                    core_models.DescribableMixin,
+                    CloudProjectMember,
+                    models.Model):
 
     class Permissions(object):
         customer_path = 'cloud_project_membership__project__customer'
@@ -500,9 +503,8 @@ class SecurityGroup(core_models.UuidMixin, core_models.DescribableMixin, models.
         project_group_path = 'cloud_project_membership__project__project_groups'
 
     """
-    This class contains openstack security groups.
+    This class contains OpenStack security groups.
     """
-    cloud_project_membership = models.ForeignKey(CloudProjectMembership, related_name='security_groups')
     name = models.CharField(max_length=127)
 
     # OpenStack backend specific fields
@@ -636,9 +638,10 @@ def propagate_users_keys_to_clouds_of_newly_granted_project(sender, structure, u
 def create_dummy_security_groups(sender, instance=None, created=False, **kwargs):
     if created:
         # group http
-        http_group = instance.security_groups.create(
+        http_group = SecurityGroup.objects.create(
             name='http',
-            description='Security group for web servers'
+            description='Security group for web servers',
+            cloud_project_membership=instance,
         )
         http_group.rules.create(
             protocol='tcp',
@@ -648,9 +651,10 @@ def create_dummy_security_groups(sender, instance=None, created=False, **kwargs)
         )
 
         # group https
-        https_group = instance.security_groups.create(
+        https_group = SecurityGroup.objects.create(
             name='https',
-            description='Security group for web servers with https traffic'
+            description='Security group for web servers with https traffic',
+            cloud_project_membership=instance,
         )
         https_group.rules.create(
             protocol='tcp',

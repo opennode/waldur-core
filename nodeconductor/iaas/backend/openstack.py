@@ -343,12 +343,7 @@ class OpenStackBackend(object):
         with transaction.atomic():
             nc_instances = Instance.objects.filter(
                 state__in=Instance.States.STABLE_STATES,
-
-                # TODO: Merge these fields to cloud_project_membership after NC-178
-                cloud=membership.cloud,
-                project=membership.project,
-
-                # cloud_project_membership=membership,
+                cloud_project_membership=membership,
             )
             nc_instances = dict(((i.backend_id, i) for i in nc_instances))
 
