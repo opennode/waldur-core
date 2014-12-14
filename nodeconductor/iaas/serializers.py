@@ -162,11 +162,25 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     security_groups = InstanceSecurityGroupSerializer(
         many=True, required=False, allow_add_remove=True, read_only=False)
+    flavor = serializers.HyperlinkedRelatedField(
+        view_name='flavor-detail',
+        lookup_field='uuid',
+        queryset=models.Flavor.objects.all(),
+        required=True,
+        write_only=True,
+    )
+    ssh_public_key = serializers.HyperlinkedRelatedField(
+        view_name='sshpublickey-detail',
+        lookup_field='uuid',
+        queryset=core_models.SshPublicKey.objects.all(),
+        required=True,
+        write_only=True,
+    )
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'description',
-                  'template', 'flavor', 'project', 'security_groups', 'ssh_public_key')
+        fields = ('url', 'uuid', 'hostname', 'description',
+                  'template', 'project', 'security_groups', 'flavor', 'ssh_public_key')
         lookup_field = 'uuid'
 
     def get_fields(self):
@@ -190,6 +204,19 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         if attr_name in attrs and attrs[attr_name] is None:
             del attrs[attr_name]
         return attrs
+
+    def restore_object(self, attrs, instance=None):
+        key = attrs['ssh_public_key']
+        attrs['key_name'] = key.name
+        attrs['key_fingerprint'] = key.fingerprint
+
+        flavor = attrs['flavor']
+        attrs['cores'] = flavor.cores
+        attrs['ram'] = flavor.ram
+        attrs['system_volume_size'] = flavor.disk
+        attrs['cloud'] = flavor.cloud
+
+        return super(InstanceCreateSerializer, self).restore_object(attrs, instance)
 
 
 class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
@@ -261,7 +288,6 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
         source='project.project_groups', many=True, read_only=True)
     external_ips = core_serializers.IPsField(source='external_ips', read_only=True)
     internal_ips = core_serializers.IPsField(source='internal_ips', read_only=True)
-    ssh_public_key_name = serializers.Field(source='ssh_public_key.name')
     backups = backup_serializers.BackupSerializer()
     backup_schedules = backup_serializers.BackupScheduleSerializer()
 
@@ -277,10 +303,9 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
             'url', 'uuid', 'hostname', 'description', 'start_time',
             'template', 'template_name', 'template_os',
             'cloud', 'cloud_name', 'cloud_uuid',
-            'flavor', 'flavor_name',
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_abbreviation',
-            'ssh_public_key', 'ssh_public_key_name',
+            'key_name', 'key_fingerprint',
             'project_groups',
             'security_groups',
             'external_ips', 'internal_ips',
@@ -292,17 +317,17 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
             'agreed_sla'
         )
         read_only_fields = (
-            'ssh_public_key',
+            'key_name',
             'system_volume_size',
             'data_volume_size',
         )
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
-        return 'project', 'flavor'
+        return 'project', 'cloud'
 
     def get_related_paths(self):
-        return 'flavor.cloud', 'template', 'project', 'flavor', 'project.customer'
+        return 'template', 'project', 'project.customer', 'cloud'
 
 
 class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
@@ -437,6 +462,7 @@ class ServiceSerializer(serializers.Serializer):
     url = serializers.SerializerMethodField('get_service_url')
     service_type = serializers.SerializerMethodField('get_service_type')
     hostname = serializers.Field()
+    uuid = serializers.Field()
     agreed_sla = serializers.Field()
     actual_sla = serializers.Field(source='slas__value')
     template_name = serializers.Field(source='template__name')
@@ -447,6 +473,7 @@ class ServiceSerializer(serializers.Serializer):
     class Meta(object):
         fields = (
             'url',
+            'uuid',
             'hostname', 'template_name',
             'customer_name',
             'project_name', 'project_groups',

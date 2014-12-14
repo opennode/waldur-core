@@ -8,6 +8,7 @@ yum -y install mysql-server nodeconductor-wsgi redis
 
 chkconfig httpd on
 chkconfig mysqld on
+chkconfig nodeconductor-celerybeat on
 chkconfig nodeconductor-celeryd on
 chkconfig redis on
 
@@ -16,9 +17,9 @@ service mysqld start
 service redis start
 
 # Create MySQL database
-mysql -e "CREATE DATABASE nodeconductor CHARACTER SET = utf8 COLLATE = utf8_bin;"
-mysql -e "CREATE USER 'nodeconductor'@'localhost' IDENTIFIED BY 'nodeconductor';"
-mysql -e "GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'localhost';"
+mysql -e "CREATE DATABASE nodeconductor CHARACTER SET = utf8"
+mysql -e "CREATE USER 'nodeconductor'@'localhost' IDENTIFIED BY 'nodeconductor'"
+mysql -e "GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'localhost'"
 
 # Init NodeConductor database and collect static data
 nodeconductor syncdb --noinput
@@ -32,5 +33,5 @@ nodeconductor createsampledata random
 
 # Start Celery and Apache
 service nodeconductor-celeryd start
+service nodeconductor-celerybeat start
 service httpd start
-

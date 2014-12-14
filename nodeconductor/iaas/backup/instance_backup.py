@@ -46,4 +46,4 @@ class InstanceBackupStrategy(BackupStrategy):
     # Helpers
     @classmethod
     def _get_backend(cls, instance):
-        return instance.flavor.cloud.get_backend()
+        return instance.cloud.get_backend()

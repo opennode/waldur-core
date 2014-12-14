@@ -121,7 +121,7 @@ class InstanceAdmin(admin.ModelAdmin):
             return ['template']
         return []
     ordering = ('hostname',)
-    list_display = ['hostname', 'uuid', 'state', 'project', 'template', 'flavor']
+    list_display = ['hostname', 'uuid', 'state', 'project', 'template']
     search_fields = ['hostname', 'uuid']
     list_filter = ['state', 'project', 'template']
 

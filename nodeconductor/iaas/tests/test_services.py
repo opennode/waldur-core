@@ -22,10 +22,12 @@ def _service_to_dict(service):
         project_groups.append(
             {
                 'url': 'http://testserver' + reverse('projectgroup-detail', kwargs={'uuid': str(project_group.uuid)}),
-                'name': project_group.name
+                'uuid': project_group.uuid.hex,
+                'name': project_group.name,
             })
     return {
         'url': _get_service_url(service),
+        'uuid': service.uuid.hex,
         'project_name': service.project.name,
         'hostname': service.hostname,
         'template_name': service.template.name,

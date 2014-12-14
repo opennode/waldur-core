@@ -262,24 +262,31 @@ class Instance(core_models.UuidMixin,
             if s not in STABLE_STATES
         ])
 
-    # XXX: ideally this fields have to be added somewhere in iaas.backup module
+    # XXX: ideally these fields have to be added somewhere in iaas.backup module
     backups = ct_generic.GenericRelation('backup.Backup')
     backup_schedules = ct_generic.GenericRelation('backup.BackupSchedule')
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
     # FIXME: Link to CloudProjectMembership instead of flavor+projects after NC-178
-    flavor = models.ForeignKey(Flavor, related_name='+', on_delete=models.PROTECT)
+    cloud = models.ForeignKey(Cloud, related_name='instances')
     project = models.ForeignKey(structure_models.Project, related_name='instances')
     external_ips = fields.IPsField(max_length=256)
     internal_ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
-    ssh_public_key = models.ForeignKey(core_models.SshPublicKey, related_name='instances')
 
     state = FSMIntegerField(
         default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
         help_text="WARNING! Should not be changed manually unless you really know what you are doing."
     )
+
+    # fields, defined by flavor
+    cores = models.PositiveSmallIntegerField()
+    ram = models.PositiveSmallIntegerField()
+
+    # fields, defined by ssh public key
+    key_name = models.CharField(max_length=50, blank=True)
+    key_fingerprint = models.CharField(max_length=47)
 
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255, blank=True)
@@ -352,7 +359,7 @@ class Instance(core_models.UuidMixin,
         # since later the cloud might get removed from this project
         # and the validation will prevent even changing the state.
         if self.state == self.States.PROVISIONING_SCHEDULED:
-            if not self.project.clouds.filter(pk=self.flavor.cloud.pk).exists():
+            if not self.project.clouds.filter(pk=self.cloud.pk).exists():
                 raise ValidationError("Flavor is not within project's clouds.")
 
     def __str__(self):
@@ -553,20 +560,6 @@ class IpMapping(core_models.UuidMixin, models.Model):
     public_ip = models.IPAddressField(null=False)
     private_ip = models.IPAddressField(null=False)
     project = models.ForeignKey(structure_models.Project, related_name='ip_mappings')
-
-
-# Signal handlers
-@receiver(
-    signals.post_save,
-    sender=Instance,
-    dispatch_uid='nodeconductor.iaas.models.auto_start_instance',
-)
-def provision_instance(sender, instance=None, created=False, **kwargs):
-    if created:
-        # Importing here to avoid circular imports
-        from nodeconductor.iaas import tasks
-
-        tasks.schedule_provisioning.delay(instance.uuid.hex)
 
 
 def get_related_clouds(obj, request):
