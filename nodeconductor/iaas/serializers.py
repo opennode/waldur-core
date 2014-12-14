@@ -308,7 +308,6 @@ class InstanceLicenseSerializer(serializers.ModelSerializer):
 
 
 class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
-                         # core_serializers.PermissionFieldFilteringMixin,
                          serializers.HyperlinkedModelSerializer):
     state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(

@@ -193,12 +193,6 @@ class InstanceFactory(factory.DjangoModelFactory):
 
     backend_id = factory.Sequence(lambda n: 'instance-id%s' % n)
 
-    # @factory.lazy_attribute
-    # def project(self):
-    #     project = structure_factories.ProjectFactory()
-    #     CloudProjectMembershipFactory(project=project, cloud=self.cloud)
-    #     return project
-
     @classmethod
     def get_url(self, instance=None, action=None):
         if instance is None:

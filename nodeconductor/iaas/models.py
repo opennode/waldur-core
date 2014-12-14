@@ -276,9 +276,6 @@ class Instance(core_models.UuidMixin,
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
-    # # FIXME: Link to CloudProjectMembership instead of flavor+projects after NC-178
-    # cloud = models.ForeignKey(Cloud, related_name='instances')
-    # project = models.ForeignKey(structure_models.Project, related_name='instances')
     external_ips = fields.IPsField(max_length=256)
     internal_ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
