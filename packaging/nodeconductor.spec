@@ -7,8 +7,8 @@
 %define __work_dir %{_sharedstatedir}/%{name}
 
 %define __celery_conf_file %{__conf_dir}/celery.conf
-%define __celery_systemd_unit_file %{_unit_dir}/%{name}-celery.service
-%define __celerybeat_systemd_unit_file %{_unit_dir}/%{name}-celerybeat.service
+%define __celery_systemd_unit_file %{_unitdir}/%{name}-celery.service
+%define __celerybeat_systemd_unit_file %{_unitdir}/%{name}-celerybeat.service
 %define __conf_file %{__conf_dir}/settings.ini
 %define __logrotate_conf_file %{__logrotate_dir}/%{name}
 %define __saml2_cert_file %{__saml2_conf_dir}/dummy.crt
