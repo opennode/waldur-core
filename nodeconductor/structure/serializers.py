@@ -442,4 +442,4 @@ class StatsAggregateSerializer(serializers.Serializer):
         if self.data['model_name'] == 'project':
             return queryset.all()
         else:
-            return queryset.projects.all()
+            return sum([list(obj.projects.all()) for obj in queryset], [])
