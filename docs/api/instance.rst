@@ -72,7 +72,7 @@ To create a instance, client must define:
 
 - hostname;
 - description (optional);
-- link to the template object;
+- link to the template object (it _must_ be connected to a cloud, which is authorized for usage in the project);
 - link to the flavor (it _must_ belong to a cloud, which is authorized for usage in the project);
 - link to the project;
 - link to user's public key (it must belong to a user, who will be able to log in to the instance);
