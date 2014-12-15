@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from django.conf.urls import patterns
+from django.conf.urls import patterns, url
 
 from nodeconductor.structure import views
 
@@ -19,4 +19,5 @@ def register_in(router):
 
 urlpatterns = patterns(
     '',
+    url(r'^stats/creation-time/$', views.CreationTimeStatsView.as_view(), name='stats_creation_time'),
 )
