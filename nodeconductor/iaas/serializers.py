@@ -205,6 +205,19 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
             del attrs[attr_name]
         return attrs
 
+    def validate(self, attrs):
+        template = attrs.get('template')
+        cloud = attrs.get('cloud')
+
+        if template is not None and cloud is not None:
+            image = models.Image.objects.filter(template=template, cloud=cloud)
+
+            if not image.exists():
+                raise serializers.ValidationError("Template %s is not available on cloud %s"
+                                                  % (template, cloud))
+
+        return attrs
+
     def restore_object(self, attrs, instance=None):
         assert instance is None, 'Cannot update instances with InstanceCreateSerializer'
 

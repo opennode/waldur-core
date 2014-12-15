@@ -605,32 +605,6 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertDictContainsSubset({'volume_sizes': ['Enter a whole number.']},
                                       response.data)
 
-    def test_cannot_create_instance_with_template_not_connected_to_cloud(self):
-        template = factories.TemplateFactory()
-
-        data = self.get_valid_data()
-        data['template'] = self._get_template_url(template)
-
-        response = self.client.post(self.instance_list_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['detail'], "'%s' cloud must have an image that implements '%s' template"
-                         % (self.cloud, template))
-
-    def test_cannot_create_instance_with_flavor_and_template_connected_to_different_cloud(self):
-        template = factories.TemplateFactory()
-        factories.ImageFactory(template=template)
-
-        data = self.get_valid_data()
-        data['template'] = self._get_template_url(template)
-
-        response = self.client.post(self.instance_list_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['detail'], "'%s' cloud must have an image that implements '%s' template"
-                         % (self.cloud, template))
-
-
     # instance external and internal ips fields tests
     def test_instance_factory_generates_valid_internal_ips_field(self):
         instance = factories.InstanceFactory()
