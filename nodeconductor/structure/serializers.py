@@ -371,9 +371,9 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             del fields['is_staff']
             fields['description'].read_only = True
             fields['civil_number'].read_only = True
-            fields['username'].read_only = True
 
         if request.method in ('PUT', 'PATCH'):
+            fields['username'].read_only = True
             fields['username'].read_only = True
 
         return fields

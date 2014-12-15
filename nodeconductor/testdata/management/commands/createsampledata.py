@@ -6,7 +6,6 @@ import random
 import string
 from decimal import Decimal
 
-
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
@@ -92,10 +91,10 @@ Arguments:
         data = {
             'users': {
                 'Alice': {
-                    'email': 'alice@example.com'
+                    'email': 'alice@example.com',
                 },
                 'Bob': {
-                    'email': 'bob@example.com'
+                    'email': 'bob@example.com',
                 },
                 'Charlie': {
                     'ssh_keys': {
@@ -106,7 +105,7 @@ Arguments:
                             "05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
                             "vEAFdOJcqjyyH4FOGYa8usP1 charlie@example.com"),
                     },
-                    'email': 'charlie@example.com'
+                    'email': 'charlie@example.com',
                 },
                 'Dave': {
                     'ssh_keys': {
@@ -117,7 +116,7 @@ Arguments:
                             "Wh0QNsHyCG/6S8s875wlpiV2yhCN+RIBqUt+K3f9kTmkJrHQ4R//7jxbfM5BPRFZwJNcqGTzEY9A+U35/Bqylw3w"
                             "d3HZUq+o7p/fUPf1funstUOmyKdf6UNykt dave@example.com"),
                     },
-                    'email': 'dave@example.com'
+                    'email': 'dave@example.com',
                 },
                 'Erin': {
                     'ssh_keys': {
@@ -128,20 +127,20 @@ Arguments:
                             "IRm2TvESUOXz8kj1g7/dcFBSDjb098EeFmzpywreSjgjRFwbkfu7bU0Jo0+CT/zWgEDZstl9Hk0ln8fepYAdGYty"
                             "565XosxwbWruVIfIJm/4kNo9enp5 erin@example.com"),
                     },
-                    'email': 'erin@example.com'
+                    'email': 'erin@example.com',
                 },
                 'Frank': {
-                    'email': 'frank@example.com'
+                    'email': 'frank@example.com',
                 },
                 'Walter': {
                     'is_staff': True,
-                    'email': 'walter@example.com'
+                    'email': 'walter@example.com',
                 },
                 'Zed': {
-                    'email': 'zed@example.com'
+                    'email': 'zed@example.com',
                 },
                 'Gus': {
-                    'email': 'gus@example.com'
+                    'email': 'gus@example.com',
                 },
                 'Harry': {
                     'ssh_keys': {
@@ -152,7 +151,7 @@ Arguments:
                             "zKYbmxqYERXHlCqwd/+S7NuYdL4oG4U+juwQWHJK0qhX8O/M+1lxWKPqI+w/ClCpf4oaw158GfmzlSM3nqza8te8"
                             "SJXgWJl48XMIJAMeAgpkyYt8Zpwt harry@example.com"),
                     },
-                    'email': 'harry@example.com'
+                    'email': 'harry@example.com',
                 },
             },
             'customers': {
