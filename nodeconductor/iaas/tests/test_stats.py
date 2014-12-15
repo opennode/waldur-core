@@ -196,8 +196,8 @@ class UsageStatsTest(test.APITransactionTestCase):
     def test_project_can_be_filtered_by_uuid(self):
         self.client.force_authenticate(self.staff)
 
-        patched_cliend = self._get_patched_client()
-        with patch('nodeconductor.iaas.serializers.ZabbixDBClient', return_value=patched_cliend) as patched:
+        patched_client = self._get_patched_client()
+        with patch('nodeconductor.iaas.serializers.ZabbixDBClient', return_value=patched_client) as patched:
             patched.items = {'cpu': {'key': 'cpu_key', 'table': 'cpu_table'}}
             data = {
                 'item': 'cpu', 'from': 1, 'to': 1415912629, 'datapoints': 3,
