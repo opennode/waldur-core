@@ -1,5 +1,8 @@
+from datetime import datetime
 from operator import itemgetter
+import time
 
+from django.utils import timezone
 from django.utils.datastructures import SortedDict
 
 
@@ -45,3 +48,11 @@ def format_time_and_value_to_segment_list(time_and_value_list, segments_count, s
             'value': segment_value,
         })
     return segment_list
+
+
+def datetime_to_timestamp(datetime):
+    return int(time.mktime(datetime.timetuple()))
+
+
+def timestamp_to_datetime(timestamp):
+    return datetime.fromtimestamp(int(timestamp)).replace(tzinfo=timezone.get_current_timezone())

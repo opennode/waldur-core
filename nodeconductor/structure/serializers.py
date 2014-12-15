@@ -1,16 +1,13 @@
 from __future__ import unicode_literals
 
-from datetime import datetime
-import time
-
+from django.db import models as django_models
 from django.contrib import auth
 from django.core.exceptions import ValidationError
-from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 
 from nodeconductor.core import serializers as core_serializers, utils as core_utils
-from nodeconductor.structure import models
+from nodeconductor.structure import models, filters
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 
@@ -367,25 +364,25 @@ class CreationTimeStatsSerializer(serializers.Serializer):
     MODEL_NAME_CHOICES = (('project', 'project'), ('customer', 'customer'), ('project_group', 'project_group'))
     MODEL_CLASSES = {'project': models.Project, 'customer': models.Customer, 'project_group': models.ProjectGroup}
 
-    model_name = models.CharField(choices=MODEL_NAME_CHOICES)
+    model_name = serializers.ChoiceField(choices=MODEL_NAME_CHOICES)
     start_timestamp = serializers.IntegerField(min_value=0)
     end_timestamp = serializers.IntegerField(min_value=0)
     segments_count = serializers.IntegerField(min_value=0)
 
-    def _datetime_to_timestamp(self, datetime):
-        return int(time.mktime(datetime.timetuple()))
+    def get_stats(self, user):
+        start_datetime = core_utils.timestamp_to_datetime(self.data['start_timestamp'])
+        end_datetime = core_utils.timestamp_to_datetime(self.data['end_timestamp'])
 
-    def _timestamp_to_datetime(self, timestamp):
-        return datetime.fromtimestamp(int(timestamp)).replace(tzinfo=timezone.get_current_timezone())
-
-    def get_stats(self):
-        start_datetime = self._datetime_to_timestamp(self.data['start_timestamp'])
-        end_datetime = self._datetime_to_timestamp(self.data['end_timestamp'])
         model = self.MODEL_CLASSES[self.data['model_name']]
-        created_datetimes = model.objects.filter(
-            created__gte=start_datetime, created__lte=end_datetime).values_list('created', flat=True)
-        created_timestamps = [self._datetime_to_timestamp(dt) for dt in created_datetimes]
-        time_and_value_list = [(ts, 1) for ts in created_timestamps]
+        filtered_queryset = filters.filter_queryset_for_user(model.objects.all(), user)
+        created_datetimes = (
+            filtered_queryset
+            .filter(created__gte=start_datetime, created__lte=end_datetime)
+            .values('created')
+            .annotate(count=django_models.Count('id', distinct=True)))
+
+        time_and_value_list = [
+            (core_utils.datetime_to_timestamp(dt['created']), dt['count']) for dt in created_datetimes]
 
         return core_utils.format_time_and_value_to_segment_list(
             time_and_value_list, self.data['segments_count'],
