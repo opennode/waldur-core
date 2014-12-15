@@ -9,14 +9,14 @@ from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-
+from model_utils.models import TimeStampedModel
 
 from nodeconductor.core.models import UuidMixin, DescribableMixin
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
 
 @python_2_unicode_compatible
-class Customer(UuidMixin, models.Model):
+class Customer(UuidMixin, TimeStampedModel):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
@@ -154,7 +154,7 @@ class ResourceQuota(models.Model):
 
 
 @python_2_unicode_compatible
-class Project(DescribableMixin, UuidMixin, models.Model):
+class Project(DescribableMixin, UuidMixin, TimeStampedModel):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
@@ -251,7 +251,7 @@ class ProjectGroupRole(UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
+class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
     """
     Project groups are means to organize customer's projects into arbitrary sets.
     """
