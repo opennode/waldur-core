@@ -20,4 +20,5 @@ def register_in(router):
 urlpatterns = patterns(
     '',
     url(r'^stats/creation-time/$', views.CreationTimeStatsView.as_view(), name='stats_creation_time'),
+    url(r'^stats/quota/$', views.QuotaStatsView.as_view(), name='stats_quota'),
 )
