@@ -8,9 +8,7 @@ from django.db import models as django_models
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
-
 import django_filters
-
 from rest_framework import exceptions
 from rest_framework import filters
 from rest_framework import mixins
@@ -22,6 +20,7 @@ from rest_framework_extensions.decorators import action, link
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
+from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.utils import sort_dict
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
@@ -35,19 +34,32 @@ logger = logging.getLogger(__name__)
 
 
 class InstanceFilter(django_filters.FilterSet):
-    project_group = django_filters.CharFilter(
-        name='project__project_groups__name',
+    project_group_name = django_filters.CharFilter(
+        name='cloud_project_membership__project__project_groups__name',
         distinct=True,
         lookup_type='icontains',
     )
+    project_name = django_filters.CharFilter(
+        name='cloud_project_membership__project__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
+    # FIXME: deprecated, use project_group_name instead
+    project_group = django_filters.CharFilter(
+        name='cloud_project_membership__project__project_groups__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+    # FIXME: deprecated, use project_name instead
     project = django_filters.CharFilter(
-        name='project__name',
+        name='cloud_project_membership__project__name',
         distinct=True,
         lookup_type='icontains',
     )
 
     customer_name = django_filters.CharFilter(
-        name='project__customer__name',
+        name='cloud_project_membership__project__customer__name',
         distinct=True,
         lookup_type='icontains',
     )
@@ -66,6 +78,8 @@ class InstanceFilter(django_filters.FilterSet):
             'hostname',
             'customer_name',
             'state',
+            'project_name',
+            'project_group_name',
             'project',
             'project_group',
             'template_name'
@@ -75,15 +89,27 @@ class InstanceFilter(django_filters.FilterSet):
             '-hostname',
             'state',
             '-state',
-            'project__customer__name',
-            '-project__customer__name',
-            'project__name',
-            '-project__name',
-            'project__project_groups__name',
-            '-project__project_groups__name',
+            'cloud_project_membership__project__customer__name',
+            '-cloud_project_membership__project__customer__name',
+            'cloud_project_membership__project__name',
+            '-cloud_project_membership__project__name',
+            'cloud_project_membership__project__project_groups__name',
+            '-cloud_project_membership__project__project_groups__name',
             'template__name',
             '-template__name',
         ]
+        order_by_mapping = {
+            # Proper field naming
+            'customer_name': 'cloud_project_membership__project__customer__name',
+            'project_name': 'cloud_project_membership__project__name',
+            'project_group_name': 'cloud_project_membership__project__project_groups__name',
+            'template_name': 'template__name',
+
+            # Backwards compatibility
+            'project__customer__name': 'cloud_project_membership__project__customer__name',
+            'project__name': 'cloud_project_membership__project__name',
+            'project__project_groups__name': 'cloud_project_membership__project__project_groups__name',
+        }
 
 
 class InstanceViewSet(mixins.CreateModelMixin,
@@ -98,7 +124,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
-    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
+    filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = InstanceFilter
 
@@ -454,25 +480,32 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
 
 
 class ServiceFilter(django_filters.FilterSet):
-    project_groups = django_filters.CharFilter(
-        name='project__project_groups__name',
+    project_group_name = django_filters.CharFilter(
+        name='cloud_project_membership__project__project_groups__name',
         distinct=True,
         lookup_type='icontains',
     )
     project_name = django_filters.CharFilter(
-        name='project__name',
+        name='cloud_project_membership__project__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
+    # FIXME: deprecated, use project_group_name instead
+    project_groups = django_filters.CharFilter(
+        name='cloud_project_membership__project__project_groups__name',
         distinct=True,
         lookup_type='icontains',
     )
 
     hostname = django_filters.CharFilter(lookup_type='icontains')
     customer_name = django_filters.CharFilter(
-        name='project__customer__name',
-        lookup_type='icontains'
+        name='cloud_project_membership__project__customer__name',
+        lookup_type='icontains',
     )
     template_name = django_filters.CharFilter(
         name='template__name',
-        lookup_type='icontains'
+        lookup_type='icontains',
     )
     agreed_sla = django_filters.NumberFilter()
     actual_sla = django_filters.NumberFilter(name='slas__value')
@@ -491,20 +524,33 @@ class ServiceFilter(django_filters.FilterSet):
         order_by = [
             'hostname',
             'template__name',
-            'project__customer__name',
-            'project__name',
-            'project__project_groups__name',
+            'cloud_project_membership__project__customer__name',
+            'cloud_project_membership__project__name',
+            'cloud_project_membership__project__project_groups__name',
             'agreed_sla',
             'slas__value',
             # desc
             '-hostname',
             '-template__name',
-            '-project__customer__name',
-            '-project__name',
-            '-project__project_groups__name',
+            '-cloud_project_membership__project__customer__name',
+            '-cloud_project_membership__project__name',
+            '-cloud_project_membership__project__project_groups__name',
             '-agreed_sla',
             '-slas__value',
         ]
+        order_by_mapping = {
+            # Proper field naming
+            'customer_name': 'cloud_project_membership__project__customer__name',
+            'project_name': 'cloud_project_membership__project__name',
+            'project_group_name': 'cloud_project_membership__project__project_groups__name',
+            'template_name': 'template__name',
+            'actual_sla': 'slas__value',
+
+            # Backwards compatibility
+            'project__customer__name': 'cloud_project_membership__project__customer__name',
+            'project__name': 'cloud_project_membership__project__name',
+            'project__project_groups__name': 'cloud_project_membership__project__project_groups__name',
+        }
 
 
 # XXX: This view has to be rewritten or removed after haystack implementation
@@ -517,7 +563,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     )
     serializer_class = ServiceSerializer
     lookup_field = 'uuid'
-    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
+    filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     filter_class = ServiceFilter
 
     def _get_period(self):

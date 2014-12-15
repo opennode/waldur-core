@@ -12,19 +12,27 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - ?hostname=<hostname>
 - ?customer_name=<customer name>
 - ?state=<state symbol>
-- ?project=<project_name>
-- ?project_group=<project_group_name>
+- ?project=<project name>
+- ?project_group=<project group name>
 - ?template_name=<template name>
+- ?project **deprecated**, use ?project_name instead
+- ?project_group **deprecated**, use ?project_group_name instead
 
 Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
 
-- ?o=hostname - sort by hostname in ascending order
-- ?o=state - sort by state in ascending order
-- ?o=project__customer__name - sort by customer name in ascending order
-- ?o=project__project_groups__name - sort by project group name
-- ?o=project__name - sort by project name
-- ?o=template__name - sort by template name
+- ?o=hostname - sort by hostname
+- ?o=state - sort by state
+- ?o=customer_name - sort by customer name
+- ?o=project_group_name - sort by project group name
+- ?o=project_name - sort by project name
+- ?o=template_name - sort by template name
+- ?o=project__customer__name - **deprecated**, use ?o=customer_name instead
+- ?o=project__project_groups__name - **deprecated**, use ?o=project_group_name instead
+- ?o=project__name - **deprecated**, use ?o=project_name instead
+- ?o=template__name - **deprecated**, use ?o=template_name instead
 
+Sorting can be done by the following fields, specifying field name as a parameter to **?o=<field_name>**. To get a
+descending sorting prefix field name with a **-**.
 
 Instance permissions
 --------------------
