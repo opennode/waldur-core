@@ -339,6 +339,22 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         )
         lookup_field = 'uuid'
 
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        non_nullable_char_fields = [
+            'job_title',
+            'organization',
+            'phone_number',
+            'civil_number',
+            'description',
+        ]
+        for source in attrs:
+            if source in non_nullable_char_fields:
+                value = attrs[source]
+                if value is None:
+                    attrs[source] = ''
+        return attrs
+
     def get_fields(self):
         fields = super(UserSerializer, self).get_fields()
 
