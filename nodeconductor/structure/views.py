@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import time
+
 from django.contrib import auth
 from django.db.models.query_utils import Q
 from django.http.response import Http404
@@ -8,6 +10,7 @@ from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import status
+from rest_framework import views
 from rest_framework import viewsets as rf_viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -794,6 +797,26 @@ class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
         self.post_delete(obj)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CreationTimeStatsView(views.APIView):
+
+    def get(self, request, format=None):
+        month = 60 * 60 * 24 * 30
+        data = {
+            'start_timestamp': request.QUERY_PARAMS.get('from', int(time.time() - month)),
+            'end_timestamp': request.QUERY_PARAMS.get('to', int(time.time())),
+            'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
+            'model_name': request.QUERY_PARAMS.get('type', 'customer'),
+        }
+
+        serializer = serializers.CreationTimeStatsSerializer(data=data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        stats = serializer.get_stats(request.user)
+        return Response(stats, status=status.HTTP_200_OK)
+
 
 # XXX: This should be put to models
 filters.set_permissions_for_model(

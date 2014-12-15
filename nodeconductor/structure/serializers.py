@@ -1,12 +1,13 @@
 from __future__ import unicode_literals
 
+from django.db import models as django_models
 from django.contrib import auth
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 
-from nodeconductor.core import serializers as core_serializers
-from nodeconductor.structure import models
+from nodeconductor.core import serializers as core_serializers, utils as core_utils
+from nodeconductor.structure import models, filters
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 
@@ -325,14 +326,15 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = User
-        fields = ('url',
-                  'uuid', 'username',
-                  'full_name', 'native_name',
-                  'job_title', 'email', 'organization', 'phone_number',
-                  'civil_number',
-                  'description',
-                  'is_staff', 'is_active',
-                  'project_groups',
+        fields = (
+            'url',
+            'uuid', 'username',
+            'full_name', 'native_name',
+            'job_title', 'email', 'organization', 'phone_number',
+            'civil_number',
+            'description',
+            'is_staff', 'is_active',
+            'project_groups',
         )
         read_only_fields = (
             'uuid',
@@ -377,6 +379,35 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             fields['username'].read_only = True
 
         return fields
+
+
+class CreationTimeStatsSerializer(serializers.Serializer):
+    MODEL_NAME_CHOICES = (('project', 'project'), ('customer', 'customer'), ('project_group', 'project_group'))
+    MODEL_CLASSES = {'project': models.Project, 'customer': models.Customer, 'project_group': models.ProjectGroup}
+
+    model_name = serializers.ChoiceField(choices=MODEL_NAME_CHOICES)
+    start_timestamp = serializers.IntegerField(min_value=0)
+    end_timestamp = serializers.IntegerField(min_value=0)
+    segments_count = serializers.IntegerField(min_value=0)
+
+    def get_stats(self, user):
+        start_datetime = core_utils.timestamp_to_datetime(self.data['start_timestamp'])
+        end_datetime = core_utils.timestamp_to_datetime(self.data['end_timestamp'])
+
+        model = self.MODEL_CLASSES[self.data['model_name']]
+        filtered_queryset = filters.filter_queryset_for_user(model.objects.all(), user)
+        created_datetimes = (
+            filtered_queryset
+            .filter(created__gte=start_datetime, created__lte=end_datetime)
+            .values('created')
+            .annotate(count=django_models.Count('id', distinct=True)))
+
+        time_and_value_list = [
+            (core_utils.datetime_to_timestamp(dt['created']), dt['count']) for dt in created_datetimes]
+
+        return core_utils.format_time_and_value_to_segment_list(
+            time_and_value_list, self.data['segments_count'],
+            self.data['start_timestamp'], self.data['end_timestamp'])
 
 
 class PasswordSerializer(serializers.Serializer):
