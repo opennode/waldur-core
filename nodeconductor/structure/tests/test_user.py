@@ -58,6 +58,14 @@ class UserPermissionApiTest(test.APISimpleTestCase):
         response = self.client.post(factories.UserFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    def test_staff_user_can_create_account_with_null_optional_data(self):
+        self.client.force_authenticate(self.users['staff'])
+
+        data = self._get_null_payload()
+
+        response = self.client.post(factories.UserFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     # Manipulation tests
     def test_user_can_change_his_account_email(self):
         data = {'email': 'example@example.com'}
@@ -148,6 +156,22 @@ class UserPermissionApiTest(test.APISimpleTestCase):
             'full_name': account.full_name,
             'native_name': account.native_name,
             'civil_number': account.civil_number,
+            'is_staff': account.is_staff,
+            'is_active': account.is_active,
+            'is_superuser': account.is_superuser,
+        }
+
+    def _get_null_payload(self, account=None):
+        account = account or factories.UserFactory.build()
+
+        return {
+            'username': account.username,
+            'email': account.email,
+            'full_name': None,
+            'native_name': None,
+            'civil_number': None,
+            'phone_number': None,
+            'description': None,
             'is_staff': account.is_staff,
             'is_active': account.is_active,
             'is_superuser': account.is_superuser,

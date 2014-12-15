@@ -347,6 +347,8 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'phone_number',
             'civil_number',
             'description',
+            'full_name',
+            'native_name',
         ]
         for source in attrs:
             if source in non_nullable_char_fields:
