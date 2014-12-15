@@ -184,7 +184,7 @@ class InstanceSlaHistoryEventsInline(admin.TabularInline):
     model = models.InstanceSlaHistoryEvents
     fields = ('timestamp', 'state')
     ordering = ('timestamp', )
-    readonly_fields = fields
+    extra = 1
 
 
 class InstanceSlaHistoryAdmin(admin.ModelAdmin):
