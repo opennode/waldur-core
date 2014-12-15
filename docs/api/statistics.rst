@@ -8,6 +8,7 @@ URL: /stats/usage/
 Available request parameters:
 
 - ?aggregate=aggregate_model_name(default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
+- ?uuid=uuid_of_aggregate_model_object(not required. If this parameter will be defined - result will contain only object with given uuid)
 - ?item=instance_usage_item(required. Have to be from list: 'cpu', 'memory', 'storage')
 - ?from=timestamp(default: now - one hour, example: 1415910025)
 - ?to=timestamp(default: now, example: 1415912625)

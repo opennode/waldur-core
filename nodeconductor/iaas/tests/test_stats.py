@@ -193,6 +193,21 @@ class UsageStatsTest(test.APITransactionTestCase):
             expected_data = [{'name': self.project_group.name, 'datapoints': self.expected_datapoints}]
             self.assertItemsEqual(response.data, expected_data)
 
+    def test_project_can_be_filtered_by_uuid(self):
+        self.client.force_authenticate(self.staff)
+
+        patched_client = self._get_patched_client()
+        with patch('nodeconductor.iaas.serializers.ZabbixDBClient', return_value=patched_client) as patched:
+            patched.items = {'cpu': {'key': 'cpu_key', 'table': 'cpu_table'}}
+            data = {
+                'item': 'cpu', 'from': 1, 'to': 1415912629, 'datapoints': 3,
+                'aggregate': 'project', 'uuid': self.project1.uuid.hex
+            }
+            response = self.client.get(self.url, data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            expected_data = [{'name': self.project1.name, 'datapoints': self.expected_datapoints}]
+            self.assertItemsEqual(response.data, expected_data)
+
 
 class ResourceStatsTest(test.APITransactionTestCase):
 
