@@ -149,13 +149,6 @@ class InstanceViewSet(mixins.CreateModelMixin,
         queryset = queryset.exclude(state=models.Instance.States.DELETED)
         return queryset
 
-    def _check_cloud_template_connection(self, cloud, template):
-        image = models.Image.objects.filter(template=template, cloud=cloud)
-
-        if not image.exists():
-            raise exceptions.ParseError("'%s' cloud must have an image that implements '%s' template"
-                                        % (cloud, template))
-
     def pre_save(self, obj):
         super(InstanceViewSet, self).pre_save(obj)
 
@@ -173,9 +166,6 @@ class InstanceViewSet(mixins.CreateModelMixin,
                 del related_data['security_groups']
             except KeyError:
                 pass
-
-        if self.request.method == 'POST':
-            self._check_cloud_template_connection(obj.cloud, obj.template)
 
     def post_save(self, obj, created=False):
         super(InstanceViewSet, self).post_save(obj, created)
