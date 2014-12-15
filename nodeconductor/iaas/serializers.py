@@ -311,9 +311,9 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
             'state',
             'backups', 'backup_schedules',
             'instance_licenses',
+            'agreed_sla',
             'system_volume_size',
             'data_volume_size',
-            'agreed_sla',
             'cores', 'ram'
         )
         read_only_fields = (
