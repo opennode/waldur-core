@@ -291,7 +291,7 @@ class Instance(core_models.UuidMixin,
 
     # fields, defined by ssh public key
     key_name = models.CharField(max_length=50, blank=True)
-    key_fingerprint = models.CharField(max_length=47)
+    key_fingerprint = models.CharField(max_length=47, blank=True)
 
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255, blank=True)
