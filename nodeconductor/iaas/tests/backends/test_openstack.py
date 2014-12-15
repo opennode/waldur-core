@@ -9,11 +9,40 @@ import mock
 
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.backend.openstack import OpenStackBackend
-from nodeconductor.iaas.models import Image, Flavor
+from nodeconductor.iaas.models import Flavor, Instance, Image
 from nodeconductor.iaas.tests import factories
 
-NovaFlavor = collections.namedtuple('NovaFlavor',
-                                    ['id', 'name', 'vcpus', 'ram', 'disk'])
+NovaFlavor = collections.namedtuple(
+    'NovaFlavor',
+    ['id', 'name', 'vcpus', 'ram', 'disk']
+)
+
+# NovaServer = collections.namedtuple(
+#     'NovaServer',
+#     [
+#         'id',
+#         'name',
+#         'flavor',
+#         'security_groups',
+#         'addresses',
+#
+#         'OS-SRV-USG:launched_at',  # optional
+#         'OS-EXT-STS:power_state',  # optional
+#
+#         'os-extended-volumes:volumes_attached',
+#
+#
+#         'OS-EXT-STS:task_state',
+#
+#         'image',
+#
+#         'updated',
+#         'hostId',
+#         'OS-EXT-SRV-ATTR:host',
+#         'key_name',
+#         'metadata',
+#     ]
+# )
 
 GlanceImage = collections.namedtuple(
     'GlanceImage',
@@ -483,6 +512,117 @@ class OpenStackBackendImageApiTest(TransactionTestCase):
             )
         except Image.DoesNotExist:
             self.fail("Image's backend_id should have been updated")
+
+
+class OpenStackBackendInstanceApiTest(TransactionTestCase):
+    def setUp(self):
+        self.nova_client = mock.Mock()
+        self.nova_client.servers.list.return_value = []
+        self.nova_client.servers.findall.return_value = []
+
+        self.membership = factories.CloudProjectMembershipFactory()
+
+        # Mock low level non-AbstractCloudBackend api methods
+        self.backend = OpenStackBackend()
+        self.backend.create_tenant_session = mock.Mock()
+        self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
+
+    # XXX: import only the 1st data volume, sort by device name
+
+    # Backend query tests
+    def test_pull_instances_filters_out_instances_booted_from_image(self):
+        self.when()
+
+        self.nova_client.servers.findall.assert_called_once_with(
+            image='',
+        )
+
+    # Deletion tests
+    def test_pull_instances_deletes_stable_instances_missing_in_backend(self):
+        # Given
+        membership_params = self._get_membership_params()
+
+        for state in Instance.States.STABLE_STATES:
+            factories.InstanceFactory(state=state, **membership_params)
+
+        self.when()
+
+        # Then
+        is_present = Instance.objects.filter(**membership_params).exists()
+
+        self.assertFalse(is_present, 'Instances should have been deleted from the database')
+
+    def test_pull_instances_doesnt_delete_unstable_instances_missing_in_backend(self):
+        # Given
+        membership_params = self._get_membership_params()
+
+        for state in Instance.States.UNSTABLE_STATES:
+            factories.InstanceFactory(state=state, **membership_params)
+
+        # When
+        self.when()
+
+        # Then
+        expected_instance_count = len(Instance.States.UNSTABLE_STATES)
+        actual_instance_count = Instance.objects.filter(**membership_params).count()
+
+        self.assertEqual(expected_instance_count, actual_instance_count,
+                         'No instances should have been deleted from the database')
+
+    # Creation tests
+    @unittest.skip("Not implemented yet")
+    def test_pull_instances_creates_instances_missing_in_database(self):
+        # Given
+        self.given_minimal_importable_instance()
+
+        # When
+        self.when()
+
+        # Then
+        membership_params = self._get_membership_params()
+
+        # TODO:
+        instance = Instance.objects.filter(backend_id='', **membership_params).first()
+        self.assertIsNotNone(instance,
+                             'Instance should have been created')
+
+    # Helper methods
+    def given_minimal_importable_instance(self):
+        # Create a flavor
+        flavor = NovaFlavor(next_unique_flavor_id(), 'id1', 3, 5, 8)
+
+        # from novaclient.v1_1.servers import Server as NovaServer
+
+        # Create a server
+        # server = mock.Mock(spec_set=NovaServer)
+        server = mock.Mock()
+        server.id = 'server-uuid-1'
+        server.name = 'hostname-1'
+        server.flavor = {
+            'id': flavor.id,
+            'links': [
+                {
+                    'href': 'http://example.com/TENANT-ID-1/flavors/%s' % flavor.id,
+                    'rel': 'bookmark',
+                }
+            ]
+        }
+        server.status = 'ACTIVE'
+        server.image = ''
+
+        # Mock volume fetches
+        # Mock flavor fetches
+        # Mock server fetches
+        self.nova_client.servers.findall.return_value = [server]
+
+    def when(self):
+        self.backend.pull_instances(self.membership)
+
+    def _get_membership_params(self):
+        return dict(
+            # XXX: Should we introduce ProjectMember mixin?
+            cloud_project_membership=self.membership,
+        )
 
 
 class OpenStackBackendHelperApiTest(unittest.TestCase):

@@ -40,12 +40,12 @@ def _security_group_url(group):
 def _instance_data(user, instance=None):
     if instance is None:
         instance = factories.InstanceFactory()
-    flavor = factories.FlavorFactory(cloud=instance.cloud)
+    flavor = factories.FlavorFactory(cloud=instance.cloud_project_membership.cloud)
     ssh_public_key = factories.SshPublicKeyFactory(user=user)
     return {
         'hostname': 'test_host',
         'description': 'test description',
-        'project': _project_url(instance.project),
+        'project': _project_url(instance.cloud_project_membership.project),
         'template': _template_url(instance.template),
         'flavor': _flavor_url(flavor),
         'ssh_public_key': _ssh_public_key_url(ssh_public_key)
@@ -59,7 +59,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.client.force_authenticate(self.user)
 
         self.instance = factories.InstanceFactory()
-        self.instance.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
+        self.instance.cloud_project_membership.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
 
         self.instance_security_groups = factories.InstanceSecurityGroupFactory.create_batch(2, instance=self.instance)
         self.cloud_security_groups = [g.security_group for g in self.instance_security_groups]
@@ -82,10 +82,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_change_instance_security_groups_single_field(self):
-        membership = models.CloudProjectMembership.objects.get(
-            project=self.instance.project,
-            cloud=self.instance.cloud,
-        )
+        membership = self.instance.cloud_project_membership
         new_security_group = factories.SecurityGroupFactory(
             name='test-group',
             cloud_project_membership=membership,

@@ -180,7 +180,8 @@ class InstanceFactory(factory.DjangoModelFactory):
 
     cores = factory.Sequence(lambda n: n)
     ram = factory.Sequence(lambda n: n)
-    cloud = factory.SubFactory(CloudFactory)
+    # cloud = factory.SubFactory(CloudFactory)
+    cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
 
     key_name = factory.Sequence(lambda n: 'instance key%s' % n)
     key_fingerprint = factory.Sequence(lambda n: 'instance key fingerprint%s' % n)
@@ -190,11 +191,7 @@ class InstanceFactory(factory.DjangoModelFactory):
     data_volume_id = factory.Sequence(lambda n: 'dat-vol-id-%s' % n)
     data_volume_size = 20
 
-    @factory.lazy_attribute
-    def project(self):
-        project = structure_factories.ProjectFactory()
-        CloudProjectMembershipFactory(project=project, cloud=self.cloud)
-        return project
+    backend_id = factory.Sequence(lambda n: 'instance-id%s' % n)
 
     @classmethod
     def get_url(self, instance=None, action=None):

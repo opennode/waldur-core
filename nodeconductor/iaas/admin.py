@@ -121,9 +121,14 @@ class InstanceAdmin(admin.ModelAdmin):
             return ['template']
         return []
     ordering = ('hostname',)
-    list_display = ['hostname', 'uuid', 'state', 'project', 'template']
+    list_display = ['hostname', 'uuid', 'state', 'get_project_name', 'template']
     search_fields = ['hostname', 'uuid']
-    list_filter = ['state', 'project', 'template']
+    list_filter = ['state', 'cloud_project_membership__project', 'template']
+
+    def get_project_name(self, obj):
+        return obj.cloud_project_membership.project.name
+
+    get_project_name.short_description = 'Project'
 
 
 class PurchaseAdmin(admin.ModelAdmin):

@@ -11,7 +11,7 @@ from cinderclient import exceptions as cinder_exceptions
 from cinderclient.v1 import client as cinder_client
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import transaction, DatabaseError
 from django.db.models import ProtectedError
 from django.utils import six
 from glanceclient import exc as glance_exceptions
@@ -327,7 +327,46 @@ class OpenStackBackend(object):
                 self.pull_security_group_rules(nc_security_group, nova)
                 logger.info('Created new security group %s in database', nc_security_group.uuid)
 
-    # Statistics methods:
+    def pull_instances(self, membership):
+        try:
+            session = self.create_tenant_session(membership)
+            nova = self.create_nova_client(session)
+        except keystone_exceptions.ClientException:
+            logger.exception('Failed to create nova client')
+            six.reraise(CloudBackendError, CloudBackendError())
+
+        backend_instances = nova.servers.findall(image='')
+        backend_instances = dict(((f.id, f) for f in backend_instances))
+
+        from nodeconductor.iaas.models import Instance
+
+        with transaction.atomic():
+            nc_instances = Instance.objects.filter(
+                state__in=Instance.States.STABLE_STATES,
+                cloud_project_membership=membership,
+            )
+            nc_instances = dict(((i.backend_id, i) for i in nc_instances))
+
+            backend_ids = set(backend_instances.keys())
+            nc_ids = set(nc_instances.keys())
+
+            # Remove stale instances, the ones that are not on backend anymore
+            for instance_id in nc_ids - backend_ids:
+                nc_instance = nc_instances[instance_id]
+                logger.debug('About to delete instance %s in database',
+                             nc_instance.uuid)
+
+                try:
+                    nc_instance.delete()
+                except DatabaseError:
+                    logger.exception('Failed to delete instance %s in database',
+                                     nc_instance.uuid)
+                else:
+                    logger.info('Deleted stale instance %s in database',
+                                nc_instance.uuid)
+                    # TODO:
+
+    # Statistics methods
     def get_resource_stats(self, auth_url):
         logger.debug('About to get statistics from for auth_url: %s', auth_url)
         try:

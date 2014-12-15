@@ -31,12 +31,20 @@ class CustomerStatsTest(test.APITransactionTestCase):
         self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
         self.admin_project.add_user(self.admin, structure_models.ProjectRole.ADMINISTRATOR)
 
-        self.manager_instances = factories.InstanceFactory.create_batch(2, project=self.manager_project, cloud=cloud)
-        self.admins_instances = factories.InstanceFactory.create_batch(2, project=self.admin_project, cloud=cloud)
+        self.manager_instances = factories.InstanceFactory.create_batch(
+            2,
+            cloud_project_membership__project=self.manager_project,
+            cloud_project_membership__cloud=cloud,
+        )
+        self.admins_instances = factories.InstanceFactory.create_batch(
+            2,
+            cloud_project_membership__project=self.admin_project,
+            cloud_project_membership__cloud=cloud,
+        )
 
         self.url = reverse('stats_customer')
 
-    def test_staff_receive_statistics_for_all_cuctomers(self):
+    def test_staff_receive_statistics_for_all_customers(self):
         self.client.force_authenticate(self.staff)
 
         response = self.client.get(self.url)
@@ -120,8 +128,8 @@ class UsageStatsTest(test.APITransactionTestCase):
         self.project_group.projects.add(self.project1)
         self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
 
-        self.instances1 = factories.InstanceFactory.create_batch(2, project=self.project1)
-        self.instances2 = factories.InstanceFactory.create_batch(2, project=self.project2)
+        self.instances1 = factories.InstanceFactory.create_batch(2, cloud_project_membership__project=self.project1)
+        self.instances2 = factories.InstanceFactory.create_batch(2, cloud_project_membership__project=self.project2)
 
         self.url = reverse('stats_usage')
 
