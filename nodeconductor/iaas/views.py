@@ -632,7 +632,12 @@ class UsageStatsView(views.APIView):
                 'Get parameter "aggregate" can take only this values: ' % ', '.join(self.aggregate_models.keys()),
                 status=status.HTTP_400_BAD_REQUEST)
 
-        for aggregate_object in self._get_aggregate_queryset(request, aggregate_model_name):
+        aggregate_queryset = self._get_aggregate_queryset(request, aggregate_model_name)
+
+        if 'uuid' in request.QUERY_PARAMS:
+            aggregate_queryset = aggregate_queryset.filter(uuid=request.QUERY_PARAMS['uuid'])
+
+        for aggregate_object in aggregate_queryset:
             instances = models.Instance.objects.filter(
                 **self._get_aggregate_filter(aggregate_model_name, aggregate_object))
             if instances:
