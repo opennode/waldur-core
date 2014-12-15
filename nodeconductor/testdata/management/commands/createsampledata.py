@@ -1,3 +1,7 @@
+# -*- coding: utf-8
+
+from __future__ import unicode_literals
+
 import random
 import string
 from decimal import Decimal
@@ -86,8 +90,12 @@ Arguments:
         #  - Use case 12: User has no roles at all -- Zed
         data = {
             'users': {
-                'Alice': {},
-                'Bob': {},
+                'Alice': {
+                    'email': 'alice@example.com',
+                },
+                'Bob': {
+                    'email': 'bob@example.com',
+                },
                 'Charlie': {
                     'ssh_keys': {
                         'Public key 1': (
@@ -96,7 +104,8 @@ Arguments:
                             "ArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9duD2C"
                             "05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
                             "vEAFdOJcqjyyH4FOGYa8usP1 charlie@example.com"),
-                    }
+                    },
+                    'email': 'charlie@example.com',
                 },
                 'Dave': {
                     'ssh_keys': {
@@ -106,7 +115,8 @@ Arguments:
                             "c2HjCVGacJMhDtZ64FBSHdbfFwNLoTDErzQhQPLIQ2PrOSGKgn14KjVjqyvSRSE1lP//X6Uf0EXRe2FXfxVZYj1"
                             "Wh0QNsHyCG/6S8s875wlpiV2yhCN+RIBqUt+K3f9kTmkJrHQ4R//7jxbfM5BPRFZwJNcqGTzEY9A+U35/Bqylw3w"
                             "d3HZUq+o7p/fUPf1funstUOmyKdf6UNykt dave@example.com"),
-                    }
+                    },
+                    'email': 'dave@example.com',
                 },
                 'Erin': {
                     'ssh_keys': {
@@ -116,14 +126,22 @@ Arguments:
                             "Nv64NRwZRbC6b1PB1Wm5mkoF31Uzy76pq3pf++rfh/s+Wg+vAyLy+WaSqeqvFxmeP7np/ByCv8zDAJClX9Cbhj3+"
                             "IRm2TvESUOXz8kj1g7/dcFBSDjb098EeFmzpywreSjgjRFwbkfu7bU0Jo0+CT/zWgEDZstl9Hk0ln8fepYAdGYty"
                             "565XosxwbWruVIfIJm/4kNo9enp5 erin@example.com"),
-                    }
+                    },
+                    'email': 'erin@example.com',
                 },
-                'Frank': {},
+                'Frank': {
+                    'email': 'frank@example.com',
+                },
                 'Walter': {
                     'is_staff': True,
+                    'email': 'walter@example.com',
                 },
-                'Zed': {},
-                'Gus': {},
+                'Zed': {
+                    'email': 'zed@example.com',
+                },
+                'Gus': {
+                    'email': 'gus@example.com',
+                },
                 'Harry': {
                     'ssh_keys': {
                         'Public key 1': (
@@ -132,7 +150,8 @@ Arguments:
                             "KUfyhrwZtYuXKQ4B8LgIO2oMmi3UVyW8IwUGkQMEY9vxKKv+ka2aioZJBJudFN2MVNlC8M6iYkMx22yS/c3arrbt"
                             "zKYbmxqYERXHlCqwd/+S7NuYdL4oG4U+juwQWHJK0qhX8O/M+1lxWKPqI+w/ClCpf4oaw158GfmzlSM3nqza8te8"
                             "SJXgWJl48XMIJAMeAgpkyYt8Zpwt harry@example.com"),
-                    }
+                    },
+                    'email': 'harry@example.com',
                 },
             },
             'customers': {
@@ -199,13 +218,20 @@ Arguments:
         users = {}
         for username, user_params in data['users'].items():
             self.stdout.write('Creating user "%s"...' % username)
-            users[username], was_created = User.objects.get_or_create(username=username)
+            users[username], was_created = User.objects.get_or_create(
+                username=username,
+                email= user_params['email'],
+                full_name='%s Lebowski' % username,
+                native_name='%s Leböwski' % username,
+                phone_number='+1-202-555-0177',
+            )
             self.stdout.write('User "%s" %s.' % (username, "created" if was_created else "already exists"))
 
             users[username].set_password(username)
             if not users[username].is_staff and 'is_staff' in user_params and user_params['is_staff']:
                 self.stdout.write('Promoting user "%s" to staff...' % username)
                 users[username].is_staff = True
+                users[username].job_title = 'Support'
             users[username].save()
 
             if 'ssh_keys' in user_params:

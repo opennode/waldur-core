@@ -338,10 +338,26 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         )
         read_only_fields = (
             'uuid',
-            'is_staff',
-            'username', 'civil_number',
         )
         lookup_field = 'uuid'
+
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        non_nullable_char_fields = [
+            'job_title',
+            'organization',
+            'phone_number',
+            'civil_number',
+            'description',
+            'full_name',
+            'native_name',
+        ]
+        for source in attrs:
+            if source in non_nullable_char_fields:
+                value = attrs[source]
+                if value is None:
+                    attrs[source] = ''
+        return attrs
 
     def get_fields(self):
         fields = super(UserSerializer, self).get_fields()
@@ -356,6 +372,11 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             del fields['is_active']
             del fields['is_staff']
             fields['description'].read_only = True
+            fields['civil_number'].read_only = True
+
+        if request.method in ('PUT', 'PATCH'):
+            fields['username'].read_only = True
+            fields['username'].read_only = True
 
         return fields
 
