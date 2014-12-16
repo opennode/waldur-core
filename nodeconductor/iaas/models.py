@@ -233,8 +233,6 @@ class Instance(core_models.UuidMixin,
         DELETION_SCHEDULED = 10
         DELETING = 11
 
-        DELETED = 12
-
         RESIZING_SCHEDULED = 13
         RESIZING = 14
 
@@ -255,7 +253,6 @@ class Instance(core_models.UuidMixin,
 
             (DELETION_SCHEDULED, _('Deletion Scheduled')),
             (DELETING, _('Deleting')),
-            (DELETED, _('Deleted')),
 
             (RESIZING_SCHEDULED, _('Resizing Scheduled')),
             (RESIZING, _('Resizing')),
@@ -337,10 +334,6 @@ class Instance(core_models.UuidMixin,
 
     @transition(field=state, source=States.DELETION_SCHEDULED, target=States.DELETING)
     def begin_deleting(self):
-        pass
-
-    @transition(field=state, source=States.DELETING, target=States.DELETED)
-    def set_deleted(self):
         pass
 
     @transition(field=state, source=States.OFFLINE, target=States.RESIZING_SCHEDULED)

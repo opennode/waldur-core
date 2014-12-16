@@ -134,11 +134,11 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_user_cannot_delete_non_offline_instances_of_projects_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
-        # Check all states but deleted and offline
+        # Check all states but offline
         forbidden_states = [
             state
             for (state, _) in Instance.States.CHOICES
-            if state not in (Instance.States.DELETED, Instance.States.OFFLINE)
+            if state != Instance.States.OFFLINE
         ]
 
         for state in forbidden_states:
@@ -337,7 +337,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         forbidden_states = [
             state
             for (state, _) in Instance.States.CHOICES
-            if state not in (Instance.States.DELETED, Instance.States.OFFLINE)
+            if state not in (Instance.States.DELETING, Instance.States.OFFLINE)
         ]
 
         for state in forbidden_states:
@@ -362,11 +362,9 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_user_cannot_change_flavor_of_running_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
-        # Check all states but deleted and offline
         forbidden_states = [
             state
             for (state, _) in Instance.States.CHOICES
-            if state != Instance.States.DELETED
         ]
 
         for state in forbidden_states:

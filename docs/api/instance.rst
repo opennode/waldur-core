@@ -64,7 +64,6 @@ In a DB, state is stored encoded with a symbol. States are:
 - ERRED = 'e'
 - DELETION_SCHEDULED = 'd'
 - DELETING = 'D'
-- DELETED = 'x'
 - RESIZING_SCHEDULED = 'r'
 - RESIZING = 'R'
 
