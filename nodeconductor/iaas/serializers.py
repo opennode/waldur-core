@@ -214,8 +214,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     def validate(self, attrs):
         flavor = attrs['flavor']
-        project = attrs['project']
-
+        project = attrs['project']        
         membership_exists = models.CloudProjectMembership.objects.filter(
             project=project,
             cloud=flavor.cloud,
@@ -223,6 +222,13 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         if not membership_exists:
             raise ValidationError("Flavor is not within project's clouds.")
+            
+        template = attrs['template']
+        image_exists = models.Image.objects.filter(template=template, cloud=flavor.cloud).exists()
+
+        if not image_exists:
+                raise serializers.ValidationError("Template %s is not available on cloud %s"
+                                                  % (template, flavor.cloud))
 
         return attrs
 

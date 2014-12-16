@@ -490,15 +490,16 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.instance_list_url = reverse('instance-list')
 
-        cloud = factories.CloudFactory()
-
+        self.cloud = factories.CloudFactory()
         self.template = factories.TemplateFactory()
-        self.flavor = factories.FlavorFactory(cloud=cloud)
+        self.flavor = factories.FlavorFactory(cloud=self.cloud)
         self.project = structure_factories.ProjectFactory()
-        factories.CloudProjectMembershipFactory(cloud=cloud, project=self.project)
+        factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
         self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        factories.ImageFactory(template=self.template, cloud=self.cloud)
 
     # Assertions
     def assert_field_required(self, field_name):

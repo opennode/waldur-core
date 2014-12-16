@@ -61,6 +61,8 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.instance = factories.InstanceFactory()
         self.instance.cloud_project_membership.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
 
+        factories.ImageFactory(template=self.instance.template, cloud=self.instance.cloud_project_membership.cloud)
+
         self.instance_security_groups = factories.InstanceSecurityGroupFactory.create_batch(2, instance=self.instance)
         self.cloud_security_groups = [g.security_group for g in self.instance_security_groups]
 
