@@ -441,5 +441,9 @@ class StatsAggregateSerializer(serializers.Serializer):
 
         if self.data['model_name'] == 'project':
             return queryset.all()
+        elif self.data['model_name'] == 'project_group':
+            projects = models.Project.objects.filter(project_groups__in=list(queryset))
+            return filters.filter_queryset_for_user(projects, user)
         else:
-            return sum([list(obj.projects.all()) for obj in queryset], [])
+            projects = models.Project.objects.filter(customer__in=list(queryset))
+            return filters.filter_queryset_for_user(projects, user)

@@ -825,15 +825,20 @@ class QuotaStatsView(views.APIView):
         usage_fields = [field + '_usage' for field in fields]
         sum_of_quotas = dict((f, 0) for f in fields + usage_fields)
         for project in projects:
-            for field in fields:
-                sum_of_quotas[field] += getattr(project.resource_quota, field)
-                sum_of_quotas[field + '_usage'] += getattr(project.resource_quota_usage, field)
+            # quota fields:
+            if project.resource_quota is not None:
+                for field in fields:
+                    sum_of_quotas[field] += getattr(project.resource_quota, field)
+            # quota usage fields:
+            if project.resource_quota_usage is not None:
+                for field in fields:
+                    sum_of_quotas[field + '_usage'] += getattr(project.resource_quota_usage, field)
         return sum_of_quotas
 
     def get(self, request, format=None):
-        serializer = serializers.StatsAggregateSerializer({
-            'model_name': request.get('type', 'customer'),
-            'uuid': request.get('uuid'),
+        serializer = serializers.StatsAggregateSerializer(data={
+            'model_name': request.QUERY_PARAMS.get('aggregate', 'customer'),
+            'uuid': request.QUERY_PARAMS.get('uuid'),
         })
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
