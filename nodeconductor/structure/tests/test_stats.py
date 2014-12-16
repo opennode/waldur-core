@@ -155,7 +155,7 @@ class QuotaStatsTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, self.expected_quotas_for_both_projects)
 
-    def test_proejct_group_manager_receive_quotas_for_projects_from_his_group(self):
+    def test_project_group_manager_receive_quotas_for_projects_from_his_group(self):
         # when
         response = self.execute_request_with_data(self.project_group_manager, {'aggregate': 'project_group'})
         # then
@@ -184,3 +184,11 @@ class QuotaStatsTest(test.APITransactionTestCase):
         # then
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, self.expected_quotas_for_both_projects)
+
+    def test_project_can_be_filtered_by_uuid(self):
+        # when
+        response = self.execute_request_with_data(
+            self.staff, {'aggregate': 'project', 'uuid': self.project1.uuid.hex})
+        # then
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, self.expected_quotas_for_project1)
