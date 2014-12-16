@@ -225,7 +225,7 @@ class OpenStackBackend(object):
         )
 
         try:
-            backend_security_groups = dict((g.id, g) for g in nova.security_groups.list())
+            backend_security_groups = dict((str(g.id), g) for g in nova.security_groups.list())
         except nova_exceptions.ClientException:
             logger.exception('Failed to get openstack security groups for membership %s', membership.id)
             six.reraise(CloudBackendError, CloudBackendError())
