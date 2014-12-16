@@ -9,7 +9,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.iaas.models import Cloud, CloudProjectMembership, IpMapping
+from nodeconductor.iaas.models import Cloud, CloudProjectMembership, IpMapping, SecurityGroup
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
 from nodeconductor.structure.models import *
@@ -400,15 +400,28 @@ Arguments:
 
         cloud = self.create_cloud(customer)
 
+        cpm_1 = CloudProjectMembership.objects.create(
+            project=projects[0],
+            cloud=cloud,
+            tenant_id='A'
+        )
+        cpm_2 = CloudProjectMembership.objects.create(
+            project=projects[1],
+            cloud=cloud,
+            tenant_id='B'
+        )
+
         # Use Case 5: User has roles in several projects of the same customer
         user1 = self.create_user()
         projects[0].add_user(user1, ProjectRole.MANAGER)
         projects[1].add_user(user1, ProjectRole.ADMINISTRATOR)
 
+
+
         # add cloud to both of the projects
-        self.create_instance(user1, projects[0], cloud.flavors.all()[0], cloud.images.filter(
+        self.create_instance(user1, cpm_1, cloud.flavors.all()[0], cloud.images.filter(
             template__isnull=False)[0].template)
-        self.create_instance(user1, projects[1], cloud.flavors.all()[1], cloud.images.filter(
+        self.create_instance(user1, cpm_2, cloud.flavors.all()[1], cloud.images.filter(
             template__isnull=False)[1].template)
 
         # Use Case 6: User owns a customer
@@ -488,7 +501,7 @@ Arguments:
         user.save()
         return user
 
-    def create_instance(self, user, project, flavor, template):
+    def create_instance(self, user, cloud_project_membership, flavor, template):
         internal_ips = ','.join('10.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3)) for _ in range(3))
         external_ips = ','.join('.'.join('%s' % random.randint(0, 255) for _ in range(4)) for _ in range(3))
         ssh_public_key = SshPublicKey.objects.create(
@@ -500,22 +513,23 @@ Arguments:
                         "D2C05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
                         "vEAFdOJcqjyyH4FOGYa8usP1 test"),
         )
-        print 'Creating instance for project %s' % project
+        print 'Creating instance for project %s' % cloud_project_membership
         instance = Instance.objects.create(
             hostname='host %s' % random.randint(0, 255),
-            project=project,
             template=template,
             internal_ips=internal_ips,
             external_ips=external_ips,
             start_time=timezone.now(),
             system_volume_size=flavor.disk,
             agreed_sla=template.sla_level,
-            cloud=flavor.cloud,
             ram=flavor.ram,
             cores=flavor.cores,
             key_name=ssh_public_key.name,
             key_fingerprint=ssh_public_key.fingerprint,
+            cloud_project_membership=cloud_project_membership
         )
 
-        cmp = CloudProjectMembership.objects.get(project=project, cloud=flavor.cloud)
-        InstanceSecurityGroup.objects.create(instance=instance, security_group=cmp.security_groups.first())
+        sec_group = SecurityGroup.objects.filter(
+            cloud_project_membership=cloud_project_membership,
+        ).first()
+        InstanceSecurityGroup.objects.create(instance=instance, security_group=sec_group)
