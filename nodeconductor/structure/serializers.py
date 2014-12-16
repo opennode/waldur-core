@@ -35,7 +35,15 @@ class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
 class ResourceQuotaSerializer(serializers.ModelSerializer):
     class Meta(object):
         model = models.ResourceQuota
-        fields = ('vcpu', 'ram', 'storage', 'max_instances')
+        fields = ('vcpu', 'ram', 'storage', 'max_instances', 'backup_storage')
+
+
+class ResourceQuotaUsageSerializer(serializers.ModelSerializer):
+    backup_storage = serializers.FloatField(source='backup_storage')
+
+    class Meta(object):
+        model = models.ResourceQuotaUsage
+        fields = ('vcpu', 'ram', 'storage', 'max_instances', 'backup_storage')
 
 
 class ProjectSerializer(core_serializers.CollectedFieldsMixin,
@@ -43,7 +51,7 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
     resource_quota = ResourceQuotaSerializer(read_only=True)
-    resource_quota_usage = ResourceQuotaSerializer(read_only=True)
+    resource_quota_usage = ResourceQuotaUsageSerializer(read_only=True)
 
     class Meta(object):
         model = models.Project
