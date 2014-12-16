@@ -148,3 +148,46 @@ Example:
     ]
 
 
+Quotas statistics
+-----------------
+
+Quotas and quotas usage aggregated by projects/project_groups/customers.
+
+URL: /stats/quota/
+
+Available request parameters:
+
+- ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
+- ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
+  object with given uuid)
+
+Answer will be dictionary with fields:
+
+- vcpu - virtual CPUs quota
+- ram - max RAM size in MiB
+- storage - max storage size in MiB
+- max_instances - max number of running instance
+- backup_storage - max backup storage size in MiB
+- vcpu_usage - virtual CPUs usage
+- ram_usage - RAM usage
+- storage_usage - storage usage in MiB
+- max_instances_usage - number of running instance
+- backup_storage_usage - backup storage usage in MiB
+
+
+Example result:
+
+.. code-block:: javascript
+
+    {
+        'vcpu': 2,
+        'ram': 4096,
+        'storage': 16384,
+        'max_instances': 4,
+        'backup_storage': 32768,
+        'vcpu_usage': 1,
+        'ram_usage': 4096,
+        'storage_usage': 16000,
+        'max_instances_usage': 3,
+        'backup_storage_usage: 16384,
+    }

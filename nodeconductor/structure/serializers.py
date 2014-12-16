@@ -423,3 +423,27 @@ class PasswordSerializer(serializers.Serializer):
 
         if not re.search('[^\W\d_]+', password):
             raise serializers.ValidationError("Password must contain one or more upper- or lower-case characters")
+
+
+class StatsAggregateSerializer(serializers.Serializer):
+    MODEL_NAME_CHOICES = (('project', 'project'), ('customer', 'customer'), ('project_group', 'project_group'))
+    MODEL_CLASSES = {'project': models.Project, 'customer': models.Customer, 'project_group': models.ProjectGroup}
+
+    model_name = serializers.ChoiceField(choices=MODEL_NAME_CHOICES)
+    uuid = serializers.CharField(required=False)
+
+    def get_projects(self, user):
+        model = self.MODEL_CLASSES[self.data['model_name']]
+        queryset = filters.filter_queryset_for_user(model.objects.all(), user)
+
+        if 'uuid' in self.data and self.data['uuid']:
+            queryset = queryset.filter(uuid=self.data['uuid'])
+
+        if self.data['model_name'] == 'project':
+            return queryset.all()
+        elif self.data['model_name'] == 'project_group':
+            projects = models.Project.objects.filter(project_groups__in=list(queryset))
+            return filters.filter_queryset_for_user(projects, user)
+        else:
+            projects = models.Project.objects.filter(customer__in=list(queryset))
+            return filters.filter_queryset_for_user(projects, user)

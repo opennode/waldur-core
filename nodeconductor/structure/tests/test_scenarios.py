@@ -71,4 +71,4 @@ class ResourceQuotasTest(test.APITransactionTestCase):
         project = models.Project.objects.get(pk=self.project.pk)
         fields = ('vcpu', 'ram', 'storage', 'max_instances')
         for field in fields:
-            self.assertEquals(data['resource_quota'][field], str(getattr(project.resource_quota, field)))
+            self.assertEqual(float(data['resource_quota'][field]), getattr(project.resource_quota, field))
