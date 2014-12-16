@@ -157,8 +157,9 @@ URL: /stats/quota/
 
 Available request parameters:
 
-- ?aggregate=aggregate_model_name(default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
-- ?uuid=uuid_of_aggregate_model_object(not required. If this parameter will be defined - result will contain only object with given uuid)
+- ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
+- ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
+  object with given uuid)
 
 Answer will be dictionary with fields:
 
@@ -174,7 +175,7 @@ Answer will be dictionary with fields:
 - backup_storage_usage - backup storage usage in MiB
 
 
-Example:
+Example result:
 
 .. code-block:: javascript
 
@@ -189,4 +190,4 @@ Example:
         'storage_usage': 16000,
         'max_instances_usage': 3,
         'backup_storage_usage: 16384,
-    },
+    }
