@@ -283,12 +283,11 @@ class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
 
     # Helper methods
     def _ensure_matching_entries_in(self, field, value):
-        query = '?%s=%s' % (field, value)
-
         response = self.client.get(reverse('customer_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        response = self.client.get(reverse('customer_permission-list') + query)
+        response = self.client.get(reverse('customer_permission-list'),
+                                   data={field: value})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         for permission in response.data:
@@ -300,9 +299,8 @@ class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
         customer = factories.CustomerFactory()
         customer.add_user(user, CustomerRole.OWNER)
 
-        query = '?%s=%s' % (field, getattr(user, field))
-
-        response = self.client.get(reverse('customer_permission-list') + query)
+        response = self.client.get(reverse('customer_permission-list'),
+                                   data={field: getattr(user, field)})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         for permission in response.data:
