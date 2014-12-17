@@ -172,9 +172,9 @@ class ResourceQuotaUsage(AbstractResourceQuota):
         backup_storage_size = 0
         services = iaas_models.Instance.objects.filter(cloud_project_membership__project=self.project_quota_usage)
         for service in services:
-            size = service.system_volume_size + service.data_volume_size
+            size = max(0, service.system_volume_size) + max(0, service.data_volume_size)
             backup_storage_size += size * sum(
-                schedule.maximal_number_of_backups for schedule in service.backup_schedules.all())
+                max(0, schedule.maximal_number_of_backups) for schedule in service.backup_schedules.all())
 
         return backup_storage_size
 
