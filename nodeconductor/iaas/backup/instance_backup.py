@@ -46,4 +46,4 @@ class InstanceBackupStrategy(BackupStrategy):
     # Helpers
     @classmethod
     def _get_backend(cls, instance):
-        return instance.cloud.get_backend()
+        return instance.cloud_project_membership.cloud.get_backend()
