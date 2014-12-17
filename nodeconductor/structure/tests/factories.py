@@ -101,24 +101,3 @@ class ProjectGroupFactory(factory.DjangoModelFactory):
     @classmethod
     def get_list_url(cls):
         return 'http://testserver' + reverse('projectgroup-list')
-
-
-class ResourceQuotaFactory(factory.DjangoModelFactory):
-    class Meta(object):
-        model = models.ResourceQuota
-
-    vcpu = factory.Iterator([1, 2, 3, 4])
-    ram = factory.Iterator([1024, 2048, 4096])
-    storage = factory.fuzzy.FuzzyFloat(10240, 51200)
-    max_instances = factory.Iterator([1, 2, 3, 4])
-    backup_storage = factory.fuzzy.FuzzyFloat(10240, 51200)
-
-
-class ResourceQuotaUsageFactory(factory.DjangoModelFactory):
-    class Meta(object):
-        model = models.ResourceQuotaUsage
-
-    vcpu = factory.Iterator([1, 2, 3, 4])
-    ram = factory.Iterator([1024, 2048, 4096])
-    storage = factory.fuzzy.FuzzyFloat(10240, 51200)
-    max_instances = factory.Iterator([1, 2, 3, 4])

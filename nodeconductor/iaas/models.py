@@ -199,6 +199,40 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
         return '{0} <-> {1}'.format(self.template.name, self.backend_image_id)
 
 
+class AbstractResourceQuota(CloudProjectMember):
+    """ Abstract model for membership quotas """
+
+    class Meta(object):
+        abstract = True
+
+    vcpu = models.PositiveIntegerField(help_text=_('Virtual CPUs'))
+    ram = models.FloatField(help_text=_('RAM size'))
+    storage = models.FloatField(help_text=_('Storage size (incl. backup)'))
+    max_instances = models.PositiveIntegerField(help_text=_('Number of running instances'))
+    backup_storage = models.FloatField(default=0, help_text=_('Backup storage size'))
+
+
+class ResourceQuota(AbstractResourceQuota):
+    """ CloudProjectMembership quota """
+
+
+class ResourceQuotaUsage(AbstractResourceQuota):
+    """ CloudProjectMembership quota usage """
+
+    # @property
+    # def backup_storage(self):
+    #     # TODO: replace instances with services, after services implementation
+    #     # from nodeconductor.iaas import models as iaas_models
+    #     backup_storage_size = 0
+    #     # services = iaas_models.Instance.objects.filter(cloud_project_membership__project=self.project_quota_usage)
+    #     # for service in services:
+    #     #     size = max(0, service.system_volume_size) + max(0, service.data_volume_size)
+    #     #     backup_storage_size += size * sum(
+    #     #         max(0, schedule.maximal_number_of_backups) for schedule in service.backup_schedules.all())
+
+    #     return backup_storage_size
+
+
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
