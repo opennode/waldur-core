@@ -100,11 +100,12 @@ def schedule_deleting(instance_uuid):
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
-def update_flavor(instance_uuid):
+def update_flavor(instance_uuid, flavor_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
+    flavor = models.Flavor.objects.get(uuid=flavor_uuid)
 
     backend = instance.cloud_project_membership.cloud.get_backend()
-    backend.update_flavor(instance)
+    backend.update_flavor(instance, flavor)
 
 
 @shared_task
