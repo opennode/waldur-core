@@ -468,7 +468,7 @@ Arguments:
                                                               storage=random.randint(60, 255),
                                                               max_instances=random.randint(60, 255))
         print 'Generating approximate quota consumption for project %s' % project
-        project.resource_quota_usage = ResourceQuota.objects.\
+        project.resource_quota_usage = ResourceQuotaUsage.objects.\
             create(vcpu=project.resource_quota.vcpu - random.randint(0, 50),
                    ram=project.resource_quota.ram - random.randint(0, 50),
                    storage=project.resource_quota.storage - random.randint(0, 50),

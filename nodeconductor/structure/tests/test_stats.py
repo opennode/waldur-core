@@ -6,7 +6,11 @@ from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework import test, status
 
+# This test contains dependencies from iaas and backup app,
+# but it will be moved to separate app 'stats' in future, so this is ok
+from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.core import utils as core_utils
+from nodeconductor.iaas.tests import factories as iaas_factories
 from nodeconductor.structure import models
 from nodeconductor.structure.tests import factories
 
@@ -122,7 +126,7 @@ class QuotaStatsTest(test.APITransactionTestCase):
         # quotas:
         for project in self.project1, self.project2:
             project.resource_quota = factories.ResourceQuotaFactory()
-            project.resource_quota_usage = factories.ResourceQuotaFactory()
+            project.resource_quota_usage = factories.ResourceQuotaUsageFactory()
             project.save()
         # users
         self.staff = factories.UserFactory(is_staff=True)
@@ -133,7 +137,7 @@ class QuotaStatsTest(test.APITransactionTestCase):
         self.project1_admin = factories.UserFactory()
         self.project1.add_user(self.project1_admin, models.ProjectRole.ADMINISTRATOR)
 
-        fields = ['vcpu', 'ram', 'storage', 'max_instances']  # XXX: add backup_storage
+        fields = ['vcpu', 'ram', 'storage', 'max_instances', 'backup_storage']
 
         self.expected_quotas_for_project1 = dict((f, getattr(self.project1.resource_quota, f)) for f in fields)
         self.expected_quotas_for_project1.update(
@@ -192,3 +196,16 @@ class QuotaStatsTest(test.APITransactionTestCase):
         # then
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, self.expected_quotas_for_project1)
+
+    def test_stats_returns_backup_storage_usage_right(self):
+        membership = iaas_factories.CloudProjectMembershipFactory(project=self.project1)
+        instance = iaas_factories.InstanceFactory(cloud_project_membership=membership)
+        backup_schedule = backup_factories.BackupScheduleFactory(backup_source=instance)
+        # when
+        response = self.execute_request_with_data(
+            self.staff, {'aggregate': 'project', 'uuid': self.project1.uuid.hex})
+        # then
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data['backup_storage_usage'],
+            (instance.system_volume_size + instance.data_volume_size) * backup_schedule.maximal_number_of_backups)

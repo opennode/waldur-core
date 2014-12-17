@@ -821,7 +821,7 @@ class CreationTimeStatsView(views.APIView):
 class QuotaStatsView(views.APIView):
 
     def _get_sum_of_quotas(self, projects):
-        fields = ['vcpu', 'ram', 'storage', 'max_instances']  # XXX: add backup_storage
+        fields = ['vcpu', 'ram', 'storage', 'max_instances', 'backup_storage']
         usage_fields = [field + '_usage' for field in fields]
         sum_of_quotas = dict((f, 0) for f in fields + usage_fields)
         for project in projects:
