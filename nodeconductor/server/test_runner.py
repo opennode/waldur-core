@@ -6,18 +6,15 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.test_settings'
 test_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
 sys.path.insert(0, test_dir)
 
-from django.test.utils import get_runner
+import django
 from django.conf import settings
+from django.test.utils import get_runner
+
+django.setup()
 
 
 def run_tests():
     test_runner_class = get_runner(settings)
-
-    try:
-        from south.management.commands import patch_for_test_db_setup
-        patch_for_test_db_setup()
-    except ImportError:
-        pass
 
     try:
         import xmlrunner
