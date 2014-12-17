@@ -27,7 +27,7 @@ from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.structure import filters as structure_filters
-from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, ResourceQuota, CustomerRole
+from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
 
 logger = logging.getLogger(__name__)
@@ -606,7 +606,8 @@ class ResourceStatsView(views.APIView):
             raise exceptions.PermissionDenied()
 
     def _get_quotas_stats(self, clouds):
-        quotas_list = ResourceQuota.objects.filter(project_quota__clouds__in=clouds).values('vcpu', 'ram', 'storage')
+        quotas_list = models.ResourceQuota.objects.filter(
+            cloud_project_membership__cloud__in=clouds).values('vcpu', 'ram', 'storage')
         return {
             'vcpu_quota': sum([q['vcpu'] for q in quotas_list]),
             'memory_quota': sum([q['ram'] for q in quotas_list]),

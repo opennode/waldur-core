@@ -32,26 +32,12 @@ class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
         fields = ('url', 'name', 'uuid')
 
 
-class ResourceQuotaSerializer(serializers.ModelSerializer):
-    class Meta(object):
-        model = models.ResourceQuota
-        fields = ('vcpu', 'ram', 'storage', 'max_instances', 'backup_storage')
-
-
-class ResourceQuotaUsageSerializer(serializers.ModelSerializer):
-    backup_storage = serializers.FloatField(source='backup_storage')
-
-    class Meta(object):
-        model = models.ResourceQuotaUsage
-        fields = ('vcpu', 'ram', 'storage', 'max_instances', 'backup_storage')
-
-
 class ProjectSerializer(core_serializers.CollectedFieldsMixin,
                         core_serializers.RelatedResourcesFieldMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
-    resource_quota = ResourceQuotaSerializer(read_only=True)
-    resource_quota_usage = ResourceQuotaUsageSerializer(read_only=True)
+    resource_quota = serializers.SerializerMethodField('get_resource_quota')
+    resource_quota_usage = serializers.SerializerMethodField('get_resource_quota_usage')
 
     class Meta(object):
         model = models.Project
@@ -62,14 +48,37 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
     def get_related_paths(self):
         return 'customer',
 
+    def get_resource_quota(self, obj):
+        # XXX: this method adds dependencies from 'iaas' application. It has to be removed or refactored.
+        from nodeconductor.iaas import models as iaas_models
+        quotas = list(iaas_models.ResourceQuota.objects.filter(cloud_project_membership__project=obj))
+        return {
+            'vcpu': sum([q.vcpu for q in quotas]),
+            'ram': sum([q.ram for q in quotas]),
+            'storage': sum([q.storage for q in quotas]),
+            'max_instances': sum([q.max_instances for q in quotas]),
+            'backup_storage': sum([q.backup_storage for q in quotas]),
+        }
+
+    def get_resource_quota_usage(self, obj):
+        # XXX: this method adds dependencies from 'iaas' application. It has to be removed or refactored.
+        from nodeconductor.iaas import models as iaas_models
+        quotas = list(iaas_models.ResourceQuotaUsage.objects.filter(cloud_project_membership__project=obj))
+        return {
+            'vcpu_usage': sum([q.vcpu for q in quotas]),
+            'ram_usage': sum([q.ram for q in quotas]),
+            'storage_usage': sum([q.storage for q in quotas]),
+            'max_instances_usage': sum([q.max_instances for q in quotas]),
+            'backup_storage_usage': sum([q.backup_storage for q in quotas]),
+        }
+
 
 class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                               serializers.HyperlinkedModelSerializer):
-    resource_quota = ResourceQuotaSerializer(required=False)
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'name', 'customer', 'description', 'resource_quota')
+        fields = ('url', 'name', 'customer', 'description')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
