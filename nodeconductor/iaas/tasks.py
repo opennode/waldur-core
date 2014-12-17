@@ -48,7 +48,7 @@ def delete_zabbix_host_and_service(instance):
 def schedule_provisioning(instance_uuid, backend_flavor_id):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    backend = instance.cloud.get_backend()
+    backend = instance.cloud_project_membership.cloud.get_backend()
     backend.provision_instance(instance, backend_flavor_id)
     create_zabbix_host_and_service(instance)
 
@@ -58,7 +58,7 @@ def schedule_provisioning(instance_uuid, backend_flavor_id):
 def schedule_stopping(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    backend = instance.cloud.get_backend()
+    backend = instance.cloud_project_membership.cloud.get_backend()
     backend.stop_instance(instance)
 
 
@@ -87,7 +87,7 @@ def schedule_deleting(instance_uuid):
 def update_flavor(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    backend = instance.cloud.get_backend()
+    backend = instance.cloud_project_membership.cloud.get_backend()
     backend.update_flavor(instance)
 
 
@@ -96,7 +96,7 @@ def update_flavor(instance_uuid):
 def extend_disk(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    backend = instance.cloud.get_backend()
+    backend = instance.cloud_project_membership.cloud.get_backend()
     backend.extend_disk(instance)
 
 
@@ -104,7 +104,7 @@ def extend_disk(instance_uuid):
 def push_instance_security_groups(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    backend = instance.cloud.get_backend()
+    backend = instance.cloud_project_membership.cloud.get_backend()
     backend.push_instance_security_groups(instance)
 
 
