@@ -16,10 +16,11 @@ class ResourceQuotasTest(test.APITransactionTestCase):
         self.project.add_user(self.admin, models.ProjectRole.ADMINISTRATOR)
         from nodeconductor.iaas.tests import factories as iaas_factories
         # resource quotas
-        self.membership = iaas_factories.CloudProjectMembershipFactory(project=self.project)
-        self.quota = iaas_factories.ResourceQuotaFactory(cloud_project_membership=self.membership)
-        self.quota2 = iaas_factories.ResourceQuotaFactory(cloud_project_membership=self.membership)
-        self.quota_usage = iaas_factories.ResourceQuotaUsageFactory(cloud_project_membership=self.membership)
+        self.membership1 = iaas_factories.CloudProjectMembershipFactory(project=self.project)
+        self.quota = iaas_factories.ResourceQuotaFactory(cloud_project_membership=self.membership1)
+        self.membership2 = iaas_factories.CloudProjectMembershipFactory(project=self.project)
+        self.quota2 = iaas_factories.ResourceQuotaFactory(cloud_project_membership=self.membership2)
+        self.quota_usage = iaas_factories.ResourceQuotaUsageFactory(cloud_project_membership=self.membership1)
 
     def _execute_request_to_project(self, user):
         self.client.force_authenticate(user)

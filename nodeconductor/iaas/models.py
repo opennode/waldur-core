@@ -199,7 +199,7 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
         return '{0} <-> {1}'.format(self.template.name, self.backend_image_id)
 
 
-class AbstractResourceQuota(CloudProjectMember):
+class AbstractResourceQuota(models.Model):
     """ Abstract model for membership quotas """
 
     class Meta(object):
@@ -214,10 +214,12 @@ class AbstractResourceQuota(CloudProjectMember):
 
 class ResourceQuota(AbstractResourceQuota):
     """ CloudProjectMembership quota """
+    cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota')
 
 
 class ResourceQuotaUsage(AbstractResourceQuota):
     """ CloudProjectMembership quota usage """
+    cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota_usage')
 
     # @property
     # def backup_storage(self):
