@@ -44,7 +44,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.instance = Mock()
         self.instance.uuid = 'qwedaqwedawqwqrt123sdasd123123'
         self.instance.hostname = 'test_instance'
-        self.instance.project = self.project
+        self.instance.cloud_project_membership.project = self.project
 
     # Host creation
     def test_create_host_creates_new_host_if_it_does_not_exist(self):
