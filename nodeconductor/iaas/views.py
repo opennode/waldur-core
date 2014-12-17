@@ -144,11 +144,6 @@ class InstanceViewSet(mixins.CreateModelMixin,
         context['user'] = self.request.user
         return context
 
-    def get_queryset(self):
-        queryset = super(InstanceViewSet, self).get_queryset()
-        queryset = queryset.exclude(state=models.Instance.States.DELETED)
-        return queryset
-
     def pre_save(self, obj):
         super(InstanceViewSet, self).pre_save(obj)
 
@@ -556,10 +551,7 @@ class ServiceFilter(django_filters.FilterSet):
 # XXX: This view has to be rewritten or removed after haystack implementation
 class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     queryset = models.Instance.objects.exclude(
-        state__in=(
-            models.Instance.States.DELETED,
-            models.Instance.States.DELETING,
-        )
+        state=models.Instance.States.DELETING,
     )
     serializer_class = ServiceSerializer
     lookup_field = 'uuid'

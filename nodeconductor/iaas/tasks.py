@@ -7,7 +7,7 @@ from celery import shared_task
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.core.tasks import tracked_processing
+from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeError
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError
@@ -67,19 +67,35 @@ def schedule_stopping(instance_uuid):
 def schedule_starting(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    backend = instance.cloud.get_backend()
+    backend = instance.cloud_project_membership.cloud.get_backend()
     backend.start_instance(instance)
 
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='begin_deleting', desired_state='set_deleted')
 def schedule_deleting(instance_uuid):
-    instance = models.Instance.objects.get(uuid=instance_uuid)
+    try:
+        set_state(models.Instance, instance_uuid, 'begin_deleting')
+    except StateChangeError:
+        # No logging is needed since set_state already logged everything
+        return
 
-    backend = instance.cloud.get_backend()
-    backend.delete_instance(instance)
+    # noinspection PyBroadException
+    try:
+        instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    delete_zabbix_host_and_service(instance)
+        backend = instance.cloud_project_membership.cloud.get_backend()
+        backend.delete_instance(instance)
+
+        delete_zabbix_host_and_service(instance)
+    except Exception:
+        # noinspection PyProtectedMember
+        logger.exception(
+            'Failed to begin_deleting Instance with id %s', instance_uuid
+        )
+        set_state(models.Instance, instance_uuid, 'set_erred')
+    else:
+        # Actually remove the instance from the database
+        models.Instance.objects.filter(uuid=instance_uuid).delete()
 
 
 @shared_task
