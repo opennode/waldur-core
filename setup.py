@@ -30,7 +30,6 @@ install_requires = [
     'djangosaml2>=0.11.0,<0.12',
     'drf-extensions==0.2.6',
     'logan==0.5.9.1',
-    'ordereddict==1.1',
     'python-cinderclient>=1.0.7,<=1.1.1',
     'python-glanceclient>=0.12.0,<0.13.0',
     'python-keystoneclient>=0.9.0,<0.11.2',
