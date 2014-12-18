@@ -4,7 +4,7 @@ NodeConductor
 Requirements
 ------------
 
-* Python 2.6+ (Python 3 is not supported)
+* Python 2.7+ (Python 3 is not supported)
 
 Development Environment Setup
 -----------------------------
