@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import re
 import warnings
+import logging
 
 from django.conf import settings
 from django.contrib.auth.models import (
@@ -18,6 +19,12 @@ from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from rest_framework.authtoken.models import Token
 from uuidfield import UUIDField
+
+from nodeconductor.core.log import EventLoggerAdapter
+
+
+logger = logging.getLogger(__name__)
+event_log = EventLoggerAdapter(logger)
 
 
 class DescribableMixin(models.Model):
@@ -240,3 +247,4 @@ class SynchronizableMixin(models.Model):
 def create_auth_token(sender, instance=None, created=False, **kwargs):
     if created:
         Token.objects.create(user=instance)
+        event_log.info('New user was created: %s' % instance)
