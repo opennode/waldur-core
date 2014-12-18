@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 
+from collections import defaultdict
+import datetime
 import logging
 import time
-import datetime
+
 
 from django.db import models as django_models
 from django.db.models import Q
@@ -27,7 +29,7 @@ from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.structure import filters as structure_filters
-from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, ResourceQuota, CustomerRole
+from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
 
 logger = logging.getLogger(__name__)
@@ -609,7 +611,8 @@ class ResourceStatsView(views.APIView):
             raise exceptions.PermissionDenied()
 
     def _get_quotas_stats(self, clouds):
-        quotas_list = ResourceQuota.objects.filter(project_quota__clouds__in=clouds).values('vcpu', 'ram', 'storage')
+        quotas_list = models.ResourceQuota.objects.filter(
+            cloud_project_membership__cloud__in=clouds).values('vcpu', 'ram', 'storage')
         return {
             'vcpu_quota': sum([q['vcpu'] for q in quotas_list]),
             'memory_quota': sum([q['ram'] for q in quotas_list]),
@@ -844,3 +847,39 @@ class IpMappingViewSet(core_viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated,
                           permissions.DjangoObjectPermissions)
     filter_class = IpMappingFilter
+
+
+class QuotaStatsView(views.APIView):
+
+    def _get_sum_of_quotas(self, memberships):
+        fields = ['vcpu', 'ram', 'storage', 'max_instances', 'backup_storage']
+        sum_of_quotas = defaultdict(lambda: 0)
+
+        for membership in memberships:
+            # quota fields:
+            try:
+                for field in fields:
+                    sum_of_quotas[field] += getattr(membership.resource_quota, field)
+            except models.ResourceQuota.DoesNotExist:
+                # we ignore memberships without quotas
+                pass
+            # quota usage fields:
+            try:
+                for field in fields:
+                    sum_of_quotas[field + '_usage'] += getattr(membership.resource_quota_usage, field)
+            except models.ResourceQuotaUsage.DoesNotExist:
+                # we ignore memberships without quotas
+                pass
+        return sum_of_quotas
+
+    def get(self, request, format=None):
+        serializer = serializers.StatsAggregateSerializer(data={
+            'model_name': request.QUERY_PARAMS.get('aggregate', 'customer'),
+            'uuid': request.QUERY_PARAMS.get('uuid'),
+        })
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        memberships = serializer.get_memberships(request.user)
+        sum_of_quotas = self._get_sum_of_quotas(memberships)
+        return Response(sum_of_quotas, status=status.HTTP_200_OK)

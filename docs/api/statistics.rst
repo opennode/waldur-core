@@ -91,7 +91,7 @@ Answer will be list dictionaries with fields:
 - memory_mb_used - currently used memory size
 - memory_quota - maximum number of memory (from quotas)
 - running_vms - total number of running VMs
-- storage_quota - allocated storaeg quota
+- storage_quota - allocated storage quota
 - vcpu_quota - maximum number of vCPUs (from quotas)
 - vcpus - maximum number of vCPUs (from hypervisors)
 - vcpus_used - currently number of used vCPUs

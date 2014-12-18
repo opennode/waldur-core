@@ -9,7 +9,7 @@ import mock
 
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.backend.openstack import OpenStackBackend
-from nodeconductor.iaas.models import Flavor, Instance, Image
+from nodeconductor.iaas.models import Flavor, Instance, Image, ResourceQuota, ResourceQuotaUsage
 from nodeconductor.iaas.tests import factories
 
 NovaFlavor = collections.namedtuple(
@@ -93,8 +93,21 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.nova_client = mock.Mock()
         self.neutron_client = mock.Mock()
         self.cloud_account = mock.Mock()
+        self.cinder_client = mock.Mock()
         self.membership = mock.Mock()  # TODO: use real membership, not mocked and unite with test class below
         self.tenant = mock.Mock()
+
+        # client methods:
+        self.nova_quota = mock.Mock(cores=20, instances=10, ram=51200)
+        self.nova_client.quotas.get = mock.Mock(return_value=self.nova_quota)
+        self.cinder_quota = mock.Mock(gigabytes=1000)
+        self.cinder_client.quotas.get = mock.Mock(return_value=self.cinder_quota)
+        self.volumes = [mock.Mock(size=10 * i, id=i) for i in range(5)]
+        self.flavors = [mock.Mock(ram=i, id=i, vcpus=i) for i in range(4)]
+        self.instances = [mock.Mock(flavor={'id': i}) for i in range(2)]
+        self.cinder_client.volumes.list = mock.Mock(return_value=self.volumes)
+        self.nova_client.servers.list = mock.Mock(return_value=self.instances)
+        self.nova_client.flavors.list = mock.Mock(return_value=self.flavors)
 
         # Mock low level non-AbstractCloudBackend api methods
         self.backend = OpenStackBackend()
@@ -103,6 +116,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.backend.create_keystone_client = mock.Mock(return_value=self.keystone_client)
         self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
         self.backend.create_neutron_client = mock.Mock(return_value=self.neutron_client)
+        self.backend.create_cinder_client = mock.Mock(return_value=self.cinder_client)
         self.backend.get_or_create_tenant = mock.Mock(return_value=self.tenant)
         self.backend.get_or_create_user = mock.Mock(return_value=('john', 'doe'))
         self.backend.get_or_create_network = mock.Mock()
@@ -164,6 +178,69 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         auth_url = 'http://example.com/'
         self.backend.get_resource_stats(auth_url)
         self.nova_client.hypervisors.statistics.assert_called_once_with()
+
+    def test_pull_quota_resource_initiates_quota_parameters(self):
+        membership = factories.CloudProjectMembershipFactory(tenant_id='test_backend_id')
+        # when
+        self.backend.pull_resource_quota(membership)
+        # then
+        resource_quota = membership.resource_quota
+        self.assertEqual(resource_quota.ram, self.nova_quota.ram)
+        self.assertEqual(resource_quota.max_instances, self.nova_quota.instances)
+        self.assertEqual(resource_quota.vcpu, self.nova_quota.cores)
+        self.assertEqual(resource_quota.storage, self.cinder_quota.gigabytes * 1024)
+
+    def test_pull_quota_resource_calls_clients_quotas_gets_methods_with_membership_tenant_id(self):
+        membership = factories.CloudProjectMembershipFactory(tenant_id='test_backend_id')
+         # when
+        self.backend.pull_resource_quota(membership)
+        # then
+        self.nova_client.quotas.get.assert_called_once_with(tenant_id=membership.tenant_id)
+        self.cinder_client.quotas.get.assert_called_once_with(tenant_id=membership.tenant_id)
+
+    def test_pull_quota_resource_rewrite_old_resource_quota_data(self):
+        membership = factories.CloudProjectMembershipFactory(tenant_id='test_backend_id')
+        quota = factories.ResourceQuotaFactory(max_instances=3, cloud_project_membership=membership)
+        # when
+        self.backend.pull_resource_quota(membership)
+        # then
+        reread_quota = ResourceQuota.objects.get(id=quota.id)
+        self.assertEqual(reread_quota.max_instances, self.nova_quota.instances)
+
+    def test_pull_quota_resource_usage_initiates_quota_parameters(self):
+        membership = factories.CloudProjectMembershipFactory()
+        # when
+        self.backend.pull_resource_quota_usage(membership)
+        # then
+        resource_quota_usage = membership.resource_quota_usage
+        instance_flavors = [f for f in self.flavors if f.id in [i.flavor['id'] for i in self.instances]]
+        self.assertEqual(resource_quota_usage.ram, sum([f.ram for f in instance_flavors]))
+        self.assertEqual(resource_quota_usage.max_instances, len(self.instances))
+        self.assertEqual(resource_quota_usage.vcpu, sum([f.vcpus for f in instance_flavors]))
+        self.assertEqual(resource_quota_usage.storage, sum([int(v.size * 1024) for v in self.volumes]))
+
+    def test_pull_quota_resource_usage_rewrite_old_resource_quota_usage_data(self):
+        membership = factories.CloudProjectMembershipFactory()
+        quota_usage = factories.ResourceQuotaUsageFactory(max_instances=3, cloud_project_membership=membership)
+        # when
+        self.backend.pull_resource_quota_usage(membership)
+        # then
+        reread_quota_usage = ResourceQuotaUsage.objects.get(id=quota_usage.id)
+        self.assertEqual(reread_quota_usage.max_instances, len(self.instances))
+
+    def test_pull_quota_resource_usage_intiates_backup_storage(self):
+        # this test will be removed, as soon as we can get backup storage size from openstack
+        from nodeconductor.backup.tests import factories as backup_factories
+        membership = factories.CloudProjectMembershipFactory()
+        instance = factories.InstanceFactory(cloud_project_membership=membership)
+        backup_schedule = backup_factories.BackupScheduleFactory(backup_source=instance)
+        # when
+        self.backend.pull_resource_quota_usage(membership)
+        # then
+        resource_quota_usage = membership.resource_quota_usage
+        self.assertEqual(
+            resource_quota_usage.backup_storage,
+            (instance.system_volume_size + instance.data_volume_size) * backup_schedule.maximal_number_of_backups)
 
 
 class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
