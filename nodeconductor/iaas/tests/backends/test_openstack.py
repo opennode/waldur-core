@@ -188,7 +188,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.assertEqual(resource_quota.ram, self.nova_quota.ram)
         self.assertEqual(resource_quota.max_instances, self.nova_quota.instances)
         self.assertEqual(resource_quota.vcpu, self.nova_quota.cores)
-        self.assertEqual(resource_quota.storage, self.cinder_quota.gigabytes)
+        self.assertEqual(resource_quota.storage, self.cinder_quota.gigabytes * 1024)
 
     def test_pull_quota_resource_calls_clients_quotas_gets_methods_with_membership_tenant_id(self):
         membership = factories.CloudProjectMembershipFactory(tenant_id='test_backend_id')
