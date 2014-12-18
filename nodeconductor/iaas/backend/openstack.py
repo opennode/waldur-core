@@ -184,9 +184,9 @@ class OpenStackBackend(object):
             membership.save()
 
             logger.info('Successfully synchronized CloudProjectMembership with id %s', membership.id)
-        except keystone_exceptions.ClientException:
+        except keystone_exceptions.ClientException as e:
             logger.exception('Failed to synchronize CloudProjectMembership with id %s', membership.id)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
     def push_ssh_public_key(self, membership, public_key):
         key_name = self.get_key_name(public_key)
@@ -207,17 +207,17 @@ class OpenStackBackend(object):
             logger.info('Propagating ssh public key %s to backend', key_name)
             nova.keypairs.create(name=key_name, public_key=public_key.public_key)
             logger.info('Successfully propagated ssh public key %s to backend', key_name)
-        except (nova_exceptions.ClientException, keystone_exceptions.ClientException):
+        except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
     def push_security_groups(self, membership):
         try:
             session = self.create_tenant_session(membership)
             nova = self.create_nova_client(session)
-        except keystone_exceptions.ClientException:
+        except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client')
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
         from nodeconductor.iaas.models import SecurityGroup
 
@@ -227,9 +227,9 @@ class OpenStackBackend(object):
 
         try:
             backend_security_groups = dict((str(g.id), g) for g in nova.security_groups.list())
-        except nova_exceptions.ClientException:
+        except nova_exceptions.ClientException as e:
             logger.exception('Failed to get openstack security groups for membership %s', membership.id)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
         # list of nc security groups, that do not exist in openstack
         nonexistent_groups = []
@@ -283,15 +283,15 @@ class OpenStackBackend(object):
         try:
             session = self.create_tenant_session(membership)
             nova = self.create_nova_client(session)
-        except keystone_exceptions.ClientException:
+        except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client')
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
         try:
             backend_security_groups = nova.security_groups.list()
-        except nova_exceptions.ClientException:
+        except nova_exceptions.ClientException as e:
             logger.exception('Failed to get openstack security groups for membership %s', membership.id)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
         # list of openstack security groups, that do not exist in nc
         nonexistent_groups = []
@@ -349,9 +349,9 @@ class OpenStackBackend(object):
         try:
             session = self.create_tenant_session(membership)
             nova = self.create_nova_client(session)
-        except keystone_exceptions.ClientException:
+        except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client')
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
         backend_instances = nova.servers.findall(image='')
         backend_instances = dict(((f.id, f) for f in backend_instances))
@@ -389,17 +389,17 @@ class OpenStackBackend(object):
             session = self.create_tenant_session(membership)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
-        except keystone_exceptions.ClientException:
+        except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client or cinder client')
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
         logger.debug('About to get quotas for tenant %s', membership.tenant_id)
         try:
             nova_quotas = nova.quotas.get(tenant_id=membership.tenant_id)
             cinder_quotas = cinder.quotas.get(tenant_id=membership.tenant_id)
-        except (nova_exceptions.ClientException, cinder_exceptions.ClientException):
+        except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
             logger.exception('Failed to get quotas for tenant %s', membership.tenant_id)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully get quotas for tenant %s', membership.tenant_id)
 
@@ -419,18 +419,18 @@ class OpenStackBackend(object):
             session = self.create_tenant_session(membership)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
-        except keystone_exceptions.ClientException:
+        except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client or cinder client')
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
         logger.debug('About to get volumes, flavors and instances for tenant %s', membership.tenant_id)
         try:
             volumes = cinder.volumes.list()
             flavors = dict((flavor.id, flavor) for flavor in nova.flavors.list())
             instances = nova.servers.list()
-        except (nova_exceptions.ClientException, cinder_exceptions.ClientException):
+        except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
             logger.exception('Failed to get volumes, flavors or instances for tenant %s', membership.tenant_id)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully get volumes, flavors and instances for tenant %s', membership.tenant_id)
 
@@ -468,9 +468,9 @@ class OpenStackBackend(object):
             session = self.create_admin_session(auth_url)
             nova = self.create_nova_client(session)
             stats = self.get_hypervisors_statistics(nova)
-        except (nova_exceptions.ClientException, keystone_exceptions.ClientException):
+        except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to get statistics for auth_url: %s', auth_url)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully for auth_url: %s was successfully taken', auth_url)
         return stats
@@ -619,9 +619,9 @@ class OpenStackBackend(object):
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
                 nova_exceptions.ClientException,
-                neutron_exceptions.NeutronClientException):
+                neutron_exceptions.NeutronClientException) as e:
             logger.exception('Failed to boot instance %s', instance.uuid)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully booted instance %s', instance.uuid)
 
@@ -638,9 +638,9 @@ class OpenStackBackend(object):
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
                 logger.error('Failed to start instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
-        except nova_exceptions.ClientException:
+        except nova_exceptions.ClientException as e:
             logger.exception('Failed to start instance %s', instance.uuid)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully started instance %s', instance.uuid)
 
@@ -657,9 +657,9 @@ class OpenStackBackend(object):
             if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
                 logger.error('Failed to stop instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
-        except nova_exceptions.ClientException:
+        except nova_exceptions.ClientException as e:
             logger.exception('Failed to stop instance %s', instance.uuid)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully stopped instance %s', instance.uuid)
 
@@ -687,9 +687,9 @@ class OpenStackBackend(object):
                 logger.info('Failed to delete instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
 
-        except nova_exceptions.ClientException:
+        except nova_exceptions.ClientException as e:
             logger.info('Failed to delete instance %s', instance.uuid)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully deleted instance %s', instance.uuid)
 
@@ -715,9 +715,9 @@ class OpenStackBackend(object):
                 self.delete_temporary_volume(temporary_volume, cinder)
                 self.delete_temporary_snapshot(snapshot, cinder)
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException,
-                keystone_exceptions.ClientException, CloudBackendInternalError):
+                keystone_exceptions.ClientException, CloudBackendInternalError) as e:
             logger.exception('Failed to create backup for instance %s', instance.uuid)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully created backup for instance %s', instance.uuid)
         return backups
@@ -743,9 +743,9 @@ class OpenStackBackend(object):
 
             new_vm = self.create_vm(instance.backend_id, restored_volumes, nova)
         except (cinder_exceptions.ClientException, keystone_exceptions.ClientException,
-                CloudBackendInternalError, nova_exceptions.ClientException):
+                CloudBackendInternalError, nova_exceptions.ClientException) as e:
             logger.exception('Failed to restore backup for instance %s', instance.uuid)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully restored backup for instance %s', instance.uuid)
         return new_vm
@@ -761,9 +761,9 @@ class OpenStackBackend(object):
 
             for backup_id in instance_backup_ids:
                 self.delete_backup(backup_id, cinder)
-        except (cinder_exceptions.ClientException, keystone_exceptions.ClientException, CloudBackendInternalError):
+        except (cinder_exceptions.ClientException, keystone_exceptions.ClientException, CloudBackendInternalError) as e:
             logger.exception('Failed to delete backup for instance %s', instance.uuid)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully deleted backup for instance %s', instance.uuid)
 
@@ -810,9 +810,9 @@ class OpenStackBackend(object):
                     logger.info('Added security group %s to instance %s',
                                 group_id, server_id)
 
-        except keystone_exceptions.ClientException:
+        except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client')
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
     def extend_disk(self, instance):
         try:
@@ -872,9 +872,9 @@ class OpenStackBackend(object):
                     'Timed out waiting volume %s to attach to instance %s'
                     % volume.id, instance.uuid,
                 )
-        except (nova_exceptions.ClientException, cinder_exceptions.ClientException):
+        except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
             logger.exception('Failed to extend disk of an instance %s', instance.uuid)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully extended disk of an instance %s', instance.uuid)
 
@@ -1045,9 +1045,9 @@ class OpenStackBackend(object):
             # This will eagerly sign in throwing AuthorizationFailure on bad credentials
             session.get_token()
             return session
-        except StopIteration:
+        except StopIteration as e:
             logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
     def create_tenant_session(self, membership):
         credentials = {
@@ -1086,9 +1086,9 @@ class OpenStackBackend(object):
 
         try:
             return next(o for o in openstacks if o['auth_url'] == keystone_url)
-        except StopIteration:
+        except StopIteration as e:
             logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
-            six.reraise(CloudBackendError, CloudBackendError())
+            six.reraise(CloudBackendError, e)
 
     def get_backend_disk_size(self, core_disk_size):
         return core_disk_size / 1024
