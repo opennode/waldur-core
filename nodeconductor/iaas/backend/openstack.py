@@ -26,6 +26,7 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
+from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 
 logger = logging.getLogger(__name__)
@@ -382,6 +383,76 @@ class OpenStackBackend(object):
                     logger.info('Deleted stale instance %s in database',
                                 nc_instance.uuid)
                     # TODO:
+
+    def pull_resource_quota(self, membership):
+        try:
+            session = self.create_tenant_session(membership)
+            nova = self.create_nova_client(session)
+            cinder = self.create_cinder_client(session)
+        except keystone_exceptions.ClientException:
+            logger.exception('Failed to create nova client or cinder client')
+            six.reraise(CloudBackendError, CloudBackendError())
+
+        logger.debug('About to get quotas for tenant %s', membership.tenant_id)
+        try:
+            nova_quotas = nova.quotas.get(tenant_id=membership.tenant_id)
+            cinder_quotas = cinder.quotas.get(tenant_id=membership.tenant_id)
+        except (nova_exceptions.ClientException, cinder_exceptions.ClientException):
+            logger.exception('Failed to get quotas for tenant %s', membership.tenant_id)
+            six.reraise(CloudBackendError, CloudBackendError())
+        else:
+            logger.info('Successfully get quotas for tenant %s', membership.tenant_id)
+
+        try:
+            resource_quota = membership.resource_quota
+        except models.ResourceQuota.DoesNotExist:
+            resource_quota = models.ResourceQuota(cloud_project_membership=membership)
+
+        resource_quota.ram = nova_quotas.ram
+        resource_quota.vcpu = nova_quotas.cores
+        resource_quota.max_instances = nova_quotas.instances
+        resource_quota.storage = cinder_quotas.gigabytes
+        resource_quota.save()
+
+    def pull_resource_quota_usage(self, membership):
+        try:
+            session = self.create_tenant_session(membership)
+            nova = self.create_nova_client(session)
+            cinder = self.create_cinder_client(session)
+        except keystone_exceptions.ClientException:
+            logger.exception('Failed to create nova client or cinder client')
+            six.reraise(CloudBackendError, CloudBackendError())
+
+        logger.debug('About to get volumes, flavors and instances for tenant %s', membership.tenant_id)
+        try:
+            volumes = cinder.volumes.list()
+            flavors = dict((flavor.id, flavor) for flavor in nova.flavors.list())
+            instances = nova.servers.list()
+        except (nova_exceptions.ClientException, cinder_exceptions.ClientException):
+            logger.exception('Failed to get volumes, flavors or instances for tenant %s', membership.tenant_id)
+            six.reraise(CloudBackendError, CloudBackendError())
+        else:
+            logger.info('Successfully get volumes, flavors and instances for tenant %s', membership.tenant_id)
+
+        try:
+            resource_quota_usage = membership.resource_quota_usage
+        except models.ResourceQuotaUsage.DoesNotExist:
+            resource_quota_usage = models.ResourceQuotaUsage(cloud_project_membership=membership)
+        # ram and vcpu
+        instance_flavor_ids = [instance.flavor['id'] for instance in instances]
+        resource_quota_usage.ram = 0
+        resource_quota_usage.vcpu = 0
+        for flavor_id in instance_flavor_ids:
+            flavor = flavors[flavor_id]
+            resource_quota_usage.ram += getattr(flavor, 'ram', 0)
+            resource_quota_usage.vcpu += getattr(flavor, 'vcpus', 0)
+        # max instances
+        resource_quota_usage.max_instances = len(instances)
+        # storage
+        resource_quota_usage.storage = sum([int(v.size * 1024) for v in volumes])
+
+        print resource_quota_usage
+        resource_quota_usage.save()
 
     # Statistics methods
     def get_resource_stats(self, auth_url):
