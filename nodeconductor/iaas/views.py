@@ -198,12 +198,15 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return Response({'flavor': "New flavor is not within the same cloud"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        instance.system_volume_size = flavor.disk
+        # System volume size does not get updated since some backends
+        # do not support resizing of a root volume
+        # instance.system_volume_size = flavor.disk
         instance.ram = flavor.ram
         instance.cores = flavor.cores
         instance.save()
         # This is suboptimal, since it reads and writes instance twice
-        return self._schedule_transition(self.request, instance.uuid.hex, 'flavor change')
+        return self._schedule_transition(self.request, instance.uuid.hex, 'flavor change',
+                                         flavor_uuid=flavor.uuid.hex)
 
     def resize_disk(self, instance, new_size):
         if new_size <= instance.data_volume_size:

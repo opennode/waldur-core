@@ -546,14 +546,14 @@ class OpenStackBackend(object):
                 display_description='',
             )
 
-            if not self._wait_for_volume_status(system_volume, cinder, 'available', 'error'):
+            if not self._wait_for_volume_status(system_volume.id, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for system volume to become available',
                     instance.uuid, system_volume.id,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
 
-            if not self._wait_for_volume_status(data_volume, cinder, 'available', 'error'):
+            if not self._wait_for_volume_status(data_volume.id, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for data volume to become available',
                     instance.uuid, data_volume.id,
@@ -608,7 +608,7 @@ class OpenStackBackend(object):
             instance.data_volume_id = data_volume.id
             instance.save()
 
-            if not self._wait_for_instance_status(server, nova, 'ACTIVE'):
+            if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for instance to become online',
                     instance.uuid,
@@ -634,9 +634,8 @@ class OpenStackBackend(object):
 
             nova = self.create_nova_client(session)
             nova.servers.start(instance.backend_id)
-            server = nova.servers.get(instance.backend_id)
 
-            if not self._wait_for_instance_status(server, nova, 'ACTIVE'):
+            if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
                 logger.error('Failed to start instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
         except nova_exceptions.ClientException:
@@ -654,9 +653,8 @@ class OpenStackBackend(object):
 
             nova = self.create_nova_client(session)
             nova.servers.stop(instance.backend_id)
-            server = nova.servers.get(instance.backend_id)
 
-            if not self._wait_for_instance_status(server, nova, 'SHUTOFF'):
+            if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
                 logger.error('Failed to stop instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
         except nova_exceptions.ClientException:
@@ -841,7 +839,7 @@ class OpenStackBackend(object):
 
             nova.volumes.delete_server_volume(server_id, volume.id)
 
-            if not self._wait_for_volume_status(volume, cinder, 'available', 'error'):
+            if not self._wait_for_volume_status(volume.id, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to extend volume: timed out waiting volume %s to detach from instance %s',
                     volume.id, instance.uuid,
@@ -853,7 +851,7 @@ class OpenStackBackend(object):
 
             cinder.volumes.extend(volume, new_size)
 
-            if not self._wait_for_volume_status(volume, cinder, 'available', 'error'):
+            if not self._wait_for_volume_status(volume.id, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to extend volume: timed out waiting volume %s to extend',
                     volume.id,
@@ -865,7 +863,7 @@ class OpenStackBackend(object):
 
             nova.volumes.create_server_volume(server_id, volume.id, None)
 
-            if not self._wait_for_volume_status(volume, cinder, 'in-use', 'error'):
+            if not self._wait_for_volume_status(volume.id, cinder, 'in-use', 'error'):
                 logger.error(
                     'Failed to extend volume: timed out waiting volume %s to attach to instance %s',
                     volume.id, instance.uuid,
@@ -875,10 +873,47 @@ class OpenStackBackend(object):
                     % volume.id, instance.uuid,
                 )
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException):
-            logger.info('Failed to extend disk of an instance %s', instance.uuid)
+            logger.exception('Failed to extend disk of an instance %s', instance.uuid)
             six.reraise(CloudBackendError, CloudBackendError())
         else:
             logger.info('Successfully extended disk of an instance %s', instance.uuid)
+
+    def update_flavor(self, instance, flavor):
+        try:
+            membership = instance.cloud_project_membership
+
+            session = self.create_tenant_session(membership)
+
+            nova = self.create_nova_client(session)
+            server_id = instance.backend_id
+            flavor_id = flavor.backend_id
+
+            nova.servers.resize(server_id, flavor_id, 'MANUAL')
+
+            if not self._wait_for_instance_status(server_id, nova, 'VERIFY_RESIZE'):
+                logger.error(
+                    'Failed to change flavor: timed out waiting instance %s to begin resizing',
+                    instance.uuid,
+                )
+                raise CloudBackendError(
+                    'Timed out waiting instance %s to begin resizing' % instance.uuid,
+                )
+
+            nova.servers.confirm_resize(server_id)
+
+            if not self._wait_for_instance_status(server_id, nova, 'SHUTOFF'):
+                logger.error(
+                    'Failed to change flavor: timed out waiting instance %s to confirm resizing',
+                    instance.uuid,
+                )
+                raise CloudBackendError(
+                    'Timed out waiting instance %s to confirm resizing' % instance.uuid,
+                )
+        except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
+            logger.exception('Failed to change flavor of an instance %s', instance.uuid)
+            six.reraise(CloudBackendError, e)
+        else:
+            logger.info('Successfully changed flavor of an instance %s', instance.uuid)
 
     # Helper methods
     def create_security_group(self, security_group, nova):
@@ -1240,25 +1275,25 @@ class OpenStackBackend(object):
     def get_tenant_name(self, membership):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
 
-    def _wait_for_instance_status(self, server, nova, complete_status,
+    def _wait_for_instance_status(self, server_id, nova, complete_status,
                                   error_status=None, retries=20, poll_interval=3):
         return self._wait_for_object_status(
-            server, nova.servers.get, complete_status, error_status, retries, poll_interval)
+            server_id, nova.servers.get, complete_status, error_status, retries, poll_interval)
 
-    def _wait_for_volume_status(self, volume, cinder, complete_status,
+    def _wait_for_volume_status(self, volume_id, cinder, complete_status,
                                 error_status=None, retries=20, poll_interval=3):
         return self._wait_for_object_status(
-            volume, cinder.volumes.get, complete_status, error_status, retries, poll_interval)
+            volume_id, cinder.volumes.get, complete_status, error_status, retries, poll_interval)
 
-    def _wait_for_snapshot_status(self, snapshot, cinder, complete_status, error_status, retries=20, poll_interval=3):
+    def _wait_for_snapshot_status(self, snapshot_id, cinder, complete_status, error_status, retries=20, poll_interval=3):
         return self._wait_for_object_status(
-            snapshot, cinder.volume_snapshots.get, complete_status, error_status, retries, poll_interval)
+            snapshot_id, cinder.volume_snapshots.get, complete_status, error_status, retries, poll_interval)
 
     def _wait_for_backup_status(self, backup, cinder, complete_status, error_status, retries=20, poll_interval=3):
         return self._wait_for_object_status(
             backup, cinder.backups.get, complete_status, error_status, retries, poll_interval)
 
-    def _wait_for_object_status(self, obj, client_get_method, complete_status, error_status=None,
+    def _wait_for_object_status(self, obj_id, client_get_method, complete_status, error_status=None,
                                 retries=20, poll_interval=3):
         complete_state_predicate = lambda o: o.status == complete_status
         if error_status is not None:
@@ -1267,7 +1302,7 @@ class OpenStackBackend(object):
             error_state_predicate = lambda _: False
 
         for _ in range(retries):
-            obj = client_get_method(obj.id)
+            obj = client_get_method(obj_id)
 
             if complete_state_predicate(obj):
                 return True
@@ -1304,7 +1339,7 @@ class OpenStackBackend(object):
 
         logger.debug('About to create temporary snapshot %s' % snapshot.id)
 
-        if not self._wait_for_snapshot_status(snapshot, cinder, 'available', 'error'):
+        if not self._wait_for_snapshot_status(snapshot.id, cinder, 'available', 'error'):
             logger.error('Timed out creating snapshot for volume %s', volume_id)
             raise CloudBackendInternalError()
 
@@ -1319,11 +1354,9 @@ class OpenStackBackend(object):
         :param snapshot_id: snapshot id
         :type snapshot_id: str
         """
-        snapshot = cinder.volume_snapshots.get(snapshot_id)
+        logger.debug('About to delete temporary snapshot %s', snapshot_id)
 
-        logger.debug('About to delete temporary snapshot %s', snapshot.id)
-
-        if not self._wait_for_snapshot_status(snapshot, cinder, 'available', 'error', poll_interval=20):
+        if not self._wait_for_snapshot_status(snapshot_id, cinder, 'available', 'error', poll_interval=20):
             logger.exception('Timed out waiting for snapshot %s to become available', snapshot_id)
             raise CloudBackendInternalError()
 
@@ -1346,15 +1379,16 @@ class OpenStackBackend(object):
         logger.debug('About to create temporary volume from snapshot %s', snapshot_id)
         temporary_volume = cinder.volumes.create(volume_size, snapshot_id=snapshot_id,
                                                  display_name=volume_name)
+        temporary_volume_id = temporary_volume.id
 
-        if not self._wait_for_volume_status(temporary_volume, cinder, 'available', 'error'):
+        if not self._wait_for_volume_status(temporary_volume_id, cinder, 'available', 'error'):
             logger.error('Timed out creating temporary volume from snapshot %s', snapshot_id)
             raise CloudBackendInternalError()
 
         logger.info('Successfully created temporary volume %s from snapshot %s',
-                    temporary_volume.id, snapshot_id)
+                    temporary_volume_id, snapshot_id)
 
-        return temporary_volume.id
+        return temporary_volume_id
 
     def delete_temporary_volume(self, volume_id, cinder):
         """
@@ -1363,10 +1397,8 @@ class OpenStackBackend(object):
         :param volume_id: volume ID
         :type volume_id: str
         """
-        volume = cinder.volumes.get(volume_id)
-
-        logger.debug('About to delete volume %s' % volume.id)
-        if not self._wait_for_volume_status(volume, cinder, 'available', 'error', poll_interval=20):
+        logger.debug('About to delete volume %s' % volume_id)
+        if not self._wait_for_volume_status(volume_id, cinder, 'available', 'error', poll_interval=20):
             logger.exception('Timed out waiting volume %s availability', volume_id)
             raise CloudBackendInternalError()
 
@@ -1401,12 +1433,11 @@ class OpenStackBackend(object):
         :returns: backup id
         :rtype: str
         """
-        volume = cinder.volumes.get(volume_id)
         backup_name = 'Backup_created_from_volume_%s' % volume_id
 
-        logger.debug('About to create backup from temporary volume %s' % volume.id)
+        logger.debug('About to create backup from temporary volume %s' % volume_id)
 
-        if not self._wait_for_volume_status(volume, cinder, 'available', 'error'):
+        if not self._wait_for_volume_status(volume_id, cinder, 'available', 'error'):
             logger.exception('Timed out waiting volume %s availability', volume_id)
             raise CloudBackendInternalError()
 
@@ -1423,26 +1454,24 @@ class OpenStackBackend(object):
         :returns: volume id
         :rtype: str
         """
-        backup = cinder.backups.get(backup_id)
-
         logger.debug('About to restore backup %s' % backup_id)
 
-        if not self._wait_for_backup_status(backup, cinder, 'available', 'error'):
+        if not self._wait_for_backup_status(backup_id, cinder, 'available', 'error'):
             logger.exception('Timed out waiting backup %s availability', backup_id)
             raise CloudBackendInternalError()
 
         restore = cinder.restores.restore(backup_id)
 
         logger.debug('About to restore volume from backup %s', backup_id)
-        volume = cinder.volumes.get(restore.volume_id)
+        volume_id = restore.volume_id
 
-        if not self._wait_for_volume_status(volume, cinder, 'available', 'error_restoring', poll_interval=20):
+        if not self._wait_for_volume_status(volume_id, cinder, 'available', 'error_restoring', poll_interval=20):
             logger.exception('Timed out waiting volume %s restoring', backup_id)
             raise CloudBackendInternalError()
 
-        logger.info('Restored volume %s', volume.id)
+        logger.info('Restored volume %s', volume_id)
         logger.info('Restored backup %s', backup_id)
-        return volume.id
+        return volume_id
 
     def delete_backup(self, backup_id, cinder):
         """
@@ -1453,7 +1482,7 @@ class OpenStackBackend(object):
 
         logger.debug('About to delete backup %s' % backup_id)
 
-        if not self._wait_for_backup_status(backup, cinder, 'available', 'error'):
+        if not self._wait_for_backup_status(backup_id, cinder, 'available', 'error'):
             logger.exception('Timed out waiting backup %s availability. Status:', backup_id, backup.status)
             raise CloudBackendInternalError()
         else:

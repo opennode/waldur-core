@@ -263,8 +263,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         reread_instance = Instance.objects.get(pk=self.admined_instance.pk)
 
-        self.assertEqual(reread_instance.system_volume_size, new_flavor.disk,
-                         'Instance system_volume_size should have changed')
+        self.assertEqual(reread_instance.system_volume_size, self.admined_instance.system_volume_size,
+                         'Instance system_volume_size should not have changed')
         self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
                          'Instance should have been scheduled to resize')
 
