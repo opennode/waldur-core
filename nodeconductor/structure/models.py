@@ -32,25 +32,20 @@ class Customer(UuidMixin, TimeStampedModel):
         with transaction.atomic():
             role = self.roles.get(role_type=role_type)
 
-            try:
-                membership = UserGroup.objects.get(
-                    user=user,
-                    group__customerrole=role,
-                )
-                return membership, False
-            except UserGroup.DoesNotExist:
-                membership = UserGroup.objects.create(
-                    user=user,
-                    group=role.permission_group,
-                )
+            membership, created = UserGroup.objects.get_or_create(
+                user=user,
+                group=role.permission_group,
+            )
 
+            if created:
                 structure_role_granted.send(
                     sender=Customer,
                     structure=self,
                     user=user,
                     role=role_type,
                 )
-                return membership, True
+
+            return membership, created
 
     def remove_user(self, user, role_type=None):
         UserGroup = get_user_model().groups.through
@@ -195,27 +190,23 @@ class Project(DescribableMixin, UuidMixin, TimeStampedModel):
         UserGroup = get_user_model().groups.through
 
         with transaction.atomic():
+
             role = self.roles.get(role_type=role_type)
 
-            try:
-                membership = UserGroup.objects.get(
-                    user=user,
-                    group__projectrole=role,
-                )
-                return membership, False
-            except UserGroup.DoesNotExist:
-                membership = UserGroup.objects.create(
-                    user=user,
-                    group=role.permission_group,
-                )
+            membership, created = UserGroup.objects.get_or_create(
+                user=user,
+                group=role.permission_group,
+            )
 
+            if created:
                 structure_role_granted.send(
                     sender=Project,
                     structure=self,
                     user=user,
                     role=role_type,
                 )
-                return membership, True
+
+            return membership, created
 
     def remove_user(self, user, role_type=None):
         UserGroup = get_user_model().groups.through
@@ -300,25 +291,20 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
         with transaction.atomic():
             role = self.roles.get(role_type=role_type)
 
-            try:
-                membership = UserGroup.objects.get(
-                    user=user,
-                    group__projectgrouprole=role,
-                )
-                return membership, False
-            except UserGroup.DoesNotExist:
-                membership = UserGroup.objects.create(
-                    user=user,
-                    group=role.permission_group,
-                )
+            membership, created = UserGroup.objects.get_or_create(
+                user=user,
+                group=role.permission_group,
+            )
 
+            if created:
                 structure_role_granted.send(
                     sender=ProjectGroup,
                     structure=self,
                     user=user,
                     role=role_type,
                 )
-                return membership, True
+
+            return membership, created
 
     def remove_user(self, user, role_type=None):
         UserGroup = get_user_model().groups.through
