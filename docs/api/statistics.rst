@@ -7,17 +7,19 @@ URL: /stats/usage/
 
 Available request parameters:
 
-- ?aggregate=aggregate_model_name(default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
-- ?uuid=uuid_of_aggregate_model_object(not required. If this parameter will be defined - result will contain only object with given uuid)
-- ?item=instance_usage_item(required. Have to be from list: 'cpu', 'memory', 'storage')
-- ?from=timestamp(default: now - one hour, example: 1415910025)
-- ?to=timestamp(default: now, example: 1415912625)
+- ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
+- ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
+  object with given uuid)
+- ?item=instance_usage_item (required. Have to be from list: 'cpu', 'memory', 'storage')
+- ?from=timestamp (default: now - one hour, example: 1415910025)
+- ?to=timestamp (default: now, example: 1415912625)
 - ?datapoints=how many data points have to be in answer(default: 6)
 
 Answer will be list of dictionaries with fields:
 
 - name - name of aggregate object (customer, project or project_group)
-- datapoints - list of datapoints for aggregate object. Each datapoint is a dictionary with fields: 'from', 'to', 'value'
+- datapoints - list of datapoints for aggregate object.
+  Each datapoint is a dictionary with fields: 'from', 'to', 'value'. Datapoints are sorted in ascending time order.
 
 
 Example:
@@ -26,19 +28,19 @@ Example:
 
     [
         {
-            'name': 'Proj27',
-            'datapoints': [
-                {'to': 471970877L, 'from': 1L, 'value': 0},
-                {'to': 943941753L, 'from': 471970877L, 'value': 0},
-                {'to': 1415912629L, 'from': 943941753L, 'value': 3.0}
+            "name": "Proj27",
+            "datapoints": [
+                {"to": 471970877, "from": 1, "value": 0},
+                {"to": 943941753, "from": 471970877, "value": 0},
+                {"to": 1415912629, "from": 943941753, "value": 3.0}
             ]
         },
         {
-            'name': 'Proj28',
-            'datapoints': [
-                {'to': 471970877L, 'from': 1L, 'value': 0},
-                {'to': 943941753L, 'from': 471970877L, 'value': 0},
-                {'to': 1415912629L, 'from': 943941753L, 'value': 3.0}
+            "name": "Proj28",
+            "datapoints": [
+                {"to": 471970877, "from": 1, "value": 0},
+                {"to": 943941753, "from": 471970877, "value": 0},
+                {"to": 1415912629, "from": 943941753, "value": 3.0}
             ]
         }
     ]
@@ -128,10 +130,10 @@ URL: /stats/creation-time/
 
 Available request parameters:
 
-- ?type=type_of_statistics_objects(required. Have to be from list: 'customer', 'project', 'project_group')
-- ?from=timestamp(default: now - 30 days, example: 1415910025)
-- ?to=timestamp(default: now, example: 1415912625)
-- ?datapoints=how many data points have to be in answer(default: 6)
+- ?type=type_of_statistics_objects (required. Have to be from the list: 'customer', 'project', 'project_group')
+- ?from=timestamp (default: now - 30 days, for example: 1415910025)
+- ?to=timestamp (default: now, for example: 1415912625)
+- ?datapoints=how many data points have to be in answer (default: 6)
 
 Answer will be list of datapoints(dictionaries).
 Each datapoint will contain fields: 'to', 'from', 'value'.
@@ -142,9 +144,9 @@ Example:
 .. code-block:: javascript
 
     [
-        {'to': 471970877L, 'from': 1L, 'value': 5},
-        {'to': 943941753L, 'from': 471970877L, 'value': 0},
-        {'to': 1415912629L, 'from': 943941753L, 'value': 3}
+        {"to": 471970877, "from": 1, "value": 5},
+        {"to": 943941753, "from": 471970877, "value": 0},
+        {"to": 1415912629, "from": 943941753, "value": 3}
     ]
 
 
