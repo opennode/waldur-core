@@ -451,7 +451,14 @@ class OpenStackBackend(object):
         # storage
         resource_quota_usage.storage = sum([int(v.size * 1024) for v in volumes])
 
-        print resource_quota_usage
+        # currently we can not get backup storage size from openstack, so we use simple estimation:
+        resource_quota_usage.backup_storage = 0
+        services = models.Instance.objects.filter(cloud_project_membership=membership)
+        for service in services:
+            size = max(0, service.system_volume_size) + max(0, service.data_volume_size)
+            resource_quota_usage.backup_storage += size * sum(
+                max(0, schedule.maximal_number_of_backups) for schedule in service.backup_schedules.all())
+
         resource_quota_usage.save()
 
     # Statistics methods

@@ -228,6 +228,20 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         reread_quota_usage = ResourceQuotaUsage.objects.get(id=quota_usage.id)
         self.assertEqual(reread_quota_usage.max_instances, len(self.instances))
 
+    def test_pull_quota_resource_usage_intiates_backup_storage(self):
+        # this test will be removed, as soon as we can get backup storage size from openstack
+        from nodeconductor.backup.tests import factories as backup_factories
+        membership = factories.CloudProjectMembershipFactory()
+        instance = factories.InstanceFactory(cloud_project_membership=membership)
+        backup_schedule = backup_factories.BackupScheduleFactory(backup_source=instance)
+        # when
+        self.backend.pull_resource_quota_usage(membership)
+        # then
+        resource_quota_usage = membership.resource_quota_usage
+        self.assertEqual(
+            resource_quota_usage.backup_storage,
+            (instance.system_volume_size + instance.data_volume_size) * backup_schedule.maximal_number_of_backups)
+
 
 class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
 
