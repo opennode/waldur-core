@@ -411,7 +411,7 @@ class OpenStackBackend(object):
         resource_quota.ram = nova_quotas.ram
         resource_quota.vcpu = nova_quotas.cores
         resource_quota.max_instances = nova_quotas.instances
-        resource_quota.storage = cinder_quotas.gigabytes
+        resource_quota.storage = int(cinder_quotas.gigabytes * 1024)
         resource_quota.save()
 
     def pull_resource_quota_usage(self, membership):
