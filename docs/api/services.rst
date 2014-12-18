@@ -48,7 +48,8 @@ SLA events
 Service SLAs are connected with occurrences of events. To get a list of such events issue a GET request to
 */services/<service_uuid>/events/*. Optionally period can be supplied using the format defined above.
 
-The output contains a list of states and timestamps when the state was reached.
+The output contains a list of states and timestamps when the state was reached. The list is sorted in descending order
+by the timestamp.
 
 Example output:
 
