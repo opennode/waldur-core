@@ -222,7 +222,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         is_admin = membership.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
 
-        if not is_admin:
+        if not is_admin and not request.user.is_staff:
             raise exceptions.PermissionDenied()
 
         # Importing here to avoid circular imports
