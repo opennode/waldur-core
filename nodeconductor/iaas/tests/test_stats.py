@@ -366,17 +366,3 @@ class QuotaStatsTest(test.APITransactionTestCase):
         # then
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, self.expected_quotas_for_project1)
-
-    # This test should be moved to quotas-initiation tests
-    # def test_stats_returns_backup_storage_usage_right(self):
-    #     membership = factories.CloudProjectMembershipFactory(project=self.project1)
-    #     instance = factories.InstanceFactory(cloud_project_membership=membership)
-    #     backup_schedule = backup_factories.BackupScheduleFactory(backup_source=instance)
-    #     # when
-    #     response = self.execute_request_with_data(
-    #         self.staff, {'aggregate': 'project', 'uuid': self.project1.uuid.hex})
-    #     # then
-    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
-    #     self.assertEqual(
-    #         response.data['backup_storage_usage'],
-    #         (instance.system_volume_size + instance.data_volume_size) * backup_schedule.maximal_number_of_backups)
