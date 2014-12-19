@@ -16,7 +16,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.11.0
+Version: 0.12.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -30,6 +30,7 @@ Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-ordereddict = 1.1
 Requires: python-django >= 1.6.5
 Requires: python-django-auth-ldap = 1.2.0
+Requires: python-django-model-utils = 2.2
 Requires: python-django-filter = 0.7
 Requires: python-django-fsm = 2.2.0
 Requires: python-django-permission = 0.8.2
@@ -185,6 +186,9 @@ All done. Happy NodeConducting!
 EOF
 
 %changelog
+* Fri Dec 19 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.12.0-1.el7
+- New upstream release
+
 * Wed Dec 10 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.11.0-1.el7
 - New upstream release
 - Celery startup scripts replaced with systemd units
