@@ -9,19 +9,25 @@ Supported filters are:
 - ?service_name - case insensitive matching of a service name
 - ?customer_name - case insensitive matching of a customer name
 - ?project_name - case insensitive matching of a project name
-- ?project_groups - case insensitive matching of a project_group name
+- ?project_group_name - case insensitive matching of a project_group name
 - ?agreed_sla - exact match of SLA numbers
 - ?actual_sla - exact match of SLA numbers
+- ?project_groups -  **deprecated**, use ?project_group_name instead
 
 Ordering can be done by the following fields (prefix with **-** for descending order):
 
 - ?o=hostname
-- ?o=template__name
-- ?o=project__customer__name
-- ?o=project__name
-- ?o=project__project_groups__name
+- ?o=template_name
+- ?o=customer_name
+- ?o=project_name
+- ?o=project_group_name
 - ?o=agreed_sla
-- ?o=slas__value  (order by actual_sla field)
+- ?o=actual_sla
+- ?o=template__name - **deprecated**, use ?o=template_name instead
+- ?o=project__customer__name - **deprecated**, use ?o=customer_name instead
+- ?o=project__name - **deprecated**, use ?o=project_name instead
+- ?o=project__project_groups__name - **deprecated**, use ?o=project_group_name instead
+- ?o=slas__value - **deprecated**, use ?o=actual_sla instead
 
 
 SLA periods
@@ -42,7 +48,8 @@ SLA events
 Service SLAs are connected with occurrences of events. To get a list of such events issue a GET request to
 */services/<service_uuid>/events/*. Optionally period can be supplied using the format defined above.
 
-The output contains a list of states and timestamps when the state was reached.
+The output contains a list of states and timestamps when the state was reached. The list is sorted in descending order
+by the timestamp.
 
 Example output:
 
@@ -62,3 +69,4 @@ Example output:
             "state": "U"
         }
     ]
+-

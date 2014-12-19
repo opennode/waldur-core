@@ -37,16 +37,18 @@ def _security_group_url(group):
     return 'http://testserver' + reverse('security_group-detail', kwargs={'uuid': group.uuid})
 
 
-def _instance_data(instance=None):
+def _instance_data(user, instance=None):
     if instance is None:
         instance = factories.InstanceFactory()
+    flavor = factories.FlavorFactory(cloud=instance.cloud_project_membership.cloud)
+    ssh_public_key = factories.SshPublicKeyFactory(user=user)
     return {
         'hostname': 'test_host',
         'description': 'test description',
-        'project': _project_url(instance.project),
+        'project': _project_url(instance.cloud_project_membership.project),
         'template': _template_url(instance.template),
-        'flavor': _flavor_url(instance.flavor),
-        'ssh_public_key': _ssh_public_key_url(instance.ssh_public_key)
+        'flavor': _flavor_url(flavor),
+        'ssh_public_key': _ssh_public_key_url(ssh_public_key)
     }
 
 
@@ -56,8 +58,10 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.user = structure_factories.UserFactory.create()
         self.client.force_authenticate(self.user)
 
-        self.instance = factories.InstanceFactory(ssh_public_key__user=self.user)
-        self.instance.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
+        self.instance = factories.InstanceFactory()
+        self.instance.cloud_project_membership.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
+
+        factories.ImageFactory(template=self.instance.template, cloud=self.instance.cloud_project_membership.cloud)
 
         self.instance_security_groups = factories.InstanceSecurityGroupFactory.create_batch(2, instance=self.instance)
         self.cloud_security_groups = [g.security_group for g in self.instance_security_groups]
@@ -72,7 +76,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
             self.assertItemsEqual([g[field] for g in response.data['security_groups']], expected_security_groups)
 
     def test_add_instance_with_security_groups(self):
-        data = _instance_data(self.instance)
+        data = _instance_data(self.user, self.instance)
         data['security_groups'] = [self._get_valid_security_group_payload(g.security_group)
                                    for g in self.instance_security_groups]
 
@@ -80,10 +84,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_change_instance_security_groups_single_field(self):
-        membership = models.CloudProjectMembership.objects.get(
-            project=self.instance.project,
-            cloud=self.instance.flavor.cloud,
-        )
+        membership = self.instance.cloud_project_membership
         new_security_group = factories.SecurityGroupFactory(
             name='test-group',
             cloud_project_membership=membership,
@@ -111,7 +112,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         response = self.client.get(_instance_url(self.instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        data = _instance_data(self.instance)
+        data = _instance_data(self.user, self.instance)
         data['security_groups'] = [self._get_valid_security_group_payload()
                                    for g in self.instance_security_groups]
 
@@ -119,7 +120,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_security_groups_is_not_required(self):
-        data = _instance_data(self.instance)
+        data = _instance_data(self.user, self.instance)
         self.assertNotIn('security_groups', data)
         response = self.client.post(_instance_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)

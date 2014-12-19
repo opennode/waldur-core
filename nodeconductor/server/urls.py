@@ -27,6 +27,7 @@ urlpatterns = patterns(
     url(r'^admin/', include(admin.site.urls), name='admin'),
     url(r'^api/', include(router.urls)),
     url(r'^api/', include('nodeconductor.iaas.urls')),
+    url(r'^api/', include('nodeconductor.structure.urls')),
     url(r'^api/version/', 'nodeconductor.core.views.version_detail'),
     url(r'^api-auth/password/', 'nodeconductor.core.views.obtain_auth_token'),
     url(r'^api-auth/saml2/', 'nodeconductor.core.views.assertion_consumer_service'),

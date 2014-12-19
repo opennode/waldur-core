@@ -62,6 +62,10 @@ class CustomerFactory(factory.DjangoModelFactory):
             customer = CustomerFactory()
         return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
 
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('customer-list')
+
 
 class ProjectFactory(factory.DjangoModelFactory):
     class Meta(object):
@@ -97,13 +101,3 @@ class ProjectGroupFactory(factory.DjangoModelFactory):
     @classmethod
     def get_list_url(cls):
         return 'http://testserver' + reverse('projectgroup-list')
-
-
-class ResourceQuotaFactory(factory.DjangoModelFactory):
-    class Meta(object):
-        model = models.ResourceQuota
-
-    vcpu = factory.Iterator([1, 2, 3, 4])
-    ram = factory.Iterator([1.0, 2.0, 3.0, 4.0])
-    storage = factory.fuzzy.FuzzyFloat(10.0, 50.0)
-    max_instances = factory.Iterator([1, 2, 3, 4])

@@ -9,21 +9,21 @@ from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-
+from model_utils.models import TimeStampedModel
 
 from nodeconductor.core.models import UuidMixin, DescribableMixin
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
 
 @python_2_unicode_compatible
-class Customer(UuidMixin, models.Model):
+class Customer(UuidMixin, TimeStampedModel):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
         project_group_path = 'project_groups'
 
     name = models.CharField(max_length=160)
-    abbreviation = models.CharField(max_length=8)
+    abbreviation = models.CharField(max_length=8, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
 
     def add_user(self, user, role_type):
@@ -32,25 +32,20 @@ class Customer(UuidMixin, models.Model):
         with transaction.atomic():
             role = self.roles.get(role_type=role_type)
 
-            try:
-                membership = UserGroup.objects.get(
-                    user=user,
-                    group__customerrole=role,
-                )
-                return membership, False
-            except UserGroup.DoesNotExist:
-                membership = UserGroup.objects.create(
-                    user=user,
-                    group=role.permission_group,
-                )
+            membership, created = UserGroup.objects.get_or_create(
+                user=user,
+                group=role.permission_group,
+            )
 
+            if created:
                 structure_role_granted.send(
                     sender=Customer,
                     structure=self,
                     user=user,
                     role=role_type,
                 )
-                return membership, True
+
+            return membership, created
 
     def remove_user(self, user, role_type=None):
         UserGroup = get_user_model().groups.through
@@ -145,16 +140,8 @@ class ProjectRole(UuidMixin, models.Model):
         return self.get_role_type_display()
 
 
-class ResourceQuota(models.Model):
-    """Project quotas"""
-    vcpu = models.PositiveIntegerField(help_text=_('Virtual CPUs'))
-    ram = models.FloatField(help_text=_('RAM size'))
-    storage = models.FloatField(help_text=_('Storage size (incl. backup)'))
-    max_instances = models.PositiveIntegerField(help_text=_('Number of running instances'))
-
-
 @python_2_unicode_compatible
-class Project(DescribableMixin, UuidMixin, models.Model):
+class Project(DescribableMixin, UuidMixin, TimeStampedModel):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
@@ -162,34 +149,28 @@ class Project(DescribableMixin, UuidMixin, models.Model):
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='projects')
-    resource_quota = models.OneToOneField(ResourceQuota, related_name='project_quota', null=True)
-    resource_quota_usage = models.OneToOneField(ResourceQuota, related_name='project_quota_usage', null=True)
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
 
         with transaction.atomic():
+
             role = self.roles.get(role_type=role_type)
 
-            try:
-                membership = UserGroup.objects.get(
-                    user=user,
-                    group__projectrole=role,
-                )
-                return membership, False
-            except UserGroup.DoesNotExist:
-                membership = UserGroup.objects.create(
-                    user=user,
-                    group=role.permission_group,
-                )
+            membership, created = UserGroup.objects.get_or_create(
+                user=user,
+                group=role.permission_group,
+            )
 
+            if created:
                 structure_role_granted.send(
                     sender=Project,
                     structure=self,
                     user=user,
                     role=role_type,
                 )
-                return membership, True
+
+            return membership, created
 
     def remove_user(self, user, role_type=None):
         UserGroup = get_user_model().groups.through
@@ -251,7 +232,7 @@ class ProjectGroupRole(UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
+class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
     """
     Project groups are means to organize customer's projects into arbitrary sets.
     """
@@ -274,25 +255,20 @@ class ProjectGroup(DescribableMixin, UuidMixin, models.Model):
         with transaction.atomic():
             role = self.roles.get(role_type=role_type)
 
-            try:
-                membership = UserGroup.objects.get(
-                    user=user,
-                    group__projectgrouprole=role,
-                )
-                return membership, False
-            except UserGroup.DoesNotExist:
-                membership = UserGroup.objects.create(
-                    user=user,
-                    group=role.permission_group,
-                )
+            membership, created = UserGroup.objects.get_or_create(
+                user=user,
+                group=role.permission_group,
+            )
 
+            if created:
                 structure_role_granted.send(
                     sender=ProjectGroup,
                     structure=self,
                     user=user,
                     role=role_type,
                 )
-                return membership, True
+
+            return membership, created
 
     def remove_user(self, user, role_type=None):
         UserGroup = get_user_model().groups.through

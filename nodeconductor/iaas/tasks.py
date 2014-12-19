@@ -7,7 +7,7 @@ from celery import shared_task
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.core.tasks import tracked_processing
+from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeError
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError
@@ -45,11 +45,11 @@ def delete_zabbix_host_and_service(instance):
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='begin_provisioning', desired_state='set_online')
-def schedule_provisioning(instance_uuid):
+def schedule_provisioning(instance_uuid, backend_flavor_id):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    backend = instance.flavor.cloud.get_backend()
-    backend.provision_instance(instance)
+    backend = instance.cloud_project_membership.cloud.get_backend()
+    backend.provision_instance(instance, backend_flavor_id)
     create_zabbix_host_and_service(instance)
 
 
@@ -58,7 +58,7 @@ def schedule_provisioning(instance_uuid):
 def schedule_stopping(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    backend = instance.flavor.cloud.get_backend()
+    backend = instance.cloud_project_membership.cloud.get_backend()
     backend.stop_instance(instance)
 
 
@@ -67,28 +67,45 @@ def schedule_stopping(instance_uuid):
 def schedule_starting(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    backend = instance.flavor.cloud.get_backend()
+    backend = instance.cloud_project_membership.cloud.get_backend()
     backend.start_instance(instance)
 
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='begin_deleting', desired_state='set_deleted')
 def schedule_deleting(instance_uuid):
-    instance = models.Instance.objects.get(uuid=instance_uuid)
+    try:
+        set_state(models.Instance, instance_uuid, 'begin_deleting')
+    except StateChangeError:
+        # No logging is needed since set_state already logged everything
+        return
 
-    backend = instance.flavor.cloud.get_backend()
-    backend.delete_instance(instance)
+    # noinspection PyBroadException
+    try:
+        instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    delete_zabbix_host_and_service(instance)
+        backend = instance.cloud_project_membership.cloud.get_backend()
+        backend.delete_instance(instance)
+
+        delete_zabbix_host_and_service(instance)
+    except Exception:
+        # noinspection PyProtectedMember
+        logger.exception(
+            'Failed to begin_deleting Instance with id %s', instance_uuid
+        )
+        set_state(models.Instance, instance_uuid, 'set_erred')
+    else:
+        # Actually remove the instance from the database
+        models.Instance.objects.filter(uuid=instance_uuid).delete()
 
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
-def update_flavor(instance_uuid):
+def update_flavor(instance_uuid, flavor_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
+    flavor = models.Flavor.objects.get(uuid=flavor_uuid)
 
-    backend = instance.flavor.cloud.get_backend()
-    backend.update_flavor(instance)
+    backend = instance.cloud_project_membership.cloud.get_backend()
+    backend.update_flavor(instance, flavor)
 
 
 @shared_task
@@ -96,7 +113,7 @@ def update_flavor(instance_uuid):
 def extend_disk(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    backend = instance.flavor.cloud.get_backend()
+    backend = instance.cloud_project_membership.cloud.get_backend()
     backend.extend_disk(instance)
 
 
@@ -104,7 +121,7 @@ def extend_disk(instance_uuid):
 def push_instance_security_groups(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
-    backend = instance.flavor.cloud.get_backend()
+    backend = instance.cloud_project_membership.cloud.get_backend()
     backend.push_instance_security_groups(instance)
 
 
@@ -158,7 +175,9 @@ def pull_cloud_membership(membership_pk):
 
     backend = membership.cloud.get_backend()
     backend.pull_security_groups(membership)
-    # TODO: pull_instances
+    backend.pull_instances(membership)
+    backend.pull_resource_quota(membership)
+    backend.pull_resource_quota_usage(membership)
 
 
 @shared_task

@@ -39,7 +39,7 @@ def update_instance_sla(sla_type):
         start_time = int(month_start.strftime("%s"))
         end_time = int(add_months(month_start, 1).strftime("%s"))
 
-    instances = Instance.objects.exclude(state__in=(Instance.States.DELETED, Instance.States.DELETING))
+    instances = Instance.objects.exclude(state=Instance.States.DELETING)
     zabbix_client = ZabbixApiClient()
     for instance in instances:
         try:

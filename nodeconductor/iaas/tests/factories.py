@@ -171,24 +171,27 @@ class InstanceFactory(factory.DjangoModelFactory):
 
     hostname = factory.Sequence(lambda n: 'host%s' % n)
     template = factory.SubFactory(TemplateFactory)
-    flavor = factory.SubFactory(FlavorFactory)
+
     start_time = factory.LazyAttribute(lambda o: timezone.now())
     external_ips = factory.LazyAttribute(lambda o: ','.join('.'.join(
         '%s' % randint(0, 255) for _ in range(4)) for _ in range(3)))
     internal_ips = factory.LazyAttribute(lambda o: ','.join(
         '10.%s' % '.'.join('%s' % randint(0, 255) for _ in range(3)) for _ in range(3)))
-    ssh_public_key = factory.SubFactory(SshPublicKeyFactory)
+
+    cores = factory.Sequence(lambda n: n)
+    ram = factory.Sequence(lambda n: n)
+    # cloud = factory.SubFactory(CloudFactory)
+    cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
+
+    key_name = factory.Sequence(lambda n: 'instance key%s' % n)
+    key_fingerprint = factory.Sequence(lambda n: 'instance key fingerprint%s' % n)
 
     system_volume_id = factory.Sequence(lambda n: 'sys-vol-id-%s' % n)
-    system_volume_size = factory.LazyAttribute(lambda o: o.flavor.disk)
+    system_volume_size = factory.Sequence(lambda n: n)
     data_volume_id = factory.Sequence(lambda n: 'dat-vol-id-%s' % n)
     data_volume_size = 20
 
-    @factory.lazy_attribute
-    def project(self):
-        project = structure_factories.ProjectFactory()
-        CloudProjectMembershipFactory(project=project, cloud=self.flavor.cloud)
-        return project
+    backend_id = factory.Sequence(lambda n: 'instance-id%s' % n)
 
     @classmethod
     def get_url(self, instance=None, action=None):
@@ -227,3 +230,25 @@ class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
 
     instance = factory.SubFactory(InstanceFactory)
     security_group = factory.SubFactory(SecurityGroupFactory)
+
+
+class AbstractResourceQuotaFactory(factory.DjangoModelFactory):
+    class Meta:
+        abstract = True
+
+    cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
+    vcpu = factory.Iterator([1, 2, 3, 4])
+    ram = factory.Iterator([1024, 2048, 4096])
+    storage = factory.fuzzy.FuzzyFloat(10240, 51200)
+    max_instances = factory.Iterator([1, 2, 3, 4])
+    backup_storage = factory.fuzzy.FuzzyFloat(10240, 51200)
+
+
+class ResourceQuotaFactory(AbstractResourceQuotaFactory):
+    class Meta(object):
+        model = models.ResourceQuota
+
+
+class ResourceQuotaUsageFactory(AbstractResourceQuotaFactory):
+    class Meta(object):
+        model = models.ResourceQuotaUsage

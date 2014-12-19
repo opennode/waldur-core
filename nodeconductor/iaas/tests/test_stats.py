@@ -2,6 +2,7 @@ from django.core.urlresolvers import reverse
 from mock import patch, Mock
 from rest_framework import test, status
 
+from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.iaas import models
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure import models as structure_models
@@ -14,7 +15,6 @@ class CustomerStatsTest(test.APITransactionTestCase):
         self.customer = structure_factories.CustomerFactory()
         self.other_customer = structure_factories.CustomerFactory()
         cloud = factories.CloudFactory(customer=self.customer)
-        flavor = factories.FlavorFactory(cloud=cloud)
 
         self.staff = structure_factories.UserFactory(is_staff=True)
         self.admin = structure_factories.UserFactory()
@@ -32,12 +32,20 @@ class CustomerStatsTest(test.APITransactionTestCase):
         self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
         self.admin_project.add_user(self.admin, structure_models.ProjectRole.ADMINISTRATOR)
 
-        self.manager_instances = factories.InstanceFactory.create_batch(2, project=self.manager_project, flavor=flavor)
-        self.admins_instances = factories.InstanceFactory.create_batch(2, project=self.admin_project, flavor=flavor)
+        self.manager_instances = factories.InstanceFactory.create_batch(
+            2,
+            cloud_project_membership__project=self.manager_project,
+            cloud_project_membership__cloud=cloud,
+        )
+        self.admins_instances = factories.InstanceFactory.create_batch(
+            2,
+            cloud_project_membership__project=self.admin_project,
+            cloud_project_membership__cloud=cloud,
+        )
 
         self.url = reverse('stats_customer')
 
-    def test_staff_receive_statistics_for_all_cuctomers(self):
+    def test_staff_receive_statistics_for_all_customers(self):
         self.client.force_authenticate(self.staff)
 
         response = self.client.get(self.url)
@@ -121,8 +129,8 @@ class UsageStatsTest(test.APITransactionTestCase):
         self.project_group.projects.add(self.project1)
         self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
 
-        self.instances1 = factories.InstanceFactory.create_batch(2, project=self.project1)
-        self.instances2 = factories.InstanceFactory.create_batch(2, project=self.project2)
+        self.instances1 = factories.InstanceFactory.create_batch(2, cloud_project_membership__project=self.project1)
+        self.instances2 = factories.InstanceFactory.create_batch(2, cloud_project_membership__project=self.project2)
 
         self.url = reverse('stats_usage')
 
@@ -194,20 +202,38 @@ class UsageStatsTest(test.APITransactionTestCase):
             expected_data = [{'name': self.project_group.name, 'datapoints': self.expected_datapoints}]
             self.assertItemsEqual(response.data, expected_data)
 
+    def test_project_can_be_filtered_by_uuid(self):
+        self.client.force_authenticate(self.staff)
+
+        patched_client = self._get_patched_client()
+        with patch('nodeconductor.iaas.serializers.ZabbixDBClient', return_value=patched_client) as patched:
+            patched.items = {'cpu': {'key': 'cpu_key', 'table': 'cpu_table'}}
+            data = {
+                'item': 'cpu', 'from': 1, 'to': 1415912629, 'datapoints': 3,
+                'aggregate': 'project', 'uuid': self.project1.uuid.hex
+            }
+            response = self.client.get(self.url, data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            expected_data = [{'name': self.project1.name, 'datapoints': self.expected_datapoints}]
+            self.assertItemsEqual(response.data, expected_data)
+
 
 class ResourceStatsTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.auth_url = 'http://example.com/'
 
-        self.project_quota1 = structure_factories.ResourceQuotaFactory()
-        self.project1 = structure_factories.ProjectFactory(resource_quota=self.project_quota1)
-        self.project_quota2 = structure_factories.ResourceQuotaFactory()
-        self.project2 = structure_factories.ProjectFactory(resource_quota=self.project_quota2)
+        self.project1 = structure_factories.ProjectFactory()
+        self.project2 = structure_factories.ProjectFactory()
 
         self.cloud = factories.CloudFactory(auth_url=self.auth_url)
-        models.CloudProjectMembership.objects.create(cloud=self.cloud, project=self.project1, tenant_id='1')
-        models.CloudProjectMembership.objects.create(cloud=self.cloud, project=self.project2, tenant_id='2')
+        membership1 = models.CloudProjectMembership.objects.create(
+            cloud=self.cloud, project=self.project1, tenant_id='1')
+        membership2 = models.CloudProjectMembership.objects.create(
+            cloud=self.cloud, project=self.project2, tenant_id='2')
+
+        self.quota1 = factories.ResourceQuotaFactory(cloud_project_membership=membership1)
+        self.quota2 = factories.ResourceQuotaFactory(cloud_project_membership=membership2)
 
         self.user = structure_factories.UserFactory()
         self.staff = structure_factories.UserFactory(is_staff=True)
@@ -241,9 +267,9 @@ class ResourceStatsTest(test.APITransactionTestCase):
             u'free_ram_mb': 6636, u'memory_mb_used': 1024
         }
         expected_result.update({
-            'vcpu_quota': self.project_quota1.vcpu + self.project_quota2.vcpu,
-            'ram_quota': self.project_quota1.ram + self.project_quota2.ram,
-            'storage_quota': self.project_quota1.storage + self.project_quota2.storage,
+            'vcpu_quota': self.quota1.vcpu + self.quota2.vcpu,
+            'ram_quota': self.quota1.ram + self.quota2.ram,
+            'storage_quota': self.quota1.storage + self.quota2.storage,
         })
         mocked_backend.get_resource_stats = Mock(return_value=expected_result)
 
@@ -254,3 +280,89 @@ class ResourceStatsTest(test.APITransactionTestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data, expected_result)
             mocked_backend.get_resource_stats.assert_called_once_with(self.auth_url)
+
+
+class QuotaStatsTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.customer = structure_factories.CustomerFactory()
+        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
+        self.project1 = structure_factories.ProjectFactory(customer=self.customer)
+        self.project2 = structure_factories.ProjectFactory(customer=self.customer)
+        self.membership1 = factories.CloudProjectMembershipFactory(project=self.project1)
+        self.membership2 = factories.CloudProjectMembershipFactory(project=self.project2)
+
+        self.project_group.projects.add(self.project1)
+        # quotas:
+        for membership in self.membership1, self.membership2:
+            factories.ResourceQuotaFactory(cloud_project_membership=membership)
+            factories.ResourceQuotaUsageFactory(cloud_project_membership=membership)
+        # users
+        self.staff = structure_factories.UserFactory(is_staff=True)
+        self.customer_owner = structure_factories.UserFactory()
+        self.customer.add_user(self.customer_owner, structure_models.CustomerRole.OWNER)
+        self.project_group_manager = structure_factories.UserFactory()
+        self.project_group.add_user(self.project_group_manager, structure_models.ProjectGroupRole.MANAGER)
+        self.project1_admin = structure_factories.UserFactory()
+        self.project1.add_user(self.project1_admin, structure_models.ProjectRole.ADMINISTRATOR)
+
+        fields = ['vcpu', 'ram', 'storage', 'max_instances', 'backup_storage']
+
+        self.expected_quotas_for_project1 = dict((f, getattr(self.membership1.resource_quota, f)) for f in fields)
+        self.expected_quotas_for_project1.update(
+            dict((f + '_usage', getattr(self.membership1.resource_quota_usage, f)) for f in fields))
+
+        self.expected_quotas_for_both_projects = self.expected_quotas_for_project1.copy()
+        for f in fields:
+            self.expected_quotas_for_both_projects[f] += getattr(self.membership2.resource_quota, f)
+            self.expected_quotas_for_both_projects[f + '_usage'] += getattr(self.membership2.resource_quota_usage, f)
+
+    def execute_request_with_data(self, user, data):
+        self.client.force_authenticate(user)
+        url = 'http://testserver' + reverse('stats_quota')
+        return self.client.get(url, data)
+
+    def test_customer_owner_receive_quotas_for_projects_from_his_customer(self):
+        # when
+        response = self.execute_request_with_data(self.customer_owner, {'aggregate': 'customer'})
+        # then
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, self.expected_quotas_for_both_projects)
+
+    def test_project_group_manager_receive_quotas_for_projects_from_his_group(self):
+        # when
+        response = self.execute_request_with_data(self.project_group_manager, {'aggregate': 'project_group'})
+        # then
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, self.expected_quotas_for_project1)
+
+    def test_project_admin_receive_quotas_for_his_projects(self):
+        # when
+        response = self.execute_request_with_data(self.project1_admin, {'aggregate': 'project'})
+        # then
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, self.expected_quotas_for_project1)
+
+    def test_proejct_group_manager_does_not_receive_quotas_for_other_cusotmer_projects(self):
+        # when
+        response = self.execute_request_with_data(self.project_group_manager, {'aggregate': 'customer'})
+        # then
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, self.expected_quotas_for_project1)
+
+    def test_project_without_both_quotas_is_ignored(self):
+        # project without quotas
+        structure_factories.ProjectFactory(customer=self.customer)
+        # when
+        response = self.execute_request_with_data(self.staff, {'aggregate': 'customer'})
+        # then
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, self.expected_quotas_for_both_projects)
+
+    def test_project_can_be_filtered_by_uuid(self):
+        # when
+        response = self.execute_request_with_data(
+            self.staff, {'aggregate': 'project', 'uuid': self.project1.uuid.hex})
+        # then
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, self.expected_quotas_for_project1)

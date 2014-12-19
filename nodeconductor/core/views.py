@@ -101,7 +101,7 @@ class Saml2AuthView(APIView):
                 decode=False,      # The response is already base64 decoded
             )
         except Exception as e:
-            logger.error('SAML response parsing failed', e)
+            logger.error('SAML response parsing failed %s' % e)
             response = None
 
         if response is None:

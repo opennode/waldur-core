@@ -1,16 +1,16 @@
 from __future__ import unicode_literals
 
+from collections import defaultdict
+import datetime
 import logging
 import time
-import datetime
+
 
 from django.db import models as django_models
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
-
 import django_filters
-
 from rest_framework import exceptions
 from rest_framework import filters
 from rest_framework import mixins
@@ -22,32 +22,46 @@ from rest_framework_extensions.decorators import action, link
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import viewsets as core_viewsets
+from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.utils import sort_dict
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.structure import filters as structure_filters
-from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, ResourceQuota, CustomerRole
+from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
 
 logger = logging.getLogger(__name__)
 
 
 class InstanceFilter(django_filters.FilterSet):
-    project_group = django_filters.CharFilter(
-        name='project__project_groups__name',
+    project_group_name = django_filters.CharFilter(
+        name='cloud_project_membership__project__project_groups__name',
         distinct=True,
         lookup_type='icontains',
     )
+    project_name = django_filters.CharFilter(
+        name='cloud_project_membership__project__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
+    # FIXME: deprecated, use project_group_name instead
+    project_group = django_filters.CharFilter(
+        name='cloud_project_membership__project__project_groups__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+    # FIXME: deprecated, use project_name instead
     project = django_filters.CharFilter(
-        name='project__name',
+        name='cloud_project_membership__project__name',
         distinct=True,
         lookup_type='icontains',
     )
 
     customer_name = django_filters.CharFilter(
-        name='project__customer__name',
+        name='cloud_project_membership__project__customer__name',
         distinct=True,
         lookup_type='icontains',
     )
@@ -66,6 +80,8 @@ class InstanceFilter(django_filters.FilterSet):
             'hostname',
             'customer_name',
             'state',
+            'project_name',
+            'project_group_name',
             'project',
             'project_group',
             'template_name'
@@ -75,15 +91,27 @@ class InstanceFilter(django_filters.FilterSet):
             '-hostname',
             'state',
             '-state',
-            'project__customer__name',
-            '-project__customer__name',
-            'project__name',
-            '-project__name',
-            'project__project_groups__name',
-            '-project__project_groups__name',
+            'cloud_project_membership__project__customer__name',
+            '-cloud_project_membership__project__customer__name',
+            'cloud_project_membership__project__name',
+            '-cloud_project_membership__project__name',
+            'cloud_project_membership__project__project_groups__name',
+            '-cloud_project_membership__project__project_groups__name',
             'template__name',
             '-template__name',
         ]
+        order_by_mapping = {
+            # Proper field naming
+            'customer_name': 'cloud_project_membership__project__customer__name',
+            'project_name': 'cloud_project_membership__project__name',
+            'project_group_name': 'cloud_project_membership__project__project_groups__name',
+            'template_name': 'template__name',
+
+            # Backwards compatibility
+            'project__customer__name': 'cloud_project_membership__project__customer__name',
+            'project__name': 'cloud_project_membership__project__name',
+            'project__project_groups__name': 'cloud_project_membership__project__project_groups__name',
+        }
 
 
 class InstanceViewSet(mixins.CreateModelMixin,
@@ -98,7 +126,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
-    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
+    filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = InstanceFilter
 
@@ -118,19 +146,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
         context['user'] = self.request.user
         return context
 
-    def get_queryset(self):
-        queryset = super(InstanceViewSet, self).get_queryset()
-        queryset = queryset.exclude(state=models.Instance.States.DELETED)
-        return queryset
-
     def pre_save(self, obj):
         super(InstanceViewSet, self).pre_save(obj)
 
-        if obj.pk is None:
-            # Create flow
-            obj.system_volume_size = obj.flavor.disk
-            obj.agreed_sla = obj.template.sla_level
-        else:
+        if obj.pk is not None:
             # Update flow
             related_data = getattr(self.object, '_related_data', {})
 
@@ -148,6 +167,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def post_save(self, obj, created=False):
         super(InstanceViewSet, self).post_save(obj, created)
         if created:
+            tasks.schedule_provisioning.delay(obj.uuid.hex, backend_flavor_id=obj.flavor.backend_id)
             return
 
         # We care only about update flow
@@ -172,16 +192,21 @@ class InstanceViewSet(mixins.CreateModelMixin,
         push_instance_security_groups.delay(self.object.uuid.hex)
 
     def change_flavor(self, instance, flavor):
-        instance_cloud = instance.flavor.cloud
+        instance_cloud = instance.cloud_project_membership.cloud
 
         if flavor.cloud != instance_cloud:
             return Response({'flavor': "New flavor is not within the same cloud"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        instance.flavor = flavor
+        # System volume size does not get updated since some backends
+        # do not support resizing of a root volume
+        # instance.system_volume_size = flavor.disk
+        instance.ram = flavor.ram
+        instance.cores = flavor.cores
         instance.save()
         # This is suboptimal, since it reads and writes instance twice
-        return self._schedule_transition(self.request, instance.uuid.hex, 'flavor change')
+        return self._schedule_transition(self.request, instance.uuid.hex, 'flavor change',
+                                         flavor_uuid=flavor.uuid.hex)
 
     def resize_disk(self, instance, new_size):
         if new_size <= instance.data_volume_size:
@@ -195,10 +220,11 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     def _schedule_transition(self, request, uuid, operation, **kwargs):
         instance = self.get_object()
+        membership = instance.cloud_project_membership
 
-        is_admin = instance.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
+        is_admin = membership.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
 
-        if not is_admin:
+        if not is_admin and not request.user.is_staff:
             raise exceptions.PermissionDenied()
 
         # Importing here to avoid circular imports
@@ -413,28 +439,34 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
         queryset = self._filter_queryset(queryset)
 
         aggregate_parameters = self.request.QUERY_PARAMS.getlist('aggregate', [])
-        aggregate_paramenter_to_field_map = {
-            'project': ['instance__project__uuid', 'instance__project__name'],
-            'project_group': ['instance__project__project_groups__uuid', 'instance__project__project_groups__name'],
+        aggregate_parameter_to_field_map = {
+            'project': [
+                'instance__cloud_project_membership__project__uuid',
+                'instance__cloud_project_membership__project__name',
+            ],
+            'project_group': [
+                'instance__cloud_project_membership__project__project_groups__uuid',
+                'instance__cloud_project_membership__project__project_groups__name',
+            ],
             'type': ['template_license__license_type'],
             'name': ['template_license__name'],
         }
 
         aggregate_fields = []
         for aggregate_parameter in aggregate_parameters:
-            if aggregate_parameter not in aggregate_paramenter_to_field_map:
+            if aggregate_parameter not in aggregate_parameter_to_field_map:
                 return Response('Licenses statistics can not be aggregated by %s' % aggregate_parameter,
                                 status=status.HTTP_400_BAD_REQUEST)
-            aggregate_fields += aggregate_paramenter_to_field_map[aggregate_parameter]
+            aggregate_fields += aggregate_parameter_to_field_map[aggregate_parameter]
 
         queryset = queryset.values(*aggregate_fields).annotate(count=django_models.Count('id', distinct=True))
         # This hack can be removed when https://code.djangoproject.com/ticket/16735 will be closed
         # Replace databases paths by normal names. Ex: instance__project__uuid is replaced by project_uuid
         name_replace_map = {
-            'instance__project__uuid': 'project_uuid',
-            'instance__project__name': 'project_name',
-            'instance__project__project_groups__uuid': 'project_group_uuid',
-            'instance__project__project_groups__name': 'project_group_name',
+            'instance__cloud_project_membership__project__uuid': 'project_uuid',
+            'instance__cloud_project_membership__project__name': 'project_name',
+            'instance__cloud_project_membership__project__project_groups__uuid': 'project_group_uuid',
+            'instance__cloud_project_membership__project__project_groups__name': 'project_group_name',
             'template_license__license_type': 'type',
             'template_license__name': 'name'
         }
@@ -448,25 +480,32 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
 
 
 class ServiceFilter(django_filters.FilterSet):
-    project_groups = django_filters.CharFilter(
-        name='project__project_groups__name',
+    project_group_name = django_filters.CharFilter(
+        name='cloud_project_membership__project__project_groups__name',
         distinct=True,
         lookup_type='icontains',
     )
     project_name = django_filters.CharFilter(
-        name='project__name',
+        name='cloud_project_membership__project__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
+    # FIXME: deprecated, use project_group_name instead
+    project_groups = django_filters.CharFilter(
+        name='cloud_project_membership__project__project_groups__name',
         distinct=True,
         lookup_type='icontains',
     )
 
     hostname = django_filters.CharFilter(lookup_type='icontains')
     customer_name = django_filters.CharFilter(
-        name='project__customer__name',
-        lookup_type='icontains'
+        name='cloud_project_membership__project__customer__name',
+        lookup_type='icontains',
     )
     template_name = django_filters.CharFilter(
         name='template__name',
-        lookup_type='icontains'
+        lookup_type='icontains',
     )
     agreed_sla = django_filters.NumberFilter()
     actual_sla = django_filters.NumberFilter(name='slas__value')
@@ -485,33 +524,43 @@ class ServiceFilter(django_filters.FilterSet):
         order_by = [
             'hostname',
             'template__name',
-            'project__customer__name',
-            'project__name',
-            'project__project_groups__name',
+            'cloud_project_membership__project__customer__name',
+            'cloud_project_membership__project__name',
+            'cloud_project_membership__project__project_groups__name',
             'agreed_sla',
             'slas__value',
             # desc
             '-hostname',
             '-template__name',
-            '-project__customer__name',
-            '-project__name',
-            '-project__project_groups__name',
+            '-cloud_project_membership__project__customer__name',
+            '-cloud_project_membership__project__name',
+            '-cloud_project_membership__project__project_groups__name',
             '-agreed_sla',
             '-slas__value',
         ]
+        order_by_mapping = {
+            # Proper field naming
+            'customer_name': 'cloud_project_membership__project__customer__name',
+            'project_name': 'cloud_project_membership__project__name',
+            'project_group_name': 'cloud_project_membership__project__project_groups__name',
+            'template_name': 'template__name',
+            'actual_sla': 'slas__value',
+
+            # Backwards compatibility
+            'project__customer__name': 'cloud_project_membership__project__customer__name',
+            'project__name': 'cloud_project_membership__project__name',
+            'project__project_groups__name': 'cloud_project_membership__project__project_groups__name',
+        }
 
 
 # XXX: This view has to be rewritten or removed after haystack implementation
 class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     queryset = models.Instance.objects.exclude(
-        state__in=(
-            models.Instance.States.DELETED,
-            models.Instance.States.DELETING,
-        )
+        state=models.Instance.States.DELETING,
     )
     serializer_class = ServiceSerializer
     lookup_field = 'uuid'
-    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
+    filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     filter_class = ServiceFilter
 
     def _get_period(self):
@@ -533,8 +582,8 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
                 'template__name',
                 'agreed_sla',
                 'slas__value', 'slas__period',
-                'project__customer__name',
-                'project__name'
+                'cloud_project_membership__project__customer__name',
+                'cloud_project_membership__project__name',
             )
         return queryset
 
@@ -562,7 +611,8 @@ class ResourceStatsView(views.APIView):
             raise exceptions.PermissionDenied()
 
     def _get_quotas_stats(self, clouds):
-        quotas_list = ResourceQuota.objects.filter(project_quota__clouds__in=clouds).values('vcpu', 'ram', 'storage')
+        quotas_list = models.ResourceQuota.objects.filter(
+            cloud_project_membership__cloud__in=clouds).values('vcpu', 'ram', 'storage')
         return {
             'vcpu_quota': sum([q['vcpu'] for q in quotas_list]),
             'memory_quota': sum([q['ram'] for q in quotas_list]),
@@ -599,7 +649,7 @@ class CustomerStatsView(views.APIView):
             project_groups_count = structure_filters.filter_queryset_for_user(
                 ProjectGroup.objects.filter(customer=customer), request.user).count()
             instances_count = structure_filters.filter_queryset_for_user(
-                models.Instance.objects.filter(project__customer=customer), request.user).count()
+                models.Instance.objects.filter(cloud_project_membership__project__customer=customer), request.user).count()
             customer_statistics.append({
                 'name': customer.name, 'projects': projects_count,
                 'project_groups': project_groups_count, 'instances': instances_count
@@ -633,7 +683,12 @@ class UsageStatsView(views.APIView):
                 'Get parameter "aggregate" can take only this values: ' % ', '.join(self.aggregate_models.keys()),
                 status=status.HTTP_400_BAD_REQUEST)
 
-        for aggregate_object in self._get_aggregate_queryset(request, aggregate_model_name):
+        aggregate_queryset = self._get_aggregate_queryset(request, aggregate_model_name)
+
+        if 'uuid' in request.QUERY_PARAMS:
+            aggregate_queryset = aggregate_queryset.filter(uuid=request.QUERY_PARAMS['uuid'])
+
+        for aggregate_object in aggregate_queryset:
             instances = models.Instance.objects.filter(
                 **self._get_aggregate_filter(aggregate_model_name, aggregate_object))
             if instances:
@@ -792,3 +847,39 @@ class IpMappingViewSet(core_viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated,
                           permissions.DjangoObjectPermissions)
     filter_class = IpMappingFilter
+
+
+class QuotaStatsView(views.APIView):
+
+    def _get_sum_of_quotas(self, memberships):
+        fields = ['vcpu', 'ram', 'storage', 'max_instances', 'backup_storage']
+        sum_of_quotas = defaultdict(lambda: 0)
+
+        for membership in memberships:
+            # quota fields:
+            try:
+                for field in fields:
+                    sum_of_quotas[field] += getattr(membership.resource_quota, field)
+            except models.ResourceQuota.DoesNotExist:
+                # we ignore memberships without quotas
+                pass
+            # quota usage fields:
+            try:
+                for field in fields:
+                    sum_of_quotas[field + '_usage'] += getattr(membership.resource_quota_usage, field)
+            except models.ResourceQuotaUsage.DoesNotExist:
+                # we ignore memberships without quotas
+                pass
+        return sum_of_quotas
+
+    def get(self, request, format=None):
+        serializer = serializers.StatsAggregateSerializer(data={
+            'model_name': request.QUERY_PARAMS.get('aggregate', 'customer'),
+            'uuid': request.QUERY_PARAMS.get('uuid'),
+        })
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        memberships = serializer.get_memberships(request.user)
+        sum_of_quotas = self._get_sum_of_quotas(memberships)
+        return Response(sum_of_quotas, status=status.HTTP_200_OK)

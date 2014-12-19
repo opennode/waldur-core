@@ -1,9 +1,9 @@
 Installation from RPM repository
 --------------------------------
 
-To install NodeConductor standalone on RHEL6-compatible operating systems (CentOS 6, Scientific Linux 6):
+To install NodeConductor standalone on RHEL7-compatible operating systems (CentOS 7, Scientific Linux 7):
 
-.. literalinclude:: bootstrap.sh
+.. literalinclude:: bootstrap-centos7.sh
    :language: bash
 
 All done. NodeConductor API should be available at http://myserver/api/ (port 80).
