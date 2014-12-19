@@ -116,7 +116,7 @@ DATABASES = {
     #   CREATE USER 'nodeconductor'@'%' IDENTIFIED BY 'nodeconductor';
     #   GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'%';
     #
-    # Example: install MySQL-python in RHEL6, CentOS 6.x etc.:
+    # Example: install MySQL-python in CentOS:
     #
     #   yum install MySQL-python
     #

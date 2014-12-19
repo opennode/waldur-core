@@ -187,8 +187,14 @@ class LicenseStatsTests(test.APITransactionTestCase):
         self.second_project = structure_factories.ProjectFactory(customer=self.customer, name='second_project')
         self.second_project.project_groups.add(self.second_group)
         # every project has 1 instance with first and second template licenses:
-        self.first_instance = factories.InstanceFactory(template=self.template, project=self.first_project)
-        self.second_instance = factories.InstanceFactory(template=self.template, project=self.second_project)
+        self.first_instance = factories.InstanceFactory(
+            template=self.template,
+            cloud_project_membership__project=self.first_project,
+        )
+        self.second_instance = factories.InstanceFactory(
+            template=self.template,
+            cloud_project_membership__project=self.second_project,
+        )
         # also first group has manger:
         self.admin = structure_factories.UserFactory()
         self.first_project.add_user(self.admin, structure_models.ProjectRole.ADMINISTRATOR)
@@ -280,14 +286,14 @@ class LicenseStatsTests(test.APITransactionTestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), models.InstanceLicense.objects.filter(
-            instance__project=self.first_project).all().count())
+            instance__cloud_project_membership__project=self.first_project).all().count())
 
     def test_group_manager_can_see_stats_only_for_his_project_group(self):
         self.client.force_authenticate(self.group_manager)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), models.InstanceLicense.objects.filter(
-            instance__project__project_groups=self.first_group).all().count())
+            instance__cloud_project_membership__project__project_groups=self.first_group).all().count())
 
 
 class LicensePermissionsTest(helpers.PermissionsTest):

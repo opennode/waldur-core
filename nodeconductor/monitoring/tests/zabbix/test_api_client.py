@@ -44,27 +44,9 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.instance = Mock()
         self.instance.uuid = 'qwedaqwedawqwqrt123sdasd123123'
         self.instance.hostname = 'test_instance'
-        self.instance.project = self.project
+        self.instance.cloud_project_membership.project = self.project
 
     # Host creation
-    @unittest.skip('Disabled as a single hostgroup is going to be used for now')
-    def test_create_host_creates_group_if_it_does_not_exist(self):
-        self.api.hostgroup.exists.return_value = False
-
-        self.zabbix_client.create_host(self.instance)
-
-        expected_group_name = self.zabbix_client.get_hostgroup_name(self.project)
-        self.api.hostgroup.exists.assert_called_once_with(name=expected_group_name)
-        self.api.hostgroup.create.assert_called_once_with({'name': expected_group_name})
-
-    @unittest.skip('Disabled as a single hostgroup is going to be used for now')
-    def test_create_host_takes_group_if_it_exist(self):
-        self.zabbix_client.create_host(self.instance)
-
-        expected_group_name = self.zabbix_client.get_hostgroup_name(self.project)
-        self.api.hostgroup.exists.assert_called_once_with(name=expected_group_name)
-        self.api.hostgroup.get.assert_called_once_with(filter={'name': expected_group_name})
-
     def test_create_host_creates_new_host_if_it_does_not_exist(self):
         self.api.host.exists.return_value = False
 

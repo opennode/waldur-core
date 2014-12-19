@@ -1,12 +1,13 @@
 from __future__ import unicode_literals
 
+from django.db import models as django_models
 from django.contrib import auth
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 
-from nodeconductor.core import serializers as core_serializers
-from nodeconductor.structure import models
+from nodeconductor.core import serializers as core_serializers, utils as core_utils
+from nodeconductor.structure import models, filters
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 
@@ -28,20 +29,15 @@ class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
 class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.ProjectGroup
-
-
-class ResourceQuotaSerializer(serializers.ModelSerializer):
-    class Meta(object):
-        model = models.ResourceQuota
-        fields = ('vcpu', 'ram', 'storage', 'max_instances')
+        fields = ('url', 'name', 'uuid')
 
 
 class ProjectSerializer(core_serializers.CollectedFieldsMixin,
                         core_serializers.RelatedResourcesFieldMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
-    resource_quota = ResourceQuotaSerializer(read_only=True)
-    resource_quota_usage = ResourceQuotaSerializer(read_only=True)
+    resource_quota = serializers.SerializerMethodField('get_resource_quota')
+    resource_quota_usage = serializers.SerializerMethodField('get_resource_quota_usage')
 
     class Meta(object):
         model = models.Project
@@ -52,14 +48,37 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
     def get_related_paths(self):
         return 'customer',
 
+    def get_resource_quota(self, obj):
+        # XXX: this method adds dependencies from 'iaas' application. It has to be removed or refactored.
+        from nodeconductor.iaas import models as iaas_models
+        quotas = list(iaas_models.ResourceQuota.objects.filter(cloud_project_membership__project=obj))
+        return {
+            'vcpu': sum([q.vcpu for q in quotas]),
+            'ram': sum([q.ram for q in quotas]),
+            'storage': sum([q.storage for q in quotas]),
+            'max_instances': sum([q.max_instances for q in quotas]),
+            'backup_storage': sum([q.backup_storage for q in quotas]),
+        }
+
+    def get_resource_quota_usage(self, obj):
+        # XXX: this method adds dependencies from 'iaas' application. It has to be removed or refactored.
+        from nodeconductor.iaas import models as iaas_models
+        quotas = list(iaas_models.ResourceQuotaUsage.objects.filter(cloud_project_membership__project=obj))
+        return {
+            'vcpu_usage': sum([q.vcpu for q in quotas]),
+            'ram_usage': sum([q.ram for q in quotas]),
+            'storage_usage': sum([q.storage for q in quotas]),
+            'max_instances_usage': sum([q.max_instances for q in quotas]),
+            'backup_storage_usage': sum([q.backup_storage for q in quotas]),
+        }
+
 
 class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                               serializers.HyperlinkedModelSerializer):
-    resource_quota = ResourceQuotaSerializer(required=False)
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'name', 'customer', 'description', 'resource_quota')
+        fields = ('url', 'name', 'customer', 'description')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
@@ -324,21 +343,38 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = User
-        fields = ('url',
-                  'uuid', 'username',
-                  'full_name', 'native_name',
-                  'job_title', 'email', 'organization', 'phone_number',
-                  'civil_number',
-                  'description',
-                  'is_staff', 'is_active',
-                  'project_groups',
+        fields = (
+            'url',
+            'uuid', 'username',
+            'full_name', 'native_name',
+            'job_title', 'email', 'organization', 'phone_number',
+            'civil_number',
+            'description',
+            'is_staff', 'is_active',
+            'project_groups',
         )
         read_only_fields = (
             'uuid',
-            'is_staff',
-            'username', 'civil_number',
         )
         lookup_field = 'uuid'
+
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        non_nullable_char_fields = [
+            'job_title',
+            'organization',
+            'phone_number',
+            'civil_number',
+            'description',
+            'full_name',
+            'native_name',
+        ]
+        for source in attrs:
+            if source in non_nullable_char_fields:
+                value = attrs[source]
+                if value is None:
+                    attrs[source] = ''
+        return attrs
 
     def get_fields(self):
         fields = super(UserSerializer, self).get_fields()
@@ -353,8 +389,42 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             del fields['is_active']
             del fields['is_staff']
             fields['description'].read_only = True
+            fields['civil_number'].read_only = True
+
+        if request.method in ('PUT', 'PATCH'):
+            fields['username'].read_only = True
+            fields['username'].read_only = True
 
         return fields
+
+
+class CreationTimeStatsSerializer(serializers.Serializer):
+    MODEL_NAME_CHOICES = (('project', 'project'), ('customer', 'customer'), ('project_group', 'project_group'))
+    MODEL_CLASSES = {'project': models.Project, 'customer': models.Customer, 'project_group': models.ProjectGroup}
+
+    model_name = serializers.ChoiceField(choices=MODEL_NAME_CHOICES)
+    start_timestamp = serializers.IntegerField(min_value=0)
+    end_timestamp = serializers.IntegerField(min_value=0)
+    segments_count = serializers.IntegerField(min_value=0)
+
+    def get_stats(self, user):
+        start_datetime = core_utils.timestamp_to_datetime(self.data['start_timestamp'])
+        end_datetime = core_utils.timestamp_to_datetime(self.data['end_timestamp'])
+
+        model = self.MODEL_CLASSES[self.data['model_name']]
+        filtered_queryset = filters.filter_queryset_for_user(model.objects.all(), user)
+        created_datetimes = (
+            filtered_queryset
+            .filter(created__gte=start_datetime, created__lte=end_datetime)
+            .values('created')
+            .annotate(count=django_models.Count('id', distinct=True)))
+
+        time_and_value_list = [
+            (core_utils.datetime_to_timestamp(dt['created']), dt['count']) for dt in created_datetimes]
+
+        return core_utils.format_time_and_value_to_segment_list(
+            time_and_value_list, self.data['segments_count'],
+            self.data['start_timestamp'], self.data['end_timestamp'])
 
 
 class PasswordSerializer(serializers.Serializer):

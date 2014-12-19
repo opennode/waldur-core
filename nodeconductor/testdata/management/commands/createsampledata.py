@@ -1,3 +1,7 @@
+# -*- coding: utf-8
+
+from __future__ import unicode_literals
+
 import random
 import string
 from decimal import Decimal
@@ -5,9 +9,10 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.iaas.models import Cloud, CloudProjectMembership, IpMapping
+from nodeconductor.iaas.models import Cloud, CloudProjectMembership, IpMapping, SecurityGroup
 from nodeconductor.core.models import User, SshPublicKey
-from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
+from nodeconductor.iaas.models import (
+    Template, TemplateLicense, Instance, InstanceSecurityGroup, ResourceQuota, ResourceQuotaUsage)
 from nodeconductor.structure.models import *
 
 
@@ -86,8 +91,12 @@ Arguments:
         #  - Use case 12: User has no roles at all -- Zed
         data = {
             'users': {
-                'Alice': {},
-                'Bob': {},
+                'Alice': {
+                    'email': 'alice@example.com',
+                },
+                'Bob': {
+                    'email': 'bob@example.com',
+                },
                 'Charlie': {
                     'ssh_keys': {
                         'Public key 1': (
@@ -96,7 +105,8 @@ Arguments:
                             "ArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9duD2C"
                             "05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
                             "vEAFdOJcqjyyH4FOGYa8usP1 charlie@example.com"),
-                    }
+                    },
+                    'email': 'charlie@example.com',
                 },
                 'Dave': {
                     'ssh_keys': {
@@ -106,7 +116,8 @@ Arguments:
                             "c2HjCVGacJMhDtZ64FBSHdbfFwNLoTDErzQhQPLIQ2PrOSGKgn14KjVjqyvSRSE1lP//X6Uf0EXRe2FXfxVZYj1"
                             "Wh0QNsHyCG/6S8s875wlpiV2yhCN+RIBqUt+K3f9kTmkJrHQ4R//7jxbfM5BPRFZwJNcqGTzEY9A+U35/Bqylw3w"
                             "d3HZUq+o7p/fUPf1funstUOmyKdf6UNykt dave@example.com"),
-                    }
+                    },
+                    'email': 'dave@example.com',
                 },
                 'Erin': {
                     'ssh_keys': {
@@ -116,14 +127,22 @@ Arguments:
                             "Nv64NRwZRbC6b1PB1Wm5mkoF31Uzy76pq3pf++rfh/s+Wg+vAyLy+WaSqeqvFxmeP7np/ByCv8zDAJClX9Cbhj3+"
                             "IRm2TvESUOXz8kj1g7/dcFBSDjb098EeFmzpywreSjgjRFwbkfu7bU0Jo0+CT/zWgEDZstl9Hk0ln8fepYAdGYty"
                             "565XosxwbWruVIfIJm/4kNo9enp5 erin@example.com"),
-                    }
+                    },
+                    'email': 'erin@example.com',
                 },
-                'Frank': {},
+                'Frank': {
+                    'email': 'frank@example.com',
+                },
                 'Walter': {
                     'is_staff': True,
+                    'email': 'walter@example.com',
                 },
-                'Zed': {},
-                'Gus': {},
+                'Zed': {
+                    'email': 'zed@example.com',
+                },
+                'Gus': {
+                    'email': 'gus@example.com',
+                },
                 'Harry': {
                     'ssh_keys': {
                         'Public key 1': (
@@ -132,19 +151,21 @@ Arguments:
                             "KUfyhrwZtYuXKQ4B8LgIO2oMmi3UVyW8IwUGkQMEY9vxKKv+ka2aioZJBJudFN2MVNlC8M6iYkMx22yS/c3arrbt"
                             "zKYbmxqYERXHlCqwd/+S7NuYdL4oG4U+juwQWHJK0qhX8O/M+1lxWKPqI+w/ClCpf4oaw158GfmzlSM3nqza8te8"
                             "SJXgWJl48XMIJAMeAgpkyYt8Zpwt harry@example.com"),
-                    }
+                    },
+                    'email': 'harry@example.com',
                 },
             },
             'customers': {
                 'Ministry of Bells': {
                     'owners': ['Alice', 'Bob'],
+                    'abbreviation': 'MoB',
                     'clouds': {
                         'Stratus': {
                             'flavors': {
-                                'm1.tiny': { 'cores': 1, 'ram': 512, 'disk': 1024 },
+                                'm1.tiny': {'cores': 1, 'ram': 512, 'disk': 1024},
                             },
                             'templates': {
-                                'CentOS 7 minimal jmHCYir': { 'os': 'CentOS 7' },
+                                'CentOS 7 minimal jmHCYir': {'os': 'CentOS 7'},
                             },
                         },
                     },
@@ -163,13 +184,14 @@ Arguments:
                 },
                 'Ministry of Whistles': {
                     'owners': ['Bob'],
+                    'abbreviation': 'MoW',
                     'clouds': {
                         'Cumulus': {
                             'flavors': {
-                                'm1.medium': { 'cores': 2, 'ram': 4096, 'disk': 10 * 1024 },
+                                'm1.medium': {'cores': 2, 'ram': 4096, 'disk': 10 * 1024},
                             },
                             'templates': {
-                                'Windows 3.11 jWxL': { 'os': 'Windows 3.11' },
+                                'Windows 3.11 jWxL': {'os': 'Windows 3.11'},
                             }
                         },
                     },
@@ -197,13 +219,20 @@ Arguments:
         users = {}
         for username, user_params in data['users'].items():
             self.stdout.write('Creating user "%s"...' % username)
-            users[username], was_created = User.objects.get_or_create(username=username)
+            users[username], was_created = User.objects.get_or_create(
+                username=username,
+                email= user_params['email'],
+                full_name='%s Lebowski' % username,
+                native_name='%s Leböwski' % username,
+                phone_number='+1-202-555-0177',
+            )
             self.stdout.write('User "%s" %s.' % (username, "created" if was_created else "already exists"))
 
             users[username].set_password(username)
             if not users[username].is_staff and 'is_staff' in user_params and user_params['is_staff']:
                 self.stdout.write('Promoting user "%s" to staff...' % username)
                 users[username].is_staff = True
+                users[username].job_title = 'Support'
             users[username].save()
 
             if 'ssh_keys' in user_params:
@@ -218,6 +247,12 @@ Arguments:
             self.stdout.write('Creating customer "%s"...' % customer_name)
             customer, was_created = Customer.objects.get_or_create(name=customer_name)
             self.stdout.write('Customer "%s" %s.' % (customer_name, "created" if was_created else "already exists"))
+
+            if 'abbreviation' in customer_params:
+                abbreviation = customer_params['abbreviation']
+                self.stdout.write('Setting abbreviation of a customer "%s"...' % abbreviation)
+                customer.abbreviation = abbreviation
+                customer.save()
 
             for username in customer_params['owners']:
                 self.stdout.write('Adding user "%s" as owner of customer "%s"...' % (username, customer_name))
@@ -366,15 +401,29 @@ Arguments:
 
         cloud = self.create_cloud(customer)
 
+        cpm_1 = CloudProjectMembership.objects.create(
+            project=projects[0],
+            cloud=cloud,
+            tenant_id='A'
+        )
+        cpm_2 = CloudProjectMembership.objects.create(
+            project=projects[1],
+            cloud=cloud,
+            tenant_id='B'
+        )
+
         # Use Case 5: User has roles in several projects of the same customer
         user1 = self.create_user()
         projects[0].add_user(user1, ProjectRole.MANAGER)
         projects[1].add_user(user1, ProjectRole.ADMINISTRATOR)
 
+        self.create_resource_quotas(cpm_1)
+        self.create_resource_quotas(cpm_2)
+
         # add cloud to both of the projects
-        self.create_instance(user1, projects[0], cloud.flavors.all()[0], cloud.images.filter(
+        self.create_instance(user1, cpm_1, cloud.flavors.all()[0], cloud.images.filter(
             template__isnull=False)[0].template)
-        self.create_instance(user1, projects[1], cloud.flavors.all()[1], cloud.images.filter(
+        self.create_instance(user1, cpm_2, cloud.flavors.all()[1], cloud.images.filter(
             template__isnull=False)[1].template)
 
         # Use Case 6: User owns a customer
@@ -414,26 +463,30 @@ Arguments:
         # Use Case 3: User that is manager of a project
         project.add_user(self.create_user(), ProjectRole.MANAGER)
 
-        # Adding quota to project:
-        print 'Creating quota for project %s' % project
-        project.resource_quota = ResourceQuota.objects.create(vcpu=random.randint(60, 255),
-                                                              ram=random.randint(60, 255),
-                                                              storage=random.randint(60, 255),
-                                                              max_instances=random.randint(60, 255))
-        print 'Generating approximate quota consumption for project %s' % project
-        project.resource_quota_usage = ResourceQuota.objects.\
-            create(vcpu=project.resource_quota.vcpu - random.randint(0, 50),
-                   ram=project.resource_quota.ram - random.randint(0, 50),
-                   storage=project.resource_quota.storage - random.randint(0, 50),
-                   max_instances=project.resource_quota.max_instances - random.randint(0, 50))
-        project.save()
-
         print 'Creating IP mapping of a project %s' % project
         public_ip = '84.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3))
         private_ip = '10.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3))
         IpMapping.objects.create(public_ip=public_ip, private_ip=private_ip, project=project)
 
         return project
+
+    def create_resource_quotas(self, membership):
+        # Adding quota to project:
+        print 'Creating quota for membership %s' % membership
+        resource_quota = ResourceQuota.objects.create(vcpu=random.randint(60, 255),
+                                                      ram=random.randint(60, 255),
+                                                      storage=random.randint(60, 255) * 1024,
+                                                      max_instances=random.randint(60, 255),
+                                                      backup_storage=random.randint(60, 255) * 1024,
+                                                      cloud_project_membership=membership)
+        print 'Generating approximate quota consumption for membership %s' % membership
+        ResourceQuotaUsage.objects.\
+            create(vcpu=resource_quota.vcpu - random.randint(0, 50),
+                   ram=resource_quota.ram - random.randint(0, 50),
+                   storage=resource_quota.storage - random.randint(0, 50),
+                   max_instances=resource_quota.max_instances - random.randint(0, 50),
+                   backup_storage=resource_quota.backup_storage - random.randint(0, 50),
+                   cloud_project_membership=membership)
 
     def create_user(self):
         username = 'user%s' % random_string(3, 15, alphabet=string.digits)
@@ -454,7 +507,7 @@ Arguments:
         user.save()
         return user
 
-    def create_instance(self, user, project, flavor, template):
+    def create_instance(self, user, cloud_project_membership, flavor, template):
         internal_ips = ','.join('10.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3)) for _ in range(3))
         external_ips = ','.join('.'.join('%s' % random.randint(0, 255) for _ in range(4)) for _ in range(3))
         ssh_public_key = SshPublicKey.objects.create(
@@ -466,19 +519,23 @@ Arguments:
                         "D2C05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
                         "vEAFdOJcqjyyH4FOGYa8usP1 test"),
         )
-        print 'Creating instance for project %s' % project
+        print 'Creating instance for project %s' % cloud_project_membership
         instance = Instance.objects.create(
             hostname='host %s' % random.randint(0, 255),
-            project=project,
-            flavor=flavor,
             template=template,
             internal_ips=internal_ips,
             external_ips=external_ips,
             start_time=timezone.now(),
-            ssh_public_key=ssh_public_key,
             system_volume_size=flavor.disk,
             agreed_sla=template.sla_level,
+            ram=flavor.ram,
+            cores=flavor.cores,
+            key_name=ssh_public_key.name,
+            key_fingerprint=ssh_public_key.fingerprint,
+            cloud_project_membership=cloud_project_membership
         )
 
-        cmp = CloudProjectMembership.objects.get(project=project, cloud=flavor.cloud)
-        InstanceSecurityGroup.objects.create(instance=instance, security_group=cmp.security_groups.first())
+        sec_group = SecurityGroup.objects.filter(
+            cloud_project_membership=cloud_project_membership,
+        ).first()
+        InstanceSecurityGroup.objects.create(instance=instance, security_group=sec_group)

@@ -18,18 +18,20 @@ def _get_service_list_url():
 
 def _service_to_dict(service):
     project_groups = []
-    for project_group in service.project.project_groups.all():
+    for project_group in service.cloud_project_membership.project.project_groups.all():
         project_groups.append(
             {
                 'url': 'http://testserver' + reverse('projectgroup-detail', kwargs={'uuid': str(project_group.uuid)}),
-                'name': project_group.name
+                'uuid': project_group.uuid.hex,
+                'name': project_group.name,
             })
     return {
         'url': _get_service_url(service),
-        'project_name': service.project.name,
+        'uuid': service.uuid.hex,
+        'project_name': service.cloud_project_membership.project.name,
         'hostname': service.hostname,
         'template_name': service.template.name,
-        'customer_name': service.project.customer.name,
+        'customer_name': service.cloud_project_membership.project.customer.name,
         'project_groups': project_groups,
         'actual_sla': None,
         'agreed_sla': service.agreed_sla,
@@ -57,8 +59,10 @@ class ServicesListRetrieveTest(test.APISimpleTestCase):
         project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
 
         models.Instance.objects.all().delete()
-        self.manager_instance = factories.InstanceFactory(project=self.manager_project)
-        self.group_manager_instance = factories.InstanceFactory(project=self.group_manager_project)
+        self.manager_instance = factories.InstanceFactory(
+            cloud_project_membership__project=self.manager_project)
+        self.group_manager_instance = factories.InstanceFactory(
+            cloud_project_membership__project=self.group_manager_project)
         self.other_instance = factories.InstanceFactory()
 
     def test_manager_can_list_only_services_from_his_projects(self):
@@ -124,7 +128,7 @@ class PermissionsTest(helpers.PermissionsTest):
         project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
 
         models.Instance.objects.all().delete()
-        self.instance = factories.InstanceFactory(project=self.project)
+        self.instance = factories.InstanceFactory(cloud_project_membership__project=self.project)
         self.other_instance = factories.InstanceFactory()
 
     def get_urls_configs(self):

@@ -9,11 +9,40 @@ import mock
 
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.backend.openstack import OpenStackBackend
-from nodeconductor.iaas.models import Image, Flavor
+from nodeconductor.iaas.models import Flavor, Instance, Image, ResourceQuota, ResourceQuotaUsage
 from nodeconductor.iaas.tests import factories
 
-NovaFlavor = collections.namedtuple('NovaFlavor',
-                                    ['id', 'name', 'vcpus', 'ram', 'disk'])
+NovaFlavor = collections.namedtuple(
+    'NovaFlavor',
+    ['id', 'name', 'vcpus', 'ram', 'disk']
+)
+
+# NovaServer = collections.namedtuple(
+#     'NovaServer',
+#     [
+#         'id',
+#         'name',
+#         'flavor',
+#         'security_groups',
+#         'addresses',
+#
+#         'OS-SRV-USG:launched_at',  # optional
+#         'OS-EXT-STS:power_state',  # optional
+#
+#         'os-extended-volumes:volumes_attached',
+#
+#
+#         'OS-EXT-STS:task_state',
+#
+#         'image',
+#
+#         'updated',
+#         'hostId',
+#         'OS-EXT-SRV-ATTR:host',
+#         'key_name',
+#         'metadata',
+#     ]
+# )
 
 GlanceImage = collections.namedtuple(
     'GlanceImage',
@@ -64,8 +93,21 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.nova_client = mock.Mock()
         self.neutron_client = mock.Mock()
         self.cloud_account = mock.Mock()
-        self.membership = mock.Mock()
+        self.cinder_client = mock.Mock()
+        self.membership = mock.Mock()  # TODO: use real membership, not mocked and unite with test class below
         self.tenant = mock.Mock()
+
+        # client methods:
+        self.nova_quota = mock.Mock(cores=20, instances=10, ram=51200)
+        self.nova_client.quotas.get = mock.Mock(return_value=self.nova_quota)
+        self.cinder_quota = mock.Mock(gigabytes=1000)
+        self.cinder_client.quotas.get = mock.Mock(return_value=self.cinder_quota)
+        self.volumes = [mock.Mock(size=10 * i, id=i) for i in range(5)]
+        self.flavors = [mock.Mock(ram=i, id=i, vcpus=i) for i in range(4)]
+        self.instances = [mock.Mock(flavor={'id': i}) for i in range(2)]
+        self.cinder_client.volumes.list = mock.Mock(return_value=self.volumes)
+        self.nova_client.servers.list = mock.Mock(return_value=self.instances)
+        self.nova_client.flavors.list = mock.Mock(return_value=self.flavors)
 
         # Mock low level non-AbstractCloudBackend api methods
         self.backend = OpenStackBackend()
@@ -74,6 +116,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.backend.create_keystone_client = mock.Mock(return_value=self.keystone_client)
         self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
         self.backend.create_neutron_client = mock.Mock(return_value=self.neutron_client)
+        self.backend.create_cinder_client = mock.Mock(return_value=self.cinder_client)
         self.backend.get_or_create_tenant = mock.Mock(return_value=self.tenant)
         self.backend.get_or_create_user = mock.Mock(return_value=('john', 'doe'))
         self.backend.get_or_create_network = mock.Mock()
@@ -119,51 +162,6 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         with self.assertRaises(CloudBackendError):
             self.backend.push_membership(self.membership)
 
-    def test_push_security_groups_creates_unexisted_groups(self):
-        group1 = mock.Mock()
-        group2 = mock.Mock()
-
-        self.nova_client.security_groups.list = mock.Mock(return_value=[])
-        self.membership.security_groups.all = mock.Mock(return_value=[group1, group2])
-
-        self.backend.push_security_groups(self.membership)
-
-        self.backend.create_security_group.assert_any_call(group1, self.nova_client)
-        self.backend.create_security_group.assert_any_call(group2, self.nova_client)
-
-    def test_push_security_groups_updates_unsynchronized_groups(self):
-        group1 = mock.Mock()
-        group1.name = 'group1'
-        group1.id = 1
-        group1.backend_id = 1
-        group2 = mock.Mock()
-        group2.name = 'group2'
-        group2.id = 1
-
-        self.nova_client.security_groups.list = mock.Mock(return_value=[group2])
-        self.membership.security_groups.all = mock.Mock(return_value=[group1])
-
-        self.backend.push_security_groups(self.membership)
-
-        self.backend.update_security_group.assert_any_call(group1, self.nova_client)
-
-    def test_push_security_groups_deletes_unexisted_groups(self):
-        group1 = mock.Mock()
-        group1.name = 'group1'
-        group1.id = 1
-
-        self.nova_client.security_groups.list = mock.Mock(return_value=[group1])
-        self.membership.security_groups.all = mock.Mock(return_value=[])
-
-        self.backend.push_security_groups(self.membership)
-
-        self.backend.delete_security_group.assert_any_call(group1.id, self.nova_client)
-
-    def test_push_membership_security_groups_raises_cloud_backed_error_on_keystone_error(self):
-        self.backend.create_tenant_session.side_effect = keystone_exceptions.AuthorizationFailure()
-        with self.assertRaises(CloudBackendError):
-            self.backend.push_security_groups(self.membership)
-
     def test_get_resource_stats_gets_credetials_with_fiven_auth_url(self):
         auth_url = 'http://example.com/'
         self.backend.get_resource_stats(auth_url)
@@ -180,6 +178,134 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         auth_url = 'http://example.com/'
         self.backend.get_resource_stats(auth_url)
         self.nova_client.hypervisors.statistics.assert_called_once_with()
+
+    def test_pull_quota_resource_initiates_quota_parameters(self):
+        membership = factories.CloudProjectMembershipFactory(tenant_id='test_backend_id')
+        # when
+        self.backend.pull_resource_quota(membership)
+        # then
+        resource_quota = membership.resource_quota
+        self.assertEqual(resource_quota.ram, self.nova_quota.ram)
+        self.assertEqual(resource_quota.max_instances, self.nova_quota.instances)
+        self.assertEqual(resource_quota.vcpu, self.nova_quota.cores)
+        self.assertEqual(resource_quota.storage, self.cinder_quota.gigabytes * 1024)
+
+    def test_pull_quota_resource_calls_clients_quotas_gets_methods_with_membership_tenant_id(self):
+        membership = factories.CloudProjectMembershipFactory(tenant_id='test_backend_id')
+         # when
+        self.backend.pull_resource_quota(membership)
+        # then
+        self.nova_client.quotas.get.assert_called_once_with(tenant_id=membership.tenant_id)
+        self.cinder_client.quotas.get.assert_called_once_with(tenant_id=membership.tenant_id)
+
+    def test_pull_quota_resource_rewrite_old_resource_quota_data(self):
+        membership = factories.CloudProjectMembershipFactory(tenant_id='test_backend_id')
+        quota = factories.ResourceQuotaFactory(max_instances=3, cloud_project_membership=membership)
+        # when
+        self.backend.pull_resource_quota(membership)
+        # then
+        reread_quota = ResourceQuota.objects.get(id=quota.id)
+        self.assertEqual(reread_quota.max_instances, self.nova_quota.instances)
+
+    def test_pull_quota_resource_usage_initiates_quota_parameters(self):
+        membership = factories.CloudProjectMembershipFactory()
+        # when
+        self.backend.pull_resource_quota_usage(membership)
+        # then
+        resource_quota_usage = membership.resource_quota_usage
+        instance_flavors = [f for f in self.flavors if f.id in [i.flavor['id'] for i in self.instances]]
+        self.assertEqual(resource_quota_usage.ram, sum([f.ram for f in instance_flavors]))
+        self.assertEqual(resource_quota_usage.max_instances, len(self.instances))
+        self.assertEqual(resource_quota_usage.vcpu, sum([f.vcpus for f in instance_flavors]))
+        self.assertEqual(resource_quota_usage.storage, sum([int(v.size * 1024) for v in self.volumes]))
+
+    def test_pull_quota_resource_usage_rewrite_old_resource_quota_usage_data(self):
+        membership = factories.CloudProjectMembershipFactory()
+        quota_usage = factories.ResourceQuotaUsageFactory(max_instances=3, cloud_project_membership=membership)
+        # when
+        self.backend.pull_resource_quota_usage(membership)
+        # then
+        reread_quota_usage = ResourceQuotaUsage.objects.get(id=quota_usage.id)
+        self.assertEqual(reread_quota_usage.max_instances, len(self.instances))
+
+    def test_pull_quota_resource_usage_intiates_backup_storage(self):
+        # this test will be removed, as soon as we can get backup storage size from openstack
+        from nodeconductor.backup.tests import factories as backup_factories
+        membership = factories.CloudProjectMembershipFactory()
+        instance = factories.InstanceFactory(cloud_project_membership=membership)
+        backup_schedule = backup_factories.BackupScheduleFactory(backup_source=instance)
+        # when
+        self.backend.pull_resource_quota_usage(membership)
+        # then
+        resource_quota_usage = membership.resource_quota_usage
+        self.assertEqual(
+            resource_quota_usage.backup_storage,
+            (instance.system_volume_size + instance.data_volume_size) * backup_schedule.maximal_number_of_backups)
+
+
+class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
+
+    def setUp(self):
+        self.keystone_client = mock.Mock()
+        self.nova_client = mock.Mock()
+        self.neutron_client = mock.Mock()
+        self.cloud_account = mock.Mock()
+        self.membership = factories.CloudProjectMembershipFactory()
+        self.tenant = mock.Mock()
+
+        # Mock low level non-AbstractCloudBackend api methods
+        self.backend = OpenStackBackend()
+        self.backend.create_admin_session = mock.Mock()
+        self.backend.create_user_session = mock.Mock()
+        self.backend.create_keystone_client = mock.Mock(return_value=self.keystone_client)
+        self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
+        self.backend.create_neutron_client = mock.Mock(return_value=self.neutron_client)
+        self.backend.get_or_create_tenant = mock.Mock(return_value=self.tenant)
+        self.backend.get_or_create_user = mock.Mock(return_value=('john', 'doe'))
+        self.backend.get_or_create_network = mock.Mock()
+        self.backend.ensure_user_is_tenant_admin = mock.Mock()
+        self.backend.push_security_group = mock.Mock()
+        self.backend.create_tenant_session = mock.Mock()
+        self.backend.create_security_group = mock.Mock()
+        self.backend.update_security_group = mock.Mock()
+        self.backend.delete_security_group = mock.Mock()
+        self.backend.push_security_group_rules = mock.Mock()
+
+    def test_push_security_groups_creates_unexisted_groups(self):
+        group1 = factories.SecurityGroupFactory(cloud_project_membership=self.membership)
+        group2 = factories.SecurityGroupFactory(cloud_project_membership=self.membership)
+        self.nova_client.security_groups.list = mock.Mock(return_value=[])
+        # when
+        self.backend.push_security_groups(self.membership)
+        # then
+        self.backend.create_security_group.assert_any_call(group1, self.nova_client)
+        self.backend.create_security_group.assert_any_call(group2, self.nova_client)
+
+    def test_push_security_groups_updates_unsynchronized_groups(self):
+        group1 = factories.SecurityGroupFactory(cloud_project_membership=self.membership, backend_id=1)
+        group2 = mock.Mock()
+        group2.name = 'group2'
+        group2.id = 1
+        self.nova_client.security_groups.list = mock.Mock(return_value=[group2])
+        # when
+        self.backend.push_security_groups(self.membership)
+        # then
+        self.backend.update_security_group.assert_any_call(group1, self.nova_client)
+
+    def test_push_security_groups_deletes_unexisted_groups(self):
+        group1 = mock.Mock()
+        group1.name = 'group1'
+        group1.id = 1
+        self.nova_client.security_groups.list = mock.Mock(return_value=[group1])
+        # when
+        self.backend.push_security_groups(self.membership)
+        # then
+        self.backend.delete_security_group.assert_any_call(str(group1.id), self.nova_client)
+
+    def test_push_membership_security_groups_raises_cloud_backed_error_on_keystone_error(self):
+        self.backend.create_tenant_session.side_effect = keystone_exceptions.AuthorizationFailure()
+        with self.assertRaises(CloudBackendError):
+            self.backend.push_security_groups(self.membership)
 
 
 class OpenStackBackendFlavorApiTest(TransactionTestCase):
@@ -270,23 +396,6 @@ class OpenStackBackendFlavorApiTest(TransactionTestCase):
             backend_id=self.flavors[1].backend_id).exists()
 
         self.assertFalse(is_present, 'Flavor should have been deleted from the database')
-
-    def test_pull_flavors_doesnt_delete_flavors_linked_to_instances(self):
-        # Given
-        factories.InstanceFactory.create(flavor=self.flavors[1])
-
-        self.nova_client.flavors.findall.return_value = [
-            nc_flavor_to_nova_flavor(self.flavors[0]),
-        ]
-
-        # When
-        self.backend.pull_flavors(self.cloud_account)
-
-        # Then
-        is_present = self.cloud_account.flavors.filter(
-            backend_id=self.flavors[1].backend_id).exists()
-
-        self.assertTrue(is_present, 'Flavor should have not been deleted from the database')
 
 
 class OpenStackBackendImageApiTest(TransactionTestCase):
@@ -500,6 +609,117 @@ class OpenStackBackendImageApiTest(TransactionTestCase):
             )
         except Image.DoesNotExist:
             self.fail("Image's backend_id should have been updated")
+
+
+class OpenStackBackendInstanceApiTest(TransactionTestCase):
+    def setUp(self):
+        self.nova_client = mock.Mock()
+        self.nova_client.servers.list.return_value = []
+        self.nova_client.servers.findall.return_value = []
+
+        self.membership = factories.CloudProjectMembershipFactory()
+
+        # Mock low level non-AbstractCloudBackend api methods
+        self.backend = OpenStackBackend()
+        self.backend.create_tenant_session = mock.Mock()
+        self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
+
+    # XXX: import only the 1st data volume, sort by device name
+
+    # Backend query tests
+    def test_pull_instances_filters_out_instances_booted_from_image(self):
+        self.when()
+
+        self.nova_client.servers.findall.assert_called_once_with(
+            image='',
+        )
+
+    # Deletion tests
+    def test_pull_instances_deletes_stable_instances_missing_in_backend(self):
+        # Given
+        membership_params = self._get_membership_params()
+
+        for state in Instance.States.STABLE_STATES:
+            factories.InstanceFactory(state=state, **membership_params)
+
+        self.when()
+
+        # Then
+        is_present = Instance.objects.filter(**membership_params).exists()
+
+        self.assertFalse(is_present, 'Instances should have been deleted from the database')
+
+    def test_pull_instances_doesnt_delete_unstable_instances_missing_in_backend(self):
+        # Given
+        membership_params = self._get_membership_params()
+
+        for state in Instance.States.UNSTABLE_STATES:
+            factories.InstanceFactory(state=state, **membership_params)
+
+        # When
+        self.when()
+
+        # Then
+        expected_instance_count = len(Instance.States.UNSTABLE_STATES)
+        actual_instance_count = Instance.objects.filter(**membership_params).count()
+
+        self.assertEqual(expected_instance_count, actual_instance_count,
+                         'No instances should have been deleted from the database')
+
+    # Creation tests
+    @unittest.skip("Not implemented yet")
+    def test_pull_instances_creates_instances_missing_in_database(self):
+        # Given
+        self.given_minimal_importable_instance()
+
+        # When
+        self.when()
+
+        # Then
+        membership_params = self._get_membership_params()
+
+        # TODO:
+        instance = Instance.objects.filter(backend_id='', **membership_params).first()
+        self.assertIsNotNone(instance,
+                             'Instance should have been created')
+
+    # Helper methods
+    def given_minimal_importable_instance(self):
+        # Create a flavor
+        flavor = NovaFlavor(next_unique_flavor_id(), 'id1', 3, 5, 8)
+
+        # from novaclient.v1_1.servers import Server as NovaServer
+
+        # Create a server
+        # server = mock.Mock(spec_set=NovaServer)
+        server = mock.Mock()
+        server.id = 'server-uuid-1'
+        server.name = 'hostname-1'
+        server.flavor = {
+            'id': flavor.id,
+            'links': [
+                {
+                    'href': 'http://example.com/TENANT-ID-1/flavors/%s' % flavor.id,
+                    'rel': 'bookmark',
+                }
+            ]
+        }
+        server.status = 'ACTIVE'
+        server.image = ''
+
+        # Mock volume fetches
+        # Mock flavor fetches
+        # Mock server fetches
+        self.nova_client.servers.findall.return_value = [server]
+
+    def when(self):
+        self.backend.pull_instances(self.membership)
+
+    def _get_membership_params(self):
+        return dict(
+            # XXX: Should we introduce ProjectMember mixin?
+            cloud_project_membership=self.membership,
+        )
 
 
 class OpenStackBackendHelperApiTest(unittest.TestCase):

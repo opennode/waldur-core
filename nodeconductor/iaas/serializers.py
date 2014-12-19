@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from rest_framework import serializers, status, exceptions
 
@@ -8,6 +9,7 @@ from nodeconductor.core import models as core_models, serializers as core_serial
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
+from nodeconductor.structure import filters as structure_filters
 
 
 class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
@@ -162,11 +164,32 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     security_groups = InstanceSecurityGroupSerializer(
         many=True, required=False, allow_add_remove=True, read_only=False)
+    project = serializers.HyperlinkedRelatedField(
+        view_name='project-detail',
+        lookup_field='uuid',
+        queryset=structure_models.Project.objects.all(),
+        required=True,
+        write_only=True,
+    )
+    flavor = serializers.HyperlinkedRelatedField(
+        view_name='flavor-detail',
+        lookup_field='uuid',
+        queryset=models.Flavor.objects.all(),
+        required=True,
+        write_only=True,
+    )
+    ssh_public_key = serializers.HyperlinkedRelatedField(
+        view_name='sshpublickey-detail',
+        lookup_field='uuid',
+        queryset=core_models.SshPublicKey.objects.all(),
+        required=True,
+        write_only=True,
+    )
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'description',
-                  'template', 'flavor', 'project', 'security_groups', 'ssh_public_key')
+        fields = ('url', 'uuid', 'hostname', 'description',
+                  'template', 'project', 'security_groups', 'flavor', 'ssh_public_key')
         lookup_field = 'uuid'
 
     def get_fields(self):
@@ -178,7 +201,6 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         except (KeyError, AttributeError):
             return fields
 
-        # TODO: Extract into a generic filter
         fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(user=user)
 
         return fields
@@ -191,6 +213,45 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
             del attrs[attr_name]
         return attrs
 
+    def validate(self, attrs):
+        flavor = attrs['flavor']
+        project = attrs['project']
+        membership_exists = models.CloudProjectMembership.objects.filter(
+            project=project,
+            cloud=flavor.cloud,
+        ).exists()
+
+        if not membership_exists:
+            raise ValidationError("Flavor is not within project's clouds.")
+
+        template = attrs['template']
+        image_exists = models.Image.objects.filter(template=template, cloud=flavor.cloud).exists()
+
+        if not image_exists:
+                raise serializers.ValidationError("Template %s is not available on cloud %s"
+                                                  % (template, flavor.cloud))
+
+        return attrs
+
+    def restore_object(self, attrs, instance=None):
+        key = attrs['ssh_public_key']
+        attrs['key_name'] = key.name
+        attrs['key_fingerprint'] = key.fingerprint
+
+        flavor = attrs['flavor']
+        attrs['cores'] = flavor.cores
+        attrs['ram'] = flavor.ram
+        attrs['system_volume_size'] = flavor.disk
+        attrs['cloud'] = flavor.cloud
+
+        membership = models.CloudProjectMembership.objects.get(
+            project=attrs['project'],
+            cloud=flavor.cloud,
+        )
+        attrs['cloud_project_membership'] = membership
+
+        return super(InstanceCreateSerializer, self).restore_object(attrs, instance)
+
 
 class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
 
@@ -199,7 +260,6 @@ class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Instance
-        # fields = ('url', 'hostname', 'description')
         fields = ('url', 'hostname', 'description', 'security_groups')
         lookup_field = 'uuid'
 
@@ -254,21 +314,19 @@ class InstanceLicenseSerializer(serializers.ModelSerializer):
 
 
 class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
-                         core_serializers.PermissionFieldFilteringMixin,
                          serializers.HyperlinkedModelSerializer):
     state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
-        source='project.project_groups', many=True, read_only=True)
+        source='cloud_project_membership.project.project_groups', many=True, read_only=True)
     external_ips = core_serializers.IPsField(source='external_ips', read_only=True)
     internal_ips = core_serializers.IPsField(source='internal_ips', read_only=True)
-    ssh_public_key_name = serializers.Field(source='ssh_public_key.name')
     backups = backup_serializers.BackupSerializer()
     backup_schedules = backup_serializers.BackupScheduleSerializer()
 
     security_groups = InstanceSecurityGroupSerializer(read_only=True)
     instance_licenses = InstanceLicenseSerializer(read_only=True)
     # special field for customer
-    customer_abbreviation = serializers.Field(source='project.customer.abbreviation')
+    customer_abbreviation = serializers.Field(source='cloud_project_membership.project.customer.abbreviation')
     template_os = serializers.Field(source='template.os')
 
     class Meta(object):
@@ -277,32 +335,37 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
             'url', 'uuid', 'hostname', 'description', 'start_time',
             'template', 'template_name', 'template_os',
             'cloud', 'cloud_name', 'cloud_uuid',
-            'flavor', 'flavor_name',
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_abbreviation',
-            'ssh_public_key', 'ssh_public_key_name',
+            'key_name', 'key_fingerprint',
             'project_groups',
             'security_groups',
             'external_ips', 'internal_ips',
             'state',
             'backups', 'backup_schedules',
             'instance_licenses',
+            'agreed_sla',
             'system_volume_size',
             'data_volume_size',
-            'agreed_sla'
+            'cores', 'ram'
         )
         read_only_fields = (
-            'ssh_public_key',
+            'key_name',
             'system_volume_size',
             'data_volume_size',
         )
         lookup_field = 'uuid'
 
-    def get_filtered_field_names(self):
-        return 'project', 'flavor'
-
+    # def get_filtered_field_names(self):
+    #     return 'project', 'cloud'
+    #
     def get_related_paths(self):
-        return 'flavor.cloud', 'template', 'project', 'flavor', 'project.customer'
+        return (
+            'template',
+            'cloud_project_membership.project',
+            'cloud_project_membership.project.customer',
+            'cloud_project_membership.cloud',
+        )
 
 
 class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
@@ -437,16 +500,18 @@ class ServiceSerializer(serializers.Serializer):
     url = serializers.SerializerMethodField('get_service_url')
     service_type = serializers.SerializerMethodField('get_service_type')
     hostname = serializers.Field()
+    uuid = serializers.Field()
     agreed_sla = serializers.Field()
     actual_sla = serializers.Field(source='slas__value')
     template_name = serializers.Field(source='template__name')
-    customer_name = serializers.Field(source='project__customer__name')
-    project_name = serializers.Field(source='project__name')
+    customer_name = serializers.Field(source='cloud_project_membership__project__customer__name')
+    project_name = serializers.Field(source='cloud_project_membership__project__name')
     project_groups = serializers.SerializerMethodField('get_project_groups')
 
     class Meta(object):
         fields = (
             'url',
+            'uuid',
             'hostname', 'template_name',
             'customer_name',
             'project_name', 'project_groups',
@@ -484,7 +549,7 @@ class ServiceSerializer(serializers.Serializer):
 
         service_instance = models.Instance.objects.get(uuid=obj['uuid'])
         groups = structure_serializers.BasicProjectGroupSerializer(
-            service_instance.project.project_groups.all(),
+            service_instance.cloud_project_membership.project.project_groups.all(),
             many=True,
             read_only=True,
             context={'request': request}
@@ -493,9 +558,9 @@ class ServiceSerializer(serializers.Serializer):
 
 
 class UsageStatsSerializer(serializers.Serializer):
-    segments_count = serializers.IntegerField()
-    start_timestamp = serializers.IntegerField()
-    end_timestamp = serializers.IntegerField()
+    segments_count = serializers.IntegerField(min_value=0)
+    start_timestamp = serializers.IntegerField(min_value=0)
+    end_timestamp = serializers.IntegerField(min_value=0)
     item = serializers.CharField()
 
     def validate_item(self, attrs, name):
@@ -516,3 +581,35 @@ class UsageStatsSerializer(serializers.Serializer):
 class SlaHistoryEventSerializer(serializers.Serializer):
     timestamp = serializers.IntegerField()
     state = serializers.CharField()
+
+
+class StatsAggregateSerializer(serializers.Serializer):
+    MODEL_NAME_CHOICES = (('project', 'project'), ('customer', 'customer'), ('project_group', 'project_group'))
+    MODEL_CLASSES = {
+        'project': structure_models.Project,
+        'customer': structure_models.Customer,
+        'project_group': structure_models.ProjectGroup,
+    }
+
+    model_name = serializers.ChoiceField(choices=MODEL_NAME_CHOICES)
+    uuid = serializers.CharField(required=False)
+
+    def get_projects(self, user):
+        model = self.MODEL_CLASSES[self.data['model_name']]
+        queryset = structure_filters.filter_queryset_for_user(model.objects.all(), user)
+
+        if 'uuid' in self.data and self.data['uuid']:
+            queryset = queryset.filter(uuid=self.data['uuid'])
+
+        if self.data['model_name'] == 'project':
+            return queryset.all()
+        elif self.data['model_name'] == 'project_group':
+            projects = structure_models.Project.objects.filter(project_groups__in=list(queryset))
+            return structure_filters.filter_queryset_for_user(projects, user)
+        else:
+            projects = structure_models.Project.objects.filter(customer__in=list(queryset))
+            return structure_filters.filter_queryset_for_user(projects, user)
+
+    def get_memberships(self, user):
+        projects = self.get_projects(user)
+        return models.CloudProjectMembership.objects.filter(project__in=projects).all()
