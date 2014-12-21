@@ -185,19 +185,77 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
 
     # Update tests:
-    def test_user_can_change_single_project_field(self):
+    def test_staff_user_can_change_single_project_field(self):
         self.client.force_authenticate(self.staff)
 
         response = self.client.patch(factories.ProjectFactory.get_url(self.project), {'name': 'New project name'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('New project name', response.data['name'])
+        self.assertEqual('New project name', response.data['name'])
+
+    def test_user_can_change_project_in_project_group_he_is_manager_of(self):
+        self.client.force_authenticate(self.group_manager)
+
+        response = self.client.patch(factories.ProjectFactory.get_url(self.project), {'name': 'New project name'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual('New project name', response.data['name'])
+        self.assertEqual(Project.objects.filter(uuid=self.project.uuid).first().name,
+                         'New project name')
+
+    def test_user_can_change_project_of_a_customer_he_is_owner_of(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.patch(factories.ProjectFactory.get_url(self.project), {'name': 'New project name'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual('New project name', response.data['name'])
+        self.assertEqual(Project.objects.filter(uuid=self.project.uuid).first().name,
+                         'New project name')
+
+    def test_user_cannot_change_project_he_is_administrator_of(self):
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.patch(factories.ProjectFactory.get_url(self.project), {'name': 'New project name'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual('You do not have permission to perform this action.', response.data['detail'])
+        self.assertNotEqual(Project.objects.filter(uuid=self.project.uuid).first().name,
+                            'New project name')
 
     # Delete tests:
-    def test_user_can_delete_project_belonging_to_the_customer_he_owns(self):
+    def test_staff_user_can_delete_not_connected_project(self):
         self.client.force_authenticate(self.staff)
 
         response = self.client.delete(factories.ProjectFactory.get_url())
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_cannot_delete_project_he_is_not_connected_to(self):
+        for user in [self.group_manager, self.admin, self.owner]:
+            self.client.force_authenticate(user)
+            project = factories.ProjectFactory()
+            response = self.client.delete(factories.ProjectFactory.get_url(project))
+            # the project should not be visible to the logged in
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+            self.assertTrue(Project.objects.filter(uuid=project.uuid).exists())
+
+    def test_user_cannot_delete_project_he_is_administrator_of(self):
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.delete(factories.ProjectFactory.get_url(self.project))
+        # the project should not be visible
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Project.objects.filter(uuid=self.project.uuid).exists())
+
+    def test_user_can_delete_project_in_project_group_he_is_manager_of(self):
+        self.client.force_authenticate(self.group_manager)
+
+        response = self.client.delete(factories.ProjectFactory.get_url(self.project))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Project.objects.filter(uuid=self.project.uuid).exists())
+
+    def test_user_can_delete_project_of_a_customer_he_is_owner_of(self):
+        self.client.force_authenticate(self.owner)
+
+        response = self.client.delete(factories.ProjectFactory.get_url(self.project))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Project.objects.filter(uuid=self.project.uuid).exists())
 
 
 class ProjectApiPermissionTest(test.APITransactionTestCase):

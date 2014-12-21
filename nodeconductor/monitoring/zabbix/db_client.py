@@ -32,7 +32,7 @@ class ZabbixDBClient(object):
                 logger.warn('Failed to get a Zabbix host for instance %s' % instance.uuid)
 
         # return an empty list if no hosts were found
-        if host_ids == []:
+        if len(host_ids) == 0:
             return []
 
         item_key = self.items[item]['key']

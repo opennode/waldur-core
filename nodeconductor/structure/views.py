@@ -818,36 +818,6 @@ class CreationTimeStatsView(views.APIView):
         return Response(stats, status=status.HTTP_200_OK)
 
 
-class QuotaStatsView(views.APIView):
-
-    def _get_sum_of_quotas(self, projects):
-        fields = ['vcpu', 'ram', 'storage', 'max_instances', 'backup_storage']
-        usage_fields = [field + '_usage' for field in fields]
-        sum_of_quotas = dict((f, 0) for f in fields + usage_fields)
-        for project in projects:
-            # quota fields:
-            if project.resource_quota is not None:
-                for field in fields:
-                    sum_of_quotas[field] += getattr(project.resource_quota, field)
-            # quota usage fields:
-            if project.resource_quota_usage is not None:
-                for field in fields:
-                    sum_of_quotas[field + '_usage'] += getattr(project.resource_quota_usage, field)
-        return sum_of_quotas
-
-    def get(self, request, format=None):
-        serializer = serializers.StatsAggregateSerializer(data={
-            'model_name': request.QUERY_PARAMS.get('aggregate', 'customer'),
-            'uuid': request.QUERY_PARAMS.get('uuid'),
-        })
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        projects = serializer.get_projects(request.user)
-        sum_of_quotas = self._get_sum_of_quotas(projects)
-        return Response(sum_of_quotas, status=status.HTTP_200_OK)
-
-
 # XXX: This should be put to models
 filters.set_permissions_for_model(
     User.groups.through,

@@ -199,6 +199,29 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
         return '{0} <-> {1}'.format(self.template.name, self.backend_image_id)
 
 
+class AbstractResourceQuota(models.Model):
+    """ Abstract model for membership quotas """
+
+    class Meta(object):
+        abstract = True
+
+    vcpu = models.PositiveIntegerField(help_text=_('Virtual CPUs'))
+    ram = models.FloatField(help_text=_('RAM size'))
+    storage = models.FloatField(help_text=_('Storage size (incl. backup)'))
+    max_instances = models.PositiveIntegerField(help_text=_('Number of running instances'))
+    backup_storage = models.FloatField(default=0, help_text=_('Backup storage size'))
+
+
+class ResourceQuota(AbstractResourceQuota):
+    """ CloudProjectMembership quota """
+    cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota')
+
+
+class ResourceQuotaUsage(AbstractResourceQuota):
+    """ CloudProjectMembership quota usage """
+    cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota_usage')
+
+
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,

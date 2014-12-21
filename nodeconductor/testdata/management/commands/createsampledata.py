@@ -11,7 +11,8 @@ from django.utils import timezone
 
 from nodeconductor.iaas.models import Cloud, CloudProjectMembership, IpMapping, SecurityGroup
 from nodeconductor.core.models import User, SshPublicKey
-from nodeconductor.iaas.models import Template, TemplateLicense, Instance, InstanceSecurityGroup
+from nodeconductor.iaas.models import (
+    Template, TemplateLicense, Instance, InstanceSecurityGroup, ResourceQuota, ResourceQuotaUsage)
 from nodeconductor.structure.models import *
 
 
@@ -416,7 +417,8 @@ Arguments:
         projects[0].add_user(user1, ProjectRole.MANAGER)
         projects[1].add_user(user1, ProjectRole.ADMINISTRATOR)
 
-
+        self.create_resource_quotas(cpm_1)
+        self.create_resource_quotas(cpm_2)
 
         # add cloud to both of the projects
         self.create_instance(user1, cpm_1, cloud.flavors.all()[0], cloud.images.filter(
@@ -461,26 +463,30 @@ Arguments:
         # Use Case 3: User that is manager of a project
         project.add_user(self.create_user(), ProjectRole.MANAGER)
 
-        # Adding quota to project:
-        print 'Creating quota for project %s' % project
-        project.resource_quota = ResourceQuota.objects.create(vcpu=random.randint(60, 255),
-                                                              ram=random.randint(60, 255),
-                                                              storage=random.randint(60, 255),
-                                                              max_instances=random.randint(60, 255))
-        print 'Generating approximate quota consumption for project %s' % project
-        project.resource_quota_usage = ResourceQuotaUsage.objects.\
-            create(vcpu=project.resource_quota.vcpu - random.randint(0, 50),
-                   ram=project.resource_quota.ram - random.randint(0, 50),
-                   storage=project.resource_quota.storage - random.randint(0, 50),
-                   max_instances=project.resource_quota.max_instances - random.randint(0, 50))
-        project.save()
-
         print 'Creating IP mapping of a project %s' % project
         public_ip = '84.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3))
         private_ip = '10.%s' % '.'.join('%s' % random.randint(0, 255) for _ in range(3))
         IpMapping.objects.create(public_ip=public_ip, private_ip=private_ip, project=project)
 
         return project
+
+    def create_resource_quotas(self, membership):
+        # Adding quota to project:
+        print 'Creating quota for membership %s' % membership
+        resource_quota = ResourceQuota.objects.create(vcpu=random.randint(60, 255),
+                                                      ram=random.randint(60, 255),
+                                                      storage=random.randint(60, 255) * 1024,
+                                                      max_instances=random.randint(60, 255),
+                                                      backup_storage=random.randint(60, 255) * 1024,
+                                                      cloud_project_membership=membership)
+        print 'Generating approximate quota consumption for membership %s' % membership
+        ResourceQuotaUsage.objects.\
+            create(vcpu=resource_quota.vcpu - random.randint(0, 50),
+                   ram=resource_quota.ram - random.randint(0, 50),
+                   storage=resource_quota.storage - random.randint(0, 50),
+                   max_instances=resource_quota.max_instances - random.randint(0, 50),
+                   backup_storage=resource_quota.backup_storage - random.randint(0, 50),
+                   cloud_project_membership=membership)
 
     def create_user(self):
         username = 'user%s' % random_string(3, 15, alphabet=string.digits)

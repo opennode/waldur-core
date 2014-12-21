@@ -132,11 +132,13 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
         data = {
             'customer': factories.CustomerFactory.get_url(self.customers['first']),
             'user': factories.UserFactory.get_url(self.users['no_role']),
-            'role': 'owner'
+            'role': 'owner',
         }
 
         response = self.client.post(reverse('customer_permission-list'), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        response = self.client.post(reverse('customer_permission-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
 
     def test_user_cannot_assign_roles_within_customers_he_doesnt_owns(self):
         self.client.force_authenticate(user=self.users['no_role'])

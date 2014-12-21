@@ -230,3 +230,25 @@ class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
 
     instance = factory.SubFactory(InstanceFactory)
     security_group = factory.SubFactory(SecurityGroupFactory)
+
+
+class AbstractResourceQuotaFactory(factory.DjangoModelFactory):
+    class Meta:
+        abstract = True
+
+    cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
+    vcpu = factory.Iterator([1, 2, 3, 4])
+    ram = factory.Iterator([1024, 2048, 4096])
+    storage = factory.fuzzy.FuzzyFloat(10240, 51200)
+    max_instances = factory.Iterator([1, 2, 3, 4])
+    backup_storage = factory.fuzzy.FuzzyFloat(10240, 51200)
+
+
+class ResourceQuotaFactory(AbstractResourceQuotaFactory):
+    class Meta(object):
+        model = models.ResourceQuota
+
+
+class ResourceQuotaUsageFactory(AbstractResourceQuotaFactory):
+    class Meta(object):
+        model = models.ResourceQuotaUsage

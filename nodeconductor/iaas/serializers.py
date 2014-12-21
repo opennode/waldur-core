@@ -9,6 +9,7 @@ from nodeconductor.core import models as core_models, serializers as core_serial
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
+from nodeconductor.structure import filters as structure_filters
 
 
 class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
@@ -214,7 +215,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     def validate(self, attrs):
         flavor = attrs['flavor']
-        project = attrs['project']        
+        project = attrs['project']
         membership_exists = models.CloudProjectMembership.objects.filter(
             project=project,
             cloud=flavor.cloud,
@@ -222,7 +223,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         if not membership_exists:
             raise ValidationError("Flavor is not within project's clouds.")
-            
+
         template = attrs['template']
         image_exists = models.Image.objects.filter(template=template, cloud=flavor.cloud).exists()
 
@@ -580,3 +581,35 @@ class UsageStatsSerializer(serializers.Serializer):
 class SlaHistoryEventSerializer(serializers.Serializer):
     timestamp = serializers.IntegerField()
     state = serializers.CharField()
+
+
+class StatsAggregateSerializer(serializers.Serializer):
+    MODEL_NAME_CHOICES = (('project', 'project'), ('customer', 'customer'), ('project_group', 'project_group'))
+    MODEL_CLASSES = {
+        'project': structure_models.Project,
+        'customer': structure_models.Customer,
+        'project_group': structure_models.ProjectGroup,
+    }
+
+    model_name = serializers.ChoiceField(choices=MODEL_NAME_CHOICES)
+    uuid = serializers.CharField(required=False)
+
+    def get_projects(self, user):
+        model = self.MODEL_CLASSES[self.data['model_name']]
+        queryset = structure_filters.filter_queryset_for_user(model.objects.all(), user)
+
+        if 'uuid' in self.data and self.data['uuid']:
+            queryset = queryset.filter(uuid=self.data['uuid'])
+
+        if self.data['model_name'] == 'project':
+            return queryset.all()
+        elif self.data['model_name'] == 'project_group':
+            projects = structure_models.Project.objects.filter(project_groups__in=list(queryset))
+            return structure_filters.filter_queryset_for_user(projects, user)
+        else:
+            projects = structure_models.Project.objects.filter(customer__in=list(queryset))
+            return structure_filters.filter_queryset_for_user(projects, user)
+
+    def get_memberships(self, user):
+        projects = self.get_projects(user)
+        return models.CloudProjectMembership.objects.filter(project__in=projects).all()

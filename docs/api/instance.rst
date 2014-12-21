@@ -53,19 +53,19 @@ The UI can poll for updates to provide feedback after submitting one of the long
 
 In a DB, state is stored encoded with a symbol. States are:
 
-- PROVISIONING_SCHEDULED = 'p'
-- PROVISIONING = 'P'
-- ONLINE = '+'
-- OFFLINE = '-'
-- STARTING_SCHEDULED = 'a'
-- STARTING = 'A'
-- STOPPING_SCHEDULED = 'o'
-- STOPPING = 'O'
-- ERRED = 'e'
-- DELETION_SCHEDULED = 'd'
-- DELETING = 'D'
-- RESIZING_SCHEDULED = 'r'
-- RESIZING = 'R'
+- PROVISIONING_SCHEDULED = 1
+- PROVISIONING = 2
+- ONLINE = 3
+- OFFLINE = 4
+- STARTING_SCHEDULED = 5
+- STARTING = 6
+- STOPPING_SCHEDULED = 7
+- STOPPING = 8
+- ERRED = 9
+- DELETION_SCHEDULED = 10
+- DELETING = 11
+- RESIZING_SCHEDULED = 13
+- RESIZING = 14
 
 A graph of possible state transitions is shown below.
 

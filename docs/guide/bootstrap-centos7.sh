@@ -1,20 +1,20 @@
 # Configure repositories
-rpm -Uvh https://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+rpm -Uvh https://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-5.noarch.rpm
 rpm -Uvh https://repos.fedorapeople.org/repos/openstack/openstack-icehouse/rdo-release-icehouse-4.noarch.rpm
-rpm -Uvh http://opennodecloud.com/centos/6/nodeconductor-release.rpm
+rpm -Uvh http://opennodecloud.com/centos/7/nodeconductor-release.rpm
 
 # Install and enable services
-yum -y install mysql-server nodeconductor-wsgi redis
+yum -y install mariadb-server nodeconductor-wsgi redis
 
-chkconfig httpd on
-chkconfig mysqld on
-chkconfig nodeconductor-celerybeat on
-chkconfig nodeconductor-celeryd on
-chkconfig redis on
+systemctl enable httpd
+systemctl enable mariadb
+systemctl enable nodeconductor-celery
+systemctl enable nodeconductor-celerybeat
+systemctl enable redis
 
 # Start MySQL and Redis
-service mysqld start
-service redis start
+systemctl start mariadb
+systemctl start redis
 
 # Create MySQL database
 mysql -e "CREATE DATABASE nodeconductor CHARACTER SET = utf8"
@@ -32,6 +32,6 @@ nodeconductor createsampledata alice
 nodeconductor createsampledata random
 
 # Start Celery and Apache
-service nodeconductor-celeryd start
-service nodeconductor-celerybeat start
-service httpd start
+systemctl start nodeconductor-celery
+systemctl start nodeconductor-celerybeat
+systemctl start httpd

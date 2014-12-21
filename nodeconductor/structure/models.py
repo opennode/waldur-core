@@ -32,25 +32,20 @@ class Customer(UuidMixin, TimeStampedModel):
         with transaction.atomic():
             role = self.roles.get(role_type=role_type)
 
-            try:
-                membership = UserGroup.objects.get(
-                    user=user,
-                    group__customerrole=role,
-                )
-                return membership, False
-            except UserGroup.DoesNotExist:
-                membership = UserGroup.objects.create(
-                    user=user,
-                    group=role.permission_group,
-                )
+            membership, created = UserGroup.objects.get_or_create(
+                user=user,
+                group=role.permission_group,
+            )
 
+            if created:
                 structure_role_granted.send(
                     sender=Customer,
                     structure=self,
                     user=user,
                     role=role_type,
                 )
-                return membership, True
+
+            return membership, created
 
     def remove_user(self, user, role_type=None):
         UserGroup = get_user_model().groups.through
@@ -145,40 +140,6 @@ class ProjectRole(UuidMixin, models.Model):
         return self.get_role_type_display()
 
 
-class AbstractResourceQuota(models.Model):
-    """ Abstract model for quotas """
-
-    class Meta(object):
-        abstract = True
-
-    vcpu = models.PositiveIntegerField(help_text=_('Virtual CPUs'))
-    ram = models.FloatField(help_text=_('RAM size'))
-    storage = models.FloatField(help_text=_('Storage size (incl. backup)'))
-    max_instances = models.PositiveIntegerField(help_text=_('Number of running instances'))
-
-
-class ResourceQuota(AbstractResourceQuota):
-    """ Project quota """
-    backup_storage = models.FloatField(default=0, help_text=_('Backup storage size'))
-
-
-class ResourceQuotaUsage(AbstractResourceQuota):
-    """ Project quota usage """
-
-    @property
-    def backup_storage(self):
-        # TODO: replace instances with services, after services implementation
-        from nodeconductor.iaas import models as iaas_models
-        backup_storage_size = 0
-        services = iaas_models.Instance.objects.filter(cloud_project_membership__project=self.project_quota_usage)
-        for service in services:
-            size = max(0, service.system_volume_size) + max(0, service.data_volume_size)
-            backup_storage_size += size * sum(
-                max(0, schedule.maximal_number_of_backups) for schedule in service.backup_schedules.all())
-
-        return backup_storage_size
-
-
 @python_2_unicode_compatible
 class Project(DescribableMixin, UuidMixin, TimeStampedModel):
     class Permissions(object):
@@ -188,34 +149,28 @@ class Project(DescribableMixin, UuidMixin, TimeStampedModel):
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='projects')
-    resource_quota = models.OneToOneField(ResourceQuota, related_name='project_quota', null=True)
-    resource_quota_usage = models.OneToOneField(ResourceQuotaUsage, related_name='project_quota_usage', null=True)
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
 
         with transaction.atomic():
+
             role = self.roles.get(role_type=role_type)
 
-            try:
-                membership = UserGroup.objects.get(
-                    user=user,
-                    group__projectrole=role,
-                )
-                return membership, False
-            except UserGroup.DoesNotExist:
-                membership = UserGroup.objects.create(
-                    user=user,
-                    group=role.permission_group,
-                )
+            membership, created = UserGroup.objects.get_or_create(
+                user=user,
+                group=role.permission_group,
+            )
 
+            if created:
                 structure_role_granted.send(
                     sender=Project,
                     structure=self,
                     user=user,
                     role=role_type,
                 )
-                return membership, True
+
+            return membership, created
 
     def remove_user(self, user, role_type=None):
         UserGroup = get_user_model().groups.through
@@ -300,25 +255,20 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
         with transaction.atomic():
             role = self.roles.get(role_type=role_type)
 
-            try:
-                membership = UserGroup.objects.get(
-                    user=user,
-                    group__projectgrouprole=role,
-                )
-                return membership, False
-            except UserGroup.DoesNotExist:
-                membership = UserGroup.objects.create(
-                    user=user,
-                    group=role.permission_group,
-                )
+            membership, created = UserGroup.objects.get_or_create(
+                user=user,
+                group=role.permission_group,
+            )
 
+            if created:
                 structure_role_granted.send(
                     sender=ProjectGroup,
                     structure=self,
                     user=user,
                     role=role_type,
                 )
-                return membership, True
+
+            return membership, created
 
     def remove_user(self, user, role_type=None):
         UserGroup = get_user_model().groups.through
