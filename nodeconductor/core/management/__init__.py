@@ -1,30 +1,32 @@
+from django.apps import apps
 from django.contrib.auth import get_user_model, models as auth_app
 from django.db import DEFAULT_DB_ALIAS, router
-from django.db.models import get_model, signals, UnavailableApp
+from django.db.models import signals
 from django.dispatch import receiver
 
 
 @receiver(
-    signals.post_syncdb,
+    signals.post_migrate,
     dispatch_uid="nodeconductor.core.management.create_permissions",
 )
-def create_permissions(app, created_models, verbosity, db=DEFAULT_DB_ALIAS, **kwargs):
+def create_permissions(app_config, verbosity=2, interactive=True, using=DEFAULT_DB_ALIAS, **kwargs):
     """
     Create permissions for the User.groups.through objects so that DjangoObjectPermissions could be applied.
     """
     # Note, this handler is supposed to be in management package of an app,
-    # see https://docs.djangoproject.com/en/1.6/ref/signals/#post-syncdb for details
+    # see https://docs.djangoproject.com/en/1.7/ref/signals/#django.db.models.signals.post_migrate for details
 
     # The implementation is based on django.contrib.auth.management.create_permissions
-    if not app.__name__ == 'nodeconductor.core.models':
-        return
 
     try:
-        get_model('auth', 'Permission')
-    except UnavailableApp:
+        Permission = apps.get_model('auth', 'Permission')
+    except LookupError:
         return
 
-    if not router.allow_syncdb(db, auth_app.Permission):
+    if not router.allow_migrate(using, Permission):
+        return
+
+    if app_config.name != 'nodeconductor.core':
         return
 
     from django.contrib.contenttypes.models import ContentType

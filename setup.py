@@ -18,7 +18,7 @@ tests_requires = [
 install_requires = [
     'Celery>=3.1.15,<3.2',
     'croniter>=0.3.4,<0.3.6',
-    'Django>=1.6.5,<1.7',
+    'Django>=1.7.1,<1.8',
     'django-auth-ldap==1.2.0',
     'django-filter==0.7',
     'django-fsm==2.2.0',
@@ -27,10 +27,9 @@ install_requires = [
     'django-requestlogging==1.0.1',
     'django-uuidfield==0.5.0',
     'djangorestframework>=2.3.12,<2.4.0',
-    'djangosaml2>=0.11.0,<0.12',
+    'djangosaml2==0.12.0.dev0',
     'drf-extensions==0.2.6',
     'logan==0.5.9.1',
-    'ordereddict==1.1',
     'python-cinderclient>=1.0.7,<=1.1.1',
     'python-glanceclient>=0.12.0,<0.13.0',
     'python-keystoneclient>=0.9.0,<0.11.2',
@@ -38,7 +37,6 @@ install_requires = [
     'python-novaclient>=2.17.0,<2.19.0',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
-    'South==0.8.4',
 ]
 
 
@@ -52,6 +50,9 @@ setup(
     long_description=open('README.rst').read(),
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     install_requires=install_requires,
+    dependency_links=[
+        'https://bitbucket.org/opennode/djangosaml2/downloads',
+    ],
     extras_require={
         'tests': tests_requires,
         'dev': dev_requires,
