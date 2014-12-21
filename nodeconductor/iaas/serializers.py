@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.db.models import Q
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
