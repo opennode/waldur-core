@@ -694,7 +694,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_user_cannot_create_instance_with_template_not_connected_to_projects_cloud(self):
         templates = {
             'other_cloud': factories.ImageFactory().template,
-            'inaccessible': factories.TemplateFactory()
+            'inaccessible': factories.TemplateFactory(),
         }
         data = self.get_valid_data()
 

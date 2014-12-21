@@ -203,10 +203,8 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(user=user)
 
-        if not user.is_staff:
-            clouds = structure_filters.filter_queryset_for_user(
-                models.Cloud.objects.all(), user)
-            fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds)
+        clouds = structure_filters.filter_queryset_for_user(models.Cloud.objects.all(), user)
+        fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds)
 
         return fields
 
