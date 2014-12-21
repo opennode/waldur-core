@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.db.models import Q
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
@@ -202,6 +203,13 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
             return fields
 
         fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(user=user)
+
+        if not user.is_staff:
+            fields['template'].queryset = fields['template'].queryset.filter(
+                Q(images__cloud__customer__projects__roles__permission_group__user=user)
+                &
+                Q(images__cloud__customer__projects__roles__role_type=structure_models.ProjectRole.ADMINISTRATOR)
+            ).distinct()
 
         return fields
 
