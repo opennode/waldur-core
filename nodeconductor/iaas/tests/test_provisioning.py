@@ -674,7 +674,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertIn('instance_licenses', response.data)
         self.assertEqual(response.data['instance_licenses'][0]['name'], instance_license.template_license.name)
 
-    def test_flavor_fields_is_copied_to_instance_on_intance_creation(self):
+    def test_flavor_fields_is_copied_to_instance_on_instance_creation(self):
         response = self.client.post(self.instance_list_url, self.get_valid_data())
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -690,6 +690,20 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = Instance.objects.get(uuid=response.data['uuid'])
         self.assertEqual(instance.key_name, self.ssh_public_key.name)
         self.assertEqual(instance.key_fingerprint, self.ssh_public_key.fingerprint)
+
+    def test_user_cannot_create_instance_with_template_not_connected_to_projects_cloud(self):
+        templates = {
+            'other_cloud': factories.ImageFactory().template,
+            'inaccessible': factories.TemplateFactory(),
+        }
+        data = self.get_valid_data()
+
+        for t in templates:
+            data['template'] = self._get_template_url(templates[t])
+
+            response = self.client.post(self.instance_list_url, data)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertDictContainsSubset({'template': ['Invalid hyperlink - object does not exist.']}, response.data)
 
     # Helper methods
     def get_valid_data(self):

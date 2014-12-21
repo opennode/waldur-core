@@ -14,9 +14,6 @@ db.sqlite3
 
 nodeconductor/server/settings.py
 
-# any top level logs
-/*.log
-
 # Editor artifacts
 # vim
 *.sw*
