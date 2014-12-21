@@ -10,11 +10,19 @@ PERMISSION_LOGICS = (
     #('structure.Customer',  StaffPermissionLogic(any_permission=True)),
     ('structure.Customer',  StaffPermissionLogic(any_permission=True)),
     ('structure.Project', FilteredCollaboratorsPermissionLogic(
-        collaborators_query='customer__roles__permission_group__user',
-        collaborators_filter={
-            'roles__role_type': CustomerRole.OWNER,
-        },
-
+        collaborators_query=[
+            # customer
+            'customer__roles__permission_group__user',
+            # project_group
+            'project_groups__roles__permission_group__user',
+            'project_groups__customer__roles__permission_group__user',
+        ],
+        collaborators_filter=[
+            # customer
+            {'roles__role_type': CustomerRole.OWNER},
+            # project_group
+            {'project_groups__roles__role_type': ProjectGroupRole.MANAGER},
+        ],
         any_permission=True,
     )),
     (User.groups.through, FilteredCollaboratorsPermissionLogic(
