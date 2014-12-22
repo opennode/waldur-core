@@ -397,13 +397,6 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
         return queryset.filter(user=user)
 
 
-class PurchaseViewSet(core_viewsets.ReadOnlyModelViewSet):
-    queryset = models.Purchase.objects.all()
-    serializer_class = serializers.PurchaseSerializer
-    lookup_field = 'uuid'
-    filter_backends = (structure_filters.GenericRoleFilter,)
-
-
 class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
     """List of template licenses that are accessible by this user.
 

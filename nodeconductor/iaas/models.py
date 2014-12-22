@@ -483,28 +483,6 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class Purchase(core_models.UuidMixin, models.Model):
-    """
-    Purchase history allows to see historical information
-    about what services have been purchased alongside
-    with additional metadata.
-    """
-    class Permissions(object):
-        project_path = 'project'
-        project_group_path = 'project__project_groups'
-
-    date = models.DateTimeField()
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='purchases')
-    project = models.ForeignKey(structure_models.Project, related_name='purchases')
-
-    def __str__(self):
-        return '%(user)s - %(date)s' % {
-            'user': self.user.username,
-            'date': self.date,
-        }
-
-
-@python_2_unicode_compatible
 class SecurityGroup(core_models.UuidMixin,
                     core_models.DescribableMixin,
                     CloudProjectMember,
