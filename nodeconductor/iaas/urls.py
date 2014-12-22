@@ -7,7 +7,6 @@ def register_in(router):
     router.register(r'instances', views.InstanceViewSet)
     router.register(r'iaas-templates', views.TemplateViewSet)
     router.register(r'keys', views.SshKeyViewSet)
-    router.register(r'purchases', views.PurchaseViewSet)
     router.register(r'template-licenses', views.TemplateLicenseViewSet)
     router.register(r'services', views.ServiceViewSet, base_name='service')
     router.register(r'clouds', views.CloudViewSet)

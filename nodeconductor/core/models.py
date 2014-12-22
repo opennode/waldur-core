@@ -33,7 +33,7 @@ class DescribableMixin(models.Model):
     class Meta(object):
         abstract = True
 
-    description = models.CharField(_('description'), max_length=500, blank=True, null=True)
+    description = models.CharField(_('description'), max_length=500, blank=True)
 
 
 class UiDescribableMixin(DescribableMixin):
@@ -43,7 +43,7 @@ class UiDescribableMixin(DescribableMixin):
     class Meta(object):
         abstract = True
 
-    icon_url = models.URLField(_('icon url'), null=True, blank=True)
+    icon_url = models.URLField(_('icon url'), blank=True)
 
 
 class UuidMixin(models.Model):
@@ -64,6 +64,8 @@ class User(UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
         validators=[
             validators.RegexValidator(re.compile('^[\w.@+-]+$'), _('Enter a valid username.'), 'invalid')
         ])
+    # Civil number is nullable on purpose, otherwise
+    # it wouldn't be possible to put a unique constraint on it
     civil_number = models.CharField(_('civil number'), max_length=10, unique=True, blank=True, null=True, default=None)
     full_name = models.CharField(_('full name'), max_length=100, blank=True)
     native_name = models.CharField(_('native name'), max_length=100, blank=True)

@@ -215,15 +215,6 @@ class InstanceLicenseFactory(factory.DjangoModelFactory):
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
 
-class PurchaseFactory(factory.DjangoModelFactory):
-    class Meta(object):
-        model = models.Purchase
-
-    date = factory.LazyAttribute(lambda o: timezone.now())
-    user = factory.SubFactory(structure_factories.UserFactory)
-    project = factory.SubFactory(structure_factories.ProjectFactory)
-
-
 class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.InstanceSecurityGroup
