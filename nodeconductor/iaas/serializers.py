@@ -475,30 +475,6 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
 
-class PurchaseSerializer(core_serializers.RelatedResourcesFieldMixin, serializers.HyperlinkedModelSerializer):
-    user = serializers.HyperlinkedRelatedField(
-        source='user',
-        view_name='user-detail',
-        lookup_field='uuid',
-        read_only=True,
-    )
-    user_full_name = serializers.Field(source='user.full_name')
-    user_native_name = serializers.Field(source='user.native_name')
-
-    class Meta(object):
-        model = models.Purchase
-        fields = (
-            'url', 'uuid', 'date',
-            'user', 'user_full_name', 'user_native_name',
-            'customer', 'customer_name',
-            'project', 'project_name',
-        )
-        lookup_field = 'uuid'
-
-    def get_related_paths(self):
-        return 'project.customer', 'project'
-
-
 class ServiceSerializer(serializers.Serializer):
     url = serializers.SerializerMethodField('get_service_url')
     service_type = serializers.SerializerMethodField('get_service_type')

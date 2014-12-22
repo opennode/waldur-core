@@ -131,10 +131,6 @@ class InstanceAdmin(admin.ModelAdmin):
     get_project_name.short_description = 'Project'
 
 
-class PurchaseAdmin(admin.ModelAdmin):
-    readonly_fields = ('date', 'user', 'project')
-
-
 class ImageInline(ReadonlyInlineMixin, admin.TabularInline):
     model = models.Image
     fields = ('get_cloud_name', 'get_customer_name', 'backend_id')
@@ -201,7 +197,6 @@ class InstanceSlaHistoryAdmin(admin.ModelAdmin):
 admin.site.register(models.Cloud, CloudAdmin)
 admin.site.register(models.CloudProjectMembership, CloudProjectMembershipAdmin)
 admin.site.register(models.Instance, InstanceAdmin)
-admin.site.register(models.Purchase, PurchaseAdmin)
 admin.site.register(models.SecurityGroup, SecurityGroupAdmin)
 admin.site.register(models.Template, TemplateAdmin)
 admin.site.register(models.InstanceSlaHistory, InstanceSlaHistoryAdmin)

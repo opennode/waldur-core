@@ -300,16 +300,6 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
         return queryset.exists()
 
 
-class NetworkSegment(models.Model):
-    class Meta(object):
-        unique_together = ('vlan', 'project')
-
-    ip = models.GenericIPAddressField(primary_key=True)
-    netmask = models.PositiveIntegerField(null=False)
-    vlan = models.PositiveIntegerField(null=False)
-    project = models.ForeignKey(Project, related_name='segments')
-
-
 # Signal handlers
 @receiver(
     signals.post_save,
