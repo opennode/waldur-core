@@ -637,7 +637,7 @@ class ResourceStatsView(views.APIView):
         stats.update(quotas_stats)
 
         # TODO: get from OpenStack once we have Juno and properly working backup quotas
-        full_usage = QuotaStatsView.get_sum_of_quotas(models.CloudProjectMembership.objects.all())
+        full_usage = QuotaStatsView.get_sum_of_quotas(models.CloudProjectMembership.objects.filter(cloud__in=clouds))
         stats['backups'] = full_usage.get('backup_storage_usage', 0)
 
         return Response(sort_dict(stats), status=status.HTTP_200_OK)
@@ -856,6 +856,7 @@ class IpMappingViewSet(core_viewsets.ModelViewSet):
 
 class QuotaStatsView(views.APIView):
 
+    # This method should be moved from view (to utils.py maybe), when stats will be moved to separate application
     @staticmethod
     def get_sum_of_quotas(memberships):
         fields = ['vcpu', 'ram', 'storage', 'max_instances', 'backup_storage']
