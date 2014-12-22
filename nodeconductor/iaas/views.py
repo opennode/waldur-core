@@ -612,11 +612,12 @@ class ResourceStatsView(views.APIView):
 
     def _get_quotas_stats(self, clouds):
         quotas_list = models.ResourceQuota.objects.filter(
-            cloud_project_membership__cloud__in=clouds).values('vcpu', 'ram', 'storage')
+            cloud_project_membership__cloud__in=clouds).values('vcpu', 'ram', 'storage', 'backup_storage')
         return {
             'vcpu_quota': sum([q['vcpu'] for q in quotas_list]),
             'memory_quota': sum([q['ram'] for q in quotas_list]),
             'storage_quota': sum([q['storage'] for q in quotas_list]),
+            'backup_storage': sum([q['backup_storage'] for q in quotas_list]),
         }
 
     def get(self, request, format=None):

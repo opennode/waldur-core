@@ -270,6 +270,7 @@ class ResourceStatsTest(test.APITransactionTestCase):
             'vcpu_quota': self.quota1.vcpu + self.quota2.vcpu,
             'ram_quota': self.quota1.ram + self.quota2.ram,
             'storage_quota': self.quota1.storage + self.quota2.storage,
+            'backup_storage': self.quota1.backup_storage + self.quota2.backup_storage,
         })
         mocked_backend.get_resource_stats = Mock(return_value=expected_result)
 
