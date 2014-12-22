@@ -145,9 +145,9 @@ LOGGING = {
     'version': 1,
     'formatters': {
         'request_format': {
-            'format': '%(remote_addr)s %(username)s "%(request_method)s '
+            'format': '%(asctime)s %(remote_addr)s %(username)s "%(request_method)s '
             '%(path_info)s %(server_protocol)s" %(http_user_agent)s '
-            '%(message)s %(asctime)s',
+            '%(message)s',
         },
     },
     'filters': {
