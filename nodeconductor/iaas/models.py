@@ -11,7 +11,6 @@ from django.db import models
 from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
-from django.utils.translation import ugettext as _
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 
@@ -131,9 +130,9 @@ class Flavor(core_models.UuidMixin, models.Model):
     name = models.CharField(max_length=100)
     cloud = models.ForeignKey(Cloud, related_name='flavors')
 
-    cores = models.PositiveSmallIntegerField(help_text=_('Number of cores in a VM'))
-    ram = models.PositiveIntegerField(help_text=_('Memory size in MiB'))
-    disk = models.PositiveIntegerField(help_text=_('Root disk size in MiB'))
+    cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
+    ram = models.PositiveIntegerField(help_text='Memory size in MiB')
+    disk = models.PositiveIntegerField(help_text='Root disk size in MiB')
 
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255)
@@ -205,11 +204,11 @@ class AbstractResourceQuota(models.Model):
     class Meta(object):
         abstract = True
 
-    vcpu = models.PositiveIntegerField(help_text=_('Virtual CPUs'))
-    ram = models.FloatField(help_text=_('RAM size'))
-    storage = models.FloatField(help_text=_('Storage size (incl. backup)'))
-    max_instances = models.PositiveIntegerField(help_text=_('Number of running instances'))
-    backup_storage = models.FloatField(default=0, help_text=_('Backup storage size'))
+    vcpu = models.PositiveIntegerField(help_text='Virtual CPUs')
+    ram = models.FloatField(help_text='RAM size')
+    storage = models.FloatField(help_text='Storage size (incl. backup)')
+    max_instances = models.PositiveIntegerField(help_text='Number of running instances')
+    backup_storage = models.FloatField(default=0, help_text='Backup storage size')
 
 
 # TODO: Refactor to use CloudProjectMember
@@ -262,25 +261,25 @@ class Instance(core_models.UuidMixin,
         RESIZING = 14
 
         CHOICES = (
-            (PROVISIONING_SCHEDULED, _('Provisioning Scheduled')),
-            (PROVISIONING, _('Provisioning')),
+            (PROVISIONING_SCHEDULED, 'Provisioning Scheduled'),
+            (PROVISIONING, 'Provisioning'),
 
-            (ONLINE, _('Online')),
-            (OFFLINE, _('Offline')),
+            (ONLINE, 'Online'),
+            (OFFLINE, 'Offline'),
 
-            (STARTING_SCHEDULED, _('Starting Scheduled')),
-            (STARTING, _('Starting')),
+            (STARTING_SCHEDULED, 'Starting Scheduled'),
+            (STARTING, 'Starting'),
 
-            (STOPPING_SCHEDULED, _('Stopping Scheduled')),
-            (STOPPING, _('Stopping')),
+            (STOPPING_SCHEDULED, 'Stopping Scheduled'),
+            (STOPPING, 'Stopping'),
 
-            (ERRED, _('Erred')),
+            (ERRED, 'Erred'),
 
-            (DELETION_SCHEDULED, _('Deletion Scheduled')),
-            (DELETING, _('Deleting')),
+            (DELETION_SCHEDULED, 'Deletion Scheduled'),
+            (DELETING, 'Deleting'),
 
-            (RESIZING_SCHEDULED, _('Resizing Scheduled')),
-            (RESIZING, _('Resizing')),
+            (RESIZING_SCHEDULED, 'Resizing Scheduled'),
+            (RESIZING, 'Resizing'),
         )
 
         # Stable instances are the ones for which
@@ -378,7 +377,7 @@ class Instance(core_models.UuidMixin,
         pass
 
     def __str__(self):
-        return _('%(name)s - %(status)s') % {
+        return '%(name)s - %(status)s' % {
             'name': self.hostname,
             'status': self.get_state_display(),
         }
@@ -515,8 +514,8 @@ class SecurityGroupRule(models.Model):
     udp = 'udp'
 
     PROTOCOL_CHOICES = (
-        (tcp, _('tcp')),
-        (udp, _('udp')),
+        (tcp, 'tcp'),
+        (udp, 'udp'),
     )
 
     group = models.ForeignKey(SecurityGroup, related_name='rules')

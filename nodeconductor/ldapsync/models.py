@@ -6,7 +6,6 @@ from django.contrib.auth.models import Group
 from django.dispatch import receiver
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
-from django.utils.translation import ugettext as _
 from django_auth_ldap.backend import populate_user
 
 
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 @python_2_unicode_compatible
 class LdapToGroup(models.Model):
     class Meta(object):
-        verbose_name = _("LDAP to Django group mapping")
+        verbose_name = "LDAP to Django group mapping"
         unique_together = ('ldap_group_name', 'django_group')
 
     ldap_group_name = models.CharField(max_length=80)

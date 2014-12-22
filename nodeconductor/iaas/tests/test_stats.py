@@ -234,6 +234,8 @@ class ResourceStatsTest(test.APITransactionTestCase):
 
         self.quota1 = factories.ResourceQuotaFactory(cloud_project_membership=membership1)
         self.quota2 = factories.ResourceQuotaFactory(cloud_project_membership=membership2)
+        self.quota_usage1 = factories.ResourceQuotaUsageFactory(cloud_project_membership=membership1)
+        self.quota_usage2 = factories.ResourceQuotaUsageFactory(cloud_project_membership=membership2)
 
         self.user = structure_factories.UserFactory()
         self.staff = structure_factories.UserFactory(is_staff=True)
@@ -261,17 +263,21 @@ class ResourceStatsTest(test.APITransactionTestCase):
 
     def test_resource_stats_returns_backend_resource_stats(self):
         mocked_backend = Mock()
-        expected_result = {
+        backend_result = {
             u'count': 2, u'vcpus_used': 0, u'local_gb_used': 0, u'memory_mb': 7660, u'current_workload': 0,
             u'vcpus': 2, u'running_vms': 0, u'free_disk_gb': 12, u'disk_available_least': 6, u'local_gb': 12,
             u'free_ram_mb': 6636, u'memory_mb_used': 1024
         }
+
+        mocked_backend.get_resource_stats = Mock(return_value=backend_result)
+        expected_result = backend_result.copy()
         expected_result.update({
             'vcpu_quota': self.quota1.vcpu + self.quota2.vcpu,
-            'ram_quota': self.quota1.ram + self.quota2.ram,
+            'memory_quota': self.quota1.ram + self.quota2.ram,
             'storage_quota': self.quota1.storage + self.quota2.storage,
+            'backup_quota': self.quota1.backup_storage + self.quota2.backup_storage,
         })
-        mocked_backend.get_resource_stats = Mock(return_value=expected_result)
+        expected_result['backups'] = self.quota_usage1.backup_storage + self.quota_usage2.backup_storage
 
         with patch('nodeconductor.iaas.models.Cloud.get_backend', return_value=mocked_backend):
             self.client.force_authenticate(self.staff)

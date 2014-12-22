@@ -8,7 +8,6 @@ from django.db import transaction
 from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
-from django.utils.translation import ugettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from nodeconductor.core.models import UuidMixin, DescribableMixin
@@ -95,7 +94,7 @@ class CustomerRole(models.Model):
     OWNER = 0
 
     TYPE_CHOICES = (
-        (OWNER, _('Owner')),
+        (OWNER, 'Owner'),
     )
 
     ROLE_TO_NAME = {
@@ -121,8 +120,8 @@ class ProjectRole(UuidMixin, models.Model):
     MANAGER = 1
 
     TYPE_CHOICES = (
-        (ADMINISTRATOR, _('Administrator')),
-        (MANAGER, _('Manager')),
+        (ADMINISTRATOR, 'Administrator'),
+        (MANAGER, 'Manager'),
     )
 
     ROLE_TO_NAME = {
@@ -217,7 +216,7 @@ class ProjectGroupRole(UuidMixin, models.Model):
     MANAGER = 0
 
     TYPE_CHOICES = (
-        (MANAGER, _('Group Manager')),
+        (MANAGER, 'Group Manager'),
     )
 
     ROLE_TO_NAME = {MANAGER: 'manager'}

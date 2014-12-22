@@ -95,6 +95,9 @@ Answer will be list dictionaries with fields:
 - vcpu_quota - maximum number of vCPUs (from quotas)
 - vcpus - maximum number of vCPUs (from hypervisors)
 - vcpus_used - currently number of used vCPUs
+- backup_quota - maximal size of backups (from quotas)
+- backups - currently allocated size of backups
+
 
 The exact semantics of the remaining fields are left as a puzzle to the reader.
 
@@ -117,7 +120,9 @@ Example:
         "storage_quota": 0,
         "vcpu_quota": 0,
         "vcpus": 64,
-        "vcpus_used": 4
+        "vcpus_used": 4,
+        "backup_quota": 123123123,
+        "backups": 1231231
     }
 
 
