@@ -233,9 +233,8 @@ class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         for customer in self.customers:
-            query = '?customer=%s' % self.customers[customer].uuid
-
-            response = self.client.get(reverse('customer_permission-list') + query)
+            response = self.client.get(reverse('customer_permission-list'),
+                                       data={'customer': self.customers[customer].uuid})
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
             customer_url = self._get_customer_url(self.customers[customer])
@@ -267,14 +266,19 @@ class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
             self._ensure_matching_entries_in('full_name', self.users[user].full_name)
             self._ensure_non_matching_entries_not_in('full_name', self.users[user].full_name)
 
+    def test_staff_user_can_filter_roles_within_customer_by_role_type(self):
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self._ensure_matching_entries_in('role', 'owner')
+
     def test_staff_user_can_see_required_fields_in_filtration_response(self):
         response = self.client.get(reverse('customer_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         for customer in self.customers:
-            query = '?customer=%s' % self.customers[customer].uuid
-
-            response = self.client.get(reverse('customer_permission-list') + query)
+            response = self.client.get(reverse('customer_permission-list'),
+                                       data={'customer': self.customers[customer].uuid})
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
             required_fields = ('url', 'user_native_name', 'user_full_name', 'user_username')
@@ -285,9 +289,6 @@ class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
 
     # Helper methods
     def _ensure_matching_entries_in(self, field, value):
-        response = self.client.get(reverse('customer_permission-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
         response = self.client.get(reverse('customer_permission-list'),
                                    data={field: value})
         self.assertEqual(response.status_code, status.HTTP_200_OK)

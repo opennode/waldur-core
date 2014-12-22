@@ -719,8 +719,10 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
-    role = django_filters.NumberFilter(
+    role = django_filters.ChoiceFilter(
         name='group__customerrole__role_type',
+        choices=CustomerRole.TYPE_CHOICES,
+        lookup_type='iexact',
     )
 
     class Meta(object):
