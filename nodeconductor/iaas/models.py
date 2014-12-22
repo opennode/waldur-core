@@ -173,7 +173,7 @@ class Template(core_models.UuidMixin,
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
     """
     name = models.CharField(max_length=100, unique=True)
-    os = models.CharField(max_length=100, null=True, blank=True)
+    os = models.CharField(max_length=100, blank=True)
     is_active = models.BooleanField(default=False)
     sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
@@ -212,11 +212,13 @@ class AbstractResourceQuota(models.Model):
     backup_storage = models.FloatField(default=0, help_text=_('Backup storage size'))
 
 
+# TODO: Refactor to use CloudProjectMember
 class ResourceQuota(AbstractResourceQuota):
     """ CloudProjectMembership quota """
     cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota')
 
 
+# TODO: Refactor to use CloudProjectMember
 class ResourceQuotaUsage(AbstractResourceQuota):
     """ CloudProjectMembership quota usage """
     cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota_usage')
@@ -499,7 +501,7 @@ class SecurityGroup(core_models.UuidMixin,
     name = models.CharField(max_length=127)
 
     # OpenStack backend specific fields
-    backend_id = models.CharField(max_length='128', blank=True,
+    backend_id = models.CharField(max_length=128, blank=True,
                                   help_text='Reference to a SecurityGroup in a remote cloud')
 
     def __str__(self):
@@ -519,13 +521,13 @@ class SecurityGroupRule(models.Model):
 
     group = models.ForeignKey(SecurityGroup, related_name='rules')
 
-    protocol = models.CharField(max_length=3, choices=PROTOCOL_CHOICES, null=True)
+    protocol = models.CharField(max_length=3, blank=True, choices=PROTOCOL_CHOICES)
     from_port = models.IntegerField(validators=[MaxValueValidator(65535), MinValueValidator(1)], null=True)
     to_port = models.IntegerField(validators=[MaxValueValidator(65535), MinValueValidator(1)], null=True)
-    cidr = models.CharField(max_length=32, null=True)
+    cidr = models.CharField(max_length=32, blank=True)
 
     # OpenStack backend specific fields
-    backend_id = models.CharField(max_length='128', blank=True)
+    backend_id = models.CharField(max_length=128, blank=True)
 
     def __str__(self):
         return '%s (%s): %s (%s -> %s)' % \
