@@ -617,7 +617,7 @@ class ResourceStatsView(views.APIView):
             'vcpu_quota': sum([q['vcpu'] for q in quotas_list]),
             'memory_quota': sum([q['ram'] for q in quotas_list]),
             'storage_quota': sum([q['storage'] for q in quotas_list]),
-            'backup_storage': sum([q['backup_storage'] for q in quotas_list]),
+            'backup_quota': sum([q['backup_storage'] for q in quotas_list]),
         }
 
     def get(self, request, format=None):
@@ -635,6 +635,10 @@ class ResourceStatsView(views.APIView):
         stats = cloud_backend.get_resource_stats(auth_url)
         quotas_stats = self._get_quotas_stats(clouds)
         stats.update(quotas_stats)
+
+        # TODO: get from OpenStack once we have Juno and properly working backup quotas
+        full_usage = QuotaStatsView.get_sum_of_quotas(models.CloudProjectMembership.objects.all())
+        stats['backups'] = full_usage.get('backup_storage_usage', 0)
 
         return Response(sort_dict(stats), status=status.HTTP_200_OK)
 
@@ -852,7 +856,8 @@ class IpMappingViewSet(core_viewsets.ModelViewSet):
 
 class QuotaStatsView(views.APIView):
 
-    def _get_sum_of_quotas(self, memberships):
+    @staticmethod
+    def get_sum_of_quotas(memberships):
         fields = ['vcpu', 'ram', 'storage', 'max_instances', 'backup_storage']
         sum_of_quotas = defaultdict(lambda: 0)
 
@@ -882,5 +887,5 @@ class QuotaStatsView(views.APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         memberships = serializer.get_memberships(request.user)
-        sum_of_quotas = self._get_sum_of_quotas(memberships)
+        sum_of_quotas = self.get_sum_of_quotas(memberships)
         return Response(sum_of_quotas, status=status.HTTP_200_OK)

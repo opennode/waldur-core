@@ -264,13 +264,13 @@ class ResourceStatsTest(test.APITransactionTestCase):
         expected_result = {
             u'count': 2, u'vcpus_used': 0, u'local_gb_used': 0, u'memory_mb': 7660, u'current_workload': 0,
             u'vcpus': 2, u'running_vms': 0, u'free_disk_gb': 12, u'disk_available_least': 6, u'local_gb': 12,
-            u'free_ram_mb': 6636, u'memory_mb_used': 1024
+            u'free_ram_mb': 6636, u'memory_mb_used': 1024, u'backups': 0
         }
         expected_result.update({
             'vcpu_quota': self.quota1.vcpu + self.quota2.vcpu,
             'ram_quota': self.quota1.ram + self.quota2.ram,
             'storage_quota': self.quota1.storage + self.quota2.storage,
-            'backup_storage': self.quota1.backup_storage + self.quota2.backup_storage,
+            'backup_quota': self.quota1.backup_storage + self.quota2.backup_storage,
         })
         mocked_backend.get_resource_stats = Mock(return_value=expected_result)
 
