@@ -661,6 +661,9 @@ class OpenStackBackend(object):
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
             # TODO: Update start_time
             instance.save()
+            # Floating ips initialization:
+            self.add_floating_ips_to_server(server.id, instance, nova)
+
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
                 nova_exceptions.ClientException,
@@ -1361,6 +1364,16 @@ class OpenStackBackend(object):
             time.sleep(poll_interval)
         else:
             return False
+
+    def add_floating_ips_to_server(self, server_id, instance, nova):
+        try:
+            server = nova.servers.get(server_id)
+            fixed_address = server.addresses.values()[0]['addr']
+            server.add_floating_ip(address=instance.external_ips, fixed_address=fixed_address)
+        except (nova_exceptions.ClientException, KeyError, IndexError):
+            logger.error('Could not add external ips to instance %s', instance.uuid)
+            instance.external_ips = ''
+            instance.save()
 
     def get_attached_volumes(self, server_id, nova):
         """
