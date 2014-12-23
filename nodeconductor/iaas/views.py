@@ -847,6 +847,23 @@ class IpMappingViewSet(core_viewsets.ModelViewSet):
     filter_class = IpMappingFilter
 
 
+class FloatingIPFilter(django_filters.FilterSet):
+    project = django_filters.CharFilter(
+        name='cloud_project_membership__project__uuid',
+    )
+    cloud = django_filters.CharFilter(
+        name='cloud_project_membership__cloud__uuid',
+    )
+
+    class Meta(object):
+        model = models.FloatingIP
+        fields = [
+            'project',
+            'cloud',
+            'status',
+        ]
+
+
 class FloatingIPViewSet(core_viewsets.ReadOnlyModelViewSet):
     """
     List of floating ips
@@ -856,17 +873,7 @@ class FloatingIPViewSet(core_viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
-
-    def get_queryset(self):
-        queryset = super(FloatingIPViewSet, self).get_queryset()
-        queryset = structure_filters.filter_queryset_for_user(queryset, self.request.user)
-        if 'project' in self.request.QUERY_PARAMS:
-            queryset = queryset.filter(cloud_project_membership__project__uuid=self.request.QUERY_PARAMS['project'])
-        if 'cloud' in self.request.QUERY_PARAMS:
-            queryset = queryset.filter(cloud_project_membership__cloud__uuid=self.request.QUERY_PARAMS['cloud'])
-        if 'status' in self.request.QUERY_PARAMS:
-            queryset = queryset.filter(status__iexact=self.request.QUERY_PARAMS['status'])
-        return queryset
+    filter_class = FloatingIPFilter
 
 
 class QuotaStatsView(views.APIView):
