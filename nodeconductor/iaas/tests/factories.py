@@ -243,3 +243,23 @@ class ResourceQuotaFactory(AbstractResourceQuotaFactory):
 class ResourceQuotaUsageFactory(AbstractResourceQuotaFactory):
     class Meta(object):
         model = models.ResourceQuotaUsage
+
+
+class FloatingIPFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.FloatingIP
+
+    cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
+    status = factory.Iterator(['ACTIVE', 'SHUTOFF', 'DOWN'])
+    address = factory.LazyAttribute(lambda o: ','.join('.'.join(
+        '%s' % randint(0, 255) for _ in range(4)) for _ in range(3)))
+
+    @classmethod
+    def get_url(self, instance=None):
+        if instance is None:
+            instance = FloatingIPFactory()
+        return 'http://testserver' + reverse('floating_ip-detail', kwargs={'uuid': instance.uuid})
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('floating_ip-list')
