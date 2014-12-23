@@ -73,7 +73,7 @@ class GenericRoleFilter(BaseFilterBackend):
         return filter_queryset_for_user(queryset, request.user)
 
 
-class RoleField(CharField):
+class CustomerRoleField(CharField):
     def to_python(self, value):
         if value in CustomerRole.NAME_TO_ROLE:
             return CustomerRole.NAME_TO_ROLE[value]
@@ -81,5 +81,5 @@ class RoleField(CharField):
         return value
 
 
-class RoleFilter(CharFilter):
-    field_class = RoleField
+class CustomerRoleFilter(CharFilter):
+    field_class = CustomerRoleField

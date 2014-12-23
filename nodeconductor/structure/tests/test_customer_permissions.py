@@ -270,7 +270,12 @@ class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
         response = self.client.get(reverse('customer_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        self._ensure_matching_entries_in('role', 'owner')
+        response = self.client.get(reverse('customer_permission-list'),
+                                   data={'role': 'owner'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for permission in response.data:
+            self.assertEqual('owner', permission['role'])
 
     def test_staff_user_can_see_required_fields_in_filtration_response(self):
         response = self.client.get(reverse('customer_permission-list'))
