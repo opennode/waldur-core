@@ -58,6 +58,21 @@ class UserPermissionApiTest(test.APISimpleTestCase):
         response = self.client.post(factories.UserFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+        created_user = User.objects.filter(username=data['username']).first()
+        self.assertIsNotNone(created_user, 'User should have been created')
+
+    def test_staff_user_cannot_set_civil_number_upon_account_creation(self):
+        self.client.force_authenticate(self.users['staff'])
+
+        data = self._get_valid_payload()
+        data['civil_number'] = 'foobar'
+
+        response = self.client.post(factories.UserFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        created_user = User.objects.get(username=data['username'])
+        self.assertIsNone(created_user.civil_number, "User's civil_number should be unset")
+
     def test_staff_user_can_create_account_with_null_optional_data(self):
         self.client.force_authenticate(self.users['staff'])
 
@@ -76,6 +91,20 @@ class UserPermissionApiTest(test.APISimpleTestCase):
         data = {'email': 'example@example.com'}
 
         self._ensure_user_cannot_change_field(self.users['owner'], 'email', data)
+
+    def test_staff_user_cannot_change_civil_number(self):
+        self.client.force_authenticate(self.users['staff'])
+
+        user = factories.UserFactory()
+
+        data = self._get_valid_payload(user)
+        data['civil_number'] = 'foobar'
+
+        self.client.put(factories.UserFactory.get_url(user), data)
+
+        reread_user = User.objects.get(username=data['username'])
+        self.assertEqual(reread_user.civil_number, user.civil_number,
+                         "User's civil_number should be left intact")
 
     def test_user_can_change_his_account_organization(self):
         data = {'organization': 'test',
@@ -155,7 +184,6 @@ class UserPermissionApiTest(test.APISimpleTestCase):
             'email': account.email,
             'full_name': account.full_name,
             'native_name': account.native_name,
-            'civil_number': account.civil_number,
             'is_staff': account.is_staff,
             'is_active': account.is_active,
             'is_superuser': account.is_superuser,
@@ -169,7 +197,6 @@ class UserPermissionApiTest(test.APISimpleTestCase):
             'email': account.email,
             'full_name': None,
             'native_name': None,
-            'civil_number': None,
             'phone_number': None,
             'description': None,
             'is_staff': account.is_staff,
