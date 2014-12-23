@@ -23,7 +23,7 @@ from nodeconductor.core.log import EventLoggerAdapter
 
 
 logger = logging.getLogger(__name__)
-event_log = EventLoggerAdapter(logger)
+event_logger = EventLoggerAdapter(logger)
 
 
 class DescribableMixin(models.Model):
@@ -216,4 +216,10 @@ class SynchronizableMixin(models.Model):
 def create_auth_token(sender, instance=None, created=False, **kwargs):
     if created:
         Token.objects.create(user=instance)
-        event_log.info('New user was created: %s' % instance, extra={'user': instance})
+
+
+@receiver(signals.post_save, sender=User)
+def log_user_creation(sender, instance=None, created=False, **kwargs):
+    if created:
+        event_logger.warning(
+            'New user was created: %s' % instance, extra={'user': instance, 'event_type': 'user_creation'})
