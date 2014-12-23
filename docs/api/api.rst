@@ -99,3 +99,8 @@ Statistics
 ==========
 
 .. include:: statistics.rst
+
+Floating IPs
+============
+
+.. include:: floating_ips.rst
