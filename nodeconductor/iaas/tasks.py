@@ -229,6 +229,16 @@ def sync_cloud_membership(membership_pk):
             exc_info=1,
         )
 
+    # Pull created membership quotas
+    try:
+        backend.pull_resource_quota(membership)
+        backend.pull_resource_quota_usage(membership)
+    except CloudBackendError:
+        logger.warn(
+            'Failed to pull resource quota and usage data to cloud membership %s',
+            membership.pk,
+            exc_info=1,
+        )
 
 @shared_task
 @tracked_processing(
