@@ -232,7 +232,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
             external_ips = attrs['external_ips'].split(',')
             # TODO: replace external_ips IPsField with IPField and remove this validation:
             if len(external_ips) > 1:
-                raise ValidationError('Instance can have only one external IP')
+                raise ValidationError("Instance can have only one external IP.")
             for ip in external_ips:
                 ip_exists = models.FloatingIP.objects.filter(
                     address=external_ips,
@@ -240,7 +240,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                     cloud_project_membership=membership,
                 ).exists()
                 if not ip_exists:
-                    raise ValidationError("External IP is not from membership floating IPs.")
+                    raise ValidationError("External IP is not from the list of available floating IPs.")
 
         template = attrs['template']
         image_exists = models.Image.objects.filter(template=template, cloud=flavor.cloud).exists()

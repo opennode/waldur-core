@@ -52,7 +52,7 @@ class FloatingIPListRetreiveTestCase(test.APITransactionTestCase):
 
     def test_floating_ip_list_can_be_filtered_by_status(self):
         data = {
-            'status': 'active',
+            'status': 'ACTIVE',
         }
         # when
         self.client.force_authenticate(self.staff)

@@ -714,7 +714,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset(
-            {'non_field_errors': ['External IP is not from membership floating IPs.']}, response.data)
+            {'non_field_errors': ['External IP is not from the list of available floating IPs.']}, response.data)
 
     # Helper methods
     def get_valid_data(self):

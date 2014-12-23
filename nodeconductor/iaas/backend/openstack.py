@@ -472,8 +472,9 @@ class OpenStackBackend(object):
         try:
             backend_floating_ips = dict((ip['id'], ip) for ip in self.get_floating_ips(membership.tenant_id, neutron))
         except neutron_exceptions.ClientException as e:
-            logger.exception('Failed to get list of')
+            logger.exception('Failed to get a list of floating IPs')
             six.reraise(CloudBackendError, e)
+
         nc_floating_ips = dict(
             (ip.backend_id, ip) for ip in models.FloatingIP.objects.filter(cloud_project_membership=membership))
 
@@ -485,7 +486,7 @@ class OpenStackBackend(object):
             for ip_id in nc_ids - backend_ids:
                 ip = nc_floating_ips[ip_id]
                 ip.delete()
-                logger.info('Deleted stale ip %s in database', ip.uuid)
+                logger.info('Deleted stale floating IP port %s in database', ip.uuid)
 
             for ip_id in backend_ids - nc_ids:
                 ip = backend_floating_ips[ip_id]
@@ -495,7 +496,7 @@ class OpenStackBackend(object):
                     backend_id=ip['id'],
                     address=ip['floating_ip_address'],
                 )
-                logger.info('Created new floating ip %s in database', created_ip.uuid)
+                logger.info('Created new floating IP port %s in database', created_ip.uuid)
 
             for ip_id in nc_ids & backend_ids:
                 nc_ip = nc_floating_ips[ip_id]
@@ -504,7 +505,7 @@ class OpenStackBackend(object):
                     nc_ip.status = backend_ip['status']
                     nc_ip.address = backend_ip['floating_ip_address']
                     nc_ip.save()
-                    logger.info('Updated existing floating ip %s in database', nc_ip.uuid)
+                    logger.info('Updated existing floating IP port %s in database', nc_ip.uuid)
 
     # Statistics methods
     def get_resource_stats(self, auth_url):
@@ -661,8 +662,8 @@ class OpenStackBackend(object):
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
             # TODO: Update start_time
             instance.save()
-            # Floating ips initialization:
-            self.add_floating_ips_to_server(server.id, instance, nova)
+            # Floating ips initialization
+            self.push_floating_ip_to_instance(server.id, instance, nova)
 
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
@@ -1365,13 +1366,13 @@ class OpenStackBackend(object):
         else:
             return False
 
-    def add_floating_ips_to_server(self, server_id, instance, nova):
+    def push_floating_ip_to_instance(self, server_id, instance, nova):
         try:
             server = nova.servers.get(server_id)
             fixed_address = server.addresses.values()[0]['addr']
             server.add_floating_ip(address=instance.external_ips, fixed_address=fixed_address)
-        except (nova_exceptions.ClientException, KeyError, IndexError):
-            logger.error('Could not add external ips to instance %s', instance.uuid)
+        except (nova_exceptions.ClientException, KeyError, IndexError) as e:
+            logger.error('Could not add external ips to instance %s due to %s' % (instance.uuid, e))
             instance.external_ips = ''
             instance.save()
 
