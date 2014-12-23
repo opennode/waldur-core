@@ -17,9 +17,10 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
 
+from nodeconductor.core import filters as core_filters
+from nodeconductor.core import mixins
 from nodeconductor.core import permissions
 from nodeconductor.core import viewsets
-from nodeconductor.core import mixins
 from nodeconductor.structure import filters
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
@@ -103,20 +104,25 @@ class ProjectFilter(django_filters.FilterSet):
 
     description = django_filters.CharFilter(lookup_type='icontains')
 
+    # TODO: quota filters are matching quota values in every CloudProjectMembership quota, not aggregated.
     vcpu = django_filters.NumberFilter(
-        name='resource_quota__vcpu',
+        name='cloudprojectmembership__resource_quota__vcpu',
     )
 
     ram = django_filters.NumberFilter(
-        name='resource_quota__ram',
+        name='cloudprojectmembership__resource_quota__ram',
     )
 
     storage = django_filters.NumberFilter(
-        name='resource_quota__storage',
+        name='cloudprojectmembership__resource_quota__storage',
     )
 
     max_instances = django_filters.NumberFilter(
-        name='resource_quota__max_instances',
+        name='cloudprojectmembership__resource_quota__max_instances',
+    )
+
+    backup = django_filters.NumberFilter(
+        name='cloudprojectmembership__resource_quota__backup_storage',
     )
 
     class Meta(object):
@@ -125,27 +131,48 @@ class ProjectFilter(django_filters.FilterSet):
             'project_group',
             'project_group_name',
             'name',
+            'customer',
+            'description',
+            # quotas
             'vcpu',
             'ram',
             'storage',
             'max_instances',
-            'customer',
-            'description'
+            'backup',
         ]
         order_by = [
             'name',
             '-name',
-            'resource_quota__vcpu',
-            '-resource_quota__vcpu',
-            'resource_quota__ram',
-            '-resource_quota__ram',
-            'resource_quota__storage',
-            '-resource_quota__storage',
-            'resource_quota__max_instances',
-            '-resource_quota__max_instances',
             'project_groups__name',
             '-project_groups__name',
+            'cloudprojectmembership__resource_quota__vcpu',
+            '-cloudprojectmembership__resource_quota__vcpu',
+            'cloudprojectmembership__resource_quota__ram',
+            '-cloudprojectmembership__resource_quota__ram',
+            'cloudprojectmembership__resource_quota__storage',
+            '-cloudprojectmembership__resource_quota__storage',
+            'cloudprojectmembership__resource_quota__max_instances',
+            '-cloudprojectmembership__resource_quota__max_instances',
+            'cloudprojectmembership__resource_quota__backup_storage',
+            '-cloudprojectmembership__resource_quota__backup_storage',
         ]
+
+        order_by_mapping = {
+            # Proper field naming
+            'project_group_name': 'project_groups__name',
+            'vcpu': 'cloudprojectmembership__resource_quota__vcpu',
+            'ram': 'cloudprojectmembership__resource_quota__ram',
+            'max_instances': 'cloudprojectmembership__resource_quota__max_instances',
+            'storage': 'cloudprojectmembership__resource_quota__storage',
+            'backup': 'cloudprojectmembership__resource_quota__backup_storage',
+
+            # Backwards compatibility
+            'project_groups__name': 'project_groups__name',
+            'resource_quota__vcpu': 'cloudprojectmembership__resource_quota__vcpu',
+            'resource_quota__ram': 'cloudprojectmembership__resource_quota__ram',
+            'resource_quota__storage': 'cloudprojectmembership__resource_quota__storage',
+            'resource_quota__backup_storage': 'cloudprojectmembership__resource_quota__backup_storage',
+        }
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
@@ -157,7 +184,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend,)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
     filter_class = ProjectFilter
