@@ -149,10 +149,10 @@ class ProjectFilterTest(test.APITransactionTestCase):
             response = self.client.get(factories.ProjectFactory.get_list_url(), data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_project_ordering_do_not_raise_errors(self):
+    def test_project_ordering_does_not_raise_errors(self):
         for ordering in [
             'name',
-            'project_group',
+            'project_group_name',
             'vcpu', 'storage', 'backup', 'max_instances', 'ram',
         ]:
             data = {'o': ordering}

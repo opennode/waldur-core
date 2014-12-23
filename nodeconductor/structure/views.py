@@ -17,10 +17,10 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
 
+from nodeconductor.core import filters as core_filters
+from nodeconductor.core import mixins
 from nodeconductor.core import permissions
 from nodeconductor.core import viewsets
-from nodeconductor.core import mixins
-from nodeconductor.core import filters as core_filters
 from nodeconductor.structure import filters
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
@@ -159,7 +159,7 @@ class ProjectFilter(django_filters.FilterSet):
 
         order_by_mapping = {
             # Proper field naming
-            'project_group': 'project_groups__name',
+            'project_group_name': 'project_groups__name',
             'vcpu': 'cloudprojectmembership__resource_quota__vcpu',
             'ram': 'cloudprojectmembership__resource_quota__ram',
             'max_instances': 'cloudprojectmembership__resource_quota__max_instances',

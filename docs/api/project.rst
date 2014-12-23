@@ -27,7 +27,7 @@ Sorting can be done by the following fields, specifying field name as a paramete
 descending sorting prefix field name with a **-**.
 
 - ?o=name - sort by project name;
-- ?o=project_group - sort by project's group names
+- ?o=project_group_name - sort by project's group names
 - ?o=vcpu - sort by project's quota of vCPU number;
 - ?o=ram - sort by project's quota of RAM;
 - ?o=storage - sort by project's quota of storage;

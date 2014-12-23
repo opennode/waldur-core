@@ -382,7 +382,6 @@ class OpenStackBackend(object):
                 else:
                     logger.info('Deleted stale instance %s in database',
                                 nc_instance.uuid)
-                    # TODO:
 
     def pull_resource_quota(self, membership):
         try:
