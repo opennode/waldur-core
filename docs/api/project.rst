@@ -27,11 +27,17 @@ Sorting can be done by the following fields, specifying field name as a paramete
 descending sorting prefix field name with a **-**.
 
 - ?o=name - sort by project name;
-- ?o=resource_quota__vcpu - sort by project's quota of vCPU number;
-- ?o=resource_quota__ram - sort by project's quota of RAM;
-- ?o=resource_quota__storage - sort by project's quota of storage;
-- ?o=resource_quota__max_instances - sort by project's quota of instance number.
-- ?o=project_groups__name - sort by project's group names
+- ?o=project_group - sort by project's group names
+- ?o=vcpu - sort by project's quota of vCPU number;
+- ?o=ram - sort by project's quota of RAM;
+- ?o=storage - sort by project's quota of storage;
+- ?o=backup - sort by project's quota of backups;
+- ?o=max_instances - sort by project's quota of instance number.
+- ?o=project_groups__name - **deprecated**, use ?o=project_group instead.
+- ?o=resource_quota__vcpu - **deprecated**, use ?=vcpu instead.
+- ?o=resource_quota__ram - **deprecated**, use ?=ram instead.
+- ?o=resource_quota__storage - **deprecated**, use ?=storage instead.
+- ?o=resource_quota__max_instances - **deprecated**, use ?=max_instances instead.
 
 Project permissions
 -------------------
