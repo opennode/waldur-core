@@ -35,37 +35,87 @@ class EventFormatter(logging.Formatter):
     def format_timestamp(self, time):
         return datetime.utcfromtimestamp(time).isoformat() + 'Z'
 
+    def levelname_to_importance(self, levelname):
+        if levelname == 'DEBUG':
+            return 'low'
+        elif levelname == 'INFO':
+            return 'normal'
+        elif levelname == 'WARNING':
+            return 'high'
+        elif levelname == 'ERROR':
+            return 'very high'
+        else:
+            return 'critical'
+
+    def get_customer_from_relative(self, *relatives):
+        for r in relatives:
+            customer = getattr(r, 'customer', None)
+            if customer is not None:
+                return customer
+
     def format(self, record):
-        # Create message dict
+        # base message
         message = {
-            # TODO: refactor format
+            # basic
             '@timestamp': self.format_timestamp(record.created),
             '@version': 1,
             'message': record.getMessage(),
             'path': record.pathname,
 
-            # Extra Fields
+            # logging details
             'levelname': record.levelname,
             'logger': record.name,
-
-            # TODO: example of the expected file - values should come from the record
-            "event_type": "vm_instance_start",
-            "user_name": record.user.full_name,
-            "user_uuid": record.user.uuid.hex,
-            "customer_name": "Ministry of Silly Walks",
-            "customer_uuid": "167e6162-3b6f-4ae2-a171-2470b63dff00",
-            "project_name": "Flying Circus",
-            "project_uuid": "267e6162-3b6f-4ae2-a171-2470b63dff00",
-            "project_group_name": "Baywatch",
-            "project_group_uuid": "78d1ca9377d54aba96bfb5a5c5a8d592",
-            "vm_instance_uuid": "78d1ca9377d54aba96bfb5a5c5a8d592",
-            "cloud_account_name": "Pythonesque",
-            "cloud_account_uuid": "367e6162-3b6f-4ae2-a171-2470b63dff00",
-            "@timestamp": "2013-11-05T13:15:30Z",
-            "importance": "normal",
-            "importance_code": 3,
-            "message": "Authenticated user 'geronimo' with full name: Great Geronimo"
+            "importance": self.levelname_to_importance(record.levelname),
+            "importance_code": record.levelno,
+            "event_type": getattr(record, 'event_type', 'undefined'),
         }
+
+        # user
+        user = getattr(record, 'user', None)
+        message.update({
+            "user_name": getattr(user, 'full_name', ''),
+            "user_uuid": str(getattr(user, 'uuid', '')),
+        })
+
+        # instance
+        instance = getattr(record, 'instance', None)
+        membership = getattr(instance, 'cloud_project_membership', None)
+        message['vm_instance_uuid'] = str(getattr(user, 'uuid', ''))
+
+        # project
+        project = getattr(record, 'project', None)
+        if project is None and membership is not None:
+            project = getattr(membership, 'project', None)
+        message.update({
+            "project_name": getattr(project, 'name', ''),
+            "project_uuid": str(getattr(project, 'uuid', '')),
+        })
+
+        # project group
+        project_group = getattr(record, 'project_group', None)
+        message.update({
+            "project_group_name": getattr(project_group, 'name', ''),
+            "project_group_uuid": str(getattr(project_group, 'uuid', '')),
+        })
+
+        # cloud
+        cloud = getattr(record, 'cloud', None)
+        if cloud is None and membership is not None:
+            cloud = getattr(membership, 'cloud', None)
+        message.update({
+            "cloud_account_name": getattr(cloud, 'name', ''),
+            "cloud_account_uuid": str(getattr(cloud, 'uuid', '')),
+        })
+
+        # customer
+        customer = getattr(record, 'customer', None)
+        if customer is None:
+            customer = self.get_customer_from_relative(project, cloud, project_group)
+        message.update({
+            "customer_name": getattr(customer, 'name', ''),
+            "customer_uuid": str(getattr(customer, 'uuid', '')),
+        })
+
         return json.dumps(message)
 
 
