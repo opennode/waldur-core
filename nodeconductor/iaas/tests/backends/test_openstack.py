@@ -9,7 +9,7 @@ import mock
 
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.backend.openstack import OpenStackBackend
-from nodeconductor.iaas.models import Flavor, Instance, Image, ResourceQuota, ResourceQuotaUsage
+from nodeconductor.iaas.models import Flavor, Instance, Image, ResourceQuota, ResourceQuotaUsage, FloatingIP
 from nodeconductor.iaas.tests import factories
 
 NovaFlavor = collections.namedtuple(
@@ -396,6 +396,65 @@ class OpenStackBackendFlavorApiTest(TransactionTestCase):
             backend_id=self.flavors[1].backend_id).exists()
 
         self.assertFalse(is_present, 'Flavor should have been deleted from the database')
+
+
+class OpenStackBackendFloatingIPTest(TransactionTestCase):
+
+    def setUp(self):
+        self.keystone_client = mock.Mock()
+        self.nova_client = mock.Mock()
+        self.neutron_client = mock.Mock()
+        self.cloud_account = mock.Mock()
+        self.membership = factories.CloudProjectMembershipFactory()
+        self.tenant = mock.Mock()
+
+        # Mock low level non-AbstractCloudBackend api methods
+        self.backend = OpenStackBackend()
+        self.backend.create_admin_session = mock.Mock()
+        self.backend.create_user_session = mock.Mock()
+        self.backend.create_keystone_client = mock.Mock(return_value=self.keystone_client)
+        self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
+        self.backend.create_neutron_client = mock.Mock(return_value=self.neutron_client)
+        self.backend.get_or_create_tenant = mock.Mock(return_value=self.tenant)
+        self.backend.get_or_create_user = mock.Mock(return_value=('john', 'doe'))
+        self.backend.get_or_create_network = mock.Mock()
+        self.backend.ensure_user_is_tenant_admin = mock.Mock()
+        self.backend.create_tenant_session = mock.Mock()
+        self.floating_ips = [
+            {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.163', 'id': '063795b7-23ac-4a0d-82f0-4326e73ee1bc'},
+            {'status': 'DOWN', 'floating_ip_address': '10.7.201.114', 'id': '063795b7-23ac-4a0d-82f0-432as73asdas'},
+            {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.107', 'id': '063795b7-asds-aq34-3df4-23asdasddssc'},
+        ]
+        self.backend.get_floating_ips = mock.Mock(return_value=self.floating_ips)
+
+    def test_pull_floating_ips_deletes_staled_ips(self):
+        staled_ip = factories.FloatingIPFactory(backend_id='qqqq', cloud_project_membership=self.membership)
+        # when
+        self.backend.pull_floating_ips(self.membership)
+        # then
+        self.assertFalse(FloatingIP.objects.filter(id=staled_ip.id).exists(), 'Staled floating ip should be deleted')
+
+    def test_pull_floating_ips_creates_new_ips(self):
+        # when
+        self.backend.pull_floating_ips(self.membership)
+        # then
+        for ip in self.floating_ips:
+            self.assertTrue(
+                FloatingIP.objects.filter(backend_id=ip['id']).exists(), 'Unexisted floating ip should be created')
+            self.assertEqual
+
+    def test_pull_floating_ips_updates_existing_ips(self):
+        backend_ip = self.floating_ips[0]
+        nc_floating_ip = factories.FloatingIPFactory(
+            backend_id=backend_ip['id'], cloud_project_membership=self.membership)
+        # when
+        self.backend.pull_floating_ips(self.membership)
+        # then
+        reread_ip = FloatingIP.objects.get(id=nc_floating_ip.id)
+        backend_ip = self.floating_ips[0]
+        self.assertEqual(reread_ip.address, backend_ip['floating_ip_address'])
+        self.assertEqual(reread_ip.status, backend_ip['status'])
+        self.assertEqual(reread_ip.backend_id, backend_ip['id'])
 
 
 class OpenStackBackendImageApiTest(TransactionTestCase):

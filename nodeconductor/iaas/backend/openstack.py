@@ -461,6 +461,52 @@ class OpenStackBackend(object):
 
         resource_quota_usage.save()
 
+    def pull_floating_ips(self, membership):
+        logger.debug('Pulling floating ips for membership %s', membership.id)
+        try:
+            session = self.create_tenant_session(membership)
+            neutron = self.create_neutron_client(session)
+        except keystone_exceptions.ClientException as e:
+            logger.exception('Failed to create neutron client')
+            six.reraise(CloudBackendError, e)
+
+        try:
+            backend_floating_ips = dict((ip['id'], ip) for ip in self.get_floating_ips(membership.tenant_id, neutron))
+        except neutron_exceptions.ClientException as e:
+            logger.exception('Failed to get list of')
+            six.reraise(CloudBackendError, e)
+        nc_floating_ips = dict(
+            (ip.backend_id, ip) for ip in models.FloatingIP.objects.filter(cloud_project_membership=membership))
+
+        backend_ids = set(backend_floating_ips.keys())
+        nc_ids = set(nc_floating_ips.keys())
+
+        with transaction.atomic():
+
+            for ip_id in nc_ids - backend_ids:
+                ip = nc_floating_ips[ip_id]
+                ip.delete()
+                logger.info('Deleted stale ip %s in database', ip.uuid)
+
+            for ip_id in backend_ids - nc_ids:
+                ip = backend_floating_ips[ip_id]
+                created_ip = models.FloatingIP.objects.create(
+                    cloud_project_membership=membership,
+                    status=ip['status'],
+                    backend_id=ip['id'],
+                    address=ip['floating_ip_address'],
+                )
+                logger.info('Created new floating ip %s in database', created_ip.uuid)
+
+            for ip_id in nc_ids & backend_ids:
+                nc_ip = nc_floating_ips[ip_id]
+                backend_ip = backend_floating_ips[ip_id]
+                if nc_ip.status != backend_ip['status'] or nc_ip.address != backend_ip['floating_ip_address']:
+                    nc_ip.status = backend_ip['status']
+                    nc_ip.address = backend_ip['floating_ip_address']
+                    nc_ip.save()
+                    logger.info('Updated existing floating ip %s in database', nc_ip.uuid)
+
     # Statistics methods
     def get_resource_stats(self, auth_url):
         logger.debug('About to get statistics from for auth_url: %s', auth_url)
@@ -916,6 +962,9 @@ class OpenStackBackend(object):
             logger.info('Successfully changed flavor of an instance %s', instance.uuid)
 
     # Helper methods
+    def get_floating_ips(self, tenant_id, neutron):
+        return neutron.list_floatingips(tenant_id=tenant_id)['floatingips']
+
     def create_security_group(self, security_group, nova):
         backend_security_group = nova.security_groups.create(name=security_group.name, description='')
         security_group.backend_id = backend_security_group.id
