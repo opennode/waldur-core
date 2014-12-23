@@ -216,4 +216,4 @@ class SynchronizableMixin(models.Model):
 def create_auth_token(sender, instance=None, created=False, **kwargs):
     if created:
         Token.objects.create(user=instance)
-        event_log.info('New user was created: %s' % instance)
+        event_log.info('New user was created: %s' % instance, extra={'user': instance})

@@ -15,7 +15,10 @@ class EventLoggerAdapter(logging.LoggerAdapter, object):
         super(EventLoggerAdapter, self).__init__(logger, {})
 
     def process(self, msg, kwargs):
-        kwargs['extra'] = {'event': True}
+        if 'extra' in kwargs:
+            kwargs['extra']['event'] = True
+        else:
+            kwargs['extra'] = {'event': True}
         return msg, kwargs
 
 
@@ -47,8 +50,8 @@ class EventFormatter(logging.Formatter):
 
             # TODO: example of the expected file - values should come from the record
             "event_type": "vm_instance_start",
-            "user_name": "geronimo",
-            "user_uuid": "067e6162-3b6f-4ae2-a171-2470b63dff00",
+            "user_name": record.user.full_name,
+            "user_uuid": record.user.uuid.hex,
             "customer_name": "Ministry of Silly Walks",
             "customer_uuid": "167e6162-3b6f-4ae2-a171-2470b63dff00",
             "project_name": "Flying Circus",
