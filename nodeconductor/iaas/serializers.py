@@ -437,6 +437,16 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
 
 
+class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
+    cloud_project_membership = CloudProjectMembershipSerializer()
+
+    class Meta:
+        model = models.FloatingIP
+        fields = ('url', 'uuid', 'status', 'address', 'cloud_project_membership')
+        lookup_field = 'uuid'
+        view_name = 'floating_ip-detail'
+
+
 class SshKeySerializer(serializers.HyperlinkedModelSerializer):
     user_uuid = serializers.Field(source='user.uuid')
 
