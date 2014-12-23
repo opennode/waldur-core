@@ -14,6 +14,7 @@ def register_in(router):
     router.register(r'project-cloud-memberships', views.CloudProjectMembershipViewSet, base_name='cloudproject_membership')
     router.register(r'security-groups', views.SecurityGroupViewSet, base_name='security_group')
     router.register(r'ip-mappings', views.IpMappingViewSet, base_name='ip_mapping')
+    router.register(r'floating-ips', views.FloatingIPViewSet, base_name='floating_ip')
 
 urlpatterns = patterns(
     '',

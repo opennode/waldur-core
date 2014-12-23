@@ -193,6 +193,9 @@ class InstanceSlaHistoryAdmin(admin.ModelAdmin):
         InstanceSlaHistoryEventsInline,
     )
 
+class FloatingIPAdmin(admin.ModelAdmin):
+    list_display = ('cloud_project_membership', 'address', 'status')
+
 
 admin.site.register(models.Cloud, CloudAdmin)
 admin.site.register(models.CloudProjectMembership, CloudProjectMembershipAdmin)
@@ -200,3 +203,4 @@ admin.site.register(models.Instance, InstanceAdmin)
 admin.site.register(models.SecurityGroup, SecurityGroupAdmin)
 admin.site.register(models.Template, TemplateAdmin)
 admin.site.register(models.InstanceSlaHistory, InstanceSlaHistoryAdmin)
+admin.site.register(models.FloatingIP, FloatingIPAdmin)

@@ -23,6 +23,11 @@ Flavor management
 
 .. include:: flavor.rst
 
+Floating IPs
+============
+
+.. include:: floating_ips.rst
+
 IP mappings
 ===========
 
@@ -75,6 +80,11 @@ Services
 
 .. include:: services.rst
 
+Statistics
+==========
+
+.. include:: statistics.rst
+
 Templates
 =========
 
@@ -94,8 +104,3 @@ VM instance management
 ======================
 
 .. include:: instance.rst
-
-Statistics
-==========
-
-.. include:: statistics.rst

@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import logging
 from decimal import Decimal
 
-from django.conf import settings
 from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
@@ -223,6 +222,17 @@ class ResourceQuotaUsage(AbstractResourceQuota):
     cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota_usage')
 
 
+class FloatingIP(core_models.UuidMixin, CloudProjectMember):
+    class Permissions(object):
+        customer_path = 'cloud_project_membership__cloud__customer'
+        project_path = 'cloud_project_membership__project'
+        project_group_path = 'cloud_project_membership__project__project_groups'
+
+    address = models.CharField(max_length=30)
+    status = models.CharField(max_length=30)
+    backend_id = models.CharField(max_length=255)
+
+
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
@@ -297,7 +307,7 @@ class Instance(core_models.UuidMixin,
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
-    external_ips = fields.IPsField(max_length=256)
+    external_ips = fields.IPsField(max_length=256, blank=True)
     internal_ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
 

@@ -189,7 +189,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
     class Meta(object):
         model = models.Instance
         fields = ('url', 'uuid', 'hostname', 'description',
-                  'template', 'project', 'security_groups', 'flavor', 'ssh_public_key')
+                  'template', 'project', 'security_groups', 'flavor', 'ssh_public_key', 'external_ips')
         lookup_field = 'uuid'
 
     def get_fields(self):
@@ -205,6 +205,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         clouds = structure_filters.filter_queryset_for_user(models.Cloud.objects.all(), user)
         fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds)
+        fields['external_ips'].required = False
 
         return fields
 
@@ -219,13 +220,27 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
     def validate(self, attrs):
         flavor = attrs['flavor']
         project = attrs['project']
-        membership_exists = models.CloudProjectMembership.objects.filter(
-            project=project,
-            cloud=flavor.cloud,
-        ).exists()
-
-        if not membership_exists:
+        try:
+            membership = models.CloudProjectMembership.objects.get(
+                project=project,
+                cloud=flavor.cloud,
+            )
+        except models.CloudProjectMembership.DoesNotExist:
             raise ValidationError("Flavor is not within project's clouds.")
+
+        if 'external_ips' in attrs:
+            external_ips = attrs['external_ips'].split(',')
+            # TODO: replace external_ips IPsField with IPField and remove this validation:
+            if len(external_ips) > 1:
+                raise ValidationError("Instance can have only one external IP.")
+            for ip in external_ips:
+                ip_exists = models.FloatingIP.objects.filter(
+                    address=external_ips,
+                    status='DOWN',
+                    cloud_project_membership=membership,
+                ).exists()
+                if not ip_exists:
+                    raise ValidationError("External IP is not from the list of available floating IPs.")
 
         template = attrs['template']
         image_exists = models.Image.objects.filter(template=template, cloud=flavor.cloud).exists()
@@ -435,6 +450,16 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'template_licenses',
         )
         lookup_field = 'uuid'
+
+
+class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
+    cloud_project_membership = CloudProjectMembershipSerializer()
+
+    class Meta:
+        model = models.FloatingIP
+        fields = ('url', 'uuid', 'status', 'address', 'cloud_project_membership')
+        lookup_field = 'uuid'
+        view_name = 'floating_ip-detail'
 
 
 class SshKeySerializer(serializers.HyperlinkedModelSerializer):
