@@ -230,6 +230,9 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         if 'external_ips' in attrs:
             external_ips = attrs['external_ips'].split(',')
+            # TODO: replace external_ips IPsField with IPField and remove this validation:
+            if len(external_ips) > 1:
+                raise ValidationError('Instance can have only one external IP')
             for ip in external_ips:
                 ip_exists = models.FloatingIP.objects.filter(
                     address=external_ips,
