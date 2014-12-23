@@ -251,8 +251,7 @@ class FloatingIPFactory(factory.DjangoModelFactory):
 
     cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
     status = factory.Iterator(['ACTIVE', 'SHUTOFF', 'DOWN'])
-    address = factory.LazyAttribute(lambda o: ','.join('.'.join(
-        '%s' % randint(0, 255) for _ in range(4)) for _ in range(3)))
+    address = factory.LazyAttribute(lambda o: '.'.join('%s' % randint(0, 255) for _ in range(4)))
 
     @classmethod
     def get_url(self, instance=None):

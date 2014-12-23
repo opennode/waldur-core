@@ -492,7 +492,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.template = factories.TemplateFactory()
         self.flavor = factories.FlavorFactory(cloud=self.cloud)
         self.project = structure_factories.ProjectFactory()
-        factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
+        self.membership = factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
         self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
@@ -704,6 +704,17 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
             response = self.client.post(self.instance_list_url, data)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertDictContainsSubset({'template': ['Invalid hyperlink - object does not exist.']}, response.data)
+
+    def test_external_ips_have_to_from_membeship_floating_ips(self):
+        random_address = '0.0.0.0'
+        data = self.get_valid_data()
+        data['external_ips'] = random_address
+
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'non_field_errors': ['External IP is not from membership floating IPs.']}, response.data)
 
     # Helper methods
     def get_valid_data(self):
