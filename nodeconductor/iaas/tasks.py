@@ -242,7 +242,7 @@ def pull_images(cloud_account_uuid):
 
 @shared_task
 def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
-    public_keys = models.SshPublicKey.objects.filter(uuid__in=ssh_public_keys_uuids)
+    public_keys = core_models.SshPublicKey.objects.filter(uuid__in=ssh_public_keys_uuids)
 
     existing_keys = set(k.uuid.hex for k in public_keys)
     missing_keys = set(ssh_public_keys_uuids) - existing_keys
