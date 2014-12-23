@@ -847,6 +847,35 @@ class IpMappingViewSet(core_viewsets.ModelViewSet):
     filter_class = IpMappingFilter
 
 
+class FloatingIPFilter(django_filters.FilterSet):
+    project = django_filters.CharFilter(
+        name='cloud_project_membership__project__uuid',
+    )
+    cloud = django_filters.CharFilter(
+        name='cloud_project_membership__cloud__uuid',
+    )
+
+    class Meta(object):
+        model = models.FloatingIP
+        fields = [
+            'project',
+            'cloud',
+            'status',
+        ]
+
+
+class FloatingIPViewSet(core_viewsets.ReadOnlyModelViewSet):
+    """
+    List of floating ips
+    """
+    queryset = models.FloatingIP.objects.all()
+    serializer_class = serializers.FloatingIPSerializer
+    lookup_field = 'uuid'
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
+    filter_class = FloatingIPFilter
+
+
 class QuotaStatsView(views.APIView):
 
     # This method should be moved from view (to utils.py maybe), when stats will be moved to separate application

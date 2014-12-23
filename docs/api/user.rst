@@ -102,7 +102,7 @@ To change a user password, submit a POST request to the user's RPC url, specifyi
 by staff user or account owner.
 
 Password validation
-+++++++++++++++++++
+^^^^^^^^^^^^^^^^^^^
 
 Password is expected to be at least 7 symbols long and contain at least one number and at least one lower or upper case.
 
