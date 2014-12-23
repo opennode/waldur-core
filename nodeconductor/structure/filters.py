@@ -3,7 +3,11 @@ from __future__ import unicode_literals
 from operator import or_
 
 from django.db.models import Q
+from django.forms.fields import CharField
+from django_filters import CharFilter
 from rest_framework.filters import BaseFilterBackend
+
+from nodeconductor.structure.models import CustomerRole
 
 
 def set_permissions_for_model(model, **kwargs):
@@ -67,3 +71,15 @@ def filter_queryset_for_user(queryset, user):
 class GenericRoleFilter(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         return filter_queryset_for_user(queryset, request.user)
+
+
+class RoleField(CharField):
+    def to_python(self, value):
+        if value in CustomerRole.NAME_TO_ROLE:
+            return CustomerRole.NAME_TO_ROLE[value]
+
+        return value
+
+
+class RoleFilter(CharFilter):
+    field_class = RoleField
