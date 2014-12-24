@@ -154,10 +154,17 @@ class TemplateMappingInline(admin.TabularInline):
     extra = 3
 
 
+class LicenseInline(admin.TabularInline):
+    model = models.TemplateLicense.templates.through
+    verbose_name_plural = 'Connected licenses'
+    extra = 1
+
+
 class TemplateAdmin(admin.ModelAdmin):
     inlines = (
         TemplateMappingInline,
         ImageInline,
+        LicenseInline,
     )
     ordering = ('name', )
     list_display = ['name', 'uuid', 'sla_level']
@@ -192,6 +199,7 @@ class InstanceSlaHistoryAdmin(admin.ModelAdmin):
     inlines = (
         InstanceSlaHistoryEventsInline,
     )
+
 
 class FloatingIPAdmin(admin.ModelAdmin):
     list_display = ('cloud_project_membership', 'address', 'status')
