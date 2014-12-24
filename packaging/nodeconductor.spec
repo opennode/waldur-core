@@ -28,7 +28,7 @@ Requires: openssl
 Requires: python-celery >= 3.1.15, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-ordereddict = 1.1
-Requires: python-django17 >= 1.7.1
+Requires: python-django >= 1.7.1
 Requires: python-django-auth-ldap = 1.2.0
 Requires: python-django-model-utils = 2.2
 Requires: python-django-filter = 0.7
