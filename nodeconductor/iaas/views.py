@@ -47,15 +47,13 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
-    # FIXME: deprecated, use project_group_name instead
     project_group = django_filters.CharFilter(
-        name='cloud_project_membership__project__project_groups__name',
+        name='cloud_project_membership__project__project_groups__uuid',
         distinct=True,
-        lookup_type='icontains',
     )
-    # FIXME: deprecated, use project_name instead
+
     project = django_filters.CharFilter(
-        name='cloud_project_membership__project__name',
+        name='cloud_project_membership__project__uuid',
         distinct=True,
         lookup_type='icontains',
     )

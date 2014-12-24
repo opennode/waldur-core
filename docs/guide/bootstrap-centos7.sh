@@ -22,7 +22,6 @@ mysql -e "CREATE USER 'nodeconductor'@'localhost' IDENTIFIED BY 'nodeconductor'"
 mysql -e "GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'localhost'"
 
 # Init NodeConductor database and collect static data
-nodeconductor syncdb --noinput
 nodeconductor migrate --noinput
 nodeconductor collectstatic --noinput
 chown -R nodeconductor:nodeconductor /var/log/nodeconductor
@@ -32,6 +31,7 @@ nodeconductor createsampledata alice
 nodeconductor createsampledata random
 
 # Start Celery and Apache
+systemctl start httpd
+curl --head http://localhost/api/
 systemctl start nodeconductor-celery
 systemctl start nodeconductor-celerybeat
-systemctl start httpd
