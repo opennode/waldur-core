@@ -13,7 +13,9 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction, DatabaseError
 from django.db.models import ProtectedError
+from django.utils import dateparse
 from django.utils import six
+from django.utils import timezone
 from glanceclient import exc as glance_exceptions
 from glanceclient.v1 import client as glance_client
 from keystoneclient import exceptions as keystone_exceptions
@@ -414,6 +416,8 @@ class OpenStackBackend(object):
 
                     state=state,
 
+                    start_time=self._get_instance_start_time(backend_instance),
+
                     cloud_project_membership=membership,
                     backend_id=backend_instance.id,
                 )
@@ -698,7 +702,7 @@ class OpenStackBackend(object):
                     instance.uuid,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
-            # TODO: Update start_time
+            instance.start_time = timezone.now()
             instance.save()
             # Floating ips initialization
             self.push_floating_ip_to_instance(server.id, instance, nova)
@@ -1747,3 +1751,16 @@ class OpenStackBackend(object):
         }
         return nova_to_nodeconductor.get(instance.status,
                                          models.Instance.States.ERRED)
+
+    def _get_instance_start_time(self, instance):
+        try:
+            launch_time = instance.to_dict()['OS-SRV-USG:launched_at']
+            d = dateparse.parse_datetime(launch_time)
+        except (KeyError, ValueError):
+            return None
+        else:
+            # At the moment OpenStack does not provide any timezone info,
+            # but in future it might do.
+            if timezone.is_naive(d):
+                d = timezone.make_aware(d, timezone.utc)
+            return d
