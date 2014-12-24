@@ -29,7 +29,6 @@ install_requires = [
     'djangorestframework>=2.3.12,<2.4.0',
     'djangosaml2==0.12.0.dev0',
     'drf-extensions==0.2.6',
-    'logan==0.5.9.1',
     'python-cinderclient>=1.0.7,<=1.1.1',
     'python-glanceclient>=0.12.0,<0.13.0',
     'python-keystoneclient>=0.9.0,<0.11.2',
@@ -54,12 +53,12 @@ setup(
         'https://bitbucket.org/opennode/djangosaml2/downloads',
     ],
     extras_require={
-        'tests': tests_requires,
         'dev': dev_requires,
+        'tests': tests_requires,
     },
     entry_points={
-        'console_scripts': ('nodeconductor = nodeconductor.server.logan_runner:main',),
-        'backup_strategies': ('Instance = nodeconductor.iaas.backup.instance_backup:InstanceBackupStrategy', )
+        'backup_strategies': ('Instance = nodeconductor.iaas.backup.instance_backup:InstanceBackupStrategy',),
+        'console_scripts': ('nodeconductor = manage:main',),
     },
     tests_require=tests_requires,
     test_suite='nodeconductor.server.test_runner.run_tests',
