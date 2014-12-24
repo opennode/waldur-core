@@ -67,7 +67,7 @@ Therefore configuration might look like this:
     NODECONDUCTOR = {
         'OPENSTACK_CREDENTIALS': (
             {
-                'auth_url': 'http://keystone.example.com:5000/v2',
+                'auth_url': 'http://keystone.example.com:5000/v2.0',
                 'username': 'node',
                 'password': 'conductor',
                 'tenant_name': 'admin',
@@ -141,22 +141,42 @@ Therefore configuration might look like this:
             Default parameters for Zabbix IT services.
             Have to contain keys: 'algorithm', 'showsla', 'sortorder', 'goodsla'.
 
-          db_host
-            Hostname of the Zabbix database.
+NodeConductor also needs access to Zabbix database. For that a read-only user needs to be created in Zabbix database.
 
-          db_port
-            Port of the Zabbix database.
+Zabbix database connection is configured as follows:
 
-          db_user
-            User for connecting to Zabbix database.
+.. code-block:: python
 
-          db_password
-            Password for connecting to Zabbix database.
+    DATABASES = {
+        'zabbix': {
+            'ENGINE': 'django.db.backends.mysql',
+            'HOST': 'zabbix_db_host',
+            'NAME': 'zabbix_db_name',
+            'PORT': 'zabbix_db_port',
+            'USER': 'zabbix_db_user',
+            'PASSWORD': 'zabbix_db_password',
+        }
+    }
 
-          db_name
-            Zabbix database name.
+.. glossary::
 
+    zabbix_db_host
+      Hostname of the Zabbix database.
 
+    zabbix_db_port
+      Port of the Zabbix database.
+
+    zabbix_db_name
+      Zabbix database name.
+
+    zabbix_db_user
+      User for connecting to Zabbix database.
+
+    zabbix_db_password
+      Password for connecting to Zabbix database.
+
+See also: `Django database settings`_.
 
 .. _Django: https://www.djangoproject.com/
 .. _Django documentation: https://docs.djangoproject.com/en/1.6/
+.. _Django database settings: https://docs.djangoproject.com/en/1.7/ref/settings/#databases
