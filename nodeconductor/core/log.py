@@ -65,56 +65,66 @@ class EventFormatter(logging.Formatter):
             # logging details
             'levelname': record.levelname,
             'logger': record.name,
-            "importance": self.levelname_to_importance(record.levelname),
-            "importance_code": record.levelno,
-            "event_type": getattr(record, 'event_type', 'undefined'),
+            'importance': self.levelname_to_importance(record.levelname),
+            'importance_code': record.levelno,
+            'event_type': getattr(record, 'event_type', 'undefined'),
         }
 
         # user
         user = getattr(record, 'user', None)
-        message.update({
-            "user_name": getattr(user, 'full_name', ''),
-            "user_uuid": str(getattr(user, 'uuid', '')),
-        })
+        if user is not None:
+            message.update({
+                "user_name": getattr(user, 'full_name', ''),
+                "user_uuid": str(getattr(user, 'uuid', '')),
+            })
+
+        # placeholder for a potential link
+        membership = None
 
         # instance
         instance = getattr(record, 'instance', None)
-        membership = getattr(instance, 'cloud_project_membership', None)
-        message['vm_instance_uuid'] = str(getattr(user, 'uuid', ''))
+        if instance is not None:
+            membership = getattr(instance, 'cloud_project_membership', None)
+            message['vm_instance_uuid'] = str(getattr(instance, 'uuid', ''))
 
         # project
         project = getattr(record, 'project', None)
         if project is None and membership is not None:
             project = getattr(membership, 'project', None)
-        message.update({
-            "project_name": getattr(project, 'name', ''),
-            "project_uuid": str(getattr(project, 'uuid', '')),
-        })
+            if project is not None:
+                message.update({
+                    "project_name": getattr(project, 'name', ''),
+                    "project_uuid": str(getattr(project, 'uuid', '')),
+                })
 
         # project group
         project_group = getattr(record, 'project_group', None)
-        message.update({
-            "project_group_name": getattr(project_group, 'name', ''),
-            "project_group_uuid": str(getattr(project_group, 'uuid', '')),
-        })
+        if project_group is not None:
+            message.update({
+                "project_group_name": getattr(project_group, 'name', ''),
+                "project_group_uuid": str(getattr(project_group, 'uuid', '')),
+            })
 
         # cloud
         cloud = getattr(record, 'cloud', None)
         if cloud is None and membership is not None:
             cloud = getattr(membership, 'cloud', None)
-        message.update({
-            "cloud_account_name": getattr(cloud, 'name', ''),
-            "cloud_account_uuid": str(getattr(cloud, 'uuid', '')),
-        })
+            if cloud is not None:
+                message.update({
+                    "cloud_account_name": getattr(cloud, 'name', ''),
+                    "cloud_account_uuid": str(getattr(cloud, 'uuid', '')),
+                })
 
         # customer
         customer = getattr(record, 'customer', None)
         if customer is None:
             customer = self.get_customer_from_relative(project, cloud, project_group)
-        message.update({
-            "customer_name": getattr(customer, 'name', ''),
-            "customer_uuid": str(getattr(customer, 'uuid', '')),
-        })
+
+        if customer is not None:
+            message.update({
+                "customer_name": getattr(customer, 'name', ''),
+                "customer_uuid": str(getattr(customer, 'uuid', '')),
+            })
 
         return json.dumps(message)
 
