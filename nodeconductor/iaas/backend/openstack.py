@@ -4,6 +4,7 @@ from collections import OrderedDict
 from itertools import groupby
 import logging
 from operator import itemgetter
+import pkg_resources
 import re
 import time
 
@@ -13,7 +14,10 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction, DatabaseError
 from django.db.models import ProtectedError
+from django.utils import dateparse
 from django.utils import six
+from django.utils import timezone
+from django.utils.lru_cache import lru_cache
 from glanceclient import exc as glance_exceptions
 from glanceclient.v1 import client as glance_client
 from keystoneclient import exceptions as keystone_exceptions
@@ -30,6 +34,30 @@ from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _get_cinder_version():
+    try:
+        return pkg_resources.get_distribution('python-cinderclient').parsed_version
+    except ValueError:
+        return '00000001', '00000000', '00000009', '*final'
+
+
+@lru_cache(maxsize=1)
+def _get_neutron_version():
+    try:
+        return pkg_resources.get_distribution('python-neutronclient').parsed_version
+    except ValueError:
+        return '00000002', '00000003', '00000004', '*final'
+
+
+@lru_cache(maxsize=1)
+def _get_nova_version():
+    try:
+        return pkg_resources.get_distribution('python-novaclient').parsed_version
+    except ValueError:
+        return '00000002', '00000017', '00000000', '*final'
 
 
 # noinspection PyMethodMayBeStatic
@@ -414,6 +442,8 @@ class OpenStackBackend(object):
 
                     state=state,
 
+                    start_time=self._get_instance_start_time(backend_instance),
+
                     cloud_project_membership=membership,
                     backend_id=backend_instance.id,
                 )
@@ -698,7 +728,7 @@ class OpenStackBackend(object):
                     instance.uuid,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
-            # TODO: Update start_time
+            instance.start_time = timezone.now()
             instance.save()
             # Floating ips initialization
             self.push_floating_ip_to_instance(server.id, instance, nova)
@@ -1205,14 +1235,9 @@ class OpenStackBackend(object):
         return backend_ram_size * 1024
 
     def create_cinder_client(self, session):
-        try:
-            # Starting from version 1.1.0 python-cinderclient
-            # supports keystone auth plugins
+        if _get_cinder_version() >= pkg_resources.parse_version('1.1.0'):
             return cinder_client.Client(session=session)
-        except TypeError:
-            # Fallback for pre-1.1.0 version: username and password
-            # need to be specified explicitly.
-
+        else:
             # Since we know that Password auth plugin is used
             # it is safe to extract username/password from there
             auth_plugin = session.auth
@@ -1221,15 +1246,11 @@ class OpenStackBackend(object):
                 'auth_url': auth_plugin.auth_url,
                 'username': auth_plugin.username,
                 'api_key': auth_plugin.password,
-            }
-
-            # Either tenant_id or tenant_name will be set, the other one will be None
-            if auth_plugin.tenant_id is not None:
-                kwargs['tenant_id'] = auth_plugin.tenant_id
-            else:
+                'tenant_id': auth_plugin.tenant_id,
                 # project_id is tenant_name, id doesn't make sense,
                 # pretty usual for OpenStack
-                kwargs['project_id'] = auth_plugin.tenant_name
+                'project_id': auth_plugin.tenant_name,
+            }
 
             return cinder_client.Client(**kwargs)
 
@@ -1252,10 +1273,44 @@ class OpenStackBackend(object):
         return keystone_client.Client(session=session)
 
     def create_neutron_client(self, session):
-        return neutron_client.Client(session=session)
+        if _get_neutron_version() >= pkg_resources.parse_version('2.3.6'):
+            return neutron_client.Client(session=session)
+        else:
+            # Since we know that Password auth plugin is used
+            # it is safe to extract username/password from there
+            auth_plugin = session.auth
+
+            kwargs = {
+                'auth_url': auth_plugin.auth_url,
+                'username': auth_plugin.username,
+                'password': auth_plugin.password,
+                'tenant_id': auth_plugin.tenant_id,
+                # neutron is different in a sense it is more reasonable to call
+                # tenant_name a tenant_name, rather then project_id
+                'tenant_name': auth_plugin.tenant_name,
+            }
+
+            return neutron_client.Client(**kwargs)
 
     def create_nova_client(self, session):
-        return nova_client.Client(session=session)
+        if _get_nova_version() >= pkg_resources.parse_version('2.18.0'):
+            return nova_client.Client(session=session)
+        else:
+            # Since we know that Password auth plugin is used
+            # it is safe to extract username/password from there
+            auth_plugin = session.auth
+
+            kwargs = {
+                'auth_url': auth_plugin.auth_url,
+                'username': auth_plugin.username,
+                'api_key': auth_plugin.password,
+                'tenant_id': auth_plugin.tenant_id,
+                # project_id is tenant_name, id doesn't make sense,
+                # pretty usual for OpenStack
+                'project_id': auth_plugin.tenant_name,
+            }
+
+            return nova_client.Client(**kwargs)
 
     def get_or_create_user(self, membership, keystone):
         # Try to sign in if credentials are already stored in membership
@@ -1672,7 +1727,7 @@ class OpenStackBackend(object):
             system_volume = next(v for v in attached_volumes if v.bootable == 'true')
             data_volume = next(v for v in attached_volumes if v.bootable == 'false')
         except (cinder_exceptions.ClientException, StopIteration) as e:
-            logger.exception('Skipping instance %s, failed to fetch volumes', backend_instance_id)
+            logger.info('Skipping instance %s, failed to fetch volumes', backend_instance_id)
             six.reraise(LookupError, e)
         else:
             return system_volume, data_volume
@@ -1747,3 +1802,16 @@ class OpenStackBackend(object):
         }
         return nova_to_nodeconductor.get(instance.status,
                                          models.Instance.States.ERRED)
+
+    def _get_instance_start_time(self, instance):
+        try:
+            launch_time = instance.to_dict()['OS-SRV-USG:launched_at']
+            d = dateparse.parse_datetime(launch_time)
+        except (KeyError, ValueError):
+            return None
+        else:
+            # At the moment OpenStack does not provide any timezone info,
+            # but in future it might do.
+            if timezone.is_naive(d):
+                d = timezone.make_aware(d, timezone.utc)
+            return d

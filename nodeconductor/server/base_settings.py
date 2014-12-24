@@ -140,4 +140,10 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(hours=1),
         'args': (),
     },
+
+    'check-cloud-project-memberships-quotas': {
+        'task': 'nodeconductor.iaas.tasks.check_cloud_memberships_quotas',
+        'schedule': timedelta(days=1),
+        'args': (),
+    },
 }
