@@ -16,7 +16,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.13.0
+Version: 0.14.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -42,7 +42,6 @@ Requires: python-django-uuidfield = 0.5.0
 Requires: python-cinderclient >= 1.0.7, python-cinderclient <= 1.1.1
 Requires: python-glanceclient >= 1:0.12.0, python-glanceclient < 1:0.13.0
 Requires: python-keystoneclient >= 1:0.9.0, python-keystoneclient < 1:0.11.2
-Requires: python-logan = 0.5.9.1
 Requires: python-neutronclient >= 2.3.4, python-neutronclient < 2.4.0
 Requires: python-novaclient >= 1:2.17.0, python-novaclient < 1:2.19.0
 Requires: python-redis = 2.10.3
@@ -51,11 +50,6 @@ Requires: python-zabbix >= 0.7.2
 Requires: xmlsec1-openssl
 
 Source0: %{name}-%{version}.tar.gz
-
-Patch0001: 0001-wsgi-default-settings-path.patch
-Patch0002: 0002-logan-runner-default-settings-path.patch
-Patch0003: 0003-celery-default-settings-path.patch
-Patch0004: 0004-default-settings-ini-path.patch
 
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
@@ -70,12 +64,8 @@ NodeConductor is a infrastructure and application management server developed by
 %prep
 %setup -q -n %{name}-%{version}
 
-%patch0001 -p1
-%patch0002 -p1
-%patch0003 -p1
-%patch0004 -p1
-
 %build
+cp packaging/settings.py nodeconductor/server/settings.py
 python setup.py build
 
 %install
@@ -185,6 +175,9 @@ All done. Happy NodeConducting!
 EOF
 
 %changelog
+* Wed Dec 24 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.14.0-1.el7
+- New upstream release
+
 * Wed Dec 24 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.13.0-1.el7
 - New upstream release
 
