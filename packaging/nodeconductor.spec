@@ -16,7 +16,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.12.0
+Version: 0.13.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -37,7 +37,7 @@ Requires: python-django-permission = 0.8.2
 Requires: python-django-request-logging = 1.0.1
 Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework < 2.4.0
 Requires: python-django-rest-framework-extensions = 0.2.6
-Requires: python-django-saml2 >= 0.11.0, python-django-saml2 < 0.12
+Requires: python-django-saml2 >= 0.11.0-3, python-django-saml2 < 0.12
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-cinderclient >= 1.0.7, python-cinderclient <= 1.1.1
 Requires: python-glanceclient >= 1:0.12.0, python-glanceclient < 1:0.13.0
@@ -186,6 +186,9 @@ All done. Happy NodeConducting!
 EOF
 
 %changelog
+* Fri Dec 24 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.13.0-1.el7
+- New upstream release
+
 * Fri Dec 19 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.12.0-1.el7
 - New upstream release
 
