@@ -199,6 +199,14 @@ LOGGING = {
             'formatter': 'request_format',
             'level': config.get('events', 'log_level').upper(),
         },
+        # TODO: make configurable
+        'tcp-event': {
+            'level': 'INFO',
+            'class': 'nodeconductor.core.log.TCPEventHandler',
+            'host': 'localhost',
+            'port': 9009,
+            'filters': ['event'],
+        },
     },
     'loggers': {
         'django': {

@@ -10,7 +10,7 @@ from django_fsm import TransitionNotAllowed
 from nodeconductor.core.log import EventLoggerAdapter
 
 logger = logging.getLogger(__name__)
-event_log = EventLoggerAdapter(logger)
+event_logger = EventLoggerAdapter(logger)
 
 
 class StateChangeError(RuntimeError):
@@ -110,7 +110,7 @@ def set_state(model_class, uuid_or_pk, transition):
         'Managed to %s %s with id %s',
         logged_operation, entity_name, uuid_or_pk
     )
-    event_log.info(
+    event_logger.info(
         'Finished to %s %s with id %s',
         logged_operation, entity_name, uuid_or_pk
     )

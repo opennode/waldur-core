@@ -36,7 +36,9 @@ class ObtainAuthToken(APIView):
         if serializer.is_valid():
             user = serializer.object['user']
             token, created = Token.objects.get_or_create(user=user)
-            event_logger.info('Returning token for successful login of user %s' % user)
+            event_logger.info(
+                'Returning token for successful login of user %s' % user,
+                extra={'user': user, 'event_type': 'user_success_login'})
             logger.debug('Returning token for successful login of user %s' % user)
             return Response({'token': token.key})
 
