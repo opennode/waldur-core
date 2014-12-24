@@ -159,7 +159,6 @@ Next steps:
 
 4. Initialize application:
 
-    sudo -u nodeconductor nodeconductor syncdb --noinput
     sudo -u nodeconductor nodeconductor migrate --noinput
     nodeconductor collectstatic --noinput
 
