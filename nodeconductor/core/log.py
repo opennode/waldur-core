@@ -130,7 +130,7 @@ class EventFormatter(logging.Formatter):
 
 
 class TCPEventHandler(SocketHandler, object):
-    def __init__(self, host, port):
+    def __init__(self, host='localhost', port=5959):
         super(TCPEventHandler, self).__init__(host, port)
         self.formatter = EventFormatter()
 
