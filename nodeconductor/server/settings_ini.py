@@ -68,7 +68,7 @@ config_defaults = {
     'zabbix': {
         'db_host': '',  # empty to disable Zabbix database access
         'db_name': 'zabbix',
-        'db_password': 'nodeconductor'
+        'db_password': 'nodeconductor',
         'db_port': '3306',
         'db_user': 'nodeconductor',
         'host_group_id': '',
