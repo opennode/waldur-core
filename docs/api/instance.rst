@@ -11,6 +11,7 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 
 - ?hostname=<hostname>
 - ?customer_name=<customer name>
+- ?customer_abbreviation=<customer abbreviation>
 - ?state=<state symbol>
 - ?project=<project uuid>
 - ?project=<project name>
@@ -23,6 +24,7 @@ Sorting is supported in ascending and descending order by specifying a field to 
 - ?o=hostname - sort by hostname
 - ?o=state - sort by state
 - ?o=customer_name - sort by customer name
+- ?o=customer_abbreviation - sort by customer abbreviation
 - ?o=project_group_name - sort by project group name
 - ?o=project_name - sort by project name
 - ?o=template_name - sort by template name
