@@ -47,5 +47,6 @@ PERMISSION_LOGICS = (
     ('iaas.SecurityGroup', StaffPermissionLogic(any_permission=True)),
     ('iaas.SecurityGroupRule', StaffPermissionLogic(any_permission=True)),
     ('iaas.IpMapping',  StaffPermissionLogic(any_permission=True)),
+    ('iaas.FloatingIP',  StaffPermissionLogic(any_permission=True)),
     ('iaas.InstanceSlaHistoryEvents', StaffPermissionLogic(any_permission=True)),
 )

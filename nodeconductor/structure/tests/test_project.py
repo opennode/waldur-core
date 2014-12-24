@@ -130,6 +130,38 @@ def _get_valid_project_payload(resource=None):
     }
 
 
+class ProjectFilterTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.staff = factories.UserFactory(is_staff=True)
+        self.project = factories.ProjectFactory()
+
+        self.client.force_authenticate(self.staff)
+
+    def test_project_filters_do_not_raise_errors(self):
+        for filter_name in [
+            'name', 'description',
+            'customer',
+            'project_group', 'project_group_name',
+            'vcpu', 'storage', 'backup', 'max_instances', 'ram',
+        ]:
+            data = {filter_name: 0}
+            response = self.client.get(factories.ProjectFactory.get_list_url(), data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_project_ordering_does_not_raise_errors(self):
+        for ordering in [
+            'name',
+            'project_group_name',
+            'vcpu', 'storage', 'backup', 'max_instances', 'ram',
+        ]:
+            data = {'o': ordering}
+            response = self.client.get(factories.ProjectFactory.get_list_url(), data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            # ordering should not modify number of elements
+            self.assertEqual(len(response.data), 1, 'Expected project to be returned when ordering by %s' % ordering)
+
+
 class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
 
     def setUp(self):

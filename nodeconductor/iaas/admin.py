@@ -131,10 +131,6 @@ class InstanceAdmin(admin.ModelAdmin):
     get_project_name.short_description = 'Project'
 
 
-class PurchaseAdmin(admin.ModelAdmin):
-    readonly_fields = ('date', 'user', 'project')
-
-
 class ImageInline(ReadonlyInlineMixin, admin.TabularInline):
     model = models.Image
     fields = ('get_cloud_name', 'get_customer_name', 'backend_id')
@@ -158,10 +154,17 @@ class TemplateMappingInline(admin.TabularInline):
     extra = 3
 
 
+class LicenseInline(admin.TabularInline):
+    model = models.TemplateLicense.templates.through
+    verbose_name_plural = 'Connected licenses'
+    extra = 1
+
+
 class TemplateAdmin(admin.ModelAdmin):
     inlines = (
         TemplateMappingInline,
         ImageInline,
+        LicenseInline,
     )
     ordering = ('name', )
     list_display = ['name', 'uuid', 'sla_level']
@@ -198,10 +201,15 @@ class InstanceSlaHistoryAdmin(admin.ModelAdmin):
     )
 
 
+class FloatingIPAdmin(admin.ModelAdmin):
+    list_display = ('cloud_project_membership', 'address', 'status')
+
+
 admin.site.register(models.Cloud, CloudAdmin)
 admin.site.register(models.CloudProjectMembership, CloudProjectMembershipAdmin)
 admin.site.register(models.Instance, InstanceAdmin)
-admin.site.register(models.Purchase, PurchaseAdmin)
 admin.site.register(models.SecurityGroup, SecurityGroupAdmin)
 admin.site.register(models.Template, TemplateAdmin)
+admin.site.register(models.TemplateLicense)
 admin.site.register(models.InstanceSlaHistory, InstanceSlaHistoryAdmin)
+admin.site.register(models.FloatingIP, FloatingIPAdmin)

@@ -15,7 +15,7 @@ from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
 logger = logging.getLogger(__name__)
-event_log = EventLoggerAdapter(logger)
+event_logger = EventLoggerAdapter(logger)
 
 
 # XXX: There are no usages of this error.
@@ -31,6 +31,10 @@ def create_zabbix_host_and_service(instance):
     except ZabbixError as e:
         # task does not have to fail if something is wrong with zabbix
         logger.error('Zabbix host creation flow has broken %s' % e, exc_info=1)
+        event_logger.error(
+            'Zabbix host creation flow has broken %s', e,
+            extra={'instance': instance, 'event_type': 'zabbix_host_creation'}
+        )
 
 
 def delete_zabbix_host_and_service(instance):
@@ -41,6 +45,10 @@ def delete_zabbix_host_and_service(instance):
     except ZabbixError as e:
         # task does not have to fail if something is wrong with zabbix
         logger.error('Zabbix host deletion flow has broken %s' % e, exc_info=1)
+        event_logger.error(
+            'Zabbix host deletion flow has broken %s', e,
+            extra={'instance': instance, 'event_type': 'zabbix_host_deletion'}
+        )
 
 
 @shared_task
@@ -89,8 +97,10 @@ def schedule_deleting(instance_uuid):
         delete_zabbix_host_and_service(instance)
     except Exception:
         # noinspection PyProtectedMember
-        logger.exception(
-            'Failed to begin_deleting Instance with id %s', instance_uuid
+        logger.exception('Failed to begin_deleting Instance with id %s', instance_uuid)
+        event_logger.exception(
+            'Failed to begin_deleting Instance with id %s', instance_uuid,
+            extra={'instance': instance, 'event_type': 'instance_deletion'}
         )
         set_state(models.Instance, instance_uuid, 'set_erred')
     else:
@@ -178,6 +188,7 @@ def pull_cloud_membership(membership_pk):
     backend.pull_instances(membership)
     backend.pull_resource_quota(membership)
     backend.pull_resource_quota_usage(membership)
+    backend.pull_floating_ips(membership)
 
 
 @shared_task
@@ -217,6 +228,11 @@ def sync_cloud_membership(membership_pk):
                 public_key.uuid, membership.pk,
                 exc_info=1,
             )
+            event_logger.warning(
+                'Failed to push public key %s to cloud membership %s',
+                public_key.uuid, membership.pk,
+                extra={'project': membership.project, 'cloud': membership.cloud, 'event_type': 'sync_cloud_membership'}
+            )
 
     # Propagate membership security groups
     try:
@@ -227,7 +243,22 @@ def sync_cloud_membership(membership_pk):
             membership.pk,
             exc_info=1,
         )
+        event_logger.warning(
+            'Failed to push security groups to cloud membership %s',
+            public_key.uuid, membership.pk,
+            extra={'project': membership.project, 'cloud': membership.cloud, 'event_type': 'sync_cloud_membership'}
+        )
 
+    # Pull created membership quotas
+    try:
+        backend.pull_resource_quota(membership)
+        backend.pull_resource_quota_usage(membership)
+    except CloudBackendError:
+        logger.warn(
+            'Failed to pull resource quota and usage data to cloud membership %s',
+            membership.pk,
+            exc_info=1,
+        )
 
 @shared_task
 @tracked_processing(
@@ -242,7 +273,7 @@ def pull_images(cloud_account_uuid):
 
 @shared_task
 def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
-    public_keys = models.SshPublicKey.objects.filter(uuid__in=ssh_public_keys_uuids)
+    public_keys = core_models.SshPublicKey.objects.filter(uuid__in=ssh_public_keys_uuids)
 
     existing_keys = set(k.uuid.hex for k in public_keys)
     missing_keys = set(ssh_public_keys_uuids) - existing_keys

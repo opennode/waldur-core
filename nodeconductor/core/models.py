@@ -1,14 +1,13 @@
 from __future__ import unicode_literals
 
 import re
-import warnings
 import logging
 
 from django.conf import settings
 from django.contrib.auth.models import (
-    AbstractBaseUser, PermissionsMixin, UserManager, SiteProfileNotAvailable)
+    AbstractBaseUser, PermissionsMixin, UserManager)
 from django.core import validators
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import models
 from django.db.models import signals
@@ -24,7 +23,7 @@ from nodeconductor.core.log import EventLoggerAdapter
 
 
 logger = logging.getLogger(__name__)
-event_log = EventLoggerAdapter(logger)
+event_logger = EventLoggerAdapter(logger)
 
 
 class DescribableMixin(models.Model):
@@ -34,7 +33,7 @@ class DescribableMixin(models.Model):
     class Meta(object):
         abstract = True
 
-    description = models.CharField(_('description'), max_length=500, blank=True, null=True)
+    description = models.CharField(_('description'), max_length=500, blank=True)
 
 
 class UiDescribableMixin(DescribableMixin):
@@ -44,7 +43,7 @@ class UiDescribableMixin(DescribableMixin):
     class Meta(object):
         abstract = True
 
-    icon_url = models.URLField(_('icon url'), null=True, blank=True)
+    icon_url = models.URLField(_('icon url'), blank=True)
 
 
 class UuidMixin(models.Model):
@@ -65,6 +64,8 @@ class User(UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
         validators=[
             validators.RegexValidator(re.compile('^[\w.@+-]+$'), _('Enter a valid username.'), 'invalid')
         ])
+    # Civil number is nullable on purpose, otherwise
+    # it wouldn't be possible to put a unique constraint on it
     civil_number = models.CharField(_('civil number'), max_length=10, unique=True, blank=True, null=True, default=None)
     full_name = models.CharField(_('full name'), max_length=100, blank=True)
     native_name = models.CharField(_('native name'), max_length=100, blank=True)
@@ -95,38 +96,6 @@ class User(UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
         Sends an email to this User.
         """
         send_mail(subject, message, from_email, [self.email])
-
-    def get_profile(self):
-        """
-        Returns site-specific profile for this user. Raises
-        SiteProfileNotAvailable if this site does not allow profiles.
-        """
-        warnings.warn("The use of AUTH_PROFILE_MODULE to define user profiles has been deprecated.",
-                      DeprecationWarning, stacklevel=2)
-        if not hasattr(self, '_profile_cache'):
-            from django.conf import settings
-            if not getattr(settings, 'AUTH_PROFILE_MODULE', False):
-                raise SiteProfileNotAvailable(
-                    'You need to set AUTH_PROFILE_MODULE in your project '
-                    'settings')
-            try:
-                app_label, model_name = settings.AUTH_PROFILE_MODULE.split('.')
-            except ValueError:
-                raise SiteProfileNotAvailable(
-                    'app_label and model_name should be separated by a dot in '
-                    'the AUTH_PROFILE_MODULE setting')
-            try:
-                model = models.get_model(app_label, model_name)
-                if model is None:
-                    raise SiteProfileNotAvailable(
-                        'Unable to load the profile model, check '
-                        'AUTH_PROFILE_MODULE in your project settings')
-                self._profile_cache = model._default_manager.using(
-                    self._state.db).get(user__id__exact=self.id)
-                self._profile_cache.user = self
-            except (ImportError, ImproperlyConfigured):
-                raise SiteProfileNotAvailable
-        return self._profile_cache
 
 
 def validate_ssh_public_key(ssh_key):
@@ -247,4 +216,10 @@ class SynchronizableMixin(models.Model):
 def create_auth_token(sender, instance=None, created=False, **kwargs):
     if created:
         Token.objects.create(user=instance)
-        event_log.info('New user was created: %s' % instance)
+
+
+@receiver(signals.post_save, sender=User)
+def log_user_creation(sender, instance=None, created=False, **kwargs):
+    if created:
+        event_logger.warning(
+            'New user was created: %s' % instance, extra={'user': instance, 'event_type': 'user_creation'})

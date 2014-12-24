@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
+from collections import OrderedDict
 from itertools import groupby
 import logging
-from ordereddict import OrderedDict
 from operator import itemgetter
 import re
 import time
@@ -349,18 +349,21 @@ class OpenStackBackend(object):
         try:
             session = self.create_tenant_session(membership)
             nova = self.create_nova_client(session)
+            cinder = self.create_cinder_client(session)
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client')
             six.reraise(CloudBackendError, e)
+        except cinder_exceptions.ClientException as e:
+            logger.exception('Failed to create cinder client')
+            six.reraise(CloudBackendError, e)
 
+        # Exclude instances that are booted from images
         backend_instances = nova.servers.findall(image='')
         backend_instances = dict(((f.id, f) for f in backend_instances))
 
-        from nodeconductor.iaas.models import Instance
-
         with transaction.atomic():
-            nc_instances = Instance.objects.filter(
-                state__in=Instance.States.STABLE_STATES,
+            nc_instances = models.Instance.objects.filter(
+                state__in=models.Instance.States.STABLE_STATES,
                 cloud_project_membership=membership,
             )
             nc_instances = dict(((i.backend_id, i) for i in nc_instances))
@@ -382,7 +385,41 @@ class OpenStackBackend(object):
                 else:
                     logger.info('Deleted stale instance %s in database',
                                 nc_instance.uuid)
-                    # TODO:
+
+            # Add new instances, the ones that are not yet in the database
+            for instance_id in backend_ids - nc_ids:
+                backend_instance = backend_instances[instance_id]
+
+                try:
+                    system_volume, data_volume = self._get_instance_volumes(nova, cinder, instance_id)
+                    template = self._get_instance_template(system_volume, membership, instance_id)
+                    cores, ram = self._get_flavor_info(nova, backend_instance)
+                    state = self._get_instance_state(backend_instance)
+                except LookupError:
+                    continue
+
+                nc_instance = models.Instance.objects.create(
+                    hostname=backend_instance.name or '',
+                    template=template,
+
+                    cores=cores,
+                    ram=ram,
+
+                    key_name=backend_instance.key_name or '',
+
+                    system_volume_id=system_volume.id,
+                    system_volume_size=self.get_core_disk_size(system_volume.size),
+                    data_volume_id=data_volume.id,
+                    data_volume_size=self.get_core_disk_size(data_volume.size),
+
+                    state=state,
+
+                    cloud_project_membership=membership,
+                    backend_id=backend_instance.id,
+                )
+
+                logger.info('Created new instance %s in database', nc_instance.uuid)
+            # TODO: Sync matching
 
     def pull_resource_quota(self, membership):
         try:
@@ -460,6 +497,53 @@ class OpenStackBackend(object):
                 max(0, schedule.maximal_number_of_backups) for schedule in service.backup_schedules.all())
 
         resource_quota_usage.save()
+
+    def pull_floating_ips(self, membership):
+        logger.debug('Pulling floating ips for membership %s', membership.id)
+        try:
+            session = self.create_tenant_session(membership)
+            neutron = self.create_neutron_client(session)
+        except keystone_exceptions.ClientException as e:
+            logger.exception('Failed to create neutron client')
+            six.reraise(CloudBackendError, e)
+
+        try:
+            backend_floating_ips = dict((ip['id'], ip) for ip in self.get_floating_ips(membership.tenant_id, neutron))
+        except neutron_exceptions.ClientException as e:
+            logger.exception('Failed to get a list of floating IPs')
+            six.reraise(CloudBackendError, e)
+
+        nc_floating_ips = dict(
+            (ip.backend_id, ip) for ip in models.FloatingIP.objects.filter(cloud_project_membership=membership))
+
+        backend_ids = set(backend_floating_ips.keys())
+        nc_ids = set(nc_floating_ips.keys())
+
+        with transaction.atomic():
+
+            for ip_id in nc_ids - backend_ids:
+                ip = nc_floating_ips[ip_id]
+                ip.delete()
+                logger.info('Deleted stale floating IP port %s in database', ip.uuid)
+
+            for ip_id in backend_ids - nc_ids:
+                ip = backend_floating_ips[ip_id]
+                created_ip = models.FloatingIP.objects.create(
+                    cloud_project_membership=membership,
+                    status=ip['status'],
+                    backend_id=ip['id'],
+                    address=ip['floating_ip_address'],
+                )
+                logger.info('Created new floating IP port %s in database', created_ip.uuid)
+
+            for ip_id in nc_ids & backend_ids:
+                nc_ip = nc_floating_ips[ip_id]
+                backend_ip = backend_floating_ips[ip_id]
+                if nc_ip.status != backend_ip['status'] or nc_ip.address != backend_ip['floating_ip_address']:
+                    nc_ip.status = backend_ip['status']
+                    nc_ip.address = backend_ip['floating_ip_address']
+                    nc_ip.save()
+                    logger.info('Updated existing floating IP port %s in database', nc_ip.uuid)
 
     # Statistics methods
     def get_resource_stats(self, auth_url):
@@ -616,6 +700,9 @@ class OpenStackBackend(object):
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
             # TODO: Update start_time
             instance.save()
+            # Floating ips initialization
+            self.push_floating_ip_to_instance(server.id, instance, nova)
+
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
                 nova_exceptions.ClientException,
@@ -916,6 +1003,9 @@ class OpenStackBackend(object):
             logger.info('Successfully changed flavor of an instance %s', instance.uuid)
 
     # Helper methods
+    def get_floating_ips(self, tenant_id, neutron):
+        return neutron.list_floatingips(tenant_id=tenant_id)['floatingips']
+
     def create_security_group(self, security_group, nova):
         backend_security_group = nova.security_groups.create(name=security_group.name, description='')
         security_group.backend_id = backend_security_group.id
@@ -931,7 +1021,10 @@ class OpenStackBackend(object):
 
     def push_security_group_rules(self, security_group, nova):
         backend_security_group = nova.security_groups.get(group_id=security_group.backend_id)
-        backend_rules = dict((rule['id'], rule) for rule in backend_security_group.rules)
+        backend_rules = {
+            rule['id']: self._normalize_security_group_rule(rule)
+            for rule in backend_security_group.rules
+        }
 
         # list of nc rules, that do not exist in openstack
         nonexistent_rules = []
@@ -976,9 +1069,15 @@ class OpenStackBackend(object):
         for nc_rule in unsynchronized_rules + nonexistent_rules:
             logger.debug('About to create security group rule with id %s in backend', nc_rule.id)
             try:
+                # The database has empty strings instead of nulls
+                if nc_rule.protocol == '':
+                    nc_rule_protocol = None
+                else:
+                    nc_rule_protocol = nc_rule.protocol
+
                 nova.security_group_rules.create(
                     parent_group_id=security_group.backend_id,
-                    ip_protocol=nc_rule.protocol,
+                    ip_protocol=nc_rule_protocol,
                     from_port=nc_rule.from_port,
                     to_port=nc_rule.to_port,
                     cidr=nc_rule.cidr,
@@ -991,7 +1090,10 @@ class OpenStackBackend(object):
 
     def pull_security_group_rules(self, security_group, nova):
         backend_security_group = nova.security_groups.get(group_id=security_group.backend_id)
-        backend_rules = backend_security_group.rules
+        backend_rules = [
+            self._normalize_security_group_rule(r)
+            for r in backend_security_group.rules
+        ]
 
         # list of openstack rules, that do not exist in nc
         nonexistent_rules = []
@@ -1019,7 +1121,7 @@ class OpenStackBackend(object):
                     from_port=backend_rule['from_port'],
                     to_port=backend_rule['to_port'],
                     protocol=backend_rule['ip_protocol'],
-                    cidr=backend_rule['ip_range'].get('cidr', '0.0.0.0/0'),
+                    cidr=backend_rule['ip_range']['cidr'],
                 )
             logger.info('Updated existing security group rules in database')
 
@@ -1029,7 +1131,7 @@ class OpenStackBackend(object):
                     from_port=backend_rule['from_port'],
                     to_port=backend_rule['to_port'],
                     protocol=backend_rule['ip_protocol'],
-                    cidr=backend_rule['ip_range'].get('cidr', '0.0.0.0/0'),
+                    cidr=backend_rule['ip_range']['cidr'],
                     backend_id=backend_rule['id'],
                 )
                 logger.info('Created new security group rule %s in database', rule.id)
@@ -1314,6 +1416,16 @@ class OpenStackBackend(object):
         else:
             return False
 
+    def push_floating_ip_to_instance(self, server_id, instance, nova):
+        try:
+            server = nova.servers.get(server_id)
+            fixed_address = server.addresses.values()[0]['addr']
+            server.add_floating_ip(address=instance.external_ips, fixed_address=fixed_address)
+        except (nova_exceptions.ClientException, KeyError, IndexError) as e:
+            logger.error('Could not add external ips to instance %s due to %s' % (instance.uuid, e))
+            instance.external_ips = ''
+            instance.save()
+
     def get_attached_volumes(self, server_id, nova):
         """
         Returns attached volumes for specified vm instance
@@ -1525,7 +1637,7 @@ class OpenStackBackend(object):
             return False
         if backend_rule['ip_protocol'] != nc_rule.protocol:
             return False
-        if backend_rule['ip_range'].get('cidr') != nc_rule.cidr:
+        if backend_rule['ip_range']['cidr'] != nc_rule.cidr:
             return False
         return True
 
@@ -1538,3 +1650,100 @@ class OpenStackBackend(object):
             if not self._are_rules_equal(backend_rule, nc_rule):
                 return False
         return True
+
+    def _get_instance_volumes(self, nova, cinder, backend_instance_id):
+        try:
+            attached_volume_ids = [
+                v.volumeId
+                for v in nova.volumes.get_server_volumes(backend_instance_id)
+            ]
+
+            if len(attached_volume_ids) != 2:
+                logger.info('Skipping instance %s, only instances with 2 volumes are supported, found %d',
+                            backend_instance_id, len(attached_volume_ids))
+                raise LookupError
+
+            attached_volumes = [
+                cinder.volumes.get(volume_id)
+                for volume_id in attached_volume_ids
+            ]
+
+            # Blessed be OpenStack developers for returning booleans as strings
+            system_volume = next(v for v in attached_volumes if v.bootable == 'true')
+            data_volume = next(v for v in attached_volumes if v.bootable == 'false')
+        except (cinder_exceptions.ClientException, StopIteration) as e:
+            logger.exception('Skipping instance %s, failed to fetch volumes', backend_instance_id)
+            six.reraise(LookupError, e)
+        else:
+            return system_volume, data_volume
+
+    def _get_instance_template(self, system_volume, membership, backend_instance_id):
+        try:
+            image_id = system_volume.volume_image_metadata['image_id']
+
+            return models.Template.objects.get(
+                images__backend_id=image_id,
+                images__cloud__cloudprojectmembership=membership,
+            )
+        except (KeyError, AttributeError):
+            logger.info('Skipping instance %s, failed to infer template',
+                        backend_instance_id)
+            raise LookupError
+        except (models.Template.DoesNotExist, models.Template.MultipleObjectsReturned):
+            logger.info('Skipping instance %s, failed to infer template',
+                        backend_instance_id)
+            raise LookupError
+
+    def _get_flavor_info(self, nova, backend_instance):
+        try:
+            flavor_id = backend_instance.flavor['id']
+            flavor = nova.flavors.get(flavor_id)
+        except (KeyError, AttributeError):
+            logger.info('Skipping instance %s, failed to infer flavor info',
+                        backend_instance.id)
+            raise LookupError
+        except nova_exceptions.ClientException as e:
+            logger.info('Skipping instance %s, failed to infer flavor info',
+                        backend_instance.id)
+            six.reraise(LookupError, e)
+        else:
+            cores = flavor.vcpus
+            ram = self.get_core_ram_size(flavor.ram)
+            return cores, ram
+
+    def _normalize_security_group_rule(self, rule):
+        if rule['ip_protocol'] is None:
+            rule['ip_protocol'] = ''
+
+        if 'cidr' not in rule['ip_range']:
+            rule['ip_range']['cidr'] = '0.0.0.0/0'
+
+        return rule
+
+    def _get_instance_state(self, instance):
+        # See http://developer.openstack.org/api-ref-compute-v2.html
+        nova_to_nodeconductor = {
+            'ACTIVE': models.Instance.States.ONLINE,
+            'BUILDING': models.Instance.States.PROVISIONING,
+            # 'DELETED': models.Instance.States.DELETING,
+            # 'SOFT_DELETED': models.Instance.States.DELETING,
+            'ERROR': models.Instance.States.ERRED,
+            'UNKNOWN': models.Instance.States.ERRED,
+
+            'HARD_REBOOT': models.Instance.States.STOPPING,  # Or starting?
+            'REBOOT': models.Instance.States.STOPPING,  # Or starting?
+            'REBUILD': models.Instance.States.STARTING,  # Or stopping?
+
+            'PASSWORD': models.Instance.States.ONLINE,
+            'PAUSED': models.Instance.States.OFFLINE,
+
+            'RESCUED': models.Instance.States.ONLINE,
+            'RESIZED': models.Instance.States.OFFLINE,
+            'REVERT_RESIZE': models.Instance.States.STOPPING,
+            'SHUTOFF': models.Instance.States.OFFLINE,
+            'STOPPED': models.Instance.States.OFFLINE,
+            'SUSPENDED': models.Instance.States.OFFLINE,
+            'VERIFY_RESIZE': models.Instance.States.ONLINE,
+        }
+        return nova_to_nodeconductor.get(instance.status,
+                                         models.Instance.States.ERRED)

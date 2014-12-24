@@ -215,15 +215,6 @@ class InstanceLicenseFactory(factory.DjangoModelFactory):
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
 
-class PurchaseFactory(factory.DjangoModelFactory):
-    class Meta(object):
-        model = models.Purchase
-
-    date = factory.LazyAttribute(lambda o: timezone.now())
-    user = factory.SubFactory(structure_factories.UserFactory)
-    project = factory.SubFactory(structure_factories.ProjectFactory)
-
-
 class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.InstanceSecurityGroup
@@ -252,3 +243,22 @@ class ResourceQuotaFactory(AbstractResourceQuotaFactory):
 class ResourceQuotaUsageFactory(AbstractResourceQuotaFactory):
     class Meta(object):
         model = models.ResourceQuotaUsage
+
+
+class FloatingIPFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.FloatingIP
+
+    cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
+    status = factory.Iterator(['ACTIVE', 'SHUTOFF', 'DOWN'])
+    address = factory.LazyAttribute(lambda o: '.'.join('%s' % randint(0, 255) for _ in range(4)))
+
+    @classmethod
+    def get_url(self, instance=None):
+        if instance is None:
+            instance = FloatingIPFactory()
+        return 'http://testserver' + reverse('floating_ip-detail', kwargs={'uuid': instance.uuid})
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('floating_ip-list')
