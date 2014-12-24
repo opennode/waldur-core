@@ -13,7 +13,7 @@
  
  config = RawConfigParser()
  config.read(os.path.join(conf_dir, 'settings.ini'))
-@@ -51,15 +51,15 @@
+@@ -53,15 +53,15 @@
      },
      'saml2': {
          'acs_url': '',
@@ -25,7 +25,7 @@
          'entity_id': 'saml-sp2',
 -        'key_file': os.path.join(conf_dir, 'dummy.pem'),
 +        'key_file': os.path.join(conf_dir, 'saml2', 'dummy.pem'),
-         'log_file': '',  # empty to disable
+         'log_file': '',  # empty to disable logging SAML2-related stuff to file
          'log_level': 'INFO',
          'metadata_cert': '',
 -        'metadata_file': os.path.join(conf_dir, 'metadata.xml'),
