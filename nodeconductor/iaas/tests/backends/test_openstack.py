@@ -17,33 +17,6 @@ NovaFlavor = collections.namedtuple(
     ['id', 'name', 'vcpus', 'ram', 'disk']
 )
 
-# NovaServer = collections.namedtuple(
-#     'NovaServer',
-#     [
-#         'id',
-#         'name',
-#         'flavor',
-#         'security_groups',
-#         'addresses',
-#
-#         'OS-SRV-USG:launched_at',  # optional
-#         'OS-EXT-STS:power_state',  # optional
-#
-#         'os-extended-volumes:volumes_attached',
-#
-#
-#         'OS-EXT-STS:task_state',
-#
-#         'image',
-#
-#         'updated',
-#         'hostId',
-#         'OS-EXT-SRV-ATTR:host',
-#         'key_name',
-#         'metadata',
-#     ]
-# )
-
 GlanceImage = collections.namedtuple(
     'GlanceImage',
     ['id', 'is_public', 'deleted']
