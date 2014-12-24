@@ -1672,7 +1672,7 @@ class OpenStackBackend(object):
             system_volume = next(v for v in attached_volumes if v.bootable == 'true')
             data_volume = next(v for v in attached_volumes if v.bootable == 'false')
         except (cinder_exceptions.ClientException, StopIteration) as e:
-            logger.exception('Skipping instance %s, failed to fetch volumes', backend_instance_id)
+            logger.info('Skipping instance %s, failed to fetch volumes', backend_instance_id)
             six.reraise(LookupError, e)
         else:
             return system_volume, data_volume
