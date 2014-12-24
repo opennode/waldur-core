@@ -35,7 +35,6 @@ install_requires = [
     'python-keystoneclient>=0.9.0,<0.11.2',
     'python-neutronclient>=2.3.4,<2.4.0',
     'python-novaclient>=2.17.0,<2.19.0',
-    'pytz',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
 ]

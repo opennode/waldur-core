@@ -27,7 +27,6 @@ from neutronclient.client import exceptions as neutron_exceptions
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
-import pytz
 
 from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
@@ -1763,5 +1762,5 @@ class OpenStackBackend(object):
             # At the moment OpenStack does not provide any timezone info,
             # but in future it might do.
             if timezone.is_naive(d):
-                d = timezone.make_aware(d, pytz.UTC)
+                d = timezone.make_aware(d, timezone.utc)
             return d
