@@ -29,6 +29,8 @@ config_defaults = {
     'events': {
         'log_file': '',  # empty to disable logging events to file
         'log_level': 'INFO',
+        'logserver_host': '',
+        'logserver_port': 5959,
         'syslog': 'false',
     },
     'logging': {
