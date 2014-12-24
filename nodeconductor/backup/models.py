@@ -149,7 +149,7 @@ class Backup(core_models.UuidMixin,
     state = FSMIntegerField(default=States.READY, choices=STATE_CHOICES)
     # TODO: use https://github.com/bradjasper/django-jsonfield after python update (to 2.7)
     additional_data = models.TextField(
-        null=True, blank=True,
+        blank=True,
         help_text='Additional information about backup, can be used for backup restoration or deletion')
 
     objects = managers.BackupManager()

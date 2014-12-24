@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import logging
 from decimal import Decimal
 
-from django.conf import settings
 from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
@@ -11,7 +10,6 @@ from django.db import models
 from django.db.models import signals
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
-from django.utils.translation import ugettext as _
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 
@@ -131,9 +129,9 @@ class Flavor(core_models.UuidMixin, models.Model):
     name = models.CharField(max_length=100)
     cloud = models.ForeignKey(Cloud, related_name='flavors')
 
-    cores = models.PositiveSmallIntegerField(help_text=_('Number of cores in a VM'))
-    ram = models.PositiveIntegerField(help_text=_('Memory size in MiB'))
-    disk = models.PositiveIntegerField(help_text=_('Root disk size in MiB'))
+    cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
+    ram = models.PositiveIntegerField(help_text='Memory size in MiB')
+    disk = models.PositiveIntegerField(help_text='Root disk size in MiB')
 
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255)
@@ -173,7 +171,7 @@ class Template(core_models.UuidMixin,
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
     """
     name = models.CharField(max_length=100, unique=True)
-    os = models.CharField(max_length=100, null=True, blank=True)
+    os = models.CharField(max_length=100, blank=True)
     is_active = models.BooleanField(default=False)
     sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
@@ -205,21 +203,34 @@ class AbstractResourceQuota(models.Model):
     class Meta(object):
         abstract = True
 
-    vcpu = models.PositiveIntegerField(help_text=_('Virtual CPUs'))
-    ram = models.FloatField(help_text=_('RAM size'))
-    storage = models.FloatField(help_text=_('Storage size (incl. backup)'))
-    max_instances = models.PositiveIntegerField(help_text=_('Number of running instances'))
-    backup_storage = models.FloatField(default=0, help_text=_('Backup storage size'))
+    vcpu = models.PositiveIntegerField(help_text='Virtual CPUs')
+    ram = models.FloatField(help_text='RAM size')
+    storage = models.FloatField(help_text='Storage size (incl. backup)')
+    max_instances = models.PositiveIntegerField(help_text='Number of running instances')
+    backup_storage = models.FloatField(default=0, help_text='Backup storage size')
 
 
+# TODO: Refactor to use CloudProjectMember
 class ResourceQuota(AbstractResourceQuota):
     """ CloudProjectMembership quota """
     cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota')
 
 
+# TODO: Refactor to use CloudProjectMember
 class ResourceQuotaUsage(AbstractResourceQuota):
     """ CloudProjectMembership quota usage """
     cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota_usage')
+
+
+class FloatingIP(core_models.UuidMixin, CloudProjectMember):
+    class Permissions(object):
+        customer_path = 'cloud_project_membership__cloud__customer'
+        project_path = 'cloud_project_membership__project'
+        project_group_path = 'cloud_project_membership__project__project_groups'
+
+    address = models.CharField(max_length=30)
+    status = models.CharField(max_length=30)
+    backend_id = models.CharField(max_length=255)
 
 
 @python_2_unicode_compatible
@@ -260,25 +271,25 @@ class Instance(core_models.UuidMixin,
         RESIZING = 14
 
         CHOICES = (
-            (PROVISIONING_SCHEDULED, _('Provisioning Scheduled')),
-            (PROVISIONING, _('Provisioning')),
+            (PROVISIONING_SCHEDULED, 'Provisioning Scheduled'),
+            (PROVISIONING, 'Provisioning'),
 
-            (ONLINE, _('Online')),
-            (OFFLINE, _('Offline')),
+            (ONLINE, 'Online'),
+            (OFFLINE, 'Offline'),
 
-            (STARTING_SCHEDULED, _('Starting Scheduled')),
-            (STARTING, _('Starting')),
+            (STARTING_SCHEDULED, 'Starting Scheduled'),
+            (STARTING, 'Starting'),
 
-            (STOPPING_SCHEDULED, _('Stopping Scheduled')),
-            (STOPPING, _('Stopping')),
+            (STOPPING_SCHEDULED, 'Stopping Scheduled'),
+            (STOPPING, 'Stopping'),
 
-            (ERRED, _('Erred')),
+            (ERRED, 'Erred'),
 
-            (DELETION_SCHEDULED, _('Deletion Scheduled')),
-            (DELETING, _('Deleting')),
+            (DELETION_SCHEDULED, 'Deletion Scheduled'),
+            (DELETING, 'Deleting'),
 
-            (RESIZING_SCHEDULED, _('Resizing Scheduled')),
-            (RESIZING, _('Resizing')),
+            (RESIZING_SCHEDULED, 'Resizing Scheduled'),
+            (RESIZING, 'Resizing'),
         )
 
         # Stable instances are the ones for which
@@ -296,7 +307,7 @@ class Instance(core_models.UuidMixin,
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
-    external_ips = fields.IPsField(max_length=256)
+    external_ips = fields.IPsField(max_length=256, blank=True)
     internal_ips = fields.IPsField(max_length=256)
     start_time = models.DateTimeField(blank=True, null=True)
 
@@ -376,7 +387,7 @@ class Instance(core_models.UuidMixin,
         pass
 
     def __str__(self):
-        return _('%(name)s - %(status)s') % {
+        return '%(name)s - %(status)s' % {
             'name': self.hostname,
             'status': self.get_state_display(),
         }
@@ -483,28 +494,6 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class Purchase(core_models.UuidMixin, models.Model):
-    """
-    Purchase history allows to see historical information
-    about what services have been purchased alongside
-    with additional metadata.
-    """
-    class Permissions(object):
-        project_path = 'project'
-        project_group_path = 'project__project_groups'
-
-    date = models.DateTimeField()
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='purchases')
-    project = models.ForeignKey(structure_models.Project, related_name='purchases')
-
-    def __str__(self):
-        return '%(user)s - %(date)s' % {
-            'user': self.user.username,
-            'date': self.date,
-        }
-
-
-@python_2_unicode_compatible
 class SecurityGroup(core_models.UuidMixin,
                     core_models.DescribableMixin,
                     CloudProjectMember,
@@ -521,7 +510,7 @@ class SecurityGroup(core_models.UuidMixin,
     name = models.CharField(max_length=127)
 
     # OpenStack backend specific fields
-    backend_id = models.CharField(max_length='128', blank=True,
+    backend_id = models.CharField(max_length=128, blank=True,
                                   help_text='Reference to a SecurityGroup in a remote cloud')
 
     def __str__(self):
@@ -535,19 +524,19 @@ class SecurityGroupRule(models.Model):
     udp = 'udp'
 
     PROTOCOL_CHOICES = (
-        (tcp, _('tcp')),
-        (udp, _('udp')),
+        (tcp, 'tcp'),
+        (udp, 'udp'),
     )
 
     group = models.ForeignKey(SecurityGroup, related_name='rules')
 
-    protocol = models.CharField(max_length=3, choices=PROTOCOL_CHOICES, null=True)
+    protocol = models.CharField(max_length=3, blank=True, choices=PROTOCOL_CHOICES)
     from_port = models.IntegerField(validators=[MaxValueValidator(65535), MinValueValidator(1)], null=True)
     to_port = models.IntegerField(validators=[MaxValueValidator(65535), MinValueValidator(1)], null=True)
-    cidr = models.CharField(max_length=32, null=True)
+    cidr = models.CharField(max_length=32, blank=True)
 
     # OpenStack backend specific fields
-    backend_id = models.CharField(max_length='128', blank=True)
+    backend_id = models.CharField(max_length=128, blank=True)
 
     def __str__(self):
         return '%s (%s): %s (%s -> %s)' % \

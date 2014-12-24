@@ -27,12 +27,14 @@ config_defaults = {
         'result_backend_url': 'redis://localhost',
     },
     'events': {
-        'log_file': '',  # empty to disable
+        'log_file': '',  # empty to disable logging events to file
         'log_level': 'INFO',
+        'logserver_host': '',
+        'logserver_port': 5959,
         'syslog': 'false',
     },
     'logging': {
-        'log_file': '',  # empty to disable
+        'log_file': '',  # empty to disable logging to file
         'log_level': 'INFO',
         'syslog': 'false',
     },
@@ -56,7 +58,7 @@ config_defaults = {
         'debug': 'false',
         'entity_id': 'saml-sp2',
         'key_file': os.path.join(conf_dir, 'dummy.pem'),
-        'log_file': '',  # empty to disable
+        'log_file': '',  # empty to disable logging SAML2-related stuff to file
         'log_level': 'INFO',
         'metadata_cert': '',
         'metadata_file': os.path.join(conf_dir, 'metadata.xml'),
@@ -66,17 +68,16 @@ config_defaults = {
         'path': os.path.join(work_dir, 'db.sqlite3'),
     },
     'zabbix': {
+        'db_host': '',  # empty to disable Zabbix database access
+        'db_name': 'zabbix',
+        'db_password': 'nodeconductor',
+        'db_port': '3306',
+        'db_user': 'nodeconductor',
         'host_group_id': '',
         'host_template_id': '',
         'password': '',
         'server_url': '',
         'username': '',
-        # db
-        'db_host': '',
-        'db_name': 'zabbix',
-        'db_port': '3306',
-        'db_user': 'nodeconductor',
-        'db_password': 'nodeconductor'
     }
 }
 
@@ -138,6 +139,17 @@ elif config.has_section('sqlite3'):
         'NAME': config.get('sqlite3', 'path'),
     }
 
+# Zabbix database
+if config.get('zabbix', 'db_host') != '':
+    DATABASES['zabbix'] = {
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST': config.get('zabbix', 'db_host'),
+        'NAME': config.get('zabbix', 'db_name'),
+        'PORT': config.get('zabbix', 'db_port'),
+        'USER': config.get('zabbix', 'db_user'),
+        'PASSWORD': config.get('zabbix', 'db_password'),
+    }
+
 # Logging
 # See also: https://docs.djangoproject.com/en/1.6/ref/settings/#logging
 
@@ -145,9 +157,9 @@ LOGGING = {
     'version': 1,
     'formatters': {
         'request_format': {
-            'format': '%(remote_addr)s %(username)s "%(request_method)s '
+            'format': '%(asctime)s %(remote_addr)s %(username)s "%(request_method)s '
             '%(path_info)s %(server_protocol)s" %(http_user_agent)s '
-            '%(message)s %(asctime)s',
+            '%(message)s',
         },
     },
     'filters': {
@@ -184,7 +196,6 @@ LOGGING = {
             'formatter': 'request_format',
             'level': config.get('saml2', 'log_level').upper(),
         },
-
         # Logging to syslog
         # See also: https://docs.python.org/2/library/logging.handlers.html#sysloghandler
         'syslog': {
@@ -199,6 +210,12 @@ LOGGING = {
             'formatter': 'request_format',
             'level': config.get('events', 'log_level').upper(),
         },
+        # Logging to logserver
+        'tcp-event': {
+            'class': 'nodeconductor.core.log.TCPEventHandler',
+            'filters': ['event'],
+            'level': config.get('events', 'log_level').upper(),
+        },
     },
     'loggers': {
         'django': {
@@ -206,7 +223,6 @@ LOGGING = {
             'level': config.get('logging', 'log_level').upper(),
             'propagate': True,
         },
-        # NodeConductor events
         'nodeconductor': {
             'handlers': [],
             'level': config.get('events', 'log_level').upper(),
@@ -231,6 +247,11 @@ if config.getboolean('logging', 'syslog'):
 if config.get('events', 'log_file') != '':
     LOGGING['handlers']['file-event']['filename'] = config.get('events', 'log_file')
     LOGGING['loggers']['nodeconductor']['handlers'].append('file-event')
+
+if config.get('events', 'logserver_host') != '':
+    LOGGING['handlers']['tcp-event']['host'] = config.get('events', 'logserver_host')
+    LOGGING['handlers']['tcp-event']['port'] = config.get('events', 'logserver_port')
+    LOGGING['loggers']['nodeconductor']['handlers'].append('tcp-event')
 
 if config.getboolean('events', 'syslog'):
     LOGGING['handlers']['syslog-event']['address'] = '/dev/log'
@@ -406,13 +427,3 @@ NODECONDUCTOR = {
     }
 }
 
-# Zabbix DB configuration
-if config.get('zabbix', 'db_host') != '':
-    DATABASES['zabbix'] = {
-        'ENGINE': 'django.db.backends.mysql',
-        'HOST': config.get('zabbix', 'db_host'),
-        'NAME': config.get('zabbix', 'db_name'),
-        'PORT': config.get('zabbix', 'db_port'),
-        'USER': config.get('zabbix', 'db_user'),
-        'PASSWORD': config.get('zabbix', 'db_password'),
-    }
