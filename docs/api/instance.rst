@@ -12,11 +12,11 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - ?hostname=<hostname>
 - ?customer_name=<customer name>
 - ?state=<state symbol>
+- ?project=<project uuid>
 - ?project=<project name>
+- ?project_group=<project group uuid>
 - ?project_group=<project group name>
 - ?template_name=<template name>
-- ?project **deprecated**, use ?project_name instead
-- ?project_group **deprecated**, use ?project_group_name instead
 
 Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
 
