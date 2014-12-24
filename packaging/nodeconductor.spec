@@ -186,7 +186,7 @@ All done. Happy NodeConducting!
 EOF
 
 %changelog
-* Fri Dec 24 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.13.0-1.el7
+* Wed Dec 24 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.13.0-1.el7
 - New upstream release
 
 * Fri Dec 19 2014 Juri Hudolejev <juri@opennodecloud.com> - 0.12.0-1.el7
