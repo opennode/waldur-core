@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import time
 
 from django.contrib import auth
+from django.core.exceptions import ValidationError
 from django.db.models.query_utils import Q
 from django.http.response import Http404
 import django_filters
@@ -220,6 +221,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return super(ProjectViewSet, self).get_serializer_class()
 
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super(ProjectViewSet, self).destroy(request, *args, **kwargs)
+        except ValidationError as e:
+            return Response({'detail': e.message}, status=status.HTTP_409_CONFLICT)
+
 
 class ProjectGroupFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
@@ -255,6 +262,12 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
     filter_class = ProjectGroupFilter
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super(ProjectGroupViewSet, self).destroy(request, *args, **kwargs)
+        except ValidationError as e:
+            return Response({'detail': e.message}, status=status.HTTP_409_CONFLICT)
 
 
 class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
