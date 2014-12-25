@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse, resolve, Resolver404
 from django.db.models.query import EmptyQuerySet
+from nodeconductor.structure.serializers import fix_non_nullable_attrs
 
 from rest_framework import serializers
 from rest_framework.relations import RelatedField
@@ -94,6 +95,10 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
         read_only_fields = ('is_active', 'backups')
         lookup_field = 'uuid'
 
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        return fix_non_nullable_attrs(attrs)
+
 
 class BackupSerializer(serializers.HyperlinkedModelSerializer):
     backup_source = RelatedBackupField()
@@ -104,3 +109,7 @@ class BackupSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('url', 'description', 'created_at', 'kept_until', 'backup_source', 'state', 'backup_schedule')
         read_only_fields = ('created_at', 'kept_until', 'backup_schedule')
         lookup_field = 'uuid'
+
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        return fix_non_nullable_attrs(attrs)

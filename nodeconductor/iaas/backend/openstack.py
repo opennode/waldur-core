@@ -622,10 +622,12 @@ class OpenStackBackend(object):
 
             network = matching_networks[0]
 
+            safe_key_name = self.sanitize_key_name(instance.key_name)
+
             matching_keys = [
                 key
                 for key in nova.keypairs.findall(fingerprint=instance.key_fingerprint)
-                if key.name.endswith(instance.key_name)
+                if key.name.endswith(safe_key_name)
             ]
             matching_keys_count = len(matching_keys)
 
@@ -1373,7 +1375,7 @@ class OpenStackBackend(object):
         admin_role = keystone.roles.find(name='admin')
 
         try:
-            keystone.users.role_manager.add_user_role(
+            keystone.roles.add_user_role(
                 user=admin_user.id,
                 role=admin_role.id,
                 tenant=tenant.id,
@@ -1425,9 +1427,12 @@ class OpenStackBackend(object):
         # OpenStack only allows latin letters, digits, dashes, underscores and spaces
         # as key names, thus we mangle the original name.
 
-        safe_name = re.sub(r'[^-a-zA-Z0-9 _]+', '_', public_key.name)
+        safe_name = self.sanitize_key_name(public_key.name)
         key_name = '{0}-{1}'.format(public_key.uuid.hex, safe_name)
         return key_name
+
+    def sanitize_key_name(self, key_name):
+        return re.sub(r'[^-a-zA-Z0-9 _]+', '_', key_name)
 
     def get_tenant_name(self, membership):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
@@ -1472,14 +1477,21 @@ class OpenStackBackend(object):
             return False
 
     def push_floating_ip_to_instance(self, server_id, instance, nova):
+        if not instance.external_ips:
+            return
+
+        logger.debug('About add external ip %s to instance %s',
+                     instance.external_ips, instance.uuid)
         try:
             server = nova.servers.get(server_id)
-            fixed_address = server.addresses.values()[0]['addr']
+            fixed_address = server.addresses.values()[0][0]['addr']
             server.add_floating_ip(address=instance.external_ips, fixed_address=fixed_address)
-        except (nova_exceptions.ClientException, KeyError, IndexError) as e:
-            logger.error('Could not add external ips to instance %s due to %s' % (instance.uuid, e))
-            instance.external_ips = ''
-            instance.save()
+        except (nova_exceptions.ClientException, KeyError, IndexError):
+            logger.exception('Failed to add external ip %s to instance %s',
+                             instance.external_ips, instance.uuid)
+        else:
+            logger.info('Successfully added external ip %s to instance %s',
+                        instance.external_ips, instance.uuid)
 
     def get_attached_volumes(self, server_id, nova):
         """

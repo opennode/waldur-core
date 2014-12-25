@@ -664,3 +664,9 @@ def create_dummy_security_groups(sender, instance=None, created=False, **kwargs)
             to_port=443,
             cidr='0.0.0.0/0',
         )
+
+
+@receiver(signals.pre_delete, sender=structure_models.Project)
+def prevent_project_deletion_if_connected_to_instances(sender, instance, **kwargs):
+    if Instance.objects.filter(cloud_project_membership__project=instance).exists():
+        raise ValidationError('Cannot delete a project that has connected Instances')
