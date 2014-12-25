@@ -14,6 +14,25 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 User = auth.get_user_model()
 
 
+# TODO: cleanup after migration to drf 3. Assures that non-nullable fields get empty value
+def fix_non_nullable_attrs(attrs):
+    non_nullable_char_fields = [
+        'job_title',
+        'organization',
+        'phone_number',
+        'description',
+        'full_name',
+        'native_name',
+        'contact_details',
+    ]
+    for source in attrs:
+        if source in non_nullable_char_fields:
+            value = attrs[source]
+            if value is None:
+                attrs[source] = ''
+    return attrs
+
+
 class BasicUserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = User
@@ -72,6 +91,11 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
             'backup_storage_usage': sum([q.backup_storage for q in quotas]),
         }
 
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        return fix_non_nullable_attrs(attrs)
+
+
 
 class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                               serializers.HyperlinkedModelSerializer):
@@ -83,6 +107,10 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'customer',
+
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        return fix_non_nullable_attrs(attrs)
 
 
 class CustomerSerializer(core_serializers.CollectedFieldsMixin,
@@ -112,6 +140,9 @@ class CustomerSerializer(core_serializers.CollectedFieldsMixin,
     def get_customer_project_groups(self, obj):
         return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
 
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        return fix_non_nullable_attrs(attrs)
 
 class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
                              core_serializers.RelatedResourcesFieldMixin,
@@ -142,6 +173,10 @@ class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     def get_related_paths(self):
         return 'customer',
+
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        return fix_non_nullable_attrs(attrs)
 
 
 class ProjectGroupMembershipSerializer(core_serializers.PermissionFieldFilteringMixin,
@@ -361,20 +396,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):
-        non_nullable_char_fields = [
-            'job_title',
-            'organization',
-            'phone_number',
-            'description',
-            'full_name',
-            'native_name',
-        ]
-        for source in attrs:
-            if source in non_nullable_char_fields:
-                value = attrs[source]
-                if value is None:
-                    attrs[source] = ''
-        return attrs
+        return fix_non_nullable_attrs(attrs)
 
     def get_fields(self):
         fields = super(UserSerializer, self).get_fields()

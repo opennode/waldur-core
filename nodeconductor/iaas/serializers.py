@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from nodeconductor.structure.serializers import fix_non_nullable_attrs
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
@@ -131,6 +132,10 @@ class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
         view_name = 'security_group-detail'
 
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        return fix_non_nullable_attrs(attrs)
+
 
 class IpMappingSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
@@ -249,7 +254,8 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                 raise serializers.ValidationError("Template %s is not available on cloud %s"
                                                   % (template, flavor.cloud))
 
-        return attrs
+        # TODO: cleanup after migration to drf 3
+        return fix_non_nullable_attrs(attrs)
 
     def restore_object(self, attrs, instance=None):
         key = attrs['ssh_public_key']
@@ -285,6 +291,10 @@ class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
         if attr_name in attrs and attrs[attr_name] is None:
             del attrs[attr_name]
         return attrs
+
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        return fix_non_nullable_attrs(attrs)
 
 
 class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
@@ -450,6 +460,10 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'template_licenses',
         )
         lookup_field = 'uuid'
+
+    # TODO: cleanup after migration to drf 3
+    def validate(self, attrs):
+        return fix_non_nullable_attrs(attrs)
 
 
 class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
