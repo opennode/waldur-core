@@ -27,7 +27,6 @@ Requires: MySQL-python
 Requires: openssl
 Requires: python-celery >= 3.1.15, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
-Requires: python-ordereddict = 1.1
 Requires: python-django >= 1.7.1
 Requires: python-django-auth-ldap = 1.2.0
 Requires: python-django-model-utils = 2.2
@@ -40,12 +39,11 @@ Requires: python-django-rest-framework-extensions = 0.2.6
 Requires: python-django-saml2 >= 0.11.0-3, python-django-saml2 < 0.12
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-cinderclient >= 1.0.7, python-cinderclient <= 1.1.1
-Requires: python-glanceclient >= 1:0.12.0, python-glanceclient < 1:0.13.0
+Requires: python-glanceclient >= 1:0.12.0, python-glanceclient < 1:0.16.0
 Requires: python-keystoneclient >= 1:0.9.0, python-keystoneclient < 1:0.11.2
 Requires: python-neutronclient >= 2.3.4, python-neutronclient < 2.4.0
-Requires: python-novaclient >= 1:2.17.0, python-novaclient < 1:2.19.0
+Requires: python-novaclient >= 1:2.17.0, python-novaclient < 1:2.21.0
 Requires: python-redis = 2.10.3
-Requires: python-south = 0.8.4
 Requires: python-zabbix >= 0.7.2
 Requires: xmlsec1-openssl
 
@@ -149,8 +147,9 @@ Next steps:
 
 4. Initialize application:
 
-    sudo -u nodeconductor nodeconductor migrate --noinput
+    nodeconductor migrate --noinput
     nodeconductor collectstatic --noinput
+    chown -R nodeconductor:nodeconductor /var/log/nodeconductor
 
 Note: you will need to run this again on next NodeConductor update.
 
@@ -167,6 +166,7 @@ Note: you will need to run this again on next NodeConductor update.
 
     [saml2]
     entityid = ...
+    attribute_map_... = ...
     acs_url = ...
     metadata_file = ...
 
