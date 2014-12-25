@@ -64,6 +64,12 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
+    customer_abbreviation = django_filters.CharFilter(
+        name='cloud_project_membership__project__customer__abbreviation',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
     template_name = django_filters.CharFilter(
         name='template__name',
         lookup_type='icontains',
@@ -77,12 +83,13 @@ class InstanceFilter(django_filters.FilterSet):
         fields = [
             'hostname',
             'customer_name',
+            'customer_abbreviation',
             'state',
             'project_name',
             'project_group_name',
             'project',
             'project_group',
-            'template_name'
+            'template_name',
         ]
         order_by = [
             'hostname',
@@ -91,6 +98,8 @@ class InstanceFilter(django_filters.FilterSet):
             '-state',
             'cloud_project_membership__project__customer__name',
             '-cloud_project_membership__project__customer__name',
+            'cloud_project_membership__project__customer__abbreviation',
+            '-cloud_project_membership__project__customer__abbreviation',
             'cloud_project_membership__project__name',
             '-cloud_project_membership__project__name',
             'cloud_project_membership__project__project_groups__name',
@@ -101,6 +110,7 @@ class InstanceFilter(django_filters.FilterSet):
         order_by_mapping = {
             # Proper field naming
             'customer_name': 'cloud_project_membership__project__customer__name',
+            'customer_abbreviation': 'cloud_project_membership__project__customer__abbreviation',
             'project_name': 'cloud_project_membership__project__name',
             'project_group_name': 'cloud_project_membership__project__project_groups__name',
             'template_name': 'template__name',
