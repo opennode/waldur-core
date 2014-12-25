@@ -53,7 +53,10 @@ config_defaults = {
     },
     'saml2': {
         'acs_url': '',
+        'attribute_map_civil_number': 'Civil number',
         'attribute_map_dir': os.path.join(conf_dir, 'saml2', 'attribute-maps'),
+        'attribute_map_full_name': 'Full name',
+        'attribute_map_native_name': 'Native name',
         'cert_file': os.path.join(conf_dir, 'saml2', 'dummy.crt'),
         'debug': 'false',
         'entity_id': 'saml-sp2',
@@ -369,11 +372,10 @@ if config.get('saml2', 'metadata_url') != '':
 
 SAML_DJANGO_USER_MAIN_ATTRIBUTE = 'civil_number'
 
-# TODO: make configurable
 SAML_ATTRIBUTE_MAPPING = {
-    'Civil number': ('username', 'civil_number'),
-    'Full name (English)': ('full_name', ),
-    'Full name (Arabic)': ('native_name', ),
+    config.get('saml2', 'attribute_map_civil_number'): ('username', 'civil_number'),
+    config.get('saml2', 'attribute_map_full_name'): ('full_name',),
+    config.get('saml2', 'attribute_map_native_name'): ('native_name',),
 }
 
 # Celery
