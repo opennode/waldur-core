@@ -369,10 +369,11 @@ if config.get('saml2', 'metadata_url') != '':
 
 SAML_DJANGO_USER_MAIN_ATTRIBUTE = 'civil_number'
 
+# TODO: make configurable
 SAML_ATTRIBUTE_MAPPING = {
     'Civil number': ('username', 'civil_number'),
-    'omancardTitleFullNameEn': ('full_name', ),
-    'omancardTitleFullNameAr': ('native_name', ),
+    'Full name (English)': ('full_name', ),
+    'Full name (Arabic)': ('native_name', ),
 }
 
 # Celery
