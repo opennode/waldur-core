@@ -1477,14 +1477,21 @@ class OpenStackBackend(object):
             return False
 
     def push_floating_ip_to_instance(self, server_id, instance, nova):
+        if not instance.external_ips:
+            return
+
+        logger.debug('About add external ip %s to instance %s',
+                     instance.external_ips, instance.uuid)
         try:
             server = nova.servers.get(server_id)
-            fixed_address = server.addresses.values()[0]['addr']
+            fixed_address = server.addresses.values()[0][0]['addr']
             server.add_floating_ip(address=instance.external_ips, fixed_address=fixed_address)
-        except (nova_exceptions.ClientException, KeyError, IndexError) as e:
-            logger.error('Could not add external ips to instance %s due to %s' % (instance.uuid, e))
-            instance.external_ips = ''
-            instance.save()
+        except (nova_exceptions.ClientException, KeyError, IndexError):
+            logger.exception('Failed to add external ip %s to instance %s',
+                             instance.external_ips, instance.uuid)
+        else:
+            logger.info('Successfully added external ip %s to instance %s',
+                        instance.external_ips, instance.uuid)
 
     def get_attached_volumes(self, server_id, nova):
         """
