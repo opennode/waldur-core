@@ -82,14 +82,17 @@ class ZabbixApiClient(object):
             logger.exception('Can not delete Zabbix hostgroup.')
             six.reraise(ZabbixError, e)
 
-    def create_service(self, instance):
+    def create_service(self, instance, hostid=None):
         try:
             api = self.get_zabbix_api()
 
             service_parameters = self.default_service_parameters
             name = self.get_service_name(instance)
             service_parameters['name'] = name
-            service_parameters['triggerid'] = self.get_template_triggerid(api, self.templateid)
+            if hostid is None:
+                hostid = self.get_host(instance)['hostid']
+
+            service_parameters['triggerid'] = self.get_host_triggerid(api, hostid)
 
             _, created = self.get_or_create_service(api, service_parameters)
 
@@ -192,11 +195,11 @@ class ZabbixApiClient(object):
     def get_service_name(self, instance):
         return 'Availability of %s' % instance.backend_id
 
-    def get_template_triggerid(self, api, templateid):
+    def get_host_triggerid(self, api, hostid):
         try:
-            return api.trigger.get(templateids=templateid)[0]['triggerid']
+            return api.trigger.get(hostids=hostid)[0]['triggerid']
         except IndexError:
-            raise ZabbixAPIException('No template with id: %s' % templateid)
+            raise ZabbixAPIException('No template with id: %s' % hostid)
 
     def get_or_create_hostgroup(self, api, project):
         group_name = self.get_hostgroup_name(project)
