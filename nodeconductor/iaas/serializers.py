@@ -209,7 +209,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(user=user)
 
         clouds = structure_filters.filter_queryset_for_user(models.Cloud.objects.all(), user)
-        fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds)
+        fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds).distinct()
         fields['external_ips'].required = False
 
         return fields
