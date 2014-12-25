@@ -31,20 +31,21 @@ Additional requirements:
 
     venv/bin/python setup.py develop
 
-4. Create settings file -- settings files will be created in ``~/.nodeconductor`` directory:
+4. Create and edit settings file:
 
   .. code-block:: bash
 
-    venv/bin/nodeconductor init
+    cp nodeconductor/server/settings.py.example nodeconductor/server/settings.py
+    vim nodeconductor/server/settings.py
 
-5. Initialise database -- SQLite3 database will be created in ``~/.nodeconductor/db.sqlite`` unless specified otherwise in settings files:
+5. Initialise database -- SQLite3 database will be created in ``./db.sqlite3`` unless specified otherwise in settings files:
 
   .. code-block:: bash
 
     venv/bin/nodeconductor syncdb --noinput
     venv/bin/nodeconductor migrate --noinput
 
-6. Collect static data -- static files will be copied to ``static_files`` in the same directory:
+6. Collect static data -- static files will be copied to ``./static/`` in the same directory:
 
   .. code-block:: bash
 

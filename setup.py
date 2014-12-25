@@ -29,12 +29,11 @@ install_requires = [
     'djangorestframework>=2.3.12,<2.4.0',
     'djangosaml2==0.12.0.dev0',
     'drf-extensions==0.2.6',
-    'logan==0.5.9.1',
-    'python-cinderclient>=1.0.7,<=1.1.1',
-    'python-glanceclient>=0.12.0,<0.13.0',
-    'python-keystoneclient>=0.9.0,<0.11.2',
-    'python-neutronclient>=2.3.4,<2.4.0',
-    'python-novaclient>=2.17.0,<2.19.0',
+    'python-cinderclient==1.0.9',
+    'python-glanceclient==0.12.0',
+    'python-keystoneclient==0.9.0',
+    'python-neutronclient==2.3.4',
+    'python-novaclient==2.17.0',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
 ]
@@ -42,7 +41,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.14.0.dev0',
+    version='0.15.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
@@ -54,12 +53,12 @@ setup(
         'https://bitbucket.org/opennode/djangosaml2/downloads',
     ],
     extras_require={
-        'tests': tests_requires,
         'dev': dev_requires,
+        'tests': tests_requires,
     },
     entry_points={
-        'console_scripts': ('nodeconductor = nodeconductor.server.logan_runner:main',),
-        'backup_strategies': ('Instance = nodeconductor.iaas.backup.instance_backup:InstanceBackupStrategy', )
+        'backup_strategies': ('Instance = nodeconductor.iaas.backup.instance_backup:InstanceBackupStrategy',),
+        'console_scripts': ('nodeconductor = nodeconductor.server.manage:main',),
     },
     tests_require=tests_requires,
     test_suite='nodeconductor.server.test_runner.run_tests',

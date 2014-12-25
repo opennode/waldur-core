@@ -4,6 +4,7 @@ from collections import OrderedDict
 from itertools import groupby
 import logging
 from operator import itemgetter
+import pkg_resources
 import re
 import time
 
@@ -16,6 +17,7 @@ from django.db.models import ProtectedError
 from django.utils import dateparse
 from django.utils import six
 from django.utils import timezone
+from django.utils.lru_cache import lru_cache
 from glanceclient import exc as glance_exceptions
 from glanceclient.v1 import client as glance_client
 from keystoneclient import exceptions as keystone_exceptions
@@ -32,6 +34,30 @@ from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _get_cinder_version():
+    try:
+        return pkg_resources.get_distribution('python-cinderclient').parsed_version
+    except ValueError:
+        return '00000001', '00000000', '00000009', '*final'
+
+
+@lru_cache(maxsize=1)
+def _get_neutron_version():
+    try:
+        return pkg_resources.get_distribution('python-neutronclient').parsed_version
+    except ValueError:
+        return '00000002', '00000003', '00000004', '*final'
+
+
+@lru_cache(maxsize=1)
+def _get_nova_version():
+    try:
+        return pkg_resources.get_distribution('python-novaclient').parsed_version
+    except ValueError:
+        return '00000002', '00000017', '00000000', '*final'
 
 
 # noinspection PyMethodMayBeStatic
@@ -596,10 +622,12 @@ class OpenStackBackend(object):
 
             network = matching_networks[0]
 
+            safe_key_name = self.sanitize_key_name(instance.key_name)
+
             matching_keys = [
                 key
                 for key in nova.keypairs.findall(fingerprint=instance.key_fingerprint)
-                if key.name.endswith(instance.key_name)
+                if key.name.endswith(safe_key_name)
             ]
             matching_keys_count = len(matching_keys)
 
@@ -1209,14 +1237,9 @@ class OpenStackBackend(object):
         return backend_ram_size * 1024
 
     def create_cinder_client(self, session):
-        try:
-            # Starting from version 1.1.0 python-cinderclient
-            # supports keystone auth plugins
+        if _get_cinder_version() >= pkg_resources.parse_version('1.1.0'):
             return cinder_client.Client(session=session)
-        except TypeError:
-            # Fallback for pre-1.1.0 version: username and password
-            # need to be specified explicitly.
-
+        else:
             # Since we know that Password auth plugin is used
             # it is safe to extract username/password from there
             auth_plugin = session.auth
@@ -1225,15 +1248,11 @@ class OpenStackBackend(object):
                 'auth_url': auth_plugin.auth_url,
                 'username': auth_plugin.username,
                 'api_key': auth_plugin.password,
-            }
-
-            # Either tenant_id or tenant_name will be set, the other one will be None
-            if auth_plugin.tenant_id is not None:
-                kwargs['tenant_id'] = auth_plugin.tenant_id
-            else:
+                'tenant_id': auth_plugin.tenant_id,
                 # project_id is tenant_name, id doesn't make sense,
                 # pretty usual for OpenStack
-                kwargs['project_id'] = auth_plugin.tenant_name
+                'project_id': auth_plugin.tenant_name,
+            }
 
             return cinder_client.Client(**kwargs)
 
@@ -1256,10 +1275,44 @@ class OpenStackBackend(object):
         return keystone_client.Client(session=session)
 
     def create_neutron_client(self, session):
-        return neutron_client.Client(session=session)
+        if _get_neutron_version() >= pkg_resources.parse_version('2.3.6'):
+            return neutron_client.Client(session=session)
+        else:
+            # Since we know that Password auth plugin is used
+            # it is safe to extract username/password from there
+            auth_plugin = session.auth
+
+            kwargs = {
+                'auth_url': auth_plugin.auth_url,
+                'username': auth_plugin.username,
+                'password': auth_plugin.password,
+                'tenant_id': auth_plugin.tenant_id,
+                # neutron is different in a sense it is more reasonable to call
+                # tenant_name a tenant_name, rather then project_id
+                'tenant_name': auth_plugin.tenant_name,
+            }
+
+            return neutron_client.Client(**kwargs)
 
     def create_nova_client(self, session):
-        return nova_client.Client(session=session)
+        if _get_nova_version() >= pkg_resources.parse_version('2.18.0'):
+            return nova_client.Client(session=session)
+        else:
+            # Since we know that Password auth plugin is used
+            # it is safe to extract username/password from there
+            auth_plugin = session.auth
+
+            kwargs = {
+                'auth_url': auth_plugin.auth_url,
+                'username': auth_plugin.username,
+                'api_key': auth_plugin.password,
+                'tenant_id': auth_plugin.tenant_id,
+                # project_id is tenant_name, id doesn't make sense,
+                # pretty usual for OpenStack
+                'project_id': auth_plugin.tenant_name,
+            }
+
+            return nova_client.Client(**kwargs)
 
     def get_or_create_user(self, membership, keystone):
         # Try to sign in if credentials are already stored in membership
@@ -1322,7 +1375,7 @@ class OpenStackBackend(object):
         admin_role = keystone.roles.find(name='admin')
 
         try:
-            keystone.users.role_manager.add_user_role(
+            keystone.roles.add_user_role(
                 user=admin_user.id,
                 role=admin_role.id,
                 tenant=tenant.id,
@@ -1374,9 +1427,12 @@ class OpenStackBackend(object):
         # OpenStack only allows latin letters, digits, dashes, underscores and spaces
         # as key names, thus we mangle the original name.
 
-        safe_name = re.sub(r'[^-a-zA-Z0-9 _]+', '_', public_key.name)
+        safe_name = self.sanitize_key_name(public_key.name)
         key_name = '{0}-{1}'.format(public_key.uuid.hex, safe_name)
         return key_name
+
+    def sanitize_key_name(self, key_name):
+        return re.sub(r'[^-a-zA-Z0-9 _]+', '_', key_name)
 
     def get_tenant_name(self, membership):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
@@ -1421,14 +1477,21 @@ class OpenStackBackend(object):
             return False
 
     def push_floating_ip_to_instance(self, server_id, instance, nova):
+        if not instance.external_ips:
+            return
+
+        logger.debug('About add external ip %s to instance %s',
+                     instance.external_ips, instance.uuid)
         try:
             server = nova.servers.get(server_id)
-            fixed_address = server.addresses.values()[0]['addr']
+            fixed_address = server.addresses.values()[0][0]['addr']
             server.add_floating_ip(address=instance.external_ips, fixed_address=fixed_address)
-        except (nova_exceptions.ClientException, KeyError, IndexError) as e:
-            logger.error('Could not add external ips to instance %s due to %s' % (instance.uuid, e))
-            instance.external_ips = ''
-            instance.save()
+        except (nova_exceptions.ClientException, KeyError, IndexError):
+            logger.exception('Failed to add external ip %s to instance %s',
+                             instance.external_ips, instance.uuid)
+        else:
+            logger.info('Successfully added external ip %s to instance %s',
+                        instance.external_ips, instance.uuid)
 
     def get_attached_volumes(self, server_id, nova):
         """
