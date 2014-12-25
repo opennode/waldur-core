@@ -161,11 +161,26 @@ class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_delete_project_group_belonging_to_customer_he_owns(self):
-        self.client.force_authenticate(user=self.users['owner'])
+        owner = factories.UserFactory()
+        customer = factories.CustomerFactory()
+        customer.add_user(owner, CustomerRole.OWNER)
+        project_group = factories.ProjectGroupFactory(customer=customer)
 
-        for project_group in self.project_groups['owner']:
-            response = self.client.delete(self._get_project_group_url(project_group))
-            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.client.force_authenticate(user=owner)
+        response = self.client.delete(self._get_project_group_url(project_group))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_cannot_delete_project_group_belonging_to_customer_he_owns_with_projects(self):
+        owner = factories.UserFactory()
+        customer = factories.CustomerFactory()
+        customer.add_user(owner, CustomerRole.OWNER)
+        project_group = factories.ProjectGroupFactory(customer=customer)
+        project = factories.ProjectFactory()
+        project.project_groups.add(project_group)
+
+        self.client.force_authenticate(user=owner)
+        response = self.client.delete(self._get_project_group_url(project_group))
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     def test_user_cannot_delete_project_group_belonging_to_customer_he_doesnt_own(self):
         self.client.force_authenticate(user=self.users['owner'])
