@@ -67,6 +67,9 @@ config_defaults = {
         'metadata_file': os.path.join(conf_dir, 'saml2', 'metadata.xml'),
         'metadata_url': '',
     },
+    'sentry': {
+        'dsn': '',  # raven package is needed for this to work
+    },
     'sqlite3': {
         'path': os.path.join(work_dir, 'db.sqlite3'),
     },
@@ -429,4 +432,12 @@ NODECONDUCTOR = {
         }
     }
 }
+
+# Sentry integration
+# See also: http://raven.readthedocs.org/en/latest/integrations/django.html#setup
+if config.get('sentry', 'dsn') != '':
+    INSTALLED_APPS = INSTALLED_APPS + ('raven.contrib.django.raven_compat',)
+    RAVEN_CONFIG = {
+        'dsn': config.get('sentry', 'dsn'),
+    }
 
