@@ -38,11 +38,11 @@ Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework <
 Requires: python-django-rest-framework-extensions = 0.2.6
 Requires: python-django-saml2 >= 0.11.0-3, python-django-saml2 < 0.12
 Requires: python-django-uuidfield = 0.5.0
-Requires: python-cinderclient >= 1.0.7, python-cinderclient <= 1.1.1
-Requires: python-glanceclient >= 1:0.12.0, python-glanceclient < 1:0.16.0
-Requires: python-keystoneclient >= 1:0.9.0, python-keystoneclient < 1:0.11.2
-Requires: python-neutronclient >= 2.3.4, python-neutronclient < 2.4.0
-Requires: python-novaclient >= 1:2.17.0, python-novaclient < 1:2.21.0
+Requires: python-cinderclient = 1.0.9
+Requires: python-glanceclient = 1:0.12.0
+Requires: python-keystoneclient = 1:0.9.0
+Requires: python-neutronclient = 2.3.4
+Requires: python-novaclient = 1:2.17.0
 Requires: python-redis = 2.10.3
 Requires: python-zabbix >= 0.7.2
 Requires: xmlsec1-openssl
