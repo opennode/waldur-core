@@ -1375,7 +1375,7 @@ class OpenStackBackend(object):
         admin_role = keystone.roles.find(name='admin')
 
         try:
-            keystone.users.role_manager.add_user_role(
+            keystone.roles.add_user_role(
                 user=admin_user.id,
                 role=admin_role.id,
                 tenant=tenant.id,
