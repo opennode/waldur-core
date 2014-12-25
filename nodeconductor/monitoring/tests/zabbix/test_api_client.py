@@ -143,7 +143,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
     def test_create_service_uses_given_template_trigger(self):
         self.zabbix_client.create_service(self.instance)
 
-        self.api.trigger.get.assert_called_once_with(templateids=self.zabbix_parameters['templateid'])
+        self.api.trigger.get.assert_called_once_with(hostids=self.zabbix_client.get_host(self.instance)['hostid'])
 
     def test_create_service_creates_new_service_if_it_does_not_exist(self):
         self.api.service.get.return_value = []
