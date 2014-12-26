@@ -32,6 +32,16 @@ class FlavorFactory(factory.DjangoModelFactory):
 
     backend_id = factory.Sequence(lambda n: 'flavor-id%s' % n)
 
+    @classmethod
+    def get_url(cls, flavor=None):
+        if flavor is None:
+            flavor = FlavorFactory()
+        return 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': flavor.uuid})
+
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('flavor-list')
+
 
 class CloudProjectMembershipFactory(factory.DjangoModelFactory):
     class Meta(object):
@@ -111,6 +121,16 @@ class TemplateFactory(factory.DjangoModelFactory):
     setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
+    @classmethod
+    def get_url(cls, template=None):
+        template = template or TemplateFactory()
+
+        return 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
+
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('template-list')
+
 
 class TemplateMappingFactory(factory.DjangoModelFactory):
     class Meta(object):
@@ -173,23 +193,22 @@ class InstanceFactory(factory.DjangoModelFactory):
     template = factory.SubFactory(TemplateFactory)
 
     start_time = factory.LazyAttribute(lambda o: timezone.now())
-    external_ips = factory.LazyAttribute(lambda o: ','.join('.'.join(
-        '%s' % randint(0, 255) for _ in range(4)) for _ in range(3)))
-    internal_ips = factory.LazyAttribute(lambda o: ','.join(
-        '10.%s' % '.'.join('%s' % randint(0, 255) for _ in range(3)) for _ in range(3)))
+    external_ips = factory.LazyAttribute(lambda o: '.'.join(
+        '%s' % randint(0, 255) for _ in range(4)))
+    internal_ips = factory.LazyAttribute(lambda o: '.'.join(
+        '%s' % randint(0, 255) for _ in range(4)))
 
     cores = factory.Sequence(lambda n: n)
     ram = factory.Sequence(lambda n: n)
-    # cloud = factory.SubFactory(CloudFactory)
     cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
 
     key_name = factory.Sequence(lambda n: 'instance key%s' % n)
     key_fingerprint = factory.Sequence(lambda n: 'instance key fingerprint%s' % n)
 
     system_volume_id = factory.Sequence(lambda n: 'sys-vol-id-%s' % n)
-    system_volume_size = factory.Sequence(lambda n: n)
+    system_volume_size = 10 * 1024
     data_volume_id = factory.Sequence(lambda n: 'dat-vol-id-%s' % n)
-    data_volume_size = 20
+    data_volume_size = 20 * 1024
 
     backend_id = factory.Sequence(lambda n: 'instance-id%s' % n)
 
