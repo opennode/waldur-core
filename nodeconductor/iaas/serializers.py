@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from nodeconductor.structure.serializers import fix_non_nullable_attrs
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
@@ -11,6 +10,7 @@ from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
+from nodeconductor.structure.serializers import fix_non_nullable_attrs
 
 
 class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
@@ -191,6 +191,8 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         write_only=True,
     )
 
+    external_ips = core_serializers.IPsField(required=False)
+
     class Meta(object):
         model = models.Instance
         fields = ('url', 'uuid', 'hostname', 'description',
@@ -210,7 +212,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         clouds = structure_filters.filter_queryset_for_user(models.Cloud.objects.all(), user)
         fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds).distinct()
-        fields['external_ips'].required = False
+        # fields['external_ips'].required = True
 
         return fields
 
@@ -233,26 +235,22 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         except models.CloudProjectMembership.DoesNotExist:
             raise ValidationError("Flavor is not within project's clouds.")
 
-        if 'external_ips' in attrs:
-            external_ips = attrs['external_ips'].split(',')
-            # TODO: replace external_ips IPsField with IPField and remove this validation:
-            if len(external_ips) > 1:
-                raise ValidationError("Instance can have only one external IP.")
-            for ip in external_ips:
-                ip_exists = models.FloatingIP.objects.filter(
-                    address=external_ips,
-                    status='DOWN',
-                    cloud_project_membership=membership,
-                ).exists()
-                if not ip_exists:
-                    raise ValidationError("External IP is not from the list of available floating IPs.")
+        external_ips = attrs.get('external_ips')
+        if external_ips is not None:
+            ip_exists = models.FloatingIP.objects.filter(
+                address=external_ips,
+                status='DOWN',
+                cloud_project_membership=membership,
+            ).exists()
+            if not ip_exists:
+                raise ValidationError("External IP is not from the list of available floating IPs.")
 
         template = attrs['template']
         image_exists = models.Image.objects.filter(template=template, cloud=flavor.cloud).exists()
 
         if not image_exists:
-                raise serializers.ValidationError("Template %s is not available on cloud %s"
-                                                  % (template, flavor.cloud))
+            raise serializers.ValidationError("Template %s is not available on cloud %s"
+                                              % (template, flavor.cloud))
 
         # TODO: cleanup after migration to drf 3
         return fix_non_nullable_attrs(attrs)
@@ -346,8 +344,8 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
     state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='cloud_project_membership.project.project_groups', many=True, read_only=True)
-    external_ips = core_serializers.IPsField(source='external_ips', read_only=True)
-    internal_ips = core_serializers.IPsField(source='internal_ips', read_only=True)
+    external_ips = core_serializers.IPsField()
+    internal_ips = core_serializers.IPsField(read_only=True)
     backups = backup_serializers.BackupSerializer()
     backup_schedules = backup_serializers.BackupScheduleSerializer()
 
@@ -384,9 +382,6 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
         )
         lookup_field = 'uuid'
 
-    # def get_filtered_field_names(self):
-    #     return 'project', 'cloud'
-    #
     def get_related_paths(self):
         return (
             'template',

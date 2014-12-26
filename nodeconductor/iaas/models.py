@@ -228,7 +228,7 @@ class FloatingIP(core_models.UuidMixin, CloudProjectMember):
         project_path = 'cloud_project_membership__project'
         project_group_path = 'cloud_project_membership__project__project_groups'
 
-    address = models.CharField(max_length=30)
+    address = models.GenericIPAddressField(protocol='IPv4')
     status = models.CharField(max_length=30)
     backend_id = models.CharField(max_length=255)
 
@@ -307,8 +307,8 @@ class Instance(core_models.UuidMixin,
 
     hostname = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
-    external_ips = fields.IPsField(max_length=256, blank=True)
-    internal_ips = fields.IPsField(max_length=256)
+    external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
+    internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
     start_time = models.DateTimeField(blank=True, null=True)
 
     state = FSMIntegerField(
