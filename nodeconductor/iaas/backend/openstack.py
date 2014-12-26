@@ -732,8 +732,22 @@ class OpenStackBackend(object):
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
             instance.start_time = timezone.now()
             instance.save()
+
+            logger.debug('About to infer internal ip addresses of instance %s', instance.uuid)
+            try:
+                server = nova.servers.get(server.id)
+                fixed_address = server.addresses.values()[0][0]['addr']
+            except (nova_exceptions.ClientException, KeyError, IndexError):
+                logger.exception('Failed to infer internal ip addresses of instance %s',
+                                 instance.uuid)
+            else:
+                instance.internal_ips = fixed_address
+                instance.save()
+                logger.info('Successfully inferred internal ip addresses of instance %s',
+                            instance.uuid)
+
             # Floating ips initialization
-            self.push_floating_ip_to_instance(server.id, instance, nova)
+            self.push_floating_ip_to_instance(server, instance, nova)
 
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
@@ -1415,7 +1429,6 @@ class OpenStackBackend(object):
             'name': subnet_name,
             'ip_version': 4,
             'enable_dhcp': True,
-            'gateway_ip': None,
         }
         neutron.create_subnet({'subnets': [subnet]})
 
@@ -1476,16 +1489,14 @@ class OpenStackBackend(object):
         else:
             return False
 
-    def push_floating_ip_to_instance(self, server_id, instance, nova):
-        if not instance.external_ips:
+    def push_floating_ip_to_instance(self, server, instance, nova):
+        if instance.external_ips is None or instance.internal_ips is None:
             return
 
         logger.debug('About add external ip %s to instance %s',
                      instance.external_ips, instance.uuid)
         try:
-            server = nova.servers.get(server_id)
-            fixed_address = server.addresses.values()[0][0]['addr']
-            server.add_floating_ip(address=instance.external_ips, fixed_address=fixed_address)
+            server.add_floating_ip(address=instance.external_ips, fixed_address=instance.internal_ips)
         except (nova_exceptions.ClientException, KeyError, IndexError):
             logger.exception('Failed to add external ip %s to instance %s',
                              instance.external_ips, instance.uuid)

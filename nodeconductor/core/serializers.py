@@ -1,11 +1,16 @@
 import base64
 
 from django.contrib.auth import authenticate
+from django.core import validators
 from rest_framework import serializers
 from rest_framework.fields import Field
 
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.structure.filters import filter_queryset_for_user
+
+validate_ipv4_address_within_list = validators.RegexValidator(
+    validators.ipv4_re, 'Enter a list of valid IPv4 addresses.',
+    'invalid')
 
 
 class AuthTokenSerializer(serializers.Serializer):
@@ -51,16 +56,28 @@ class Base64Field(serializers.CharField):
 class IPsField(serializers.CharField):
     def to_native(self, value):
         value = super(IPsField, self).to_native(value)
-        try:
-            ips = [ip.strip() for ip in value.split(',') if ip.strip() != '']
-        except ValueError:
-            return value
-
-        return ips
+        if value is None:
+            return []
+        else:
+            return [value]
 
     def from_native(self, value):
-        value = super(IPsField, self).from_native(value)
-        return ','.join(value)
+        if value in validators.EMPTY_VALUES:
+            return None
+
+        if not isinstance(value, (list, tuple)):
+            raise validators.ValidationError('Enter a list of valid IPv4 addresses.')
+
+        value_count = len(value)
+        if value_count > 1:
+            raise validators.ValidationError('Only one ip address is supported.')
+        elif value_count == 1:
+            value = value[0]
+            validate_ipv4_address_within_list(value)
+        else:
+            value = None
+
+        return value
 
 
 class Saml2ResponseSerializer(serializers.Serializer):

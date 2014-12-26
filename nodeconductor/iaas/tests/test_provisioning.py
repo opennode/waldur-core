@@ -8,7 +8,7 @@ from rest_framework import test
 from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
-from nodeconductor.iaas.models import Instance, CloudProjectMembership
+from nodeconductor.iaas.models import Instance, CloudProjectMembership, FloatingIP
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
@@ -515,13 +515,6 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertDictContainsSubset({field_name: ['This field is required.']}, response.data)
 
     # Positive tests
-    def test_can_create_instance_without_volume_sizes(self):
-        data = self.get_valid_data()
-        del data['volume_sizes']
-        response = self.client.post(self.instance_list_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
     def test_can_create_instance_without_description(self):
         data = self.get_valid_data()
         del data['description']
@@ -595,30 +588,6 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_cannot_create_instance_with_empty_ssh_public_key(self):
         self.assert_field_non_empty('ssh_public_key')
 
-    def test_cannot_create_instance_with_negative_volume_size(self):
-        self.skipTest("Not implemented yet")
-
-        data = self.get_valid_data()
-        data['volume_size'] = -12
-
-        response = self.client.post(self.instance_list_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'volume_size': ['Ensure this value is greater than or equal to 1.']},
-                                      response.data)
-
-    def test_cannot_create_instance_with_invalid_volume_sizes(self):
-        self.skipTest("Not implemented yet")
-
-        data = self.get_valid_data()
-        data['volume_sizes'] = 'gibberish'
-
-        response = self.client.post(self.instance_list_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'volume_sizes': ['Enter a whole number.']},
-                                      response.data)
-
     # instance external and internal ips fields tests
     def test_instance_factory_generates_valid_internal_ips_field(self):
         instance = factories.InstanceFactory()
@@ -633,6 +602,46 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         external_ips = instance.internal_ips
 
         self.assertTrue(ips_regex.match(external_ips))
+
+    def test_can_create_instance_with_external_ips_from_floating_pool_set(self):
+        data = self.get_valid_data()
+        address = '127.0.0.1'
+        data['external_ips'] = [address]
+
+        # add this floating ip as available
+        FloatingIP.objects.create(status='DOWN', cloud_project_membership=self.membership, address=address)
+
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, 'Error: %r' % response.data)
+
+    def test_can_create_instance_with_external_ips_set_to_empty_string(self):
+        data = self.get_valid_data()
+        data['external_ips'] = ''
+
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_can_create_instance_with_external_ips_set_to_null(self):
+        data = self.get_valid_data()
+        data['external_ips'] = None
+
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_can_create_instance_with_external_ips_missing(self):
+        data = self.get_valid_data()
+
+        try:
+            del data['external_ips']
+        except KeyError:
+            pass
+
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_instance_api_contains_valid_external_ips_field(self):
         instance = factories.InstanceFactory()
@@ -705,10 +714,10 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertDictContainsSubset({'template': ['Invalid hyperlink - object does not exist.']}, response.data)
 
-    def test_external_ips_have_to_from_membeship_floating_ips(self):
-        random_address = '0.0.0.0'
+    def test_external_ips_have_to_from_membership_floating_ips(self):
+        random_address = '127.0.0.1'
         data = self.get_valid_data()
-        data['external_ips'] = random_address
+        data['external_ips'] = [random_address]
 
         response = self.client.post(self.instance_list_url, data)
 
@@ -717,6 +726,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
             {'non_field_errors': ['External IP is not from the list of available floating IPs.']}, response.data)
 
     # Helper methods
+    # TODO: Move to serializer tests
     def get_valid_data(self):
         return {
             # Cloud independent parameters
@@ -729,7 +739,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
             # Should not depend on cloud, instead represents an "aggregation" of templates
             'template': self._get_template_url(self.template),
 
-            'volume_sizes': [10, 15, 10],
+            'external_ips': [],
 
             # Cloud dependent parameters
             'flavor': self._get_flavor_url(self.flavor),
