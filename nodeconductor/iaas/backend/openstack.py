@@ -1497,11 +1497,26 @@ class OpenStackBackend(object):
         logger.debug('About add external ip %s to instance %s',
                      instance.external_ips, instance.uuid)
         try:
+            floating_ip = models.FloatingIP.objects.get(
+                cloud_project_membership=instance.cloud_project_membership,
+                status='DOWN',
+                address=instance.external_ips,
+            )
             server.add_floating_ip(address=instance.external_ips, fixed_address=instance.internal_ips)
-        except (nova_exceptions.ClientException, KeyError, IndexError):
+        except (
+                models.FloatingIP.DoesNotExist,
+                models.FloatingIP.MultipleObjectsReturned,
+                nova_exceptions.ClientException,
+                KeyError,
+                IndexError,
+        ):
             logger.exception('Failed to add external ip %s to instance %s',
                              instance.external_ips, instance.uuid)
+            instance.set_erred()
+            instance.save()
         else:
+            floating_ip.status = 'UP'
+            floating_ip.save()
             logger.info('Successfully added external ip %s to instance %s',
                         instance.external_ips, instance.uuid)
 
