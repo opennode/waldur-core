@@ -1,8 +1,8 @@
 %define __conf_dir %{_sysconfdir}/%{name}
-%define __data_dir %{_datadir}/%{name}
 %define __log_dir %{_localstatedir}/log/%{name}
 %define __logrotate_dir %{_sysconfdir}/logrotate.d
 %define __saml2_conf_dir %{__conf_dir}/saml2
+%define __static_dir %{_datadir}/%{name}/static
 %define __work_dir %{_sharedstatedir}/%{name}
 
 %define __celery_conf_file %{__conf_dir}/celery.conf
@@ -80,8 +80,12 @@ echo "%{__conf_dir}" >> INSTALLED_FILES
 cp packaging%{__celery_conf_file} %{buildroot}%{__celery_conf_file}
 cp packaging%{__conf_file} %{buildroot}%{__conf_file}
 
-mkdir -p %{buildroot}%{__data_dir}/static
-echo "%{__data_dir}" >> INSTALLED_FILES
+mkdir -p %{buildroot}%{__static_dir}
+echo "%{__static_dir}" >> INSTALLED_FILES
+cp nodeconductor/server/base_settings.py tmp_settings.py
+echo "SECRET_KEY='tmp'" >> tmp_settings.py
+echo "STATIC_ROOT='%{buildroot}%{__static_dir}'" >> tmp_settings.py
+python manage.py collectstatic --noinput --settings=tmp_settings
 
 mkdir -p %{buildroot}%{__log_dir}
 echo "%{__log_dir}" >> INSTALLED_FILES
@@ -142,7 +146,6 @@ Next steps:
 4. Initialize application:
 
     nodeconductor migrate --noinput
-    nodeconductor collectstatic --noinput
     chown -R nodeconductor:nodeconductor /var/log/nodeconductor
 
 Note: you will need to run this again on next NodeConductor update.
