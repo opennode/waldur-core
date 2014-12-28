@@ -85,9 +85,11 @@ cp packaging%{__conf_file} %{buildroot}%{__conf_file}
 
 mkdir -p %{buildroot}%{__data_dir}/static
 echo "%{__data_dir}" >> INSTALLED_FILES
-cp nodeconductor/server/base_settings.py tmp_settings.py
+#cp nodeconductor/server/base_settings.py tmp_settings.py
+echo "INSTALLED_APPS=('django.contrib.staticfiles',)" >> tmp_settings.py
 echo "SECRET_KEY='tmp'" >> tmp_settings.py
 echo "STATIC_ROOT='%{buildroot}%{__data_dir}/static'" >> tmp_settings.py
+echo "STATIC_URL='/static/'" >> tmp_settings.py
 python manage.py collectstatic --noinput --settings=tmp_settings
 
 mkdir -p %{buildroot}%{__log_dir}
