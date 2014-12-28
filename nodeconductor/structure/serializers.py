@@ -57,11 +57,18 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
     resource_quota = serializers.SerializerMethodField('get_resource_quota')
     resource_quota_usage = serializers.SerializerMethodField('get_resource_quota_usage')
+    customer_native_name = serializers.Field(source='customer.native_name')
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'project_groups', 'resource_quota',
-                  'resource_quota_usage', 'description')
+        fields = (
+            'url', 'uuid',
+            'name',
+            'customer', 'customer_name', 'customer_native_name',
+            'project_groups',
+            'resource_quota', 'resource_quota_usage',
+            'description',
+        )
         lookup_field = 'uuid'
 
     def get_related_paths(self):
@@ -96,7 +103,6 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
         return fix_non_nullable_attrs(attrs)
 
 
-
 class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                               serializers.HyperlinkedModelSerializer):
 
@@ -121,7 +127,13 @@ class CustomerSerializer(core_serializers.CollectedFieldsMixin,
 
     class Meta(object):
         model = models.Customer
-        fields = ('url', 'uuid', 'name', 'abbreviation', 'contact_details', 'projects', 'project_groups', 'owners')
+        fields = (
+            'url',
+            'uuid',
+            'name', 'native_name', 'abbreviation', 'contact_details',
+            'projects', 'project_groups',
+            'owners'
+        )
         lookup_field = 'uuid'
 
     def _get_filtered_data(self, objects, serializer):
@@ -144,14 +156,23 @@ class CustomerSerializer(core_serializers.CollectedFieldsMixin,
     def validate(self, attrs):
         return fix_non_nullable_attrs(attrs)
 
+
 class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
                              core_serializers.RelatedResourcesFieldMixin,
                              serializers.HyperlinkedModelSerializer):
     projects = BasicProjectSerializer(many=True, read_only=True)
+    customer_native_name = serializers.Field(source='customer.native_name')
 
     class Meta(object):
         model = models.ProjectGroup
-        fields = ('url', 'uuid', 'name', 'customer', 'customer_name', 'projects', 'description')
+        fields = (
+            'url',
+            'uuid',
+            'name',
+            'customer', 'customer_name', 'customer_native_name',
+            'projects',
+            'description',
+        )
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
@@ -258,6 +279,7 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
         queryset=models.Customer.objects.all(),
     )
     customer_name = serializers.Field(source='group.customerrole.customer.name')
+    customer_native_name = serializers.Field(source='group.customerrole.customer.native_name')
 
     user = serializers.HyperlinkedRelatedField(
         view_name='user-detail',
@@ -274,7 +296,7 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
         model = User.groups.through
         fields = (
             'url', 'role',
-            'customer', 'customer_name',
+            'customer', 'customer_name', 'customer_native_name',
             'user', 'user_full_name', 'user_native_name', 'user_username',
         )
         view_name = 'customer_permission-detail'

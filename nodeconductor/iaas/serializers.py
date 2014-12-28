@@ -47,13 +47,30 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
                       serializers.HyperlinkedModelSerializer):
     flavors = FlavorSerializer(many=True, read_only=True)
     projects = structure_serializers.BasicProjectSerializer(many=True, read_only=True)
+    customer_native_name = serializers.Field(source='customer.native_name')
 
     class Meta(object):
         model = models.Cloud
-        fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects', 'auth_url')
+        fields = (
+            'uuid',
+            'url',
+            'name',
+            'customer', 'customer_name', 'customer_native_name',
+            'flavors', 'projects', 'auth_url',
+        )
         lookup_field = 'uuid'
 
-    public_fields = ('uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects', 'auth_url')
+    public_fields = (
+        'uuid',
+        'url',
+        'name',
+        'customer',
+        'customer_name',
+        'customer_native_name',
+        'flavors',
+        'projects',
+        'auth_url',
+    )
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -355,6 +372,7 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
     instance_licenses = InstanceLicenseSerializer(read_only=True)
     # special field for customer
     customer_abbreviation = serializers.Field(source='cloud_project_membership.project.customer.abbreviation')
+    customer_native_name = serializers.Field(source='cloud_project_membership.project.customer.native_name')
     template_os = serializers.Field(source='template.os')
 
     class Meta(object):
@@ -364,7 +382,7 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
             'template', 'template_name', 'template_os',
             'cloud', 'cloud_name', 'cloud_uuid',
             'project', 'project_name', 'project_uuid',
-            'customer', 'customer_name', 'customer_abbreviation',
+            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'key_name', 'key_fingerprint',
             'project_groups',
             'security_groups',
@@ -375,7 +393,7 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
             'agreed_sla',
             'system_volume_size',
             'data_volume_size',
-            'cores', 'ram'
+            'cores', 'ram',
         )
         read_only_fields = (
             'key_name',
@@ -523,6 +541,7 @@ class ServiceSerializer(serializers.Serializer):
     actual_sla = serializers.Field(source='slas__value')
     template_name = serializers.Field(source='template__name')
     customer_name = serializers.Field(source='cloud_project_membership__project__customer__name')
+    customer_native_name = serializers.Field(source='cloud_project_membership__project__customer__native_name')
     project_name = serializers.Field(source='cloud_project_membership__project__name')
     project_groups = serializers.SerializerMethodField('get_project_groups')
 
@@ -532,6 +551,7 @@ class ServiceSerializer(serializers.Serializer):
             'uuid',
             'hostname', 'template_name',
             'customer_name',
+            'customer_native_name',
             'project_name', 'project_groups',
             'agreed_sla', 'actual_sla',
             'service_type',
