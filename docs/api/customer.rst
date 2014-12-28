@@ -125,7 +125,7 @@ Supported filters are:
 - ?customer - matching of a customer uuid
 - ?role - matching of a user role type in a customer:
     * supported choices:
-        * owner
+        * 0 **deprecated**, use *owner* instead
 
 To add a new user to the customer, POST a new relationship to **customer-permissions** endpoint:
 
