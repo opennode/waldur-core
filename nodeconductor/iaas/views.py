@@ -21,6 +21,7 @@ from rest_framework_extensions.decorators import action, link
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
+from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.utils import sort_dict
@@ -182,6 +183,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
                 del related_data['security_groups']
             except KeyError:
                 pass
+
+        # check if connected cloud_project_membership is in a sane state - fail modification operation otherwise
+        if obj.cloud_project_membership.state == core_models.SynchronizationStates.ERRED:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot modify an instance if it is connected to a cloud project membership in erred state.'
+            )
 
     def post_save(self, obj, created=False):
         super(InstanceViewSet, self).post_save(obj, created)
