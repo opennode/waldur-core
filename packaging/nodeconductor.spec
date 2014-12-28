@@ -2,7 +2,6 @@
 %define __data_dir %{_datadir}/%{name}
 %define __log_dir %{_localstatedir}/log/%{name}
 %define __logrotate_dir %{_sysconfdir}/logrotate.d
-%define __run_dir %{_localstatedir}/run/%{name}
 %define __saml2_conf_dir %{__conf_dir}/saml2
 %define __work_dir %{_sharedstatedir}/%{name}
 
@@ -91,10 +90,6 @@ mkdir -p %{buildroot}%{__logrotate_dir}
 cp packaging%{__logrotate_conf_file} %{buildroot}%{__logrotate_conf_file}
 echo "%{__logrotate_dir}/%{name}" >> INSTALLED_FILES
 
-mkdir -p %{buildroot}%{__run_dir}/celery
-mkdir -p %{buildroot}%{__run_dir}/celerybeat
-echo "%{__run_dir}" >> INSTALLED_FILES
-
 mkdir -p %{buildroot}%{__saml2_conf_dir}
 # TODO: Maybe use attribute-maps from PySAML2
 cp -r attribute-maps %{buildroot}%{__saml2_conf_dir}/
@@ -122,7 +117,6 @@ if [ ! -f %{__saml2_cert_file} -a ! -f %{__saml2_key_file} ]; then
 fi
 
 useradd --home %{__work_dir} --shell /sbin/nologin --system --user-group %{name}
-chown -R %{name}:%{name} %{__run_dir}
 chown -R %{name}:%{name} %{__log_dir}
 chmod -R g+w %{__log_dir}
 chown -R %{name}:%{name} %{__work_dir}
