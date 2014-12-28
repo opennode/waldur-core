@@ -1,8 +1,8 @@
 %define __conf_dir %{_sysconfdir}/%{name}
+%define __data_dir %{_datadir}/%{name}
 %define __log_dir %{_localstatedir}/log/%{name}
 %define __logrotate_dir %{_sysconfdir}/logrotate.d
 %define __saml2_conf_dir %{__conf_dir}/saml2
-%define __static_dir %{_datadir}/%{name}/static
 %define __work_dir %{_sharedstatedir}/%{name}
 
 %define __celery_conf_file %{__conf_dir}/celery.conf
@@ -20,7 +20,7 @@ Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # openssl package is needed to generate SAML2 keys during NodeConductor install
-# xmlsec1-openssl is needed for SAML2 features to work
+# xmlsec1-openssl package is needed for SAML2 features to work
 Requires: logrotate
 Requires: MySQL-python
 Requires: openssl
@@ -51,7 +51,10 @@ Source0: %{name}-%{version}.tar.gz
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
+# python-django package is needed to generate static files
+# python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
+BuildRequires: python-django
 BuildRequires: python-setuptools
 BuildRequires: systemd
 
@@ -80,11 +83,11 @@ echo "%{__conf_dir}" >> INSTALLED_FILES
 cp packaging%{__celery_conf_file} %{buildroot}%{__celery_conf_file}
 cp packaging%{__conf_file} %{buildroot}%{__conf_file}
 
-mkdir -p %{buildroot}%{__static_dir}
-echo "%{__static_dir}" >> INSTALLED_FILES
+mkdir -p %{buildroot}%{__data_dir}/static
+echo "%{__data_dir}" >> INSTALLED_FILES
 cp nodeconductor/server/base_settings.py tmp_settings.py
 echo "SECRET_KEY='tmp'" >> tmp_settings.py
-echo "STATIC_ROOT='%{buildroot}%{__static_dir}'" >> tmp_settings.py
+echo "STATIC_ROOT='%{buildroot}%{__data_dir}/static'" >> tmp_settings.py
 python manage.py collectstatic --noinput --settings=tmp_settings
 
 mkdir -p %{buildroot}%{__log_dir}
@@ -92,7 +95,7 @@ echo "%{__log_dir}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__logrotate_dir}
 cp packaging%{__logrotate_conf_file} %{buildroot}%{__logrotate_conf_file}
-echo "%{__logrotate_dir}/%{name}" >> INSTALLED_FILES
+echo "%{__logrotate_conf_file}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__saml2_conf_dir}
 # TODO: Maybe use attribute-maps from PySAML2
