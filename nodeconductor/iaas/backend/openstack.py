@@ -1419,6 +1419,7 @@ class OpenStackBackend(object):
         logger.info('Creating subnet %s', subnet_name)
         subnet = {
             'network_id': network_id,
+            'tenant_id': membership.tenant_id,
             'cidr': '192.168.42.0/24',
             'allocation_pools': [
                 {

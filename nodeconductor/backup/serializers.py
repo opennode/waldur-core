@@ -1,6 +1,5 @@
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse, resolve, Resolver404
-from django.db.models.query import EmptyQuerySet
 from nodeconductor.structure.serializers import fix_non_nullable_attrs
 
 from rest_framework import serializers

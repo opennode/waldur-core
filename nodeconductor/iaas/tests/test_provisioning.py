@@ -268,6 +268,19 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
                          'Instance should have been scheduled to resize')
 
+    def test_user_cannot_modify_instance_connected_to_failing_cloud_project_memebership(self):
+        self.client.force_authenticate(user=self.user)
+        data = {
+            'description': 'changed description1',
+        }
+
+        # set instance's CPM to a failed state
+        self.admined_instance.cloud_project_membership.set_erred()
+        self.admined_instance.cloud_project_membership.save()
+
+        response = self.client.patch(self._get_instance_url(self.admined_instance), data)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
     def test_user_cannot_change_flavor_to_flavor_from_different_cloud(self):
         self.client.force_authenticate(user=self.user)
 

@@ -21,6 +21,7 @@ from rest_framework_extensions.decorators import action, link
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
+from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.utils import sort_dict
@@ -64,6 +65,13 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
+    customer_native_name = django_filters.CharFilter(
+        name='cloud_project_membership__project__customer__native_name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
+
     customer_abbreviation = django_filters.CharFilter(
         name='cloud_project_membership__project__customer__abbreviation',
         distinct=True,
@@ -83,6 +91,7 @@ class InstanceFilter(django_filters.FilterSet):
         fields = [
             'hostname',
             'customer_name',
+            'customer_native_name',
             'customer_abbreviation',
             'state',
             'project_name',
@@ -98,6 +107,8 @@ class InstanceFilter(django_filters.FilterSet):
             '-state',
             'cloud_project_membership__project__customer__name',
             '-cloud_project_membership__project__customer__name',
+            'cloud_project_membership__project__customer__native_name',
+            '-cloud_project_membership__project__customer__native_name',
             'cloud_project_membership__project__customer__abbreviation',
             '-cloud_project_membership__project__customer__abbreviation',
             'cloud_project_membership__project__name',
@@ -110,6 +121,7 @@ class InstanceFilter(django_filters.FilterSet):
         order_by_mapping = {
             # Proper field naming
             'customer_name': 'cloud_project_membership__project__customer__name',
+            'customer_native_name': 'cloud_project_membership__project__customer__native_name',
             'customer_abbreviation': 'cloud_project_membership__project__customer__abbreviation',
             'project_name': 'cloud_project_membership__project__name',
             'project_group_name': 'cloud_project_membership__project__project_groups__name',
@@ -171,6 +183,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
                 del related_data['security_groups']
             except KeyError:
                 pass
+
+        # check if connected cloud_project_membership is in a sane state - fail modification operation otherwise
+        if obj.cloud_project_membership.state == core_models.SynchronizationStates.ERRED:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot modify an instance if it is connected to a cloud project membership in erred state.'
+            )
 
     def post_save(self, obj, created=False):
         super(InstanceViewSet, self).post_save(obj, created)
@@ -504,6 +522,12 @@ class ServiceFilter(django_filters.FilterSet):
         name='cloud_project_membership__project__customer__name',
         lookup_type='icontains',
     )
+
+    customer_native_name = django_filters.CharFilter(
+        name='cloud_project_membership__project__customer__native_name',
+        lookup_type='icontains',
+    )
+
     template_name = django_filters.CharFilter(
         name='template__name',
         lookup_type='icontains',
@@ -517,6 +541,7 @@ class ServiceFilter(django_filters.FilterSet):
             'hostname',
             'template_name',
             'customer_name',
+            'customer_native_name',
             'project_name',
             'project_groups',
             'agreed_sla',
@@ -526,6 +551,7 @@ class ServiceFilter(django_filters.FilterSet):
             'hostname',
             'template__name',
             'cloud_project_membership__project__customer__name',
+            'cloud_project_membership__project__customer__native_name',
             'cloud_project_membership__project__name',
             'cloud_project_membership__project__project_groups__name',
             'agreed_sla',
@@ -534,6 +560,7 @@ class ServiceFilter(django_filters.FilterSet):
             '-hostname',
             '-template__name',
             '-cloud_project_membership__project__customer__name',
+            '-cloud_project_membership__project__customer__native_name',
             '-cloud_project_membership__project__name',
             '-cloud_project_membership__project__project_groups__name',
             '-agreed_sla',
@@ -584,6 +611,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
                 'agreed_sla',
                 'slas__value', 'slas__period',
                 'cloud_project_membership__project__customer__name',
+                'cloud_project_membership__project__customer__native_name',
                 'cloud_project_membership__project__name',
             )
         return queryset
