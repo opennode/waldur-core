@@ -2,8 +2,13 @@ from __future__ import unicode_literals
 
 from operator import or_
 
+from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.forms.fields import ChoiceField
+from django_filters import ChoiceFilter
 from rest_framework.filters import BaseFilterBackend
+
+from nodeconductor.structure.models import CustomerRole
 
 
 def set_permissions_for_model(model, **kwargs):
@@ -67,3 +72,19 @@ def filter_queryset_for_user(queryset, user):
 class GenericRoleFilter(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         return filter_queryset_for_user(queryset, request.user)
+
+
+class CustomerRoleField(ChoiceField):
+    def to_python(self, value):
+        if value is not None:
+            if value in CustomerRole.NAME_TO_ROLE:
+                return CustomerRole.NAME_TO_ROLE[value]
+
+            raise ValidationError(self.error_messages['invalid_choice'],
+                                  code='invalid_choice', params={'value': value},)
+
+        return super(CustomerRoleField, self).to_python(value)
+
+
+class CustomerRoleFilter(ChoiceFilter):
+    field_class = CustomerRoleField

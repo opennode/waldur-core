@@ -35,6 +35,9 @@ class CustomerFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
         lookup_type='icontains',
     )
+    native_name = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
     abbreviation = django_filters.CharFilter(
         lookup_type='icontains',
     )
@@ -48,15 +51,18 @@ class CustomerFilter(django_filters.FilterSet):
             'name',
             'abbreviation',
             'contact_details',
+            'native_name',
         ]
         order_by = [
             'name',
             'abbreviation',
             'contact_details',
+            'native_name',
             # desc
             '-name',
             '-abbreviation',
             '-contact_details',
+            '-native_name',
         ]
 
 
@@ -634,9 +640,6 @@ class ProjectGroupPermissionViewSet(rf_mixins.RetrieveModelMixin,
 
         project_group = user_group.group.projectgrouprole.project_group
 
-        if project_group.has_user(user, ProjectGroupRole.MANAGER):
-            return True
-
         if project_group.customer.has_user(user, CustomerRole.OWNER):
             return True
 
@@ -716,7 +719,7 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
-    role = django_filters.NumberFilter(
+    role = filters.CustomerRoleFilter(
         name='group__customerrole__role_type',
     )
 

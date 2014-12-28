@@ -10,12 +10,14 @@ only see connected customers:
 Filtering of customer list is supported through HTTP query parameters, the following fields are supported:
 
 - ?name=<customer name>
+- ?native_name=<customer native name>
 - ?abbreviation=<customer abbreviation>
 - ?contact_details=<contact details>
 
 Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
 
 - ?o=name - sort by name
+- ?o=native_name - sort by native name
 - ?o=abbreviation - sort by abbreviation
 - ?o=contact_details - sort by contact details
 
@@ -48,6 +50,7 @@ A new customer can only be created by users with staff privilege (is_staff=True)
 
     {
         "name": "Customer A",
+        "native_name": "Customer Ä",
         "abbreviation": "CA",
         "contact_details": "Luhamaa 29\r\n10128 Tallinn",
     }
@@ -95,6 +98,7 @@ Response will contain a list of customer owners and their brief data:
         {
             "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
             "customer_name": "Ministry of Bells",
+            "customer_native_name": "Ministry of Bälls",
             "role": "owner",
             "url": "http://example.com/api/customer-permissions/1/",
             "user": "http://example.com/api/users/5b1e44cea92b41778a5300968278b2cd/",
@@ -104,6 +108,7 @@ Response will contain a list of customer owners and their brief data:
         {
             "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
             "customer_name": "Ministry of Bells",
+            "customer_native_name": "Ministry of Bälls",
             "role": "owner",
             "url": "http://example.com/api/customer-permissions/2/",
             "user": "http://example.com/api/users/7dfffaa90e154271bd021ec03d7ee924/",
@@ -119,7 +124,8 @@ Supported filters are:
 - ?native_name - matching of a related to the customer user native name
 - ?customer - matching of a customer uuid
 - ?role - matching of a user role type in a customer:
-    * 0 - owner
+    * supported choices:
+        * 0 **deprecated**, use *owner* instead
 
 To add a new user to the customer, POST a new relationship to **customer-permissions** endpoint:
 

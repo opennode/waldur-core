@@ -23,6 +23,7 @@ class Customer(UuidMixin, TimeStampedModel):
         project_group_path = 'project_groups'
 
     name = models.CharField(max_length=160)
+    native_name = models.CharField(max_length=160, default='', blank=True)
     abbreviation = models.CharField(max_length=8, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
 
