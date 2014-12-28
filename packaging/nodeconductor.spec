@@ -143,35 +143,29 @@ Next steps:
 2. Configure task queue backend connection in %{__conf_file}.
    Key-value store (default: Redis) must be running already.
 
-3. Create database (if not yet done):
+3. Review and modify other settings in %{__conf_file}.
+
+4. Create database (if not yet done):
 
     CREATE DATABASE nodeconductor CHARACTER SET = utf8;
     CREATE USER 'nodeconductor'@'%' IDENTIFIED BY 'nodeconductor';
     GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'%';
 
-4. Initialize application:
+5. Migrate the database:
 
     nodeconductor migrate --noinput
     chown -R nodeconductor:nodeconductor /var/log/nodeconductor
 
 Note: you will need to run this again on next NodeConductor update.
 
-5. Start task queue backend:
+6. Start task queue backend:
 
     systemctl start nodeconductor-celery
     systemctl start nodeconductor-celerybeat
 
-6. Create first superuser (if needed and not yet done):
+7. Create first superuser (if needed and not yet done):
 
     nodeconductor createsuperuser
-
-7. Configure SAML2 details in %{__conf_file}:
-
-    [saml2]
-    entityid = ...
-    attribute_map_... = ...
-    acs_url = ...
-    metadata_file = ...
 
 All done. Happy NodeConducting!
 ------------------------------------------------------------------------
