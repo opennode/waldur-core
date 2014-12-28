@@ -634,9 +634,6 @@ class ProjectGroupPermissionViewSet(rf_mixins.RetrieveModelMixin,
 
         project_group = user_group.group.projectgrouprole.project_group
 
-        if project_group.has_user(user, ProjectGroupRole.MANAGER):
-            return True
-
         if project_group.customer.has_user(user, CustomerRole.OWNER):
             return True
 
