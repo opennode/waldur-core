@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.utils import unittest
 from mock import Mock
+from nodeconductor.structure.models import ProjectGroupRole
 from rest_framework import test, status
 
 from nodeconductor.core.tests import helpers
@@ -76,7 +77,7 @@ class TestGroupPermissionsCreateDelete(test.APITransactionTestCase):
         self.customer.add_user(self.owner, models.CustomerRole.OWNER)
         self.project_group.add_user(self.group_manager, models.ProjectGroupRole.MANAGER)
 
-    def test_project_group_permission_creation(self):
+    def test_owner_can_assign_project_group_manager(self):
         self.client.force_authenticate(self.owner)
         url = reverse('projectgroup_permission-list')
         project_group_url = factories.ProjectGroupFactory.get_url(self.project_group)
@@ -89,11 +90,30 @@ class TestGroupPermissionsCreateDelete(test.APITransactionTestCase):
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_project_group_permission_deletion(self):
+    def test_project_group_manager_cannot_add_another_project_group_manager(self):
+        self.client.force_authenticate(self.group_manager)
+        url = reverse('projectgroup_permission-list')
+        project_group_url = factories.ProjectGroupFactory.get_url(self.project_group)
+        user_url = factories.UserFactory.get_url()
+        data = {
+            'project_group': project_group_url,
+            'user': user_url,
+            'role': 'manager'
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_owner_can_delete_project_group_permission(self):
         self.client.force_authenticate(self.owner)
         url = get_project_group_permission_url(self.project_group.roles.first())
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_project_group_manager_cannot_delete_project_group_manager(self):
+        self.client.force_authenticate(self.group_manager)
+        url = get_project_group_permission_url(self.project_group.roles.first())
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_group_manager_cannot_create_permission_not_for_his_group(self):
         self.client.force_authenticate(self.group_manager)

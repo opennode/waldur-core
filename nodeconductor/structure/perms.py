@@ -26,7 +26,6 @@ PERMISSION_LOGICS = (
             # customer
             'group__customerrole__customer__roles__permission_group__user',
             # project_group
-            'group__projectgrouprole__project_group__roles__permission_group__user',
             'group__projectgrouprole__project_group__customer__roles__permission_group__user',
         ],
         collaborators_filter=[
