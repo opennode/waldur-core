@@ -124,7 +124,8 @@ Supported filters are:
 - ?native_name - matching of a related to the customer user native name
 - ?customer - matching of a customer uuid
 - ?role - matching of a user role type in a customer:
-    * 0 - owner
+    * supported choices:
+        * owner
 
 To add a new user to the customer, POST a new relationship to **customer-permissions** endpoint:
 

@@ -721,7 +721,6 @@ class CustomerPermissionFilter(django_filters.FilterSet):
     )
     role = filters.CustomerRoleFilter(
         name='group__customerrole__role_type',
-        lookup_type='iexact',
     )
 
     class Meta(object):

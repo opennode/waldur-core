@@ -2,9 +2,10 @@ from __future__ import unicode_literals
 
 from operator import or_
 
+from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.forms.fields import CharField
-from django_filters import CharFilter
+from django.forms.fields import ChoiceField
+from django_filters import ChoiceFilter
 from rest_framework.filters import BaseFilterBackend
 
 from nodeconductor.structure.models import CustomerRole
@@ -73,13 +74,14 @@ class GenericRoleFilter(BaseFilterBackend):
         return filter_queryset_for_user(queryset, request.user)
 
 
-class CustomerRoleField(CharField):
+class CustomerRoleField(ChoiceField):
     def to_python(self, value):
         if value in CustomerRole.NAME_TO_ROLE:
             return CustomerRole.NAME_TO_ROLE[value]
 
-        return value
+        raise ValidationError(self.error_messages['invalid_choice'],
+                              code='invalid_choice', params={'value': value},)
 
 
-class CustomerRoleFilter(CharFilter):
+class CustomerRoleFilter(ChoiceFilter):
     field_class = CustomerRoleField
