@@ -719,7 +719,7 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
-    role = django_filters.NumberFilter(
+    role = filters.CustomerRoleFilter(
         name='group__customerrole__role_type',
     )
 
