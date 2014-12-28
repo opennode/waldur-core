@@ -25,7 +25,7 @@ class CloudAdmin(admin.ModelAdmin):
     inlines = (
         FlavorInline,
     )
-    list_display = ('name', 'customer')
+    list_display = ('name', 'customer', 'state')
     ordering = ('name', 'customer')
 
     actions = ['pull_clouds']
