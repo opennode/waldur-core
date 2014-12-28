@@ -52,9 +52,11 @@ BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
 # python-django package is needed to generate static files
+# python-django-rest-framework package is needed to generate static files
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
-BuildRequires: python-django
+BuildRequires: python-django >= 1.7.1
+BuildRequires: python-django-rest-framework >= 2.3.12, python-django-rest-framework < 2.4.0
 BuildRequires: python-setuptools
 BuildRequires: systemd
 
@@ -85,9 +87,11 @@ cp packaging%{__conf_file} %{buildroot}%{__conf_file}
 
 mkdir -p %{buildroot}%{__data_dir}/static
 echo "%{__data_dir}" >> INSTALLED_FILES
-cp nodeconductor/server/base_settings.py tmp_settings.py
+#cp nodeconductor/server/base_settings.py tmp_settings.py
+echo "INSTALLED_APPS=('django.contrib.staticfiles','django.contrib.admin','rest_framework')" >> tmp_settings.py
 echo "SECRET_KEY='tmp'" >> tmp_settings.py
 echo "STATIC_ROOT='%{buildroot}%{__data_dir}/static'" >> tmp_settings.py
+echo "STATIC_URL='/static/'" >> tmp_settings.py
 python manage.py collectstatic --noinput --settings=tmp_settings
 
 mkdir -p %{buildroot}%{__log_dir}
