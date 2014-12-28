@@ -245,7 +245,10 @@ Arguments:
 
         for customer_name, customer_params in data['customers'].items():
             self.stdout.write('Creating customer "%s"...' % customer_name)
-            customer, was_created = Customer.objects.get_or_create(name=customer_name)
+            customer, was_created = Customer.objects.get_or_create(
+                name=customer_name,
+                native_name='Native: %s' % customer_name,
+            )
             self.stdout.write('Customer "%s" %s.' % (customer_name, "created" if was_created else "already exists"))
 
             if 'abbreviation' in customer_params:
@@ -390,6 +393,7 @@ Arguments:
 
         customer = Customer.objects.create(
             name=customer_name,
+            native_name='Native: ' % customer_name,
             abbreviation=random_string(4, 8),
             contact_details='Contacts %s' % random_string(10, 20, with_spaces=True),
         )

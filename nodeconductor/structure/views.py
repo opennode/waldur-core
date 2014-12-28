@@ -35,6 +35,9 @@ class CustomerFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
         lookup_type='icontains',
     )
+    native_name = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
     abbreviation = django_filters.CharFilter(
         lookup_type='icontains',
     )
@@ -48,15 +51,18 @@ class CustomerFilter(django_filters.FilterSet):
             'name',
             'abbreviation',
             'contact_details',
+            'native_name',
         ]
         order_by = [
             'name',
             'abbreviation',
             'contact_details',
+            'native_name',
             # desc
             '-name',
             '-abbreviation',
             '-contact_details',
+            '-native_name',
         ]
 
 

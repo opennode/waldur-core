@@ -44,7 +44,10 @@ class CloudTest(test.APISimpleTestCase):
         factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
 
         self.expected_public_fields = (
-            'auth_url', 'uuid', 'url', 'name', 'customer', 'customer_name', 'flavors', 'projects')
+            'auth_url', 'uuid', 'url', 'name',
+            'customer', 'customer_name', 'customer_native_name',
+            'flavors', 'projects'
+        )
 
     def test_admin_can_view_only_cloud_public_fields(self):
         self.client.force_authenticate(user=self.admin)

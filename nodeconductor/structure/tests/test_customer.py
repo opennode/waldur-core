@@ -468,7 +468,7 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
         response = self.client.put(self._get_customer_url(self.customers['owner']),
                                    self._get_valid_payload())
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, 'Error message: %s' % response.data)
 
         response = self.client.put(self._get_customer_url(self.customers['inaccessible']),
                                    self._get_valid_payload())
