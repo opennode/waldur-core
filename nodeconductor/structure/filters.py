@@ -76,11 +76,14 @@ class GenericRoleFilter(BaseFilterBackend):
 
 class CustomerRoleField(ChoiceField):
     def to_python(self, value):
-        if value in CustomerRole.NAME_TO_ROLE:
-            return CustomerRole.NAME_TO_ROLE[value]
+        if value is not None:
+            if value in CustomerRole.NAME_TO_ROLE:
+                return CustomerRole.NAME_TO_ROLE[value]
 
-        raise ValidationError(self.error_messages['invalid_choice'],
-                              code='invalid_choice', params={'value': value},)
+            raise ValidationError(self.error_messages['invalid_choice'],
+                                  code='invalid_choice', params={'value': value},)
+
+        return super(CustomerRoleField, self).to_python(value)
 
 
 class CustomerRoleFilter(ChoiceFilter):
