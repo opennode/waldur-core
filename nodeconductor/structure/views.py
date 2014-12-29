@@ -239,9 +239,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if project.customer.has_user(user, CustomerRole.OWNER):
             return True
 
-        # for project_group in project.project_groups.iterator():
-        #     if project_group.has_user(user, ProjectGroupRole.MANAGER):
-        #         return True
+        for project_group in project._m2m_data['project_groups']:
+            if project_group.has_user(user, ProjectGroupRole.MANAGER):
+                return True
 
         return False
 
