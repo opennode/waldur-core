@@ -220,10 +220,13 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.group_manager)
 
         data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
+        data['name'] = 'unique project name'
         data['project_groups'] = [factories.ProjectGroupFactory.get_url(self.project_group)]
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
+        self.assertItemsEqual(
+            Project.objects.get(name=data['name']).project_groups.all(), [self.project_group])
 
     def test_group_manager_cannot_create_project_belonging_to_project_group_he_doesnt_manage(self):
         self.client.force_authenticate(self.group_manager)
