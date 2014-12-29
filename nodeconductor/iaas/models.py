@@ -207,7 +207,7 @@ class AbstractResourceQuota(models.Model):
     ram = models.FloatField(help_text='RAM size')
     storage = models.FloatField(help_text='Storage size (incl. backup)')
     max_instances = models.PositiveIntegerField(help_text='Number of running instances')
-    backup_storage = models.FloatField(default=0, help_text='Backup storage size')
+    backup_storage = models.FloatField(default=200*1024, help_text='Backup storage size')
 
 
 # TODO: Refactor to use CloudProjectMember
