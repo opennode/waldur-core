@@ -213,8 +213,10 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.owner)
 
         data = _get_valid_project_payload()
+        data['name'] = 'unique name 2'
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Project.objects.filter(name=data['name']).exists())
 
     def test_group_manager_can_create_project_belonging_to_project_group_he_manages(self):
         self.client.force_authenticate(self.group_manager)
@@ -251,16 +253,20 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
     def test_user_can_change_single_project_field(self):
         self.client.force_authenticate(self.staff)
 
-        response = self.client.patch(factories.ProjectFactory.get_url(self.project), {'name': 'New project name'})
+        data = {'name': 'New project name'}
+        response = self.client.patch(factories.ProjectFactory.get_url(self.project), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('New project name', response.data['name'])
+        self.assertTrue(Project.objects.filter(name=data['name']).exists())
 
     # Delete tests:
     def test_user_can_delete_project_belonging_to_the_customer_he_owns(self):
         self.client.force_authenticate(self.staff)
 
-        response = self.client.delete(factories.ProjectFactory.get_url())
+        project = factories.ProjectFactory()
+        response = self.client.delete(factories.ProjectFactory.get_url(project))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Project.objects.filter(pk=project.pk).exists())
 
 
 class ProjectApiPermissionTest(test.APITransactionTestCase):
