@@ -219,19 +219,18 @@ Arguments:
         users = {}
         for username, user_params in data['users'].items():
             self.stdout.write('Creating user "%s"...' % username)
-            users[username], was_created = User.objects.get_or_create(
-                username=username
-            )
-
-            self.stdout.write('User "%s" %s.' % (username, "created" if was_created else "already exists"))
+            users[username], was_created = User.objects.get_or_create(username=username)
 
             if was_created:
-                self.stdout.write('Populating user fields with sample data.')
+                self.stdout.write('Populating user "%s" fields...' % username)
                 users[username].set_password(username)
                 users[username].email = user_params['email']
                 users[username].full_name = '%s Lebowski' % username
                 users[username].native_name = '%s Leböwski' % username
                 users[username].phone_number = '+1-202-555-0177'
+                self.stdout.write('User "%s" created.' % username)
+            else:
+                self.stdout.write('User "%s" already exists.' % username)
 
             if not users[username].is_staff and 'is_staff' in user_params and user_params['is_staff']:
                 self.stdout.write('Promoting user "%s" to staff...' % username)
