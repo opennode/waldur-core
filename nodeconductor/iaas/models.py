@@ -317,8 +317,8 @@ class Instance(core_models.UuidMixin,
     )
 
     # fields, defined by flavor
-    cores = models.PositiveSmallIntegerField()
-    ram = models.PositiveSmallIntegerField()
+    cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
+    ram = models.PositiveIntegerField(help_text='Memory size in MiB')
 
     # fields, defined by ssh public key
     key_name = models.CharField(max_length=50, blank=True)
@@ -327,9 +327,9 @@ class Instance(core_models.UuidMixin,
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255, blank=True)
     system_volume_id = models.CharField(max_length=255, blank=True)
-    system_volume_size = models.PositiveIntegerField()
+    system_volume_size = models.PositiveIntegerField(help_text='Root disk size in MiB')
     data_volume_id = models.CharField(max_length=255, blank=True)
-    data_volume_size = models.PositiveIntegerField(default=20 * 1024)
+    data_volume_size = models.PositiveIntegerField(default=20 * 1024, help_text='Data disk size in MiB')
 
     # Services specific fields
     agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)

@@ -229,7 +229,6 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         clouds = structure_filters.filter_queryset_for_user(models.Cloud.objects.all(), user)
         fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds).distinct()
-        # fields['external_ips'].required = True
 
         return fields
 
