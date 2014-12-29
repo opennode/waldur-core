@@ -98,6 +98,7 @@ Arguments:
                     'email': 'bob@example.com',
                 },
                 'Charlie': {
+                    'email': 'charlie@example.com',
                     'ssh_keys': {
                         'Public key 1': (
                             "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28TtLm5yBDRL"
@@ -106,9 +107,9 @@ Arguments:
                             "05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
                             "vEAFdOJcqjyyH4FOGYa8usP1 charlie@example.com"),
                     },
-                    'email': 'charlie@example.com',
                 },
                 'Dave': {
+                    'email': 'dave@example.com',
                     'ssh_keys': {
                         'Public key 1': (
                             "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDI+1EEbekRo8UENZ68F0j0PrUZbW8ZoAqQPr9OrYlWkNdOR"
@@ -117,9 +118,9 @@ Arguments:
                             "Wh0QNsHyCG/6S8s875wlpiV2yhCN+RIBqUt+K3f9kTmkJrHQ4R//7jxbfM5BPRFZwJNcqGTzEY9A+U35/Bqylw3w"
                             "d3HZUq+o7p/fUPf1funstUOmyKdf6UNykt dave@example.com"),
                     },
-                    'email': 'dave@example.com',
                 },
                 'Erin': {
+                    'email': 'erin@example.com',
                     'ssh_keys': {
                         'Public key 1': (
                             "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDgT5PABOUDgqI3XgfZubMP5m8rSfFjrxO05l+fRcUzY4fahHCc"
@@ -128,7 +129,6 @@ Arguments:
                             "IRm2TvESUOXz8kj1g7/dcFBSDjb098EeFmzpywreSjgjRFwbkfu7bU0Jo0+CT/zWgEDZstl9Hk0ln8fepYAdGYty"
                             "565XosxwbWruVIfIJm/4kNo9enp5 erin@example.com"),
                     },
-                    'email': 'erin@example.com',
                 },
                 'Frank': {
                     'email': 'frank@example.com',
@@ -144,6 +144,7 @@ Arguments:
                     'email': 'gus@example.com',
                 },
                 'Harry': {
+                    'email': 'harry@example.com',
                     'ssh_keys': {
                         'Public key 1': (
                             "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLFbmgChA5krmUM0/Hl1fr/1MfzSsp2IY+N6Q1t0M9aGzBonHe"
@@ -152,12 +153,10 @@ Arguments:
                             "zKYbmxqYERXHlCqwd/+S7NuYdL4oG4U+juwQWHJK0qhX8O/M+1lxWKPqI+w/ClCpf4oaw158GfmzlSM3nqza8te8"
                             "SJXgWJl48XMIJAMeAgpkyYt8Zpwt harry@example.com"),
                     },
-                    'email': 'harry@example.com',
                 },
             },
             'customers': {
                 'Ministry of Bells': {
-                    'owners': ['Alice', 'Bob'],
                     'abbreviation': 'MoB',
                     'clouds': {
                         'Stratus': {
@@ -169,6 +168,7 @@ Arguments:
                             },
                         },
                     },
+                    'owners': ['Alice', 'Bob'],
                     'project_groups': {
                         'Bells Portal': {
                             'managers': ['Gus'],
@@ -183,7 +183,6 @@ Arguments:
                     },
                 },
                 'Ministry of Whistles': {
-                    'owners': ['Bob'],
                     'abbreviation': 'MoW',
                     'clouds': {
                         'Cumulus': {
@@ -195,6 +194,7 @@ Arguments:
                             }
                         },
                     },
+                    'owners': ['Bob'],
                     'project_groups': {
                         'Whistles Portal': {
                             'managers': ['Harry', 'Gus'],
