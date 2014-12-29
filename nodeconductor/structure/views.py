@@ -227,6 +227,24 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return super(ProjectViewSet, self).get_serializer_class()
 
+    def pre_save(self, obj):
+        if not self.can_save(obj):
+            raise PermissionDenied()
+
+    def can_save(self, project):
+        user = self.request.user
+        if user.is_staff:
+            return True
+
+        if project.customer.has_user(user, CustomerRole.OWNER):
+            return True
+
+        for project_group in project._m2m_data['project_groups']:
+            if project_group.has_user(user, ProjectGroupRole.MANAGER):
+                return True
+
+        return False
+
     def destroy(self, request, *args, **kwargs):
         try:
             return super(ProjectViewSet, self).destroy(request, *args, **kwargs)
