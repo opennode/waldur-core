@@ -220,26 +220,33 @@ Arguments:
         for username, user_params in data['users'].items():
             self.stdout.write('Creating user "%s"...' % username)
             users[username], was_created = User.objects.get_or_create(
-                username=username,
-                email= user_params['email'],
-                full_name='%s Lebowski' % username,
-                native_name='%s Leböwski' % username,
-                phone_number='+1-202-555-0177',
+                username=username
             )
+
             self.stdout.write('User "%s" %s.' % (username, "created" if was_created else "already exists"))
 
-            users[username].set_password(username)
+            if was_created:
+                self.stdout.write('Populating user fields with sample data.')
+                users[username].set_password(username)
+                users[username].email = user_params['email']
+                users[username].full_name = '%s Lebowski' % username
+                users[username].native_name = '%s Leböwski' % username
+                users[username].phone_number = '+1-202-555-0177'
+
             if not users[username].is_staff and 'is_staff' in user_params and user_params['is_staff']:
                 self.stdout.write('Promoting user "%s" to staff...' % username)
                 users[username].is_staff = True
-                users[username].job_title = 'Support'
+                if was_created:
+                    users[username].job_title = 'Support'
             users[username].save()
 
             if 'ssh_keys' in user_params:
                 for key_name in user_params['ssh_keys']:
                     self.stdout.write('Creating SSH public key "%s" for user "%s"...' % (key_name, username))
-                    public_key, was_created = SshPublicKey.objects.get_or_create(user=users[username], name=key_name,
-                                                                                 public_key=user_params['ssh_keys'][key_name])
+                    public_key, was_created = SshPublicKey.objects.get_or_create(
+                        user=users[username], name=key_name,
+                        public_key=user_params['ssh_keys'][key_name]
+                    )
                     self.stdout.write('SSH public key "%s" for user "%s" %s.'
                                       % (key_name, username, "created" if was_created else "already exists"))
 
