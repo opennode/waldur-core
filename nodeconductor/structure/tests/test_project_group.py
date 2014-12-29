@@ -252,6 +252,26 @@ class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
             response = self.client.put(self._get_project_group_url(project_group), payload)
             self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_user_can_change_name_of_project_group_belonging_to_customer_he_owns(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        for project_group in self.project_groups['owner']:
+            payload = self._get_valid_payload(project_group)
+            payload['name'] = (factories.ProjectGroupFactory()).name
+
+            response = self.client.put(self._get_project_group_url(project_group), payload)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_can_change_name_of_project_group_he_is_project_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+
+        for project_group in self.project_groups['group_manager']:
+            payload = self._get_valid_payload(project_group)
+            payload['name'] = (factories.ProjectGroupFactory()).name
+
+            response = self.client.put(self._get_project_group_url(project_group), payload)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
     # List filtration tests
     def test_anonymous_user_cannot_list_project_groups(self):
         response = self.client.get(reverse('projectgroup-list'))

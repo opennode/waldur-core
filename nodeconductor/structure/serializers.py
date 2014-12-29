@@ -108,7 +108,7 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Project
-        fields = ('url', 'name', 'customer', 'description')
+        fields = ('url', 'name', 'customer', 'description', 'project_groups')
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
