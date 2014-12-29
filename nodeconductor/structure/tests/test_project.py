@@ -216,7 +216,7 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_group_manager_can_create_project_belonging_to_his_group(self):
+    def test_group_manager_can_create_project_belonging_to_project_group_he_manages(self):
         self.client.force_authenticate(self.group_manager)
 
         data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
@@ -224,6 +224,25 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
+
+    def test_group_manager_cannot_create_project_belonging_to_project_group_he_doesnt_manage(self):
+        self.client.force_authenticate(self.group_manager)
+
+        data = _get_valid_project_payload(factories.ProjectFactory.build(customer=self.customer))
+
+        accessible_project_group = factories.ProjectGroupFactory(customer=self.customer)
+        admined_project = factories.ProjectFactory(customer=self.customer)
+        admined_project.add_user(self.group_manager, ProjectRole.ADMINISTRATOR)
+        accessible_project_group.projects.add(admined_project)
+
+        # group_manager now can see accessible_project_group because he admins
+        # a project that is within accessible_project_group;
+        # though he doesn't manage accessible_project_group
+
+        data['project_groups'] = [factories.ProjectGroupFactory.get_url(accessible_project_group)]
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(Project.objects.filter(name=data['name']).exists())
 
     # Update tests:
     def test_user_can_change_single_project_field(self):
@@ -289,6 +308,43 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
             project = factories.ProjectFactory(customer=old_project.customer)
             response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_cannot_create_project_within_customer_he_doesnt_own_but_admins_its_project(self):
+        self.client.force_authenticate(user=self.users['admin'])
+
+        customer = self.projects['admin'].customer
+
+        project = factories.ProjectFactory(customer=customer)
+        response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_cannot_create_project_within_customer_he_doesnt_own_but_manages_its_project(self):
+        self.client.force_authenticate(user=self.users['manager'])
+
+        customer = self.projects['manager'].customer
+
+        project = factories.ProjectFactory(customer=customer)
+        response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_can_create_project_within_customer_he_owns(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
+        customer = self.projects['owner'].customer
+
+        project = factories.ProjectFactory(customer=customer)
+        response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_staff_user_can_create_project(self):
+        staff = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff)
+
+        customer = self.projects['inaccessible'].customer
+
+        project = factories.ProjectFactory(customer=customer)
+        response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     # List filtration tests
     def test_anonymous_user_cannot_list_projects(self):
