@@ -100,7 +100,7 @@ Arguments:
                 'Charlie': {
                     'email': 'charlie@example.com',
                     'ssh_keys': {
-                        'Public key 1': (
+                        'charlie@example.com': (
                             "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28TtLm5yBDRL"
                             "KAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rYdknWoMo"
                             "ArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9duD2C"
@@ -111,7 +111,7 @@ Arguments:
                 'Dave': {
                     'email': 'dave@example.com',
                     'ssh_keys': {
-                        'Public key 1': (
+                        'dave@example.com': (
                             "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDI+1EEbekRo8UENZ68F0j0PrUZbW8ZoAqQPr9OrYlWkNdOR"
                             "hM218Q7d14cvxf4TBixC18yv/wwRRCm7yZf7pztAyNj1NsAD9YuHFxC2idz9j9ztdPaCcyNDaZMaju74sBhEEQ"
                             "c2HjCVGacJMhDtZ64FBSHdbfFwNLoTDErzQhQPLIQ2PrOSGKgn14KjVjqyvSRSE1lP//X6Uf0EXRe2FXfxVZYj1"
@@ -122,7 +122,7 @@ Arguments:
                 'Erin': {
                     'email': 'erin@example.com',
                     'ssh_keys': {
-                        'Public key 1': (
+                        'erin@example.com': (
                             "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDgT5PABOUDgqI3XgfZubMP5m8rSfFjrxO05l+fRcUzY4fahHCc"
                             "sPinnYCWR9w6u5Q0S0FcNr1pSOeh+turenndwvTQECUrqRnXTRVFNegQiLVxzHxi4ymTVvTmfq9uAGgkH5YgbADq"
                             "Nv64NRwZRbC6b1PB1Wm5mkoF31Uzy76pq3pf++rfh/s+Wg+vAyLy+WaSqeqvFxmeP7np/ByCv8zDAJClX9Cbhj3+"
@@ -146,7 +146,7 @@ Arguments:
                 'Harry': {
                     'email': 'harry@example.com',
                     'ssh_keys': {
-                        'Public key 1': (
+                        'harry@example.com': (
                             "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDLFbmgChA5krmUM0/Hl1fr/1MfzSsp2IY+N6Q1t0M9aGzBonHe"
                             "MSisaw8NE81tYHCIz0gdRnCPuv3UBsIKx1PKRyGeMQYbsSrjYAhZJAKCrjYE1NsDmOmkKdR+Z+6fZ/LNaXh2oG/m"
                             "KUfyhrwZtYuXKQ4B8LgIO2oMmi3UVyW8IwUGkQMEY9vxKKv+ka2aioZJBJudFN2MVNlC8M6iYkMx22yS/c3arrbt"
