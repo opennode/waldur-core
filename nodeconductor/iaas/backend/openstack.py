@@ -775,6 +775,8 @@ class OpenStackBackend(object):
             logger.exception('Failed to start instance %s', instance.uuid)
             six.reraise(CloudBackendError, e)
         else:
+            instance.start_time = timezone.now()
+            instance.save()
             logger.info('Successfully started instance %s', instance.uuid)
 
     def stop_instance(self, instance):
@@ -794,6 +796,8 @@ class OpenStackBackend(object):
             logger.exception('Failed to stop instance %s', instance.uuid)
             six.reraise(CloudBackendError, e)
         else:
+            instance.start_time = None
+            instance.save()
             logger.info('Successfully stopped instance %s', instance.uuid)
 
     def delete_instance(self, instance):
