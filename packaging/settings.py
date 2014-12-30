@@ -161,6 +161,7 @@ if config.get('zabbix', 'db_host') != '':
 
 LOGGING = {
     'version': 1,
+    'disable_existing_loggers': False, # Fixes Celery beat logging
     'formatters': {
         'request_format': {
             'format': '%(asctime)s %(remote_addr)s %(username)s "%(request_method)s '
