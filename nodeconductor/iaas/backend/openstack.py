@@ -1567,7 +1567,7 @@ class OpenStackBackend(object):
         """
         logger.debug('About to delete temporary snapshot %s', snapshot_id)
 
-        if not self._wait_for_snapshot_status(snapshot_id, cinder, 'available', 'error', poll_interval=20):
+        if not self._wait_for_snapshot_status(snapshot_id, cinder, 'available', 'error', poll_interval=60, retries=30):
             logger.exception('Timed out waiting for snapshot %s to become available', snapshot_id)
             raise CloudBackendInternalError()
 
