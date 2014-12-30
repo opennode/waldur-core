@@ -525,6 +525,7 @@ class OpenStackBackend(object):
             size = max(0, service.system_volume_size) + max(0, service.data_volume_size)
             resource_quota_usage.backup_storage += size * sum(
                 max(0, schedule.maximal_number_of_backups) for schedule in service.backup_schedules.all())
+            resource_quota_usage.backup_storage += size * service.backups.filter(backup_schedule__isnull=True).count()
 
         resource_quota_usage.save()
 

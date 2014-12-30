@@ -237,14 +237,21 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         from nodeconductor.backup.tests import factories as backup_factories
         membership = factories.CloudProjectMembershipFactory()
         instance = factories.InstanceFactory(cloud_project_membership=membership)
+        # backup schedule
         backup_schedule = backup_factories.BackupScheduleFactory(backup_source=instance)
+        # one extra backup
+        backup_factories.BackupFactory(backup_source=instance, backup_schedule=None)
+
         # when
         self.backend.pull_resource_quota_usage(membership)
+
         # then
         resource_quota_usage = membership.resource_quota_usage
         self.assertEqual(
             resource_quota_usage.backup_storage,
-            (instance.system_volume_size + instance.data_volume_size) * backup_schedule.maximal_number_of_backups)
+            (instance.system_volume_size + instance.data_volume_size) *
+            (backup_schedule.maximal_number_of_backups + 1)
+        )
 
 
 class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
