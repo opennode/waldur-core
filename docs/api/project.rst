@@ -78,7 +78,7 @@ Project resource quota is optional. Example of a valid request:
         "name": "Project A",
         "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
         "project_groups": [
-            { "url": "://localhost:8000/api/project-groups/b04f53e72e9b46949fa7c3a0ef52cd91/"}
+            { "url": "http://localhost:8000/api/project-groups/b04f53e72e9b46949fa7c3a0ef52cd91/"}
         ]
     }
 
