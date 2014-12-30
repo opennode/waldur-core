@@ -5,6 +5,7 @@ from django.conf.urls import patterns
 from django.conf.urls import include
 from django.conf.urls import url
 from django.contrib import admin
+from django.views.generic import TemplateView
 import permission
 
 from nodeconductor.core.routers import SortedDefaultRouter as DefaultRouter
@@ -33,6 +34,7 @@ urlpatterns = patterns(
     url(r'^api-auth/saml2/', 'nodeconductor.core.views.assertion_consumer_service'),
     url(r'^api-auth/', include('rest_framework.urls',
                                namespace='rest_framework')),
+    url(r'^', TemplateView.as_view(template_name='landing/index.html')),
 )
 
 # FIXME: This shouldn't be here

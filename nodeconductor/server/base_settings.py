@@ -82,6 +82,7 @@ ANONYMOUS_USER_ID = None
 
 TEMPLATE_DIRS = (
     os.path.join(BASE_DIR, 'nodeconductor', 'templates'),
+    os.path.join(BASE_DIR, 'nodeconductor/core', 'templates'),
 )
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
