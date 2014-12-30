@@ -84,11 +84,6 @@ class BackupTest(TestCase):
         def ready(self):
             return self._ready
 
-    def test_save(self):
-        backup = factories.BackupFactory()
-        with self.assertRaises(IntegrityError):
-            backup.save()
-
     @patch('nodeconductor.backup.tasks.process_backup_task.delay')
     def test_start_backup(self, mocked_task):
         backup = factories.BackupFactory()
