@@ -39,8 +39,11 @@ class RelatedBackupFieldTest(TestCase):
         instance = iaas_factories.InstanceFactory()
         url = iaas_factories.InstanceFactory.get_url(instance)
         self.assertEqual(self.field.from_native(url), instance)
-        # url is wrong
+        # url is wrong (404)
         url = 'http://testserver/abrakadabra/'
+        self.assertRaises(ValidationError, lambda: self.field.from_native(url))
+        # url is wrong (not object)
+        url = 'http://testserver/'
         self.assertRaises(ValidationError, lambda: self.field.from_native(url))
 
 

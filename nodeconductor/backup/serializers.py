@@ -61,7 +61,7 @@ class RelatedBackupField(RelatedField):
             match = resolve(url)
             model = self._get_model_from_resolve_match(match)
             obj = model.objects.get(**match.kwargs)
-        except Resolver404:
+        except (Resolver404, AttributeError):
             raise ValidationError("Can`t restore object from url: %s" % data)
         if not utils.has_object_backup_strategy(obj):
             raise ValidationError('%s object is unbackupable' % str(obj))
