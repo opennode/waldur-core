@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 
 import collections
+import unittest
 
 from django.test import TransactionTestCase
-from django.utils import unittest
 from keystoneclient import exceptions as keystone_exceptions
 import mock
 
@@ -32,9 +32,40 @@ def nc_flavor_to_nova_flavor(flavor):
         id=flavor.backend_id,
         name=flavor.name,
         vcpus=flavor.cores,
-        ram=flavor.ram / 1024,
+        ram=flavor.ram,
         disk=flavor.disk / 1024,
     )
+
+
+class OpenStackBackendConversionTest(unittest.TestCase):
+    def setUp(self):
+        self.backend = OpenStackBackend()
+
+    def test_get_backend_ram_size_leaves_value_intact(self):
+        core_ram = 4  # in MiB
+        backend_ram = self.backend.get_backend_ram_size(core_ram)
+
+        self.assertEqual(backend_ram, core_ram,
+                         'Core ram and Backend ram are supposed be in the same units')
+
+    def test_get_core_ram_size_leaves_value_intact(self):
+        backend_ram = 4  # in MiB
+        core_ram = self.backend.get_core_ram_size(backend_ram)
+
+        self.assertEqual(core_ram, backend_ram,
+                         'Core ram and Backend ram are supposed be in the same units')
+
+    def test_get_backend_disk_size_converts_from_mebibytes_to_gibibytes(self):
+        core_disk = 4096  # in MiB
+        backend_disk = self.backend.get_backend_disk_size(core_disk)
+
+        self.assertEqual(backend_disk, 4)
+
+    def test_get_core_disk_size_converts_from_gibibytes_to_mebibytes(self):
+        backend_disk = 4  # in GiB
+        core_disk = self.backend.get_core_disk_size(backend_disk)
+
+        self.assertEqual(core_disk, 4096)
 
 
 class OpenStackBackendCloudAccountApiTest(unittest.TestCase):
@@ -321,7 +352,7 @@ class OpenStackBackendFlavorApiTest(TransactionTestCase):
 
             self.assertEqual(stored_flavor.name, new_flavor.name)
             self.assertEqual(stored_flavor.cores, new_flavor.vcpus)
-            self.assertEqual(stored_flavor.ram, new_flavor.ram * 1024)
+            self.assertEqual(stored_flavor.ram, new_flavor.ram)
             self.assertEqual(stored_flavor.disk, new_flavor.disk * 1024)
         except Flavor.DoesNotExist:
             self.fail('Flavor should have been created in the database')
@@ -352,7 +383,7 @@ class OpenStackBackendFlavorApiTest(TransactionTestCase):
 
             self.assertEqual(stored_flavor.name, updated_flavor.name)
             self.assertEqual(stored_flavor.cores, updated_flavor.vcpus)
-            self.assertEqual(stored_flavor.ram, updated_flavor.ram * 1024)
+            self.assertEqual(stored_flavor.ram, updated_flavor.ram)
             self.assertEqual(stored_flavor.disk, updated_flavor.disk * 1024)
 
     def test_pull_flavors_deletes_flavors_missing_in_backend(self):
