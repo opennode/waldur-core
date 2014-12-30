@@ -105,7 +105,7 @@ class OpenStackBackend(object):
                 nc_flavor = cloud_account.flavors.create(
                     name=backend_flavor.name,
                     cores=backend_flavor.vcpus,
-                    ram=self.get_core_disk_size(backend_flavor.ram),
+                    ram=self.get_core_ram_size(backend_flavor.ram),
                     disk=self.get_core_disk_size(backend_flavor.disk),
                     backend_id=backend_flavor.id,
                 )
@@ -525,6 +525,7 @@ class OpenStackBackend(object):
             size = max(0, service.system_volume_size) + max(0, service.data_volume_size)
             resource_quota_usage.backup_storage += size * sum(
                 max(0, schedule.maximal_number_of_backups) for schedule in service.backup_schedules.all())
+            resource_quota_usage.backup_storage += size * service.backups.filter(backup_schedule__isnull=True).count()
 
         resource_quota_usage.save()
 
@@ -775,6 +776,8 @@ class OpenStackBackend(object):
             logger.exception('Failed to start instance %s', instance.uuid)
             six.reraise(CloudBackendError, e)
         else:
+            instance.start_time = timezone.now()
+            instance.save()
             logger.info('Successfully started instance %s', instance.uuid)
 
     def stop_instance(self, instance):
@@ -794,6 +797,8 @@ class OpenStackBackend(object):
             logger.exception('Failed to stop instance %s', instance.uuid)
             six.reraise(CloudBackendError, e)
         else:
+            instance.start_time = None
+            instance.save()
             logger.info('Successfully stopped instance %s', instance.uuid)
 
     def delete_instance(self, instance):
@@ -1242,13 +1247,13 @@ class OpenStackBackend(object):
         return core_disk_size / 1024
 
     def get_backend_ram_size(self, core_ram_size):
-        return core_ram_size / 1024
+        return core_ram_size
 
     def get_core_disk_size(self, backend_disk_size):
         return backend_disk_size * 1024
 
     def get_core_ram_size(self, backend_ram_size):
-        return backend_ram_size * 1024
+        return backend_ram_size
 
     def create_cinder_client(self, session):
         if _get_cinder_version() >= pkg_resources.parse_version('1.1.0'):
@@ -1497,11 +1502,26 @@ class OpenStackBackend(object):
         logger.debug('About add external ip %s to instance %s',
                      instance.external_ips, instance.uuid)
         try:
+            floating_ip = models.FloatingIP.objects.get(
+                cloud_project_membership=instance.cloud_project_membership,
+                status='DOWN',
+                address=instance.external_ips,
+            )
             server.add_floating_ip(address=instance.external_ips, fixed_address=instance.internal_ips)
-        except (nova_exceptions.ClientException, KeyError, IndexError):
+        except (
+                models.FloatingIP.DoesNotExist,
+                models.FloatingIP.MultipleObjectsReturned,
+                nova_exceptions.ClientException,
+                KeyError,
+                IndexError,
+        ):
             logger.exception('Failed to add external ip %s to instance %s',
                              instance.external_ips, instance.uuid)
+            instance.set_erred()
+            instance.save()
         else:
+            floating_ip.status = 'UP'
+            floating_ip.save()
             logger.info('Successfully added external ip %s to instance %s',
                         instance.external_ips, instance.uuid)
 
@@ -1547,7 +1567,7 @@ class OpenStackBackend(object):
         """
         logger.debug('About to delete temporary snapshot %s', snapshot_id)
 
-        if not self._wait_for_snapshot_status(snapshot_id, cinder, 'available', 'error', poll_interval=20):
+        if not self._wait_for_snapshot_status(snapshot_id, cinder, 'available', 'error', poll_interval=60, retries=30):
             logger.exception('Timed out waiting for snapshot %s to become available', snapshot_id)
             raise CloudBackendInternalError()
 

@@ -18,8 +18,8 @@ class InstanceBackupStrategy(BackupStrategy):
             backend = cls._get_backend(instance)
             backup_ids = backend.backup_instance(instance)
             return ','.join(backup_ids)
-        except CloudBackendError:
-            six.reraise(BackupStrategyExecutionError, BackupStrategyExecutionError())
+        except CloudBackendError as e:
+            six.reraise(BackupStrategyExecutionError, e)
 
     @classmethod
     def restore(cls, instance, backup_ids):
@@ -30,8 +30,8 @@ class InstanceBackupStrategy(BackupStrategy):
             vm = backend.restore_instance(instance, backup_ids)
             instance.backend_id = vm.id
             instance.save()
-        except CloudBackendError:
-            six.reraise(BackupStrategyExecutionError, BackupStrategyExecutionError())
+        except CloudBackendError as e:
+            six.reraise(BackupStrategyExecutionError, e)
 
     @classmethod
     def delete(cls, instance, backup_ids):
@@ -40,8 +40,8 @@ class InstanceBackupStrategy(BackupStrategy):
                 backup_ids = backup_ids.split(',')
             backend = cls._get_backend(instance)
             backend.delete_instance_backup(instance, backup_ids)
-        except CloudBackendError:
-            six.reraise(BackupStrategyExecutionError, BackupStrategyExecutionError())
+        except CloudBackendError as e:
+            six.reraise(BackupStrategyExecutionError, e)
 
     # Helpers
     @classmethod

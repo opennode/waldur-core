@@ -535,6 +535,15 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    def test_created_instance_has_agreed_sla_from_template(self):
+        data = self.get_valid_data()
+        response = self.client.post(factories.InstanceFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, 'Error message %s' % response.data)
+
+        sla_level = self.template.sla_level
+        created_instance = self.client.get(factories.InstanceFactory.get_list_url() + response.data['uuid'] + '/')
+        self.assertEqual(sla_level, created_instance.data['agreed_sla'])
+
     def test_can_create_instance_with_empty_description(self):
         data = self.get_valid_data()
         data['description'] = ''

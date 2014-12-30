@@ -82,6 +82,7 @@ ANONYMOUS_USER_ID = None
 
 TEMPLATE_DIRS = (
     os.path.join(BASE_DIR, 'nodeconductor', 'templates'),
+    os.path.join(BASE_DIR, 'nodeconductor/core', 'templates'),
 )
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
@@ -121,29 +122,29 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERYBEAT_SCHEDULE = {
     'update-instance-monthly-slas': {
         'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
-        'schedule': timedelta(hours=2),
+        'schedule': timedelta(minutes=5),
         'args': ('monthly',),
     },
     'update-instance-yearly-slas': {
         'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
-        'schedule': timedelta(days=15),
+        'schedule': timedelta(minutes=10),
         'args': ('yearly',),
     },
 
     'pull-cloud-accounts': {
         'task': 'nodeconductor.iaas.tasks.pull_cloud_accounts',
-        'schedule': timedelta(days=1),
+        'schedule': timedelta(minutes=60),
         'args': (),
     },
     'pull-cloud-project-memberships': {
         'task': 'nodeconductor.iaas.tasks.pull_cloud_memberships',
-        'schedule': timedelta(hours=1),
+        'schedule': timedelta(minutes=30),
         'args': (),
     },
 
     'check-cloud-project-memberships-quotas': {
         'task': 'nodeconductor.iaas.tasks.check_cloud_memberships_quotas',
-        'schedule': timedelta(days=1),
+        'schedule': timedelta(minutes=5),
         'args': (),
     },
 }

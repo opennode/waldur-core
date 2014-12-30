@@ -203,7 +203,7 @@ Example rendering of the Instance object:
             "system_volume_size": 46080,
             "data_volume_size": 20480,
             "cores": 2,
-            "ram": 1048576
+            "ram": 1024
         }
     ]
 
@@ -232,7 +232,7 @@ Example of a valid request:
     Host: example.com
 
     {
-        "flavor": "http://example.com/api/flavors/1ee385bc043249498cfeb8c7e3e079f0/",
+        "flavor": "http://example.com/api/flavors/1ee385bc043249498cfeb8c7e3e079f0/"
     }
 
 To resize data disk of the instance, submit a POST request to the instance's RPC url, specifying size of the disk.
@@ -248,7 +248,7 @@ Example of a valid request:
     Host: example.com
 
     {
-        "disk_size": 1024,
+        "disk_size": 1024
     }
 
 Deletion of an instance

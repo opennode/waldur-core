@@ -1,0 +1,38 @@
+$text-color: #303030;
+$link-color: #2980b9;
+
+body {
+    font-size: rem(16);
+    line-height: 1.5;
+    background: rgb(247, 247, 247);
+    font-family: 'Source Sans Pro', sans-serif;
+    color: $text-color;
+} // body
+
+img {
+    display: inline-block;
+    vertical-align: top;
+    max-width: 100%;
+} // img
+
+a {
+    color: $link-color;
+    // @include transition(all, 0.3s, ease);
+    &:hover {
+        text-decoration: none;
+    } // &:hover
+} // a
+
+
+h1, h2, h3, h4, h5 {} // h1, h2, h3, h4, h5
+
+input,
+textarea,
+button {
+    outline: none;
+}
+
+button {
+    background: transparent;
+    border: 1px solid transparent;
+}
