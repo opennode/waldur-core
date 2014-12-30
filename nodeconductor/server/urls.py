@@ -34,7 +34,7 @@ urlpatterns = patterns(
     url(r'^api-auth/saml2/', 'nodeconductor.core.views.assertion_consumer_service'),
     url(r'^api-auth/', include('rest_framework.urls',
                                namespace='rest_framework')),
-    url(r'^', TemplateView.as_view(template_name='landing/index.html')),
+    url(r'^$', TemplateView.as_view(template_name='landing/index.html')),
 )
 
 # FIXME: This shouldn't be here
