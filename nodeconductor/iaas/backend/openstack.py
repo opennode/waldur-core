@@ -105,7 +105,7 @@ class OpenStackBackend(object):
                 nc_flavor = cloud_account.flavors.create(
                     name=backend_flavor.name,
                     cores=backend_flavor.vcpus,
-                    ram=self.get_core_disk_size(backend_flavor.ram),
+                    ram=self.get_core_ram_size(backend_flavor.ram),
                     disk=self.get_core_disk_size(backend_flavor.disk),
                     backend_id=backend_flavor.id,
                 )
@@ -1246,13 +1246,13 @@ class OpenStackBackend(object):
         return core_disk_size / 1024
 
     def get_backend_ram_size(self, core_ram_size):
-        return core_ram_size / 1024
+        return core_ram_size
 
     def get_core_disk_size(self, backend_disk_size):
         return backend_disk_size * 1024
 
     def get_core_ram_size(self, backend_ram_size):
-        return backend_ram_size * 1024
+        return backend_ram_size
 
     def create_cinder_client(self, session):
         if _get_cinder_version() >= pkg_resources.parse_version('1.1.0'):

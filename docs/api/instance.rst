@@ -203,7 +203,7 @@ Example rendering of the Instance object:
             "system_volume_size": 46080,
             "data_volume_size": 20480,
             "cores": 2,
-            "ram": 1048576
+            "ram": 1024
         }
     ]
 
