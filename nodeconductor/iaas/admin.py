@@ -115,7 +115,16 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     get_customer_name.short_description = 'Customer'
 
 
+class InstanceLicenseInline(admin.TabularInline):
+    model = models.InstanceLicense
+    extra = 1
+
+
 class InstanceAdmin(admin.ModelAdmin):
+    inlines = (
+        InstanceLicenseInline,
+    )
+
     def get_readonly_fields(self, request, obj=None):
         if obj:
             return ['template']
