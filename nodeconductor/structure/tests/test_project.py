@@ -223,7 +223,9 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
 
         data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
         data['name'] = 'unique project name'
-        data['project_groups'] = [factories.ProjectGroupFactory.get_url(self.project_group)]
+        data['project_groups'] = [
+            {"url": factories.ProjectGroupFactory.get_url(self.project_group)}
+        ]
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
@@ -244,7 +246,9 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         # a project that is within accessible_project_group;
         # though he doesn't manage accessible_project_group
 
-        data['project_groups'] = [factories.ProjectGroupFactory.get_url(accessible_project_group)]
+        data['project_groups'] = [
+            {"url": factories.ProjectGroupFactory.get_url(accessible_project_group)}
+        ]
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(Project.objects.filter(name=data['name']).exists())
