@@ -118,6 +118,12 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
     def validate(self, attrs):
         return fix_non_nullable_attrs(attrs)
 
+    def to_native(self, obj):
+        # hack for GUI
+        if obj is not None and obj.pk is None:
+            return {}
+        return super(ProjectCreateSerializer, self).to_native(obj)
+
 
 class CustomerSerializer(core_serializers.CollectedFieldsMixin,
                          serializers.HyperlinkedModelSerializer):
