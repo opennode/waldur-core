@@ -112,7 +112,7 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         lookup_field = 'uuid'
 
     def get_filtered_field_names(self):
-        return 'customer',
+        return 'customer', 'project_groups'
 
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):
