@@ -248,15 +248,6 @@ class Backup(core_models.UuidMixin,
     def __save(self, *args, **kwargs):
         return super(Backup, self).save(*args, **kwargs)
 
-    def save(self, *args, **kwargs):
-        """
-        Raises IntegrityError if backup is modified
-        """
-        if self.pk is not None:
-            raise IntegrityError('Backup is unmodified')
-        else:
-            return super(Backup, self).save(*args, **kwargs)
-
 
 class BackupStrategy(object):
     """

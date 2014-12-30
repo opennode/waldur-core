@@ -72,7 +72,7 @@ Example:
 Resource statistics
 -------------------
 
-Allocation of resources in G-Cloud.
+Allocation of resources in a cloud backend.
 
 URL: /stats/resource/
 

@@ -169,7 +169,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def pre_save(self, obj):
         super(InstanceViewSet, self).pre_save(obj)
 
-        if obj.pk is not None:
+        if obj.pk is None:
+            # Create flow
+            obj.agreed_sla = obj.template.sla_level
+        else:
             # Update flow
             related_data = getattr(self.object, '_related_data', {})
 

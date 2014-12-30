@@ -1,0 +1,54 @@
+body {
+    background: url(../images/cmd.png);
+} // body
+
+.title {
+    width: auto;
+    z-index: 3;
+    @include inline-middle;
+    h1 {
+        margin: 0;
+        font-size: rem(65);
+        color: #595959;
+    } // h1
+} // title
+
+.documentation {
+    width: 50%;
+    float: left;
+    position: relative;
+    background: rgba(0, 128, 21, 0.17);
+    .documentation__link {
+        @include inline-middle;
+        z-index: 3;
+        width: 220px;
+        text-align: center;
+        text-decoration: none;
+        padding: 10px 20px;
+        border: 3px solid rgba(0, 128, 21, 0.8);
+        color: rgba(56, 174, 76, 0.8);
+        border-radius: 4px;
+        background: #fff;
+        font-size: rem(22);
+    } // documentation__link
+} // documentation
+
+.api {
+    width: 50%;
+    float: left;
+    position: relative;
+    background: rgba(0, 129, 255, 0.17);
+    .api__link {
+        @include inline-middle;
+        z-index: 3;
+        width: 220px;
+        text-align: center;
+        text-decoration: none;
+        padding: 10px 20px;
+        border: 3px solid rgba(0, 129, 255, 0.8);
+        color: rgba(0, 129, 255, 0.8);
+        border-radius: 4px;
+        background: #fff;
+        font-size: rem(22);
+    } // api__link
+} // api
