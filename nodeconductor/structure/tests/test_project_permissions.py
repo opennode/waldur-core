@@ -99,6 +99,8 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
         for user, project, role in self.all_roles:
             self.projects[project].add_user(self.users[user], self.role_map[role])
 
+        self.groups_manager_project_admin = factories.UserFactory()
+        self.projects['group_manager'].add_user(self.groups_manager_project_admin, ProjectRole.ADMINISTRATOR)
         self.project_group = factories.ProjectGroupFactory()
         self.project_group.projects.add(self.projects['group_manager'])
         self.project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
@@ -278,6 +280,19 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
                     self.users[role.user], role.role, permissions=response.data),
                 'Owner user does not see an existing privilege: {0}'.format(role),
             )
+
+    def test_user_can_list_roles_of_projects_he_is_group_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+
+        response = self.client.get(reverse('project_permission-list'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            self._check_if_present(
+                self.projects['group_manager'],
+                self.groups_manager_project_admin, 'admin', permissions=response.data),
+            'Group manager user does not see an administrator of his project',
+        )
 
     # Administrator tests
     def test_user_can_list_roles_of_projects_he_is_administrator_of(self):
