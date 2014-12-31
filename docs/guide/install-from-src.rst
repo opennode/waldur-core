@@ -42,7 +42,6 @@ Additional requirements:
 
   .. code-block:: bash
 
-    venv/bin/nodeconductor syncdb --noinput
     venv/bin/nodeconductor migrate --noinput
 
 6. Collect static data -- static files will be copied to ``./static/`` in the same directory:
