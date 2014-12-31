@@ -49,6 +49,23 @@ class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.ProjectGroup
         fields = ('url', 'name', 'uuid')
+        read_only_fields = ('name', 'uuid')
+
+
+class ProjectGroupProjectMembershipSerializer(serializers.ModelSerializer):
+
+    name = serializers.Field(source='projectgroup.name')
+    url = serializers.HyperlinkedRelatedField(source='projectgroup', lookup_field='uuid',
+                                              view_name='projectgroup-detail')
+
+    class Meta(object):
+        model = models.ProjectGroup.projects.through
+        fields = ('url', 'name',)
+        lookup_field = 'uuid'
+        view_name = 'projectgroup-detail'
+
+    def restore_object(self, attrs, instance=None):
+        return attrs['projectgroup']
 
 
 class ProjectSerializer(core_serializers.CollectedFieldsMixin,
@@ -105,6 +122,7 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
 
 class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                               serializers.HyperlinkedModelSerializer):
+    project_groups = ProjectGroupProjectMembershipSerializer(many=True, write_only=True, required=False)
 
     class Meta(object):
         model = models.Project
@@ -116,7 +134,30 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):
-        return fix_non_nullable_attrs(attrs)
+        attrs = super(ProjectCreateSerializer, self).validate(attrs)
+
+        user = self.context['request'].user
+        if 'project_groups' not in attrs and self.object is not None:
+            project_groups = self.object.project_groups.all()
+        else:
+            project_groups = attrs.get('project_groups', [])
+        customer = attrs['customer'] if 'customer' in attrs else self.object.customer
+
+        if user.is_staff:
+            return fix_non_nullable_attrs(attrs)
+
+        if customer.has_user(user, models.CustomerRole.OWNER):
+            return fix_non_nullable_attrs(attrs)
+
+        if project_groups is not None:
+            project_groups_access = [
+                project_group.has_user(user, models.ProjectGroupRole.MANAGER)
+                for project_group in project_groups
+            ]
+            if project_groups_access and all(project_groups_access):
+                return fix_non_nullable_attrs(attrs)
+
+        raise ValidationError('You cannot create project with such data')
 
 
 class CustomerSerializer(core_serializers.CollectedFieldsMixin,

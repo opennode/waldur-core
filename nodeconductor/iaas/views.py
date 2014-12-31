@@ -448,7 +448,7 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
     def _filter_queryset(self, queryset):
         if 'customer' in self.request.QUERY_PARAMS:
             customer_uuid = self.request.QUERY_PARAMS['customer']
-            queryset = queryset.filter(template_license__templates__images__cloud__customer__uuid=customer_uuid)
+            queryset = queryset.filter(instance__cloud_project_membership__project__customer__uuid=customer_uuid)
         if 'name' in self.request.QUERY_PARAMS:
             queryset = queryset.filter(template_license__name=self.request.QUERY_PARAMS['name'])
         if 'type' in self.request.QUERY_PARAMS:
