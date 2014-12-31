@@ -27,7 +27,7 @@ install_requires = [
     'django-requestlogging==1.0.1',
     'django-uuidfield==0.5.0',
     'djangorestframework>=2.3.12,<2.4.0',
-    'djangosaml2==0.11.0',
+    'djangosaml2==0.11.0.post0',
     'drf-extensions==0.2.6',
     'python-cinderclient==1.0.9',
     'python-glanceclient==0.12.0',
@@ -49,6 +49,9 @@ setup(
     long_description=open('README.rst').read(),
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     install_requires=install_requires,
+    dependency_links=[
+        'https://bitbucket.org/opennode/djangosaml2/downloads',
+    ],
     extras_require={
         'dev': dev_requires,
         'tests': tests_requires,
