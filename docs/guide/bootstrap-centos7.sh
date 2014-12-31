@@ -21,14 +21,9 @@ mysql -e "CREATE DATABASE nodeconductor CHARACTER SET = utf8"
 mysql -e "CREATE USER 'nodeconductor'@'localhost' IDENTIFIED BY 'nodeconductor'"
 mysql -e "GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'localhost'"
 
-# Init NodeConductor database and collect static data
+# Init NodeConductor database
 nodeconductor migrate --noinput
-nodeconductor collectstatic --noinput
 chown -R nodeconductor:nodeconductor /var/log/nodeconductor
-
-# (optional) Create data structures and populate database with randomly generated sample data
-nodeconductor createsampledata alice
-nodeconductor createsampledata random
 
 # Start Celery and Apache
 systemctl start httpd
