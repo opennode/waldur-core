@@ -60,12 +60,12 @@ config_defaults = {
         'cert_file': os.path.join(conf_dir, 'saml2', 'dummy.crt'),
         'debug': 'false',
         'entity_id': 'saml-sp2',
+        'idp_metadata_cert': '',
+        'idp_metadata_file': os.path.join(conf_dir, 'saml2', 'idp-metadata.xml'),
+        'idp_metadata_url': '',
         'key_file': os.path.join(conf_dir, 'saml2', 'dummy.pem'),
         'log_file': '',  # empty to disable logging SAML2-related stuff to file
         'log_level': 'INFO',
-        'metadata_cert': '',
-        'metadata_file': os.path.join(conf_dir, 'saml2', 'metadata.xml'),
-        'metadata_url': '',
     },
     'sentry': {
         'dsn': '',  # raven package is needed for this to work
@@ -309,6 +309,13 @@ STATIC_ROOT = config.get('global', 'static_root')
 #AUTH_LDAP_GROUP_CACHE_TIMEOUT = 600
 
 # SAML2
+for key in ['metadata_cert', 'metadata_file', 'metadata_url']:
+    if config.has_option('saml2', key) and config.get('saml2', key) != '' and config.get('saml2', 'idp_' + key) == '':
+        warnings.warn(
+           "Config option %s is deprectaed and will be removed in NodeConductor 0.21; use idp_%s instead" % (key, key),
+            PendingDeprecationWarning)  # TODO-0.20: PendingDeprecationWarning -> DeprecationWarning
+        configs.set('saml2', 'idp_' + key, config.get(key))
+
 SAML_CONFIG = {
     # full path to the xmlsec1 binary program
     'xmlsec_binary': '/usr/bin/xmlsec1',
@@ -348,7 +355,7 @@ SAML_CONFIG = {
     # where the remote metadata is stored
     'metadata': {
         'local': [
-            config.get('saml2', 'metadata_file'),
+            config.get('saml2', 'idp_metadata_file'),
         ],
     },
 
@@ -364,12 +371,12 @@ SAML_CONFIG = {
     'accepted_time_diff': 120,
 }
 
-if config.get('saml2', 'metadata_url') != '':
+if config.get('saml2', 'idp_metadata_url') != '':
     SAML_CONFIG['metadata'].update({
         'remote': [
             {
-                'url': config.get('saml2', 'metadata_url'),
-                'cert': config.get('saml2', 'metadata_cert'),
+                'url': config.get('saml2', 'idp_metadata_url'),
+                'cert': config.get('saml2', 'idp_metadata_cert'),
             }
         ],
     })
