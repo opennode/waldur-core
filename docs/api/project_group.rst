@@ -1,7 +1,7 @@
 Project group list
 ------------------
 
-To get a list of projects groups, run GET against */api/project-groupss/* as authenticated user. Note that a user can
+To get a list of projects groups, run GET against **/api/project-groups/** as authenticated user. Note that a user can
 only see connected project groups:
 
 - project groups that the user owns as a customer;
@@ -44,7 +44,7 @@ Project resource quota is optional. Example of a valid request:
 Deletion of a project group
 ---------------------------
 
-Deletion of a project is done through sending a DELETE request to the project group instance URI.
+Deletion of a project group is done through sending a DELETE request to the project group instance URI.
 Valid request example (token is user specific):
 
 .. code-block:: http
@@ -138,7 +138,7 @@ will return status code 204.
 Link project to a project group
 -------------------------------
 
-In order to link project to a project group, POST a connection between them to /api/project-group-memberships/.
+In order to link project to a project group, POST a connection between them to **/api/project-group-memberships/**.
 Note that project and a project group must be from the same customer.
 For example,
 
@@ -158,7 +158,7 @@ For example,
 Project-group connection list
 -----------------------------
 
-To get a list of connections between project and a project group, run GET against /api/project-group-memberships/
+To get a list of connections between project and a project group, run GET against **/api/project-group-memberships/**
 as authenticated user. Note that a user can only see connections of a project or a project group where a user has a role.
 
 Supported filters are:

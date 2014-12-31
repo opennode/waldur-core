@@ -10,7 +10,7 @@ Project administrators can select what SSH key will be injected into VM instance
 Key list
 --------
 
-To get a list of SSH keys, run GET against */api/keys/* as authenticated user.
+To get a list of SSH keys, run GET against **/api/keys/** as authenticated user.
 
 Supported filtering:
 
