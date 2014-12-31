@@ -294,6 +294,35 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
             return Response({'detail': e.message}, status=status.HTTP_409_CONFLICT)
 
 
+class ProjectGroupMembershipFilter(django_filters.FilterSet):
+    project_group = django_filters.CharFilter(
+        name='projectgroup__uuid',
+    )
+
+    project_group_name = django_filters.CharFilter(
+        name='projectgroup__name',
+        lookup_type='icontains',
+    )
+
+    project = django_filters.CharFilter(
+        name='project__uuid',
+    )
+
+    project_name = django_filters.CharFilter(
+        name='project__name',
+        lookup_type='icontains',
+    )
+
+    class Meta(object):
+        model = models.ProjectGroup.projects.through
+        fields = [
+            'project_group',
+            'project_group_name',
+            'project',
+            'project_name',
+        ]
+
+
 class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.RetrieveModelMixin,
                                     rf_mixins.DestroyModelMixin,
@@ -306,7 +335,8 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
 
     queryset = models.ProjectGroup.projects.through.objects.all()
     serializer_class = serializers.ProjectGroupMembershipSerializer
-    filter_backends = (filters.GenericRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    filter_class = ProjectGroupMembershipFilter
 
 # XXX: This should be put to models
 filters.set_permissions_for_model(
