@@ -26,6 +26,3 @@ TEST-*.xml
 docs/_build/
 
 /static_files
-
-nodeconductor/core/static/landing/node_modules
-nodeconductor/core/static/landing/.sass-cache

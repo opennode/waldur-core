@@ -1,7 +1,7 @@
 IP mapping list
 ---------------
 
-To get a list of IP mappings, run GET against */api/ip-mappings/* as authenticated user.
+To get a list of IP mappings, run GET against **/api/ip-mappings/** as authenticated user.
 
 Supported filters are:
 
@@ -70,7 +70,7 @@ Valid request example (token is user specific):
         "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
     }
 
-To update a single field of the IP mapping instance, issue a PATCH to **/api/ip-mappings/<UUID>** as a staff user.
+To update a single field of the IP mapping instance, issue a PATCH to **/api/ip-mappings/<UUID>/** as a staff user.
 Valid request example (token is user specific):
 
 .. code-block:: http

@@ -1,7 +1,7 @@
 Project list
 ------------
 
-To get a list of projects, run GET against */api/projects/* as authenticated user. Note that a user can
+To get a list of projects, run GET against **/api/projects/** as authenticated user. Note that a user can
 only see connected projects:
 
 - projects that the user owns as a customer
@@ -101,7 +101,7 @@ Managing project roles
 
 Project permissions expresses connection of users to a project. Each project has two associated user groups that
 represent project managers and administrators. The link is maintained
-through **api/project-permissions/** endpoint.
+through **/api/project-permissions/** endpoint.
 
 Note that project group membership can be viewed and modified only by customer owners, corresponding project group
 managers and staff users.
@@ -145,7 +145,7 @@ Response will contain a list of project users and their brief data:
         }
     ]
 
-To add a new user to the project, POST a new relationship to **api/project-permissions** endpoint specifying
+To add a new user to the project, POST a new relationship to **/api/project-permissions/** endpoint specifying
 project, user and the role of the user ('admin' or 'manager'):
 
 .. code-block:: http

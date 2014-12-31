@@ -106,7 +106,9 @@ Supported aggregate queries are:
 - ?aggregate=project_group -  by project groups
 - ?aggregate=project  - by projects
 
-Note: aggregate parameters can be combined to aggregate by several fields. For example ?aggregate=name&aggregate=type&aggregate=project will aggregate result by license name, license_type and project group
+Note: aggregate parameters can be combined to aggregate by several fields. For example,
+*?aggregate=name&aggregate=type&aggregate=project* will aggregate result by license name,
+license_type and project group.
 
 Supported filters:
 
