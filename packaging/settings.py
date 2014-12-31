@@ -3,6 +3,7 @@ from nodeconductor.server.base_settings import *
 
 import os
 import saml2
+import warnings
 
 from ConfigParser import RawConfigParser
 
@@ -57,13 +58,11 @@ config_defaults = {
         'attribute_map_dir': os.path.join(conf_dir, 'saml2', 'attribute-maps'),
         'attribute_map_full_name': 'Full name',
         'attribute_map_native_name': 'Native name',
-        'cert_file': os.path.join(conf_dir, 'saml2', 'dummy.crt'),
         'debug': 'false',
         'entity_id': 'saml-sp2',
         'idp_metadata_cert': '',
         'idp_metadata_file': os.path.join(conf_dir, 'saml2', 'idp-metadata.xml'),
         'idp_metadata_url': '',
-        'key_file': os.path.join(conf_dir, 'saml2', 'dummy.pem'),
         'log_file': '',  # empty to disable logging SAML2-related stuff to file
         'log_level': 'INFO',
     },
@@ -93,6 +92,10 @@ for section, options in config_defaults.items():
     for option, value in options.items():
         if not config.has_option(section, option):
             config.set(section, option, value)
+
+# These shouldn't be configurable by user -- see SAML2 section for details
+conig.set('saml2', 'cert_file', os.path.join(conf_dir, 'saml2', 'dummy.crt'))
+conig.set('saml2', 'key_file', os.path.join(conf_dir, 'saml2', 'dummy.pem'))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config.get('global', 'secret_key')
