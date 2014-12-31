@@ -134,3 +134,36 @@ will return status code 204.
     DELETE /api/project-group-permissions/42/ HTTP/1.1
     Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
     Host: example.com
+
+Link project to a project group
+-------------------------------
+
+In order to link project to a project group, POST a connection between them to /api/project-group-memberships/.
+Note that project and a project group must be from the same customer.
+For example,
+
+.. code-block:: http
+
+    POST /api/project-group-memberships/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "project_group": "http://example.com/api/project-groups/736038dc5cac47309111916eb6fe802d/",
+        "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
+    }
+
+Project-group connection list
+-----------------------------
+
+To get a list of connections between project and a project group, run GET against /api/project-group-memberships/
+as authenticated user. Note that a user can only see connections of a project or a project group where a user has a role.
+
+Supported filters are:
+
+* ?project_group - matching of a project group uuid
+* ?project_group_name - matching of a project group name
+* ?project - matching of a project uuid
+* ?project_name - matching of a project name

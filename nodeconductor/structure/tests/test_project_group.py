@@ -554,3 +554,65 @@ class ProjectGroupMembershipApiPermissionTest(UrlResolverMixin, test.APISimpleTe
             payload['url'] = self._get_membership_url(resource)
 
         return payload
+
+
+class ProjectGroupMembershipApiFiltrationTest(UrlResolverMixin, test.APISimpleTestCase):
+    def setUp(self):
+        user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=user)
+
+        customer = factories.CustomerFactory()
+
+        self.projects = {
+            'group1': factories.ProjectFactory.create_batch(2, customer=customer),
+            'group2': factories.ProjectFactory.create_batch(2, customer=customer),
+        }
+        self.project_groups = {
+            'group1': factories.ProjectGroupFactory(customer=customer),
+            'group2': factories.ProjectGroupFactory(customer=customer),
+        }
+
+        for group_name in self.project_groups:
+            for project in self.projects[group_name]:
+                self.project_groups[group_name].projects.add(project)
+
+    def test_user_can_filter_memberships_by_project_group_uuid(self):
+        response = self.client.get(reverse('projectgroup_membership-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = {'project_group': self.project_groups['group1'].uuid}
+
+        response = self.client.get(reverse('projectgroup_membership-list'), data=data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for membership in response.data:
+            self.assertEqual(membership['project_group'], self._get_project_group_url(self.project_groups['group1']))
+
+    def test_user_can_filter_memberships_by_project_group_name(self):
+        self._ensure_can_filter_memberships_by_name('project_group_name', self.project_groups['group1'].name)
+
+    def test_user_can_filter_memberships_by_project_uuid(self):
+        response = self.client.get(reverse('projectgroup_membership-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = {'project': self.projects['group1'][0].uuid}
+
+        response = self.client.get(reverse('projectgroup_membership-list'), data=data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for membership in response.data:
+            self.assertEqual(membership['project'], self._get_project_url(self.projects['group1'][0]))
+
+    def test_user_can_filter_memberships_by_project_name(self):
+        self._ensure_can_filter_memberships_by_name('project_name', self.projects['group1'][0].name)
+
+    # Helper methods
+    def _ensure_can_filter_memberships_by_name(self, field, value):
+        response = self.client.get(reverse('projectgroup_membership-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.get(reverse('projectgroup_membership-list'), data={field: value})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for membership in response.data:
+            self.assertEqual(membership[field], value)
