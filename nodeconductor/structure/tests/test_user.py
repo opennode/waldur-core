@@ -269,7 +269,7 @@ class PasswordSerializerTest(unittest.TestCase):
 
 class UserFilterTest(test.APISimpleTestCase):
 
-    def test_user_direct_fields_filtering(self):
+    def test_user_list_can_be_filtered(self):
         supported_filters = [
             'full_name',
             'native_name',
@@ -283,32 +283,42 @@ class UserFilterTest(test.APISimpleTestCase):
             'is_active',
         ]
         user = factories.UserFactory(is_staff=True)
+        user_that_should_be_found = factories.UserFactory(
+            native_name='',
+            organization='',
+            email='none@example.com',
+            phone_number='',
+            description='',
+            job_title='',
+            username='',
+            civil_number='',
+            is_active='',
+        )
         self.client.force_authenticate(user)
+        url = factories.UserFactory.get_list_url()
+        user_url = factories.UserFactory.get_url(user)
+        user_that_should_be_found_url = factories.UserFactory.get_url(user_that_should_be_found)
 
         for field in supported_filters:
-            url = factories.UserFactory.get_list_url()
-            user_url = factories.UserFactory.get_url(user)
             response = self.client.get(url, data={field: getattr(user, field)})
-            found_users = {'url': user['url'] for user in response.data}
-            self.assertDictContainsSubset(found_users, {'url': user_url})
+            self.assertContains(response, user_url)
+            self.assertNotContains(response, user_that_should_be_found_url)
 
-    def test_user_direct_fields_approximate_filtering(self):
+    def test_user_list_can_be_filtered_by_fields_with_partial_matching(self):
         supported_filters = [
             'full_name',
             'native_name',
             'organization',
             'email',
-            'phone_number',
             'description',
             'job_title',
-            'civil_number',
         ]
-        user = factories.UserFactory()
+        user = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user)
+        url = factories.UserFactory.get_list_url()
+        user_url = factories.UserFactory.get_url(user)
 
         for field in supported_filters:
-            url = factories.UserFactory.get_list_url()
-            user_url = factories.UserFactory.get_url(user)
             response = self.client.get(url, data={field: getattr(user, field)[:-1]})
-            found_users = {'url': user['url'] for user in response.data}
-            self.assertDictContainsSubset(found_users, {'url': user_url})
+            print field, getattr(user, field)[:-1]
+            self.assertContains(response, user_url)
