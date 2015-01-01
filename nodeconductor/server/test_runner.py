@@ -12,6 +12,7 @@ from django.test.utils import get_runner
 
 
 def run_tests():
+    django.setup()
     test_runner_class = get_runner(settings)
 
     try:
@@ -41,5 +42,4 @@ def run_tests():
 
 
 if __name__ == '__main__':
-    django.setup()
     run_tests()
