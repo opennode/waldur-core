@@ -6,7 +6,7 @@ VM template is not to be confused with VM instance flavor -- template is a defin
 IaaS Template list
 ------------------
 
-To get a list of available templates, run GET against */api/iaas-templates/* as authenticated user.
+To get a list of available templates, run GET against **/api/iaas-templates/** as authenticated user.
 
 A user with staff role will be able to see all of the templates, non-staff user only active ones.
 
@@ -16,12 +16,15 @@ on a defined cloud are shown.
 IaaS Template permissions
 -------------------------
 
-- VM templates are connected to clouds, whereas the template may belong to one cloud only, and the cloud may have multiple VM templates.
+- VM templates are connected to clouds, whereas the template may belong to one cloud only, and the cloud may have
+  multiple VM templates.
 - Staff members can list all available VM templates in any cloud and create new templates.
 - Customer owners can list all VM templates in all the clouds that belong to any of the customers they own.
-- Project administrators can list all VM templates and create new VM instances using these templates in all the clouds that are connected to any of the projects they are administrators in.
-- Project managers can list all VM templates in all the clouds that are connected to any of the projects they are managers in.
-- Staff members can add licenses to template by sending POST request with list of licenses uuids.
+- Project administrators can list all VM templates and create new VM instances using these templates in all the clouds
+  that are connected to any of the projects they are administrators in.
+- Project managers can list all VM templates in all the clouds that are connected to any of the projects they are
+  managers in.
+- Staff members can add licenses to template by sending POST request with list of licenses UUIDs.
 
 Create a new template
 ---------------------
@@ -68,4 +71,4 @@ Valid request example (token is user specific):
 Updating a template
 -------------------
 
-Can be done by POSTing a new data to the template instance URI, i.e. **api/template-licenses/<UUID>**.
+Can be done by POSTing a new data to the template instance URI, i.e. **/api/template-licenses/<UUID>/**.

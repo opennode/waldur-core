@@ -23,6 +23,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    'nodeconductor.landing',
     'nodeconductor.core',
     'nodeconductor.backup',
     'nodeconductor.monitoring',
@@ -82,7 +83,7 @@ ANONYMOUS_USER_ID = None
 
 TEMPLATE_DIRS = (
     os.path.join(BASE_DIR, 'nodeconductor', 'templates'),
-    os.path.join(BASE_DIR, 'nodeconductor/core', 'templates'),
+    os.path.join(BASE_DIR, 'nodeconductor', 'landing', 'templates'),
 )
 
 ROOT_URLCONF = 'nodeconductor.server.urls'

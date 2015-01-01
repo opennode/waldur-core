@@ -227,24 +227,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return super(ProjectViewSet, self).get_serializer_class()
 
-    def pre_save(self, obj):
-        if not self.can_save(obj):
-            raise PermissionDenied()
-
-    def can_save(self, project):
-        user = self.request.user
-        if user.is_staff:
-            return True
-
-        if project.customer.has_user(user, CustomerRole.OWNER):
-            return True
-
-        for project_group in project._m2m_data['project_groups']:
-            if project_group.has_user(user, ProjectGroupRole.MANAGER):
-                return True
-
-        return False
-
     def destroy(self, request, *args, **kwargs):
         try:
             return super(ProjectViewSet, self).destroy(request, *args, **kwargs)
@@ -294,6 +276,35 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
             return Response({'detail': e.message}, status=status.HTTP_409_CONFLICT)
 
 
+class ProjectGroupMembershipFilter(django_filters.FilterSet):
+    project_group = django_filters.CharFilter(
+        name='projectgroup__uuid',
+    )
+
+    project_group_name = django_filters.CharFilter(
+        name='projectgroup__name',
+        lookup_type='icontains',
+    )
+
+    project = django_filters.CharFilter(
+        name='project__uuid',
+    )
+
+    project_name = django_filters.CharFilter(
+        name='project__name',
+        lookup_type='icontains',
+    )
+
+    class Meta(object):
+        model = models.ProjectGroup.projects.through
+        fields = [
+            'project_group',
+            'project_group_name',
+            'project',
+            'project_name',
+        ]
+
+
 class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.RetrieveModelMixin,
                                     rf_mixins.DestroyModelMixin,
@@ -306,7 +317,8 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
 
     queryset = models.ProjectGroup.projects.through.objects.all()
     serializer_class = serializers.ProjectGroupMembershipSerializer
-    filter_backends = (filters.GenericRoleFilter,)
+    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    filter_class = ProjectGroupMembershipFilter
 
 # XXX: This should be put to models
 filters.set_permissions_for_model(
@@ -332,8 +344,8 @@ class UserFilter(django_filters.FilterSet):
     native_name = django_filters.CharFilter(lookup_type='icontains')
     organization = django_filters.CharFilter(lookup_type='icontains')
     job_title = django_filters.CharFilter(lookup_type='icontains')
-    # XXX: temporary. Should be done by a proper search full-text search engine
     description = django_filters.CharFilter(lookup_type='icontains')
+    email = django_filters.CharFilter(lookup_type='icontains')
     is_active = django_filters.BooleanFilter()
 
     class Meta(object):
@@ -883,5 +895,6 @@ class CreationTimeStatsView(views.APIView):
 filters.set_permissions_for_model(
     User.groups.through,
     customer_path='group__projectrole__project__customer',
+    project_group_path='group__projectrole__project__project_groups',
     project_path='group__projectrole__project',
 )
