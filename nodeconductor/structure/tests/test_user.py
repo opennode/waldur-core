@@ -292,17 +292,17 @@ class UserFilterTest(test.APISimpleTestCase):
             job_title='',
             username='',
             civil_number='',
-            is_active='',
+            is_active=False,
         )
         self.client.force_authenticate(user)
         url = factories.UserFactory.get_list_url()
         user_url = factories.UserFactory.get_url(user)
-        user_that_should_be_found_url = factories.UserFactory.get_url(user_that_should_be_found)
+        user_that_should_not_be_found_url = factories.UserFactory.get_url(user_that_should_be_found)
 
         for field in supported_filters:
             response = self.client.get(url, data={field: getattr(user, field)})
             self.assertContains(response, user_url)
-            self.assertNotContains(response, user_that_should_be_found_url)
+            self.assertNotContains(response, user_that_should_not_be_found_url)
 
     def test_user_list_can_be_filtered_by_fields_with_partial_matching(self):
         supported_filters = [
