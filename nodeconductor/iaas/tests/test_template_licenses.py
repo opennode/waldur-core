@@ -175,9 +175,9 @@ class LicenseStatsTests(test.APITransactionTestCase):
             name='first_template_license', license_type='first license type')
         self.second_template_license = factories.TemplateLicenseFactory(
             name='second_template_license', license_type='second license type')
-        cloud = factories.CloudFactory(customer=self.customer)
+        self.cloud = factories.CloudFactory(customer=self.customer)
         self.template = factories.TemplateFactory()
-        factories.ImageFactory(cloud=cloud, template=self.template)
+        factories.ImageFactory(cloud=self.cloud, template=self.template)
 
         self.template.template_licenses.add(self.first_template_license)
         self.template.template_licenses.add(self.second_template_license)
@@ -256,14 +256,40 @@ class LicenseStatsTests(test.APITransactionTestCase):
         self.assertEqual(
             len(response.data), models.InstanceLicense.objects.exclude(pk=other_instance.pk).all().count())
 
-    def test_licenses_stats_filtering_by_customer(self):
+    def test_licenses_stats_filtering_by_customer_without_instances(self):
         self.client.force_authenticate(self.staff)
-        # instance license for other customer:
-        other_instance = factories.InstanceLicenseFactory()
-        response = self.client.get(self.url, {'customer': self.customer.uuid})
+        # other customer is connected with same template, but doesn't have any instances
+        other_customer = structure_factories.CustomerFactory()
+        other_cloud = factories.CloudFactory(customer=other_customer)
+        factories.ImageFactory(cloud=other_cloud, template=self.template)
+        # when
+        response = self.client.get(self.url, {'customer': other_customer.uuid, 'aggregate': 'project'})
+        # then: response should return data for first_instance and second_instance, but not other_instance
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            len(response.data), models.InstanceLicense.objects.exclude(pk=other_instance.pk).all().count())
+        self.assertFalse(response.data, "Customer doesn't have any instances response data should be empty")
+
+    def test_licenses_stats_filtering_by_customer_with_instances(self):
+        self.client.force_authenticate(self.staff)
+        # other customer is connected with another template and has one instance connected to it
+        other_customer = structure_factories.CustomerFactory()
+        other_project = structure_factories.ProjectFactory(customer=other_customer)
+        other_cloud = factories.CloudFactory(customer=other_customer)
+        other_template = factories.TemplateFactory()
+        factories.ImageFactory(cloud=other_cloud, template=self.template)
+        other_template_license = factories.TemplateLicenseFactory()
+        other_template.template_licenses.add(other_template_license)
+
+        factories.InstanceFactory(
+            template=other_template,
+            cloud_project_membership__project=other_project,
+        )
+        # when
+        response = self.client.get(self.url, {'customer': other_customer.uuid, 'aggregate': 'project'})
+        # then: response should return data for other_instance, but not first_instance and second_instance
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1, "Response should contain data only for one project")
+        self.assertEqual(response.data[0]['project_uuid'], other_project.uuid.hex)
+        self.assertEqual(response.data[0]['count'], 1, "Customer should have only one instance with one license")
 
     def test_licenses_stats_filtering_by_license_name(self):
         self.client.force_authenticate(self.staff)

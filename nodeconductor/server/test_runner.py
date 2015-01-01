@@ -10,10 +10,9 @@ import django
 from django.conf import settings
 from django.test.utils import get_runner
 
-django.setup()
-
 
 def run_tests():
+    django.setup()
     test_runner_class = get_runner(settings)
 
     try:

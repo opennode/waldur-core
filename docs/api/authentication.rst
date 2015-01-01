@@ -20,7 +20,7 @@ Supported token backends
 Password-based backend
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Endpoint url: ``/api-auth/password/``
+Endpoint url: **/api-auth/password/**
 
 Valid request example:
 

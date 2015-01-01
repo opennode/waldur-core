@@ -1,7 +1,7 @@
 Instance list
 -------------
 
-To get a list of instances, run GET against */api/instances/* as authenticated user. Note that a user can
+To get a list of instances, run GET against **/api/instances/** as authenticated user. Note that a user can
 only see connected instances:
 
 - instances that belong to a project where a user has a role.
