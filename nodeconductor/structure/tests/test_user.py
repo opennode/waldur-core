@@ -320,5 +320,4 @@ class UserFilterTest(test.APISimpleTestCase):
 
         for field in supported_filters:
             response = self.client.get(url, data={field: getattr(user, field)[:-1]})
-            print field, getattr(user, field)[:-1]
             self.assertContains(response, user_url)
