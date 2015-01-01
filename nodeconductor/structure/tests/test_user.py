@@ -265,3 +265,50 @@ class PasswordSerializerTest(unittest.TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn('This field is required.',
                       serializer.errors['password'])
+
+
+class UserFilterTest(test.APISimpleTestCase):
+
+    def test_user_direct_fields_filtering(self):
+        supported_filters = [
+            'full_name',
+            'native_name',
+            'organization',
+            'email',
+            'phone_number',
+            'description',
+            'job_title',
+            'username',
+            'civil_number',
+            'is_active',
+        ]
+        user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user)
+
+        for field in supported_filters:
+            url = factories.UserFactory.get_list_url()
+            user_url = factories.UserFactory.get_url(user)
+            response = self.client.get(url, data={field: getattr(user, field)})
+            found_users = {'url': user['url'] for user in response.data}
+            self.assertDictContainsSubset(found_users, {'url': user_url})
+
+    def test_user_direct_fields_approximate_filtering(self):
+        supported_filters = [
+            'full_name',
+            'native_name',
+            'organization',
+            'email',
+            'phone_number',
+            'description',
+            'job_title',
+            'civil_number',
+        ]
+        user = factories.UserFactory()
+        self.client.force_authenticate(user)
+
+        for field in supported_filters:
+            url = factories.UserFactory.get_list_url()
+            user_url = factories.UserFactory.get_url(user)
+            response = self.client.get(url, data={field: getattr(user, field)[:-1]})
+            found_users = {'url': user['url'] for user in response.data}
+            self.assertDictContainsSubset(found_users, {'url': user_url})
