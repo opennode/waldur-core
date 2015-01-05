@@ -6,22 +6,21 @@ IaaS instance.
 
 The following relationships are true for cloud operations:
 
-- Clouds are connected to customers, whereas the cloud may belong to one customer only, and the customer may have
-  multiple clouds.
-- Clouds are connected with projects, whereas the cloud may belong to multiple projects, and the project may contain
-  multiple clouds.
+- Clouds belong to customers. A customer can have any number of clouds.
+- Clouds are connected with projects, whereas the cloud may be linked to multiple projects, and the project may
+  be linked multiple clouds.
 - Staff members can list all available clouds for any project and/or customer and create new clouds.
 - Customer owners can list all clouds that belong to any of the customers they own. Customer owners can also create
   clouds for the customers they own.
-- Project administrators can list all the clouds that are connected with any of the projects they are administrators in.
-- Project managers can list all the clouds that are connected with any of the projects they are managers in.
+- Project administrators can list all the clouds that are connected to any of the projects they are administrators in.
+- Project managers can list all the clouds that are connected to any of the projects they are managers in.
 
 Customer list
 -------------
 
 To get a list of cloud, run GET against **/api/clouds/** as authenticated user.
 
-Filtering of cloud list is supported through HTTP query parameters, the following fields are supported:
+Filtering cloud list is supported through HTTP query parameters, the following fields are supported:
 
 - ?name=<cloud name>
 - ?customer=<customer uuid>

@@ -99,7 +99,7 @@ class InstanceFilter(django_filters.FilterSet):
             'project',
             'project_group',
             'template_name',
-            'start_time'
+            'start_time',
         ]
         order_by = [
             'hostname',
@@ -493,7 +493,7 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
             'instance__cloud_project_membership__project__project_groups__uuid': 'project_group_uuid',
             'instance__cloud_project_membership__project__project_groups__name': 'project_group_name',
             'template_license__license_type': 'type',
-            'template_license__name': 'name'
+            'template_license__name': 'name',
         }
         for d in queryset:
             for db_name, output_name in name_replace_map.iteritems():
@@ -809,7 +809,7 @@ class CloudViewSet(core_viewsets.ModelViewSet):
     lookup_field = 'uuid'
     permission_classes = (
         permissions.IsAuthenticated,
-        permissions.DjangoObjectPermissions
+        permissions.DjangoObjectPermissions,
     )
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
     filter_class = CloudFilter
