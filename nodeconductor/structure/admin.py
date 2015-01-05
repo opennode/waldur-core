@@ -14,6 +14,15 @@ class ProjectAdmin(admin.ModelAdmin):
     readonly_fields = ['customer']
 
 
+class ProjectGroupAdmin(admin.ModelAdmin):
+
+    fields = ('name', 'description', 'customer')
+
+    list_display = ['name', 'uuid']
+    search_fields = ['name', 'uuid']
+    readonly_fields = ['customer']
+
+
 admin.site.register(models.Customer)
 admin.site.register(models.Project, ProjectAdmin)
-admin.site.register(models.ProjectGroup)
+admin.site.register(models.ProjectGroup, ProjectGroupAdmin)
