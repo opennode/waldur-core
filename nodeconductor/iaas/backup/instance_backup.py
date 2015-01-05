@@ -70,6 +70,8 @@ class InstanceBackupStrategy(BackupStrategy):
             data_volume_id=copied_data_volume_id
         )
 
+        return restored_instance
+
     @classmethod
     def delete(cls, source, additional_data):
         try:
