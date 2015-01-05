@@ -392,8 +392,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # TODO: refactor to a separate endpoint or structure
         # a special query for all users with assigned privileges that the current user can remove privileges from
-        potential = self.request.QUERY_PARAMS.get('potential', None)
-        if potential is not None:
+        if 'potential' in self.request.QUERY_PARAMS:
             # XXX: Let the DB cry...
             connected_customers_query = models.Customer.objects.filter(
                 Q(roles__permission_group__user=user)
