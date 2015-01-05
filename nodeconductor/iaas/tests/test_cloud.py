@@ -265,3 +265,23 @@ class CloudPermissionTest(test.APITransactionTestCase):
             'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
             'auth_url': 'http://example.com:5000/v2',
         }
+
+
+class CloudFilteringTest(test.APITransactionTestCase):
+
+    def test_cloud_filtering_does_not_raise_internal_error(self):
+        fields = [
+            'name',
+            'customer',
+            'customer_name',
+            'customer_native_name',
+            'project',
+            'project_name',
+        ]
+
+        user = structure_factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=user)
+
+        for field in fields:
+            response = self.client.get(factories.CloudFactory.get_list_url(), {field: 'random_string'})
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
