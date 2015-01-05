@@ -218,12 +218,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return super(ProjectViewSet, self).get_serializer_class()
 
-    def destroy(self, request, *args, **kwargs):
-        try:
-            return super(ProjectViewSet, self).destroy(request, *args, **kwargs)
-        except ValidationError as e:
-            return Response({'detail': e.message}, status=status.HTTP_409_CONFLICT)
-
 
 class ProjectGroupFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
