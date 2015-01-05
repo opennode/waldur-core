@@ -60,7 +60,7 @@ Deletion of a customer
 ----------------------
 
 Deletion of a customer is done through sending a DELETE request to the customer instance URI. Please note,
-that if a customer has connected projects or project groups, deletion request will fail with 403 response code.
+that if a customer has connected projects or project groups, deletion request will fail with 409 response code.
 
 Valid request example (token is user specific):
 

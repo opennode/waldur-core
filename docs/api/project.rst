@@ -87,6 +87,8 @@ Deletion of a project
 ---------------------
 
 Deletion of a project is done through sending a DELETE request to the project instance URI.
+Please note, that if a project has connected instances, deletion request will fail with 409 response code.
+
 Valid request example (token is user specific):
 
 .. code-block:: http
