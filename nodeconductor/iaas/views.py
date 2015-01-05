@@ -763,6 +763,41 @@ class FlavorViewSet(core_viewsets.ReadOnlyModelViewSet):
     filter_backends = (structure_filters.GenericRoleFilter,)
 
 
+class CloudFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_type='icontains')
+    customer = django_filters.CharFilter(
+        name='customer__uuid',
+    )
+    customer_name = django_filters.CharFilter(
+        lookup_type='icontains',
+        name='customer__name',
+    )
+    customer_native_name = django_filters.CharFilter(
+        lookup_type='icontains',
+        name='customer__native_name',
+    )
+    project = django_filters.CharFilter(
+        name='cloudprojectmembership__project__uuid',
+        distinct=True,
+    )
+    project_name = django_filters.CharFilter(
+        name='cloudprojectmembership__project__name',
+        lookup_type='icontains',
+        distinct=True,
+    )
+
+    class Meta(object):
+        model = models.Cloud
+        fields = [
+            'name',
+            'customer',
+            'customer_name',
+            'customer_native_name',
+            'project',
+            'project_name',
+        ]
+
+
 class CloudViewSet(core_viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
 
@@ -772,9 +807,12 @@ class CloudViewSet(core_viewsets.ModelViewSet):
     queryset = models.Cloud.objects.all().prefetch_related('flavors')
     serializer_class = serializers.CloudSerializer
     lookup_field = 'uuid'
-    filter_backends = (structure_filters.GenericRoleFilter,)
-    permission_classes = (permissions.IsAuthenticated,
-                          permissions.DjangoObjectPermissions)
+    permission_classes = (
+        permissions.IsAuthenticated,
+        permissions.DjangoObjectPermissions
+    )
+    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
+    filter_class = CloudFilter
 
     def _check_permission(self, cloud):
         """
