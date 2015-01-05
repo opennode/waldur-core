@@ -75,13 +75,14 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
     resource_quota = serializers.SerializerMethodField('get_resource_quota')
     resource_quota_usage = serializers.SerializerMethodField('get_resource_quota_usage')
     customer_native_name = serializers.Field(source='customer.native_name')
+    customer_abbreviation = serializers.Field(source='customer.abbreviation')
 
     class Meta(object):
         model = models.Project
         fields = (
             'url', 'uuid',
             'name',
-            'customer', 'customer_name', 'customer_native_name',
+            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups',
             'resource_quota', 'resource_quota_usage',
             'description',
@@ -203,6 +204,7 @@ class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
                              serializers.HyperlinkedModelSerializer):
     projects = BasicProjectSerializer(many=True, read_only=True)
     customer_native_name = serializers.Field(source='customer.native_name')
+    customer_abbreviation = serializers.Field(source='customer.abbreviation')
 
     class Meta(object):
         model = models.ProjectGroup
@@ -210,7 +212,7 @@ class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
             'url',
             'uuid',
             'name',
-            'customer', 'customer_name', 'customer_native_name',
+            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'projects',
             'description',
         )

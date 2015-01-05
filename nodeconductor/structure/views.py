@@ -86,6 +86,24 @@ class ProjectFilter(django_filters.FilterSet):
         distinct=True,
     )
 
+    customer_name = django_filters.CharFilter(
+        name='customer__name',
+        distinct=True,
+        lookup_type='icontains'
+    )
+
+    customer_native_name = django_filters.CharFilter(
+        name='customer__native_name',
+        distinct=True,
+        lookup_type='icontains'
+    )
+
+    customer_abbreviation = django_filters.CharFilter(
+        name='customer__abbreviation',
+        distinct=True,
+        lookup_type='icontains'
+    )
+
     project_group = django_filters.CharFilter(
         name='project_groups__uuid',
         distinct=True,
@@ -128,7 +146,7 @@ class ProjectFilter(django_filters.FilterSet):
             'project_group',
             'project_group_name',
             'name',
-            'customer',
+            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'description',
             # quotas
             'vcpu',
@@ -142,6 +160,12 @@ class ProjectFilter(django_filters.FilterSet):
             '-name',
             'project_groups__name',
             '-project_groups__name',
+            'customer__native_name',
+            '-customer__native_name',
+            'customer__name',
+            '-customer__name',
+            'customer__abbreviation',
+            '-customer__abbreviation',
             'cloudprojectmembership__resource_quota__vcpu',
             '-cloudprojectmembership__resource_quota__vcpu',
             'cloudprojectmembership__resource_quota__ram',
@@ -162,6 +186,9 @@ class ProjectFilter(django_filters.FilterSet):
             'max_instances': 'cloudprojectmembership__resource_quota__max_instances',
             'storage': 'cloudprojectmembership__resource_quota__storage',
             'backup': 'cloudprojectmembership__resource_quota__backup_storage',
+            'customer_name': 'customer__name',
+            'customer_abbreviation': 'customer__abbreviation',
+            'customer_native_name': 'customer__native_name',
 
             # Backwards compatibility
             'project_groups__name': 'project_groups__name',
@@ -181,7 +208,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend,)
+    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
     filter_class = ProjectFilter
@@ -220,7 +247,22 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
 class ProjectGroupFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
+        name='customer__uuid',
+        distinct=True,
+    )
+    customer_name = django_filters.CharFilter(
         name='customer__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+    customer_native_name = django_filters.CharFilter(
+        name='customer__native_name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
+    customer_abbreviation = django_filters.CharFilter(
+        name='customer__abbreviation',
         distinct=True,
         lookup_type='icontains',
     )
@@ -232,13 +274,25 @@ class ProjectGroupFilter(django_filters.FilterSet):
         fields = [
             'name',
             'customer',
+            'customer_name',
+            'customer_native_name',
+            'customer_abbreviation',
         ]
         order_by = [
             'name',
             '-name',
             'customer__name',
             '-customer__name',
+            'customer__native_name',
+            '-customer__native_name',
+            'customer__abbreviation',
+            '-customer__abbreviation',
         ]
+        order_by_mapping = {
+            'customer_name': 'customer__name',
+            'customer_abbreviation': 'customer__abbreviation',
+            'customer_native_name': 'customer__native_name',
+        }
 
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
@@ -249,7 +303,7 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
     queryset = models.ProjectGroup.objects.all()
     serializer_class = serializers.ProjectGroupSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
     # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
     filter_class = ProjectGroupFilter
 
