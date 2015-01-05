@@ -45,6 +45,8 @@ Deletion of a project group
 ---------------------------
 
 Deletion of a project group is done through sending a DELETE request to the project group instance URI.
+Please note, that if a project group has connected projects, deletion request will fail with 409 response code.
+
 Valid request example (token is user specific):
 
 .. code-block:: http

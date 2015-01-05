@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import time
 
 from django.contrib import auth
-from django.core.exceptions import ValidationError
 from django.db.models.query_utils import Q
 from django.http.response import Http404
 import django_filters
@@ -79,15 +78,6 @@ class CustomerViewSet(viewsets.ModelViewSet):
                           rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     filter_class = CustomerFilter
-
-    def pre_delete(self, obj):
-        projects = models.Project.objects.filter(customer=obj).exists()
-        if projects:
-            raise PermissionDenied('Cannot delete customer with existing projects')
-
-        project_groups = models.ProjectGroup.objects.filter(customer=obj).exists()
-        if project_groups:
-            raise PermissionDenied('Cannot delete customer with existing project_groups')
 
 
 class ProjectFilter(django_filters.FilterSet):
@@ -227,12 +217,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return super(ProjectViewSet, self).get_serializer_class()
 
-    def destroy(self, request, *args, **kwargs):
-        try:
-            return super(ProjectViewSet, self).destroy(request, *args, **kwargs)
-        except ValidationError as e:
-            return Response({'detail': e.message}, status=status.HTTP_409_CONFLICT)
-
 
 class ProjectGroupFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
@@ -268,12 +252,6 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
     filter_class = ProjectGroupFilter
-
-    def destroy(self, request, *args, **kwargs):
-        try:
-            return super(ProjectGroupViewSet, self).destroy(request, *args, **kwargs)
-        except ValidationError as e:
-            return Response({'detail': e.message}, status=status.HTTP_409_CONFLICT)
 
 
 class ProjectGroupMembershipFilter(django_filters.FilterSet):
@@ -889,12 +867,3 @@ class CreationTimeStatsView(views.APIView):
 
         stats = serializer.get_stats(request.user)
         return Response(stats, status=status.HTTP_200_OK)
-
-
-# XXX: This should be put to models
-filters.set_permissions_for_model(
-    User.groups.through,
-    customer_path='group__projectrole__project__customer',
-    project_group_path='group__projectrole__project__project_groups',
-    project_path='group__projectrole__project',
-)

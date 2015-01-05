@@ -1,5 +1,4 @@
 from __future__ import unicode_literals
-from django.core.exceptions import ValidationError
 
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
@@ -149,7 +148,7 @@ class Project(DescribableMixin, UuidMixin, TimeStampedModel):
         project_group_path = 'project_groups'
 
     name = models.CharField(max_length=80)
-    customer = models.ForeignKey(Customer, related_name='projects')
+    customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
@@ -243,7 +242,7 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
         project_group_path = 'self'
 
     name = models.CharField(max_length=80)
-    customer = models.ForeignKey(Customer, related_name='project_groups')
+    customer = models.ForeignKey(Customer, related_name='project_groups', on_delete=models.PROTECT)
     projects = models.ManyToManyField(Project,
                                       related_name='project_groups')
 
@@ -300,50 +299,3 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
             queryset = queryset.filter(role_type=role_type)
 
         return queryset.exists()
-
-
-# Signal handlers
-@receiver(
-    signals.post_save,
-    sender=Project,
-    dispatch_uid='nodeconductor.structure.models.create_project_roles',
-)
-def create_project_roles(sender, instance, created, **kwargs):
-    if created:
-        with transaction.atomic():
-            admin_group = Group.objects.create(name='Role: {0} admin'.format(instance.uuid))
-            mgr_group = Group.objects.create(name='Role: {0} mgr'.format(instance.uuid))
-
-            instance.roles.create(role_type=ProjectRole.ADMINISTRATOR, permission_group=admin_group)
-            instance.roles.create(role_type=ProjectRole.MANAGER, permission_group=mgr_group)
-
-
-@receiver(
-    signals.post_save,
-    sender=Customer,
-    dispatch_uid='nodeconductor.structure.models.create_customer_roles',
-)
-def create_customer_roles(sender, instance, created, **kwargs):
-    if created:
-        with transaction.atomic():
-            owner_group = Group.objects.create(name='Role: {0} owner'.format(instance.uuid))
-
-            instance.roles.create(role_type=CustomerRole.OWNER, permission_group=owner_group)
-
-
-@receiver(
-    signals.post_save,
-    sender=ProjectGroup,
-    dispatch_uid='nodeconductor.structure.models.create_project_group_roles',
-)
-def create_project_group_roles(sender, instance, created, **kwargs):
-    if created:
-        with transaction.atomic():
-            mgr_group = Group.objects.create(name='Role: {0} group mgr'.format(instance.uuid))
-            instance.roles.create(role_type=ProjectGroupRole.MANAGER, permission_group=mgr_group)
-
-
-@receiver(signals.pre_delete, sender=ProjectGroup)
-def prevent_project_group_deletion_if_connected_to_project(sender, instance, **kwargs):
-    if Project.objects.filter(project_groups=instance).exists():
-        raise ValidationError('Cannot delete a project group that has connected projects')

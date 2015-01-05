@@ -13,7 +13,6 @@ from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 
-from nodeconductor.core import fields
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.core.signals import pre_serializer_fields
@@ -236,7 +235,8 @@ class FloatingIP(core_models.UuidMixin, CloudProjectMember):
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
-               CloudProjectMember,
+               # This needs to be inlined in order to set on_delete
+               # CloudProjectMember,
                models.Model):
     """
     A generalization of a single virtual machine.
@@ -301,6 +301,8 @@ class Instance(core_models.UuidMixin,
             if s not in STABLE_STATES
         ])
 
+    # This needs to be inlined in order to set on_delete
+    cloud_project_membership = models.ForeignKey(CloudProjectMembership, related_name='+', on_delete=models.PROTECT)
     # XXX: ideally these fields have to be added somewhere in iaas.backup module
     backups = ct_generic.GenericRelation('backup.Backup')
     backup_schedules = ct_generic.GenericRelation('backup.BackupSchedule')
@@ -664,9 +666,3 @@ def create_dummy_security_groups(sender, instance=None, created=False, **kwargs)
             to_port=443,
             cidr='0.0.0.0/0',
         )
-
-
-@receiver(signals.pre_delete, sender=structure_models.Project)
-def prevent_project_deletion_if_connected_to_instances(sender, instance, **kwargs):
-    if Instance.objects.filter(cloud_project_membership__project=instance).exists():
-        raise ValidationError('Cannot delete a project that has connected Instances')
