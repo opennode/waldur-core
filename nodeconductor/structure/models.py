@@ -149,7 +149,7 @@ class Project(DescribableMixin, UuidMixin, TimeStampedModel):
         project_group_path = 'project_groups'
 
     name = models.CharField(max_length=80)
-    customer = models.ForeignKey(Customer, related_name='projects')
+    customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
@@ -243,7 +243,7 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
         project_group_path = 'self'
 
     name = models.CharField(max_length=80)
-    customer = models.ForeignKey(Customer, related_name='project_groups')
+    customer = models.ForeignKey(Customer, related_name='project_groups', on_delete=models.PROTECT)
     projects = models.ManyToManyField(Project,
                                       related_name='project_groups')
 

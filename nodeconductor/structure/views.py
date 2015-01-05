@@ -80,15 +80,6 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     filter_class = CustomerFilter
 
-    def pre_delete(self, obj):
-        projects = models.Project.objects.filter(customer=obj).exists()
-        if projects:
-            raise PermissionDenied('Cannot delete customer with existing projects')
-
-        project_groups = models.ProjectGroup.objects.filter(customer=obj).exists()
-        if project_groups:
-            raise PermissionDenied('Cannot delete customer with existing project_groups')
-
 
 class ProjectFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
