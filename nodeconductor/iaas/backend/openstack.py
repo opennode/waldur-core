@@ -591,7 +591,7 @@ class OpenStackBackend(object):
         return stats
 
     # Instance related methods
-    def provision_instance(self, instance, backend_flavor_id):
+    def provision_instance(self, instance, backend_flavor_id, system_volume_id, data_volume_id):
         logger.info('About to boot instance %s', instance.uuid)
         try:
             membership = instance.cloud_project_membership
@@ -645,35 +645,38 @@ class OpenStackBackend(object):
             backend_flavor = nova.flavors.get(backend_flavor_id)
             backend_image = glance.images.get(image.backend_id)
 
-            system_volume_name = '{0}-system'.format(instance.hostname)
-            logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
+            if system_volume_id is None:
+                system_volume_name = '{0}-system'.format(instance.hostname)
+                logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
+                system_volume = cinder.volumes.create(
+                    size=self.get_backend_disk_size(instance.system_volume_size),
+                    display_name=system_volume_name,
+                    display_description='',
+                    imageRef=backend_image.id,
+                )
+                system_volume_id = system_volume.id
 
-            system_volume = cinder.volumes.create(
-                size=self.get_backend_disk_size(instance.system_volume_size),
-                display_name=system_volume_name,
-                display_description='',
-                imageRef=backend_image.id,
-            )
+            if data_volume_id is None:
+                data_volume_name = '{0}-data'.format(instance.hostname)
+                logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
+                data_volume = cinder.volumes.create(
+                    size=self.get_backend_disk_size(instance.data_volume_size),
+                    display_name=data_volume_name,
+                    display_description='',
+                )
+                data_volume_id = data_volume.id
 
-            data_volume_name = '{0}-data'.format(instance.hostname)
-            logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
-            data_volume = cinder.volumes.create(
-                size=self.get_backend_disk_size(instance.data_volume_size),
-                display_name=data_volume_name,
-                display_description='',
-            )
-
-            if not self._wait_for_volume_status(system_volume.id, cinder, 'available', 'error'):
+            if not self._wait_for_volume_status(system_volume_id, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for system volume to become available',
-                    instance.uuid, system_volume.id,
+                    instance.uuid, system_volume_id,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
 
-            if not self._wait_for_volume_status(data_volume.id, cinder, 'available', 'error'):
+            if not self._wait_for_volume_status(data_volume_id, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for data volume to become available',
-                    instance.uuid, data_volume.id,
+                    instance.uuid, data_volume_id,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
 
@@ -689,14 +692,14 @@ class OpenStackBackend(object):
                         'destination_type': 'volume',
                         'device_type': 'disk',
                         'source_type': 'volume',
-                        'uuid': system_volume.id,
+                        'uuid': system_volume_id,
                         'delete_on_termination': True,
                     },
                     {
                         'destination_type': 'volume',
                         'device_type': 'disk',
                         'source_type': 'volume',
-                        'uuid': data_volume.id,
+                        'uuid': data_volume_id,
                         'delete_on_termination': True,
                     },
                     # This should have worked by creating an empty volume.
@@ -721,8 +724,8 @@ class OpenStackBackend(object):
             )
 
             instance.backend_id = server.id
-            instance.system_volume_id = system_volume.id
-            instance.data_volume_id = data_volume.id
+            instance.system_volume_id = system_volume_id
+            instance.data_volume_id = data_volume_id
             instance.save()
 
             if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
@@ -859,6 +862,42 @@ class OpenStackBackend(object):
         else:
             logger.info('Successfully created backup for instance %s', instance.uuid)
         return backups
+
+    def copy_volumes(self, membership, volume_ids):
+        logger.debug('About to copy volumes %s', ', '.join(volume_ids))
+        try:
+            session = self.create_tenant_session(membership)
+            cinder = self.create_cinder_client(session)
+
+            copied_volume_ids = []
+            for volume_id in volume_ids:
+                snapshot = self.create_snapshot(volume_id, cinder)
+                copied_volume_ids.append(self.create_temporary_volume(snapshot, cinder))
+                self.delete_temporary_snapshot(snapshot, cinder)
+
+        except (cinder_exceptions.ClientException,
+                keystone_exceptions.ClientException, CloudBackendInternalError) as e:
+            logger.exception('Failed to copy volumes %s', ', '.join(volume_ids))
+            six.reraise(CloudBackendError, e)
+        else:
+            logger.info('Successfully copied volumes %s', ', '.join(volume_ids))
+        return copied_volume_ids
+
+    def delete_volumes(self, membership, volume_ids):
+        logger.debug('About to delete volumes %s', ', '.join(volume_ids))
+        try:
+            session = self.create_tenant_session(membership)
+            cinder = self.create_cinder_client(session)
+
+            for volume_id in volume_ids:
+                self.delete_temporary_volume(volume_id, cinder)
+
+        except (cinder_exceptions.ClientException,
+                keystone_exceptions.ClientException, CloudBackendInternalError) as e:
+            logger.exception('Failed to delete volumes %s', ', '.join(volume_ids))
+            six.reraise(CloudBackendError, e)
+        else:
+            logger.info('Successfully deleted volumes %s', ', '.join(volume_ids))
 
     def restore_instance(self, instance, instance_backup_ids):
         logger.debug('About to restore instance %s backup', instance.uuid)
