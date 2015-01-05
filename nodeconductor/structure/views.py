@@ -867,11 +867,3 @@ class CreationTimeStatsView(views.APIView):
 
         stats = serializer.get_stats(request.user)
         return Response(stats, status=status.HTTP_200_OK)
-
-
-# XXX: This should be put to models
-filters.set_permissions_for_model(
-    User.groups.through,
-    customer_path='group__projectrole__project__customer',
-    project_path='group__projectrole__project',
-)
