@@ -53,11 +53,11 @@ def delete_zabbix_host_and_service(instance):
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='begin_provisioning', desired_state='set_online')
-def schedule_provisioning(instance_uuid, backend_flavor_id):
+def schedule_provisioning(instance_uuid, backend_flavor_id, system_volume_id=None, data_volume_id=None):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
     backend = instance.cloud_project_membership.cloud.get_backend()
-    backend.provision_instance(instance, backend_flavor_id)
+    backend.provision_instance(instance, backend_flavor_id, system_volume_id, data_volume_id)
     create_zabbix_host_and_service(instance)
 
 
