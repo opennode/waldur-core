@@ -1,5 +1,4 @@
 from __future__ import unicode_literals
-from django.core.exceptions import ValidationError
 
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
@@ -341,9 +340,3 @@ def create_project_group_roles(sender, instance, created, **kwargs):
         with transaction.atomic():
             mgr_group = Group.objects.create(name='Role: {0} group mgr'.format(instance.uuid))
             instance.roles.create(role_type=ProjectGroupRole.MANAGER, permission_group=mgr_group)
-
-
-@receiver(signals.pre_delete, sender=ProjectGroup)
-def prevent_project_group_deletion_if_connected_to_project(sender, instance, **kwargs):
-    if Project.objects.filter(project_groups=instance).exists():
-        raise ValidationError('Cannot delete a project group that has connected projects')
