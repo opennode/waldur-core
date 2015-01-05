@@ -95,7 +95,7 @@ class BackupViewSet(viewsets.CreateModelViewSet):
     def restore(self, request, uuid):
         backup = self._get_backup(request.user, uuid)
         try:
-            backup.start_restoration()
+            backup.start_restoration(**request.DATA)
         except TransitionNotAllowed:
             return Response('Cannot restore a backup in state \'%s\'' % backup.get_state_display(),
                             status=status.HTTP_400_BAD_REQUEST)

@@ -39,7 +39,8 @@ class InstanceBackupStrategyTestCase(unittest.TestCase):
         self.assertEqual(result, expected)
 
     def test_strategy_restore_method_calls_backend_restore_instance_method(self):
-        InstanceBackupStrategy.restore(self.instance, self.additional_data, self.key, self.flavor, 'new_hostname')
+        InstanceBackupStrategy.restore(
+            self.instance, self.additional_data, self.key.uuid.hex, self.flavor.uuid.hex, 'new_hostname')
         self.mocked_backed.copy_volumes.assert_called_once_with(
             membership=self.instance.cloud_project_membership,
             volume_ids=[self.copied_system_volume_id, self.copied_data_volume_id],
@@ -48,7 +49,7 @@ class InstanceBackupStrategyTestCase(unittest.TestCase):
 
     def test_strategy_restore_method_creates_new_instance(self):
         new_instance = InstanceBackupStrategy.restore(
-            self.instance, self.additional_data, self.key, self.flavor, 'new_hostname')
+            self.instance, self.additional_data, self.key.uuid.hex, self.flavor.uuid.hex, 'new_hostname')
         self.assertEqual(new_instance.hostname, 'new_hostname')
         self.assertNotEqual(new_instance.id, self.instance.id)
 

@@ -16,8 +16,7 @@ def process_backup_task(backup_uuid):
         if source is not None:
             logger.debug('About to perform backup for backup source: %s', backup.backup_source)
             try:
-                additional_data = backup.get_strategy().backup(backup.backup_source)
-                backup.set_additional_data(additional_data)
+                backup.additional_data = backup.get_strategy().backup(backup.backup_source)
                 backup.confirm_backup()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to perform backup for backup source: %s', backup.backup_source)
@@ -31,14 +30,14 @@ def process_backup_task(backup_uuid):
 
 
 @shared_task
-def restoration_task(backup_uuid):
+def restoration_task(backup_uuid, key_uuid, flavor_uuid):
     try:
         backup = models.Backup.objects.get(uuid=backup_uuid)
         source = backup.backup_source
         if source is not None:
             logger.debug('About to restore backup for backup source: %s', backup.backup_source)
             try:
-                backup.get_strategy().restore(backup.backup_source, backup.additional_data)
+                backup.get_strategy().restore(backup.backup_source, backup.additional_data, key_uuid, flavor_uuid)
                 backup.confirm_restoration()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to restore backup for backup source: %s', backup.backup_source)

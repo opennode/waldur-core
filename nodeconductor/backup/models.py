@@ -3,12 +3,13 @@ from __future__ import unicode_literals
 from datetime import datetime, timedelta
 
 from croniter.croniter import croniter
-from django.db import models, IntegrityError
+from django.db import models
 from django.utils import timezone, six
 from django.utils.encoding import python_2_unicode_compatible
 from django.contrib.contenttypes import models as ct_models
 from django.contrib.contenttypes import generic as ct_generic
 from django_fsm import transition, FSMIntegerField
+from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core import fields as core_fields
@@ -148,7 +149,7 @@ class Backup(core_models.UuidMixin,
 
     state = FSMIntegerField(default=States.READY, choices=STATE_CHOICES)
     # TODO: use https://github.com/bradjasper/django-jsonfield after python update (to 2.7)
-    additional_data = models.TextField(
+    additional_data = JSONField(
         blank=True,
         help_text='Additional information about backup, can be used for backup restoration or deletion')
 
@@ -170,7 +171,7 @@ class Backup(core_models.UuidMixin,
         self.__save()
         tasks.process_backup_task.delay(self.uuid.hex)
 
-    def start_restoration(self):
+    def start_restoration(self, **kwargs):
         """
         Starts backup restoration task.
         If 'replace_original' is True, should attempt to rewrite the latest state. False by default.
@@ -179,7 +180,7 @@ class Backup(core_models.UuidMixin,
 
         self._starting_restoration()
         self.__save()
-        tasks.restoration_task.delay(self.uuid.hex)
+        tasks.restoration_task.delay(self.uuid.hex, kwargs['key'], kwargs['flavor'])
 
     def start_deletion(self):
         """

@@ -2,9 +2,10 @@ from django.utils import six
 
 from nodeconductor.backup.models import BackupStrategy
 from nodeconductor.backup.exceptions import BackupStrategyExecutionError
+from nodeconductor.core.models import SshPublicKey
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.backend import CloudBackendError
-from nodeconductor.iaas.models import Instance
+from nodeconductor.iaas.models import Instance, Flavor
 
 
 class InstanceBackupStrategy(BackupStrategy):
@@ -32,10 +33,12 @@ class InstanceBackupStrategy(BackupStrategy):
         return additional_data
 
     @classmethod
-    def restore(cls, source, additional_data, key, flavor, hostname=None):
+    def restore(cls, source, additional_data, key_uuid, flavor_uuid, hostname=None):
         """
         Create new instance from backup, key and flavor has to be defined, because old one could be deleted
         """
+        key = SshPublicKey.objects.get(uuid=key_uuid)
+        flavor = Flavor.objects.get(uuid=flavor_uuid)
         try:
             backend = cls._get_backend(source)
             copied_system_volume_id, copied_data_volume_id = backend.copy_volumes(
