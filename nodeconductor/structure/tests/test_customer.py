@@ -415,8 +415,8 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
             response = self.client.delete(self._get_customer_url(customer))
 
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-            self.assertDictContainsSubset({'detail': 'Cannot delete customer with existing project_groups'},
+            self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+            self.assertDictContainsSubset({'detail': 'Cannot delete customer with existing project groups'},
                                           response.data)
 
     def test_user_cannot_delete_customer_with_associated_projects_if_he_is_staff(self):
@@ -427,7 +427,7 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
             response = self.client.delete(self._get_customer_url(customer))
 
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
             self.assertDictContainsSubset({'detail': 'Cannot delete customer with existing projects'},
                                           response.data)
 

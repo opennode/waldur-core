@@ -9,6 +9,7 @@ Supported filters are:
 - ?service_name - case insensitive matching of a service name
 - ?customer_name - case insensitive matching of a customer name
 - ?customer_native_name - case insensitive matching of a customer native name
+- ?customer_abbreviation - case insensitive matching of a customer abbreviation
 - ?project_name - case insensitive matching of a project name
 - ?project_group_name - case insensitive matching of a project_group name
 - ?agreed_sla - exact match of SLA numbers
@@ -20,6 +21,7 @@ Ordering can be done by the following fields (prefix with **-** for descending o
 - ?o=hostname
 - ?o=template_name
 - ?o=customer_name
+- ?o=customer_abbreviation
 - ?o=customer_native_name
 - ?o=project_name
 - ?o=project_group_name

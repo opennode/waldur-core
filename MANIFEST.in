@@ -1,2 +1,3 @@
 include *.md *.rst
 recursive-include nodeconductor/templates *.html
+recursive-include nodeconductor/landing/templates *.html

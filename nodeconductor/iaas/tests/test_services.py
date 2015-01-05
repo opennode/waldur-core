@@ -33,6 +33,7 @@ def _service_to_dict(service):
         'template_name': service.template.name,
         'customer_name': service.cloud_project_membership.project.customer.name,
         'customer_native_name': service.cloud_project_membership.project.customer.native_name,
+        'customer_abbreviation': service.cloud_project_membership.project.customer.abbreviation,
         'project_groups': project_groups,
         'actual_sla': None,
         'agreed_sla': service.agreed_sla,

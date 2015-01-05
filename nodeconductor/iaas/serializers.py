@@ -536,6 +536,7 @@ class ServiceSerializer(serializers.Serializer):
     template_name = serializers.Field(source='template__name')
     customer_name = serializers.Field(source='cloud_project_membership__project__customer__name')
     customer_native_name = serializers.Field(source='cloud_project_membership__project__customer__native_name')
+    customer_abbreviation = serializers.Field(source='cloud_project_membership__project__customer__abbreviation')
     project_name = serializers.Field(source='cloud_project_membership__project__name')
     project_groups = serializers.SerializerMethodField('get_project_groups')
 
@@ -546,6 +547,7 @@ class ServiceSerializer(serializers.Serializer):
             'hostname', 'template_name',
             'customer_name',
             'customer_native_name',
+            'customer_abbreviation',
             'project_name', 'project_groups',
             'agreed_sla', 'actual_sla',
             'service_type',

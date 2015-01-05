@@ -21,8 +21,9 @@ In addition, several custom filters are supported:
 
 - ?current - filters out user making a request. Useful for getting information about a currently logged in user.
 - ?civil_number=XXX - filters out users with a specified civil number
-- ?can_manage - filter for users with project roles that a request user can manage (i.e. remove privileges).
-- ?is_active=True|False - show only active (non-active) users.
+- ?is_active=True|False - show only active (non-active) users
+- ?potential - shows users that have common connections to the customers and are potential collaborators
+- ?potential_customer=<Customer UUID> - optionally filter potential users by customer UUID
 
 Ordering is supported by the fields below. Descending sorting can be achieved through prefixing
 field name with a dash (**-**).

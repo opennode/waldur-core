@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import time
 
 from django.contrib import auth
-from django.core.exceptions import ValidationError
 from django.db.models.query_utils import Q
 from django.http.response import Http404
 import django_filters
@@ -80,20 +79,29 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     filter_class = CustomerFilter
 
-    def pre_delete(self, obj):
-        projects = models.Project.objects.filter(customer=obj).exists()
-        if projects:
-            raise PermissionDenied('Cannot delete customer with existing projects')
-
-        project_groups = models.ProjectGroup.objects.filter(customer=obj).exists()
-        if project_groups:
-            raise PermissionDenied('Cannot delete customer with existing project_groups')
-
 
 class ProjectFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='customer__uuid',
         distinct=True,
+    )
+
+    customer_name = django_filters.CharFilter(
+        name='customer__name',
+        distinct=True,
+        lookup_type='icontains'
+    )
+
+    customer_native_name = django_filters.CharFilter(
+        name='customer__native_name',
+        distinct=True,
+        lookup_type='icontains'
+    )
+
+    customer_abbreviation = django_filters.CharFilter(
+        name='customer__abbreviation',
+        distinct=True,
+        lookup_type='icontains'
     )
 
     project_group = django_filters.CharFilter(
@@ -138,7 +146,7 @@ class ProjectFilter(django_filters.FilterSet):
             'project_group',
             'project_group_name',
             'name',
-            'customer',
+            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'description',
             # quotas
             'vcpu',
@@ -152,6 +160,12 @@ class ProjectFilter(django_filters.FilterSet):
             '-name',
             'project_groups__name',
             '-project_groups__name',
+            'customer__native_name',
+            '-customer__native_name',
+            'customer__name',
+            '-customer__name',
+            'customer__abbreviation',
+            '-customer__abbreviation',
             'cloudprojectmembership__resource_quota__vcpu',
             '-cloudprojectmembership__resource_quota__vcpu',
             'cloudprojectmembership__resource_quota__ram',
@@ -172,6 +186,9 @@ class ProjectFilter(django_filters.FilterSet):
             'max_instances': 'cloudprojectmembership__resource_quota__max_instances',
             'storage': 'cloudprojectmembership__resource_quota__storage',
             'backup': 'cloudprojectmembership__resource_quota__backup_storage',
+            'customer_name': 'customer__name',
+            'customer_abbreviation': 'customer__abbreviation',
+            'customer_native_name': 'customer__native_name',
 
             # Backwards compatibility
             'project_groups__name': 'project_groups__name',
@@ -191,7 +208,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend,)
+    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
     filter_class = ProjectFilter
@@ -227,16 +244,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return super(ProjectViewSet, self).get_serializer_class()
 
-    def destroy(self, request, *args, **kwargs):
-        try:
-            return super(ProjectViewSet, self).destroy(request, *args, **kwargs)
-        except ValidationError as e:
-            return Response({'detail': e.message}, status=status.HTTP_409_CONFLICT)
-
 
 class ProjectGroupFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
+        name='customer__uuid',
+        distinct=True,
+    )
+    customer_name = django_filters.CharFilter(
         name='customer__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+    customer_native_name = django_filters.CharFilter(
+        name='customer__native_name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+
+    customer_abbreviation = django_filters.CharFilter(
+        name='customer__abbreviation',
         distinct=True,
         lookup_type='icontains',
     )
@@ -248,13 +274,25 @@ class ProjectGroupFilter(django_filters.FilterSet):
         fields = [
             'name',
             'customer',
+            'customer_name',
+            'customer_native_name',
+            'customer_abbreviation',
         ]
         order_by = [
             'name',
             '-name',
             'customer__name',
             '-customer__name',
+            'customer__native_name',
+            '-customer__native_name',
+            'customer__abbreviation',
+            '-customer__abbreviation',
         ]
+        order_by_mapping = {
+            'customer_name': 'customer__name',
+            'customer_abbreviation': 'customer__abbreviation',
+            'customer_native_name': 'customer__native_name',
+        }
 
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
@@ -265,15 +303,9 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
     queryset = models.ProjectGroup.objects.all()
     serializer_class = serializers.ProjectGroupSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
     # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
     filter_class = ProjectGroupFilter
-
-    def destroy(self, request, *args, **kwargs):
-        try:
-            return super(ProjectGroupViewSet, self).destroy(request, *args, **kwargs)
-        except ValidationError as e:
-            return Response({'detail': e.message}, status=status.HTTP_409_CONFLICT)
 
 
 class ProjectGroupMembershipFilter(django_filters.FilterSet):
@@ -397,36 +429,66 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = serializers.UserSerializer
     lookup_field = 'uuid'
-    permission_classes = (rf_permissions.IsAuthenticated,
-                          permissions.IsAdminOrOwner,)
+    permission_classes = (
+        rf_permissions.IsAuthenticated,
+        permissions.IsAdminOrOwner,
+    )
     filter_class = UserFilter
 
     def get_queryset(self):
         user = self.request.user
         queryset = super(UserViewSet, self).get_queryset()
-        # TODO: refactor against django filtering
 
+        # ?current
         current_user = self.request.QUERY_PARAMS.get('current', None)
         if current_user is not None and not user.is_anonymous():
             queryset = User.objects.filter(uuid=user.uuid)
 
         # TODO: refactor to a separate endpoint or structure
         # a special query for all users with assigned privileges that the current user can remove privileges from
-        can_manage = self.request.QUERY_PARAMS.get('can_manage', None)
-        if can_manage is not None:
-            #XXX: Let the DB cry...
+        if 'potential' in self.request.QUERY_PARAMS:
+            # XXX: Let the DB cry...
+            connected_customers_query = models.Customer.objects.filter(
+                Q(roles__permission_group__user=user)
+                |
+                Q(projects__roles__permission_group__user=user)
+                |
+                Q(project_groups__roles__permission_group__user=user)
+            )
+
+            # check if we need to filter potential users by a customer
+            potential_customer = self.request.QUERY_PARAMS.get('potential_customer', None)
+            if potential_customer:
+                connected_customers_query = connected_customers_query.filter(uuid=potential_customer)
+                connected_customers_query = filters.filter_queryset_for_user(connected_customers_query, user)
+
+            connected_customers = connected_customers_query.all()
+
             queryset = queryset.filter(
-                Q(groups__customerrole__customer__roles__permission_group__user=user,
-                  groups__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
+                # customer owners
+                Q(
+                    groups__customerrole__customer_in=connected_customers,
+                )
                 |
-                Q(groups__projectrole__project__roles__permission_group__user=user,
-                  groups__projectrole__project__roles__role_type=models.ProjectRole.MANAGER)
+                Q(
+                    groups__projectrole__project__customer_in=connected_customers,
+                )
                 |
-                Q(groups__projectgrouprole__project_group__roles__permission_group__user=user)
+                Q(
+                    groups__projectgrouprole__project_group__customer_in=connected_customers,
+                )
+                |
+                # users with no role
+                Q(
+                    groups__customerrole=None,
+                    groups__projectrole=None,
+                    groups__projectgrouprole=None,
+                )
             ).distinct()
 
         if not user.is_staff:
             queryset = queryset.filter(is_active=True)
+
         return queryset
 
     @action()
@@ -889,12 +951,3 @@ class CreationTimeStatsView(views.APIView):
 
         stats = serializer.get_stats(request.user)
         return Response(stats, status=status.HTTP_200_OK)
-
-
-# XXX: This should be put to models
-filters.set_permissions_for_model(
-    User.groups.through,
-    customer_path='group__projectrole__project__customer',
-    project_group_path='group__projectrole__project__project_groups',
-    project_path='group__projectrole__project',
-)
