@@ -265,3 +265,59 @@ class PasswordSerializerTest(unittest.TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn('This field is required.',
                       serializer.errors['password'])
+
+
+class UserFilterTest(test.APISimpleTestCase):
+
+    def test_user_list_can_be_filtered(self):
+        supported_filters = [
+            'full_name',
+            'native_name',
+            'organization',
+            'email',
+            'phone_number',
+            'description',
+            'job_title',
+            'username',
+            'civil_number',
+            'is_active',
+        ]
+        user = factories.UserFactory(is_staff=True)
+        user_that_should_be_found = factories.UserFactory(
+            native_name='',
+            organization='',
+            email='none@example.com',
+            phone_number='',
+            description='',
+            job_title='',
+            username='',
+            civil_number='',
+            is_active=False,
+        )
+        self.client.force_authenticate(user)
+        url = factories.UserFactory.get_list_url()
+        user_url = factories.UserFactory.get_url(user)
+        user_that_should_not_be_found_url = factories.UserFactory.get_url(user_that_should_be_found)
+
+        for field in supported_filters:
+            response = self.client.get(url, data={field: getattr(user, field)})
+            self.assertContains(response, user_url)
+            self.assertNotContains(response, user_that_should_not_be_found_url)
+
+    def test_user_list_can_be_filtered_by_fields_with_partial_matching(self):
+        supported_filters = [
+            'full_name',
+            'native_name',
+            'organization',
+            'email',
+            'description',
+            'job_title',
+        ]
+        user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user)
+        url = factories.UserFactory.get_list_url()
+        user_url = factories.UserFactory.get_url(user)
+
+        for field in supported_filters:
+            response = self.client.get(url, data={field: getattr(user, field)[:-1]})
+            self.assertContains(response, user_url)

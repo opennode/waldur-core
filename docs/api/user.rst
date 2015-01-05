@@ -79,7 +79,7 @@ Following user fields can be updated:
 - phone_number
 - email
 
-Can be done by PUTing a new data to the user URI, i.e. **api/users/<UUID>** by staff user or account owner.
+Can be done by PUTing a new data to the user URI, i.e. **/api/users/<UUID>/** by staff user or account owner.
 Valid request example (token is user specific):
 
 .. code-block:: http

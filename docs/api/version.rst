@@ -2,7 +2,7 @@ Version
 -------
 
 In order to retrieve current version of the NodeConductor authenticated user
-should send a GET request to /api/version/.
+should send a GET request to **/api/version/**.
 
 Valid request example (token is user specific):
 

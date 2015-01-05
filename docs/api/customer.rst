@@ -1,7 +1,7 @@
 Customer list
 -------------
 
-To get a list of customers, run GET against */api/customers/* as authenticated user. Note that a user can
+To get a list of customers, run GET against **/api/customers/** as authenticated user. Note that a user can
 only see connected customers:
 
 - customers that the user owns

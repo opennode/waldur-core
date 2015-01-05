@@ -99,12 +99,15 @@ class InstanceFilter(django_filters.FilterSet):
             'project',
             'project_group',
             'template_name',
+            'start_time'
         ]
         order_by = [
             'hostname',
             '-hostname',
             'state',
             '-state',
+            'start_time',
+            '-start_time',
             'cloud_project_membership__project__customer__name',
             '-cloud_project_membership__project__customer__name',
             'cloud_project_membership__project__customer__native_name',

@@ -3,7 +3,7 @@ Usage statistics
 
 Historical data of usage aggregated by projects/project_groups/customers.
 
-URL: /stats/usage/
+URL: **/api/stats/usage/**
 
 Available request parameters:
 
@@ -74,9 +74,9 @@ Resource statistics
 
 Allocation of resources in a cloud backend.
 
-URL: /stats/resource/
+URL: **/stats/resource/**
 
-Required request GET parameter: ?auth_url - cloud URL
+Required request GET parameter: *?auth_url* - cloud URL
 
 Answer will be list dictionaries with fields:
 
@@ -131,7 +131,7 @@ Creation time statistics
 
 Historical information about creation time of projects, project groups and customers.
 
-URL: /stats/creation-time/
+URL: **/api/stats/creation-time/**
 
 Available request parameters:
 
@@ -160,7 +160,7 @@ Quotas statistics
 
 Quotas and quotas usage aggregated by projects/project_groups/customers.
 
-URL: /stats/quota/
+URL: **/api/stats/quota/**
 
 Available request parameters:
 

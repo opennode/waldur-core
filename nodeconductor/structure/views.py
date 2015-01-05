@@ -322,8 +322,8 @@ class UserFilter(django_filters.FilterSet):
     native_name = django_filters.CharFilter(lookup_type='icontains')
     organization = django_filters.CharFilter(lookup_type='icontains')
     job_title = django_filters.CharFilter(lookup_type='icontains')
-    # XXX: temporary. Should be done by a proper search full-text search engine
     description = django_filters.CharFilter(lookup_type='icontains')
+    email = django_filters.CharFilter(lookup_type='icontains')
     is_active = django_filters.BooleanFilter()
 
     class Meta(object):

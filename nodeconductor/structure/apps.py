@@ -46,5 +46,6 @@ class StructureConfig(AppConfig):
         filters.set_permissions_for_model(
             User.groups.through,
             customer_path='group__projectrole__project__customer',
+            project_group_path='group__projectrole__project__project_groups',
             project_path='group__projectrole__project',
         )
