@@ -375,36 +375,67 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = serializers.UserSerializer
     lookup_field = 'uuid'
-    permission_classes = (rf_permissions.IsAuthenticated,
-                          permissions.IsAdminOrOwner,)
+    permission_classes = (
+        rf_permissions.IsAuthenticated,
+        permissions.IsAdminOrOwner,
+    )
     filter_class = UserFilter
 
     def get_queryset(self):
         user = self.request.user
         queryset = super(UserViewSet, self).get_queryset()
-        # TODO: refactor against django filtering
 
+        # ?current
         current_user = self.request.QUERY_PARAMS.get('current', None)
         if current_user is not None and not user.is_anonymous():
             queryset = User.objects.filter(uuid=user.uuid)
 
         # TODO: refactor to a separate endpoint or structure
         # a special query for all users with assigned privileges that the current user can remove privileges from
-        can_manage = self.request.QUERY_PARAMS.get('can_manage', None)
-        if can_manage is not None:
-            #XXX: Let the DB cry...
+        potential = self.request.QUERY_PARAMS.get('potential', None)
+        if potential is not None:
+            # XXX: Let the DB cry...
+            connected_customers_query = models.Customer.objects.filter(
+                Q(roles__permission_group__user=user)
+                |
+                Q(projects__roles__permission_group__user=user)
+                |
+                Q(project_groups__roles__permission_group__user=user)
+            )
+
+            # check if we need to filter potential users by a customer
+            potential_customer = self.request.QUERY_PARAMS.get('potential_customer', None)
+            if potential_customer:
+                connected_customers_query = connected_customers_query.filter(uuid=potential_customer)
+                connected_customers_query = filters.filter_queryset_for_user(connected_customers_query, user)
+
+            connected_customers = connected_customers_query.all()
+
             queryset = queryset.filter(
-                Q(groups__customerrole__customer__roles__permission_group__user=user,
-                  groups__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
+                # customer owners
+                Q(
+                    groups__customerrole__customer_in=connected_customers,
+                )
                 |
-                Q(groups__projectrole__project__roles__permission_group__user=user,
-                  groups__projectrole__project__roles__role_type=models.ProjectRole.MANAGER)
+                Q(
+                    groups__projectrole__project__customer_in=connected_customers,
+                )
                 |
-                Q(groups__projectgrouprole__project_group__roles__permission_group__user=user)
+                Q(
+                    groups__projectgrouprole__project_group__customer_in=connected_customers,
+                )
+                |
+                # users with no role
+                Q(
+                    groups__customerrole=None,
+                    groups__projectrole=None,
+                    groups__projectgrouprole=None,
+                )
             ).distinct()
 
         if not user.is_staff:
             queryset = queryset.filter(is_active=True)
+
         return queryset
 
     @action()
