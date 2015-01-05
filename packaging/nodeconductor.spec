@@ -118,6 +118,9 @@ rm -rf %{buildroot}
 %config(noreplace) %{__conf_file}
 
 %post
+%systemd_post %{name}-celery.service
+%systemd_post %{name}-celerybeat.service
+
 echo "[nodeconductor] Generating secret key..."
 sed -i "s,{{ secret_key }},$(head -c32 /dev/urandom | base64)," %{__conf_file}
 
@@ -170,6 +173,14 @@ Note: you will need to run this again on next NodeConductor update.
 All done. Happy NodeConducting!
 ------------------------------------------------------------------------
 EOF
+
+%preun
+%systemd_preun %{name}-celery.service
+%systemd_preun %{name}-celerybeat.service
+
+%postun
+%systemd_postun_with_restart %{name}-celery.service
+%systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
 * Thu Jan 1 2015 Juri Hudolejev <juri@opennodecloud.com> - 0.20.0-1.el7
