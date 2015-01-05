@@ -863,7 +863,7 @@ class OpenStackBackend(object):
             logger.info('Successfully created backup for instance %s', instance.uuid)
         return backups
 
-    def copy_volumes(self, membership, volume_ids):
+    def copy_volumes(self, membership, volume_ids, prefix='Backup volume'):
         logger.debug('About to copy volumes %s', ', '.join(volume_ids))
         try:
             session = self.create_tenant_session(membership)
@@ -872,7 +872,7 @@ class OpenStackBackend(object):
             copied_volume_ids = []
             for volume_id in volume_ids:
                 snapshot = self.create_snapshot(volume_id, cinder)
-                copied_volume_ids.append(self.create_temporary_volume(snapshot, cinder))
+                copied_volume_ids.append(self.create_temporary_volume(snapshot, cinder, prefix=prefix))
                 self.delete_temporary_snapshot(snapshot, cinder)
 
         except (cinder_exceptions.ClientException,
@@ -1613,7 +1613,7 @@ class OpenStackBackend(object):
         cinder.volume_snapshots.delete(snapshot_id)
         logger.info('Successfully deletet temporary snapshot %s', snapshot_id)
 
-    def create_temporary_volume(self, snapshot_id, cinder):
+    def create_temporary_volume(self, snapshot_id, cinder, prefix='Backup volume'):
         """
         Create temporary volume from snapshot
 
@@ -1624,7 +1624,7 @@ class OpenStackBackend(object):
         """
         snapshot = cinder.volume_snapshots.get(snapshot_id)
         volume_size = snapshot.size
-        volume_name = 'Backup volume_%s' % snapshot.volume_id
+        volume_name = prefix + (' %s' % snapshot.volume_id)
 
         logger.debug('About to create temporary volume from snapshot %s', snapshot_id)
         temporary_volume = cinder.volumes.create(volume_size, snapshot_id=snapshot_id,

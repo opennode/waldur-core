@@ -40,7 +40,8 @@ class InstanceBackupStrategy(BackupStrategy):
             backend = cls._get_backend(source)
             copied_system_volume_id, copied_data_volume_id = backend.copy_volumes(
                 membership=source.cloud_project_membership,
-                volume_ids=[additional_data.pop('system_volume_id'), additional_data.pop('data_volume_id')]
+                volume_ids=[additional_data.pop('system_volume_id'), additional_data.pop('data_volume_id')],
+                prefix='Restored volume',
             )
         except CloudBackendError as e:
             six.reraise(BackupStrategyExecutionError, e)
