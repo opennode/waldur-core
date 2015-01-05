@@ -111,7 +111,7 @@ ALLOWED_HOSTS = ['*']
 #
 
 # Database
-# See also: https://docs.djangoproject.com/en/1.6/ref/settings/#databases
+# See also: https://docs.djangoproject.com/en/1.7/ref/settings/#databases
 
 DATABASES = {
     # Requirements for MySQL ('HOST', 'NAME', 'USER' and 'PASSWORD' are configured below):
@@ -160,7 +160,7 @@ if config.get('zabbix', 'db_host') != '':
     }
 
 # Logging
-# See also: https://docs.djangoproject.com/en/1.6/ref/settings/#logging
+# See also: https://docs.djangoproject.com/en/1.7/ref/settings/#logging
 
 LOGGING = {
     'version': 1,
@@ -272,7 +272,7 @@ if config.get('saml2', 'log_file') != '':
     LOGGING['loggers']['nodeconductor.core.views']['handlers'].append('file-saml2')
 
 # Static files
-# See also: https://docs.djangoproject.com/en/1.6/ref/settings/#static-files
+# See also: https://docs.djangoproject.com/en/1.7/ref/settings/#static-files
 
 STATIC_ROOT = config.get('global', 'static_root')
 
