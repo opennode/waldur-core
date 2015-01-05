@@ -421,23 +421,7 @@ class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFiltering
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
-    project_groups = serializers.SerializerMethodField('user_project_groups')
     email = serializers.EmailField()
-
-    def user_project_groups(self, obj):
-        request = self.context.get('request')
-
-        project_groups_qs = models.ProjectGroup.objects.filter(
-            projects__roles__permission_group__user=obj).distinct()
-
-        return [
-            {
-                'url': reverse('projectgroup-detail', kwargs={'uuid': project_group['uuid']}, request=request),
-                'name': project_group['name'],
-            }
-            for project_group in
-            project_groups_qs.values('uuid', 'name').iterator()
-        ]
 
     class Meta(object):
         model = User
@@ -449,7 +433,6 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'civil_number',
             'description',
             'is_staff', 'is_active',
-            'project_groups',
         )
         read_only_fields = (
             'uuid',
