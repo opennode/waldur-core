@@ -3,12 +3,42 @@ import warnings
 
 from django.core.exceptions import ValidationError
 from django.core.paginator import EmptyPage
+from django.db.models import ProtectedError
 from django.http.response import Http404
+from django.utils.encoding import force_text
 
 from rest_framework import status
 from rest_framework.mixins import _get_validation_exclusions
 from rest_framework.response import Response
 from rest_framework.templatetags.rest_framework import replace_query_param
+
+from nodeconductor.core.exceptions import IncorrectStateException
+
+
+class DestroyModelMixin(object):
+    """
+    Destroy a model instance.
+    """
+
+    # noinspection PyProtectedMember
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+
+        try:
+            self.pre_delete(obj)
+            obj.delete()
+            self.post_delete(obj)
+        except ProtectedError as e:
+            instance_meta = obj._meta
+            dependent_meta = e.protected_objects.model._meta
+
+            detail = 'Cannot delete {instance} with existing {dependant_objects}'.format(
+                instance=force_text(instance_meta.verbose_name),
+                dependant_objects=force_text(dependent_meta.verbose_name_plural),
+            )
+            raise IncorrectStateException(detail=detail)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UpdateOnlyModelMixin(object):

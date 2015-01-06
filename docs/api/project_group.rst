@@ -9,17 +9,19 @@ only see connected project groups:
 
 Optional filters are:
 
-- ?name= - partial match filtering by project group name
-- ?customer= - partial match filtering by customer name
+- ?name=<Project group name> - partial match filtering by project group name
+- ?customer=<Customer UUID> - filtering by customer UUID
+- ?customer_name=<Customer name> - partial match filtering by customer name
+- ?customer_native_name=<Customer native name> - partial match filtering by customer name
+- ?customer_abbreviation=<Customer abbreviation> - partial match filtering by customer name
 
-Ordering can be done by setting an ordering field with **?o=<field_name>**. Supported field names are:
+Ordering can be done by setting an ordering field with **?o=<field_name>**. To get a
+descending sorting prefix field name with a **-**. Supported ordering options are:
 
-- ?o=name - sort by project group name in ascending order;
-- ?o=-name - sort by project group name in descending order;
-
-- ?o=customer__name - sort by customer name in ascending order;
-- ?o=-customer__name - sort by customer name in descending order.
-
+- ?o=name
+- ?o=customer_name
+- ?o=customer_abbreviation
+- ?o=customer_native_name
 
 Create a new project group
 --------------------------
@@ -45,6 +47,8 @@ Deletion of a project group
 ---------------------------
 
 Deletion of a project group is done through sending a DELETE request to the project group instance URI.
+Please note, that if a project group has connected projects, deletion request will fail with 409 response code.
+
 Valid request example (token is user specific):
 
 .. code-block:: http

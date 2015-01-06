@@ -19,16 +19,3 @@ class InstanceViewSetTest(TestCase):
         self.view.request = mocked_request
         self.view.format_kwarg = None
         self.assertEqual(user, self.view.get_serializer_context()['user'])
-
-
-class CloudViewSetTest(TestCase):
-
-    def setUp(self):
-        self.view = views.CloudViewSet()
-
-    def test_check_permission(self):
-        cloud = factories.CloudFactory()
-        user = structure_factories.UserFactory()
-        mocked_request = type(str('MockedRequest'), (object,), {'user': user})
-        self.view.request = mocked_request
-        self.assertRaises(PermissionDenied, lambda: self.view._check_permission(cloud))

@@ -17,6 +17,17 @@ class CloudFactory(factory.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: 'cloud%s' % n)
     customer = factory.SubFactory(structure_factories.CustomerFactory)
+    auth_url = 'http://example.com:5000/v2'
+
+    @classmethod
+    def get_url(self, cloud=None):
+        if cloud is None:
+            cloud = CloudFactory()
+        return 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': cloud.uuid})
+
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('cloud-list')
 
 
 class FlavorFactory(factory.DjangoModelFactory):
