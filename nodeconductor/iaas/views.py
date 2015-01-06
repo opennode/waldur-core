@@ -71,7 +71,6 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
-
     customer_abbreviation = django_filters.CharFilter(
         name='cloud_project_membership__project__customer__abbreviation',
         distinct=True,
@@ -99,7 +98,7 @@ class InstanceFilter(django_filters.FilterSet):
             'project',
             'project_group',
             'template_name',
-            'start_time'
+            'start_time',
         ]
         order_by = [
             'hostname',
@@ -493,7 +492,7 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
             'instance__cloud_project_membership__project__project_groups__uuid': 'project_group_uuid',
             'instance__cloud_project_membership__project__project_groups__name': 'project_group_name',
             'template_license__license_type': 'type',
-            'template_license__name': 'name'
+            'template_license__name': 'name',
         }
         for d in queryset:
             for db_name, output_name in name_replace_map.iteritems():
@@ -528,6 +527,10 @@ class ServiceFilter(django_filters.FilterSet):
         name='cloud_project_membership__project__customer__name',
         lookup_type='icontains',
     )
+    customer_abbreviation = django_filters.CharFilter(
+        name='cloud_project_membership__project__customer__abbreviation',
+        lookup_type='icontains',
+    )
 
     customer_native_name = django_filters.CharFilter(
         name='cloud_project_membership__project__customer__native_name',
@@ -548,6 +551,7 @@ class ServiceFilter(django_filters.FilterSet):
             'template_name',
             'customer_name',
             'customer_native_name',
+            'customer_abbreviation',
             'project_name',
             'project_groups',
             'agreed_sla',
@@ -557,6 +561,7 @@ class ServiceFilter(django_filters.FilterSet):
             'hostname',
             'template__name',
             'cloud_project_membership__project__customer__name',
+            'cloud_project_membership__project__customer__abbreviation',
             'cloud_project_membership__project__customer__native_name',
             'cloud_project_membership__project__name',
             'cloud_project_membership__project__project_groups__name',
@@ -566,6 +571,7 @@ class ServiceFilter(django_filters.FilterSet):
             '-hostname',
             '-template__name',
             '-cloud_project_membership__project__customer__name',
+            '-cloud_project_membership__project__customer__abbreviation',
             '-cloud_project_membership__project__customer__native_name',
             '-cloud_project_membership__project__name',
             '-cloud_project_membership__project__project_groups__name',
@@ -575,6 +581,8 @@ class ServiceFilter(django_filters.FilterSet):
         order_by_mapping = {
             # Proper field naming
             'customer_name': 'cloud_project_membership__project__customer__name',
+            'customer_abbreviation': 'cloud_project_membership__project__customer__abbreviation',
+            'customer_native_name': 'cloud_project_membership__project__customer__native_name',
             'project_name': 'cloud_project_membership__project__name',
             'project_group_name': 'cloud_project_membership__project__project_groups__name',
             'template_name': 'template__name',
@@ -618,6 +626,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
                 'slas__value', 'slas__period',
                 'cloud_project_membership__project__customer__name',
                 'cloud_project_membership__project__customer__native_name',
+                'cloud_project_membership__project__customer__abbreviation',
                 'cloud_project_membership__project__name',
             )
         return queryset
@@ -763,6 +772,41 @@ class FlavorViewSet(core_viewsets.ReadOnlyModelViewSet):
     filter_backends = (structure_filters.GenericRoleFilter,)
 
 
+class CloudFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_type='icontains')
+    customer = django_filters.CharFilter(
+        name='customer__uuid',
+    )
+    customer_name = django_filters.CharFilter(
+        lookup_type='icontains',
+        name='customer__name',
+    )
+    customer_native_name = django_filters.CharFilter(
+        lookup_type='icontains',
+        name='customer__native_name',
+    )
+    project = django_filters.CharFilter(
+        name='cloudprojectmembership__project__uuid',
+        distinct=True,
+    )
+    project_name = django_filters.CharFilter(
+        name='cloudprojectmembership__project__name',
+        lookup_type='icontains',
+        distinct=True,
+    )
+
+    class Meta(object):
+        model = models.Cloud
+        fields = [
+            'name',
+            'customer',
+            'customer_name',
+            'customer_native_name',
+            'project',
+            'project_name',
+        ]
+
+
 class CloudViewSet(core_viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
 
@@ -772,31 +816,30 @@ class CloudViewSet(core_viewsets.ModelViewSet):
     queryset = models.Cloud.objects.all().prefetch_related('flavors')
     serializer_class = serializers.CloudSerializer
     lookup_field = 'uuid'
-    filter_backends = (structure_filters.GenericRoleFilter,)
-    permission_classes = (permissions.IsAuthenticated,
-                          permissions.DjangoObjectPermissions)
-
-    def _check_permission(self, cloud):
-        """
-        Raises PermissionDenied exception if user does not have permission to cloud
-        """
-        if not self.request.user.is_staff and not cloud.customer.roles.filter(
-                permission_group__user=self.request.user, role_type=CustomerRole.OWNER).exists():
-            raise exceptions.PermissionDenied()
+    permission_classes = (
+        permissions.IsAuthenticated,
+        permissions.DjangoObjectPermissions,
+    )
+    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
+    filter_class = CloudFilter
 
     def pre_save(self, cloud):
         super(CloudViewSet, self).pre_save(cloud)
-        self._check_permission(cloud)
+
+        if cloud.pk is not None:
+            return
+
+        if self.request.user.is_staff:
+            return
+
+        if cloud.customer.has_user(self.request.user, CustomerRole.OWNER):
+            return
+
+        raise exceptions.PermissionDenied()
 
     def post_save(self, obj, created=False):
         if created:
             tasks.sync_cloud_account.delay(obj.uuid.hex)
-
-    def get_serializer_class(self):
-        if self.request.method == 'POST':
-            return serializers.CloudCreateSerializer
-
-        return super(CloudViewSet, self).get_serializer_class()
 
 
 class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
