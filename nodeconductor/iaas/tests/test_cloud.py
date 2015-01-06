@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 
-from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
+from nodeconductor.iaas.models import Cloud
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
@@ -89,10 +89,6 @@ class CloudPermissionTest(test.APITransactionTestCase):
         self.assertIn(cloud_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_clouds_of_projects_he_is_customer_owner_of(self):
-        # persist affected objects
-        self.clouds['owned'].save()  # make sure that cloud gets a UUID
-        self.customers['owned'].save()  # make sure that customer link is saved
-
         self.client.force_authenticate(user=self.users['customer_owner'])
 
         response = self.client.get(factories.CloudFactory.get_list_url())
@@ -229,13 +225,58 @@ class CloudPermissionTest(test.APITransactionTestCase):
         response = self.client.post(factories.CloudFactory.get_list_url(), self._get_valid_payload(new_cloud))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    # Mutation tests
+    def test_user_cannot_change_auth_url_of_cloud_he_owns(self):
+        self.client.force_authenticate(user=self.users['customer_owner'])
+
+        cloud = self.clouds['owned']
+
+        payload = {'auth_url': 'http://example.com:5000/v2'}
+        response = self.client.patch(factories.CloudFactory.get_url(cloud),
+                                     data=payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        reread_cloud = Cloud.objects.get(pk=cloud.pk)
+        self.assertEqual(reread_cloud.auth_url, cloud.auth_url)
+
+    def test_user_cannot_change_customer_of_cloud_he_owns(self):
+        user = self.users['customer_owner']
+
+        self.client.force_authenticate(user=user)
+
+        cloud = self.clouds['owned']
+
+        new_customer = structure_factories.CustomerFactory()
+        new_customer.add_user(user, CustomerRole.OWNER)
+
+        payload = {'customer': structure_factories.CustomerFactory.get_url(new_customer)}
+        response = self.client.patch(factories.CloudFactory.get_url(cloud), data=payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        reread_cloud = Cloud.objects.get(pk=cloud.pk)
+        self.assertEqual(reread_cloud.customer, cloud.customer)
+
+    def test_user_can_change_cloud_name_of_cloud_he_owns(self):
+        self.client.force_authenticate(user=self.users['customer_owner'])
+
+        cloud = self.clouds['owned']
+
+        payload = {'name': 'new name'}
+        response = self.client.patch(factories.CloudFactory.get_url(cloud), data=payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        reread_cloud = Cloud.objects.get(pk=cloud.pk)
+        self.assertEqual(reread_cloud.name, 'new name')
+
     # OpenStack backend related tests
     def test_user_cannot_create_cloud_with_auth_url_not_listed_in_settings(self):
         self.client.force_authenticate(user=self.users['customer_owner'])
 
-        new_cloud = factories.CloudFactory.build(customer=self.customers['owned'])
+        new_cloud = factories.CloudFactory.build(
+            customer=self.customers['owned'],
+            auth_url='http://another.example.com',
+        )
         payload = self._get_valid_payload(new_cloud)
-        payload['auth_url'] = 'http://another.example.com'
 
         response = self.client.post(factories.CloudFactory.get_list_url(), payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -251,8 +292,8 @@ class CloudPermissionTest(test.APITransactionTestCase):
     def _get_valid_payload(self, resource):
         return {
             'name': resource.name,
-            'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
-            'auth_url': 'http://example.com:5000/v2',
+            'customer': structure_factories.CustomerFactory.get_url(resource.customer),
+            'auth_url': resource.auth_url,
         }
 
 
