@@ -94,8 +94,8 @@ for section, options in config_defaults.items():
             config.set(section, option, value)
 
 # These shouldn't be configurable by user -- see SAML2 section for details
-conig.set('saml2', 'cert_file', os.path.join(conf_dir, 'saml2', 'dummy.crt'))
-conig.set('saml2', 'key_file', os.path.join(conf_dir, 'saml2', 'dummy.pem'))
+config.set('saml2', 'cert_file', os.path.join(conf_dir, 'saml2', 'dummy.crt'))
+config.set('saml2', 'key_file', os.path.join(conf_dir, 'saml2', 'dummy.pem'))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config.get('global', 'secret_key')
