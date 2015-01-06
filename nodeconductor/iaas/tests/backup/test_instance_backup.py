@@ -1,14 +1,18 @@
 from __future__ import unicode_literals
 
+from django.db.models import ProtectedError
+from django.test import TransactionTestCase
 from mock import Mock
+from rest_framework import status
+from rest_framework.test import APITransactionTestCase
 
-from django.utils import unittest
-
+from nodeconductor.backup.models import Backup
 from nodeconductor.iaas.backup.instance_backup import InstanceBackupStrategy
 from nodeconductor.iaas.tests import factories
+from nodeconductor.structure.tests import factories as structure_factories
 
 
-class InstanceBackupStrategyTestCase(unittest.TestCase):
+class InstanceBackupStrategyTestCase(TransactionTestCase):
 
     def setUp(self):
         self.instance = factories.InstanceFactory()
@@ -40,7 +44,7 @@ class InstanceBackupStrategyTestCase(unittest.TestCase):
 
     def test_strategy_restore_method_calls_backend_restore_instance_method(self):
         InstanceBackupStrategy.restore(
-            self.instance, self.additional_data, self.key.uuid.hex, self.flavor.uuid.hex, 'new_hostname')
+            self.instance, self.additional_data)
         self.mocked_backed.copy_volumes.assert_called_once_with(
             membership=self.instance.cloud_project_membership,
             volume_ids=[self.copied_system_volume_id, self.copied_data_volume_id],
@@ -59,3 +63,19 @@ class InstanceBackupStrategyTestCase(unittest.TestCase):
             membership=self.instance.cloud_project_membership,
             volume_ids=[self.copied_system_volume_id, self.copied_data_volume_id],
         )
+
+
+class InstanceDeletionTestCase(APITransactionTestCase):
+
+    def test_cannot_delete_instance_with_connected_backup(self):
+        instance = factories.InstanceFactory()
+        Backup.objects.create(
+            backup_source=instance,
+        )
+
+        with self.assertRaises(ProtectedError):
+            instance.delete()
+
+        self.client.force_authenticate(structure_factories.UserFactory(is_staff=True))
+        response = self.client.delete(factories.InstanceFactory.get_url(instance))
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
