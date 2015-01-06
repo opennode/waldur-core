@@ -315,8 +315,8 @@ STATIC_ROOT = config.get('global', 'static_root')
 for key in ['metadata_cert', 'metadata_file', 'metadata_url']:
     if config.has_option('saml2', key) and config.get('saml2', key) != '' and config.get('saml2', 'idp_' + key) == '':
         warnings.warn(
-           "Config option %s is deprectaed and will be removed in NodeConductor 0.21; use idp_%s instead" % (key, key),
-            PendingDeprecationWarning)  # TODO-0.20: PendingDeprecationWarning -> DeprecationWarning
+           "Config option %s is deprectaed and will be removed in NodeConductor 0.23; use idp_%s instead" % (key, key),
+            PendingDeprecationWarning)  # TODO-0.22: PendingDeprecationWarning -> DeprecationWarning
         configs.set('saml2', 'idp_' + key, config.get(key))
 
 SAML_CONFIG = {
