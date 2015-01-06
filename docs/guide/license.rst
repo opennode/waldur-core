@@ -38,3 +38,9 @@ Supported aggregate queries include:
 - by project names;
 - by project groups;
 - by license type.
+
+It is possible to filter license report using the following filters:
+
+- ?customer=<customer UUID> - only instances consumed by resources belonging to a defined customer will be accounted for
+- ?name=<license name> - filter by a defined license name
+- ?type=<license type> - filter by a defined license type
