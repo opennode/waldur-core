@@ -48,6 +48,21 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
         )
         lookup_field = 'uuid'
 
+    def get_fields(self):
+        # TODO: Extract to a proper mixin
+        fields = super(CloudSerializer, self).get_fields()
+
+        try:
+            method = self.context['view'].request.method
+        except (KeyError, AttributeError):
+            return fields
+
+        if method in ('PUT', 'PATCH'):
+            fields['auth_url'].read_only = True
+            fields['customer'].read_only = True
+
+        return fields
+
     def get_filtered_field_names(self):
         return 'customer',
 
