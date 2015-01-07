@@ -7,19 +7,13 @@ from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
 from django.db import models
-from django.db.models import signals
-from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 
 from nodeconductor.core import models as core_models
-from nodeconductor.core.serializers import UnboundSerializerMethodField
-from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure import models as structure_models
-from nodeconductor.structure.filters import filter_queryset_for_user
-from nodeconductor.structure.signals import structure_role_granted
 
 
 logger = logging.getLogger(__name__)
@@ -566,103 +560,3 @@ class IpMapping(core_models.UuidMixin, models.Model):
     public_ip = models.IPAddressField(null=False)
     private_ip = models.IPAddressField(null=False)
     project = models.ForeignKey(structure_models.Project, related_name='ip_mappings')
-
-
-def get_related_clouds(obj, request):
-    related_clouds = obj.clouds.all()
-
-    try:
-        user = request.user
-        related_clouds = filter_queryset_for_user(related_clouds, user)
-    except AttributeError:
-        pass
-
-    from nodeconductor.iaas.serializers import BasicCloudSerializer
-
-    serializer_instance = BasicCloudSerializer(related_clouds, many=True, context={'request': request})
-
-    return serializer_instance.data
-
-
-# These hacks are necessary for Django <1.7
-# TODO: Refactor to use app.ready() after transition to Django 1.7
-# See https://docs.djangoproject.com/en/1.7/topics/signals/#connecting-receiver-functions
-
-# @receiver(pre_serializer_fields, sender=CustomerSerializer)
-@receiver(pre_serializer_fields)
-def add_clouds_to_related_model(sender, fields, **kwargs):
-    # Note: importing here to avoid circular import hell
-    from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
-
-    if sender not in (CustomerSerializer, ProjectSerializer):
-        return
-
-    fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
-
-
-@receiver(signals.post_save, sender=core_models.SshPublicKey)
-def propagate_new_users_key_to_his_projects_clouds(sender, instance=None, created=False, **kwargs):
-    if not created:
-        return
-
-    public_key = instance
-
-    membership_queryset = filter_queryset_for_user(
-        CloudProjectMembership.objects.all(), public_key.user)
-
-    membership_pks = membership_queryset.values_list('pk', flat=True)
-
-    if membership_pks:
-        # Note: importing here to avoid circular import hell
-        from nodeconductor.iaas import tasks
-
-        tasks.push_ssh_public_keys.delay([public_key.uuid.hex], list(membership_pks))
-
-
-@receiver(structure_role_granted, sender=structure_models.Project)
-def propagate_users_keys_to_clouds_of_newly_granted_project(sender, structure, user, role, **kwargs):
-    project = structure
-
-    ssh_public_key_uuids = core_models.SshPublicKey.objects.filter(
-        user=user).values_list('uuid', flat=True)
-
-    membership_pks = CloudProjectMembership.objects.filter(
-        project=project).values_list('pk', flat=True)
-
-    if ssh_public_key_uuids and membership_pks:
-        # Note: importing here to avoid circular import hell
-        from nodeconductor.iaas import tasks
-
-        tasks.push_ssh_public_keys.delay(
-            list(ssh_public_key_uuids), list(membership_pks))
-
-
-# TODO: make the defaults configurable
-@receiver(signals.post_save, sender=CloudProjectMembership)
-def create_dummy_security_groups(sender, instance=None, created=False, **kwargs):
-    if created:
-        # group http
-        http_group = SecurityGroup.objects.create(
-            name='http',
-            description='Security group for web servers',
-            cloud_project_membership=instance,
-        )
-        http_group.rules.create(
-            protocol='tcp',
-            from_port=80,
-            to_port=80,
-            cidr='0.0.0.0/0',
-        )
-
-        # group https
-        https_group = SecurityGroup.objects.create(
-            name='https',
-            description='Security group for web servers with https traffic',
-            cloud_project_membership=instance,
-        )
-        https_group.rules.create(
-            protocol='tcp',
-            from_port=443,
-            to_port=443,
-            cidr='0.0.0.0/0',
-        )
