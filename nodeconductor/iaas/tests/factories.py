@@ -235,6 +235,15 @@ class InstanceFactory(factory.DjangoModelFactory):
         return 'http://testserver' + reverse('instance-list')
 
 
+class InstanceSlaHistoryFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.InstanceSlaHistory
+
+    period = factory.Sequence(lambda n: '200%s' % n)
+    instance = factory.SubFactory(InstanceFactory)
+    value = factory.LazyAttribute(lambda o: Decimal('99.9'))
+
+
 class InstanceLicenseFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.InstanceLicense
