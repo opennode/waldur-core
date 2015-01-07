@@ -121,15 +121,21 @@ rm -rf %{buildroot}
 %systemd_post %{name}-celery.service
 %systemd_post %{name}-celerybeat.service
 
-echo "[nodeconductor] Generating secret key..."
-sed -i "s,{{ secret_key }},$(head -c32 /dev/urandom | base64)," %{__conf_file}
+if [ "$1" = 1 ]; then
+    # This package is being installed for the first time
+    echo "[%{name}] Generating secret key..."
+    sed -i "s,{{ secret_key }},$(head -c32 /dev/urandom | base64)," %{__conf_file}
 
-echo "[nodeconductor] Generating SAML2 keypair..."
-if [ ! -f %{__saml2_cert_file} -a ! -f %{__saml2_key_file} ]; then
-    openssl req -batch -newkey rsa:2048 -new -x509 -days 3652 -nodes -out %{__saml2_cert_file} -keyout %{__saml2_key_file}
+    echo "[%{name}] Generating SAML2 keypair..."
+    if [ ! -f %{__saml2_cert_file} -a ! -f %{__saml2_key_file} ]; then
+        openssl req -batch -newkey rsa:2048 -new -x509 -days 3652 -nodes -out %{__saml2_cert_file} -keyout %{__saml2_key_file}
+    fi
+
+    echo "[%{name}] Adding new system user %{name}..."
+    useradd --home %{__work_dir} --shell /sbin/nologin --system --user-group %{name}
 fi
 
-useradd --home %{__work_dir} --shell /sbin/nologin --system --user-group %{name}
+echo "[%{name}] Setting directory permissions..."
 chown -R %{name}:%{name} %{__log_dir}
 chmod -R g+w %{__log_dir}
 chown -R %{name}:%{name} %{__work_dir}
