@@ -22,3 +22,71 @@ DATABASES = {
 
 STATIC_ROOT = 'static'
 
+import logging.handlers
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(asctime)s - %(levelname)s - %(message)s',
+        },
+        'simple-timeless': {
+            'format': '%(levelname)s - %(message)s',
+        },
+    },
+    'handlers': {
+        'null': {
+            'class': 'logging.NullHandler',
+        },
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'syslog': {
+            'class': 'logging.handlers.SysLogHandler',
+            'filters': ['is-not-event'],
+            'formatter': 'simple-timeless',
+
+            'address': '/dev/log',
+            'facility': logging.handlers.SysLogHandler.LOG_LOCAL0,
+        },
+        'syslog-events': {
+            'class': 'logging.handlers.SysLogHandler',
+            'filters': ['is-event'],
+            'formatter': 'simple-timeless',
+
+            'address': '/dev/log',
+            'facility': logging.handlers.SysLogHandler.LOG_LOCAL1,
+        },
+    },
+    'loggers': {
+        'celery': {
+            'handlers': ['console', 'syslog'],
+        },
+        'django': {
+            'handlers': ['console', 'syslog'],
+        },
+        'nodeconductor': {
+            'handlers': ['console', 'syslog', 'syslog-events'],
+        },
+
+        # Plugin related logging
+        'djangosaml2': {
+            'handlers': ['console', 'syslog'],
+        },
+    },
+    'root': {
+        'level': 'INFO',
+        # 'level': 'DEBUG',
+        'handlers': ['null'],
+    },
+    'filters': {
+        'is-event': {
+            '()': 'nodeconductor.core.log.RequireEvent',
+        },
+        'is-not-event': {
+            '()': 'nodeconductor.core.log.RequireNotEvent',
+        },
+    },
+}
