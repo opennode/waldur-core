@@ -620,7 +620,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
 
         period = self._get_period()
 
-        queryset = queryset.filter(slas__period=period).\
+        queryset = queryset.filter(slas__period=period, agreed_sla__isnull=False).\
             values(
                 'uuid',
                 'hostname',
