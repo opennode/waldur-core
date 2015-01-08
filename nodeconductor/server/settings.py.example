@@ -23,7 +23,7 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 # See also: https://docs.djangoproject.com/en/1.7/ref/settings/#secret-key
 SECRET_KEY = '...'
 
-# Dtabases
+# Databases
 # See also: https://docs.djangoproject.com/en/1.7/ref/settings/#databases
 DATABASES = {
     'default': {
