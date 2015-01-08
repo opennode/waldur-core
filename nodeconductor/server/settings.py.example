@@ -46,7 +46,6 @@ LOGGING = {
     # Filter provides additional control over which log records are passed from logger to handler.
     # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#filters
     'filters': {
-        # TODO: Document all available nodeconductor.core.log.* filters (briefly here or properly in RTFD)
         # Filter out only events (user-facing messages)
         'is-event': {
             '()': 'nodeconductor.core.log.RequireEvent',
@@ -90,6 +89,7 @@ LOGGING = {
         # See also: https://docs.python.org/2/library/logging.handlers.html#sysloghandler
         'syslog': {
             'class': 'logging.handlers.SysLogHandler',
+            'address': '/dev/log',  # /var/log/syslog on OS X
             'facility': logging.handlers.SysLogHandler.LOG_LOCAL0,
             'filters': ['is-not-event'],
             'formatter': 'message-only',
