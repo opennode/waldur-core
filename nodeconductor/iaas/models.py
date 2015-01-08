@@ -518,17 +518,21 @@ class SecurityGroupRule(models.Model):
 
     tcp = 'tcp'
     udp = 'udp'
+    icmp = 'icmp'
 
     PROTOCOL_CHOICES = (
         (tcp, 'tcp'),
         (udp, 'udp'),
+        (icmp, 'icmp'),
     )
 
     group = models.ForeignKey(SecurityGroup, related_name='rules')
 
-    protocol = models.CharField(max_length=3, blank=True, choices=PROTOCOL_CHOICES)
-    from_port = models.IntegerField(validators=[MaxValueValidator(65535), MinValueValidator(1)], null=True)
-    to_port = models.IntegerField(validators=[MaxValueValidator(65535), MinValueValidator(1)], null=True)
+    protocol = models.CharField(max_length=4, blank=True, choices=PROTOCOL_CHOICES)
+    # TODO: Consider protocol dependent to/from_port fields validation
+    # TODO: Validate that from_port <= to_port
+    from_port = models.IntegerField(validators=[MaxValueValidator(65535)], null=True)
+    to_port = models.IntegerField(validators=[MaxValueValidator(65535)], null=True)
     cidr = models.CharField(max_length=32, blank=True)
 
     # OpenStack backend specific fields
