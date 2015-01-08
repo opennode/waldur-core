@@ -1,18 +1,30 @@
 # Django settings for nodeconductor project
 from nodeconductor.server.base_settings import *
 
+import logging.handlers
+
+# Debugging
+# See also:
+#  - https://docs.djangoproject.com/en/1.7/ref/settings/#debug
+#  - https://docs.djangoproject.com/en/1.7/ref/settings/#template-debug
 DEBUG = False
 TEMPLATE_DEBUG = False
 
+# Allowed hosts
+# See also: https://docs.djangoproject.com/en/1.7/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
+# Secret key
 # SECURITY WARNING: keep the secret key used in production secret!
 # You can use this command to generate a new secret key:
 #
 #   head -c32 /dev/urandom | base64
 #
+# See also: https://docs.djangoproject.com/en/1.7/ref/settings/#secret-key
 SECRET_KEY = '...'
 
+# Dtabases
+# See also: https://docs.djangoproject.com/en/1.7/ref/settings/#databases
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -20,73 +32,106 @@ DATABASES = {
     }
 }
 
+# The absolute path to the directory where collectstatic will collect static files for deployment.
+# See also: https://docs.djangoproject.com/en/1.7/ref/settings/#static-root
 STATIC_ROOT = 'static'
 
-import logging.handlers
-
+# Logging
+# See also: https://docs.djangoproject.com/en/1.7/ref/settings/#logging
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'simple': {
-            'format': '%(asctime)s - %(levelname)s - %(message)s',
-        },
-        'simple-timeless': {
-            'format': '%(levelname)s - %(message)s',
-        },
-    },
-    'handlers': {
-        'null': {
-            'class': 'logging.NullHandler',
-        },
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-        'syslog': {
-            'class': 'logging.handlers.SysLogHandler',
-            'filters': ['is-not-event'],
-            'formatter': 'simple-timeless',
+    'disable_existing_loggers': False,  # fixes Celery beat logging
 
-            'address': '/dev/log',
-            'facility': logging.handlers.SysLogHandler.LOG_LOCAL0,
-        },
-        'syslog-events': {
-            'class': 'logging.handlers.SysLogHandler',
-            'filters': ['is-event'],
-            'formatter': 'simple-timeless',
-
-            'address': '/dev/log',
-            'facility': logging.handlers.SysLogHandler.LOG_LOCAL1,
-        },
-    },
-    'loggers': {
-        'celery': {
-            'handlers': ['console', 'syslog'],
-        },
-        'django': {
-            'handlers': ['console', 'syslog'],
-        },
-        'nodeconductor': {
-            'handlers': ['console', 'syslog', 'syslog-events'],
-        },
-
-        # Plugin related logging
-        'djangosaml2': {
-            'handlers': ['console', 'syslog'],
-        },
-    },
-    'root': {
-        'level': 'INFO',
-        # 'level': 'DEBUG',
-        'handlers': ['null'],
-    },
+    # Filters
+    # Filter provides additional control over which log records are passed from logger to handler.
+    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#filters
     'filters': {
+        # TODO: Document all available nodeconductor.core.log.* filters (briefly here or properly in RTFD)
+        # Filter out only events (user-facing messages)
         'is-event': {
             '()': 'nodeconductor.core.log.RequireEvent',
         },
+        # Filter out only non-events (not user-facing messages)
         'is-not-event': {
             '()': 'nodeconductor.core.log.RequireNotEvent',
         },
     },
+
+    # Formatters
+    # Formatter describes the exact format of the log entry.
+    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#formatters
+    'formatters': {
+        'message-only': {
+            'format': '%(message)s',
+        },
+        'simple': {
+            'format': '%(asctime)s %(levelname)s %(message)s',
+        },
+    },
+
+    # Handlers
+    # Handler determines what happens to each message in a logger.
+    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#handlers
+    'handlers': {
+        # Write logs to file
+        # See also: https://docs.python.org/2/library/logging.handlers.html#watchedfilehandler
+        'file': {
+            'class': 'logging.handlers.WatchedFileHandler',
+            'filename': '/path/to/logfile.log',
+            'formatter': 'simple',
+        },
+        # Send logs to log server (events only)
+        # Note that nodeconductor.core.log.TCPEventHandler does not support exernal formatters
+        'tcp': {
+            'class': 'nodeconductor.core.log.TCPEventHandler',
+            'filters': ['is-event'],
+        },
+        # Forward logs to syslog (non-events only)
+        # See also: https://docs.python.org/2/library/logging.handlers.html#sysloghandler
+        'syslog': {
+            'class': 'logging.handlers.SysLogHandler',
+            'facility': logging.handlers.SysLogHandler.LOG_LOCAL0,
+            'filters': ['is-not-event'],
+            'formatter': 'message-only',
+        },
+        # Send logs to stderr
+        # See also: https://docs.python.org/2/library/logging.handlers.html#streamhandler
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        # Discard logs
+        # See also: https://docs.python.org/2/library/logging.handlers.html#nullhandler
+        'null': {
+            'class': 'logging.NullHandler',
+        },
+    },
+
+    # Loggers
+    # A logger is the entry point into the logging system.
+    # Each logger is a named bucket to which messages can be written for processing.
+    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#loggers
+    #
+    # Default logger configuration
+    'root': {
+        'level': 'INFO',
+        'handlers': ['console'],
+    },
+    # Default configuration can be overridden on per-module basis
+    'loggers': {
+        'django': {
+            #'handlers': ['file'],
+            #'level': 'WARNING',
+        },
+        'nodeconductor': {
+            #'handlers': ['file', 'tcp'],
+            #'level': 'DEBUG',
+        },
+        # Loggers for plugins
+        'djangosaml2': {
+            #'handlers': ['console'],
+            #'level': 'DEBUG',
+        },
+    },
 }
+
