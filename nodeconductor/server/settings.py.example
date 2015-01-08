@@ -74,26 +74,26 @@ LOGGING = {
     'handlers': {
         # Write logs to file
         # See also: https://docs.python.org/2/library/logging.handlers.html#watchedfilehandler
-        'file': {
-            'class': 'logging.handlers.WatchedFileHandler',
-            'filename': '/path/to/logfile.log',
-            'formatter': 'simple',
-        },
+        #'file': {
+        #    'class': 'logging.handlers.WatchedFileHandler',
+        #    'filename': '/path/to/logfile.log',
+        #    'formatter': 'simple',
+        #},
         # Send logs to log server (events only)
         # Note that nodeconductor.core.log.TCPEventHandler does not support exernal formatters
-        'tcp': {
-            'class': 'nodeconductor.core.log.TCPEventHandler',
-            'filters': ['is-event'],
-        },
+        #'tcp': {
+        #    'class': 'nodeconductor.core.log.TCPEventHandler',
+        #    'filters': ['is-event'],
+        #},
         # Forward logs to syslog (non-events only)
         # See also: https://docs.python.org/2/library/logging.handlers.html#sysloghandler
-        'syslog': {
-            'class': 'logging.handlers.SysLogHandler',
-            'address': '/dev/log',  # /var/log/syslog on OS X
-            'facility': logging.handlers.SysLogHandler.LOG_LOCAL0,
-            'filters': ['is-not-event'],
-            'formatter': 'message-only',
-        },
+        #'syslog': {
+        #    'class': 'logging.handlers.SysLogHandler',
+        #    'address': '/dev/log',  # /var/log/syslog on OS X
+        #    'facility': logging.handlers.SysLogHandler.LOG_LOCAL0,
+        #    'filters': ['is-not-event'],
+        #    'formatter': 'message-only',
+        #},
         # Send logs to stderr
         # See also: https://docs.python.org/2/library/logging.handlers.html#streamhandler
         'console': {
@@ -102,9 +102,9 @@ LOGGING = {
         },
         # Discard logs
         # See also: https://docs.python.org/2/library/logging.handlers.html#nullhandler
-        'null': {
-            'class': 'logging.NullHandler',
-        },
+        #'null': {
+        #    'class': 'logging.NullHandler',
+        #,
     },
 
     # Loggers
