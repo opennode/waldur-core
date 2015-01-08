@@ -2,6 +2,9 @@ from __future__ import unicode_literals
 
 import logging
 
+from django.conf import settings
+from django.utils.lru_cache import lru_cache
+
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.structure.filters import filter_queryset_for_user
@@ -68,13 +71,8 @@ def propagate_users_keys_to_clouds_of_newly_granted_project(sender, structure, u
             list(ssh_public_key_uuids), list(membership_pks))
 
 
-from django.utils.lru_cache import lru_cache
-
-
 @lru_cache(maxsize=1)
 def _get_default_security_groups():
-    from django.conf import settings
-
     nc_settings = getattr(settings, 'NODECONDUCTOR', {})
     config_groups = nc_settings.get('DEFAULT_SECURITY_GROUPS', [])
     groups = []
