@@ -161,87 +161,110 @@ if config.get('zabbix', 'db_host') != '':
 
 # Logging
 # See also: https://docs.djangoproject.com/en/1.7/ref/settings/#logging
-
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': False, # Fixes Celery beat logging
-    'formatters': {
-        'request_format': {
-            'format': '%(asctime)s %(remote_addr)s %(username)s "%(request_method)s '
-            '%(path_info)s %(server_protocol)s" %(http_user_agent)s '
-            '%(message)s',
-        },
-    },
+    'disable_existing_loggers': False,  # fixes Celery beat logging
+
+    # Filters
+    # Filter provides additional control over which log records are passed from logger to handler.
+    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#filters
     'filters': {
-        # Populate each log entry with HTTP request information
-        'request': {
-            '()': 'django_requestlogging.logging_filters.RequestFilter',
+        # Filter out only events (user-facing messages)
+        'is-event': {
+            '()': 'nodeconductor.core.log.RequireEvent',
         },
-        # Filter out only event (user-facing) logs
-        'event': {
-            '()': 'nodeconductor.core.log.EventLogFilter',
-        }
+        # Filter out only non-events (not user-facing messages)
+        'is-not-event': {
+            '()': 'nodeconductor.core.log.RequireNotEvent',
+        },
     },
+
+    # Formatters
+    # Formatter describes the exact format of the log entry.
+    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#formatters
+    'formatters': {
+        'message-only': {
+            'format': '%(message)s',
+        },
+        'simple': {
+            'format': '%(asctime)s %(levelname)s %(message)s',
+        },
+    },
+
+    # Handlers
+    # Handler determines what happens to each message in a logger.
+    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#handlers
     'handlers': {
-        # Logging to file
+        # Write logs to file
         # See also: https://docs.python.org/2/library/logging.handlers.html#watchedfilehandler
         'file': {
             'class': 'logging.handlers.WatchedFileHandler',
             'filename': '/dev/null',
-            'filters': ['request'],
-            'formatter': 'request_format',
+            'filters': ['is-not-event'],
+            'formatter': 'simple',
             'level': config.get('logging', 'log_level').upper(),
         },
         'file-event': {
             'class': 'logging.handlers.WatchedFileHandler',
             'filename': '/dev/null',
-            'filters': ['request', 'event'],
-            'formatter': 'request_format',
+            'filters': ['is-event'],
+            'formatter': 'simple',
             'level': config.get('events', 'log_level').upper(),
         },
         'file-saml2': {
             'class': 'logging.handlers.WatchedFileHandler',
             'filename': '/dev/null',
-            'filters': ['request'],
-            'formatter': 'request_format',
+            'formatter': 'simple',
             'level': config.get('saml2', 'log_level').upper(),
         },
-        # Logging to syslog
+        # Forward logs to syslog
         # See also: https://docs.python.org/2/library/logging.handlers.html#sysloghandler
         'syslog': {
             'class': 'logging.handlers.SysLogHandler',
-            'filters': ['request'],
-            'formatter': 'request_format',
+            'filters': ['is-not-event'],
+            'formatter': 'message-only',
             'level': config.get('logging', 'log_level').upper(),
         },
-        'syslog-event': {
+        'syslog-events': {
             'class': 'logging.handlers.SysLogHandler',
-            'filters': ['request'],
-            'formatter': 'request_format',
+            'filters': ['is-event'],
+            'formatter': 'message-only',
+            'level': config.get('logging', 'log_level').upper(),
+        },
+        # Send logs to log server
+        # Note that nodeconductor.core.log.TCPEventHandler does not support exernal formatters
+        'tcp': {
+            'class': 'nodeconductor.core.log.TCPEventHandler',
+            'filters': ['is-not-event'],
             'level': config.get('events', 'log_level').upper(),
         },
-        # Logging to logserver
         'tcp-event': {
             'class': 'nodeconductor.core.log.TCPEventHandler',
-            'filters': ['event'],
+            'filters': ['is-event'],
             'level': config.get('events', 'log_level').upper(),
         },
     },
+
+    # Loggers
+    # A logger is the entry point into the logging system.
+    # Each logger is a named bucket to which messages can be written for processing.
+    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#loggers
+    #
+    # Default logger configuration
+    'root': {
+        'level': 'INFO',
+    },
+    # Default configuration can be overridden on per-module basis
     'loggers': {
         'django': {
             'handlers': [],
-            'level': config.get('logging', 'log_level').upper(),
-            'propagate': True,
         },
         'nodeconductor': {
             'handlers': [],
-            'level': config.get('events', 'log_level').upper(),
-            'propagate': True,
         },
-        'nodeconductor.core.views': {
+        # Loggers for plugins
+        'djangosaml2': {
             'handlers': [],
-            'level': config.get('saml2', 'log_level').upper(),
-            'propagate': True,
         },
     },
 }
@@ -249,10 +272,12 @@ LOGGING = {
 if config.get('logging', 'log_file') != '':
     LOGGING['handlers']['file']['filename'] = config.get('logging', 'log_file')
     LOGGING['loggers']['django']['handlers'].append('file')
+    LOGGING['loggers']['nodeconductor']['handlers'].append('file')
 
 if config.getboolean('logging', 'syslog'):
     LOGGING['handlers']['syslog']['address'] = '/dev/log'
     LOGGING['loggers']['django']['handlers'].append('syslog')
+    LOGGING['loggers']['nodeconductor']['handlers'].append('syslog')
 
 if config.get('events', 'log_file') != '':
     LOGGING['handlers']['file-event']['filename'] = config.get('events', 'log_file')
@@ -269,7 +294,7 @@ if config.getboolean('events', 'syslog'):
 
 if config.get('saml2', 'log_file') != '':
     LOGGING['handlers']['file-saml2']['filename'] = config.get('saml2', 'log_file')
-    LOGGING['loggers']['nodeconductor.core.views']['handlers'].append('file-saml2')
+    LOGGING['loggers']['djangosaml2']['handlers'].append('file-saml2')
 
 # Static files
 # See also: https://docs.djangoproject.com/en/1.7/ref/settings/#static-files
