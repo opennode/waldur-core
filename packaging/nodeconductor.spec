@@ -32,7 +32,6 @@ Requires: python-django-model-utils = 2.2
 Requires: python-django-filter = 0.7
 Requires: python-django-fsm = 2.2.0
 Requires: python-django-permission = 0.8.2
-Requires: python-django-request-logging = 1.0.1
 Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework < 2.4.0
 Requires: python-django-rest-framework-extensions = 0.2.6
 Requires: python-django-saml2 = 0.11.0.post0
