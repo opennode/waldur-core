@@ -73,6 +73,26 @@ Therefore configuration might look like this:
                 'tenant_name': 'admin',
             },
         ),
+        'DEFAULT_SECURITY_GROUPS': (
+            {
+                'name': 'ssh',
+                'description': 'Security group for secure shell access',
+                'rules': (
+                    {
+                        'protocol': 'tcp',
+                        'cidr': '0.0.0.0/0',
+                        'from_port': 22,
+                        'to_port': 22,
+                    },
+                    {
+                        'protocol': 'icmp',
+                        'cidr': '0.0.0.0/0',
+                        'icmp_type': -1,
+                        'icmp_code': -1,
+                    },
+                ),
+            },
+        ),
         'MONITORING': {
             'ZABBIX': {
                 'server': 'http://zabbix.example.com/zabbix',
@@ -103,13 +123,66 @@ Therefore configuration might look like this:
 
       username
         Username of an admin account.
-        This used must be able to create tenants within OpenStack.
+        This user must be able to create tenants within OpenStack.
 
       password
         Password of an admin account.
 
       tenant_name
         Name of administrative tenant. Typically this is set to 'admin'.
+
+    DEFAULT_SECURITY_GROUPS
+      A list of security groups that will be created in IaaS backend for each cloud.
+
+      Each entry is a dictionary with the following keys:
+
+      name
+        Short name of the security group.
+
+      description
+        Detailed description of the security group.
+
+      rules
+        List of firewall rules that make up the security group.
+
+        Each entry is a dictionary with the following keys:
+
+        protocol
+          Transport layer protocol the rule applies to.
+          Must be one of *tcp*, *udp* or *icmp*.
+
+        cidr
+          IPv4 network of packet source.
+          Must be a string in `CIDR notation`_.
+
+        from_port
+          Start of packet destination port range.
+          Must be a number in range from 1 to 65535.
+
+          For *tcp* and *udp* protocols only.
+
+        to_port
+          End of packet destination port range.
+          Must be a number in range from 1 to 65535.
+          Must not be less than **from_port**.
+
+          For *tcp* and *udp* protocols only.
+
+        icmp_type
+          ICMP type of the packet.
+          Must be a number in range from -1 to 255.
+
+          See also: `ICMP Types and Codes`_.
+
+          For *icmp* protocol only.
+
+        icmp_code
+          ICMP code of the packet.
+          Must be a number in range from -1 to 255.
+
+          See also: `ICMP Types and Codes`_.
+
+          For *icmp* protocol only.
 
     MONITORING
       Dictionary of available monitoring engines.
@@ -180,3 +253,5 @@ See also: `Django database settings`_.
 .. _Django: https://www.djangoproject.com/
 .. _Django documentation: https://docs.djangoproject.com/en/1.6/
 .. _Django database settings: https://docs.djangoproject.com/en/1.7/ref/settings/#databases
+.. _ICMP Types and Codes: http://en.wikipedia.org/wiki/Internet_Control_Message_Protocol#Control_messages
+.. _CIDR notation: http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing#CIDR_notation
