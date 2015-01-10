@@ -153,3 +153,26 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 }
+
+NODECONDUCTOR = {
+    'DEFAULT_SECURITY_GROUPS': (
+        {
+            'name': 'ssh',
+            'description': 'Security group for secure shell access and ping',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 22,
+                    'to_port': 22,
+                },
+                {
+                    'protocol': 'icmp',
+                    'cidr': '0.0.0.0/0',
+                    'icmp_type': -1,
+                    'icmp_code': -1,
+                },
+            ),
+        },
+    ),
+}
