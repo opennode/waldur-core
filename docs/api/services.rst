@@ -1,7 +1,8 @@
 Services list
 -------------
 
-Use */api/services/* to get a list of all the service that a user can see.
+Use */api/services/* to get a list of all the service that a user can see. Only services that have agreed
+and actual SLA values are shown.
 
 Supported filters are:
 

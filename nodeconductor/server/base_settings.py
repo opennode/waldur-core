@@ -143,7 +143,36 @@ CELERYBEAT_SCHEDULE = {
 
     'check-cloud-project-memberships-quotas': {
         'task': 'nodeconductor.iaas.tasks.check_cloud_memberships_quotas',
-        'schedule': timedelta(minutes=5),
+        'schedule': timedelta(minutes=1440),
         'args': (),
     },
+
+    'sync-instances-with-zabbix': {
+        'task': 'nodeconductor.iaas.tasks.sync_instances_with_zabbix',
+        'schedule': timedelta(minutes=10),
+        'args': (),
+    },
+}
+
+NODECONDUCTOR = {
+    'DEFAULT_SECURITY_GROUPS': (
+        {
+            'name': 'ssh',
+            'description': 'Security group for secure shell access and ping',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 22,
+                    'to_port': 22,
+                },
+                {
+                    'protocol': 'icmp',
+                    'cidr': '0.0.0.0/0',
+                    'icmp_type': -1,
+                    'icmp_code': -1,
+                },
+            ),
+        },
+    ),
 }

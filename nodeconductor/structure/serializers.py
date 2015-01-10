@@ -67,6 +67,10 @@ class ProjectGroupProjectMembershipSerializer(serializers.ModelSerializer):
     def restore_object(self, attrs, instance=None):
         return attrs['projectgroup']
 
+    def to_native(self, obj):
+        memberships = list(models.ProjectGroup.projects.through.objects.filter(projectgroup=obj).all())
+        return [super(ProjectGroupProjectMembershipSerializer, self).to_native(member) for member in memberships]
+
 
 class ProjectSerializer(core_serializers.CollectedFieldsMixin,
                         core_serializers.RelatedResourcesFieldMixin,

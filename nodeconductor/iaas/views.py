@@ -542,7 +542,10 @@ class ServiceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
     agreed_sla = django_filters.NumberFilter()
-    actual_sla = django_filters.NumberFilter(name='slas__value')
+    actual_sla = django_filters.NumberFilter(
+        name='slas__value',
+        distinct=True,
+    )
 
     class Meta(object):
         model = models.Instance
@@ -617,7 +620,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
 
         period = self._get_period()
 
-        queryset = queryset.filter(Q(slas__period=period) | Q(slas__period=None)).\
+        queryset = queryset.filter(slas__period=period, agreed_sla__isnull=False).\
             values(
                 'uuid',
                 'hostname',

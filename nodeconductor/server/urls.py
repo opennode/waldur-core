@@ -37,11 +37,6 @@ urlpatterns = patterns(
     url(r'^$', TemplateView.as_view(template_name='landing/index.html')),
 )
 
-# FIXME: This shouldn't be here
-if 'nc_admin.base' in settings.INSTALLED_APPS:
-    urlpatterns += patterns(
-        '',
-        url(r'^', include('nc_admin.base.urls')))
 
 if settings.DEBUG:
     (r'^%{static_url}/(?P<path>.*)$'.format(static_url=settings.STATIC_URL),

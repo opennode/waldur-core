@@ -22,12 +22,20 @@ class EventLoggerAdapter(logging.LoggerAdapter, object):
         return msg, kwargs
 
 
-class EventLogFilter(logging.Filter):
+class RequireEvent(logging.Filter):
     """
-    A filter that allows only event records that have event=True as extra parameter.
+    A filter that allows only event records.
     """
     def filter(self, record):
         return hasattr(record, 'event')
+
+
+class RequireNotEvent(logging.Filter):
+    """
+    A filter that allows only non-event records.
+    """
+    def filter(self, record):
+        return not getattr(record, 'event', False)
 
 
 class EventFormatter(logging.Formatter):
