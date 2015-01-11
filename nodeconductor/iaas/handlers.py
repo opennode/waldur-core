@@ -181,7 +181,6 @@ def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwa
 
     if connected_backups.exists():
         raise models.ProtectedError(
-            "Cannot delete some instances of model 'Instance' because "
-            "they have connected 'Backups'",
+            "Cannot delete instance because it has connected backups.",
             connected_backups
         )
