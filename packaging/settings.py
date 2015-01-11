@@ -341,8 +341,8 @@ for key in ['metadata_cert', 'metadata_file', 'metadata_url']:
     if config.has_option('saml2', key) and config.get('saml2', key) != '' and config.get('saml2', 'idp_' + key) == '':
         warnings.warn(
            "Config option %s is deprectaed and will be removed in NodeConductor 0.23; use idp_%s instead" % (key, key),
-            PendingDeprecationWarning)  # TODO-0.22: PendingDeprecationWarning -> DeprecationWarning
-        configs.set('saml2', 'idp_' + key, config.get(key))
+            PendingDeprecationWarning)  # TODO-0.25: PendingDeprecationWarning -> DeprecationWarning
+        config.set('saml2', 'idp_' + key, config.get(key))
 
 SAML_CONFIG = {
     # full path to the xmlsec1 binary program
@@ -466,7 +466,118 @@ NODECONDUCTOR = {
                 'goodsla': 95,
             },
         }
-    }
+    },
+    'DEFAULT_SECURITY_GROUPS': (
+        {
+            'name': 'ssh',
+            'description': 'Security group for secure shell access',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 22,
+                    'to_port': 22,
+                },
+            ),
+        },
+        {
+            'name': 'ping',
+            'description': 'Security group for ICMP (ping)',
+            'rules': (
+                {
+                    'protocol': 'icmp',
+                    'cidr': '0.0.0.0/0',
+                    'icmp_type': -1,
+                    'icmp_code': -1,
+                },
+            ),
+        },
+        {
+            'name': 'http',
+            'description': 'Security group for HTTP',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 80,
+                    'to_port': 80,
+                },
+            ),
+        },
+        {
+            'name': 'https',
+            'description': 'Security group for HTTP',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 443,
+                    'to_port': 443,
+                },
+            ),
+        },
+        {
+            'name': 'imap',
+            'description': 'Security group for IMAP',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 143,
+                    'to_port': 143,
+                },
+            ),
+        },
+        {
+            'name': 'mysql',
+            'description': 'Security group for MySQL',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 3306,
+                    'to_port': 3306,
+                },
+            ),
+        },
+        {
+            'name': 'smtp',
+            'description': 'Security group for SMTP',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 25,
+                    'to_port': 25,
+                },
+            ),
+        },
+        {
+            'name': 'rdp',
+            'description': 'Security group for RDP',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 3389,
+                    'to_port': 3389,
+                },
+            ),
+        },
+        {
+            'name': 'dns',
+            'description': 'Security group for DNS',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 53,
+                    'to_port': 53,
+                },
+            ),
+        },
+
+    ),
 }
 
 # Sentry integration
