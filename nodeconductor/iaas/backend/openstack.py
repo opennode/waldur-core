@@ -591,7 +591,7 @@ class OpenStackBackend(object):
         return stats
 
     # Instance related methods
-    def provision_instance(self, instance, backend_flavor_id, system_volume_id, data_volume_id):
+    def provision_instance(self, instance, backend_flavor_id, system_volume_id=None, data_volume_id=None):
         logger.info('About to boot instance %s', instance.uuid)
         try:
             membership = instance.cloud_project_membership
@@ -850,11 +850,11 @@ class OpenStackBackend(object):
             for volume in attached_volumes:
                 # TODO: Consider using context managers to avoid having resource remnants
                 snapshot = self.create_snapshot(volume.id, cinder)
-                temporary_volume = self.create_temporary_volume(snapshot, cinder)
+                temporary_volume = self.create_volume_from_snapshot(snapshot, cinder)
                 backup = self.create_volume_backup(temporary_volume, volume.device, cinder)
                 backups.append(backup)
-                self.delete_temporary_volume(temporary_volume, cinder)
-                self.delete_temporary_snapshot(snapshot, cinder)
+                self.delete_volume(temporary_volume, cinder)
+                self.delete_snapshot(snapshot, cinder)
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
             logger.exception('Failed to create backup for instance %s', instance.uuid)
@@ -863,25 +863,25 @@ class OpenStackBackend(object):
             logger.info('Successfully created backup for instance %s', instance.uuid)
         return backups
 
-    def copy_volumes(self, membership, volume_ids, prefix='Backup volume'):
+    def clone_volumes(self, membership, volume_ids, prefix='Cloned volume'):
         logger.debug('About to copy volumes %s', ', '.join(volume_ids))
         try:
             session = self.create_tenant_session(membership)
             cinder = self.create_cinder_client(session)
 
-            copied_volume_ids = []
+            cloned_volume_ids = []
             for volume_id in volume_ids:
                 snapshot = self.create_snapshot(volume_id, cinder)
-                copied_volume_ids.append(self.create_temporary_volume(snapshot, cinder, prefix=prefix))
-                self.delete_temporary_snapshot(snapshot, cinder)
+                cloned_volume_ids.append(self.create_volume_from_snapshot(snapshot, cinder, prefix=prefix))
+                self.delete_snapshot(snapshot, cinder)
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
-            logger.exception('Failed to copy volumes %s', ', '.join(volume_ids))
+            logger.exception('Failed to clone volumes %s', ', '.join(volume_ids))
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Successfully copied volumes %s', ', '.join(volume_ids))
-        return copied_volume_ids
+            logger.info('Successfully cloned volumes %s', ', '.join(volume_ids))
+        return cloned_volume_ids
 
     def delete_volumes(self, membership, volume_ids):
         logger.debug('About to delete volumes %s', ', '.join(volume_ids))
@@ -890,7 +890,7 @@ class OpenStackBackend(object):
             cinder = self.create_cinder_client(session)
 
             for volume_id in volume_ids:
-                self.delete_temporary_volume(volume_id, cinder)
+                self.delete_volume(volume_id, cinder)
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
@@ -1597,25 +1597,25 @@ class OpenStackBackend(object):
 
         return snapshot.id
 
-    def delete_temporary_snapshot(self, snapshot_id, cinder):
+    def delete_snapshot(self, snapshot_id, cinder):
         """
-        Delete temporary snapshot
+        Delete a snapshot
 
         :param snapshot_id: snapshot id
         :type snapshot_id: str
         """
-        logger.debug('About to delete temporary snapshot %s', snapshot_id)
+        logger.debug('About to delete a snapshot %s', snapshot_id)
 
         if not self._wait_for_snapshot_status(snapshot_id, cinder, 'available', 'error', poll_interval=60, retries=30):
             logger.exception('Timed out waiting for snapshot %s to become available', snapshot_id)
             raise CloudBackendInternalError()
 
         cinder.volume_snapshots.delete(snapshot_id)
-        logger.info('Successfully deletet temporary snapshot %s', snapshot_id)
+        logger.info('Successfully deleted a snapshot %s', snapshot_id)
 
-    def create_temporary_volume(self, snapshot_id, cinder, prefix='Backup volume'):
+    def create_volume_from_snapshot(self, snapshot_id, cinder, prefix='Promoted volume'):
         """
-        Create temporary volume from snapshot
+        Create a volume from snapshot
 
         :param snapshot_id: snapshot id
         :type snapshot_id: str
@@ -1627,20 +1627,20 @@ class OpenStackBackend(object):
         volume_name = prefix + (' %s' % snapshot.volume_id)
 
         logger.debug('About to create temporary volume from snapshot %s', snapshot_id)
-        temporary_volume = cinder.volumes.create(volume_size, snapshot_id=snapshot_id,
-                                                 display_name=volume_name)
-        temporary_volume_id = temporary_volume.id
+        created_volume = cinder.volumes.create(volume_size, snapshot_id=snapshot_id,
+                                               display_name=volume_name)
+        volume_id = created_volume.id
 
-        if not self._wait_for_volume_status(temporary_volume_id, cinder, 'available', 'error'):
+        if not self._wait_for_volume_status(volume_id, cinder, 'available', 'error'):
             logger.error('Timed out creating temporary volume from snapshot %s', snapshot_id)
             raise CloudBackendInternalError()
 
         logger.info('Successfully created temporary volume %s from snapshot %s',
-                    temporary_volume_id, snapshot_id)
+                    volume_id, snapshot_id)
 
-        return temporary_volume_id
+        return volume_id
 
-    def delete_temporary_volume(self, volume_id, cinder):
+    def delete_volume(self, volume_id, cinder):
         """
         Delete temporary volume
 
