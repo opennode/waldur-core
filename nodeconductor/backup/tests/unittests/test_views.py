@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from mock import Mock
 
 from django.test import TestCase
+from rest_framework import status
 
 from nodeconductor.backup import views, models
 from nodeconductor.backup.tests import factories
@@ -43,11 +44,13 @@ class BackupViewSetTest(TestCase):
         self.user = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
 
     def test_restore(self):
-        backup = factories.BackupFactory(state=models.Backup.States.READY)
+        backup = factories.BackupFactory.create(
+            state=models.Backup.States.READY,
+        )
         request = Mock()
-        request.DATA = {'user': self.user}
+        request.DATA = {'hostname': 'new.hostname'}
         response = self.view.restore(request, backup.uuid)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.RESTORING)
 
     def test_delete(self):
@@ -55,5 +58,5 @@ class BackupViewSetTest(TestCase):
         request.user = self.user
         backup = factories.BackupFactory(state=models.Backup.States.READY)
         response = self.view.delete(request, backup.uuid)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.DELETING)

@@ -50,7 +50,7 @@ class BackupUsageTest(test.APITransactionTestCase):
         backup = factories.BackupFactory()
         url = _backup_url(backup, action='restore')
         response = self.client.post(url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.RESTORING)
 
     def test_backup_delete(self):
