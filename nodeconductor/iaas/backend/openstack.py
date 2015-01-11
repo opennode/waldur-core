@@ -623,29 +623,34 @@ class OpenStackBackend(object):
 
             network = matching_networks[0]
 
-            safe_key_name = self.sanitize_key_name(instance.key_name)
+            # instance key is optional
+            if instance.key_name:
+                safe_key_name = self.sanitize_key_name(instance.key_name)
 
-            matching_keys = [
-                key
-                for key in nova.keypairs.findall(fingerprint=instance.key_fingerprint)
-                if key.name.endswith(safe_key_name)
-            ]
-            matching_keys_count = len(matching_keys)
+                matching_keys = [
+                    key
+                    for key in nova.keypairs.findall(fingerprint=instance.key_fingerprint)
+                    if key.name.endswith(safe_key_name)
+                ]
+                matching_keys_count = len(matching_keys)
 
-            if matching_keys_count > 1:
-                logger.error('Found %d public keys with fingerprint "%s", expected exactly one',
-                             matching_keys_count, instance.key_fingerprint)
-                raise CloudBackendError('Unable to find public key to provision instance with')
-            elif matching_keys_count == 0:
-                logger.error('Found no public keys with fingerprint "%s", expected exactly one',
-                             instance.key_fingerprint)
-                raise CloudBackendError('Unable to find public key to provision instance with')
+                if matching_keys_count > 1:
+                    logger.error('Found %d public keys with fingerprint "%s", expected exactly one',
+                                 matching_keys_count, instance.key_fingerprint)
+                    raise CloudBackendError('Unable to find public key to provision instance with')
+                elif matching_keys_count == 0:
+                    logger.error('Found no public keys with fingerprint "%s", expected exactly one',
+                                 instance.key_fingerprint)
+                    raise CloudBackendError('Unable to find public key to provision instance with')
 
-            backend_public_key = matching_keys[0]
+                backend_public_key = matching_keys[0]
+            else:
+                backend_public_key = None
+
             backend_flavor = nova.flavors.get(backend_flavor_id)
             backend_image = glance.images.get(image.backend_id)
 
-            if system_volume_id is None:
+            if not system_volume_id:
                 system_volume_name = '{0}-system'.format(instance.hostname)
                 logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
                 system_volume = cinder.volumes.create(
@@ -656,7 +661,7 @@ class OpenStackBackend(object):
                 )
                 system_volume_id = system_volume.id
 
-            if data_volume_id is None:
+            if not data_volume_id:
                 data_volume_name = '{0}-data'.format(instance.hostname)
                 logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
                 data_volume = cinder.volumes.create(
@@ -719,7 +724,7 @@ class OpenStackBackend(object):
                 nics=[
                     {'net-id': network['id']}
                 ],
-                key_name=backend_public_key.name,
+                key_name=backend_public_key.name if backend_public_key is not None else None,
                 security_groups=security_group_ids,
             )
 
