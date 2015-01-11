@@ -30,14 +30,14 @@ class ZabbixApiClient(object):
             logger.exception('Can not get Zabbix host for instance %s', instance)
             six.reraise(ZabbixError, e)
 
-    def create_host(self, instance):
+    def create_host(self, instance, warn_if_host_exists=True):
         try:
             api = self.get_zabbix_api()
 
             _, created = self.get_or_create_host(
                 api, instance, self.groupid, self.templateid, self.interface_parameters)
 
-            if not created:
+            if not created and warn_if_host_exists:
                 logger.warn('Can not create new Zabbix host for instance %s. It already exists.', instance)
 
         except ZabbixAPIException as e:
@@ -82,7 +82,7 @@ class ZabbixApiClient(object):
             logger.exception('Can not delete Zabbix hostgroup.')
             six.reraise(ZabbixError, e)
 
-    def create_service(self, instance, hostid=None):
+    def create_service(self, instance, hostid=None, warn_if_service_exists=True):
         try:
             api = self.get_zabbix_api()
 
@@ -96,7 +96,7 @@ class ZabbixApiClient(object):
 
             _, created = self.get_or_create_service(api, service_parameters)
 
-            if not created:
+            if not created and warn_if_service_exists:
                 logger.warn(
                     'Can not create new Zabbix service for instance %s. Service with name %s already exists',
                     (instance, name))

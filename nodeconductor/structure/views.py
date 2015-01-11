@@ -454,7 +454,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 Q(projects__roles__permission_group__user=user)
                 |
                 Q(project_groups__roles__permission_group__user=user)
-            )
+            ).distinct()
 
             # check if we need to filter potential users by a customer
             potential_customer = self.request.QUERY_PARAMS.get('potential_customer', None)
@@ -462,20 +462,20 @@ class UserViewSet(viewsets.ModelViewSet):
                 connected_customers_query = connected_customers_query.filter(uuid=potential_customer)
                 connected_customers_query = filters.filter_queryset_for_user(connected_customers_query, user)
 
-            connected_customers = connected_customers_query.all()
+            connected_customers = list(connected_customers_query.all())
 
             queryset = queryset.filter(
                 # customer owners
                 Q(
-                    groups__customerrole__customer_in=connected_customers,
+                    groups__customerrole__customer__in=connected_customers,
                 )
                 |
                 Q(
-                    groups__projectrole__project__customer_in=connected_customers,
+                    groups__projectrole__project__customer__in=connected_customers,
                 )
                 |
                 Q(
-                    groups__projectgrouprole__project_group__customer_in=connected_customers,
+                    groups__projectgrouprole__project_group__customer__in=connected_customers,
                 )
                 |
                 # users with no role

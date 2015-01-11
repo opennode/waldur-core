@@ -17,6 +17,7 @@ class CloudFactory(factory.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: 'cloud%s' % n)
     customer = factory.SubFactory(structure_factories.CustomerFactory)
+    auth_url = 'http://example.com:5000/v2'
 
     @classmethod
     def get_url(self, cloud=None):
@@ -222,6 +223,8 @@ class InstanceFactory(factory.DjangoModelFactory):
 
     backend_id = factory.Sequence(lambda n: 'instance-id%s' % n)
 
+    agreed_sla = Decimal('99.9')
+
     @classmethod
     def get_url(self, instance=None, action=None):
         if instance is None:
@@ -232,6 +235,15 @@ class InstanceFactory(factory.DjangoModelFactory):
     @classmethod
     def get_list_url(self):
         return 'http://testserver' + reverse('instance-list')
+
+
+class InstanceSlaHistoryFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.InstanceSlaHistory
+
+    period = factory.Sequence(lambda n: '200%s' % n)
+    instance = factory.SubFactory(InstanceFactory)
+    value = factory.LazyAttribute(lambda o: Decimal('99.9'))
 
 
 class InstanceLicenseFactory(factory.DjangoModelFactory):

@@ -30,18 +30,6 @@ class FlavorSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
 
 
-class CloudCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
-                            serializers.HyperlinkedModelSerializer):
-    class Meta(object):
-        model = models.Cloud
-        fields = ('uuid', 'url', 'name', 'customer', 'auth_url')
-
-        lookup_field = 'uuid'
-
-    def get_filtered_field_names(self):
-        return 'customer',
-
-
 class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
                       core_serializers.RelatedResourcesFieldMixin,
                       serializers.HyperlinkedModelSerializer):
@@ -60,43 +48,26 @@ class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
         )
         lookup_field = 'uuid'
 
-    public_fields = (
-        'uuid',
-        'url',
-        'name',
-        'customer',
-        'customer_name',
-        'customer_native_name',
-        'flavors',
-        'projects',
-        'auth_url',
-    )
+    def get_fields(self):
+        # TODO: Extract to a proper mixin
+        fields = super(CloudSerializer, self).get_fields()
+
+        try:
+            method = self.context['view'].request.method
+        except (KeyError, AttributeError):
+            return fields
+
+        if method in ('PUT', 'PATCH'):
+            fields['auth_url'].read_only = True
+            fields['customer'].read_only = True
+
+        return fields
 
     def get_filtered_field_names(self):
         return 'customer',
 
     def get_related_paths(self):
         return 'customer',
-
-    def to_native(self, obj):
-        # a workaround for DRF's webui bug
-        if obj is None:
-            return
-
-        native = super(CloudSerializer, self).to_native(obj)
-        try:
-            user = self.context['request'].user
-        except (KeyError, AttributeError):
-            return native
-
-        if not user.is_superuser:
-            is_customer_owner = obj.customer.roles.filter(
-                permission_group__user=user, role_type=structure_models.CustomerRole.OWNER).exists()
-            if not is_customer_owner:
-                for field_name in native:
-                    if field_name not in self.public_fields:
-                        del native[field_name]
-        return native
 
 
 class UniqueConstraintError(exceptions.APIException):

@@ -17,6 +17,7 @@ PERMISSION_LOGICS = (
 
         any_permission=True,
     )),
+    ('structure.ProjectGroup',  StaffPermissionLogic(any_permission=True)),
     (User.groups.through, FilteredCollaboratorsPermissionLogic(
         collaborators_query=[
             # project
