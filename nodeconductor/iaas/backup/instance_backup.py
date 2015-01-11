@@ -27,9 +27,12 @@ class InstanceBackupStrategy(BackupStrategy):
             )
         except CloudBackendError as e:
             six.reraise(BackupStrategyExecutionError, e)
+
+        # populate backup metadata
         metadata = cls._get_instance_metadata(instance)
         metadata['system_volume_id'] = cloned_system_volume_id
         metadata['data_volume_id'] = cloned_data_volume_id
+
         return metadata
 
     @classmethod
@@ -114,15 +117,17 @@ class InstanceBackupStrategy(BackupStrategy):
 
     @classmethod
     def _get_instance_metadata(cls, instance):
-        """
-        Return additional instance information that has to be stored with backup
-        """
-        return {
+        # populate backup metadata
+        metadata = {
+            'cloud_project_membership': instance.cloud_project_membership.pk,
             'hostname': instance.hostname,
-            'template_id': instance.template_id,
-            'external_ips': instance.external_ips,
-            'internal_ips': instance.internal_ips,
-            'agreed_sla': instance.agreed_sla,
+            'template': instance.template.pk,
+            'system_volume_id': instance.system_volume_id,
             'system_volume_size': instance.system_volume_size,
+            'data_volume_id': instance.data_volume_id,
             'data_volume_size': instance.data_volume_size,
+            'key_name': instance.key_name,
+            'key_fingerprint': instance.key_name,
+            'agreed_sla': instance.agreed_sla,
         }
+        return metadata

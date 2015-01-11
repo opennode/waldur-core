@@ -5,7 +5,6 @@ from django.core.urlresolvers import reverse
 from nodeconductor.backup import models
 from nodeconductor.iaas import models as iaas_models
 from nodeconductor.iaas.tests import factories as iaas_factories
-from nodeconductor.structure.tests import factories as structure_factories
 
 
 class BackupScheduleFactory(factory.DjangoModelFactory):
@@ -46,7 +45,6 @@ class BackupFactory(factory.DjangoModelFactory):
         self.metadata.update(
             {
                 'cloud_project_membership': self.backup_source.cloud_project_membership.pk,
-                'flavor': iaas_factories.FlavorFactory.get_url(iaas_factories.FlavorFactory(cloud=cloud)),
                 'hostname': 'original.vm.hostname',
                 'template': template.pk,
                 'system_volume_id': self.backup_source.system_volume_id,
@@ -55,6 +53,7 @@ class BackupFactory(factory.DjangoModelFactory):
                 'data_volume_size': self.backup_source.data_volume_size,
                 'key_name': self.backup_source.key_name,
                 'key_fingerprint': self.backup_source.key_name,
+                'agreed_sla': self.backup_source.agreed_sla,
             }
         )
         if extracted:

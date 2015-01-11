@@ -27,11 +27,10 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
                 'data_volume_id': self.copied_data_volume_id,
             }
         )
-        self.flavor = factories.FlavorFactory()
-        self.key = factories.SshPublicKeyFactory()
+        self.flavor = factories.FlavorFactory(cloud=self.backup.backup_source.cloud_project_membership.cloud)
         self.user_input = {
             'hostname': 'new_hostname',
-            'flavor_uuid': self.flavor.uuid.hex,
+            'flavor': factories.FlavorFactory.get_url(self.flavor),
         }
         self.metadata = InstanceBackupStrategy._get_instance_metadata(self.instance)
         self.metadata['system_volume_id'] = self.copied_system_volume_id
@@ -59,6 +58,7 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
     def test_strategy_restore_method_calls_backend_restore_instance_method(self):
         new_instance, user_input, errors = InstanceBackupStrategy.deserialize_instance(self.backup.metadata,
                                                                                        self.user_input)
+        self.assertIsNone(errors, 'Deserialization errors: %s' % errors)
         InstanceBackupStrategy.restore(new_instance.uuid, user_input)
         self.mocked_backed.clone_volumes.assert_called_once_with(
             membership=self.instance.cloud_project_membership,
@@ -69,7 +69,7 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
     def test_strategy_restore_method_creates_new_instance(self):
         new_instance, user_input, errors = InstanceBackupStrategy.deserialize_instance(self.backup.metadata,
                                                                                        self.user_input)
-
+        self.assertIsNone(errors, 'Deserialization errors: %s' % errors)
         self.assertEqual(new_instance.hostname, 'new_hostname')
         self.assertNotEqual(new_instance.id, self.instance.id)
 

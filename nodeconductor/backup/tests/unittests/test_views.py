@@ -48,7 +48,11 @@ class BackupViewSetTest(TestCase):
             state=models.Backup.States.READY,
         )
         request = Mock()
-        request.DATA = {'hostname': 'new.hostname'}
+        flavor = iaas_factories.FlavorFactory(cloud=backup.backup_source.cloud_project_membership.cloud)
+        request.DATA = {
+            'hostname': 'new.hostname',
+            'flavor': iaas_factories.FlavorFactory.get_url(flavor)
+        }
         response = self.view.restore(request, backup.uuid)
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.RESTORING)

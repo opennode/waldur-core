@@ -49,7 +49,12 @@ class BackupUsageTest(test.APITransactionTestCase):
     def test_backup_restore(self):
         backup = factories.BackupFactory()
         url = _backup_url(backup, action='restore')
-        response = self.client.post(url)
+        user_input = {
+            'flavor': iaas_factories.FlavorFactory.get_url(iaas_factories.FlavorFactory(
+                cloud=backup.backup_source.cloud_project_membership.cloud
+            ))
+        }
+        response = self.client.post(url, data=user_input)
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.RESTORING)
 
