@@ -70,6 +70,8 @@ In a DB, state is stored encoded with a symbol. States are:
 - DELETING = 11
 - RESIZING_SCHEDULED = 13
 - RESIZING = 14
+- RESTARTING_SCHEDULED = 15
+- RESTARTING = 16
 
 A graph of possible state transitions is shown below.
 

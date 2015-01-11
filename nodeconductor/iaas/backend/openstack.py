@@ -801,6 +801,25 @@ class OpenStackBackend(object):
             instance.save()
             logger.info('Successfully stopped instance %s', instance.uuid)
 
+    def restart_instance(self, instance):
+        logger.debug('About to restart instance %s', instance.uuid)
+        try:
+            membership = instance.cloud_project_membership
+
+            session = self.create_tenant_session(membership)
+
+            nova = self.create_nova_client(session)
+            nova.servers.reboot(instance.backend_id)
+
+            if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE', retries=80):
+                logger.error('Failed to restart instance %s', instance.uuid)
+                raise CloudBackendError('Timed out waiting for instance %s to restart' % instance.uuid)
+        except nova_exceptions.ClientException as e:
+            logger.exception('Failed to restart instance %s', instance.uuid)
+            six.reraise(CloudBackendError, e)
+        else:
+            logger.info('Successfully restarted instance %s', instance.uuid)
+
     def delete_instance(self, instance):
         logger.info('About to delete instance %s', instance.uuid)
         try:

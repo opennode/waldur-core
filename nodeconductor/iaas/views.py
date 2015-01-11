@@ -266,6 +266,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
             # code: (scheduled_celery_task, instance_marker_state)
             'start': ('schedule_starting', tasks.schedule_starting),
             'stop': ('schedule_stopping', tasks.schedule_stopping),
+            'restart': ('schedule_restarting', tasks.schedule_restarting),
             'destroy': ('schedule_deletion', tasks.schedule_deleting),
             'flavor change': ('schedule_resizing', tasks.update_flavor),
             'disk extension': ('schedule_resizing', tasks.extend_disk),
@@ -295,6 +296,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     def destroy(self, request, uuid=None):
         return self._schedule_transition(request, uuid, 'destroy')
+
+    @action()
+    def restart(self, request, uuid=None):
+        return self._schedule_transition(request, uuid, 'restart')
 
     @action()
     def resize(self, request, uuid=None):
