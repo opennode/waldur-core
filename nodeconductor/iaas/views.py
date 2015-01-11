@@ -301,7 +301,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
             from nodeconductor.iaas.handlers import prevent_deletion_of_instances_with_connected_backups
             prevent_deletion_of_instances_with_connected_backups(None, instance)
         except django_models.ProtectedError as e:
-            return Response({'detail': e.args[0]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': e.args[0]}, status=status.HTTP_409_CONFLICT)
 
         return self._schedule_transition(request, uuid, 'destroy')
 
