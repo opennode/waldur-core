@@ -37,7 +37,7 @@ def restoration_task(backup_uuid, instance_uuid, user_raw_input):
         if source is not None:
             logger.debug('About to restore backup for backup source: %s', backup.backup_source)
             try:
-                backup.get_strategy().restore(backup, instance_uuid, user_raw_input)
+                backup.get_strategy().restore(instance_uuid, user_raw_input)
                 backup.confirm_restoration()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to restore backup for backup source: %s', backup.backup_source)
