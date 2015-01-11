@@ -204,7 +204,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         view_name='sshpublickey-detail',
         lookup_field='uuid',
         queryset=core_models.SshPublicKey.objects.all(),
-        required=True,
+        required=False,
         write_only=True,
     )
 
@@ -212,8 +212,13 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'uuid', 'hostname', 'description',
-                  'template', 'project', 'security_groups', 'flavor', 'ssh_public_key', 'external_ips')
+        fields = (
+            'url', 'uuid',
+            'hostname', 'description',
+            'template',
+            'project',
+            'security_groups', 'flavor', 'ssh_public_key', 'external_ips',
+        )
         lookup_field = 'uuid'
 
     def get_fields(self):
@@ -272,9 +277,10 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         return fix_non_nullable_attrs(attrs)
 
     def restore_object(self, attrs, instance=None):
-        key = attrs['ssh_public_key']
-        attrs['key_name'] = key.name
-        attrs['key_fingerprint'] = key.fingerprint
+        key = attrs.get('ssh_public_key')
+        if key:
+            attrs['key_name'] = key.name
+            attrs['key_fingerprint'] = key.fingerprint
 
         flavor = attrs['flavor']
         attrs['cores'] = flavor.cores
@@ -289,6 +295,83 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         attrs['cloud_project_membership'] = membership
 
         return super(InstanceCreateSerializer, self).restore_object(attrs, instance)
+
+
+class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
+
+    cloud_project_membership = serializers.PrimaryKeyRelatedField()
+    # cloud = serializers.PrimaryKeyRelatedField()
+    # TODO: consider unbinding template and persisting its data into backup metadata
+    template = serializers.PrimaryKeyRelatedField()
+    flavor = serializers.HyperlinkedRelatedField(
+        view_name='flavor-detail',
+        lookup_field='uuid',
+        queryset=models.Flavor.objects.all(),
+        required=True,
+        write_only=True,
+    )
+
+    system_volume_id = serializers.CharField(required=False)
+    system_volume_size = serializers.IntegerField(required=False, min_value=0)
+    data_volume_id = serializers.CharField(required=False)
+    data_volume_size = serializers.IntegerField(required=False, min_value=0)
+
+    class Meta(object):
+        model = models.Instance
+        fields = (
+            'hostname', 'description',
+            #'project',
+            'cloud_project_membership',
+            'template',
+            'flavor',
+            'key_name', 'key_fingerprint',
+            'system_volume_id', 'system_volume_size',
+            'data_volume_id', 'data_volume_size',
+        )
+        lookup_field = 'uuid'
+
+    def get_fields(self):
+        fields = super(InstanceBackupRestorationSerializer, self).get_fields()
+
+        try:
+            request = self.context['view'].request
+            user = request.user
+        except (KeyError, AttributeError):
+            return fields
+
+        clouds = structure_filters.filter_queryset_for_user(models.Cloud.objects.all(), user)
+        fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds).distinct()
+
+        return fields
+
+    def validate(self, attrs):
+        flavor = attrs['flavor']
+        # project = attrs['project']
+        # try:
+        #     membership = models.CloudProjectMembership.objects.get(
+        #         project=project,
+        #         cloud=flavor.cloud,
+        #     )
+        # except models.CloudProjectMembership.DoesNotExist:
+        #     raise ValidationError("Flavor is not within project's clouds.")
+
+        template = attrs['template']
+        image_exists = models.Image.objects.filter(template=template, cloud=flavor.cloud).exists()
+
+        if not image_exists:
+            raise serializers.ValidationError("Template %s is not available on cloud %s"
+                                              % (template, flavor.cloud))
+
+        # TODO: cleanup after migration to drf 3
+        return fix_non_nullable_attrs(attrs)
+
+    def restore_object(self, attrs, instance=None):
+        flavor = attrs['flavor']
+        attrs['cores'] = flavor.cores
+        attrs['ram'] = flavor.ram
+        attrs['cloud'] = flavor.cloud
+
+        return super(InstanceBackupRestorationSerializer, self).restore_object(attrs, instance)
 
 
 class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
