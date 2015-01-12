@@ -3,7 +3,11 @@ Changelog
 
 Unreleased
 ----------
+
 (Fixes/changes that are in develop branch.)
+
+Release 0.25.0
+--------------
 
 - Fixed usage statistic calculation to use average instead of summing.
 - Refactored backup to accept user input.
