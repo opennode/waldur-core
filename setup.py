@@ -28,6 +28,7 @@ install_requires = [
     'djangorestframework>=2.3.12,<2.4.0',
     'djangosaml2==0.12.0.dev0',
     'drf-extensions==0.2.6',
+    'jsonfield==1.0.0',
     'python-cinderclient==1.0.9',
     'python-glanceclient==0.12.0',
     'python-keystoneclient==0.9.0',

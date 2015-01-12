@@ -3,12 +3,13 @@ from __future__ import unicode_literals
 from datetime import datetime, timedelta
 
 from croniter.croniter import croniter
-from django.db import models, IntegrityError
+from django.db import models
 from django.utils import timezone, six
 from django.utils.encoding import python_2_unicode_compatible
 from django.contrib.contenttypes import models as ct_models
-from django.contrib.contenttypes import generic as ct_generic
+from django.contrib.contenttypes import fields as ct_fields
 from django_fsm import transition, FSMIntegerField
+from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core import fields as core_fields
@@ -22,7 +23,7 @@ class BackupSourceAbstractModel(models.Model):
     # reference to the backed up object
     content_type = models.ForeignKey(ct_models.ContentType)
     object_id = models.PositiveIntegerField()
-    backup_source = ct_generic.GenericForeignKey('content_type', 'object_id')
+    backup_source = ct_fields.GenericForeignKey('content_type', 'object_id')
 
     class Meta(object):
         abstract = True
@@ -147,10 +148,11 @@ class Backup(core_models.UuidMixin,
     )
 
     state = FSMIntegerField(default=States.READY, choices=STATE_CHOICES)
-    # TODO: use https://github.com/bradjasper/django-jsonfield after python update (to 2.7)
-    additional_data = models.TextField(
+    metadata = JSONField(
         blank=True,
-        help_text='Additional information about backup, can be used for backup restoration or deletion')
+        help_text='Additional information about backup, can be used for backup restoration or deletion',
+        default={}
+    )
 
     objects = managers.BackupManager()
 
@@ -170,16 +172,16 @@ class Backup(core_models.UuidMixin,
         self.__save()
         tasks.process_backup_task.delay(self.uuid.hex)
 
-    def start_restoration(self):
+    def start_restoration(self, instance_uuid, user_input):
         """
         Starts backup restoration task.
-        If 'replace_original' is True, should attempt to rewrite the latest state. False by default.
         """
         from nodeconductor.backup import tasks
 
         self._starting_restoration()
         self.__save()
-        tasks.restoration_task.delay(self.uuid.hex)
+        # all user input is supposed to be strings/numbers
+        tasks.restoration_task.delay(self.uuid.hex, instance_uuid.hex, user_input)
 
     def start_deletion(self):
         """
@@ -191,8 +193,8 @@ class Backup(core_models.UuidMixin,
         self.__save()
         tasks.deletion_task.delay(self.uuid.hex)
 
-    def set_additional_data(self, additional_data):
-        self.additional_data = additional_data
+    def set_metadata(self, metadata):
+        self.metadata = metadata
         self.__save()
 
     def confirm_backup(self):
@@ -264,11 +266,16 @@ class BackupStrategy(object):
             'Implement backup() that would perform backup of a model.')
 
     @classmethod
-    def restore(cls, backup_source, additional_data):
+    def restore(cls, backup_source, metadata, user_input):
         raise NotImplementedError(
             'Implement restore() that would perform backup of a model.')
 
     @classmethod
-    def delete(cls, backup_source, additional_data):
+    def get_restoration_serializer(cls, backup_source, metadata, user_input):
+        raise NotImplementedError(
+            'Implement get_restoration_serializer() that would perform backup of a model.')
+
+    @classmethod
+    def delete(cls, backup_source, metadata):
         raise NotImplementedError(
             'Implement delete() that would perform backup of a model.')

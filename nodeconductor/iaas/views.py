@@ -7,7 +7,6 @@ import time
 
 
 from django.db import models as django_models
-from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 import django_filters
@@ -294,7 +293,17 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def start(self, request, uuid=None):
         return self._schedule_transition(request, uuid, 'start')
 
-    def destroy(self, request, uuid=None):
+    def destroy(self, request, uuid):
+        # check if deletion is allowed
+        # TODO: it duplicates the signal check, but signal-based is useless when deletion is done in bg task
+        # TODO: come up with a better way for checking
+        instance = models.Instance.objects.get(uuid=uuid)
+        try:
+            from nodeconductor.iaas.handlers import prevent_deletion_of_instances_with_connected_backups
+            prevent_deletion_of_instances_with_connected_backups(None, instance)
+        except django_models.ProtectedError as e:
+            return Response({'detail': e.args[0]}, status=status.HTTP_409_CONFLICT)
+
         return self._schedule_transition(request, uuid, 'destroy')
 
     @action()
