@@ -604,12 +604,6 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_cannot_create_instance_with_empty_flavor(self):
         self.assert_field_non_empty('flavor')
 
-    def test_cannot_create_instance_without_ssh_public_key(self):
-        self.assert_field_required('ssh_public_key')
-
-    def test_cannot_create_instance_with_empty_ssh_public_key(self):
-        self.assert_field_non_empty('ssh_public_key')
-
     # instance external and internal ips fields tests
     def test_instance_factory_generates_valid_internal_ips_field(self):
         instance = factories.InstanceFactory()

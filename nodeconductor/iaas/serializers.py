@@ -175,7 +175,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         view_name='sshpublickey-detail',
         lookup_field='uuid',
         queryset=core_models.SshPublicKey.objects.all(),
-        required=True,
+        required=False,
         write_only=True,
     )
 
@@ -183,8 +183,13 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'uuid', 'hostname', 'description',
-                  'template', 'project', 'security_groups', 'flavor', 'ssh_public_key', 'external_ips')
+        fields = (
+            'url', 'uuid',
+            'hostname', 'description',
+            'template',
+            'project',
+            'security_groups', 'flavor', 'ssh_public_key', 'external_ips',
+        )
         lookup_field = 'uuid'
 
     def get_fields(self):
@@ -243,9 +248,10 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         return fix_non_nullable_attrs(attrs)
 
     def restore_object(self, attrs, instance=None):
-        key = attrs['ssh_public_key']
-        attrs['key_name'] = key.name
-        attrs['key_fingerprint'] = key.fingerprint
+        key = attrs.get('ssh_public_key')
+        if key:
+            attrs['key_name'] = key.name
+            attrs['key_fingerprint'] = key.fingerprint
 
         flavor = attrs['flavor']
         attrs['cores'] = flavor.cores

@@ -16,8 +16,7 @@ def process_backup_task(backup_uuid):
         if source is not None:
             logger.debug('About to perform backup for backup source: %s', backup.backup_source)
             try:
-                additional_data = backup.get_strategy().backup(backup.backup_source)
-                backup.set_additional_data(additional_data)
+                backup.metadata = backup.get_strategy().backup(backup.backup_source)
                 backup.confirm_backup()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to perform backup for backup source: %s', backup.backup_source)
@@ -31,14 +30,14 @@ def process_backup_task(backup_uuid):
 
 
 @shared_task
-def restoration_task(backup_uuid):
+def restoration_task(backup_uuid, instance_uuid, user_raw_input):
     try:
         backup = models.Backup.objects.get(uuid=backup_uuid)
         source = backup.backup_source
         if source is not None:
             logger.debug('About to restore backup for backup source: %s', backup.backup_source)
             try:
-                backup.get_strategy().restore(backup.backup_source, backup.additional_data)
+                backup.get_strategy().restore(instance_uuid, user_raw_input)
                 backup.confirm_restoration()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to restore backup for backup source: %s', backup.backup_source)
@@ -59,7 +58,7 @@ def deletion_task(backup_uuid):
         if source is not None:
             logger.debug('About to delete backup for backup source: %s', backup.backup_source)
             try:
-                backup.get_strategy().delete(backup.backup_source, backup.additional_data)
+                backup.get_strategy().delete(backup.backup_source, backup.metadata)
                 backup.confirm_deletion()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to delete backup for backup source: %s', backup.backup_source)

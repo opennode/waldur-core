@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from datetime import timedelta
 from mock import patch
 
-from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone, unittest
 
@@ -94,8 +93,13 @@ class BackupTest(TestCase):
     @patch('nodeconductor.backup.tasks.restoration_task.delay')
     def test_start_restoration(self, mocked_task):
         backup = factories.BackupFactory()
-        backup.start_restoration()
-        mocked_task.assert_called_with(backup.uuid.hex)
+        # TODO: remove dependency on iaas module
+        from nodeconductor.iaas.tests import factories as iaas_factories
+
+        instance = iaas_factories.InstanceFactory()
+        user_input = {}
+        backup.start_restoration(instance.uuid, user_input)
+        mocked_task.assert_called_with(backup.uuid.hex, instance.uuid.hex, user_input)
         self.assertEqual(backup.state, models.Backup.States.RESTORING)
 
     @patch('nodeconductor.backup.tasks.deletion_task.delay')
