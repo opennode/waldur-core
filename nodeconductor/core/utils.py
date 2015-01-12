@@ -17,7 +17,8 @@ def sort_dict(unsorted_dict):
     return sorted_dict
 
 
-def format_time_and_value_to_segment_list(time_and_value_list, segments_count, start_timestamp, end_timestamp):
+def format_time_and_value_to_segment_list(time_and_value_list, segments_count, start_timestamp,
+                                          end_timestamp, average=False):
     """
     Format time_and_value_list to time segments
 
@@ -39,9 +40,13 @@ def format_time_and_value_to_segment_list(time_and_value_list, segments_count, s
     for i in range(segments_count):
         segment_start_timestamp = start_timestamp + time_step * i
         segment_end_timestamp = segment_start_timestamp + time_step
-        segment_value = sum([
+        value_list = [
             value for time, value in time_and_value_list
-            if time >= segment_start_timestamp and time < segment_end_timestamp])
+            if time >= segment_start_timestamp and time < segment_end_timestamp]
+        segment_value = sum(value_list)
+        if average and len(value_list) != 0:
+            segment_value /= len(value_list)
+
         segment_list.append({
             'from': segment_start_timestamp,
             'to': segment_end_timestamp,

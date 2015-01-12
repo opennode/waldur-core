@@ -42,7 +42,7 @@ class ZabbixDBClient(object):
             time_and_value_list = self.get_item_time_and_value_list(
                 host_ids, [item_key], item_table, start_timestamp, end_timestamp, convert_to_mb)
             segment_list = core_utils.format_time_and_value_to_segment_list(
-                time_and_value_list, segments_count, start_timestamp, end_timestamp)
+                time_and_value_list, segments_count, start_timestamp, end_timestamp, average=True)
             return segment_list
         except DatabaseError as e:
             logger.exception('Can not execute query the Zabbix DB.')

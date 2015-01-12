@@ -4,6 +4,8 @@ import logging
 
 from django.conf import settings
 from django.utils.lru_cache import lru_cache
+from django.contrib.contenttypes.models import ContentType
+from django.db import models
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import UnboundSerializerMethodField
@@ -170,3 +172,15 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
 
         for rule in group['rules']:
             g.rules.create(**rule)
+
+
+def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwargs):
+    from nodeconductor.backup.models import Backup
+    ct = ContentType.objects.get_for_model(instance._meta.model)
+    connected_backups = Backup.objects.filter(content_type=ct, object_id=instance.id)
+
+    if connected_backups.exists():
+        raise models.ProtectedError(
+            "Cannot delete instance because it has connected backups.",
+            connected_backups
+        )

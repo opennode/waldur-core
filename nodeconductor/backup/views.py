@@ -10,6 +10,7 @@ from rest_framework import permissions as rf_permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from nodeconductor.backup.models import Backup
 
 from nodeconductor.core import viewsets
 from nodeconductor.backup import models, serializers, utils
@@ -94,12 +95,21 @@ class BackupViewSet(viewsets.CreateModelViewSet):
     @action()
     def restore(self, request, uuid):
         backup = self._get_backup(request.user, uuid)
-        try:
-            backup.start_restoration()
-        except TransitionNotAllowed:
+        if backup.state != Backup.States.READY:
             return Response('Cannot restore a backup in state \'%s\'' % backup.get_state_display(),
                             status=status.HTTP_400_BAD_REQUEST)
-        return Response({'status': 'Backup restoration process was started'})
+        # fail early if inputs are incorrect during the call time
+        instance, user_input, errors = backup.get_strategy().deserialize_instance(backup.metadata, request.DATA)
+        if not errors:
+            try:
+                backup.start_restoration(instance.uuid, user_input=user_input)
+            except TransitionNotAllowed:
+                # this should never be hit as the check is done on function entry
+                return Response('Cannot restore a backup in state \'%s\'' % backup.get_state_display(),
+                                status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status': 'Backup restoration process was started'})
+
+        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action()
     def delete(self, request, uuid):
