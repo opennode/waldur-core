@@ -44,7 +44,7 @@ def format_time_and_value_to_segment_list(time_and_value_list, segments_count, s
             value for time, value in time_and_value_list
             if time >= segment_start_timestamp and time < segment_end_timestamp]
         segment_value = sum(value_list)
-        if average:
+        if average and len(value_list) != 0:
             segment_value /= len(value_list)
 
         segment_list.append({
