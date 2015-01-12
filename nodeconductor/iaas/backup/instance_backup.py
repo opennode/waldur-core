@@ -5,6 +5,7 @@ from nodeconductor.backup.exceptions import BackupStrategyExecutionError
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas import models
+from nodeconductor.iaas.backup.serializers import InstanceBackupRestorationSerializer
 
 
 class InstanceBackupStrategy(BackupStrategy):
@@ -40,13 +41,11 @@ class InstanceBackupStrategy(BackupStrategy):
         user_input = {
             'hostname': user_raw_input.get('hostname'),
             'flavor': user_raw_input.get('flavor'),
-            'ssh_public_key': user_raw_input.get('ssh_public_key')
         }
         # overwrite metadata attributes with user provided ones
         input_parameters = dict(metadata.items() + [u for u in user_input.items() if u[1] is not None])
 
         # import here to avoid circular dependency
-        from nodeconductor.iaas.serializers import InstanceBackupRestorationSerializer
         serializer = InstanceBackupRestorationSerializer(data=input_parameters)
 
         if serializer.is_valid():
