@@ -70,6 +70,8 @@ In a DB, state is stored encoded with a symbol. States are:
 - DELETING = 11
 - RESIZING_SCHEDULED = 13
 - RESIZING = 14
+- RESTARTING_SCHEDULED = 15
+- RESTARTING = 16
 
 A graph of possible state transitions is shown below.
 
@@ -207,14 +209,18 @@ Example rendering of the Instance object:
         }
     ]
 
-Stopping/starting an instance
------------------------------
+Stopping/starting/restarting an instance
+-----------------------------------------
 
-To stop/start an instance, run an authorized POST request against the instance UUID, appending the requested command.
+To stop/start/restart an instance, run an authorized POST request against the instance UUID,
+appending the requested command.
 Examples of URLs:
 
 - POST /api/instances/6c9b01c251c24174a6691a1f894fae31/start/
 - POST /api/instances/6c9b01c251c24174a6691a1f894fae31/stop/
+- POST /api/instances/6c9b01c251c24174a6691a1f894fae31/restart/
+
+If instance is in the state that does not allow this transition, error code will be returned.
 
 Resizing an instance
 --------------------

@@ -1,3 +1,6 @@
+.. image:: https://travis-ci.org/opennode/nodeconductor.svg?branch=develop
+    :target: https://travis-ci.org/opennode/nodeconductor
+
 NodeConductor
 =============
 
