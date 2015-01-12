@@ -71,7 +71,16 @@ def schedule_stopping(instance_uuid):
 
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='begin_starting', desired_state='set_online')
+@tracked_processing(models.Instance, processing_state='begin_restarting', desired_state='set_online')
+def schedule_restarting(instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+
+    backend = instance.cloud_project_membership.cloud.get_backend()
+    backend.restart_instance(instance)
+
+
+@shared_task
+@tracked_processing(models.Instance, processing_state='begin_starting', desired_state='set_restarted')
 def schedule_starting(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 

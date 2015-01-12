@@ -264,6 +264,9 @@ class Instance(core_models.UuidMixin,
         RESIZING_SCHEDULED = 13
         RESIZING = 14
 
+        RESTARTING_SCHEDULED = 15
+        RESTARTING = 16
+
         CHOICES = (
             (PROVISIONING_SCHEDULED, 'Provisioning Scheduled'),
             (PROVISIONING, 'Provisioning'),
@@ -284,6 +287,10 @@ class Instance(core_models.UuidMixin,
 
             (RESIZING_SCHEDULED, 'Resizing Scheduled'),
             (RESIZING, 'Resizing'),
+
+            (RESTARTING_SCHEDULED, 'Restarting Scheduled'),
+            (RESTARTING, 'Restarting'),
+
         )
 
         # Stable instances are the ones for which
@@ -346,7 +353,7 @@ class Instance(core_models.UuidMixin,
     def begin_starting(self):
         pass
 
-    @transition(field=state, source=[States.STARTING, States.PROVISIONING], target=States.ONLINE)
+    @transition(field=state, source=[States.STARTING, States.PROVISIONING, States.RESTARTING], target=States.ONLINE)
     def set_online(self):
         pass
 
@@ -377,6 +384,19 @@ class Instance(core_models.UuidMixin,
     @transition(field=state, source=States.RESIZING, target=States.OFFLINE)
     def set_resized(self):
         pass
+
+    @transition(field=state, source=States.ONLINE, target=States.RESTARTING_SCHEDULED)
+    def schedule_restarting(self):
+        pass
+
+    @transition(field=state, source=States.RESTARTING_SCHEDULED, target=States.RESTARTING)
+    def begin_restarting(self):
+        pass
+
+    @transition(field=state, source=States.RESTARTING, target=States.ONLINE)
+    def set_restarted(self):
+        pass
+
 
     @transition(field=state, source='*', target=States.ERRED)
     def set_erred(self):
