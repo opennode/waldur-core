@@ -209,14 +209,18 @@ Example rendering of the Instance object:
         }
     ]
 
-Stopping/starting an instance
------------------------------
+Stopping/starting/restarting an instance
+-----------------------------------------
 
-To stop/start an instance, run an authorized POST request against the instance UUID, appending the requested command.
+To stop/start/restart an instance, run an authorized POST request against the instance UUID,
+appending the requested command.
 Examples of URLs:
 
 - POST /api/instances/6c9b01c251c24174a6691a1f894fae31/start/
 - POST /api/instances/6c9b01c251c24174a6691a1f894fae31/stop/
+- POST /api/instances/6c9b01c251c24174a6691a1f894fae31/restart/
+
+If instance is in the state that does not allow this transition, error code will be returned.
 
 Resizing an instance
 --------------------
