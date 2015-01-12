@@ -54,14 +54,18 @@ Backup has a state, currently supported states are:
 - Restoring
 - Deleting
 - Erred
-- Deleted
 
 Backup actions
 --------------
 
 Each created backup supports several operations. Operations are listed below:
 
-- **/api/backup/<backup_uuid>/restore/** - restore a specified backup
+- **/api/backup/<backup_uuid>/restore/** - restore a specified backup. Restoring a backup can take user input.
+  Supported inputs for VM Instance:
+
+  - flavor - url to a flavor used for restoration. Mandatory.
+  - hostname - Hostname of the restored VM. Optional (equals to the hostname of the original VM by default).
+
 - **/api/backup/<backup_uuid>/delete/** - delete a specified backup
 
 If a backup is in a state that prohibits this operation, it will be returned in error message of the response.

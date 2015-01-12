@@ -591,7 +591,7 @@ class OpenStackBackend(object):
         return stats
 
     # Instance related methods
-    def provision_instance(self, instance, backend_flavor_id):
+    def provision_instance(self, instance, backend_flavor_id, system_volume_id=None, data_volume_id=None):
         logger.info('About to boot instance %s', instance.uuid)
         try:
             membership = instance.cloud_project_membership
@@ -623,57 +623,65 @@ class OpenStackBackend(object):
 
             network = matching_networks[0]
 
-            safe_key_name = self.sanitize_key_name(instance.key_name)
+            # instance key is optional
+            if instance.key_name:
+                safe_key_name = self.sanitize_key_name(instance.key_name)
 
-            matching_keys = [
-                key
-                for key in nova.keypairs.findall(fingerprint=instance.key_fingerprint)
-                if key.name.endswith(safe_key_name)
-            ]
-            matching_keys_count = len(matching_keys)
+                matching_keys = [
+                    key
+                    for key in nova.keypairs.findall(fingerprint=instance.key_fingerprint)
+                    if key.name.endswith(safe_key_name)
+                ]
+                matching_keys_count = len(matching_keys)
 
-            if matching_keys_count > 1:
-                logger.error('Found %d public keys with fingerprint "%s", expected exactly one',
-                             matching_keys_count, instance.key_fingerprint)
-                raise CloudBackendError('Unable to find public key to provision instance with')
-            elif matching_keys_count == 0:
-                logger.error('Found no public keys with fingerprint "%s", expected exactly one',
-                             instance.key_fingerprint)
-                raise CloudBackendError('Unable to find public key to provision instance with')
+                if matching_keys_count > 1:
+                    logger.error('Found %d public keys with fingerprint "%s", expected exactly one',
+                                 matching_keys_count, instance.key_fingerprint)
+                    raise CloudBackendError('Unable to find public key to provision instance with')
+                elif matching_keys_count == 0:
+                    logger.error('Found no public keys with fingerprint "%s", expected exactly one',
+                                 instance.key_fingerprint)
+                    raise CloudBackendError('Unable to find public key to provision instance with')
 
-            backend_public_key = matching_keys[0]
+                backend_public_key = matching_keys[0]
+            else:
+                backend_public_key = None
+
             backend_flavor = nova.flavors.get(backend_flavor_id)
             backend_image = glance.images.get(image.backend_id)
 
-            system_volume_name = '{0}-system'.format(instance.hostname)
-            logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
+            if not system_volume_id:
+                system_volume_name = '{0}-system'.format(instance.hostname)
+                logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
+                system_volume = cinder.volumes.create(
+                    size=self.get_backend_disk_size(instance.system_volume_size),
+                    display_name=system_volume_name,
+                    display_description='',
+                    imageRef=backend_image.id,
+                )
+                system_volume_id = system_volume.id
 
-            system_volume = cinder.volumes.create(
-                size=self.get_backend_disk_size(instance.system_volume_size),
-                display_name=system_volume_name,
-                display_description='',
-                imageRef=backend_image.id,
-            )
+            if not data_volume_id:
+                data_volume_name = '{0}-data'.format(instance.hostname)
+                logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
+                data_volume = cinder.volumes.create(
+                    size=self.get_backend_disk_size(instance.data_volume_size),
+                    display_name=data_volume_name,
+                    display_description='',
+                )
+                data_volume_id = data_volume.id
 
-            data_volume_name = '{0}-data'.format(instance.hostname)
-            logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
-            data_volume = cinder.volumes.create(
-                size=self.get_backend_disk_size(instance.data_volume_size),
-                display_name=data_volume_name,
-                display_description='',
-            )
-
-            if not self._wait_for_volume_status(system_volume.id, cinder, 'available', 'error'):
+            if not self._wait_for_volume_status(system_volume_id, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for system volume to become available',
-                    instance.uuid, system_volume.id,
+                    instance.uuid, system_volume_id,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
 
-            if not self._wait_for_volume_status(data_volume.id, cinder, 'available', 'error'):
+            if not self._wait_for_volume_status(data_volume_id, cinder, 'available', 'error'):
                 logger.error(
                     'Failed to boot instance %s: timed out waiting for data volume to become available',
-                    instance.uuid, data_volume.id,
+                    instance.uuid, data_volume_id,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
 
@@ -689,14 +697,14 @@ class OpenStackBackend(object):
                         'destination_type': 'volume',
                         'device_type': 'disk',
                         'source_type': 'volume',
-                        'uuid': system_volume.id,
+                        'uuid': system_volume_id,
                         'delete_on_termination': True,
                     },
                     {
                         'destination_type': 'volume',
                         'device_type': 'disk',
                         'source_type': 'volume',
-                        'uuid': data_volume.id,
+                        'uuid': data_volume_id,
                         'delete_on_termination': True,
                     },
                     # This should have worked by creating an empty volume.
@@ -716,13 +724,13 @@ class OpenStackBackend(object):
                 nics=[
                     {'net-id': network['id']}
                 ],
-                key_name=backend_public_key.name,
+                key_name=backend_public_key.name if backend_public_key is not None else None,
                 security_groups=security_group_ids,
             )
 
             instance.backend_id = server.id
-            instance.system_volume_id = system_volume.id
-            instance.data_volume_id = data_volume.id
+            instance.system_volume_id = system_volume_id
+            instance.data_volume_id = data_volume_id
             instance.save()
 
             if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
@@ -866,11 +874,11 @@ class OpenStackBackend(object):
             for volume in attached_volumes:
                 # TODO: Consider using context managers to avoid having resource remnants
                 snapshot = self.create_snapshot(volume.id, cinder)
-                temporary_volume = self.create_temporary_volume(snapshot, cinder)
+                temporary_volume = self.create_volume_from_snapshot(snapshot, cinder)
                 backup = self.create_volume_backup(temporary_volume, volume.device, cinder)
                 backups.append(backup)
-                self.delete_temporary_volume(temporary_volume, cinder)
-                self.delete_temporary_snapshot(snapshot, cinder)
+                self.delete_volume(temporary_volume, cinder)
+                self.delete_snapshot(snapshot, cinder)
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
             logger.exception('Failed to create backup for instance %s', instance.uuid)
@@ -878,6 +886,42 @@ class OpenStackBackend(object):
         else:
             logger.info('Successfully created backup for instance %s', instance.uuid)
         return backups
+
+    def clone_volumes(self, membership, volume_ids, prefix='Cloned volume'):
+        logger.debug('About to copy volumes %s', ', '.join(volume_ids))
+        try:
+            session = self.create_tenant_session(membership)
+            cinder = self.create_cinder_client(session)
+
+            cloned_volume_ids = []
+            for volume_id in volume_ids:
+                snapshot = self.create_snapshot(volume_id, cinder)
+                cloned_volume_ids.append(self.create_volume_from_snapshot(snapshot, cinder, prefix=prefix))
+                self.delete_snapshot(snapshot, cinder)
+
+        except (cinder_exceptions.ClientException,
+                keystone_exceptions.ClientException, CloudBackendInternalError) as e:
+            logger.exception('Failed to clone volumes %s', ', '.join(volume_ids))
+            six.reraise(CloudBackendError, e)
+        else:
+            logger.info('Successfully cloned volumes %s', ', '.join(volume_ids))
+        return cloned_volume_ids
+
+    def delete_volumes(self, membership, volume_ids):
+        logger.debug('About to delete volumes %s', ', '.join(volume_ids))
+        try:
+            session = self.create_tenant_session(membership)
+            cinder = self.create_cinder_client(session)
+
+            for volume_id in volume_ids:
+                self.delete_volume(volume_id, cinder)
+
+        except (cinder_exceptions.ClientException,
+                keystone_exceptions.ClientException, CloudBackendInternalError) as e:
+            logger.exception('Failed to delete volumes %s', ', '.join(volume_ids))
+            six.reraise(CloudBackendError, e)
+        else:
+            logger.info('Successfully deleted volumes %s', ', '.join(volume_ids))
 
     def restore_instance(self, instance, instance_backup_ids):
         logger.debug('About to restore instance %s backup', instance.uuid)
@@ -1577,25 +1621,25 @@ class OpenStackBackend(object):
 
         return snapshot.id
 
-    def delete_temporary_snapshot(self, snapshot_id, cinder):
+    def delete_snapshot(self, snapshot_id, cinder):
         """
-        Delete temporary snapshot
+        Delete a snapshot
 
         :param snapshot_id: snapshot id
         :type snapshot_id: str
         """
-        logger.debug('About to delete temporary snapshot %s', snapshot_id)
+        logger.debug('About to delete a snapshot %s', snapshot_id)
 
         if not self._wait_for_snapshot_status(snapshot_id, cinder, 'available', 'error', poll_interval=60, retries=30):
             logger.exception('Timed out waiting for snapshot %s to become available', snapshot_id)
             raise CloudBackendInternalError()
 
         cinder.volume_snapshots.delete(snapshot_id)
-        logger.info('Successfully deletet temporary snapshot %s', snapshot_id)
+        logger.info('Successfully deleted a snapshot %s', snapshot_id)
 
-    def create_temporary_volume(self, snapshot_id, cinder):
+    def create_volume_from_snapshot(self, snapshot_id, cinder, prefix='Promoted volume'):
         """
-        Create temporary volume from snapshot
+        Create a volume from snapshot
 
         :param snapshot_id: snapshot id
         :type snapshot_id: str
@@ -1604,23 +1648,23 @@ class OpenStackBackend(object):
         """
         snapshot = cinder.volume_snapshots.get(snapshot_id)
         volume_size = snapshot.size
-        volume_name = 'Backup volume_%s' % snapshot.volume_id
+        volume_name = prefix + (' %s' % snapshot.volume_id)
 
         logger.debug('About to create temporary volume from snapshot %s', snapshot_id)
-        temporary_volume = cinder.volumes.create(volume_size, snapshot_id=snapshot_id,
-                                                 display_name=volume_name)
-        temporary_volume_id = temporary_volume.id
+        created_volume = cinder.volumes.create(volume_size, snapshot_id=snapshot_id,
+                                               display_name=volume_name)
+        volume_id = created_volume.id
 
-        if not self._wait_for_volume_status(temporary_volume_id, cinder, 'available', 'error'):
+        if not self._wait_for_volume_status(volume_id, cinder, 'available', 'error'):
             logger.error('Timed out creating temporary volume from snapshot %s', snapshot_id)
             raise CloudBackendInternalError()
 
         logger.info('Successfully created temporary volume %s from snapshot %s',
-                    temporary_volume_id, snapshot_id)
+                    volume_id, snapshot_id)
 
-        return temporary_volume_id
+        return volume_id
 
-    def delete_temporary_volume(self, volume_id, cinder):
+    def delete_volume(self, volume_id, cinder):
         """
         Delete temporary volume
 

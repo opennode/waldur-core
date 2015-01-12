@@ -3,6 +3,7 @@ import factory
 from django.core.urlresolvers import reverse
 
 from nodeconductor.backup import models
+from nodeconductor.iaas import models as iaas_models
 from nodeconductor.iaas.tests import factories as iaas_factories
 
 
@@ -23,6 +24,40 @@ class BackupFactory(factory.DjangoModelFactory):
 
     backup_schedule = factory.SubFactory(BackupScheduleFactory)
     backup_source = factory.LazyAttribute(lambda b: b.backup_schedule.backup_source)
+
+    @factory.post_generation
+    def metadata(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        self.metadata = {}
+
+        cloud = self.backup_source.cloud_project_membership.cloud
+        template = self.backup_source.template
+
+        # check if image connecting template and cloud already exists, otherwise link them
+        if not iaas_models.Image.objects.filter(cloud=cloud, template=template).exists():
+            iaas_factories.ImageFactory(
+                cloud=cloud,
+                template=template,
+            )
+
+        self.metadata.update(
+            {
+                'cloud_project_membership': self.backup_source.cloud_project_membership.pk,
+                'hostname': 'original.vm.hostname',
+                'template': template.pk,
+                'system_volume_id': self.backup_source.system_volume_id,
+                'system_volume_size': self.backup_source.system_volume_size,
+                'data_volume_id': self.backup_source.data_volume_id,
+                'data_volume_size': self.backup_source.data_volume_size,
+                'key_name': self.backup_source.key_name,
+                'key_fingerprint': self.backup_source.key_name,
+                'agreed_sla': self.backup_source.agreed_sla,
+            }
+        )
+        if extracted:
+            self.metadata.update(extracted)
 
     @classmethod
     def get_url(self, backup):
