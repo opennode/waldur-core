@@ -24,7 +24,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
 
         expected_segment_list = [
             {'from': 1415912624L, 'to': 1415912626L, 'value': 1},
-            {'from': 1415912626L, 'to': 1415912628L, 'value': 2},
+            {'from': 1415912626L, 'to': 1415912628L, 'value': 1},
             {'from': 1415912628L, 'to': 1415912630L, 'value': 1},
         ]
         self.assertEquals(segment_list, expected_segment_list)
