@@ -189,6 +189,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
             'template',
             'project',
             'security_groups', 'flavor', 'ssh_public_key', 'external_ips',
+            'system_volume_size', 'data_volume_size',
         )
         lookup_field = 'uuid'
 
@@ -202,6 +203,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
             return fields
 
         fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(user=user)
+        fields['system_volume_size'].required = False
 
         clouds = structure_filters.filter_queryset_for_user(models.Cloud.objects.all(), user)
         fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds).distinct()
@@ -238,11 +240,17 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                 raise ValidationError("External IP is not from the list of available floating IPs.")
 
         template = attrs['template']
-        image_exists = models.Image.objects.filter(template=template, cloud=flavor.cloud).exists()
+        images = list(models.Image.objects.filter(template=template, cloud=flavor.cloud))
 
-        if not image_exists:
+        if not images:
             raise serializers.ValidationError("Template %s is not available on cloud %s"
                                               % (template, flavor.cloud))
+
+        system_volume_size = attrs['system_volume_size'] if 'system_volume_size' in attrs else flavor.disk
+        print system_volume_size, [im.min_disk for im in images]
+        for image in images:
+            if image.min_disk > system_volume_size:
+                raise serializers.ValidationError("System volume size has to be greater then %s" % system_volume_size)
 
         # TODO: cleanup after migration to drf 3
         return fix_non_nullable_attrs(attrs)
@@ -256,8 +264,9 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         flavor = attrs['flavor']
         attrs['cores'] = flavor.cores
         attrs['ram'] = flavor.ram
-        attrs['system_volume_size'] = flavor.disk
         attrs['cloud'] = flavor.cloud
+        if not 'system_volume_size' in attrs:
+            attrs['system_volume_size'] = flavor.disk
 
         membership = models.CloudProjectMembership.objects.get(
             project=attrs['project'],
