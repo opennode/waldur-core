@@ -298,9 +298,12 @@ def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
     for membership in membership_queryset.iterator():
         if membership.state != core_models.SynchronizationStates.IN_SYNC:
             logging.warn(
-                'Not pushing public keys to cloud membership %s which is in state %s',
+                'Not pushing public keys to cloud membership %s which is in state %s. Re-scheduling.',
                 membership.pk, membership.get_state_display()
             )
+            if membership.state != core_models.SynchronizationStates.ERRED:
+                # reschedule a task for this membership if membership is in a sane state
+                push_ssh_public_keys.delay(ssh_public_keys_uuids, [membership.id])
             continue
 
         backend = membership.cloud.get_backend()

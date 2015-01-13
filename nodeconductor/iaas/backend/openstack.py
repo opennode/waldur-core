@@ -399,57 +399,60 @@ class OpenStackBackend(object):
             backend_ids = set(backend_instances.keys())
             nc_ids = set(nc_instances.keys())
 
-            # Remove stale instances, the ones that are not on backend anymore
+            # Mark stale instances as erred. Can happen if images are removed from the backend explicitely
             for instance_id in nc_ids - backend_ids:
                 nc_instance = nc_instances[instance_id]
-                logger.debug('About to delete instance %s in database',
-                             nc_instance.uuid)
+                nc_instance.set_erred()
+                nc_instance.save()
 
-                try:
-                    nc_instance.delete()
-                except DatabaseError:
-                    logger.exception('Failed to delete instance %s in database',
-                                     nc_instance.uuid)
-                else:
-                    logger.info('Deleted stale instance %s in database',
-                                nc_instance.uuid)
-
-            # Add new instances, the ones that are not yet in the database
-            for instance_id in backend_ids - nc_ids:
+            # update matching instances
+            for instance_id in nc_ids & backend_ids:
                 backend_instance = backend_instances[instance_id]
+                nc_instance = nc_instances[instance_id]
+                nc_instance.state = self._get_instance_state(backend_instance)
+                if nc_instance.key_name != backend_instance.key_name:
+                    nc_instance.key_name = backend_instance.key_name
+                    # note that fingerprint is not present in the request
+                    nc_instance.key_fingerprint = ""
+                nc_instance.save()
+                # TODO: synchronize also volume sizes
 
-                try:
-                    system_volume, data_volume = self._get_instance_volumes(nova, cinder, instance_id)
-                    template = self._get_instance_template(system_volume, membership, instance_id)
-                    cores, ram = self._get_flavor_info(nova, backend_instance)
-                    state = self._get_instance_state(backend_instance)
-                except LookupError:
-                    continue
-
-                nc_instance = models.Instance.objects.create(
-                    hostname=backend_instance.name or '',
-                    template=template,
-
-                    cores=cores,
-                    ram=ram,
-
-                    key_name=backend_instance.key_name or '',
-
-                    system_volume_id=system_volume.id,
-                    system_volume_size=self.get_core_disk_size(system_volume.size),
-                    data_volume_id=data_volume.id,
-                    data_volume_size=self.get_core_disk_size(data_volume.size),
-
-                    state=state,
-
-                    start_time=self._get_instance_start_time(backend_instance),
-
-                    cloud_project_membership=membership,
-                    backend_id=backend_instance.id,
-                )
-
-                logger.info('Created new instance %s in database', nc_instance.uuid)
-            # TODO: Sync matching
+            # TODO: commented out as instance import should be a separate task - NC-302
+            # Add new instances, the ones that are not yet in the database
+            # for instance_id in backend_ids - nc_ids:
+            #     backend_instance = backend_instances[instance_id]
+            #
+            #     try:
+            #         system_volume, data_volume = self._get_instance_volumes(nova, cinder, instance_id)
+            #         template = self._get_instance_template(system_volume, membership, instance_id)
+            #         cores, ram = self._get_flavor_info(nova, backend_instance)
+            #         state = self._get_instance_state(backend_instance)
+            #     except LookupError:
+            #         continue
+            #
+            #     nc_instance = models.Instance.objects.create(
+            #         hostname=backend_instance.name or '',
+            #         template=template,
+            #
+            #         cores=cores,
+            #         ram=ram,
+            #
+            #         key_name=backend_instance.key_name or '',
+            #
+            #         system_volume_id=system_volume.id,
+            #         system_volume_size=self.get_core_disk_size(system_volume.size),
+            #         data_volume_id=data_volume.id,
+            #         data_volume_size=self.get_core_disk_size(data_volume.size),
+            #
+            #         state=state,
+            #
+            #         start_time=self._get_instance_start_time(backend_instance),
+            #
+            #         cloud_project_membership=membership,
+            #         backend_id=backend_instance.id,
+            #     )
+            #
+            #     logger.info('Created new instance %s in database', nc_instance.uuid)
 
     def pull_resource_quota(self, membership):
         try:
@@ -623,7 +626,7 @@ class OpenStackBackend(object):
 
             network = matching_networks[0]
 
-            # instance key is optional
+            # instance key name and fingerprint are optional
             if instance.key_name:
                 safe_key_name = self.sanitize_key_name(instance.key_name)
 
@@ -634,16 +637,24 @@ class OpenStackBackend(object):
                 ]
                 matching_keys_count = len(matching_keys)
 
-                if matching_keys_count > 1:
-                    logger.error('Found %d public keys with fingerprint "%s", expected exactly one',
-                                 matching_keys_count, instance.key_fingerprint)
-                    raise CloudBackendError('Unable to find public key to provision instance with')
+                if matching_keys_count >= 1:
+                    # TODO: warning as we trust that fingerprint+name combo is unique. Potentially reconsider.
+                    logger.warning('Found %d public keys with fingerprint "%s", expected exactly one.' +
+                                   'Taking the first one',
+                                   matching_keys_count, instance.key_fingerprint)
+                    backend_public_key = matching_keys[0]
                 elif matching_keys_count == 0:
                     logger.error('Found no public keys with fingerprint "%s", expected exactly one',
                                  instance.key_fingerprint)
-                    raise CloudBackendError('Unable to find public key to provision instance with')
-
-                backend_public_key = matching_keys[0]
+                    # It is possible to fix this situation with OpenStack admin account. So not failing here.
+                    # Error log is expected to be addressed.
+                    # TODO: consider failing provisioning/putting this check into serializer/pre-save.
+                    # reset failed key name/fingerprint
+                    instance.key_name = None
+                    instance.key_fingerprint = None
+                    backend_public_key = None
+                else:
+                    backend_public_key = matching_keys[0]
             else:
                 backend_public_key = None
 
