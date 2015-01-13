@@ -17,10 +17,14 @@ NovaFlavor = collections.namedtuple(
     ['id', 'name', 'vcpus', 'ram', 'disk']
 )
 
-GlanceImage = collections.namedtuple(
+GlanceImageTuple = collections.namedtuple(
     'GlanceImage',
-    ['id', 'is_public', 'deleted']
+    ['id', 'is_public', 'deleted', 'min_ram', 'min_disk']
 )
+
+
+def GlanceImage(id, is_public, deleted, min_ram=0, min_disk=0):
+    return GlanceImageTuple(id, is_public, deleted, min_ram, min_disk)
 
 
 def next_unique_flavor_id():
