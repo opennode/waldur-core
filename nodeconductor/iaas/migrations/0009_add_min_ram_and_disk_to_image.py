@@ -8,7 +8,7 @@ import django_fsm
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('iaas', '0007_add_icmp_to_secgroup_rule_protocols'),
+        ('iaas', '0008_add_instance_restarting_state'),
     ]
 
     operations = [
