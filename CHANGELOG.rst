@@ -1,10 +1,11 @@
-Changelog
+CHANGELOG
 =========
 
-Unreleased
-----------
+Coming in the next release
+--------------------------
 
 (Fixes/changes that are in develop branch.)
+
 - Increase timeouts for volume and snapshot operations.
 
 Release 0.25.0
