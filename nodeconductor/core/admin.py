@@ -51,4 +51,12 @@ class UserAdmin(auth_admin.UserAdmin):
     add_form = UserCreationForm
 
 
+class SshPublicKeyAdmin(admin.ModelAdmin):
+    list_display = ('user', 'name', 'fingerprint')
+    search_fields = ('user', 'name', 'fingerprint')
+    readonly_fields = ('user', 'name', 'fingerprint', 'public_key')
+
+
 admin.site.register(models.User, UserAdmin)
+admin.site.register(models.SshPublicKey, SshPublicKeyAdmin)
+

@@ -6,6 +6,7 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+- Extended NodeConductor admin with new models/fields.
 - Increase timeouts for volume and snapshot operations.
 
 Release 0.25.0
