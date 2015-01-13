@@ -58,8 +58,20 @@ class CloudAdmin(admin.ModelAdmin):
     pull_clouds.short_description = "Update selected cloud accounts from backend"
 
 
+class ResourceQuotaInline(admin.TabularInline):
+    model = models.ResourceQuota
+
+
+class ResourceQuotaUsageInline(admin.TabularInline):
+    model = models.ResourceQuotaUsage
+
+
 # noinspection PyMethodMayBeStatic
 class CloudProjectMembershipAdmin(admin.ModelAdmin):
+    inlines = (
+        ResourceQuotaInline,
+        ResourceQuotaUsageInline,
+    )
     readonly_fields = ('cloud', 'project')
     list_display = ('get_cloud_name', 'get_customer_name', 'get_project_name', 'state')
     ordering = ('cloud__customer__name', 'project__name', 'cloud__name')
@@ -130,7 +142,7 @@ class InstanceAdmin(admin.ModelAdmin):
             return ['template']
         return []
     ordering = ('hostname',)
-    list_display = ['hostname', 'uuid', 'state', 'get_project_name', 'template']
+    list_display = ['hostname', 'uuid', 'backend_id', 'state', 'get_project_name', 'template']
     search_fields = ['hostname', 'uuid']
     list_filter = ['state', 'cloud_project_membership__project', 'template']
 
@@ -222,3 +234,4 @@ admin.site.register(models.Template, TemplateAdmin)
 admin.site.register(models.TemplateLicense)
 admin.site.register(models.InstanceSlaHistory, InstanceSlaHistoryAdmin)
 admin.site.register(models.FloatingIP, FloatingIPAdmin)
+admin.site.register(models.IpMapping)

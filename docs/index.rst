@@ -8,9 +8,7 @@ Features include:
 
 - flexible user, group and project management;
 - delegation of privileges natural for enterprise setups: owners, managers and administrators;
-- support for multiple IaaS backends;
-- templates based on configuration management approach;
-- orchestration with SaltStack;
+- support for multiple IaaS back-ends;
 - support for billing;
 - support for license management;
 - support for SLA tracking.
@@ -21,6 +19,7 @@ Guide
 .. toctree::
    :maxdepth: 2
 
+   changelog
    guide/intro
 
 API

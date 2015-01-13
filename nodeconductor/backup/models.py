@@ -151,7 +151,6 @@ class Backup(core_models.UuidMixin,
     metadata = JSONField(
         blank=True,
         help_text='Additional information about backup, can be used for backup restoration or deletion',
-        default={}
     )
 
     objects = managers.BackupManager()
