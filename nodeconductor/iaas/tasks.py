@@ -295,12 +295,16 @@ def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
     membership_queryset = models.CloudProjectMembership.objects.filter(
         pk__in=membership_pks)
 
+    potential_rerunnable = []
     for membership in membership_queryset.iterator():
         if membership.state != core_models.SynchronizationStates.IN_SYNC:
             logging.warn(
-                'Not pushing public keys to cloud membership %s which is in state %s',
+                'Not pushing public keys to cloud membership %s which is in state %s. Re-scheduling.',
                 membership.pk, membership.get_state_display()
             )
+            if membership.state != core_models.SynchronizationStates.ERRED:
+                # reschedule a task for this membership if membership is in a sane state
+                potential_rerunnable.append(membership.id)
             continue
 
         backend = membership.cloud.get_backend()
@@ -313,6 +317,8 @@ def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
                     public_key.uuid, membership.pk,
                     exc_info=1,
                 )
+    # reschedule sync to membership that were blocked
+    push_ssh_public_keys.delay(ssh_public_keys_uuids, potential_rerunnable)
 
 
 @shared_task
