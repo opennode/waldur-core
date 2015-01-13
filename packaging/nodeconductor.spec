@@ -16,7 +16,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.25.0
-Release: 1.el7
+Release: 2.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # openssl package is needed to generate SAML2 keys during NodeConductor install
@@ -36,6 +36,7 @@ Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework <
 Requires: python-django-rest-framework-extensions = 0.2.6
 Requires: python-django-saml2 = 0.11.0.post0
 Requires: python-django-uuidfield = 0.5.0
+Requires: python-jsonfield = 1.0.0
 Requires: python-cinderclient = 1.0.9
 Requires: python-glanceclient = 1:0.12.0
 Requires: python-keystoneclient = 1:0.9.0
@@ -188,6 +189,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Tue Jan 13 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.25.0-2.el7
+- Added missing jsonfield dependency
+
 * Tue Jan 13 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.25.0-1.el7
 - New upstream release
 
