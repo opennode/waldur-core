@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='backup',
             name='metadata',
-            field=jsonfield.fields.JSONField(default={}, help_text='Additional information about backup, can be used for backup restoration or deletion', blank=True),
+            field=jsonfield.fields.JSONField(help_text='Additional information about backup, can be used for backup restoration or deletion', blank=True),
             preserve_default=True,
         ),
     ]
