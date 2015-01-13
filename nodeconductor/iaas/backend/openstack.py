@@ -673,14 +673,14 @@ class OpenStackBackend(object):
 
             if not self._wait_for_volume_status(system_volume_id, cinder, 'available', 'error'):
                 logger.error(
-                    'Failed to boot instance %s: timed out waiting for system volume to become available',
+                    'Failed to boot instance %s: timed out waiting for system volume %s to become available',
                     instance.uuid, system_volume_id,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
 
             if not self._wait_for_volume_status(data_volume_id, cinder, 'available', 'error'):
                 logger.error(
-                    'Failed to boot instance %s: timed out waiting for data volume to become available',
+                    'Failed to boot instance %s: timed out waiting for data volume %s to become available',
                     instance.uuid, data_volume_id,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
@@ -1520,20 +1520,20 @@ class OpenStackBackend(object):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
 
     def _wait_for_instance_status(self, server_id, nova, complete_status,
-                                  error_status=None, retries=20, poll_interval=3):
+                                  error_status=None, retries=30, poll_interval=3):
         return self._wait_for_object_status(
             server_id, nova.servers.get, complete_status, error_status, retries, poll_interval)
 
     def _wait_for_volume_status(self, volume_id, cinder, complete_status,
-                                error_status=None, retries=20, poll_interval=3):
+                                error_status=None, retries=30, poll_interval=3):
         return self._wait_for_object_status(
             volume_id, cinder.volumes.get, complete_status, error_status, retries, poll_interval)
 
-    def _wait_for_snapshot_status(self, snapshot_id, cinder, complete_status, error_status, retries=20, poll_interval=3):
+    def _wait_for_snapshot_status(self, snapshot_id, cinder, complete_status, error_status, retries=30, poll_interval=3):
         return self._wait_for_object_status(
             snapshot_id, cinder.volume_snapshots.get, complete_status, error_status, retries, poll_interval)
 
-    def _wait_for_backup_status(self, backup, cinder, complete_status, error_status, retries=20, poll_interval=3):
+    def _wait_for_backup_status(self, backup, cinder, complete_status, error_status, retries=30, poll_interval=3):
         return self._wait_for_object_status(
             backup, cinder.backups.get, complete_status, error_status, retries, poll_interval)
 
