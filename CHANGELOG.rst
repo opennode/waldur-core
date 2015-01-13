@@ -5,6 +5,7 @@ Unreleased
 ----------
 
 (Fixes/changes that are in develop branch.)
+- Increase timeouts for volume and snapshot operations.
 
 Release 0.25.0
 --------------
