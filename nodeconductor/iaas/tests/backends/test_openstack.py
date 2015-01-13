@@ -709,7 +709,7 @@ class OpenStackBackendInstanceApiTest(TransactionTestCase):
         )
 
     # Deletion tests
-    def test_pull_instances_deletes_stable_instances_missing_in_backend(self):
+    def test_pull_instances_errs_stable_instances_missing_in_backend(self):
         # Given
         membership_params = self._get_membership_params()
 
@@ -719,9 +719,10 @@ class OpenStackBackendInstanceApiTest(TransactionTestCase):
         self.when()
 
         # Then
-        is_present = Instance.objects.filter(**membership_params).exists()
+        instances = Instance.objects.filter(**membership_params)
 
-        self.assertFalse(is_present, 'Instances should have been deleted from the database')
+        self.assertTrue(all([i.state == Instance.States.ERRED for i in instances]),
+                        'Instances should have been set to erred state')
 
     def test_pull_instances_doesnt_delete_unstable_instances_missing_in_backend(self):
         # Given

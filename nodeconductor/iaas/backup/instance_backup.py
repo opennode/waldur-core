@@ -126,7 +126,7 @@ class InstanceBackupStrategy(BackupStrategy):
             'data_volume_id': instance.data_volume_id,
             'data_volume_size': instance.data_volume_size,
             'key_name': instance.key_name,
-            'key_fingerprint': instance.key_name,
+            'key_fingerprint': instance.key_fingerprint,
             'agreed_sla': instance.agreed_sla,
         }
         return metadata
