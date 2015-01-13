@@ -195,6 +195,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
     def get_fields(self):
         fields = super(InstanceCreateSerializer, self).get_fields()
+        fields['system_volume_size'].required = False
 
         try:
             request = self.context['view'].request
@@ -203,7 +204,6 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
             return fields
 
         fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(user=user)
-        fields['system_volume_size'].required = False
 
         clouds = structure_filters.filter_queryset_for_user(models.Cloud.objects.all(), user)
         fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds).distinct()
@@ -247,7 +247,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                                               % (template, flavor.cloud))
 
         system_volume_size = attrs['system_volume_size'] if 'system_volume_size' in attrs else flavor.disk
-        print system_volume_size, [im.min_disk for im in images]
+
         for image in images:
             if image.min_disk > system_volume_size:
                 raise serializers.ValidationError("System volume size has to be greater then %s" % system_volume_size)
