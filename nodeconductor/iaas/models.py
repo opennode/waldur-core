@@ -147,6 +147,9 @@ class Image(models.Model):
     cloud = models.ForeignKey(Cloud, related_name='images')
     template = models.ForeignKey('iaas.Template', related_name='images')
 
+    min_disk = models.PositiveIntegerField(default=0, help_text='Minimum disk size in MiB')
+    min_ram = models.PositiveIntegerField(default=0, help_text='Minimum memory size in MiB')
+
     backend_id = models.CharField(max_length=255)
 
     def __str__(self):
