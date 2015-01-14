@@ -932,11 +932,12 @@ class OpenStackBackend(object):
             session = self.create_tenant_session(membership)
             cinder = self.create_cinder_client(session)
 
-            for volume_id in volume_ids:
+            for volume_id, snapshot_id in zip(volume_ids, snapshot_ids):
                 self.delete_volume(volume_id, cinder)
-
-            for snapshot_id in snapshot_ids:
-                self.delete_snapshot(snapshot_id, cinder)
+                if self._wait_for_volume_deletion(volume_id, cinder):
+                    self.delete_snapshot(snapshot_id, cinder)
+                else:
+                    logger.exception('Failed to delete volume %s and snapshot %s', (volume_id, snapshot_id))
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
@@ -1581,6 +1582,16 @@ class OpenStackBackend(object):
             time.sleep(poll_interval)
         else:
             return False
+
+    def _wait_for_volume_deletion(self, volume_id, cinder, retries=90, poll_interval=3):
+        try:
+            for _ in range(retries):
+                cinder.volumes.get(volume_id)
+                time.sleep(poll_interval)
+
+            return False
+        except cinder_exceptions.NotFound:
+            return True
 
     def push_floating_ip_to_instance(self, server, instance, nova):
         if instance.external_ips is None or instance.internal_ips is None:
