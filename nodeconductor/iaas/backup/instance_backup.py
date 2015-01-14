@@ -21,11 +21,12 @@ class InstanceBackupStrategy(BackupStrategy):
         """
         try:
             backend = cls._get_backend(instance)
-            cloned_system_volume_id, cloned_data_volume_id = backend.clone_volumes(
+            cloned_volumes, snapshot_ids = backend.clone_volumes(
                 membership=instance.cloud_project_membership,
                 volume_ids=[instance.system_volume_id, instance.data_volume_id],
                 prefix='Backup volume'
             )
+            cloned_system_volume_id, cloned_data_volume_id = cloned_volumes
         except CloudBackendError as e:
             six.reraise(BackupStrategyExecutionError, e)
 
@@ -33,6 +34,7 @@ class InstanceBackupStrategy(BackupStrategy):
         metadata = cls._get_instance_metadata(instance)
         metadata['system_volume_id'] = cloned_system_volume_id
         metadata['data_volume_id'] = cloned_data_volume_id
+        metadata['snapshot_ids'] = snapshot_ids
 
         return metadata
 
@@ -104,7 +106,8 @@ class InstanceBackupStrategy(BackupStrategy):
             backend = cls._get_backend(source)
             backend.delete_volumes(
                 membership=source.cloud_project_membership,
-                volume_ids=[metadata['system_volume_id'], metadata['data_volume_id']]
+                volume_ids=[metadata['system_volume_id'], metadata['data_volume_id']],
+                snapshot_ids=metadata['snapshot_ids']
             )
         except CloudBackendError as e:
             six.reraise(BackupStrategyExecutionError, e)

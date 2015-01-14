@@ -90,7 +90,9 @@ To create a instance, client must define:
 - link to the project;
 - link to user's public key (user owning this key will be able to log in to the instance);
 - external_ips (optional, each ip address *must* be from the list of :doc:`floating ips <floating_ips>`);
-- security_groups (optional).
+- security_groups (optional);
+- system_volume_size in MiB (optional);
+- data_volume_size in MiB (optional);
 
 Example of a valid request:
 

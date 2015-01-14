@@ -147,6 +147,9 @@ class Image(models.Model):
     cloud = models.ForeignKey(Cloud, related_name='images')
     template = models.ForeignKey('iaas.Template', related_name='images')
 
+    min_disk = models.PositiveIntegerField(default=0, help_text='Minimum disk size in MiB')
+    min_ram = models.PositiveIntegerField(default=0, help_text='Minimum memory size in MiB')
+
     backend_id = models.CharField(max_length=255)
 
     def __str__(self):
@@ -332,7 +335,8 @@ class Instance(core_models.UuidMixin,
     system_volume_id = models.CharField(max_length=255, blank=True)
     system_volume_size = models.PositiveIntegerField(help_text='Root disk size in MiB')
     data_volume_id = models.CharField(max_length=255, blank=True)
-    data_volume_size = models.PositiveIntegerField(default=20 * 1024, help_text='Data disk size in MiB')
+    data_volume_size = models.PositiveIntegerField(
+        default=20 * 1024, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
 
     # Services specific fields
     agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
@@ -396,7 +400,6 @@ class Instance(core_models.UuidMixin,
     @transition(field=state, source=States.RESTARTING, target=States.ONLINE)
     def set_restarted(self):
         pass
-
 
     @transition(field=state, source='*', target=States.ERRED)
     def set_erred(self):
