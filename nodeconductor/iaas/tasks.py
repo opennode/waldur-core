@@ -28,7 +28,7 @@ def create_zabbix_host_and_service(instance, warn_if_exists=True):
         zabbix_client = ZabbixApiClient()
         zabbix_client.create_host(instance, warn_if_host_exists=warn_if_exists)
         zabbix_client.create_service(instance, warn_if_service_exists=warn_if_exists)
-    except ZabbixError as e:
+    except Exception as e:
         # task does not have to fail if something is wrong with zabbix
         logger.error('Zabbix host creation flow has broken %s' % e, exc_info=1)
         event_logger.error(
@@ -57,8 +57,11 @@ def schedule_provisioning(instance_uuid, backend_flavor_id, system_volume_id=Non
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
     backend = instance.cloud_project_membership.cloud.get_backend()
-    backend.provision_instance(instance, backend_flavor_id, system_volume_id, data_volume_id)
-    create_zabbix_host_and_service(instance)
+    try:
+        backend.provision_instance(instance, backend_flavor_id, system_volume_id, data_volume_id)
+    finally:
+        # the function below should never fail
+        create_zabbix_host_and_service(instance)
 
 
 @shared_task
