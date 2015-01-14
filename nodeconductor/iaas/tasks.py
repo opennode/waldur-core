@@ -318,7 +318,8 @@ def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
                     exc_info=1,
                 )
     # reschedule sync to membership that were blocked
-    push_ssh_public_keys.delay(ssh_public_keys_uuids, potential_rerunnable)
+    # TODO: temporarily disable -- NC-305
+    #push_ssh_public_keys.delay(ssh_public_keys_uuids, potential_rerunnable)
 
 
 @shared_task
