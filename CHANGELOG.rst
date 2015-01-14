@@ -17,8 +17,8 @@ Release 0.26.0
 --------------
 
 - Extended NodeConductor admin with new models/fields.
-- Increase timeouts for volume and snapshot operations.
-- Refactored key usage on provisioining - never fail fully.
+- Increased timeouts for volume and snapshot operations.
+- Refactored key usage on provisioning - never fail fully.
 - Multiple bugfixes.
 
 Release 0.25.0
