@@ -18,6 +18,7 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
     def setUp(self):
         self.copied_system_volume_id = '350b81e1-f991-401c-99b1-ebccc5a517a6'
         self.copied_data_volume_id = 'dba9b361-277c-46b2-99ca-1136b3eba6ed'
+        self.snapshot_ids = ['2b0282c8-21b6-4a86-a3d4-e731c5482e6e', '2b0282c8-21b6-4a86-l3d4-q732r1321e6e']
 
         self.template = factories.TemplateFactory()
         factories.TemplateLicenseFactory(templates=(self.template,))
@@ -38,10 +39,12 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         self.metadata = InstanceBackupStrategy._get_instance_metadata(self.instance)
         self.metadata['system_volume_id'] = self.copied_system_volume_id
         self.metadata['data_volume_id'] = self.copied_data_volume_id
+        self.metadata['snapshot_ids'] = self.snapshot_ids
 
         self.mocked_backed = Mock()
         InstanceBackupStrategy._get_backend = Mock(return_value=self.mocked_backed)
-        self.mocked_backed.clone_volumes = Mock(return_value=[self.copied_system_volume_id, self.copied_data_volume_id])
+        self.mocked_backed.clone_volumes = Mock(
+            return_value=([self.copied_system_volume_id, self.copied_data_volume_id], self.snapshot_ids))
 
     def test_strategy_backup_method_calls_backend_backup_instance_method(self):
         InstanceBackupStrategy.backup(self.instance)
@@ -56,6 +59,7 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         expected = InstanceBackupStrategy._get_instance_metadata(self.instance)
         expected['system_volume_id'] = self.copied_system_volume_id
         expected['data_volume_id'] = self.copied_data_volume_id
+        expected['snapshot_ids'] = self.snapshot_ids
         self.assertEqual(result, expected)
 
     def test_strategy_restore_method_calls_backend_restore_instance_method(self):
@@ -81,6 +85,7 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         self.mocked_backed.delete_volumes.assert_called_once_with(
             membership=self.instance.cloud_project_membership,
             volume_ids=[self.copied_system_volume_id, self.copied_data_volume_id],
+            snapshot_ids=self.snapshot_ids,
         )
 
 
