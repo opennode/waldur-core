@@ -1538,25 +1538,25 @@ class OpenStackBackend(object):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
 
     def _wait_for_instance_status(self, server_id, nova, complete_status,
-                                  error_status=None, retries=30, poll_interval=3):
+                                  error_status=None, retries=90, poll_interval=3):
         return self._wait_for_object_status(
             server_id, nova.servers.get, complete_status, error_status, retries, poll_interval)
 
     def _wait_for_volume_status(self, volume_id, cinder, complete_status,
-                                error_status=None, retries=30, poll_interval=3):
+                                error_status=None, retries=300, poll_interval=3):
         return self._wait_for_object_status(
             volume_id, cinder.volumes.get, complete_status, error_status, retries, poll_interval)
 
-    def _wait_for_snapshot_status(self, snapshot_id, cinder, complete_status, error_status, retries=30, poll_interval=3):
+    def _wait_for_snapshot_status(self, snapshot_id, cinder, complete_status, error_status, retries=90, poll_interval=3):
         return self._wait_for_object_status(
             snapshot_id, cinder.volume_snapshots.get, complete_status, error_status, retries, poll_interval)
 
-    def _wait_for_backup_status(self, backup, cinder, complete_status, error_status, retries=30, poll_interval=3):
+    def _wait_for_backup_status(self, backup, cinder, complete_status, error_status, retries=90, poll_interval=3):
         return self._wait_for_object_status(
             backup, cinder.backups.get, complete_status, error_status, retries, poll_interval)
 
     def _wait_for_object_status(self, obj_id, client_get_method, complete_status, error_status=None,
-                                retries=20, poll_interval=3):
+                                retries=30, poll_interval=3):
         complete_state_predicate = lambda o: o.status == complete_status
         if error_status is not None:
             error_state_predicate = lambda o: o.status == error_status
