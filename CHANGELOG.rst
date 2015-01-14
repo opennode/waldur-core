@@ -4,8 +4,10 @@ CHANGELOG
 Coming in the next release
 --------------------------
 
-- Added volume size parameters configuration to instance creation process.
 (Fixes/changes that are in develop branch.)
+
+- Added volume size parameters configuration to instance creation process.
+  Added management command for creating staff user with a password from cli.
 
 Release 0.26.0
 --------------
