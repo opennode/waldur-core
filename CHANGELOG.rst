@@ -4,6 +4,7 @@ CHANGELOG
 Coming in the next release
 --------------------------
 
+- Added volume size parameters configuration to instance creation process.
 (Fixes/changes that are in develop branch.)
 
 Release 0.26.0

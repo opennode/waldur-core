@@ -163,18 +163,25 @@ class OpenStackBackend(object):
                         mapping.template, ', '.join(m.backend_image_id for m in mappings),
                     )
                 else:
+                    backend_image = backend_images[mapping.backend_image_id]
                     # XXX: This might fail in READ REPEATED isolation level,
                     # which is default on MySQL
                     # see https://docs.djangoproject.com/en/1.6/ref/models/querysets/#django.db.models.query.QuerySet.get_or_create
                     image, created = cloud_account.images.get_or_create(
                         template=mapping.template,
+                        min_disk=self.get_core_disk_size(backend_image.min_disk),
+                        min_ram=self.get_core_ram_size(backend_image.min_ram),
                         defaults={'backend_id': mapping.backend_image_id},
                     )
 
                     if created:
                         logger.info('Created image %s pointing to %s in database', image, image.backend_id)
-                    elif image.backend_id != mapping.backend_image_id:
+                    elif (image.backend_id != mapping.backend_image_id or
+                            image.min_disk != backend_image.min_disk or
+                            image.min_ram != backend_image.min_ram):
                         image.backend_id = mapping.backend_image_id
+                        image.min_ram = self.get_core_ram_size(backend_image.min_ram)
+                        image.min_disk = self.get_core_disk_size(backend_image.min_disk)
                         image.save()
                         logger.info('Updated existing image %s to point to %s in database', image, image.backend_id)
                     else:
