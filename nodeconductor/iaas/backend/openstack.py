@@ -912,10 +912,11 @@ class OpenStackBackend(object):
             cinder = self.create_cinder_client(session)
 
             cloned_volume_ids = []
+            snapshot_ids = []
             for volume_id in volume_ids:
                 snapshot = self.create_snapshot(volume_id, cinder)
+                snapshot_ids.append[snapshot]
                 cloned_volume_ids.append(self.create_volume_from_snapshot(snapshot, cinder, prefix=prefix))
-                self.delete_snapshot(snapshot, cinder)
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
@@ -923,10 +924,10 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully cloned volumes %s', ', '.join(volume_ids))
-        return cloned_volume_ids
+        return cloned_volume_ids, snapshot_ids
 
-    def delete_volumes(self, membership, volume_ids):
-        logger.debug('About to delete volumes %s', ', '.join(volume_ids))
+    def delete_volumes_with_snapshots(self, membership, volume_ids, snapshot_ids):
+        logger.debug('About to delete volumes %s and snapshots %s', (', '.join(volume_ids), ', '.join(snapshot_ids)))
         try:
             session = self.create_tenant_session(membership)
             cinder = self.create_cinder_client(session)
@@ -934,12 +935,17 @@ class OpenStackBackend(object):
             for volume_id in volume_ids:
                 self.delete_volume(volume_id, cinder)
 
+            for snapshot_id in snapshot_ids:
+                self.delete_snapshot(snapshot_id, cinder)
+
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
-            logger.exception('Failed to delete volumes %s', ', '.join(volume_ids))
+            logger.exception(
+                'Failed to delete volumes %s and snapshots %s', (', '.join(volume_ids), ', '.join(snapshot_ids)))
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Successfully deleted volumes %s', ', '.join(volume_ids))
+            logger.info(
+                'Successfully deleted volumes %s and snapshots %s', (', '.join(volume_ids), ', '.join(snapshot_ids)))
 
     def restore_instance(self, instance, instance_backup_ids):
         logger.debug('About to restore instance %s backup', instance.uuid)
