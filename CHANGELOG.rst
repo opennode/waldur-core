@@ -6,6 +6,13 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+Release 0.27.0
+--------------
+
+- Added volume size parameters configuration to instance creation process.
+- Added management command for creating staff user with a password from cli.
+- Increased timeouts for provisioning operations.
+
 Release 0.26.0
 --------------
 

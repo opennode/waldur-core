@@ -163,18 +163,25 @@ class OpenStackBackend(object):
                         mapping.template, ', '.join(m.backend_image_id for m in mappings),
                     )
                 else:
+                    backend_image = backend_images[mapping.backend_image_id]
                     # XXX: This might fail in READ REPEATED isolation level,
                     # which is default on MySQL
                     # see https://docs.djangoproject.com/en/1.6/ref/models/querysets/#django.db.models.query.QuerySet.get_or_create
                     image, created = cloud_account.images.get_or_create(
                         template=mapping.template,
+                        min_disk=self.get_core_disk_size(backend_image.min_disk),
+                        min_ram=self.get_core_ram_size(backend_image.min_ram),
                         defaults={'backend_id': mapping.backend_image_id},
                     )
 
                     if created:
                         logger.info('Created image %s pointing to %s in database', image, image.backend_id)
-                    elif image.backend_id != mapping.backend_image_id:
+                    elif (image.backend_id != mapping.backend_image_id or
+                            image.min_disk != backend_image.min_disk or
+                            image.min_ram != backend_image.min_ram):
                         image.backend_id = mapping.backend_image_id
+                        image.min_ram = self.get_core_ram_size(backend_image.min_ram)
+                        image.min_disk = self.get_core_disk_size(backend_image.min_disk)
                         image.save()
                         logger.info('Updated existing image %s to point to %s in database', image, image.backend_id)
                     else:
@@ -905,10 +912,11 @@ class OpenStackBackend(object):
             cinder = self.create_cinder_client(session)
 
             cloned_volume_ids = []
+            snapshot_ids = []
             for volume_id in volume_ids:
                 snapshot = self.create_snapshot(volume_id, cinder)
+                snapshot_ids.append[snapshot]
                 cloned_volume_ids.append(self.create_volume_from_snapshot(snapshot, cinder, prefix=prefix))
-                self.delete_snapshot(snapshot, cinder)
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
@@ -916,23 +924,29 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully cloned volumes %s', ', '.join(volume_ids))
-        return cloned_volume_ids
+        return cloned_volume_ids, snapshot_ids
 
-    def delete_volumes(self, membership, volume_ids):
-        logger.debug('About to delete volumes %s', ', '.join(volume_ids))
+    def delete_volumes_with_snapshots(self, membership, volume_ids, snapshot_ids):
+        logger.debug('About to delete volumes %s and snapshots %s', (', '.join(volume_ids), ', '.join(snapshot_ids)))
         try:
             session = self.create_tenant_session(membership)
             cinder = self.create_cinder_client(session)
 
-            for volume_id in volume_ids:
+            for volume_id, snapshot_id in zip(volume_ids, snapshot_ids):
                 self.delete_volume(volume_id, cinder)
+                if self._wait_for_volume_deletion(volume_id, cinder):
+                    self.delete_snapshot(snapshot_id, cinder)
+                else:
+                    logger.exception('Failed to delete volume %s and snapshot %s', (volume_id, snapshot_id))
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
-            logger.exception('Failed to delete volumes %s', ', '.join(volume_ids))
+            logger.exception(
+                'Failed to delete volumes %s and snapshots %s', (', '.join(volume_ids), ', '.join(snapshot_ids)))
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Successfully deleted volumes %s', ', '.join(volume_ids))
+            logger.info(
+                'Successfully deleted volumes %s and snapshots %s', (', '.join(volume_ids), ', '.join(snapshot_ids)))
 
     def restore_instance(self, instance, instance_backup_ids):
         logger.debug('About to restore instance %s backup', instance.uuid)
@@ -1531,25 +1545,25 @@ class OpenStackBackend(object):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
 
     def _wait_for_instance_status(self, server_id, nova, complete_status,
-                                  error_status=None, retries=30, poll_interval=3):
+                                  error_status=None, retries=90, poll_interval=3):
         return self._wait_for_object_status(
             server_id, nova.servers.get, complete_status, error_status, retries, poll_interval)
 
     def _wait_for_volume_status(self, volume_id, cinder, complete_status,
-                                error_status=None, retries=30, poll_interval=3):
+                                error_status=None, retries=300, poll_interval=3):
         return self._wait_for_object_status(
             volume_id, cinder.volumes.get, complete_status, error_status, retries, poll_interval)
 
-    def _wait_for_snapshot_status(self, snapshot_id, cinder, complete_status, error_status, retries=30, poll_interval=3):
+    def _wait_for_snapshot_status(self, snapshot_id, cinder, complete_status, error_status, retries=90, poll_interval=3):
         return self._wait_for_object_status(
             snapshot_id, cinder.volume_snapshots.get, complete_status, error_status, retries, poll_interval)
 
-    def _wait_for_backup_status(self, backup, cinder, complete_status, error_status, retries=30, poll_interval=3):
+    def _wait_for_backup_status(self, backup, cinder, complete_status, error_status, retries=90, poll_interval=3):
         return self._wait_for_object_status(
             backup, cinder.backups.get, complete_status, error_status, retries, poll_interval)
 
     def _wait_for_object_status(self, obj_id, client_get_method, complete_status, error_status=None,
-                                retries=20, poll_interval=3):
+                                retries=30, poll_interval=3):
         complete_state_predicate = lambda o: o.status == complete_status
         if error_status is not None:
             error_state_predicate = lambda o: o.status == error_status
@@ -1568,6 +1582,16 @@ class OpenStackBackend(object):
             time.sleep(poll_interval)
         else:
             return False
+
+    def _wait_for_volume_deletion(self, volume_id, cinder, retries=90, poll_interval=3):
+        try:
+            for _ in range(retries):
+                cinder.volumes.get(volume_id)
+                time.sleep(poll_interval)
+
+            return False
+        except cinder_exceptions.NotFound:
+            return True
 
     def push_floating_ip_to_instance(self, server, instance, nova):
         if instance.external_ips is None or instance.internal_ips is None:

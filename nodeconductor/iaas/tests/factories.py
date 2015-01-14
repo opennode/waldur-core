@@ -161,6 +161,16 @@ class TemplateLicenseFactory(factory.DjangoModelFactory):
     setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
     monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
+    @factory.post_generation
+    def templates(self, create, extracted, **kwargs):
+        if not create:
+            # Simple build, do nothing.
+            return
+
+        if extracted:
+            for template in extracted:
+                self.templates.add(template)
+
 
 class ImageFactory(factory.DjangoModelFactory):
     class Meta(object):

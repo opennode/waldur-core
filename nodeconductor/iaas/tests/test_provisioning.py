@@ -604,6 +604,26 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_cannot_create_instance_with_empty_flavor(self):
         self.assert_field_non_empty('flavor')
 
+    def test_cannot_create_instance_with_data_volume_size_lower_then_one_gb(self):
+        data = self.get_valid_data()
+        data['data_volume_size'] = 512
+
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('data_volume_size', response.data)
+
+    def test_cannot_create_instance_with_system_volume_size_lower_image_disk_image(self):
+        image = self.template.images.first()
+        image.min_disk = 10 * 1024
+        image.save()
+        data = self.get_valid_data()
+        data['system_volume_size'] = 5 * 1024
+
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     # instance external and internal ips fields tests
     def test_instance_factory_generates_valid_internal_ips_field(self):
         instance = factories.InstanceFactory()
@@ -630,6 +650,16 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         response = self.client.post(self.instance_list_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, 'Error: %r' % response.data)
+
+    def test_can_create_instance_with_defined_volume_size(self):
+        data = self.get_valid_data()
+        data['data_volume_size'] = 2 * 1024
+        data['system_volume_size'] = 10 * 1024
+
+        response = self.client.post(self.instance_list_url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Instance.objects.filter(
+            data_volume_size=data['data_volume_size'], system_volume_size=data['system_volume_size']).exists())
 
     def test_can_create_instance_with_external_ips_set_to_empty_string(self):
         data = self.get_valid_data()
