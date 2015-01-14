@@ -19,7 +19,10 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         self.copied_system_volume_id = '350b81e1-f991-401c-99b1-ebccc5a517a6'
         self.copied_data_volume_id = 'dba9b361-277c-46b2-99ca-1136b3eba6ed'
 
-        self.instance = factories.InstanceFactory()
+        self.template = factories.TemplateFactory()
+        factories.TemplateLicenseFactory(templates=(self.template,))
+
+        self.instance = factories.InstanceFactory(template=self.template)
         self.backup = backup_factories.BackupFactory(
             backup_source=self.instance,
             metadata={
