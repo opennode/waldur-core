@@ -251,11 +251,12 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
 
         # then
         resource_quota_usage = membership.resource_quota_usage
-        self.assertEqual(
-            resource_quota_usage.backup_storage,
+        expected_instances_storage = sum([int(v.size * 1024) for v in self.volumes])
+        expected_backup_storage = (
             (instance.system_volume_size + instance.data_volume_size) *
             (backup_schedule.maximal_number_of_backups + 1)
         )
+        self.assertEqual(resource_quota_usage.storage, expected_instances_storage + expected_backup_storage)
 
 
 class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
