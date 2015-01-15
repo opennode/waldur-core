@@ -671,27 +671,27 @@ class OpenStackBackend(object):
             if not system_volume_id:
                 system_volume_name = '{0}-system'.format(instance.hostname)
                 logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
+                size = self.get_backend_disk_size(instance.system_volume_size)
                 system_volume = cinder.volumes.create(
-                    size=self.get_backend_disk_size(instance.system_volume_size),
+                    size=size,
                     display_name=system_volume_name,
                     display_description='',
                     imageRef=backend_image.id,
                 )
                 system_volume_id = system_volume.id
-                membership.resource_quota_usage.storage += self.get_backend_disk_size(instance.system_volume_size)
-                membership.save()
+                membership.update_resource_quota_usage('storage', size)
 
             if not data_volume_id:
                 data_volume_name = '{0}-data'.format(instance.hostname)
                 logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
+                size = self.get_backend_disk_size(instance.data_volume_size)
                 data_volume = cinder.volumes.create(
-                    size=self.get_backend_disk_size(instance.data_volume_size),
+                    size=size,
                     display_name=data_volume_name,
                     display_description='',
                 )
                 data_volume_id = data_volume.id
-                membership.resource_quota_usage.storage += self.get_backend_disk_size(instance.data_volume_size)
-                membership.save()
+                membership.update_resource_quota_usage('storage', size)
 
             if not self._wait_for_volume_status(system_volume_id, cinder, 'available', 'error'):
                 logger.error(
@@ -755,10 +755,9 @@ class OpenStackBackend(object):
             instance.data_volume_id = data_volume_id
             instance.save()
 
-            membership.resource_quota_usage.max_instances += 1
-            membership.resource_quota_usage.ram += self.get_core_ram_size(backend_flavor.ram)
-            membership.resource_quota_usage.vcpu += backend_flavor.vcpus
-            membership.resource_quota_usage.save()
+            membership.update_resource_quota_usage('max_instances', 1)
+            membership.update_resource_quota_usage('ram', self.get_core_ram_size(backend_flavor.ram))
+            membership.update_resource_quota_usage('vcpu', backend_flavor.vcpus)
 
             if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
                 logger.error(
@@ -927,14 +926,12 @@ class OpenStackBackend(object):
                 # snapshot
                 snapshot = self.create_snapshot(volume_id, cinder)
                 snapshot_ids.append[snapshot.id]
-                membership.resource_quota_usage.backup_storage += self.get_core_disk_size(snapshot.size)
-                membership.resource_quota_usage.save()
+                membership.update_resource_quota_usage('backup_storage', self.get_core_disk_size(snapshot.size))
 
                 # volume
                 volume = self.create_volume_from_snapshot(snapshot, cinder, prefix=prefix)
-                membership.resource_quota_usage.backup_storage += self.get_core_disk_size(snapshot.size)
-                membership.resource_quota_usage.save()
                 cloned_volume_ids.append(volume)
+                membership.update_resource_quota_usage('backup_storage', self.get_core_disk_size(snapshot.size))
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
@@ -954,14 +951,12 @@ class OpenStackBackend(object):
                 # volume
                 size = cinder.volumes.get().size
                 self.delete_volume(volume_id, cinder)
-                membership.resource_quota_usage.backup_storage -= size
-                membership.resource_quota_usage.save()
+                membership.update_resource_quota_usage('backup_storage', -size)
 
                 # snapshot
                 if self._wait_for_volume_deletion(volume_id, cinder):
                     self.delete_snapshot(snapshot_id, cinder)
-                    membership.resource_quota_usage.backup_storage -= size
-                    membership.resource_quota_usage.save()
+                    membership.update_resource_quota_usage('backup_storage', -size)
                 else:
                     logger.exception('Failed to delete volume %s and snapshot %s', (volume_id, snapshot_id))
 
@@ -1103,8 +1098,7 @@ class OpenStackBackend(object):
                     % volume.id, instance.uuid,
                 )
             else:
-                membership.resource_quota_usage.storage -= instance.data_volume_size
-                membership.resource_quota_usage.save()
+                membership.update_resource_quota_usage('backup_storage', -instance.data_volume_size)
 
             cinder.volumes.extend(volume, new_size)
 
@@ -1118,8 +1112,7 @@ class OpenStackBackend(object):
                     % volume.id,
                 )
             else:
-                membership.resource_quota_usage.storage -= new_size
-                membership.resource_quota_usage.save()
+                membership.update_resource_quota_usage('backup_storage', new_size)
 
             nova.volumes.create_server_volume(server_id, volume.id, None)
 
