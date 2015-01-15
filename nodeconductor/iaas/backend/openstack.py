@@ -671,23 +671,27 @@ class OpenStackBackend(object):
             if not system_volume_id:
                 system_volume_name = '{0}-system'.format(instance.hostname)
                 logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
+                size = self.get_backend_disk_size(instance.system_volume_size)
                 system_volume = cinder.volumes.create(
-                    size=self.get_backend_disk_size(instance.system_volume_size),
+                    size=size,
                     display_name=system_volume_name,
                     display_description='',
                     imageRef=backend_image.id,
                 )
                 system_volume_id = system_volume.id
+                membership.update_resource_quota_usage('storage', size)
 
             if not data_volume_id:
                 data_volume_name = '{0}-data'.format(instance.hostname)
                 logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
+                size = self.get_backend_disk_size(instance.data_volume_size)
                 data_volume = cinder.volumes.create(
-                    size=self.get_backend_disk_size(instance.data_volume_size),
+                    size=size,
                     display_name=data_volume_name,
                     display_description='',
                 )
                 data_volume_id = data_volume.id
+                membership.update_resource_quota_usage('storage', size)
 
             if not self._wait_for_volume_status(system_volume_id, cinder, 'available', 'error'):
                 logger.error(
@@ -750,6 +754,10 @@ class OpenStackBackend(object):
             instance.system_volume_id = system_volume_id
             instance.data_volume_id = data_volume_id
             instance.save()
+
+            membership.update_resource_quota_usage('max_instances', 1)
+            membership.update_resource_quota_usage('ram', self.get_core_ram_size(backend_flavor.ram))
+            membership.update_resource_quota_usage('vcpu', backend_flavor.vcpus)
 
             if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
                 logger.error(
@@ -856,19 +864,15 @@ class OpenStackBackend(object):
             nova = self.create_nova_client(session)
             nova.servers.delete(instance.backend_id)
 
-            retries = 20
-            poll_interval = 3
-
-            for _ in range(retries):
-                try:
-                    nova.servers.get(instance.backend_id)
-                except nova_exceptions.NotFound:
-                    break
-
-                time.sleep(poll_interval)
-            else:
+            if not self._wait_for_instance_deletion(instance.backend_id, nova):
                 logger.info('Failed to delete instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
+            else:
+                membership.update_resource_quota_usage('max_instances', -1)
+                membership.update_resource_quota_usage('vcpu', -instance.cores)
+                membership.update_resource_quota_usage('ram', -instance.ram)
+                membership.update_resource_quota_usage(
+                    'storage', -(instance.system_volume_size + instance.data_volume_size))
 
         except nova_exceptions.ClientException as e:
             logger.info('Failed to delete instance %s', instance.uuid)
@@ -876,6 +880,7 @@ class OpenStackBackend(object):
         else:
             logger.info('Successfully deleted instance %s', instance.uuid)
 
+    # XXX: This method is not used now
     def backup_instance(self, instance):
         logger.debug('About to create instance %s backup', instance.uuid)
         try:
@@ -891,7 +896,7 @@ class OpenStackBackend(object):
 
             for volume in attached_volumes:
                 # TODO: Consider using context managers to avoid having resource remnants
-                snapshot = self.create_snapshot(volume.id, cinder)
+                snapshot = self.create_snapshot(volume.id, cinder).id
                 temporary_volume = self.create_volume_from_snapshot(snapshot, cinder)
                 backup = self.create_volume_backup(temporary_volume, volume.device, cinder)
                 backups.append(backup)
@@ -914,9 +919,15 @@ class OpenStackBackend(object):
             cloned_volume_ids = []
             snapshot_ids = []
             for volume_id in volume_ids:
+                # snapshot
                 snapshot = self.create_snapshot(volume_id, cinder)
-                snapshot_ids.append[snapshot]
-                cloned_volume_ids.append(self.create_volume_from_snapshot(snapshot, cinder, prefix=prefix))
+                snapshot_ids.append[snapshot.id]
+                membership.update_resource_quota_usage('storage', self.get_core_disk_size(snapshot.size))
+
+                # volume
+                volume = self.create_volume_from_snapshot(snapshot, cinder, prefix=prefix)
+                cloned_volume_ids.append(volume)
+                membership.update_resource_quota_usage('storage', self.get_core_disk_size(snapshot.size))
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
@@ -933,9 +944,15 @@ class OpenStackBackend(object):
             cinder = self.create_cinder_client(session)
 
             for volume_id, snapshot_id in zip(volume_ids, snapshot_ids):
+                # volume
+                size = cinder.volumes.get(volume_id).size
                 self.delete_volume(volume_id, cinder)
+                membership.update_resource_quota_usage('storage', -size)
+
+                # snapshot
                 if self._wait_for_volume_deletion(volume_id, cinder):
                     self.delete_snapshot(snapshot_id, cinder)
+                    membership.update_resource_quota_usage('storage', -size)
                 else:
                     logger.exception('Failed to delete volume %s and snapshot %s', (volume_id, snapshot_id))
 
@@ -948,6 +965,7 @@ class OpenStackBackend(object):
             logger.info(
                 'Successfully deleted volumes %s and snapshots %s', (', '.join(volume_ids), ', '.join(snapshot_ids)))
 
+    # XXX: This method is not used now
     def restore_instance(self, instance, instance_backup_ids):
         logger.debug('About to restore instance %s backup', instance.uuid)
         try:
@@ -976,6 +994,7 @@ class OpenStackBackend(object):
             logger.info('Successfully restored backup for instance %s', instance.uuid)
         return new_vm
 
+    # XXX: This method is not used now
     def delete_instance_backup(self, instance, instance_backup_ids):
         logger.debug('About to delete instance %s backup', instance.uuid)
 
@@ -1074,6 +1093,8 @@ class OpenStackBackend(object):
                     'Timed out waiting volume %s to detach from instance %s'
                     % volume.id, instance.uuid,
                 )
+            else:
+                membership.update_resource_quota_usage('storage', -instance.data_volume_size)
 
             cinder.volumes.extend(volume, new_size)
 
@@ -1086,6 +1107,8 @@ class OpenStackBackend(object):
                     'Timed out waiting volume %s to extend'
                     % volume.id,
                 )
+            else:
+                membership.update_resource_quota_usage('storage', new_size)
 
             nova.volumes.create_server_volume(server_id, volume.id, None)
 
@@ -1593,6 +1616,16 @@ class OpenStackBackend(object):
         except cinder_exceptions.NotFound:
             return True
 
+    def _wait_for_instance_deletion(self, backend_instance_id, nova, retries=20, poll_interval=3):
+        try:
+            for _ in range(retries):
+                nova.servers.get(backend_instance_id)
+                time.sleep(poll_interval)
+
+            return False
+        except nova_exceptions.NotFound:
+            return True
+
     def push_floating_ip_to_instance(self, server, instance, nova):
         if instance.external_ips is None or instance.internal_ips is None:
             return
@@ -1654,7 +1687,7 @@ class OpenStackBackend(object):
 
         logger.info('Successfully created snapshot %s for volume %s', snapshot.id, volume_id)
 
-        return snapshot.id
+        return snapshot
 
     def delete_snapshot(self, snapshot_id, cinder):
         """
