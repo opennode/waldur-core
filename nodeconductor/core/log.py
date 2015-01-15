@@ -99,11 +99,12 @@ class EventFormatter(logging.Formatter):
         project = getattr(record, 'project', None)
         if project is None and membership is not None:
             project = getattr(membership, 'project', None)
-            if project is not None:
-                message.update({
-                    "project_name": getattr(project, 'name', ''),
-                    "project_uuid": str(getattr(project, 'uuid', '')),
-                })
+
+        if project is not None:
+            message.update({
+                "project_name": getattr(project, 'name', ''),
+                "project_uuid": str(getattr(project, 'uuid', '')),
+            })
 
         # project group
         project_group = getattr(record, 'project_group', None)
@@ -117,11 +118,12 @@ class EventFormatter(logging.Formatter):
         cloud = getattr(record, 'cloud', None)
         if cloud is None and membership is not None:
             cloud = getattr(membership, 'cloud', None)
-            if cloud is not None:
-                message.update({
-                    "cloud_account_name": getattr(cloud, 'name', ''),
-                    "cloud_account_uuid": str(getattr(cloud, 'uuid', '')),
-                })
+
+        if cloud is not None:
+            message.update({
+                "cloud_account_name": getattr(cloud, 'name', ''),
+                "cloud_account_uuid": str(getattr(cloud, 'uuid', '')),
+            })
 
         # customer
         customer = getattr(record, 'customer', None)
