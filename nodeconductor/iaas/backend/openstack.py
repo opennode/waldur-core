@@ -864,19 +864,15 @@ class OpenStackBackend(object):
             nova = self.create_nova_client(session)
             nova.servers.delete(instance.backend_id)
 
-            retries = 20
-            poll_interval = 3
-
-            for _ in range(retries):
-                try:
-                    nova.servers.get(instance.backend_id)
-                except nova_exceptions.NotFound:
-                    break
-
-                time.sleep(poll_interval)
-            else:
+            if not self._wait_for_instance_deletion(instance.backend_id, nova):
                 logger.info('Failed to delete instance %s', instance.uuid)
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
+            else:
+                membership.update_resource_quota_usage('max_instances', -1)
+                membership.update_resource_quota_usage('vcpu', -instance.cores)
+                membership.update_resource_quota_usage('ram', -instance.ram)
+                membership.update_resource_quota_usage(
+                    'storage', -(instance.system_volume_size + instance.data_volume_size))
 
         except nova_exceptions.ClientException as e:
             logger.info('Failed to delete instance %s', instance.uuid)
@@ -1618,6 +1614,16 @@ class OpenStackBackend(object):
 
             return False
         except cinder_exceptions.NotFound:
+            return True
+
+    def _wait_for_instance_deletion(self, backend_instance_id, nova, retries=20, poll_interval=3):
+        try:
+            for _ in range(retries):
+                nova.servers.get(backend_instance_id)
+                time.sleep(poll_interval)
+
+            return False
+        except nova_exceptions.NotFound:
             return True
 
     def push_floating_ip_to_instance(self, server, instance, nova):
