@@ -949,7 +949,7 @@ class OpenStackBackend(object):
 
             for volume_id, snapshot_id in zip(volume_ids, snapshot_ids):
                 # volume
-                size = cinder.volumes.get().size
+                size = cinder.volumes.get(volume_id).size
                 self.delete_volume(volume_id, cinder)
                 membership.update_resource_quota_usage('backup_storage', -size)
 
