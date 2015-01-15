@@ -485,10 +485,10 @@ class OpenStackBackend(object):
         except models.ResourceQuota.DoesNotExist:
             resource_quota = models.ResourceQuota(cloud_project_membership=membership)
 
-        resource_quota.ram = nova_quotas.ram
+        resource_quota.ram = self.get_core_ram_size(nova_quotas.ram)
         resource_quota.vcpu = nova_quotas.cores
         resource_quota.max_instances = nova_quotas.instances
-        resource_quota.storage = int(cinder_quotas.gigabytes * 1024)
+        resource_quota.storage = self.get_core_disk_size(cinder_quotas.gigabytes)
         resource_quota.save()
 
     def pull_resource_quota_usage(self, membership):
@@ -515,27 +515,35 @@ class OpenStackBackend(object):
             resource_quota_usage = membership.resource_quota_usage
         except models.ResourceQuotaUsage.DoesNotExist:
             resource_quota_usage = models.ResourceQuotaUsage(cloud_project_membership=membership)
+
         # ram and vcpu
         instance_flavor_ids = [instance.flavor['id'] for instance in instances]
         resource_quota_usage.ram = 0
         resource_quota_usage.vcpu = 0
+
         for flavor_id in instance_flavor_ids:
             flavor = flavors[flavor_id]
-            resource_quota_usage.ram += getattr(flavor, 'ram', 0)
+            try:
+                flavor = flavors.get(flavor_id, nova.flavors.get(flavor_id))
+            except nova_exceptions.NotFound:
+                logger.warning('Cannot find flavor with id %s', flavor_id)
+                continue
+
+            resource_quota_usage.ram += self.get_core_ram_size(getattr(flavor, 'ram', 0))
             resource_quota_usage.vcpu += getattr(flavor, 'vcpus', 0)
+
         # max instances
         resource_quota_usage.max_instances = len(instances)
         # storage
-        resource_quota_usage.storage = sum([int(v.size * 1024) for v in volumes])
+        resource_quota_usage.storage = sum([self.get_core_disk_size(v.size) for v in volumes])
 
         # currently we can not get backup storage size from openstack, so we use simple estimation:
-        resource_quota_usage.backup_storage = 0
         services = models.Instance.objects.filter(cloud_project_membership=membership)
         for service in services:
             size = max(0, service.system_volume_size) + max(0, service.data_volume_size)
-            resource_quota_usage.backup_storage += size * sum(
+            resource_quota_usage.storage += size * sum(
                 max(0, schedule.maximal_number_of_backups) for schedule in service.backup_schedules.all())
-            resource_quota_usage.backup_storage += size * service.backups.filter(backup_schedule__isnull=True).count()
+            resource_quota_usage.storage += size * service.backups.filter(backup_schedule__isnull=True).count()
 
         resource_quota_usage.save()
 
