@@ -354,7 +354,7 @@ def check_cloud_memberships_quotas():
             resource_quota = getattr(quota, resource_name)
             resource_usage = getattr(usage, resource_name)
 
-            if resource_usage * threshold >= resource_quota:
+            if resource_usage >= threshold * resource_quota:
                 event_logger.warning(
                     "%s quota limit is about to be reached", resource_name,
                     extra=dict(
