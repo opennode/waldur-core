@@ -678,6 +678,8 @@ class OpenStackBackend(object):
                     imageRef=backend_image.id,
                 )
                 system_volume_id = system_volume.id
+                membership.resource_quota_usage.storage += self.get_backend_disk_size(instance.system_volume_size)
+                membership.save()
 
             if not data_volume_id:
                 data_volume_name = '{0}-data'.format(instance.hostname)
@@ -688,6 +690,8 @@ class OpenStackBackend(object):
                     display_description='',
                 )
                 data_volume_id = data_volume.id
+                membership.resource_quota_usage.storage += self.get_backend_disk_size(instance.data_volume_size)
+                membership.save()
 
             if not self._wait_for_volume_status(system_volume_id, cinder, 'available', 'error'):
                 logger.error(
@@ -750,6 +754,11 @@ class OpenStackBackend(object):
             instance.system_volume_id = system_volume_id
             instance.data_volume_id = data_volume_id
             instance.save()
+
+            membership.resource_quota_usage.max_instances += 1
+            membership.resource_quota_usage.ram += self.get_core_ram_size(backend_flavor.ram)
+            membership.resource_quota_usage.vcpu += backend_flavor.vcpus
+            membership.resource_quota_usage.save()
 
             if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
                 logger.error(
@@ -876,6 +885,7 @@ class OpenStackBackend(object):
         else:
             logger.info('Successfully deleted instance %s', instance.uuid)
 
+    # XXX: This method is not used now
     def backup_instance(self, instance):
         logger.debug('About to create instance %s backup', instance.uuid)
         try:
@@ -891,7 +901,7 @@ class OpenStackBackend(object):
 
             for volume in attached_volumes:
                 # TODO: Consider using context managers to avoid having resource remnants
-                snapshot = self.create_snapshot(volume.id, cinder)
+                snapshot = self.create_snapshot(volume.id, cinder).id
                 temporary_volume = self.create_volume_from_snapshot(snapshot, cinder)
                 backup = self.create_volume_backup(temporary_volume, volume.device, cinder)
                 backups.append(backup)
@@ -914,9 +924,17 @@ class OpenStackBackend(object):
             cloned_volume_ids = []
             snapshot_ids = []
             for volume_id in volume_ids:
+                # snapshot
                 snapshot = self.create_snapshot(volume_id, cinder)
-                snapshot_ids.append[snapshot]
-                cloned_volume_ids.append(self.create_volume_from_snapshot(snapshot, cinder, prefix=prefix))
+                snapshot_ids.append[snapshot.id]
+                membership.resource_quota_usage.backup_storage += self.get_core_disk_size(snapshot.size)
+                membership.resource_quota_usage.save()
+
+                # volume
+                volume = self.create_volume_from_snapshot(snapshot, cinder, prefix=prefix)
+                membership.resource_quota_usage.backup_storage += self.get_core_disk_size(snapshot.size)
+                membership.resource_quota_usage.save()
+                cloned_volume_ids.append(volume)
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
@@ -933,9 +951,17 @@ class OpenStackBackend(object):
             cinder = self.create_cinder_client(session)
 
             for volume_id, snapshot_id in zip(volume_ids, snapshot_ids):
+                # volume
+                size = cinder.volumes.get().size
                 self.delete_volume(volume_id, cinder)
+                membership.resource_quota_usage.backup_storage -= size
+                membership.resource_quota_usage.save()
+
+                # snapshot
                 if self._wait_for_volume_deletion(volume_id, cinder):
                     self.delete_snapshot(snapshot_id, cinder)
+                    membership.resource_quota_usage.backup_storage -= size
+                    membership.resource_quota_usage.save()
                 else:
                     logger.exception('Failed to delete volume %s and snapshot %s', (volume_id, snapshot_id))
 
@@ -948,6 +974,7 @@ class OpenStackBackend(object):
             logger.info(
                 'Successfully deleted volumes %s and snapshots %s', (', '.join(volume_ids), ', '.join(snapshot_ids)))
 
+    # XXX: This method is not used now
     def restore_instance(self, instance, instance_backup_ids):
         logger.debug('About to restore instance %s backup', instance.uuid)
         try:
@@ -976,6 +1003,7 @@ class OpenStackBackend(object):
             logger.info('Successfully restored backup for instance %s', instance.uuid)
         return new_vm
 
+    # XXX: This method is not used now
     def delete_instance_backup(self, instance, instance_backup_ids):
         logger.debug('About to delete instance %s backup', instance.uuid)
 
@@ -1074,6 +1102,9 @@ class OpenStackBackend(object):
                     'Timed out waiting volume %s to detach from instance %s'
                     % volume.id, instance.uuid,
                 )
+            else:
+                membership.resource_quota_usage.storage -= instance.data_volume_size
+                membership.resource_quota_usage.save()
 
             cinder.volumes.extend(volume, new_size)
 
@@ -1086,6 +1117,9 @@ class OpenStackBackend(object):
                     'Timed out waiting volume %s to extend'
                     % volume.id,
                 )
+            else:
+                membership.resource_quota_usage.storage -= new_size
+                membership.resource_quota_usage.save()
 
             nova.volumes.create_server_volume(server_id, volume.id, None)
 
@@ -1654,7 +1688,7 @@ class OpenStackBackend(object):
 
         logger.info('Successfully created snapshot %s for volume %s', snapshot.id, volume_id)
 
-        return snapshot.id
+        return snapshot
 
     def delete_snapshot(self, snapshot_id, cinder):
         """
