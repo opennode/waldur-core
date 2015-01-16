@@ -1,6 +1,7 @@
 import logging
 
 from celery import shared_task
+from django.utils import timezone
 
 from nodeconductor.backup import models, exceptions
 
@@ -69,3 +70,15 @@ def deletion_task(backup_uuid):
             logger.exception('Restoration task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:
         logger.exception('Deletion task was called for backed with uuid %s which does not exist', backup_uuid)
+
+
+@shared_task
+def execute_schedules():
+    for schedule in models.BackupSchedule.objects.filter(is_active=True, next_trigger_at__lt=timezone.now()):
+        schedule.execute()
+
+
+@shared_task
+def delete_expired_backups():
+    for backup in models.Backup.objects.filter(kept_until__lt=timezone.now()):
+        backup.start_deletion()
