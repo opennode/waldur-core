@@ -152,6 +152,18 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=10),
         'args': (),
     },
+
+    'execute-backup-schedules': {
+        'task': 'nodeconductor.backup.tasks.execute_schedules',
+        'schedule': timedelta(minutes=10),
+        'args': (),
+    },
+
+    'delete-expired-backups': {
+        'task': 'nodeconductor.backup.tasks.delete_expired_backups',
+        'schedule': timedelta(minutes=10),
+        'args': (),
+    }
 }
 
 NODECONDUCTOR = {

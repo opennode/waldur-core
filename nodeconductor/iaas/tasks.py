@@ -74,7 +74,7 @@ def schedule_stopping(instance_uuid):
 
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='begin_restarting', desired_state='set_online')
+@tracked_processing(models.Instance, processing_state='begin_restarting', desired_state='set_restarted')
 def schedule_restarting(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
@@ -83,7 +83,7 @@ def schedule_restarting(instance_uuid):
 
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='begin_starting', desired_state='set_restarted')
+@tracked_processing(models.Instance, processing_state='begin_starting', desired_state='set_online')
 def schedule_starting(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
@@ -354,7 +354,7 @@ def check_cloud_memberships_quotas():
             resource_quota = getattr(quota, resource_name)
             resource_usage = getattr(usage, resource_name)
 
-            if resource_usage * threshold >= resource_quota:
+            if resource_usage >= threshold * resource_quota:
                 event_logger.warning(
                     "%s quota limit is about to be reached", resource_name,
                     extra=dict(

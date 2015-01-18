@@ -6,6 +6,13 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+Release 0.28.0
+--------------
+
+- Scheduled backups are now run as Celery tasks.
+- Changed quota usage to be re-calculated after each operation.
+  It is regularly synced to assure that calculations are correct.
+
 Release 0.27.0
 --------------
 
@@ -17,8 +24,8 @@ Release 0.26.0
 --------------
 
 - Extended NodeConductor admin with new models/fields.
-- Increase timeouts for volume and snapshot operations.
-- Refactored key usage on provisioining - never fail fully.
+- Increased timeouts for volume and snapshot operations.
+- Refactored key usage on provisioning - never fail fully.
 - Multiple bugfixes.
 
 Release 0.25.0
