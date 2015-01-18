@@ -74,7 +74,7 @@ def schedule_stopping(instance_uuid):
 
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='begin_restarting', desired_state='set_online')
+@tracked_processing(models.Instance, processing_state='begin_restarting', desired_state='set_restarted')
 def schedule_restarting(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
@@ -83,7 +83,7 @@ def schedule_restarting(instance_uuid):
 
 
 @shared_task
-@tracked_processing(models.Instance, processing_state='begin_starting', desired_state='set_restarted')
+@tracked_processing(models.Instance, processing_state='begin_starting', desired_state='set_online')
 def schedule_starting(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
