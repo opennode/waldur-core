@@ -325,6 +325,7 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
         lookup_field='uuid',
         queryset=models.Customer.objects.all(),
     )
+    customer_abbreviation = serializers.Field(source='group.customerrole.customer.abbreviation')
     customer_name = serializers.Field(source='group.customerrole.customer.name')
     customer_native_name = serializers.Field(source='group.customerrole.customer.native_name')
 
@@ -343,7 +344,7 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
         model = User.groups.through
         fields = (
             'url', 'role',
-            'customer', 'customer_name', 'customer_native_name',
+            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'user', 'user_full_name', 'user_native_name', 'user_username',
         )
         view_name = 'customer_permission-detail'
