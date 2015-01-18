@@ -6,9 +6,12 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
-- Scheduled backups are now run as celery tasks.
-- Changed quota usage to be re-calculated after each operation. It is regularly
-  synced to assure that calculations are correct.
+Release 0.28.0
+--------------
+
+- Scheduled backups are now run as Celery tasks.
+- Changed quota usage to be re-calculated after each operation.
+  It is regularly synced to assure that calculations are correct.
 
 Release 0.27.0
 --------------
