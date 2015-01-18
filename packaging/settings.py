@@ -25,6 +25,12 @@ config_defaults = {
     },
     'celery': {
         'broker_url': 'redis://localhost',
+        'cloud_account_pull_period': 3600,
+        'cloud_project_membership_pull_period': 1800,
+        'cloud_project_membership_quota_check_period': 86400,
+        'instance_monthly_sla_update_period': 300,
+        'instance_yearly_sla_update_period': 600,
+        'instance_zabbix_sync_period': 600,
         'result_backend_url': 'redis://localhost',
     },
     'events': {
@@ -429,7 +435,154 @@ CELERY_RESULT_BACKEND = config.get('celery', 'result_backend_url')
 # Not needed: set to 'json' in base_settings.py
 #CELERY_ACCEPT_CONTENT = ['json']
 
+# Regular tasks
+# See also: http://celery.readthedocs.org/en/latest/userguide/periodic-tasks.html#entries
+CELERYBEAT_SCHEDULE = {
+    'check-cloud-project-memberships-quotas': {
+        'task': 'nodeconductor.iaas.tasks.check_cloud_memberships_quotas',
+        'schedule': timedelta(seconds=config.getint('celery', 'cloud_project_membership_quota_check_period')),
+        'args': (),
+    },
+    'pull-cloud-accounts': {
+        'task': 'nodeconductor.iaas.tasks.pull_cloud_accounts',
+        'schedule': timedelta(seconds=config.getint('celery', 'cloud_account_pull_period')),
+        'args': (),
+    },
+    'pull-cloud-project-memberships': {
+        'task': 'nodeconductor.iaas.tasks.pull_cloud_memberships',
+        'schedule': timedelta(seconds=config.getint('celery', 'cloud_project_membership_pull_period')),
+        'args': (),
+    },
+    'sync-instances-with-zabbix': {
+        'task': 'nodeconductor.iaas.tasks.sync_instances_with_zabbix',
+        'schedule': timedelta(seconds=config.getint('celery', 'instance_zabbix_sync_period')),
+        'args': (),
+    },
+    'update-instance-monthly-slas': {
+        'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
+        'schedule': timedelta(seconds=config.getint('celery', 'instance_monthly_sla_update_period')),
+        'args': ('monthly',),
+    },
+    'update-instance-yearly-slas': {
+        'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
+        'schedule': timedelta(seconds=config.getint('celery', 'instance_yearly_sla_update_period')),
+        'args': ('yearly',),
+    },
+}
+
+# NodeConductor internal configuration
+# See also: http://nodeconductor.readthedocs.org/en/stable/guide/intro.html#id1
 NODECONDUCTOR = {
+    'DEFAULT_SECURITY_GROUPS': (
+        {
+            'name': 'ping',
+            'description': 'Security group for ICMP (ping)',
+            'rules': (
+                {
+                    'protocol': 'icmp',
+                    'cidr': '0.0.0.0/0',
+                    'icmp_type': -1,
+                    'icmp_code': -1,
+                },
+            ),
+        },
+        {
+            'name': 'ssh',
+            'description': 'Security group for SSH',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 22,
+                    'to_port': 22,
+                },
+            ),
+        },
+        {
+            'name': 'smtp',
+            'description': 'Security group for SMTP',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 25,
+                    'to_port': 25,
+                },
+            ),
+        },
+        {
+            'name': 'dns',
+            'description': 'Security group for DNS',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 53,
+                    'to_port': 53,
+                },
+            ),
+        },
+        {
+            'name': 'http',
+            'description': 'Security group for HTTP',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 80,
+                    'to_port': 80,
+                },
+            ),
+        },
+        {
+            'name': 'imap',
+            'description': 'Security group for IMAP',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 143,
+                    'to_port': 143,
+                },
+            ),
+        },
+        {
+            'name': 'https',
+            'description': 'Security group for HTTPS',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 443,
+                    'to_port': 443,
+                },
+            ),
+        },
+        {
+            'name': 'mysql',
+            'description': 'Security group for MySQL',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 3306,
+                    'to_port': 3306,
+                },
+            ),
+        },
+        {
+            'name': 'rdp',
+            'description': 'Security group for RDP',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 3389,
+                    'to_port': 3389,
+                },
+            ),
+        },
+    ),
     'OPENSTACK_CREDENTIALS': (
         {
             'auth_url': config.get('openstack', 'auth_url'),
@@ -467,117 +620,6 @@ NODECONDUCTOR = {
             },
         }
     },
-    'DEFAULT_SECURITY_GROUPS': (
-        {
-            'name': 'ssh',
-            'description': 'Security group for secure shell access',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 22,
-                    'to_port': 22,
-                },
-            ),
-        },
-        {
-            'name': 'ping',
-            'description': 'Security group for ICMP (ping)',
-            'rules': (
-                {
-                    'protocol': 'icmp',
-                    'cidr': '0.0.0.0/0',
-                    'icmp_type': -1,
-                    'icmp_code': -1,
-                },
-            ),
-        },
-        {
-            'name': 'http',
-            'description': 'Security group for HTTP',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 80,
-                    'to_port': 80,
-                },
-            ),
-        },
-        {
-            'name': 'https',
-            'description': 'Security group for HTTP',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 443,
-                    'to_port': 443,
-                },
-            ),
-        },
-        {
-            'name': 'imap',
-            'description': 'Security group for IMAP',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 143,
-                    'to_port': 143,
-                },
-            ),
-        },
-        {
-            'name': 'mysql',
-            'description': 'Security group for MySQL',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 3306,
-                    'to_port': 3306,
-                },
-            ),
-        },
-        {
-            'name': 'smtp',
-            'description': 'Security group for SMTP',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 25,
-                    'to_port': 25,
-                },
-            ),
-        },
-        {
-            'name': 'rdp',
-            'description': 'Security group for RDP',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 3389,
-                    'to_port': 3389,
-                },
-            ),
-        },
-        {
-            'name': 'dns',
-            'description': 'Security group for DNS',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 53,
-                    'to_port': 53,
-                },
-            ),
-        },
-
-    ),
 }
 
 # Sentry integration
