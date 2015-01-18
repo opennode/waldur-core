@@ -24,10 +24,12 @@ config_defaults = {
         'template_debug': 'false',
     },
     'celery': {
+        'backup_schedule_execute_period': 600,
         'broker_url': 'redis://localhost',
         'cloud_account_pull_period': 3600,
         'cloud_project_membership_pull_period': 1800,
         'cloud_project_membership_quota_check_period': 86400,
+        'expired_backup_delete_period': 600,
         'instance_monthly_sla_update_period': 300,
         'instance_yearly_sla_update_period': 600,
         'instance_zabbix_sync_period': 600,
@@ -441,6 +443,16 @@ CELERYBEAT_SCHEDULE = {
     'check-cloud-project-memberships-quotas': {
         'task': 'nodeconductor.iaas.tasks.check_cloud_memberships_quotas',
         'schedule': timedelta(seconds=config.getint('celery', 'cloud_project_membership_quota_check_period')),
+        'args': (),
+    },
+    'delete-expired-backups': {
+        'task': 'nodeconductor.backup.tasks.delete_expired_backups',
+        'schedule': timedelta(seconds=config.getint('celery', 'expired_backup_delete_period')),
+        'args': (),
+    },
+    'execute-backup-schedules': {
+        'task': 'nodeconductor.backup.tasks.execute_schedules',
+        'schedule': timedelta(seconds=config.getint('celery', 'backup_schedule_execute_period')),
         'args': (),
     },
     'pull-cloud-accounts': {
