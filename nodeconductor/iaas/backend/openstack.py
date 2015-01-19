@@ -30,10 +30,12 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 
 logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 
 @lru_cache(maxsize=1)
@@ -1080,61 +1082,66 @@ class OpenStackBackend(object):
 
             volume = cinder.volumes.get(instance.data_volume_id)
 
-            new_size = self.get_backend_disk_size(instance.data_volume_size)
-            if volume.size == new_size:
-                logger.info('Not extending volume %s: it is already of size %d',
-                            volume.id, new_size)
+            new_core_size = instance.data_volume_size
+            old_core_size = self.get_core_disk_size(volume.size)
+            new_backend_size = self.get_backend_disk_size(new_core_size)
+
+            new_core_size_gib = int(round(new_core_size / 1024.0))
+            old_core_size_gib = int(round(old_core_size / 1024.0))
+
+            if old_core_size == new_core_size:
+                logger.info('Not extending volume %s: it is already of size %d MiB',
+                            volume.id, new_core_size)
                 return
-            elif volume.size > new_size:
-                logger.warn('Not extending volume %s: desired size %d is less then current size %d',
-                            volume.id, new_size, volume.size)
+            elif old_core_size > new_core_size:
+                logger.warning('Not extending volume %s: desired size %d MiB is less then current size %d MiB',
+                               volume.id, new_core_size, old_core_size)
+                event_logger.warning(
+                    "Data Volume of VM with hostname %s could not be shrunk from %d GB to %d GB.",
+                    instance.hostname, old_core_size_gib, new_core_size_gib,
+                    extra={'instance': instance, 'event_type': 'vm_volume_update_failed'},
+                )
                 return
 
-            # detach volume from server
-            nova.volumes.delete_server_volume(server_id, volume.id)
+            self._detach_volume(nova, cinder, server_id, volume.id, instance.uuid)
 
-            if not self._wait_for_volume_status(volume.id, cinder, 'available', 'error'):
-                logger.error(
-                    'Failed to extend volume: timed out waiting volume %s to detach from instance %s',
-                    volume.id, instance.uuid,
-                )
-                raise CloudBackendError(
-                    'Timed out waiting volume %s to detach from instance %s'
-                    % volume.id, instance.uuid,
-                )
-            else:
-                membership.update_resource_quota_usage('storage', -instance.data_volume_size)
-
-            cinder.volumes.extend(volume, new_size)
-
-            if not self._wait_for_volume_status(volume.id, cinder, 'available', 'error'):
-                logger.error(
-                    'Failed to extend volume: timed out waiting volume %s to extend',
+            try:
+                self._extend_volume(cinder, volume, new_backend_size)
+                storage_delta = new_core_size - old_core_size
+                membership.update_resource_quota_usage('storage', storage_delta)
+            except cinder_exceptions.OverLimit:
+                logger.warning(
+                    'Failed to extend volume: exceeded quota limit while trying to extend volume %s',
                     volume.id,
                 )
-                raise CloudBackendError(
-                    'Timed out waiting volume %s to extend'
-                    % volume.id,
+                event_logger.warning(
+                    "Data Volume of VM with hostname %s could not be extended "
+                    "from %d GB to %d GB due to quota limits.",
+                    instance.hostname, old_core_size_gib, new_core_size_gib,
+                    extra={'instance': instance, 'event_type': 'vm_volume_update_failed'},
                 )
-            else:
-                membership.update_resource_quota_usage('storage', new_size)
+                # Reset instance.data_volume_size back so that model reflects actual state
+                instance.data_volume_size = old_core_size
+                instance.save()
 
-            nova.volumes.create_server_volume(server_id, volume.id, None)
-
-            if not self._wait_for_volume_status(volume.id, cinder, 'in-use', 'error'):
-                logger.error(
-                    'Failed to extend volume: timed out waiting volume %s to attach to instance %s',
-                    volume.id, instance.uuid,
-                )
-                raise CloudBackendError(
-                    'Timed out waiting volume %s to attach to instance %s'
-                    % volume.id, instance.uuid,
-                )
+                # Omit logging success
+                raise
+            finally:
+                self._attach_volume(nova, cinder, server_id, volume.id, instance.uuid)
+        except cinder_exceptions.OverLimit:
+            # Omit logging success
+            pass
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
             logger.exception('Failed to extend disk of an instance %s', instance.uuid)
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully extended disk of an instance %s', instance.uuid)
+            event_logger.info(
+                "Data Volume of VM with hostname %s has been extended "
+                "from %d GB to %d GB.",
+                instance.hostname, old_core_size_gib, new_core_size_gib,
+                extra={'instance': instance, 'event_type': 'vm_volume_updated'},
+            )
 
     def update_flavor(self, instance, flavor):
         try:
@@ -1634,6 +1641,42 @@ class OpenStackBackend(object):
             return False
         except nova_exceptions.NotFound:
             return True
+
+    def _attach_volume(self, nova, cinder, server_id, volume_id, instance_uuid):
+        nova.volumes.create_server_volume(server_id, volume_id, None)
+        if not self._wait_for_volume_status(volume_id, cinder, 'in-use', 'error'):
+            logger.error(
+                'Failed to extend volume: timed out waiting volume %s to attach to instance %s',
+                volume_id, instance_uuid,
+            )
+            raise CloudBackendError(
+                'Timed out waiting volume %s to attach to instance %s'
+                % (volume_id, instance_uuid)
+            )
+
+    def _detach_volume(self, nova, cinder, server_id, volume_id, instance_uuid):
+        nova.volumes.delete_server_volume(server_id, volume_id)
+        if not self._wait_for_volume_status(volume_id, cinder, 'available', 'error'):
+            logger.error(
+                'Failed to extend volume: timed out waiting volume %s to detach from instance %s',
+                volume_id, instance_uuid,
+            )
+            raise CloudBackendError(
+                'Timed out waiting volume %s to detach from instance %s'
+                % (volume_id, instance_uuid)
+            )
+
+    def _extend_volume(self, cinder, volume, new_backend_size):
+        cinder.volumes.extend(volume, new_backend_size)
+        if not self._wait_for_volume_status(volume.id, cinder, 'available', 'error'):
+            logger.error(
+                'Failed to extend volume: timed out waiting volume %s to extend',
+                volume.id,
+            )
+            raise CloudBackendError(
+                'Timed out waiting volume %s to extend'
+                % volume.id,
+            )
 
     def push_floating_ip_to_instance(self, server, instance, nova):
         if instance.external_ips is None or instance.internal_ips is None:
