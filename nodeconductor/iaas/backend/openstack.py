@@ -1090,6 +1090,7 @@ class OpenStackBackend(object):
                             volume.id, new_size, volume.size)
                 return
 
+            # detach volume from server
             nova.volumes.delete_server_volume(server_id, volume.id)
 
             if not self._wait_for_volume_status(volume.id, cinder, 'available', 'error'):

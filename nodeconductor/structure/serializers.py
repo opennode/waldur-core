@@ -113,11 +113,11 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
         from nodeconductor.iaas import models as iaas_models
         quotas = list(iaas_models.ResourceQuotaUsage.objects.filter(cloud_project_membership__project=obj))
         return {
-            'vcpu_usage': sum([q.vcpu for q in quotas]),
-            'ram_usage': sum([q.ram for q in quotas]),
-            'storage_usage': sum([q.storage for q in quotas]),
-            'max_instances_usage': sum([q.max_instances for q in quotas]),
-            'backup_storage_usage': sum([q.backup_storage for q in quotas]),
+            'vcpu': sum([q.vcpu for q in quotas]),
+            'ram': sum([q.ram for q in quotas]),
+            'storage': sum([q.storage for q in quotas]),
+            'max_instances': sum([q.max_instances for q in quotas]),
+            'backup_storage': sum([q.backup_storage for q in quotas]),
         }
 
     # TODO: cleanup after migration to drf 3
