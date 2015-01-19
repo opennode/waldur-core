@@ -41,9 +41,13 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.managed_instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
 
         admined_project = self.admined_instance.cloud_project_membership.project
+        factories.ResourceQuotaFactory(
+            cloud_project_membership=self.admined_instance.cloud_project_membership, storage=10 * 1024 * 1024)
         admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         project = self.managed_instance.cloud_project_membership.project
+        factories.ResourceQuotaFactory(
+            cloud_project_membership=self.managed_instance.cloud_project_membership, storage=10 * 1024 * 1024)
         managed_project_group = structure_factories.ProjectGroupFactory()
         managed_project_group.projects.add(project)
 
@@ -258,7 +262,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
         response = self.client.post(self._get_instance_url(self.admined_instance) + 'resize/', data)
-
+        print response.data
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
 
         reread_instance = Instance.objects.get(pk=self.admined_instance.pk)
@@ -303,6 +307,18 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         reread_instance = Instance.objects.get(pk=instance.pk)
 
+        self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
+                         'Instance system_volume_size not have changed')
+
+    def test_user_cannot_set_disk_size_greater_then_resource_quota(self):
+        self.client.force_authenticate(user=self.user)
+        instance = self.admined_instance
+        data = {'disk_size': instance.cloud_project_membership.resource_quota.storage * 2}
+
+        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        reread_instance = Instance.objects.get(pk=instance.pk)
         self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
                          'Instance system_volume_size not have changed')
 

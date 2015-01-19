@@ -329,6 +329,10 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
     )
     disk_size = serializers.IntegerField(min_value=1, required=False)
 
+    def __init__(self, instance, *args, **kwargs):
+        self.instance = instance
+        super(InstanceResizeSerializer, self).__init__(*args, **kwargs)
+
     def get_filtered_field_names(self):
         return 'flavor',
 
@@ -340,6 +344,26 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
             raise serializers.ValidationError("Cannot resize both disk size and flavor simultaneously")
         if flavor is None and disk_size is None:
             raise serializers.ValidationError("Either disk_size or flavor is required")
+
+        membership = self.instance.cloud_project_membership
+
+        try:
+            storage_size = models.ResourceQuota.objects.get(cloud_project_membership=membership).storage
+        except models.ResourceQuota.DoesNotExist:
+            raise serializers.ValidationError(
+                "Can not resize instance, that belong to cloud account membership, "
+                "which does not have resource quotas yet.")
+
+        try:
+            storage_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership).storage
+        except models.ResourceQuotaUsage.DoesNotExist:
+            storage_usage = 0
+
+        old_size = self.instance.data_volume_size + self.instance.system_volume_size
+        new_size = disk_size or flavor.disk
+        if (new_size - old_size) + storage_usage > storage_size:
+            raise serializers.ValidationError(
+                "Instance can't use more then %s space", storage_size - storage_usage)
 
         return attrs
 
