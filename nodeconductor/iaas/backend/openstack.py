@@ -1107,9 +1107,8 @@ class OpenStackBackend(object):
 
             try:
                 self._extend_volume(cinder, volume, new_backend_size)
-                # TODO: Merge these calls after quota refactoring
-                membership.update_resource_quota_usage('storage', -old_core_size)
-                membership.update_resource_quota_usage('storage', new_core_size)
+                storage_delta = new_core_size - old_core_size
+                membership.update_resource_quota_usage('storage', storage_delta)
             except cinder_exceptions.OverLimit:
                 logger.warning(
                     'Failed to extend volume: exceeded quota limit while trying to extend volume %s',
