@@ -506,6 +506,8 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.flavor = factories.FlavorFactory(cloud=self.cloud)
         self.project = structure_factories.ProjectFactory()
         self.membership = factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
+        self.resource_quota = factories.ResourceQuotaFactory(
+            storage=10 * 1024 * 1024, cloud_project_membership=self.membership)
         self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
@@ -745,6 +747,13 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = Instance.objects.get(uuid=response.data['uuid'])
         self.assertEqual(instance.key_name, self.ssh_public_key.name)
         self.assertEqual(instance.key_fingerprint, self.ssh_public_key.fingerprint)
+
+    def test_instance_size_can_not_be_bigger_then_quota(self):
+        data = self.get_valid_data()
+        data['data_volume_size'] = self.resource_quota.storage + 1024
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_user_cannot_create_instance_with_template_not_connected_to_projects_cloud(self):
         templates = {
