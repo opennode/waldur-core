@@ -110,7 +110,7 @@ class EventFormatter(logging.Formatter):
 
         return json.dumps(message)
 
-    def get_related(self, related_name='customer', *sources):
+    def get_related(self, related_name, *sources):
         for source in sources:
             try:
                 return getattr(source, related_name)
