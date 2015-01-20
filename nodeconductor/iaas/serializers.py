@@ -250,7 +250,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         max_min_disk = max(image.min_disk for image in images)
         if max_min_disk > system_volume_size:
-            raise serializers.ValidationError("System volume size has to be greater then %s" % max_min_disk)
+            raise serializers.ValidationError("System volume size has to be greater than %s" % max_min_disk)
 
         data_volume_size = attrs.get('data_volume_size', models.Instance.DEFAULT_DATA_VOLUME_SIZE)
 
@@ -265,9 +265,10 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         except models.ResourceQuotaUsage.DoesNotExist:
             storage_usage = 0
 
-        if data_volume_size + system_volume_size + storage_usage > storage_size:
+        if data_volume_size + system_volume_size > storage_size - storage_usage:
             raise serializers.ValidationError(
-                "Instance can't use more then %s space", storage_size - storage_usage)
+                "Requested instance size is over the quota: %s. Available quota: %s" %
+                (data_volume_size + system_volume_size, storage_size - storage_usage))
 
         # TODO: cleanup after migration to drf 3
         return fix_non_nullable_attrs(attrs)
@@ -347,23 +348,27 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         membership = self.instance.cloud_project_membership
 
-        try:
-            storage_size = models.ResourceQuota.objects.get(cloud_project_membership=membership).storage
-        except models.ResourceQuota.DoesNotExist:
-            raise serializers.ValidationError(
-                "Can not resize instance, that belong to cloud account membership, "
-                "which does not have resource quotas yet.")
+        # If disk size was changed - we need to check if it fits quotas
+        if disk_size is not None:
 
-        try:
-            storage_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership).storage
-        except models.ResourceQuotaUsage.DoesNotExist:
-            storage_usage = 0
+            try:
+                storage_size = models.ResourceQuota.objects.get(cloud_project_membership=membership).storage
+            except models.ResourceQuota.DoesNotExist:
+                raise serializers.ValidationError(
+                    "Can not resize instance, that belong to cloud account membership, "
+                    "which does not have resource quotas yet.")
 
-        old_size = self.instance.data_volume_size + self.instance.system_volume_size
-        new_size = disk_size or flavor.disk
-        if (new_size - old_size) + storage_usage > storage_size:
-            raise serializers.ValidationError(
-                "Instance can't use more then %s space", storage_size - storage_usage)
+            try:
+                storage_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership).storage
+            except models.ResourceQuotaUsage.DoesNotExist:
+                storage_usage = 0
+
+            old_size = self.instance.data_volume_size
+            new_size = disk_size or flavor.disk
+            if (new_size - old_size) > storage_size - storage_usage:
+                raise serializers.ValidationError(
+                    "Requested instance additional size is over the quota: %s. Available quota: %s" %
+                    (new_size - old_size, storage_size - storage_usage))
 
         return attrs
 

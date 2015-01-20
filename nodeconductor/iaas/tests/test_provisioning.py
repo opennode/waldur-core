@@ -262,7 +262,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
         response = self.client.post(self._get_instance_url(self.admined_instance) + 'resize/', data)
-        print response.data
+
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
 
         reread_instance = Instance.objects.get(pk=self.admined_instance.pk)
@@ -310,17 +310,17 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
                          'Instance system_volume_size not have changed')
 
-    def test_user_cannot_set_disk_size_greater_then_resource_quota(self):
+    def test_user_cannot_set_disk_size_greater_than_resource_quota(self):
         self.client.force_authenticate(user=self.user)
         instance = self.admined_instance
-        data = {'disk_size': instance.cloud_project_membership.resource_quota.storage * 2}
+        data = {'disk_size': instance.cloud_project_membership.resource_quota.storage + 1 + instance.data_volume_size}
 
         response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         reread_instance = Instance.objects.get(pk=instance.pk)
-        self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
-                         'Instance system_volume_size not have changed')
+        self.assertEqual(reread_instance.data_volume_size, instance.data_volume_size,
+                         'Instance data_volume_size has to remain the same')
 
     def test_user_cannot_change_flavor_of_stopped_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
@@ -764,9 +764,9 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(instance.key_name, self.ssh_public_key.name)
         self.assertEqual(instance.key_fingerprint, self.ssh_public_key.fingerprint)
 
-    def test_instance_size_can_not_be_bigger_then_quota(self):
+    def test_instance_size_can_not_be_bigger_than_quota(self):
         data = self.get_valid_data()
-        data['data_volume_size'] = self.resource_quota.storage + 1024
+        data['data_volume_size'] = self.resource_quota.storage + 1
         response = self.client.post(self.instance_list_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
