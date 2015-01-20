@@ -1,9 +1,10 @@
 from __future__ import absolute_import, unicode_literals
 
-import json
+from datetime import datetime
 import logging
 from logging.handlers import SocketHandler
-from datetime import datetime
+import json
+import uuid
 
 from nodeconductor.core.middleware import get_current_user
 
@@ -119,11 +120,20 @@ class EventFormatter(logging.Formatter):
         return None
 
     def add_related_details(self, message, related, related_name, name_attr='name'):
-        if related is not None:
-            message.update({
-                "{0}_{1}".format(related_name, name_attr): getattr(related, name_attr, ''),
-                "{0}_uuid".format(related_name): str(getattr(related, 'uuid', '')),
-            })
+        if related is None:
+            return
+
+        # This way we don't rely on the model field "hyphenated" setting
+        # and always log UUID in its canonical hyphenated representation
+        try:
+            related_uuid = str(uuid.UUID(related.uuid.hex))
+        except AttributeError:
+            related_uuid = ''
+
+        message.update({
+            "{0}_{1}".format(related_name, name_attr): getattr(related, name_attr, ''),
+            "{0}_uuid".format(related_name): related_uuid,
+        })
 
 
 class TCPEventHandler(SocketHandler, object):
