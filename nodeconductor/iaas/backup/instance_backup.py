@@ -15,10 +15,31 @@ class InstanceBackupStrategy(BackupStrategy):
         return models.Instance
 
     @classmethod
+    def _is_storage_resource_available(cls, instance):
+        membership = instance.cloud_project_membership
+        try:
+            storage_size = models.ResourceQuota.objects.get(cloud_project_membership=membership).storage
+        except models.ResourceQuota.DoesNotExist:
+            return False
+
+        try:
+            storage_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership).storage
+        except models.ResourceQuotaUsage.DoesNotExist:
+            storage_usage = 0
+
+        backup_size = 2 * (instance.system_volume_size + instance.data_volume_size)
+        if backup_size + storage_usage > storage_size:
+            return False
+
+        return True
+
+    @classmethod
     def backup(cls, instance):
         """
         Copy instance volumes and return new volumes ids and info about instance
         """
+        if not cls._is_storage_resource_available(instance):
+            raise BackupStrategyExecutionError('No space for instance %s backup' % instance.uuid.hex)
         try:
             backend = cls._get_backend(instance)
             cloned_volumes, snapshot_ids = backend.clone_volumes(

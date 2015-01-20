@@ -318,7 +318,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return Response({'detail': 'Instance must be offline'},
                             status=status.HTTP_409_CONFLICT)
 
-        serializer = serializers.InstanceResizeSerializer(data=request.DATA)
+        serializer = serializers.InstanceResizeSerializer(instance, data=request.DATA)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

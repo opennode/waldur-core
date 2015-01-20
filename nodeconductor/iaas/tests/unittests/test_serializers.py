@@ -66,6 +66,8 @@ class InstanceCreateSerializer2Test(TestCase):
             cloud=self.flavor.cloud,
             project=self.project,
         )
+        self.resource_quota = factories.ResourceQuotaFactory(
+            cloud_project_membership=self.membership, storage=10 * 1024 * 1024)
 
         factories.ImageFactory(template=self.template, cloud=self.flavor.cloud)
         factories.FloatingIPFactory(status='DOWN', cloud_project_membership=self.membership, address='10.10.10.10')

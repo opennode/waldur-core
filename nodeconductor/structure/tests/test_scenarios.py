@@ -46,10 +46,10 @@ class ResourceQuotasTest(test.APITransactionTestCase):
         # then
         self.assertEqual(response.status_code, 200)
         expected_resource_quotas_usages = {
-            'vcpu_usage': self.quota_usage.vcpu,
-            'ram_usage': self.quota_usage.ram,
-            'storage_usage': self.quota_usage.storage,
-            'max_instances_usage': self.quota_usage.max_instances,
-            'backup_storage_usage': self.quota_usage.backup_storage,
+            'vcpu': self.quota_usage.vcpu,
+            'ram': self.quota_usage.ram,
+            'storage': self.quota_usage.storage,
+            'max_instances': self.quota_usage.max_instances,
+            'backup_storage': self.quota_usage.backup_storage,
         }
         self.assertEqual(response.data['resource_quota_usage'], expected_resource_quotas_usages)
