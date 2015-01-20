@@ -41,9 +41,13 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.managed_instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
 
         admined_project = self.admined_instance.cloud_project_membership.project
+        factories.ResourceQuotaFactory(
+            cloud_project_membership=self.admined_instance.cloud_project_membership, storage=10 * 1024 * 1024)
         admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         project = self.managed_instance.cloud_project_membership.project
+        factories.ResourceQuotaFactory(
+            cloud_project_membership=self.managed_instance.cloud_project_membership, storage=10 * 1024 * 1024)
         managed_project_group = structure_factories.ProjectGroupFactory()
         managed_project_group.projects.add(project)
 
@@ -306,6 +310,18 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
                          'Instance system_volume_size not have changed')
 
+    def test_user_cannot_set_disk_size_greater_than_resource_quota(self):
+        self.client.force_authenticate(user=self.user)
+        instance = self.admined_instance
+        data = {'disk_size': instance.cloud_project_membership.resource_quota.storage + 1 + instance.data_volume_size}
+
+        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        reread_instance = Instance.objects.get(pk=instance.pk)
+        self.assertEqual(reread_instance.data_volume_size, instance.data_volume_size,
+                         'Instance data_volume_size has to remain the same')
+
     def test_user_cannot_change_flavor_of_stopped_instance_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
@@ -506,6 +522,8 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.flavor = factories.FlavorFactory(cloud=self.cloud)
         self.project = structure_factories.ProjectFactory()
         self.membership = factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
+        self.resource_quota = factories.ResourceQuotaFactory(
+            storage=10 * 1024 * 1024, cloud_project_membership=self.membership)
         self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
@@ -745,6 +763,13 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = Instance.objects.get(uuid=response.data['uuid'])
         self.assertEqual(instance.key_name, self.ssh_public_key.name)
         self.assertEqual(instance.key_fingerprint, self.ssh_public_key.fingerprint)
+
+    def test_instance_size_can_not_be_bigger_than_quota(self):
+        data = self.get_valid_data()
+        data['data_volume_size'] = self.resource_quota.storage + 1
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_user_cannot_create_instance_with_template_not_connected_to_projects_cloud(self):
         templates = {
