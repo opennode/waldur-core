@@ -222,5 +222,6 @@ def create_auth_token(sender, instance=None, created=False, **kwargs):
 @receiver(signals.post_save, sender=User)
 def log_user_creation(sender, instance=None, created=False, **kwargs):
     if created:
-        event_logger.warning(
-            'New user was created: %s' % instance, extra={'user': instance, 'event_type': 'user_creation'})
+        event_logger.info(
+            'User %s was created', instance,
+            extra={'affected_user': instance, 'event_type': 'user_created'})
