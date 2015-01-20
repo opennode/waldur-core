@@ -10,7 +10,10 @@ def get_current_user():
 
 
 def set_current_user(user):
-    _locals.user = user
+    if user is None or user.is_anonymous():
+        reset_current_user()
+    else:
+        _locals.user = user
 
 
 def reset_current_user():
