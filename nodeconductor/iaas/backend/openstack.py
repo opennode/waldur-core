@@ -719,7 +719,7 @@ class OpenStackBackend(object):
 
             security_group_ids = instance.security_groups.values_list('security_group__backend_id', flat=True)
 
-            server = nova.servers.create(
+            server_create_parameters = dict(
                 name=instance.hostname,
                 image=None,  # Boot from volume, see boot_index below
                 flavor=backend_flavor,
@@ -759,6 +759,10 @@ class OpenStackBackend(object):
                 key_name=backend_public_key.name if backend_public_key is not None else None,
                 security_groups=security_group_ids,
             )
+            if membership.availability_zone:
+                server_create_parameters['availability_zone'] = membership.availability_zone
+
+            server = nova.servers.create(**server_create_parameters)
 
             instance.backend_id = server.id
             instance.system_volume_id = system_volume_id

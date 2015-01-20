@@ -83,6 +83,8 @@ class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
 
     tenant_id = models.CharField(max_length=64, blank=True)
 
+    availability_zone = models.CharField(max_length=100, blank=True)
+
     class Meta(object):
         unique_together = ('cloud', 'tenant_id')
 
