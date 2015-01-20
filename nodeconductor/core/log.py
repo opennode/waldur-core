@@ -5,6 +5,8 @@ import logging
 from logging.handlers import SocketHandler
 from datetime import datetime
 
+from nodeconductor.core.middleware import get_current_user
+
 
 class EventLoggerAdapter(logging.LoggerAdapter, object):
     """
@@ -27,7 +29,7 @@ class RequireEvent(logging.Filter):
     A filter that allows only event records.
     """
     def filter(self, record):
-        return hasattr(record, 'event')
+        return getattr(record, 'event', False)
 
 
 class RequireNotEvent(logging.Filter):
@@ -79,10 +81,10 @@ class EventFormatter(logging.Formatter):
         }
 
         # user
-        user = getattr(record, 'user', None)
-        if user is not None:
+        user = get_current_user()
+        if user is not None and not user.is_anonymous():
             message.update({
-                "user_name": getattr(user, 'full_name', ''),
+                "user_username": getattr(user, 'username', ''),
                 "user_uuid": str(getattr(user, 'uuid', '')),
             })
 
