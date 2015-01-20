@@ -40,6 +40,8 @@ class RequireNotEvent(logging.Filter):
         return not getattr(record, 'event', False)
 
 
+# FIXME: Move out of core since it contains too much downstream specifics
+# noinspection PyMethodMayBeStatic
 class EventFormatter(logging.Formatter):
 
     def format_timestamp(self, time):
@@ -56,12 +58,6 @@ class EventFormatter(logging.Formatter):
             return 'very high'
         else:
             return 'critical'
-
-    def get_customer_from_relative(self, *relatives):
-        for r in relatives:
-            customer = getattr(r, 'customer', None)
-            if customer is not None:
-                return customer
 
     def format(self, record):
         # base message
@@ -82,63 +78,52 @@ class EventFormatter(logging.Formatter):
 
         # user
         user = get_current_user()
-        if user is not None and not user.is_anonymous():
-            message.update({
-                "user_username": getattr(user, 'username', ''),
-                "user_uuid": str(getattr(user, 'uuid', '')),
-            })
+        self.add_related_details(message, user, 'user', 'username')
 
-        # placeholder for a potential link
-        membership = None
+        # affected user
+        affected_user = self.get_related('affected_user', record)
+        self.add_related_details(message, affected_user, 'affected_user', 'username')
 
         # instance
-        instance = getattr(record, 'instance', None)
-        if instance is not None:
-            membership = getattr(instance, 'cloud_project_membership', None)
-            message['vm_instance_uuid'] = str(getattr(instance, 'uuid', ''))
+        instance = self.get_related('instance', record)
+        self.add_related_details(message, instance, 'vm_instance', 'hostname')
+
+        # cloud project membership
+        membership = self.get_related('membership', instance)
 
         # project
-        project = getattr(record, 'project', None)
-        if project is None and membership is not None:
-            project = getattr(membership, 'project', None)
-
-        if project is not None:
-            message.update({
-                "project_name": getattr(project, 'name', ''),
-                "project_uuid": str(getattr(project, 'uuid', '')),
-            })
+        project = self.get_related('project', record, membership)
+        self.add_related_details(message, project, 'project')
 
         # project group
-        project_group = getattr(record, 'project_group', None)
-        if project_group is not None:
-            message.update({
-                "project_group_name": getattr(project_group, 'name', ''),
-                "project_group_uuid": str(getattr(project_group, 'uuid', '')),
-            })
+        project_group = self.get_related('project_group', record)
+        self.add_related_details(message, project_group, 'project_group')
 
         # cloud
-        cloud = getattr(record, 'cloud', None)
-        if cloud is None and membership is not None:
-            cloud = getattr(membership, 'cloud', None)
-
-        if cloud is not None:
-            message.update({
-                "cloud_account_name": getattr(cloud, 'name', ''),
-                "cloud_account_uuid": str(getattr(cloud, 'uuid', '')),
-            })
+        cloud = self.get_related('cloud', record, membership)
+        self.add_related_details(message, cloud, 'cloud_account')
 
         # customer
-        customer = getattr(record, 'customer', None)
-        if customer is None:
-            customer = self.get_customer_from_relative(project, cloud, project_group)
-
-        if customer is not None:
-            message.update({
-                "customer_name": getattr(customer, 'name', ''),
-                "customer_uuid": str(getattr(customer, 'uuid', '')),
-            })
+        customer = self.get_related('customer', record, project, cloud, project_group)
+        self.add_related_details(message, customer, 'customer')
 
         return json.dumps(message)
+
+    def get_related(self, related_name='customer', *sources):
+        for source in sources:
+            try:
+                return getattr(source, related_name)
+            except AttributeError:
+                pass
+
+        return None
+
+    def add_related_details(self, message, related, related_name, name_attr='name'):
+        if related is not None:
+            message.update({
+                "{0}_{1}".format(related_name, name_attr): getattr(related, name_attr, ''),
+                "{0}_uuid".format(related_name): str(getattr(related, 'uuid', '')),
+            })
 
 
 class TCPEventHandler(SocketHandler, object):
