@@ -59,7 +59,9 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.client.force_authenticate(self.user)
 
         self.instance = factories.InstanceFactory()
-        self.instance.cloud_project_membership.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
+        membership = self.instance.cloud_project_membership
+        membership.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
+        factories.ResourceQuotaFactory(cloud_project_membership=membership, storage=10 * 1024 * 1024)
 
         factories.ImageFactory(template=self.instance.template, cloud=self.instance.cloud_project_membership.cloud)
 

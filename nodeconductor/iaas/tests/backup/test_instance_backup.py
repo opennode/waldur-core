@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
 from nodeconductor.backup.models import Backup
+from nodeconductor.backup.exceptions import BackupStrategyExecutionError
 from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.iaas.backup.instance_backup import InstanceBackupStrategy
 from nodeconductor.iaas.tests import factories
@@ -24,6 +25,8 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         factories.TemplateLicenseFactory(templates=(self.template,))
 
         self.instance = factories.InstanceFactory(template=self.template)
+        factories.ResourceQuotaFactory(
+            cloud_project_membership=self.instance.cloud_project_membership, storage=10 * 1024 * 1024)
         self.backup = backup_factories.BackupFactory(
             backup_source=self.instance,
             metadata={
@@ -87,6 +90,11 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
             volume_ids=[self.copied_system_volume_id, self.copied_data_volume_id],
             snapshot_ids=self.snapshot_ids,
         )
+
+    def test_strategy_restore_method_fails_if_where_is_no_space_on_resource_storage(self):
+        factories.ResourceQuotaUsageFactory(
+            cloud_project_membership=self.instance.cloud_project_membership, storage=10 * 1024 * 1024)
+        self.assertRaises(BackupStrategyExecutionError, lambda: InstanceBackupStrategy.backup(self.instance))
 
 
 class InstanceDeletionTestCase(APITransactionTestCase):

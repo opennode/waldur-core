@@ -248,9 +248,27 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         system_volume_size = attrs['system_volume_size'] if 'system_volume_size' in attrs else flavor.disk
 
-        for image in images:
-            if image.min_disk > system_volume_size:
-                raise serializers.ValidationError("System volume size has to be greater then %s" % system_volume_size)
+        max_min_disk = max(image.min_disk for image in images)
+        if max_min_disk > system_volume_size:
+            raise serializers.ValidationError("System volume size has to be greater than %s" % max_min_disk)
+
+        data_volume_size = attrs.get('data_volume_size', models.Instance.DEFAULT_DATA_VOLUME_SIZE)
+
+        try:
+            storage_size = models.ResourceQuota.objects.get(cloud_project_membership=membership).storage
+        except models.ResourceQuota.DoesNotExist:
+            raise serializers.ValidationError(
+                "Instance can not be added to cloud account membership, which does not have resource quotas yet.")
+
+        try:
+            storage_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership).storage
+        except models.ResourceQuotaUsage.DoesNotExist:
+            storage_usage = 0
+
+        if data_volume_size + system_volume_size > storage_size - storage_usage:
+            raise serializers.ValidationError(
+                "Requested instance size is over the quota: %s. Available quota: %s" %
+                (data_volume_size + system_volume_size, storage_size - storage_usage))
 
         # TODO: cleanup after migration to drf 3
         return fix_non_nullable_attrs(attrs)
@@ -265,7 +283,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         attrs['cores'] = flavor.cores
         attrs['ram'] = flavor.ram
         attrs['cloud'] = flavor.cloud
-        if not 'system_volume_size' in attrs:
+        if 'system_volume_size' not in attrs:
             attrs['system_volume_size'] = flavor.disk
 
         membership = models.CloudProjectMembership.objects.get(
@@ -312,6 +330,10 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
     )
     disk_size = serializers.IntegerField(min_value=1, required=False)
 
+    def __init__(self, instance, *args, **kwargs):
+        self.instance = instance
+        super(InstanceResizeSerializer, self).__init__(*args, **kwargs)
+
     def get_filtered_field_names(self):
         return 'flavor',
 
@@ -323,6 +345,30 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
             raise serializers.ValidationError("Cannot resize both disk size and flavor simultaneously")
         if flavor is None and disk_size is None:
             raise serializers.ValidationError("Either disk_size or flavor is required")
+
+        membership = self.instance.cloud_project_membership
+
+        # If disk size was changed - we need to check if it fits quotas
+        if disk_size is not None:
+
+            try:
+                storage_size = models.ResourceQuota.objects.get(cloud_project_membership=membership).storage
+            except models.ResourceQuota.DoesNotExist:
+                raise serializers.ValidationError(
+                    "Can not resize instance, that belong to cloud account membership, "
+                    "which does not have resource quotas yet.")
+
+            try:
+                storage_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership).storage
+            except models.ResourceQuotaUsage.DoesNotExist:
+                storage_usage = 0
+
+            old_size = self.instance.data_volume_size
+            new_size = disk_size or flavor.disk
+            if (new_size - old_size) > storage_size - storage_usage:
+                raise serializers.ValidationError(
+                    "Requested instance additional size is over the quota: %s. Available quota: %s" %
+                    (new_size - old_size, storage_size - storage_usage))
 
         return attrs
 

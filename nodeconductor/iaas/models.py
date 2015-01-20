@@ -83,6 +83,10 @@ class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
 
     tenant_id = models.CharField(max_length=64, blank=True)
 
+    availability_zone = models.CharField(
+        max_length=100, blank=True,
+        help_text='Optional availability group. Will be used for all instances provisioned in this tenant')
+
     class Meta(object):
         unique_together = ('cloud', 'tenant_id')
 
@@ -317,6 +321,8 @@ class Instance(core_models.UuidMixin,
             if s not in STABLE_STATES
         ])
 
+    DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
+
     # This needs to be inlined in order to set on_delete
     cloud_project_membership = models.ForeignKey(CloudProjectMembership, related_name='+', on_delete=models.PROTECT)
     # XXX: ideally these fields have to be added somewhere in iaas.backup module
@@ -348,7 +354,7 @@ class Instance(core_models.UuidMixin,
     system_volume_size = models.PositiveIntegerField(help_text='Root disk size in MiB')
     data_volume_id = models.CharField(max_length=255, blank=True)
     data_volume_size = models.PositiveIntegerField(
-        default=20 * 1024, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
+        default=DEFAULT_DATA_VOLUME_SIZE, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
 
     # Services specific fields
     agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)

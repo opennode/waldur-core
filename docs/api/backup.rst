@@ -24,6 +24,8 @@ To create a backup, issue the following POST request:
         "description": "a new manual backup"
     }
 
+On creation of backup it's projected size is validated against a remaining storage quota.
+
 Example of a created backup representation:
 
 .. code-block:: http
