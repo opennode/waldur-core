@@ -37,9 +37,10 @@ class ObtainAuthToken(APIView):
             user = serializer.object['user']
             token, created = Token.objects.get_or_create(user=user)
             event_logger.info(
-                'Returning token for successful login of user %s' % user,
-                extra={'user': user, 'event_type': 'user_success_login'})
-            logger.debug('Returning token for successful login of user %s' % user)
+                "User '%s' with full name '%s' authenticated successfully with username and password",
+                user.username, user.full_name,
+                extra={'affected_user': user, 'event_type': 'auth_logged_in_with_username'})
+            logger.debug('Returning token for successful login of user %s', user)
             return Response({'token': token.key})
 
         errors = dict(serializer.errors)
@@ -130,7 +131,11 @@ class Saml2AuthView(APIView):
         post_authenticated.send_robust(sender=user, session_info=session_info)
 
         token, _ = Token.objects.get_or_create(user=user)
-        logger.info('Authenticated with SAML token. Returning token for successful login of user %s' % user)
+        event_logger.info(
+            "User '%s' with full name '%s' authenticated successfully with Omani PKI",
+            user.username, user.full_name,
+            extra={'affected_user': user, 'event_type': 'auth_logged_in_with_pki'})
+        logger.info('Authenticated with SAML token. Returning token for successful login of user %s', user)
         return Response({'token': token.key})
 
 assertion_consumer_service = Saml2AuthView.as_view()
