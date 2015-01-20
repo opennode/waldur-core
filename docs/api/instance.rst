@@ -92,7 +92,7 @@ To create a instance, client must define:
 - external_ips (optional, each ip address *must* be from the list of :doc:`floating ips <floating_ips>`);
 - security_groups (optional);
 - system_volume_size in MiB (optional);
-- data_volume_size in MiB (optional);
+- data_volume_size in MiB (optional, size of instances system_volume_size and data_volume_size together has to be lower than available storage quota);
 
 Example of a valid request:
 
@@ -244,6 +244,7 @@ Example of a valid request:
     }
 
 To resize data disk of the instance, submit a POST request to the instance's RPC url, specifying size of the disk.
+Additional size of instance cannot  be over the storage quota.
 Example of a valid request:
 
 
