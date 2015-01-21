@@ -53,12 +53,14 @@ class CustomerStatsTest(test.APITransactionTestCase):
         expected_result = [
             {
                 'name': self.customer.name,
+                'abbreviation': self.customer.abbreviation,
                 'projects': 2,
                 'project_groups': 1,
                 'instances': 4,
             },
             {
                 'name': self.other_customer.name,
+                'abbreviation': self.other_customer.abbreviation,
                 'projects': 1,
                 'project_groups': 0,
                 'instances': 0,
@@ -74,6 +76,7 @@ class CustomerStatsTest(test.APITransactionTestCase):
         expected_result = [
             {
                 'name': self.customer.name,
+                'abbreviation': self.customer.abbreviation,
                 'projects': 2,
                 'project_groups': 1,
                 'instances': 4,
@@ -89,6 +92,7 @@ class CustomerStatsTest(test.APITransactionTestCase):
         expected_result = [
             {
                 'name': self.customer.name,
+                'abbreviation': self.customer.abbreviation,
                 'projects': 1,
                 'project_groups': 1,
                 'instances': 2,
@@ -104,6 +108,7 @@ class CustomerStatsTest(test.APITransactionTestCase):
         expected_result = [
             {
                 'name': self.customer.name,
+                'abbreviation': self.customer.abbreviation,
                 'projects': 1,
                 'project_groups': 0,
                 'instances': 2,
