@@ -8,7 +8,7 @@ from nodeconductor.core import mixins
 
 class ModelViewSet(rf_mixins.CreateModelMixin,
                    rf_mixins.RetrieveModelMixin,
-                   mixins.UpdateOnlyModelMixin,
+                   rf_mixins.UpdateModelMixin,
                    mixins.DestroyModelMixin,
                    mixins.ListModelMixin,
                    rf_viewsets.GenericViewSet):
@@ -39,7 +39,7 @@ class CreateModelViewSet(rf_mixins.CreateModelMixin,
 
 
 class UpdateModelViewSet(rf_mixins.RetrieveModelMixin,
-                         mixins.UpdateOnlyModelMixin,
+                         rf_mixins.UpdateModelMixin,
                          mixins.ListModelMixin,
                          rf_viewsets.GenericViewSet):
     """
