@@ -18,16 +18,13 @@ class DestroyModelMixin(object):
     Destroy a model instance.
     """
 
-    # noinspection PyProtectedMember
     def destroy(self, request, *args, **kwargs):
-        obj = self.get_object()
+        instance = self.get_object()
 
         try:
-            self.pre_delete(obj)
-            obj.delete()
-            self.post_delete(obj)
+            self.perform_destroy(instance)
         except ProtectedError as e:
-            instance_meta = obj._meta
+            instance_meta = instance._meta
             dependent_meta = e.protected_objects.model._meta
 
             detail = 'Cannot delete {instance} with existing {dependant_objects}'.format(
@@ -37,6 +34,10 @@ class DestroyModelMixin(object):
             raise IncorrectStateException(detail=detail)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # noinspection PyMethodMayBeStatic
+    def perform_destroy(self, instance):
+        instance.delete()
 
 
 class ListModelMixin(object):
