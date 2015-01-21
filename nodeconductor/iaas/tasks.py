@@ -351,7 +351,7 @@ def check_cloud_memberships_quotas():
         try:
             quota = membership.resource_quota
             usage = membership.resource_quota_usage
-        except ObjectDoesNotExist as e:
+        except ObjectDoesNotExist:
             logger.exception('Missing quota or usage')
             continue
 
