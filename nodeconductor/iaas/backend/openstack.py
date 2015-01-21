@@ -408,7 +408,7 @@ class OpenStackBackend(object):
             backend_ids = set(backend_instances.keys())
             nc_ids = set(nc_instances.keys())
 
-            # Mark stale instances as erred. Can happen if images are removed from the backend explicitely
+            # Mark stale instances as erred. Can happen if instances are removed from the backend explicitly
             for instance_id in nc_ids - backend_ids:
                 nc_instance = nc_instances[instance_id]
                 nc_instance.set_erred()
@@ -511,7 +511,7 @@ class OpenStackBackend(object):
             logger.exception('Failed to get volumes, flavors or instances for tenant %s', membership.tenant_id)
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Successfully get volumes, flavors and instances for tenant %s', membership.tenant_id)
+            logger.info('Successfully got volumes, flavors and instances for tenant %s', membership.tenant_id)
 
         try:
             resource_quota_usage = membership.resource_quota_usage
