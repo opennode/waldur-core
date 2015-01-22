@@ -4,7 +4,6 @@ import time
 
 from django.contrib import auth
 from django.db.models.query_utils import Q
-from django.http.response import Http404
 import django_filters
 from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
@@ -12,7 +11,7 @@ from rest_framework import permissions as rf_permissions
 from rest_framework import status
 from rest_framework import views
 from rest_framework import viewsets as rf_viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
@@ -491,12 +490,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    @action()
+    @detail_route(methods=['post'])
     def password(self, request, uuid=None):
-        try:
-            user = User.objects.get(uuid=uuid)
-        except User.DoesNotExist:
-            raise Http404()
+        user = self.get_object()
 
         password_data = request.DATA
         serializer = serializers.PasswordSerializer(data=password_data)
