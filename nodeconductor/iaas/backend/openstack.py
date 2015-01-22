@@ -1588,7 +1588,7 @@ class OpenStackBackend(object):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
 
     def _wait_for_instance_status(self, server_id, nova, complete_status,
-                                  error_status=None, retries=90, poll_interval=3):
+                                  error_status=None, retries=300, poll_interval=3):
         return self._wait_for_object_status(
             server_id, nova.servers.get, complete_status, error_status, retries, poll_interval)
 
