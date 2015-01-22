@@ -56,8 +56,12 @@ class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
 class ProjectGroupProjectMembershipSerializer(serializers.ModelSerializer):
 
     name = serializers.Field(source='projectgroup.name')
-    url = serializers.HyperlinkedRelatedField(source='projectgroup', lookup_field='uuid',
-                                              view_name='projectgroup-detail')
+    url = serializers.HyperlinkedRelatedField(
+        source='projectgroup',
+        lookup_field='uuid',
+        view_name='projectgroup-detail',
+        queryset=models.ProjectGroup.objects.all(),
+    )
 
     class Meta(object):
         model = models.ProjectGroup.projects.through
@@ -128,6 +132,7 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
 
 class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
                               serializers.HyperlinkedModelSerializer):
+    # TODO: Reimplement using custom object save logic in view
     project_groups = ProjectGroupProjectMembershipSerializer(many=True, write_only=True, required=False)
 
     class Meta(object):
@@ -254,11 +259,13 @@ class ProjectGroupMembershipSerializer(core_serializers.PermissionFieldFiltering
         source='projectgroup',
         view_name='projectgroup-detail',
         lookup_field='uuid',
+        queryset=models.ProjectGroup.objects.all(),
     )
     project_group_name = serializers.Field(source='projectgroup.name')
     project = serializers.HyperlinkedRelatedField(
         view_name='project-detail',
         lookup_field='uuid',
+        queryset=models.Project.objects.all(),
     )
     project_name = serializers.Field(source='project.name')
 
@@ -362,10 +369,17 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
 
 class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
                                   serializers.HyperlinkedModelSerializer):
-    project = serializers.HyperlinkedRelatedField(source='group.projectrole.project', view_name='project-detail',
-                                                  lookup_field='uuid', queryset=models.Project.objects.all())
-    user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
-                                               queryset=User.objects.all())
+    project = serializers.HyperlinkedRelatedField(
+        source='group.projectrole.project',
+        view_name='project-detail',
+        lookup_field='uuid',
+        queryset=models.Project.objects.all(),
+    )
+    user = serializers.HyperlinkedRelatedField(
+        view_name='user-detail',
+        lookup_field='uuid',
+        queryset=User.objects.all(),
+    )
 
     project_name = serializers.Field(source='group.projectrole.project.name')
     user_full_name = serializers.Field(source='user.full_name')
@@ -396,10 +410,17 @@ class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin
 
 class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
                                        serializers.HyperlinkedModelSerializer):
-    project_group = serializers.HyperlinkedRelatedField(source='group.projectgrouprole.project_group', view_name='projectgroup-detail',
-                                                        lookup_field='uuid', queryset=models.ProjectGroup.objects.all())
-    user = serializers.HyperlinkedRelatedField(view_name='user-detail', lookup_field='uuid',
-                                               queryset=User.objects.all())
+    project_group = serializers.HyperlinkedRelatedField(
+        source='group.projectgrouprole.project_group',
+        view_name='projectgroup-detail',
+        lookup_field='uuid',
+        queryset=models.ProjectGroup.objects.all(),
+    )
+    user = serializers.HyperlinkedRelatedField(
+        view_name='user-detail',
+        lookup_field='uuid',
+        queryset=User.objects.all(),
+    )
 
     project_group_name = serializers.Field(source='group.projectgrouprole.project_group.name')
     user_full_name = serializers.Field(source='user.full_name')
