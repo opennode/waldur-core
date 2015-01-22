@@ -420,7 +420,9 @@ class OpenStackBackend(object):
                 nc_instance = nc_instances[instance_id]
                 nc_instance.state = self._get_instance_state(backend_instance)
                 if nc_instance.key_name != backend_instance.key_name:
-                    nc_instance.key_name = backend_instance.key_name
+                    if backend_instance.key_name is None:
+                        nc_instance.key_name = backend_instance.key_name
+                    nc_instance.key_name = ""
                     # note that fingerprint is not present in the request
                     nc_instance.key_fingerprint = ""
                 nc_instance.save()
@@ -505,13 +507,14 @@ class OpenStackBackend(object):
         logger.debug('About to get volumes, flavors and instances for tenant %s', membership.tenant_id)
         try:
             volumes = cinder.volumes.list()
+            snapshots = cinder.volume_snapshots.list()
             flavors = dict((flavor.id, flavor) for flavor in nova.flavors.list())
             instances = nova.servers.list()
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
-            logger.exception('Failed to get volumes, flavors or instances for tenant %s', membership.tenant_id)
+            logger.exception('Failed to get volumes, snapshots, flavors or instances for tenant %s', membership.tenant_id)
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Successfully got volumes, flavors and instances for tenant %s', membership.tenant_id)
+            logger.info('Successfully got volumes, snapshots, flavors and instances for tenant %s', membership.tenant_id)
 
         try:
             resource_quota_usage = membership.resource_quota_usage
@@ -537,15 +540,7 @@ class OpenStackBackend(object):
         # max instances
         resource_quota_usage.max_instances = len(instances)
         # storage
-        resource_quota_usage.storage = sum([self.get_core_disk_size(v.size) for v in volumes])
-
-        # currently we can not get backup storage size from openstack, so we use simple estimation:
-        services = models.Instance.objects.filter(cloud_project_membership=membership)
-        for service in services:
-            size = max(0, service.system_volume_size) + max(0, service.data_volume_size)
-            resource_quota_usage.storage += size * sum(
-                max(0, schedule.maximal_number_of_backups) for schedule in service.backup_schedules.all())
-            resource_quota_usage.storage += size * service.backups.filter(backup_schedule__isnull=True).count()
+        resource_quota_usage.storage = sum([self.get_core_disk_size(v.size) for v in volumes + snapshots])
 
         resource_quota_usage.save()
 
@@ -681,6 +676,7 @@ class OpenStackBackend(object):
             if not system_volume_id:
                 system_volume_name = '{0}-system'.format(instance.hostname)
                 logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
+                # TODO: need to update system_volume_size as well for the data to be precise
                 size = self.get_backend_disk_size(instance.system_volume_size)
                 system_volume = cinder.volumes.create(
                     size=size,
@@ -689,11 +685,12 @@ class OpenStackBackend(object):
                     imageRef=backend_image.id,
                 )
                 system_volume_id = system_volume.id
-                membership.update_resource_quota_usage('storage', size)
+                membership.update_resource_quota_usage('storage', self.get_core_disk_size(size))
 
             if not data_volume_id:
                 data_volume_name = '{0}-data'.format(instance.hostname)
                 logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
+                # TODO: need to update data_volume_size as well for the data to be precise
                 size = self.get_backend_disk_size(instance.data_volume_size)
                 data_volume = cinder.volumes.create(
                     size=size,
@@ -701,7 +698,7 @@ class OpenStackBackend(object):
                     display_description='',
                 )
                 data_volume_id = data_volume.id
-                membership.update_resource_quota_usage('storage', size)
+                membership.update_resource_quota_usage('storage', self.get_core_disk_size(size))
 
             if not self._wait_for_volume_status(system_volume_id, cinder, 'available', 'error'):
                 logger.error(
@@ -935,11 +932,11 @@ class OpenStackBackend(object):
             for volume_id in volume_ids:
                 # snapshot
                 snapshot = self.create_snapshot(volume_id, cinder)
-                snapshot_ids.append[snapshot.id]
+                snapshot_ids.append(snapshot.id)
                 membership.update_resource_quota_usage('storage', self.get_core_disk_size(snapshot.size))
 
                 # volume
-                volume = self.create_volume_from_snapshot(snapshot, cinder, prefix=prefix)
+                volume = self.create_volume_from_snapshot(snapshot.id, cinder, prefix=prefix)
                 cloned_volume_ids.append(volume)
                 membership.update_resource_quota_usage('storage', self.get_core_disk_size(snapshot.size))
 
@@ -961,23 +958,23 @@ class OpenStackBackend(object):
                 # volume
                 size = cinder.volumes.get(volume_id).size
                 self.delete_volume(volume_id, cinder)
-                membership.update_resource_quota_usage('storage', -size)
+                membership.update_resource_quota_usage('storage', -self.get_core_disk_size(size))
 
                 # snapshot
                 if self._wait_for_volume_deletion(volume_id, cinder):
                     self.delete_snapshot(snapshot_id, cinder)
-                    membership.update_resource_quota_usage('storage', -size)
+                    membership.update_resource_quota_usage('storage', -self.get_core_disk_size(size))
                 else:
                     logger.exception('Failed to delete volume %s and snapshot %s', (volume_id, snapshot_id))
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
             logger.exception(
-                'Failed to delete volumes %s and snapshots %s', (', '.join(volume_ids), ', '.join(snapshot_ids)))
+                'Failed to delete volumes %s and snapshots %s' % (', '.join(volume_ids), ', '.join(snapshot_ids)))
             six.reraise(CloudBackendError, e)
         else:
             logger.info(
-                'Successfully deleted volumes %s and snapshots %s', (', '.join(volume_ids), ', '.join(snapshot_ids)))
+                'Successfully deleted volumes %s and snapshots %s' % (', '.join(volume_ids), ', '.join(snapshot_ids)))
 
     # XXX: This method is not used now
     def restore_instance(self, instance, instance_backup_ids):

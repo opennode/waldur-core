@@ -85,6 +85,7 @@ class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
 
     availability_zone = models.CharField(
         max_length=100, blank=True,
+        default="",
         help_text='Optional availability group. Will be used for all instances provisioned in this tenant')
 
     class Meta(object):
