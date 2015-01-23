@@ -255,20 +255,43 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         data_volume_size = attrs.get('data_volume_size', models.Instance.DEFAULT_DATA_VOLUME_SIZE)
 
         try:
-            storage_size = models.ResourceQuota.objects.get(cloud_project_membership=membership).storage
+            resource_quota = models.ResourceQuota.objects.get(cloud_project_membership=membership)
+            storage_size = resource_quota.storage
+            vcpu_size = resource_quota.vcpu
+            ram_size = resource_quota.ram
+            instance_size = resource_quota.max_instances
         except models.ResourceQuota.DoesNotExist:
             raise serializers.ValidationError(
                 "Instance can not be added to cloud account membership, which does not have resource quotas yet.")
 
         try:
-            storage_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership).storage
+            resource_quota_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership)
+            storage_usage = resource_quota_usage.storage
+            vcpu_usage = resource_quota_usage.vcpu
+            ram_usage = resource_quota_usage.ram
+            instance_usage = resource_quota_usage.max_instances
         except models.ResourceQuotaUsage.DoesNotExist:
             storage_usage = 0
+            vcpu_usage = 0
+            ram_usage = 0
+            instance_usage = 0
 
         if data_volume_size + system_volume_size > storage_size - storage_usage:
             raise serializers.ValidationError(
                 "Requested instance size is over the quota: %s. Available quota: %s" %
                 (data_volume_size + system_volume_size, storage_size - storage_usage))
+
+        if flavor.cores > vcpu_size - vcpu_usage:
+            raise serializers.ValidationError(
+                "Requested instance core number exceeds quota")
+
+        if flavor.ram > ram_size - ram_usage:
+            raise serializers.ValidationError(
+                "Requested instance RAM size exceeds quota")
+
+        if 1 > instance_size - instance_usage:
+            raise serializers.ValidationError(
+                "Number of existing instances exceeds quota")
 
         # TODO: cleanup after migration to drf 3
         return fix_non_nullable_attrs(attrs)

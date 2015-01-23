@@ -4,6 +4,7 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from celery import shared_task
+from django.core.exceptions import ObjectDoesNotExist
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import SynchronizationStates
@@ -347,8 +348,12 @@ def check_cloud_memberships_quotas():
     )
 
     for membership in queryset.iterator():
-        quota = membership.resource_quota
-        usage = membership.resource_quota_usage
+        try:
+            quota = membership.resource_quota
+            usage = membership.resource_quota_usage
+        except ObjectDoesNotExist:
+            logger.exception('Missing quota or usage')
+            continue
 
         for resource_name in resources:
             resource_quota = getattr(quota, resource_name)

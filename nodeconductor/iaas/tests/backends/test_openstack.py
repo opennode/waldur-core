@@ -111,8 +111,10 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.cinder_quota = mock.Mock(gigabytes=1000)
         self.cinder_client.quotas.get = mock.Mock(return_value=self.cinder_quota)
         self.volumes = [mock.Mock(size=10 * i, id=i) for i in range(5)]
+        self.snapshots = [mock.Mock(size=10 * i, id=i) for i in range(5)]
         self.flavors = [mock.Mock(ram=i, id=i, vcpus=i) for i in range(4)]
         self.instances = [mock.Mock(flavor={'id': i}) for i in range(2)]
+        self.cinder_client.volume_snapshots.list = mock.Mock(return_value=self.snapshots)
         self.cinder_client.volumes.list = mock.Mock(return_value=self.volumes)
         self.nova_client.servers.list = mock.Mock(return_value=self.instances)
         self.nova_client.flavors.list = mock.Mock(return_value=self.flavors)
@@ -225,7 +227,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.assertEqual(resource_quota_usage.ram, sum([f.ram for f in instance_flavors]))
         self.assertEqual(resource_quota_usage.max_instances, len(self.instances))
         self.assertEqual(resource_quota_usage.vcpu, sum([f.vcpus for f in instance_flavors]))
-        self.assertEqual(resource_quota_usage.storage, sum([int(v.size * 1024) for v in self.volumes]))
+        self.assertEqual(resource_quota_usage.storage, sum([int(v.size * 1024) for v in self.volumes + self.snapshots]))
 
     def test_pull_quota_resource_usage_rewrite_old_resource_quota_usage_data(self):
         membership = factories.CloudProjectMembershipFactory()
@@ -235,28 +237,6 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         # then
         reread_quota_usage = ResourceQuotaUsage.objects.get(id=quota_usage.id)
         self.assertEqual(reread_quota_usage.max_instances, len(self.instances))
-
-    def test_pull_quota_resource_usage_intiates_backup_storage(self):
-        # this test will be removed, as soon as we can get backup storage size from openstack
-        from nodeconductor.backup.tests import factories as backup_factories
-        membership = factories.CloudProjectMembershipFactory()
-        instance = factories.InstanceFactory(cloud_project_membership=membership)
-        # backup schedule
-        backup_schedule = backup_factories.BackupScheduleFactory(backup_source=instance)
-        # one extra backup
-        backup_factories.BackupFactory(backup_source=instance, backup_schedule=None)
-
-        # when
-        self.backend.pull_resource_quota_usage(membership)
-
-        # then
-        resource_quota_usage = membership.resource_quota_usage
-        expected_instances_storage = sum([int(v.size * 1024) for v in self.volumes])
-        expected_backup_storage = (
-            (instance.system_volume_size + instance.data_volume_size) *
-            (backup_schedule.maximal_number_of_backups + 1)
-        )
-        self.assertEqual(resource_quota_usage.storage, expected_instances_storage + expected_backup_storage)
 
 
 class OpenStackBackendSecurityGroupsTest(TransactionTestCase):

@@ -523,7 +523,12 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.project = structure_factories.ProjectFactory()
         self.membership = factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
         self.resource_quota = factories.ResourceQuotaFactory(
-            storage=10 * 1024 * 1024, cloud_project_membership=self.membership)
+            cloud_project_membership=self.membership,
+            storage=10 * 1024 * 1024,
+            vcpu=10,
+            ram=2 * 1024,
+            max_instances=10,
+        )
         self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)

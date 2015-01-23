@@ -85,7 +85,7 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
 
     def test_strategy_delete_method_calls_backend_delete_instance_method(self):
         InstanceBackupStrategy.delete(self.instance, self.metadata)
-        self.mocked_backed.delete_volumes.assert_called_once_with(
+        self.mocked_backed.delete_volumes_with_snapshots.assert_called_once_with(
             membership=self.instance.cloud_project_membership,
             volume_ids=[self.copied_system_volume_id, self.copied_data_volume_id],
             snapshot_ids=self.snapshot_ids,
