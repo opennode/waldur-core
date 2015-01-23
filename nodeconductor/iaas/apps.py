@@ -6,6 +6,7 @@ from django.db.models import signals
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.iaas import handlers
+from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.models import Project
 from nodeconductor.structure.signals import structure_role_granted
 
@@ -59,3 +60,8 @@ class IaasConfig(AppConfig):
             dispatch_uid='nodeconductor.iaas.handlers.prevent_deletion_of_instances_with_connected_backups',
         )
 
+        signals.post_save.connect(
+            quotas_handlers.add_quotas_to_owner,
+            sender=CloudProjectMembership,
+            dispatch_uid='nodeconductor.iaas.handlers.add_quotas_to_membership',
+        )

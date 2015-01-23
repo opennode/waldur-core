@@ -1,5 +1,4 @@
 from django.contrib.contenttypes import fields as ct_fields
-from django.contrib.contenttypes import generic as ct_generic
 from django.contrib.contenttypes import models as ct_models
 from django.db import models
 
@@ -21,7 +20,7 @@ class QuotaModelMixin(object):
     """
     Add general fields and methods to model for quotas usage
     """
-    quotas = ct_generic.GenericRelation(Quota)
+    QUOTAS_NAMES = []  # this list have to be overridden
 
     def change_quota_usage(self, quota_name, usage_delta):
         """
@@ -34,3 +33,12 @@ class QuotaModelMixin(object):
     def is_quota_limit_exceeded(self, quota_name, usage_delta):
         quota = self.quotas.get(name=quota_name)
         return quota.usage + usage_delta > quota.limit
+
+
+# Mixin is better for quotas logic, but Django do not handle GenericRelation fields in Mixins
+# Question on SO: http://stackoverflow.com/questions/28115239/django-genericrelation-in-model-mixin
+class AbstractModelWithQuotas(QuotaModelMixin, models.Model):
+    class Meta:
+        abstract = True
+
+    quotas = ct_fields.GenericRelation('quotas.Quota', related_query_name='quotas')

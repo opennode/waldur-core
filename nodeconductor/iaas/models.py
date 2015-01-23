@@ -13,6 +13,7 @@ from django_fsm import transition
 
 from nodeconductor.core import models as core_models
 from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure import models as structure_models
 
 
@@ -69,10 +70,11 @@ class Cloud(core_models.UuidMixin, core_models.SynchronizableMixin, models.Model
 
 
 @python_2_unicode_compatible
-class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
+class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.AbstractModelWithQuotas):
     """
     This model represents many to many relationships between project and cloud
     """
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
 
     cloud = models.ForeignKey(Cloud)
     project = models.ForeignKey(structure_models.Project)
