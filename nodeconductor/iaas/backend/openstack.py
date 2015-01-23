@@ -421,8 +421,9 @@ class OpenStackBackend(object):
                 nc_instance.state = self._get_instance_state(backend_instance)
                 if nc_instance.key_name != backend_instance.key_name:
                     if backend_instance.key_name is None:
+                        nc_instance.key_name = ""
+                    else:
                         nc_instance.key_name = backend_instance.key_name
-                    nc_instance.key_name = ""
                     # note that fingerprint is not present in the request
                     nc_instance.key_fingerprint = ""
                 nc_instance.save()
@@ -504,17 +505,19 @@ class OpenStackBackend(object):
             logger.exception('Failed to create nova client or cinder client')
             six.reraise(CloudBackendError, e)
 
-        logger.debug('About to get volumes, flavors and instances for tenant %s', membership.tenant_id)
+        logger.debug('About to get volumes, snapshots, flavors and instances for tenant %s', membership.tenant_id)
         try:
             volumes = cinder.volumes.list()
             snapshots = cinder.volume_snapshots.list()
             flavors = dict((flavor.id, flavor) for flavor in nova.flavors.list())
             instances = nova.servers.list()
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
-            logger.exception('Failed to get volumes, snapshots, flavors or instances for tenant %s', membership.tenant_id)
+            logger.exception(
+                'Failed to get volumes, snapshots, flavors or instances for tenant %s', membership.tenant_id)
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Successfully got volumes, snapshots, flavors and instances for tenant %s', membership.tenant_id)
+            logger.info(
+                'Successfully got volumes, snapshots, flavors and instances for tenant %s', membership.tenant_id)
 
         try:
             resource_quota_usage = membership.resource_quota_usage
@@ -949,7 +952,7 @@ class OpenStackBackend(object):
         return cloned_volume_ids, snapshot_ids
 
     def delete_volumes_with_snapshots(self, membership, volume_ids, snapshot_ids):
-        logger.debug('About to delete volumes %s and snapshots %s', (', '.join(volume_ids), ', '.join(snapshot_ids)))
+        logger.debug('About to delete volumes %s and snapshots %s', ', '.join(volume_ids), ', '.join(snapshot_ids))
         try:
             session = self.create_tenant_session(membership)
             cinder = self.create_cinder_client(session)
@@ -965,16 +968,16 @@ class OpenStackBackend(object):
                     self.delete_snapshot(snapshot_id, cinder)
                     membership.update_resource_quota_usage('storage', -self.get_core_disk_size(size))
                 else:
-                    logger.exception('Failed to delete volume %s and snapshot %s', (volume_id, snapshot_id))
+                    logger.exception('Failed to delete volume %s and snapshot %s', volume_id, snapshot_id)
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
             logger.exception(
-                'Failed to delete volumes %s and snapshots %s' % (', '.join(volume_ids), ', '.join(snapshot_ids)))
+                'Failed to delete volumes %s and snapshots %s', ', '.join(volume_ids), ', '.join(snapshot_ids))
             six.reraise(CloudBackendError, e)
         else:
             logger.info(
-                'Successfully deleted volumes %s and snapshots %s' % (', '.join(volume_ids), ', '.join(snapshot_ids)))
+                'Successfully deleted volumes %s and snapshots %s', ', '.join(volume_ids), ', '.join(snapshot_ids))
 
     # XXX: This method is not used now
     def restore_instance(self, instance, instance_backup_ids):
@@ -1849,7 +1852,7 @@ class OpenStackBackend(object):
         :returns: volume id
         :rtype: str
         """
-        logger.debug('About to restore backup %s' % backup_id)
+        logger.debug('About to restore backup %s', backup_id)
 
         if not self._wait_for_backup_status(backup_id, cinder, 'available', 'error'):
             logger.exception('Timed out waiting backup %s availability', backup_id)
@@ -1875,7 +1878,7 @@ class OpenStackBackend(object):
         """
         backup = cinder.backups.get(backup_id)
 
-        logger.debug('About to delete backup %s' % backup_id)
+        logger.debug('About to delete backup %s', backup_id)
 
         if not self._wait_for_backup_status(backup_id, cinder, 'available', 'error'):
             logger.exception('Timed out waiting backup %s availability. Status:', backup_id, backup.status)
@@ -1899,14 +1902,14 @@ class OpenStackBackend(object):
 
         new_server = nova.servers.create(new_server_name, None, flavor, block_device_mapping=device_map)
 
-        logger.debug('About to create new vm instance %s' % new_server.id)
+        logger.debug('About to create new vm instance %s', new_server.id)
 
         # TODO: ask about complete status
         while new_server.status == 'BUILD':
             time.sleep(5)
             new_server = nova.servers.get(new_server.id)
 
-        logger.info('VM instance %s creation completed' % new_server.id)
+        logger.info('VM instance %s creation completed', new_server.id)
 
         return new_server.id
 
