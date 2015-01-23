@@ -715,10 +715,14 @@ class CustomerStatsView(views.APIView):
             project_groups_count = structure_filters.filter_queryset_for_user(
                 ProjectGroup.objects.filter(customer=customer), request.user).count()
             instances_count = structure_filters.filter_queryset_for_user(
-                models.Instance.objects.filter(cloud_project_membership__project__customer=customer), request.user).count()
+                models.Instance.objects.filter(cloud_project_membership__project__customer=customer),
+                request.user).count()
             customer_statistics.append({
-                'name': customer.name, 'projects': projects_count,
-                'project_groups': project_groups_count, 'instances': instances_count
+                'name': customer.name,
+                'abbreviation': customer.abbreviation,
+                'projects': projects_count,
+                'project_groups': project_groups_count,
+                'instances': instances_count,
             })
 
         return Response(customer_statistics, status=status.HTTP_200_OK)

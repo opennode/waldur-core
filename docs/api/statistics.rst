@@ -10,7 +10,8 @@ Available request parameters:
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
 - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
   object with given uuid)
-- ?item=instance_usage_item (required. Have to be from list: 'cpu', 'memory', 'storage')
+- ?item=instance_usage_item (required. Have to be from list: 'cpu', 'memory', 'storage').
+  CPU is reported as utilisation and goes from 0 to 100% as reported by 'ps -o %cpu'. Memory and storage are in MiB.
 - ?from=timestamp (default: now - one hour, example: 1415910025)
 - ?to=timestamp (default: now, example: 1415912625)
 - ?datapoints=how many data points have to be in answer(default: 6)
