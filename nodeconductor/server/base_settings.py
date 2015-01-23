@@ -30,6 +30,7 @@ INSTALLED_APPS = (
     'nodeconductor.structure',
     'nodeconductor.iaas',
     'nodeconductor.ldapsync',
+    'nodeconductor.quotas',
 
     'nodeconductor.testdata',
 
