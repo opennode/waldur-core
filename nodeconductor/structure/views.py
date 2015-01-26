@@ -488,6 +488,8 @@ class UserViewSet(viewsets.ModelViewSet):
 
         if not user.is_staff:
             queryset = queryset.filter(is_active=True)
+            # non-staff users cannot see staff through rest
+            queryset = queryset.filter(is_staff=False)
 
         return queryset
 
