@@ -83,6 +83,9 @@ class InstanceFilter(django_filters.FilterSet):
 
     hostname = django_filters.CharFilter(lookup_type='icontains')
     state = django_filters.CharFilter()
+    description = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
 
     class Meta(object):
         model = models.Instance
@@ -98,6 +101,12 @@ class InstanceFilter(django_filters.FilterSet):
             'project_group',
             'template_name',
             'start_time',
+            'cores',
+            'ram',
+            'system_volume_size',
+            'data_volume_size',
+            'description',
+            'created',
         ]
         order_by = [
             'hostname',
@@ -118,6 +127,15 @@ class InstanceFilter(django_filters.FilterSet):
             '-cloud_project_membership__project__project_groups__name',
             'template__name',
             '-template__name',
+            '-cores',
+            'ram',
+            '-ram',
+            'system_volume_size',
+            '-system_volume_size',
+            'data_volume_size',
+            '-data_volume_size',
+            'created',
+            '-created',
         ]
         order_by_mapping = {
             # Proper field naming

@@ -10,6 +10,7 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
+from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.iaas.backend import CloudBackendError
@@ -250,7 +251,7 @@ class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
                # This needs to be inlined in order to set on_delete
                # CloudProjectMember,
-               models.Model):
+               TimeStampedModel):
     """
     A generalization of a single virtual machine.
 
