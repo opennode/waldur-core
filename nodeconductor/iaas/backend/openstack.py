@@ -653,10 +653,11 @@ class OpenStackBackend(object):
                 matching_keys_count = len(matching_keys)
 
                 if matching_keys_count >= 1:
-                    # TODO: warning as we trust that fingerprint+name combo is unique. Potentially reconsider.
-                    logger.warning('Found %d public keys with fingerprint "%s", expected exactly one.' +
-                                   'Taking the first one',
-                                   matching_keys_count, instance.key_fingerprint)
+                    if matching_keys_count > 1:
+                        # TODO: warning as we trust that fingerprint+name combo is unique. Potentially reconsider.
+                        logger.warning('Found %d public keys with fingerprint "%s", expected exactly one.' +
+                                       'Taking the first one',
+                                       matching_keys_count, instance.key_fingerprint)
                     backend_public_key = matching_keys[0]
                 elif matching_keys_count == 0:
                     logger.error('Found no public keys with fingerprint "%s", expected exactly one',

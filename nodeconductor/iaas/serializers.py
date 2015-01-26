@@ -426,6 +426,7 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
     customer_abbreviation = serializers.Field(source='cloud_project_membership.project.customer.abbreviation')
     customer_native_name = serializers.Field(source='cloud_project_membership.project.customer.native_name')
     template_os = serializers.Field(source='template.os')
+    created = serializers.DateTimeField(format='iso-8601')
 
     class Meta(object):
         model = models.Instance
@@ -446,6 +447,7 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
             'system_volume_size',
             'data_volume_size',
             'cores', 'ram',
+            'created',
         )
         read_only_fields = (
             'key_name',
