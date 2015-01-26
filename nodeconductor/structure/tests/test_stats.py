@@ -8,9 +8,7 @@ from rest_framework import test, status
 
 # This test contains dependencies from iaas and backup app,
 # but it will be moved to separate app 'stats' in future, so this is ok
-from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.core import utils as core_utils
-from nodeconductor.iaas.tests import factories as iaas_factories
 from nodeconductor.structure import models
 from nodeconductor.structure.tests import factories
 
@@ -33,8 +31,8 @@ class CreationTimeStatsTest(test.APITransactionTestCase):
             3, created=timezone.now() - timedelta(days=1), customer=self.new_customer)
         # users
         self.staff = factories.UserFactory(is_staff=True)
-        self.old_cusotmer_owner = factories.UserFactory()
-        self.old_customer.add_user(self.old_cusotmer_owner, models.CustomerRole.OWNER)
+        self.old_customer_owner = factories.UserFactory()
+        self.old_customer.add_user(self.old_customer_owner, models.CustomerRole.OWNER)
         self.new_project_group_manager = factories.UserFactory()
         self.new_project_group.add_user(self.new_project_group_manager, models.ProjectGroupRole.MANAGER)
         self.all_projects_admin = factories.UserFactory()
@@ -64,7 +62,7 @@ class CreationTimeStatsTest(test.APITransactionTestCase):
 
     def test_customer_owner_receive_stats_only_about_his_cusotmers(self):
         # when
-        response = self.execute_request_with_data(self.old_cusotmer_owner, {'type': 'customer'})
+        response = self.execute_request_with_data(self.old_customer_owner, {'type': 'customer'})
         # then
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2, 'Response has to contain 2 datapoints')
