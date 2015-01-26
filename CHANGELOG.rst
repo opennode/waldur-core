@@ -6,6 +6,11 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+Release 0.31.0
+--------------
+
+- Bugfixes
+
 Release 0.30.0
 --------------
 
