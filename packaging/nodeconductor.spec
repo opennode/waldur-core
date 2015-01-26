@@ -189,7 +189,7 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
-* Mon Jan26 2015 Juri Hudolejev <juri@opennodecloud.com> - 0.31.0-1.el7
+* Mon Jan 26 2015 Juri Hudolejev <juri@opennodecloud.com> - 0.31.0-1.el7
 - New upstream release
 
 * Fri Jan 23 2015 Juri Hudolejev <juri@opennodecloud.com> - 0.30.0-1.el7
