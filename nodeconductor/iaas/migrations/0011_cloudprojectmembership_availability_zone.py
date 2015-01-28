@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='cloudprojectmembership',
             name='availability_zone',
-            field=models.CharField(help_text='Optional availability group. Will be used for all instances provisioned in this tenant', max_length=100, blank=True),
-            preserve_default=True,
+            field=models.CharField(help_text='Optional availability group. Will be used for all instances provisioned in this tenant', max_length=100, blank=True, default=''),
+            preserve_default=False,
         ),
     ]
