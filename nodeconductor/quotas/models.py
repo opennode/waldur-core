@@ -4,9 +4,10 @@ from django.db import models
 from django.db.models import Sum
 
 from nodeconductor.quotas import exceptions
+from nodeconductor.core.models import UuidMixin
 
 
-class Quota(models.Model):
+class Quota(UuidMixin, models.Model):
     """
     Abstract quota for any resource
     """
