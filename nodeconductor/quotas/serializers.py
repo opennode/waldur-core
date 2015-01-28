@@ -17,4 +17,3 @@ class QuotaSerializer(serializers.HyperlinkedModelSerializer):
     def validate(self, attrs):
         from nodeconductor.structure.serializers import fix_non_nullable_attrs
         return fix_non_nullable_attrs(attrs)
-

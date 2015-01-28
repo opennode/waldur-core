@@ -3,7 +3,7 @@ from django.contrib.contenttypes import models as ct_models
 from django.db import models
 from django.db.models import Sum
 
-from nodeconductor.quotas import exceptions
+from nodeconductor.quotas import exceptions, managers
 from nodeconductor.core.models import UuidMixin
 
 
@@ -21,6 +21,8 @@ class Quota(UuidMixin, models.Model):
     content_type = models.ForeignKey(ct_models.ContentType)
     object_id = models.PositiveIntegerField()
     owner = ct_fields.GenericForeignKey('content_type', 'object_id')
+
+    objects = managers.QuotaManager
 
 
 class QuotaModelMixin(object):
