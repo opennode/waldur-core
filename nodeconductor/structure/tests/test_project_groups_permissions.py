@@ -142,9 +142,12 @@ class TestGroupPermissionsListRetrieve(test.APITransactionTestCase):
         self.owner = factories.UserFactory()
         self.staff = factories.UserFactory(is_staff=True)
         self.group_manager = factories.UserFactory()
+        self.admin = factories.UserFactory()
+
         self.customer.add_user(self.owner, models.CustomerRole.OWNER)
         self.project_group.add_user(self.group_manager, models.ProjectGroupRole.MANAGER)
         self.other_project_group.add_user(factories.UserFactory(), models.ProjectGroupRole.MANAGER)
+        self.project.add_user(self.admin, models.ProjectRole.ADMINISTRATOR)
 
     def test_owner_can_list_project_group_permissions_from_his_project_groups(self):
         self.client.force_authenticate(self.owner)
@@ -186,6 +189,17 @@ class TestGroupPermissionsListRetrieve(test.APITransactionTestCase):
             'user', 'user_full_name', 'user_native_name', 'user_username'
         ]
         self.assertItemsEqual(response.data.keys(), expected_fields)
+
+    def test_admin_can_list_project_groups_permissions_of_his_project(self):
+        self.client.force_authenticate(self.admin)
+        url = reverse('projectgroup_permission-list')
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(
+            response.data[0]['url'],
+            get_project_group_permission_url(self.project_group.roles.first()))
 
 
 class TestGroupPermissionsPermissions(helpers.PermissionsTest):

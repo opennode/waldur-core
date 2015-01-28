@@ -6,6 +6,12 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+Release 0.32.0
+--------------
+
+- Staff users are now listed to staff users only.
+- Bugfixes
+
 Release 0.31.0
 --------------
 
