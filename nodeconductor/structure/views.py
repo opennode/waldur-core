@@ -719,8 +719,7 @@ class ProjectGroupPermissionViewSet(rf_mixins.RetrieveModelMixin,
                 Q(group__projectgrouprole__project_group__customer__roles__permission_group__user=self.request.user,
                   group__projectgrouprole__project_group__customer__roles__role_type=models.CustomerRole.OWNER)
                 |
-                Q(group__projectgrouprole__project_group__projects__roles__permission_group__user=self.request.user,
-                  group__projectgrouprole__project_group__customer__roles__role_type=models.ProjectRole.MANAGER)
+                Q(group__projectgrouprole__project_group__projects__roles__permission_group__user=self.request.user)
                 |
                 Q(group__projectgrouprole__project_group__roles__permission_group__user=self.request.user)
             ).distinct()
