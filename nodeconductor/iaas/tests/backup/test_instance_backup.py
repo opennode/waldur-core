@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from decimal import Decimal
 
 from django.db.models import ProtectedError
 from django.test import TransactionTestCase
@@ -43,6 +44,8 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         self.metadata['system_volume_id'] = self.copied_system_volume_id
         self.metadata['data_volume_id'] = self.copied_data_volume_id
         self.metadata['snapshot_ids'] = self.snapshot_ids
+        self.agreed_sla = Decimal('99.9')
+        self.metadata['agreed_sla'] = self.agreed_sla
 
         self.mocked_backed = Mock()
         InstanceBackupStrategy._get_backend = Mock(return_value=self.mocked_backed)
@@ -82,6 +85,7 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         self.assertIsNone(errors, 'Deserialization errors: %s' % errors)
         self.assertEqual(new_instance.hostname, 'new_hostname')
         self.assertNotEqual(new_instance.id, self.instance.id)
+        self.assertEqual(new_instance.agreed_sla, self.agreed_sla)
 
     def test_strategy_delete_method_calls_backend_delete_instance_method(self):
         InstanceBackupStrategy.delete(self.instance, self.metadata)
