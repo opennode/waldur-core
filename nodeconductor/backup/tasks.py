@@ -80,5 +80,5 @@ def execute_schedules():
 
 @shared_task
 def delete_expired_backups():
-    for backup in models.Backup.objects.filter(kept_until__lt=timezone.now()):
+    for backup in models.Backup.objects.filter(kept_until__lt=timezone.now(), state=models.Backup.States.READY):
         backup.start_deletion()
