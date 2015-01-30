@@ -27,10 +27,10 @@ INSTALLED_APPS = (
     'nodeconductor.core',
     'nodeconductor.backup',
     'nodeconductor.monitoring',
+    'nodeconductor.quotas',
     'nodeconductor.structure',
     'nodeconductor.iaas',
     'nodeconductor.ldapsync',
-    'nodeconductor.quotas',
 
     'nodeconductor.testdata',
 
