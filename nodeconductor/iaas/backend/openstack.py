@@ -932,17 +932,24 @@ class OpenStackBackend(object):
             cinder = self.create_cinder_client(session)
 
             cloned_volume_ids = []
-            snapshot_ids = []
             for volume_id in volume_ids:
-                # snapshot
+                # create a temporary snapshot
                 snapshot = self.create_snapshot(volume_id, cinder)
-                snapshot_ids.append(snapshot.id)
                 membership.update_resource_quota_usage('storage', self.get_core_disk_size(snapshot.size))
 
                 # volume
-                volume = self.create_volume_from_snapshot(snapshot.id, cinder, prefix=prefix)
-                cloned_volume_ids.append(volume)
+                promoted_volume_id = self.create_volume_from_snapshot(snapshot.id, cinder, prefix=prefix)
+                cloned_volume_ids.append(promoted_volume_id)
+                # volume size should be equal to a snapshot size
                 membership.update_resource_quota_usage('storage', self.get_core_disk_size(snapshot.size))
+
+                # clean-up created snapshot
+                self.delete_snapshot(snapshot.id, cinder)
+                if not self._wait_for_snapshot_deletion(snapshot.id, cinder):
+                    logger.exception('Timed out waiting for snapshot %s to become available', snapshot_id)
+                    raise CloudBackendInternalError()
+
+                membership.update_resource_quota_usage('storage', -self.get_core_disk_size(snapshot.size))
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
@@ -950,35 +957,32 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully cloned volumes %s', ', '.join(volume_ids))
-        return cloned_volume_ids, snapshot_ids
+        return cloned_volume_ids
 
-    def delete_volumes_with_snapshots(self, membership, volume_ids, snapshot_ids):
-        logger.debug('About to delete volumes %s and snapshots %s', ', '.join(volume_ids), ', '.join(snapshot_ids))
+    def delete_volumes(self, membership, volume_ids):
+        logger.debug('About to delete volumes %s ', ', '.join(volume_ids))
         try:
             session = self.create_tenant_session(membership)
             cinder = self.create_cinder_client(session)
 
-            for volume_id, snapshot_id in zip(volume_ids, snapshot_ids):
+            for volume_id in volume_ids:
                 # volume
                 size = cinder.volumes.get(volume_id).size
                 self.delete_volume(volume_id, cinder)
-                membership.update_resource_quota_usage('storage', -self.get_core_disk_size(size))
 
-                # snapshot
                 if self._wait_for_volume_deletion(volume_id, cinder):
-                    self.delete_snapshot(snapshot_id, cinder)
                     membership.update_resource_quota_usage('storage', -self.get_core_disk_size(size))
                 else:
-                    logger.exception('Failed to delete volume %s and snapshot %s', volume_id, snapshot_id)
+                    logger.exception('Failed to delete volume %s', volume_id)
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
             logger.exception(
-                'Failed to delete volumes %s and snapshots %s', ', '.join(volume_ids), ', '.join(snapshot_ids))
+                'Failed to delete volumes %s', ', '.join(volume_ids))
             six.reraise(CloudBackendError, e)
         else:
             logger.info(
-                'Successfully deleted volumes %s and snapshots %s', ', '.join(volume_ids), ', '.join(snapshot_ids))
+                'Successfully deleted volumes %s', ', '.join(volume_ids))
 
     # XXX: This method is not used now
     def restore_instance(self, instance, instance_backup_ids):
@@ -1637,7 +1641,17 @@ class OpenStackBackend(object):
         except cinder_exceptions.NotFound:
             return True
 
-    def _wait_for_instance_deletion(self, backend_instance_id, nova, retries=20, poll_interval=3):
+    def _wait_for_snapshot_deletion(self, snapshot_id, cinder, retries=90, poll_interval=3):
+        try:
+            for _ in range(retries):
+                cinder.volume_snapshots.get(snapshot_id)
+                time.sleep(poll_interval)
+
+            return False
+        except cinder_exceptions.NotFound:
+            return True
+
+    def _wait_for_instance_deletion(self, backend_instance_id, nova, retries=90, poll_interval=3):
         try:
             for _ in range(retries):
                 nova.servers.get(backend_instance_id)
