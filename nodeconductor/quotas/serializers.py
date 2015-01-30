@@ -5,12 +5,11 @@ from nodeconductor.core.serializers import GenericRelatedField
 
 
 class QuotaSerializer(serializers.HyperlinkedModelSerializer):
-    owner = GenericRelatedField(related_models=utils.get_models_with_quotas())
+    owner = GenericRelatedField(related_models=utils.get_models_with_quotas(), read_only=True)
 
     class Meta(object):
-        model = models.BackupSchedule
+        model = models.Quota
         fields = ('url', 'uuid', 'name', 'limit', 'usage', 'owner')
-        read_only_fields = ('owner', )
         lookup_field = 'uuid'
 
     # TODO: cleanup after migration to drf 3

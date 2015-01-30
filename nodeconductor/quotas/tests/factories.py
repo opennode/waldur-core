@@ -1,3 +1,4 @@
+from django.core.urlresolvers import reverse
 import factory
 import factory.fuzzy
 
@@ -16,3 +17,13 @@ class QuotaFactory(factory.DjangoModelFactory):
     limit = factory.fuzzy.FuzzyFloat(low=16.0, high=1024.0)
     usage = factory.LazyAttribute(lambda q: q.limit / 2)
     name = factory.Iterator(['vcpu', 'storage', 'max_instances', 'ram'])
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('quota-list')
+
+    @classmethod
+    def get_url(self, quota):
+        if quota is None:
+            quota = QuotaFactory()
+        return 'http://testserver' + reverse('quota-detail', kwargs={'uuid': quota.uuid})

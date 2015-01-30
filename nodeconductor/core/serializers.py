@@ -236,7 +236,7 @@ class GenericRelatedField(RelatedField):
     """
     read_only = False
     _default_view_name = '%(model_name)s-detail'
-    lookup_field = 'uuid'
+    lookup_fields = ['uuid', 'pk']
 
     def __init__(self, related_models=[], **kwargs):
         super(GenericRelatedField, self).__init__(**kwargs)
@@ -248,15 +248,24 @@ class GenericRelatedField(RelatedField):
         """
         format_kwargs = {
             'app_label': obj._meta.app_label,
-            'model_name': obj._meta.object_name.lower()
         }
+        try:
+            format_kwargs['model_name'] = getattr(obj, 'DEFAULT_URL_NAME')
+        except AttributeError:
+            format_kwargs['model_name'] = obj._meta.object_name.lower()
         return self._default_view_name % format_kwargs
 
     def to_native(self, obj):
         """
         Serializes any object to his url representation
         """
-        kwargs = {self.lookup_field: getattr(obj, self.lookup_field)}
+        kwargs = None
+        for field in self.lookup_fields:
+            if hasattr(obj, field):
+                kwargs = {field: getattr(obj, field)}
+                break
+        if kwargs is None:
+            raise AttributeError('Related object does not have any of of lookup_fields')
         try:
             request = self.context['request']
         except AttributeError:

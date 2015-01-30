@@ -22,7 +22,7 @@ class Quota(UuidMixin, models.Model):
     object_id = models.PositiveIntegerField()
     owner = ct_fields.GenericForeignKey('content_type', 'object_id')
 
-    objects = managers.QuotaManager
+    objects = managers.QuotaManager()
 
 
 class QuotaModelMixin(object):

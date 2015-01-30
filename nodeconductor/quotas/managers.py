@@ -2,12 +2,12 @@ from django.contrib.contenttypes import models as ct_models
 from django.db import models
 from django.db.models import Q
 
-from nodeconductor.quotas import utils
-
 
 class QuotaManager(models.Manager):
 
     def filtered_for_user(self, user, queryset=None):
+        from nodeconductor.quotas import utils
+
         if queryset is None:
             queryset = self.get_queryset()
         # XXX: This circular dependency will be removed then filter_queryset_for_user
