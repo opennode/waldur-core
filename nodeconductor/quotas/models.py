@@ -29,7 +29,7 @@ class QuotaModelMixin(object):
     """
     Add general fields and methods to model for quotas usage
     """
-    QUOTAS_NAMES = []  # this list have to be overridden
+    QUOTAS_NAMES = []  # this list has to be overridden
 
     def set_quota_limit(self, quota_name, limit):
         self.quotas.filter(name=quota_name).update(limit=limit)
