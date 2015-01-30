@@ -76,6 +76,7 @@ class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.Abst
     This model represents many to many relationships between project and cloud
     """
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
+    # This name will be used by generic relationships to membership model for URL creation
     DEFAULT_URL_NAME = 'cloudproject_membership'
 
     cloud = models.ForeignKey(Cloud)

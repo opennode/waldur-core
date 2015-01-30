@@ -8,6 +8,7 @@ from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core import models as core_models, serializers as core_serializers
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
+from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.serializers import fix_non_nullable_attrs
@@ -79,12 +80,15 @@ class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFiltering
                                        core_serializers.RelatedResourcesFieldMixin,
                                        serializers.HyperlinkedModelSerializer):
 
+    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
+
     class Meta(object):
         model = models.CloudProjectMembership
         fields = (
             'url',
             'project', 'project_name',
             'cloud', 'cloud_name',
+            'quotas',
         )
         view_name = 'cloudproject_membership-detail'
 
