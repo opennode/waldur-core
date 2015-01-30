@@ -49,6 +49,9 @@ class QuotaModelMixin(object):
         quota = self.quotas.get(name=quota_name)
         return quota.usage + usage_delta > quota.limit
 
+    def can_user_update_quotas(self, user):
+        raise NotImplementedError('This method have to be defined for each quota owner separately')
+
     @classmethod
     def get_sum_of_quotas_as_dict(cls, owners, quota_names=None, fields=['usage', 'limit']):
         """

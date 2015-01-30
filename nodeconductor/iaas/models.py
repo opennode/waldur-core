@@ -114,6 +114,9 @@ class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.Abst
         setattr(resource_quota_usage, field, old_value + value)
         resource_quota_usage.save()
 
+    def can_user_update_quotas(self, user):
+        return user.is_staff
+
 
 class CloudProjectMember(models.Model):
     class Meta(object):
