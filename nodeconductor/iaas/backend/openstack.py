@@ -946,7 +946,7 @@ class OpenStackBackend(object):
                 # clean-up created snapshot
                 self.delete_snapshot(snapshot.id, cinder)
                 if not self._wait_for_snapshot_deletion(snapshot.id, cinder):
-                    logger.exception('Timed out waiting for snapshot %s to become available', snapshot_id)
+                    logger.exception('Timed out waiting for snapshot %s to become available', snapshot.id)
                     raise CloudBackendInternalError()
 
                 membership.update_resource_quota_usage('storage', -self.get_core_disk_size(snapshot.size))
