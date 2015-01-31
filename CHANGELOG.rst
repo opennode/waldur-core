@@ -6,6 +6,12 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+Release 0.33.0
+--------------
+
+- Improved user key propagation speed to the backend.
+- Refactored OpenStack backups to use volumes only.
+
 Release 0.32.0
 --------------
 
