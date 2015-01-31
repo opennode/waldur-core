@@ -5,6 +5,7 @@ Coming in the next release
 --------------------------
 
 (Fixes/changes that are in develop branch.)
+- Improved user key propagation speed to the backend.
 
 Release 0.32.0
 --------------
