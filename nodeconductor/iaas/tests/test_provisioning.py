@@ -847,8 +847,35 @@ class InstanceUsageTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
-        self.instance = factories.InstanceFactory()
+        self.instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
         self.url = factories.InstanceFactory.get_url(self.instance, action='usage')
+
+    def test_instance_does_not_have_backend_id(self):
+        self.client.force_authenticate(self.staff)
+
+        instance = factories.InstanceFactory(backend_id='')
+        url = factories.InstanceFactory.get_url(instance, action='usage')
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_instance_in_provisioning_scheduled_state(self):
+        self.client.force_authenticate(self.staff)
+
+        instance = factories.InstanceFactory(state=Instance.States.PROVISIONING_SCHEDULED)
+        url = factories.InstanceFactory.get_url(instance, action='usage')
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_instance_in_provisioning_state(self):
+        self.client.force_authenticate(self.staff)
+
+        instance = factories.InstanceFactory(state=Instance.States.PROVISIONING)
+        url = factories.InstanceFactory.get_url(instance, action='usage')
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_item_parameter_have_to_be_defined(self):
         self.client.force_authenticate(self.staff)
