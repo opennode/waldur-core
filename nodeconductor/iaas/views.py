@@ -7,6 +7,7 @@ import time
 
 
 from django.db import models as django_models
+from django.db.models import Sum
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 import django_filters
@@ -689,30 +690,36 @@ class ResourceStatsView(views.APIView):
         if not request.user.is_staff:
             raise exceptions.PermissionDenied()
 
-    def _get_quotas_stats(self, clouds):
-        quotas_list = models.ResourceQuota.objects.filter(
-            cloud_project_membership__cloud__in=clouds).values('vcpu', 'ram', 'storage')
-        return {
-            'vcpu_quota': sum([q['vcpu'] for q in quotas_list]),
-            'memory_quota': sum([q['ram'] for q in quotas_list]),
-            'storage_quota': sum([q['storage'] for q in quotas_list]),
-        }
-
     def get(self, request, format=None):
         self._check_user(request)
-        if not 'auth_url' in request.QUERY_PARAMS:
-            return Response('GET parameter "auth_url" have to be defined', status=status.HTTP_400_BAD_REQUEST)
-        auth_url = request.QUERY_PARAMS['auth_url']
 
-        try:
-            clouds = models.Cloud.objects.filter(auth_url=auth_url)
-            cloud_backend = clouds[0].get_backend()
-        except IndexError:
-            return Response('No clouds with auth url: %s' % auth_url, status=status.HTTP_400_BAD_REQUEST)
+        auth_url = request.QUERY_PARAMS.get('auth_url')
+        # TODO: auth_url should be coming as a reference to NodeConductor object. Consider introducing this concept.
+        if 'auth_url' is None:
+            return Response(
+                {'detail': 'GET parameter "auth_url" has to be defined'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        cloud = models.Cloud.objects.filter(auth_url=auth_url).first()
+
+        if cloud is None:
+            return Response(
+                {'detail': 'No clouds with auth url: %s' % auth_url},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        quota_stats = models.ResourceQuota.objects.filter(
+            cloud_project_membership__cloud__auth_url=auth_url,
+        ).aggregate(
+            vcpu_quota=Sum('vcpu'),
+            memory_quota=Sum('ram'),
+            storage_quota=Sum('storage'),
+        )
+
+        cloud_backend = cloud.get_backend()
         stats = cloud_backend.get_resource_stats(auth_url)
-        quotas_stats = self._get_quotas_stats(clouds)
-        stats.update(quotas_stats)
+        stats.update(quota_stats)
 
         return Response(sort_dict(stats), status=status.HTTP_200_OK)
 
