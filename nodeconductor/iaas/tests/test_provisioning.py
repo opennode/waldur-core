@@ -847,7 +847,7 @@ class InstanceUsageTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
-        self.instance = factories.InstanceFactory()
+        self.instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
         self.url = factories.InstanceFactory.get_url(self.instance, action='usage')
 
     def test_instance_does_not_have_backend_id(self):
