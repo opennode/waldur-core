@@ -105,7 +105,6 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
             'ram': sum([q.ram for q in quotas]),
             'storage': sum([q.storage for q in quotas]),
             'max_instances': sum([q.max_instances for q in quotas]),
-            'backup_storage': sum([q.backup_storage for q in quotas]),
         }
 
     def get_resource_quota_usage(self, obj):
@@ -117,7 +116,6 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
             'ram': sum([q.ram for q in quotas]),
             'storage': sum([q.storage for q in quotas]),
             'max_instances': sum([q.max_instances for q in quotas]),
-            'backup_storage': sum([q.backup_storage for q in quotas]),
         }
 
     # TODO: cleanup after migration to drf 3
