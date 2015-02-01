@@ -850,6 +850,15 @@ class InstanceUsageTest(test.APITransactionTestCase):
         self.instance = factories.InstanceFactory()
         self.url = factories.InstanceFactory.get_url(self.instance, action='usage')
 
+    def test_instance_does_not_have_backend_id(self):
+        self.client.force_authenticate(self.staff)
+
+        instance = factories.InstanceFactory(backend_id='')
+        url = factories.InstanceFactory.get_url(instance, action='usage')
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_item_parameter_have_to_be_defined(self):
         self.client.force_authenticate(self.staff)
 

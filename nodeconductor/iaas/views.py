@@ -356,6 +356,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def usage(self, request, uuid):
         instance = self.get_object()
 
+        if not instance.backend_id:
+            raise Http404()
+
         hour = 60 * 60
         data = {
             'start_timestamp': request.QUERY_PARAMS.get('from', int(time.time() - hour)),
