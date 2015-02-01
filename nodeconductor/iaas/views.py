@@ -356,7 +356,8 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def usage(self, request, uuid):
         instance = self.get_object()
 
-        if not instance.backend_id:
+        if not instance.backend_id or instance.state in (models.Instance.States.PROVISIONING_SCHEDULED,
+                                                         models.Instance.States.PROVISIONING):
             raise Http404()
 
         hour = 60 * 60

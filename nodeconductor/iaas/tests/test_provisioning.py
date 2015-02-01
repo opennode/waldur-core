@@ -859,6 +859,24 @@ class InstanceUsageTest(test.APITransactionTestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_instance_in_provisioning_scheduled_state(self):
+        self.client.force_authenticate(self.staff)
+
+        instance = factories.InstanceFactory(state=Instance.States.PROVISIONING_SCHEDULED)
+        url = factories.InstanceFactory.get_url(instance, action='usage')
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_instance_in_provisioning_state(self):
+        self.client.force_authenticate(self.staff)
+
+        instance = factories.InstanceFactory(state=Instance.States.PROVISIONING)
+        url = factories.InstanceFactory.get_url(instance, action='usage')
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_item_parameter_have_to_be_defined(self):
         self.client.force_authenticate(self.staff)
 
