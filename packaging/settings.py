@@ -344,14 +344,16 @@ STATIC_ROOT = config.get('global', 'static_root')
 #AUTH_LDAP_CACHE_GROUPS = True
 #AUTH_LDAP_GROUP_CACHE_TIMEOUT = 600
 
-# SAML2
+# SAML2 (legacy)
+# TODO-0.35+: Remove
 for key in ['metadata_cert', 'metadata_file', 'metadata_url']:
     if config.has_option('saml2', key) and config.get('saml2', key) != '' and config.get('saml2', 'idp_' + key) == '':
         warnings.warn(
            "Config option %s is deprectaed and will be removed in NodeConductor 0.23; use idp_%s instead" % (key, key),
-            PendingDeprecationWarning)  # TODO-0.25: PendingDeprecationWarning -> DeprecationWarning
+            DeprecationWarning)
         config.set('saml2', 'idp_' + key, config.get(key))
 
+# SAML2
 SAML_CONFIG = {
     # full path to the xmlsec1 binary program
     'xmlsec_binary': '/usr/bin/xmlsec1',
