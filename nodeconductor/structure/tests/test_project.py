@@ -153,7 +153,7 @@ class ProjectFilterTest(test.APITransactionTestCase):
         for ordering in [
             'name',
             'project_group_name',
-            'vcpu', 'storage', 'backup', 'max_instances', 'ram',
+            'vcpu', 'storage', 'max_instances', 'ram',
         ]:
             data = {'o': ordering}
             response = self.client.get(factories.ProjectFactory.get_list_url(), data)

@@ -283,7 +283,6 @@ class AbstractResourceQuotaFactory(factory.DjangoModelFactory):
     ram = factory.Iterator([1024, 2048, 4096])
     storage = factory.fuzzy.FuzzyFloat(10240, 51200)
     max_instances = factory.Iterator([1, 2, 3, 4])
-    backup_storage = factory.fuzzy.FuzzyFloat(10240, 51200)
 
 
 class ResourceQuotaFactory(AbstractResourceQuotaFactory):

@@ -5,6 +5,7 @@ Coming in the next release
 --------------------------
 
 (Fixes/changes that are in develop branch.)
+- Dropped backup quota. Rely on storage quota only.
 
 Release 0.33.0
 --------------

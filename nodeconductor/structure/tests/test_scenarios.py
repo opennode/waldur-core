@@ -36,7 +36,6 @@ class ResourceQuotasTest(test.APITransactionTestCase):
             'ram': self.quota.ram + self.quota2.ram,
             'storage': self.quota.storage + self.quota2.storage,
             'max_instances': self.quota.max_instances + self.quota2.max_instances,
-            'backup_storage': self.quota.backup_storage + self.quota2.backup_storage,
         }
         self.assertEqual(response.data['resource_quota'], expected_resource_quotas)
 
@@ -50,6 +49,5 @@ class ResourceQuotasTest(test.APITransactionTestCase):
             'ram': self.quota_usage.ram,
             'storage': self.quota_usage.storage,
             'max_instances': self.quota_usage.max_instances,
-            'backup_storage': self.quota_usage.backup_storage,
         }
         self.assertEqual(response.data['resource_quota_usage'], expected_resource_quotas_usages)

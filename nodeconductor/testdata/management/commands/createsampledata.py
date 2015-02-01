@@ -487,7 +487,6 @@ Arguments:
                                                       ram=random.randint(60, 255),
                                                       storage=random.randint(60, 255) * 1024,
                                                       max_instances=random.randint(60, 255),
-                                                      backup_storage=random.randint(60, 255) * 1024,
                                                       cloud_project_membership=membership)
         print 'Generating approximate quota consumption for membership %s' % membership
         ResourceQuotaUsage.objects.\
@@ -495,7 +494,6 @@ Arguments:
                    ram=resource_quota.ram - random.randint(0, 50),
                    storage=resource_quota.storage - random.randint(0, 50),
                    max_instances=resource_quota.max_instances - random.randint(0, 50),
-                   backup_storage=resource_quota.backup_storage - random.randint(0, 50),
                    cloud_project_membership=membership)
 
     def create_user(self):

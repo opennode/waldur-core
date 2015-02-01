@@ -136,10 +136,6 @@ class ProjectFilter(django_filters.FilterSet):
         name='cloudprojectmembership__resource_quota__max_instances',
     )
 
-    backup = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__backup_storage',
-    )
-
     class Meta(object):
         model = models.Project
         fields = [
@@ -153,7 +149,6 @@ class ProjectFilter(django_filters.FilterSet):
             'ram',
             'storage',
             'max_instances',
-            'backup',
         ]
         order_by = [
             'name',
@@ -174,8 +169,6 @@ class ProjectFilter(django_filters.FilterSet):
             '-cloudprojectmembership__resource_quota__storage',
             'cloudprojectmembership__resource_quota__max_instances',
             '-cloudprojectmembership__resource_quota__max_instances',
-            'cloudprojectmembership__resource_quota__backup_storage',
-            '-cloudprojectmembership__resource_quota__backup_storage',
         ]
 
         order_by_mapping = {
@@ -185,7 +178,6 @@ class ProjectFilter(django_filters.FilterSet):
             'ram': 'cloudprojectmembership__resource_quota__ram',
             'max_instances': 'cloudprojectmembership__resource_quota__max_instances',
             'storage': 'cloudprojectmembership__resource_quota__storage',
-            'backup': 'cloudprojectmembership__resource_quota__backup_storage',
             'customer_name': 'customer__name',
             'customer_abbreviation': 'customer__abbreviation',
             'customer_native_name': 'customer__native_name',
@@ -195,7 +187,6 @@ class ProjectFilter(django_filters.FilterSet):
             'resource_quota__vcpu': 'cloudprojectmembership__resource_quota__vcpu',
             'resource_quota__ram': 'cloudprojectmembership__resource_quota__ram',
             'resource_quota__storage': 'cloudprojectmembership__resource_quota__storage',
-            'resource_quota__backup_storage': 'cloudprojectmembership__resource_quota__backup_storage',
         }
 
 

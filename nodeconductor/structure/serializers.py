@@ -76,8 +76,6 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
                         core_serializers.RelatedResourcesFieldMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
-    resource_quota = serializers.SerializerMethodField('get_resource_quota')
-    resource_quota_usage = serializers.SerializerMethodField('get_resource_quota_usage')
     customer_native_name = serializers.Field(source='customer.native_name')
     customer_abbreviation = serializers.Field(source='customer.abbreviation')
 
@@ -88,37 +86,12 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
             'name',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups',
-            'resource_quota', 'resource_quota_usage',
             'description',
         )
         lookup_field = 'uuid'
 
     def get_related_paths(self):
         return 'customer',
-
-    def get_resource_quota(self, obj):
-        # XXX: this method adds dependencies from 'iaas' application. It has to be removed or refactored.
-        from nodeconductor.iaas import models as iaas_models
-        quotas = list(iaas_models.ResourceQuota.objects.filter(cloud_project_membership__project=obj))
-        return {
-            'vcpu': sum([q.vcpu for q in quotas]),
-            'ram': sum([q.ram for q in quotas]),
-            'storage': sum([q.storage for q in quotas]),
-            'max_instances': sum([q.max_instances for q in quotas]),
-            'backup_storage': sum([q.backup_storage for q in quotas]),
-        }
-
-    def get_resource_quota_usage(self, obj):
-        # XXX: this method adds dependencies from 'iaas' application. It has to be removed or refactored.
-        from nodeconductor.iaas import models as iaas_models
-        quotas = list(iaas_models.ResourceQuotaUsage.objects.filter(cloud_project_membership__project=obj))
-        return {
-            'vcpu': sum([q.vcpu for q in quotas]),
-            'ram': sum([q.ram for q in quotas]),
-            'storage': sum([q.storage for q in quotas]),
-            'max_instances': sum([q.max_instances for q in quotas]),
-            'backup_storage': sum([q.backup_storage for q in quotas]),
-        }
 
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):
