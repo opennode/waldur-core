@@ -119,7 +119,7 @@ Example:
         "storage_quota": 0,
         "vcpu_quota": 0,
         "vcpus": 64,
-        "vcpus_used": 4,
+        "vcpus_used": 4
     }
 
 
@@ -189,5 +189,5 @@ Example result:
         'vcpu_usage': 1,
         'ram_usage': 4096,
         'storage_usage': 16000,
-        'max_instances_usage': 3,
+        'max_instances_usage': 3
     }
