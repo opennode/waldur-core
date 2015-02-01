@@ -25,6 +25,8 @@ ExecReload=/usr/bin/celery multi restart $CELERYD_NODES \
     --loglevel=${CELERYD_LOG_LEVEL} \
     --pidfile=/var/run/nodeconductor/celery/%%n.pid \
     $CELERYD_OPTS
+Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target

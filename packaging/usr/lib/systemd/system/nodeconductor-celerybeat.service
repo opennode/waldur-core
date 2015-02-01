@@ -19,6 +19,8 @@ ExecStart=/usr/bin/celery beat \
     --pidfile=/var/run/nodeconductor/celerybeat/beat.pid \
     --workdir=/var/lib/nodeconductor \
     $CELERYBEAT_OPTS
+Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
