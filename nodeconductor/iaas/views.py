@@ -166,6 +166,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
+    provisioning_restricted_actions = 'update', 'partial_update', 'destroy', 'stop', 'start', 'resize'
     filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = InstanceFilter
@@ -185,6 +186,16 @@ class InstanceViewSet(mixins.CreateModelMixin,
         context = super(InstanceViewSet, self).get_serializer_context()
         context['user'] = self.request.user
         return context
+
+    def initial(self, request, *args, **kwargs):
+        if hasattr(self, 'provisioning_restricted_actions'):
+            if self.action in self.provisioning_restricted_actions:
+                instance = self.get_object()
+                if instance and instance.state == instance.States.PROVISIONING_SCHEDULED:
+                    raise core_exceptions.IncorrectStateException(
+                        'Provisioning scheduled. Disabled modifications.')
+
+        return super(InstanceViewSet, self).initial(request, *args, **kwargs)
 
     def pre_save(self, obj):
         super(InstanceViewSet, self).pre_save(obj)
