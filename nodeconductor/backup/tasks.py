@@ -23,6 +23,8 @@ def process_backup_task(backup_uuid):
                 backup.confirm_backup()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to perform backup for backup source: %s', backup.backup_source)
+                event_logger.exception('Failed to perform backup for %s', backup.backup_source,
+                                       extra={'event_type': 'iaas_backup_start_failed'})
                 backup.erred()
             else:
                 logger.info('Successfully performed backup for backup source: %s', backup.backup_source)
@@ -44,6 +46,8 @@ def restoration_task(backup_uuid, instance_uuid, user_raw_input):
                 backup.confirm_restoration()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to restore backup for backup source: %s', backup.backup_source)
+                event_logger.info('Failed to restore backup for %s', backup.backup_source,
+                                  extra={'event_type': 'iaas_backup_restore_failed'})
                 backup.erred()
             else:
                 logger.info('Successfully restored backup for backup source: %s', backup.backup_source)
@@ -68,6 +72,8 @@ def deletion_task(backup_uuid):
                 backup.confirm_deletion()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to delete backup for backup source: %s', backup.backup_source)
+                event_logger.info('Failed to delete backup for %s', backup.backup_source,
+                                  extra={'event_type': 'iaas_backup_delete_failed'})
                 backup.erred()
             else:
                 logger.info('Successfully deleted backup for backup source: %s', backup.backup_source)
@@ -90,4 +96,6 @@ def execute_schedules():
 @shared_task
 def delete_expired_backups():
     for backup in models.Backup.objects.filter(kept_until__lt=timezone.now(), state=models.Backup.States.READY):
+        event_logger.info('About to delete expired backup for %s', backup.backup_source,
+                          extra={'event_type': 'iaas_expired_backup_deleted'})
         backup.start_deletion()
