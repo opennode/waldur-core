@@ -406,8 +406,6 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
 
             self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-            # ??? any sense in this?
-            # self.assertDictContainsSubset({'detail': 'Instance must be offline'}, response.data)
 
             reread_instance = Instance.objects.get(pk=instance.pk)
             self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
