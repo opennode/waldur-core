@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import logging
+
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -13,8 +15,12 @@ from rest_framework.exceptions import PermissionDenied
 from nodeconductor.backup.models import Backup
 
 from nodeconductor.core import viewsets
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.backup import models, serializers, utils
 from nodeconductor.structure import filters as structure_filters
+
+logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 
 class BackupPermissionFilter():
@@ -84,6 +90,8 @@ class BackupViewSet(viewsets.CreateModelViewSet):
         Starts backup process if backup was created successfully
         """
         if created:
+            event_logger.info('Manual backup was started for %s' % backup.backup_source,
+                              extra={'event_type': 'iaas_backup_started_manually'})
             backup.start_backup()
 
     def _get_backup(self, user, uuid):
