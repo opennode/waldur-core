@@ -37,13 +37,13 @@ class CloudPermissionTest(test.APITransactionTestCase):
 
         self.clouds = {
             'owned': factories.CloudFactory(
-                state=SynchronizationStates.ERRED, customer=self.customers['owned']),
+                state=SynchronizationStates.IN_SYNC, customer=self.customers['owned']),
             'admined': factories.CloudFactory(
-                state=SynchronizationStates.ERRED, customer=self.customers['has_admined_project']),
+                state=SynchronizationStates.IN_SYNC, customer=self.customers['has_admined_project']),
             'managed': factories.CloudFactory(
-                state=SynchronizationStates.ERRED, customer=self.customers['has_managed_project']),
+                state=SynchronizationStates.IN_SYNC, customer=self.customers['has_managed_project']),
             'managed_by_group_manager': factories.CloudFactory(
-                state=SynchronizationStates.ERRED, customer=self.customers['has_managed_by_group_manager']),
+                state=SynchronizationStates.IN_SYNC, customer=self.customers['has_managed_by_group_manager']),
             'not_in_project': factories.CloudFactory(),
         }
 

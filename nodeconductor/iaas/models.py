@@ -315,7 +315,7 @@ class Instance(core_models.UuidMixin,
         # Stable instances are the ones for which
         # no tasks are scheduled or are in progress
 
-        STABLE_STATES = set([ONLINE, OFFLINE, ERRED])
+        STABLE_STATES = set([ONLINE, OFFLINE])
         UNSTABLE_STATES = set([
             s for (s, _) in CHOICES
             if s not in STABLE_STATES

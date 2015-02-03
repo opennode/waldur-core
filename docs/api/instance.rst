@@ -87,7 +87,7 @@ In a DB, state is stored encoded with a symbol. States are:
 - RESTARTING = 16
 
 Any modification of an instance in unstable or PROVISIONING_SCHEDULED state is prohibited
-and will fail with 409 response code. Assuming stable states are: ONLINE, OFFLINE, ERRED
+and will fail with 409 response code. Assuming stable states are ONLINE and OFFLINE.
 
 A graph of possible state transitions is shown below.
 

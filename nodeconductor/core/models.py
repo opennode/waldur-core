@@ -185,7 +185,7 @@ class SynchronizationStates(object):
         (ERRED, _('Erred')),
     )
 
-    STABLE_STATES = {IN_SYNC, ERRED}
+    STABLE_STATES = {IN_SYNC}
     UNSTABLE_STATES = set(dict(CHOICES).keys()) - STABLE_STATES
 
 

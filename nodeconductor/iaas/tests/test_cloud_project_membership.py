@@ -145,7 +145,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         project = self.connected_project
         cloud = self.cloud
         membership = factories.CloudProjectMembershipFactory(
-            state=SynchronizationStates.ERRED, project=project, cloud=cloud)
+            state=SynchronizationStates.IN_SYNC, project=project, cloud=cloud)
 
         url = factories.CloudProjectMembershipFactory.get_url(membership)
         response = self.client.delete(url)
