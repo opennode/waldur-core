@@ -90,8 +90,6 @@ class BackupViewSet(viewsets.CreateModelViewSet):
         Starts backup process if backup was created successfully
         """
         if created:
-            event_logger.info('Manual backup was started for %s' % backup.backup_source,
-                              extra={'event_type': 'iaas_backup_started_manually'})
             backup.start_backup()
 
     def _get_backup(self, user, uuid):
