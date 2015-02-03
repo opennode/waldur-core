@@ -359,6 +359,30 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(reread_instance.system_volume_size, inaccessible_instance.system_volume_size,
                          'Instance system_volume_size not have changed')
 
+    def test_user_cannot_modify_instance_in_provisioning_scheduled_state(self):
+        self.client.force_authenticate(user=self.user)
+
+        instance = factories.InstanceFactory(state=Instance.States.PROVISIONING_SCHEDULED)
+        project = instance.cloud_project_membership.project
+        factories.ResourceQuotaFactory(
+            cloud_project_membership=instance.cloud_project_membership, storage=10 * 1024 * 1024)
+        project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        url = self._get_instance_url(instance)
+
+        for action in 'stop', 'start', 'resize':
+            response = self.client.post('%s%s/' % (url, action), {})
+            self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+        response = self.client.put(url, {})
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+        response = self.client.patch(url, {})
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
     def test_user_cannot_change_flavor_of_non_offline_instance(self):
         self.client.force_authenticate(user=self.user)
 
@@ -382,7 +406,6 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
 
             self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-            self.assertDictContainsSubset({'detail': 'Instance must be offline'}, response.data)
 
             reread_instance = Instance.objects.get(pk=instance.pk)
             self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
