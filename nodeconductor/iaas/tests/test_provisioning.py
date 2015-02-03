@@ -383,6 +383,23 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
+    def test_user_cannot_modify_in_unstable_state(self):
+        self.client.force_authenticate(user=self.user)
+
+        for state in Instance.States.UNSTABLE_STATES:
+            instance = factories.InstanceFactory(state=state)
+            project = instance.cloud_project_membership.project
+            factories.ResourceQuotaFactory(
+                cloud_project_membership=instance.cloud_project_membership, storage=10 * 1024 * 1024)
+            project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+            url = self._get_instance_url(instance)
+
+            for method in ('PUT', 'PATCH', 'DELETE'):
+                func = getattr(self.client, method.lower())
+                response = func(url)
+                self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
     def test_user_cannot_change_flavor_of_non_offline_instance(self):
         self.client.force_authenticate(user=self.user)
 

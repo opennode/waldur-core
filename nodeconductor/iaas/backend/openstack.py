@@ -399,8 +399,12 @@ class OpenStackBackend(object):
         backend_instances = dict(((f.id, f) for f in backend_instances))
 
         with transaction.atomic():
+            states = (
+                models.Instance.States.ONLINE,
+                models.Instance.States.OFFLINE,
+                models.Instance.States.ERRED)
             nc_instances = models.Instance.objects.filter(
-                state__in=models.Instance.States.STABLE_STATES,
+                state__in=states,
                 cloud_project_membership=membership,
             )
             nc_instances = dict(((i.backend_id, i) for i in nc_instances))
