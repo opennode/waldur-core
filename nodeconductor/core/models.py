@@ -185,6 +185,9 @@ class SynchronizationStates(object):
         (ERRED, _('Erred')),
     )
 
+    STABLE_STATES = {IN_SYNC, ERRED}
+    UNSTABLE_STATES = set(dict(CHOICES).keys()) - STABLE_STATES
+
 
 class SynchronizableMixin(models.Model):
     class Meta(object):

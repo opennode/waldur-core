@@ -5,6 +5,7 @@ from rest_framework import test
 
 from nodeconductor.iaas.models import Cloud
 from nodeconductor.iaas.tests import factories
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -35,11 +36,14 @@ class CloudPermissionTest(test.APITransactionTestCase):
         }
 
         self.clouds = {
-            'owned': factories.CloudFactory(customer=self.customers['owned']),
-            'admined': factories.CloudFactory(customer=self.customers['has_admined_project']),
-            'managed': factories.CloudFactory(customer=self.customers['has_managed_project']),
+            'owned': factories.CloudFactory(
+                state=SynchronizationStates.ERRED, customer=self.customers['owned']),
+            'admined': factories.CloudFactory(
+                state=SynchronizationStates.ERRED, customer=self.customers['has_admined_project']),
+            'managed': factories.CloudFactory(
+                state=SynchronizationStates.ERRED, customer=self.customers['has_managed_project']),
             'managed_by_group_manager': factories.CloudFactory(
-                customer=self.customers['has_managed_by_group_manager']),
+                state=SynchronizationStates.ERRED, customer=self.customers['has_managed_by_group_manager']),
             'not_in_project': factories.CloudFactory(),
         }
 
@@ -288,6 +292,18 @@ class CloudPermissionTest(test.APITransactionTestCase):
         new_cloud = factories.CloudFactory.build(customer=self.customers['owned'])
         response = self.client.post(factories.CloudFactory.get_list_url(), self._get_valid_payload(new_cloud))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_user_cannot_modify_in_unstable_state(self):
+        self.client.force_authenticate(user=self.users['customer_owner'])
+
+        for state in SynchronizationStates.UNSTABLE_STATES:
+            cloud = factories.CloudFactory(state=state, customer=self.customers['owned'])
+            url = factories.CloudFactory.get_url(cloud)
+
+            for method in ('PUT', 'PATCH', 'DELETE'):
+                func = getattr(self.client, method.lower())
+                response = func(url)
+                self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     def _get_valid_payload(self, resource):
         return {

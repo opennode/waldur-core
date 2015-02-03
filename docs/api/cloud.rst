@@ -71,6 +71,8 @@ For example,
 
 To remove a link, issue DELETE to url of the corresponding connection as stuff user or customer owner.
 
+Any modification of a cloud in unstable state is prohibited and will fail with 409 response code.
+
 Project-cloud connection list
 -----------------------------
 To get a list of connections between project and a cloud, run GET against **/api/project-cloud-memberships/**

@@ -158,6 +158,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       core_mixins.ListModelMixin,
                       core_mixins.UpdateOnlyModelMixin,
+                      core_mixins.UpdateOnlyStableMixin,
                       viewsets.GenericViewSet):
     """List of VM instances that are accessible by this user.
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#vm-instance-management
@@ -863,7 +864,7 @@ class CloudFilter(django_filters.FilterSet):
         ]
 
 
-class CloudViewSet(core_viewsets.ModelViewSet):
+class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#cloud-model
@@ -902,6 +903,7 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
                                     core_mixins.ListModelMixin,
+                                    core_mixins.UpdateOnlyStableMixin,
                                     viewsets.GenericViewSet):
     """
     List of project-cloud connections
