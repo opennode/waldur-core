@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
 from nodeconductor.core import serializers as core_serializers, utils as core_utils
+from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.structure import models, filters
 from nodeconductor.structure.filters import filter_queryset_for_user
 
@@ -310,20 +311,6 @@ class ProjectGroupRoleField(serializers.ChoiceField):
             raise ValidationError('Unknown role')
 
 
-class CustomerRoleField(serializers.ChoiceField):
-
-    def field_to_native(self, obj, field_name):
-        if obj is not None:
-            return models.CustomerRole.ROLE_TO_NAME[obj.group.customerrole.role_type]
-
-    def field_from_native(self, data, files, field_name, into):
-        role = data.get('role')
-        if role in models.CustomerRole.NAME_TO_ROLE:
-            into[field_name] = models.CustomerRole.NAME_TO_ROLE[role]
-        else:
-            raise ValidationError('Unknown role')
-
-
 # TODO: refactor to abstract class, subclass by CustomerPermissions and ProjectPermissions
 class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
                                    serializers.HyperlinkedModelSerializer):
@@ -346,7 +333,11 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
     user_native_name = serializers.ReadOnlyField(source='user.native_name')
     user_username = serializers.ReadOnlyField(source='user.username')
 
-    role = CustomerRoleField(choices=models.CustomerRole.TYPE_CHOICES)
+    role = MappedChoiceField(
+        source='group.customerrole.role_type',
+        choices=models.CustomerRole.TYPE_CHOICES,
+        choice_mappings={models.CustomerRole.OWNER: 'owner'},
+    )
 
     class Meta(object):
         model = User.groups.through
@@ -356,12 +347,6 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
             'user', 'user_full_name', 'user_native_name', 'user_username',
         )
         view_name = 'customer_permission-detail'
-
-    def restore_object(self, attrs, instance=None):
-        customer = attrs['group.customerrole.customer']
-        group = customer.roles.get(role_type=attrs['role']).permission_group
-        UserGroup = User.groups.through
-        return UserGroup(user=attrs['user'], group=group)
 
     def get_filtered_field_names(self):
         return 'customer',

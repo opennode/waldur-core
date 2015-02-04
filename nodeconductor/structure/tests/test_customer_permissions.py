@@ -33,7 +33,6 @@ class CustomerPermissionViewSetTest(unittest.TestCase):
         serializer.object = self.user_group
 
         self.view_set.request = self.request
-        self.view_set.can_save = Mock(return_value=True)
         self.view_set.get_serializer = Mock(return_value=serializer)
         self.view_set.create(self.request)
 
@@ -138,7 +137,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
         response = self.client.post(reverse('customer_permission-list'), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         response = self.client.post(reverse('customer_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
+        self.assertEqual(response.status_code, status.HTTP_303_SEE_OTHER)
 
     def test_user_cannot_assign_roles_within_customers_he_doesnt_owns(self):
         self.client.force_authenticate(user=self.users['no_role'])
