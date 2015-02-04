@@ -455,7 +455,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
             connected_customers = list(connected_customers_query.all())
 
-            queryset = queryset.filter(
+            queryset = queryset.filter(is_staff=False).filter(
                 # customer owners
                 Q(
                     groups__customerrole__customer__in=connected_customers,
