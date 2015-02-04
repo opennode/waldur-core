@@ -26,7 +26,7 @@ def process_backup_task(backup_uuid):
                 if schedule:
                     event_logger.info(
                         'Backup schedule deactivated for backup source: %s', backup.backup_source,
-                        extra={'backup': last_backup, 'event_type': 'iaas_backup_schedule_deactivated'}
+                        extra={'backup': backup, 'event_type': 'iaas_backup_schedule_deactivated'}
                     )
                     schedule.is_active = False
                     schedule.save(update_fields=['is_active'])
