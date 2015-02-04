@@ -494,12 +494,12 @@ class UserViewSet(viewsets.ModelViewSet):
     def password(self, request, uuid=None):
         user = self.get_object()
 
-        password_data = request.DATA
-        serializer = serializers.PasswordSerializer(data=password_data)
+        serializer = serializers.PasswordSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user.set_password(password_data['password'])
+        new_password = serializer.validated_data['password']
+        user.set_password(new_password)
         user.save()
 
         return Response({'detail': "Password has been successfully updated"},
