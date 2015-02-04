@@ -55,7 +55,7 @@ class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
 
 class ProjectGroupProjectMembershipSerializer(serializers.ModelSerializer):
 
-    name = serializers.Field(source='projectgroup.name')
+    name = serializers.ReadOnlyField(source='projectgroup.name')
     url = serializers.HyperlinkedRelatedField(
         source='projectgroup',
         lookup_field='uuid',
@@ -83,8 +83,8 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
     resource_quota = serializers.SerializerMethodField('get_resource_quota')
     resource_quota_usage = serializers.SerializerMethodField('get_resource_quota_usage')
-    customer_native_name = serializers.Field(source='customer.native_name')
-    customer_abbreviation = serializers.Field(source='customer.abbreviation')
+    customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
+    customer_abbreviation = serializers.ReadOnlyField(source='customer.abbreviation')
 
     class Meta(object):
         model = models.Project
@@ -213,8 +213,8 @@ class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
                              core_serializers.RelatedResourcesFieldMixin,
                              serializers.HyperlinkedModelSerializer):
     projects = BasicProjectSerializer(many=True, read_only=True)
-    customer_native_name = serializers.Field(source='customer.native_name')
-    customer_abbreviation = serializers.Field(source='customer.abbreviation')
+    customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
+    customer_abbreviation = serializers.ReadOnlyField(source='customer.abbreviation')
 
     class Meta(object):
         model = models.ProjectGroup
@@ -261,13 +261,13 @@ class ProjectGroupMembershipSerializer(core_serializers.PermissionFieldFiltering
         lookup_field='uuid',
         queryset=models.ProjectGroup.objects.all(),
     )
-    project_group_name = serializers.Field(source='projectgroup.name')
+    project_group_name = serializers.ReadOnlyField(source='projectgroup.name')
     project = serializers.HyperlinkedRelatedField(
         view_name='project-detail',
         lookup_field='uuid',
         queryset=models.Project.objects.all(),
     )
-    project_name = serializers.Field(source='project.name')
+    project_name = serializers.ReadOnlyField(source='project.name')
 
     class Meta(object):
         model = models.ProjectGroup.projects.through
@@ -333,18 +333,18 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
         lookup_field='uuid',
         queryset=models.Customer.objects.all(),
     )
-    customer_abbreviation = serializers.Field(source='group.customerrole.customer.abbreviation')
-    customer_name = serializers.Field(source='group.customerrole.customer.name')
-    customer_native_name = serializers.Field(source='group.customerrole.customer.native_name')
+    customer_abbreviation = serializers.ReadOnlyField(source='group.customerrole.customer.abbreviation')
+    customer_name = serializers.ReadOnlyField(source='group.customerrole.customer.name')
+    customer_native_name = serializers.ReadOnlyField(source='group.customerrole.customer.native_name')
 
     user = serializers.HyperlinkedRelatedField(
         view_name='user-detail',
         lookup_field='uuid',
         queryset=User.objects.all(),
     )
-    user_full_name = serializers.Field(source='user.full_name')
-    user_native_name = serializers.Field(source='user.native_name')
-    user_username = serializers.Field(source='user.username')
+    user_full_name = serializers.ReadOnlyField(source='user.full_name')
+    user_native_name = serializers.ReadOnlyField(source='user.native_name')
+    user_username = serializers.ReadOnlyField(source='user.username')
 
     role = CustomerRoleField(choices=models.CustomerRole.TYPE_CHOICES)
 
@@ -375,16 +375,16 @@ class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin
         lookup_field='uuid',
         queryset=models.Project.objects.all(),
     )
+    project_name = serializers.ReadOnlyField(source='group.projectrole.project.name')
+
     user = serializers.HyperlinkedRelatedField(
         view_name='user-detail',
         lookup_field='uuid',
         queryset=User.objects.all(),
     )
-
-    project_name = serializers.Field(source='group.projectrole.project.name')
-    user_full_name = serializers.Field(source='user.full_name')
-    user_native_name = serializers.Field(source='user.native_name')
-    user_username = serializers.Field(source='user.username')
+    user_full_name = serializers.ReadOnlyField(source='user.full_name')
+    user_native_name = serializers.ReadOnlyField(source='user.native_name')
+    user_username = serializers.ReadOnlyField(source='user.username')
 
     role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
 
@@ -416,16 +416,16 @@ class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFiltering
         lookup_field='uuid',
         queryset=models.ProjectGroup.objects.all(),
     )
+    project_group_name = serializers.ReadOnlyField(source='group.projectgrouprole.project_group.name')
+
     user = serializers.HyperlinkedRelatedField(
         view_name='user-detail',
         lookup_field='uuid',
         queryset=User.objects.all(),
     )
-
-    project_group_name = serializers.Field(source='group.projectgrouprole.project_group.name')
-    user_full_name = serializers.Field(source='user.full_name')
-    user_native_name = serializers.Field(source='user.native_name')
-    user_username = serializers.Field(source='user.username')
+    user_full_name = serializers.ReadOnlyField(source='user.full_name')
+    user_native_name = serializers.ReadOnlyField(source='user.native_name')
+    user_username = serializers.ReadOnlyField(source='user.username')
 
     role = ProjectGroupRoleField(choices=models.ProjectGroupRole.TYPE_CHOICES)
 
