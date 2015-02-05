@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import logging
 import warnings
 
 from django.core.exceptions import ValidationError
@@ -17,11 +16,6 @@ from rest_framework.templatetags.rest_framework import replace_query_param
 from nodeconductor.iaas.models import Instance
 from nodeconductor.core.models import SynchronizableMixin, SynchronizationStates
 from nodeconductor.core.exceptions import IncorrectStateException
-from nodeconductor.core.log import EventLoggerAdapter
-
-
-logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 class DestroyModelMixin(object):
@@ -186,97 +180,3 @@ class UpdateOnlyStableMixin(object):
                         raise IncorrectStateException(error_msg % instance.get_state_display())
 
         return super(UpdateOnlyStableMixin, self).initial(request, *args, **kwargs)
-
-
-class EventLoggerMixin(object):
-    """
-    Generic methods to log events.
-    """
-
-    entity_title = None
-    entity_field_name = None
-
-    def log_event(self, msg, *args, **kwargs):
-        level = 'info'
-        if 'log_level' in kwargs:
-            level = kwargs['log_level'].lower()
-            del kwargs['log_level']
-        if not hasattr(event_logger, level):
-            level = 'error'
-
-        return getattr(event_logger, level)(msg, *args, **kwargs)
-
-    def log_generic_event(self, entity, action, log_level='INFO'):
-        title = self.entity_title or entity.__class__.__name__
-        field = self.entity_field_name or title.lower()
-        self.log_event(
-            '{} has been {}: %s'.format(title, action), entity,
-            extra={field: entity, 'event_type': '%s_%s' % (field, action)},
-            log_level=log_level,
-        )
-
-
-class DjangoAdminEventLoggerMixin(EventLoggerMixin):
-    """
-    Extend django admin logger
-    """
-
-    def log_addition(self, request, object, *args, **kwargs):
-        self.log_generic_event(object, 'created')
-        return super(DjangoAdminEventLoggerMixin, self).log_addition(request, object, *args, **kwargs)
-
-    def log_change(self, request, object, *args, **kwargs):
-        self.log_generic_event(object, 'updated')
-        return super(DjangoAdminEventLoggerMixin, self).log_change(request, object, *args, **kwargs)
-
-    def log_deletion(self, request, object, *args, **kwargs):
-        self.log_generic_event(object, 'deleted')
-        return super(DjangoAdminEventLoggerMixin, self).log_deletion(request, object, *args, **kwargs)
-
-
-class CUDEventLoggerMixin(EventLoggerMixin):
-    """
-    Emit event logs for CUD operations
-    """
-
-    def perform_create(self, serializer):
-        instance = super(CUDEventLoggerMixin, self).perform_create(serializer)
-        self.log_generic_event(instance, 'created')
-
-    def perform_update(self, serializer):
-        instance = super(CUDEventLoggerMixin, self).perform_update(serializer)
-        self.log_generic_event(instance, 'updated')
-
-    def perform_destroy(self, instance):
-        self.log_generic_event(instance, 'deleted')
-        super(CUDEventLoggerMixin, self).perform_destroy(instance)
-
-
-# FIXME: get rid of it in favour of CUDEventLoggerMixin after migration to drf 3
-class CUDEventLoggerMixinDRF2(CUDEventLoggerMixin, EventLoggerMixin):
-    @staticmethod
-    def _is_drf2():
-        from rest_framework import VERSION
-
-        vtuple = lambda v: tuple(map(int, v.split(".")))
-        is_drf2 = vtuple(VERSION) < vtuple("3.0.0")
-        return is_drf2
-
-    def create(self, request, *args, **kwargs):
-        response = super(CUDEventLoggerMixinDRF2, self).create(request, *args, **kwargs)
-        if self._is_drf2():
-            if status.is_success(response.status_code):
-                self.log_generic_event(self.object, 'created')
-        return response
-
-    def update(self, request, *args, **kwargs):
-        response = super(CUDEventLoggerMixinDRF2, self).update(request, *args, **kwargs)
-        if self._is_drf2():
-            if status.is_success(response.status_code):
-                self.log_generic_event(self.object, 'updated')
-        return response
-
-    def destroy(self, request, *args, **kwargs):
-        if self._is_drf2():
-            self.log_generic_event(self.get_object(), 'deleted')
-        return super(CUDEventLoggerMixinDRF2, self).destroy(request, *args, **kwargs)
