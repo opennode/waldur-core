@@ -370,29 +370,44 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
             raise serializers.ValidationError("Either disk_size or flavor is required")
 
         membership = self.instance.cloud_project_membership
+        # TODO: consider abstracting the validation below and merging with the InstanceCreateSerializer one
+        # check quotas in advance
+        try:
+            resource_quota = models.ResourceQuota.objects.get(cloud_project_membership=membership)
+            storage_size = resource_quota.storage
+            vcpu_size = resource_quota.vcpu
+            ram_size = resource_quota.ram
+        except models.ResourceQuota.DoesNotExist:
+            raise serializers.ValidationError(
+                "Instance can not be added to cloud account membership, which does not have resource quotas yet.")
+
+        try:
+            resource_quota_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership)
+            storage_usage = resource_quota_usage.storage
+            vcpu_usage = resource_quota_usage.vcpu
+            ram_usage = resource_quota_usage.ram
+        except models.ResourceQuotaUsage.DoesNotExist:
+            storage_usage = 0
+            vcpu_usage = 0
+            ram_usage = 0
 
         # If disk size was changed - we need to check if it fits quotas
         if disk_size is not None:
-
-            try:
-                storage_size = models.ResourceQuota.objects.get(cloud_project_membership=membership).storage
-            except models.ResourceQuota.DoesNotExist:
-                raise serializers.ValidationError(
-                    "Can not resize instance, that belong to cloud account membership, "
-                    "which does not have resource quotas yet.")
-
-            try:
-                storage_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership).storage
-            except models.ResourceQuotaUsage.DoesNotExist:
-                storage_usage = 0
-
             old_size = self.instance.data_volume_size
             new_size = disk_size or flavor.disk
             if (new_size - old_size) > storage_size - storage_usage:
                 raise serializers.ValidationError(
                     "Requested instance additional size is over the quota: %s. Available quota: %s" %
                     (new_size - old_size, storage_size - storage_usage))
-
+        # Validate flavor modification
+        else:
+            # the resize can only happen for an offline VM, so once it boots it will start consuming these quotas
+            if flavor.cores > vcpu_size - vcpu_usage:
+                raise serializers.ValidationError(
+                    "Requested instance core number exceeds quota")
+            if flavor.ram > ram_size - ram_usage:
+                raise serializers.ValidationError(
+                    "Requested instance RAM size exceeds quota")
         return attrs
 
 

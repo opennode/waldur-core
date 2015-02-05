@@ -272,7 +272,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
                          'Instance should have been scheduled to resize')
 
-    def test_user_cannot_modify_instance_connected_to_failing_cloud_project_memebership(self):
+    def test_user_cannot_modify_instance_connected_to_failing_cloud_project_membership(self):
         self.client.force_authenticate(user=self.user)
         data = {
             'description': 'changed description1',
