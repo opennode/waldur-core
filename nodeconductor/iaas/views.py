@@ -25,6 +25,7 @@ from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.utils import sort_dict
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
@@ -34,6 +35,7 @@ from nodeconductor.structure.models import ProjectRole, Project, Customer, Proje
 
 
 logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 
 class InstanceFilter(django_filters.FilterSet):
@@ -475,6 +477,34 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
             return queryset
 
         return queryset.filter(user=user)
+
+    def create(self, *args, **kwargs):
+        response = super(SshKeyViewSet, self).create(*args, **kwargs)
+        if status.is_success(response.status_code):
+            event_logger.info(
+                'SSH key has been created %s', self.object,
+                extra={'ssh_key': self.object, 'event_type': 'ssh_key_created'}
+            )
+        return response
+
+    def update(self, *args, **kwargs):
+        response = super(SshKeyViewSet, self).update(*args, **kwargs)
+        if status.is_success(response.status_code):
+            event_logger.info(
+                'SSH key has been updated %s', self.object,
+                extra={'ssh_key': self.object, 'event_type': 'ssh_key_updated'}
+            )
+        return response
+
+    def destroy(self, *args, **kwargs):
+        instance = self.get_object()
+        response = super(SshKeyViewSet, self).destroy(*args, **kwargs)
+        if status.is_success(response.status_code):
+            event_logger.info(
+                'SSH key has been deleted %s', instance,
+                extra={'ssh_key': instance, 'event_type': 'ssh_key_deleted'}
+            )
+        return response
 
 
 class TemplateLicenseViewSet(core_viewsets.ModelViewSet):

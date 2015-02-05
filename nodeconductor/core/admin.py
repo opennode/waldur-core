@@ -1,9 +1,16 @@
+import logging
+
 from django import forms
 from django.contrib import admin
 from django.contrib.auth import admin as auth_admin, get_user_model
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core import models
+from nodeconductor.core.log import EventLoggerAdapter
+
+
+logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 
 class UserCreationForm(auth_admin.UserCreationForm):
@@ -55,6 +62,27 @@ class SshPublicKeyAdmin(admin.ModelAdmin):
     list_display = ('user', 'name', 'fingerprint')
     search_fields = ('user', 'name', 'fingerprint')
     readonly_fields = ('user', 'name', 'fingerprint', 'public_key')
+
+    def log_addition(self, request, object, *args, **kwargs):
+        event_logger.info(
+            'SSH key has been created %s', object,
+            extra={'ssh_key': object, 'event_type': 'ssh_key_created'}
+        )
+        return super(SshPublicKeyAdmin, self).log_addition(request, object, *args, **kwargs)
+
+    def log_change(self, request, object, *args, **kwargs):
+        event_logger.info(
+            'SSH key has been updated %s', object,
+            extra={'ssh_key': object, 'event_type': 'ssh_key_updated'}
+        )
+        return super(SshPublicKeyAdmin, self).log_change(request, object, *args, **kwargs)
+
+    def log_deletion(self, request, object, *args, **kwargs):
+        event_logger.info(
+            'SSH key has been deleted %s', object,
+            extra={'ssh_key': object, 'event_type': 'ssh_key_deleted'}
+        )
+        return super(SshPublicKeyAdmin, self).log_deletion(request, object, *args, **kwargs)
 
 
 admin.site.register(models.User, UserAdmin)
