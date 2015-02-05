@@ -379,7 +379,8 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
             ram_size = resource_quota.ram
         except models.ResourceQuota.DoesNotExist:
             raise serializers.ValidationError(
-                "Instance can not be added to cloud account membership, which does not have resource quotas yet.")
+                "Instance resize can not triggered for cloud account membership, "
+                "which does not have resource quotas yet.")
 
         try:
             resource_quota_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership)
