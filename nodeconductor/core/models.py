@@ -222,29 +222,41 @@ def create_auth_token(sender, instance=None, created=False, **kwargs):
         Token.objects.create(user=instance)
 
 
-@receiver(signals.pre_save, sender=User, dispatch_uid="log_user_update")
-def log_user_update(sender, instance, **kwargs):
+@receiver(signals.pre_save, sender=User, dispatch_uid="check_user_updated")
+def check_user_updated(sender, instance, **kwargs):
     if instance.id:
         obj = instance.__class__.objects.get(id=instance.id)
         setattr(instance, 'old_password', obj.password)
+        setattr(instance, 'old_is_active', obj.is_active)
 
 
 @receiver(signals.post_save, sender=User, dispatch_uid="log_user_save")
 def log_user_save(sender, instance, created=False, **kwargs):
-    pwd_changed = hasattr(instance, 'old_password') and instance.old_password != instance.password
-
     if created:
         event_logger.info(
             'User "%s" has been created', instance,
             extra={'affected_user': instance, 'event_type': 'user_created'})
-    elif pwd_changed:
-        event_logger.info(
-            'Password has been changed for user "%s"', instance,
-            extra={'affected_user': instance, 'event_type': 'user_password_updated'})
     else:
-        event_logger.info(
-            'User "%s" has been updated', instance,
-            extra={'affected_user': instance, 'event_type': 'user_updated'})
+        pwd_changed = hasattr(instance, 'old_password') and instance.old_password != instance.password
+        act_changed = hasattr(instance, 'old_is_active') and instance.old_is_active != instance.is_active
+        if pwd_changed or act_changed:
+            if pwd_changed:
+                event_logger.info(
+                    'Password has been changed for user "%s"', instance,
+                    extra={'affected_user': instance, 'event_type': 'user_password_updated'})
+            if act_changed:
+                if instance.is_active:
+                    event_logger.info(
+                        'User "%s" has been activated', instance,
+                        extra={'affected_user': instance, 'event_type': 'user_activated'})
+                else:
+                    event_logger.info(
+                        'User "%s" has been deactivated', instance,
+                        extra={'affected_user': instance, 'event_type': 'user_deactivated'})
+        else:
+            event_logger.info(
+                'User "%s" has been updated', instance,
+                extra={'affected_user': instance, 'event_type': 'user_updated'})
 
 
 @receiver(signals.post_delete, sender=User, dispatch_uid="log_user_delete")
