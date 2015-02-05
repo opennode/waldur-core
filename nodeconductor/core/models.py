@@ -228,3 +228,18 @@ def log_user_creation(sender, instance=None, created=False, **kwargs):
         event_logger.info(
             'User %s was created', instance,
             extra={'affected_user': instance, 'event_type': 'user_created'})
+
+
+@receiver(signals.post_save, sender=SshPublicKey, dispatch_uid="log_ssh_key_save")
+def log_ssh_key_save(sender, instance, created=False, **kwargs):
+    if created:
+        event_logger.info(
+            'SSH key "%s" has been created', instance,
+            extra={'ssh_key': instance, 'event_type': 'ssh_key_created'})
+
+
+@receiver(signals.post_delete, sender=SshPublicKey, dispatch_uid="log_ssh_key_delete")
+def log_ssh_key_delete(sender, instance, **kwargs):
+    event_logger.info(
+        'SSH key "%s" has been deleted', instance,
+        extra={'ssh_key': instance, 'event_type': 'ssh_key_deleted'})
