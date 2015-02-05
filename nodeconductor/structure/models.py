@@ -1,15 +1,24 @@
 from __future__ import unicode_literals
 
+import logging
+
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models
 from django.db import transaction
+from django.db.models import signals
+from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
 
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.models import UuidMixin, DescribableMixin
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
+
+
+logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 
 @python_2_unicode_compatible
@@ -297,3 +306,22 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
             queryset = queryset.filter(role_type=role_type)
 
         return queryset.exists()
+
+
+@receiver(signals.post_save, sender=ProjectGroup, dispatch_uid="log_project_group_save")
+def log_project_group_save(sender, instance, created=False, **kwargs):
+    if created:
+        event_logger.info(
+            'Project group "%s" has been created', instance,
+            extra={'project_group': instance, 'event_type': 'project_group_created'})
+    else:
+        event_logger.info(
+            'Project group "%s" has been updated', instance,
+            extra={'project_group': instance, 'event_type': 'project_group_updated'})
+
+
+@receiver(signals.post_delete, sender=ProjectGroup, dispatch_uid="log_project_group_delete")
+def log_project_group_delete(sender, instance, **kwargs):
+    event_logger.info(
+        'Project group "%s" has been deleted', instance,
+        extra={'project_group': instance, 'event_type': 'project_group_deleted'})
