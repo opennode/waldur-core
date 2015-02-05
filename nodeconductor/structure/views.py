@@ -410,7 +410,7 @@ class UserFilter(django_filters.FilterSet):
         ]
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(mixins.CUDEventLoggerMixinDRF2, viewsets.ModelViewSet):
     """
     List of NodeConductor users.
 

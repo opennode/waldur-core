@@ -4,6 +4,7 @@ from django.contrib.auth import admin as auth_admin, get_user_model
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core import models
+from nodeconductor.core import mixins
 
 
 class UserCreationForm(auth_admin.UserCreationForm):
@@ -37,7 +38,7 @@ class UserChangeForm(auth_admin.UserChangeForm):
         return self.cleaned_data['civil_number'].strip() or None
 
 
-class UserAdmin(auth_admin.UserAdmin):
+class UserAdmin(mixins.DjangoAdminEventLoggerMixin, auth_admin.UserAdmin):
     list_display = ('username', 'uuid', 'email', 'full_name', 'native_name', 'is_staff')
     search_fields = ('username', 'uuid', 'full_name', 'native_name', 'email')
     list_filter = ('is_staff', 'is_superuser', 'is_active')
