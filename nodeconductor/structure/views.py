@@ -508,11 +508,13 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def destroy(self, *args, **kwargs):
         instance = self.get_object()
-        event_logger.info(
-            'User has been deleted %s', instance,
-            extra={'user': instance, 'event_type': 'user_deleted'}
-        )
-        return super(UserViewSet, self).destroy(*args, **kwargs)
+        response = super(UserViewSet, self).destroy(*args, **kwargs)
+        if status.is_success(response.status_code):
+            event_logger.info(
+                'User has been deleted %s', instance,
+                extra={'user': instance, 'event_type': 'user_deleted'}
+            )
+        return response
 
     @action()
     def password(self, request, uuid=None):
