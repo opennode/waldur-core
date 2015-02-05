@@ -42,7 +42,11 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         admined_project = self.admined_instance.cloud_project_membership.project
         factories.ResourceQuotaFactory(
-            cloud_project_membership=self.admined_instance.cloud_project_membership, storage=10 * 1024 * 1024)
+            cloud_project_membership=self.admined_instance.cloud_project_membership,
+            storage=10 * 1024 * 1024,
+            vcpu=10,
+            ram=20 * 1024,
+        )
         admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         project = self.managed_instance.cloud_project_membership.project
@@ -263,7 +267,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         response = self.client.post(self._get_instance_url(self.admined_instance) + 'resize/', data)
 
-        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED, response.data)
 
         reread_instance = Instance.objects.get(pk=self.admined_instance.pk)
 
@@ -271,6 +275,28 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
                          'Instance system_volume_size should not have changed')
         self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
                          'Instance should have been scheduled to resize')
+
+    def test_user_cannot_change_flavor_of_stopped_instance_he_is_administrator_of_if_quota_would_be_exceeded(self):
+        self.client.force_authenticate(user=self.user)
+
+        # check for ram
+        big_ram_flavor = factories.FlavorFactory(
+            cloud=self.admined_instance.cloud_project_membership.cloud,
+            ram=30 * 1024,
+        )
+        data = {'flavor': self._get_flavor_url(big_ram_flavor)}
+        response = self.client.post(self._get_instance_url(self.admined_instance) + 'resize/', data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.data)
+
+        # check for vcpu
+        many_core_flavor = factories.FlavorFactory(
+            cloud=self.admined_instance.cloud_project_membership.cloud,
+            cores=11,
+        )
+        data = {'flavor': self._get_flavor_url(many_core_flavor)}
+        response = self.client.post(self._get_instance_url(self.admined_instance) + 'resize/', data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.data)
+
 
     def test_user_cannot_modify_instance_connected_to_failing_cloud_project_membership(self):
         self.client.force_authenticate(user=self.user)
