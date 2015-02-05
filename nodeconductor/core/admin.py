@@ -1,16 +1,9 @@
-import logging
-
 from django import forms
 from django.contrib import admin
 from django.contrib.auth import admin as auth_admin, get_user_model
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core import models
-from nodeconductor.core.log import EventLoggerAdapter
-
-
-logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 class UserCreationForm(auth_admin.UserCreationForm):
@@ -56,27 +49,6 @@ class UserAdmin(auth_admin.UserAdmin):
     )
     form = UserChangeForm
     add_form = UserCreationForm
-
-    def log_addition(self, request, object, *args, **kwargs):
-        event_logger.info(
-            'User has been created %s', object,
-            extra={'user': object, 'event_type': 'user_created'}
-        )
-        return super(UserAdmin, self).log_addition(request, object, *args, **kwargs)
-
-    def log_change(self, request, object, *args, **kwargs):
-        event_logger.info(
-            'User has been updated %s', object,
-            extra={'user': object, 'event_type': 'user_updated'}
-        )
-        return super(UserAdmin, self).log_change(request, object, *args, **kwargs)
-
-    def log_deletion(self, request, object, *args, **kwargs):
-        event_logger.info(
-            'User has been deleted %s', object,
-            extra={'user': object, 'event_type': 'user_deleted'}
-        )
-        return super(UserAdmin, self).log_deletion(request, object, *args, **kwargs)
 
 
 class SshPublicKeyAdmin(admin.ModelAdmin):

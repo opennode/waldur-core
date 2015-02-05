@@ -222,9 +222,33 @@ def create_auth_token(sender, instance=None, created=False, **kwargs):
         Token.objects.create(user=instance)
 
 
-@receiver(signals.post_save, sender=User)
-def log_user_creation(sender, instance=None, created=False, **kwargs):
+@receiver(signals.pre_save, sender=User, dispatch_uid="log_user_update")
+def log_user_update(sender, instance, **kwargs):
+    if instance.id:
+        obj = instance.__class__.objects.get(id=instance.id)
+        setattr(instance, 'old_password', obj.password)
+
+
+@receiver(signals.post_save, sender=User, dispatch_uid="log_user_save")
+def log_user_save(sender, instance, created=False, **kwargs):
+    pwd_changed = hasattr(instance, 'old_password') and instance.old_password != instance.password
+
     if created:
         event_logger.info(
-            'User %s was created', instance,
+            'User "%s" has been created', instance,
             extra={'affected_user': instance, 'event_type': 'user_created'})
+    elif pwd_changed:
+        event_logger.info(
+            'Password has been changed for user "%s"', instance,
+            extra={'affected_user': instance, 'event_type': 'user_password_updated'})
+    else:
+        event_logger.info(
+            'User "%s" has been updated', instance,
+            extra={'affected_user': instance, 'event_type': 'user_updated'})
+
+
+@receiver(signals.post_delete, sender=User, dispatch_uid="log_user_delete")
+def log_user_delete(sender, instance, **kwargs):
+    event_logger.info(
+        'User "%s" has been deleted', instance,
+        extra={'affected_user': instance, 'event_type': 'user_deleted'})

@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import time
-import logging
 
 from django.contrib import auth
 from django.db.models.query_utils import Q
@@ -22,7 +21,6 @@ from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins
 from nodeconductor.core import permissions
 from nodeconductor.core import viewsets
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.structure import filters
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
@@ -30,8 +28,6 @@ from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGro
 
 
 User = auth.get_user_model()
-logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 class CustomerFilter(django_filters.FilterSet):
@@ -487,34 +483,6 @@ class UserViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_staff=False)
 
         return queryset
-
-    def create(self, *args, **kwargs):
-        response = super(UserViewSet, self).create(*args, **kwargs)
-        if status.is_success(response.status_code):
-            event_logger.info(
-                'User has been created %s', self.object,
-                extra={'user': self.object, 'event_type': 'user_created'}
-            )
-        return response
-
-    def update(self, *args, **kwargs):
-        response = super(UserViewSet, self).update(*args, **kwargs)
-        if status.is_success(response.status_code):
-            event_logger.info(
-                'User has been updated %s', self.object,
-                extra={'user': self.object, 'event_type': 'user_updated'}
-            )
-        return response
-
-    def destroy(self, *args, **kwargs):
-        instance = self.get_object()
-        response = super(UserViewSet, self).destroy(*args, **kwargs)
-        if status.is_success(response.status_code):
-            event_logger.info(
-                'User has been deleted %s', instance,
-                extra={'user': instance, 'event_type': 'user_deleted'}
-            )
-        return response
 
     @action()
     def password(self, request, uuid=None):
