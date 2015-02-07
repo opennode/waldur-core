@@ -201,6 +201,16 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
 
+    def test_project_can_be_created_with_null_project_group(self):
+        self.client.force_authenticate(self.staff)
+
+        data = _get_valid_project_payload()
+        data['project_groups'] = None
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Project.objects.filter(name=data['name']).exists())
+
+
     def test_owner_can_create_project_belonging_to_the_customer_he_owns(self):
         self.client.force_authenticate(self.owner)
 
