@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import logging
 import time
 
 from django.contrib import auth
@@ -21,11 +22,15 @@ from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins
 from nodeconductor.core import permissions
 from nodeconductor.core import viewsets
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.structure import filters
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 
+
+logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 User = auth.get_user_model()
 
@@ -342,6 +347,20 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
     serializer_class = serializers.ProjectGroupMembershipSerializer
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     filter_class = ProjectGroupMembershipFilter
+
+    def post_save(self, obj, created=False):
+            event_logger.info(
+                'Environment %s was added to project %s', obj.project.name, obj.projectgroup.name,
+                extra={'project': obj.project, 'project_group': obj.projectgroup,
+                       'event_type': 'environment_added_to_project'}
+            )
+
+    def post_delete(self, obj):
+        event_logger.info(
+            'Environment %s was removed from project %s', obj.project.name, obj.projectgroup.name,
+            extra={'project': obj.project, 'project_group': obj.projectgroup,
+                   'event_type': 'environment_removed_from_project'}
+        )
 
 # XXX: This should be put to models
 filters.set_permissions_for_model(
