@@ -32,9 +32,13 @@ def process_backup_task(backup_uuid):
                     schedule.save(update_fields=['is_active'])
 
                 logger.exception('Failed to perform backup for backup source: %s', backup.backup_source)
+                event_logger.error('Backup creation for %s failed', backup.backup_source,
+                                   extra={'event_type': 'iaas_backup_create_failed'})
                 backup.erred()
             else:
                 logger.info('Successfully performed backup for backup source: %s', backup.backup_source)
+                event_logger.info('Backup was created for %s' % backup.backup_source,
+                                  extra={'event_type': 'iaas_backup_created'})
         else:
             logger.exception('Process backup task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:
@@ -53,9 +57,14 @@ def restoration_task(backup_uuid, instance_uuid, user_raw_input):
                 backup.confirm_restoration()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to restore backup for backup source: %s', backup.backup_source)
+                event_logger.error('Backup restoration for %s failed', backup.backup_source,
+                                   extra={'event_type': 'iaas_backup_restore_failed'})
                 backup.erred()
             else:
                 logger.info('Successfully restored backup for backup source: %s', backup.backup_source)
+                event_logger.info('Backup of %s was restored, created on %s',
+                                  backup.backup_source, backup.created_at.strftime('%d/%m/%y'),
+                                  extra={'event_type': 'iaas_backup_restored'})
         else:
             logger.exception('Restoration task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:
@@ -74,9 +83,13 @@ def deletion_task(backup_uuid):
                 backup.confirm_deletion()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to delete backup for backup source: %s', backup.backup_source)
+                event_logger.error('Backup deletion for %s failed', backup.backup_source,
+                                   extra={'event_type': 'iaas_backup_delete_failed'})
                 backup.erred()
             else:
                 logger.info('Successfully deleted backup for backup source: %s', backup.backup_source)
+                event_logger.info('Backup was deleted for %s', backup.backup_source,
+                                  extra={'event_type': 'iaas_backup_deleted'})
         else:
             logger.exception('Deletion task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:
