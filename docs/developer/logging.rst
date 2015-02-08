@@ -5,7 +5,7 @@ Event log entries is something an end user will see. In order to improve user ex
 
 Here are the guidelines for writing good log events.
 
-* Use perfect tense for the message.
+* Use present perfect passive for the message.
 
   **Right:** :code:`Environment %s has been created.`
 
@@ -23,7 +23,7 @@ Here are the guidelines for writing good log events.
 
   **Wrong:** :code:`User has gained role in project.`
 
-* Don't include too much details into the message string.
+* Don't include too many details into the message string.
 
   **Right:** :code:`Environment %s has been updated.`
 
