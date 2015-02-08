@@ -9,18 +9,18 @@
 NodeConductor
 =============
 
-NodeConductor is an open-source RESTful server for multi-tenant resource management. It targets to provide
-easy way for sharing access to external systems and can be used as a platform for creating private and
+NodeConductor is an open-source RESTful server for multi-tenant resource management. It aims to provide an
+easy way for sharing access to external systems. It is used as a platform for creating private and
 public clouds.
 
 Currently supported external services are:
 
 - OpenStack Icehouse
 
-Additional information can be found from http://nodeconductor.readthedocs.org.
+Additional information can be found at http://nodeconductor.readthedocs.org.
 
 
-Development Environment Setup
+Development environment setup
 -----------------------------
 
 Instructions here: http://nodeconductor.readthedocs.org/en/latest/guide/intro.html#installation-from-source.
