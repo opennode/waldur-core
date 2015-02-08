@@ -1,6 +1,13 @@
 Development guidelines
 ======================
 
+1. Follow `PEP8 <http://python.org/dev/peps/pep-0008/>`_, except:
+
+  - Limit all lines to a maximum of 119 characters
+
+2. Use `git flow <https://github.com/nvie/gitflow>`_
+3. Write docstrings
+
 
 Flow for feature tasks
 ----------------------
