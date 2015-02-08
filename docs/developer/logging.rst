@@ -46,3 +46,28 @@ Here are the guidelines for writing good log events.
   **Right:** :code:`User %s has gained role of %s in project %s.`
 
   **Wrong:** :code:`User %s has gained Role of %s in Project %s.`
+
+* For actions that require background processing log both start of the process and its outcome.
+
+  **Success flow:**
+
+   1. log :code:`Environment %s creation has been started.` within HTTP request handler;
+
+   2. log :code:`Environment %s has been created.` at the end of background task.
+
+  **Failure flow:**
+
+   1. log :code:`Environment %s creation has been started.` within HTTP request handler;
+
+   2. log :code:`Environment %s creation has failed.` at the end of background task.
+
+* For actions that can be processed within HTTP request handler log only success.
+
+  **Success flow:**
+
+   log :code:`User %s has been created.` at the end of HTTP request handler.
+
+  **Failure flow:**
+
+   don't log anything, since most of the errors that could happen here
+   are validation errors that would be corrected by user and then resubmitted.
