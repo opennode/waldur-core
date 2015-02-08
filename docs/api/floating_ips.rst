@@ -8,6 +8,6 @@ Status *DOWN* means that floating IP is not linked to a VM, status *ACTIVE* mean
 
 Floating IPs can be filtered by:
 
-- ?cloud=<customer uuid>
+- ?cloud=<cloud uuid>
 - ?status=<floating_ip status>
 - ?project=<project uuid>
