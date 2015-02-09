@@ -7,8 +7,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models
 from django.db import transaction
-from django.db.models import signals
-from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
 
@@ -306,22 +304,3 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
             queryset = queryset.filter(role_type=role_type)
 
         return queryset.exists()
-
-
-@receiver(signals.post_save, sender=Customer, dispatch_uid="log_customer_save")
-def log_customer_save(sender, instance, created=False, **kwargs):
-    if created:
-        event_logger.info(
-            'Customer "%s" has been created', instance,
-            extra={'customer': instance, 'event_type': 'customer_created'})
-    else:
-        event_logger.info(
-            'Customer "%s" has been updated', instance,
-            extra={'customer': instance, 'event_type': 'customer_updated'})
-
-
-@receiver(signals.post_delete, sender=Customer, dispatch_uid="log_customer_delete")
-def log_customer_delete(sender, instance, **kwargs):
-    event_logger.info(
-        'Customer "%s" has been deleted', instance,
-        extra={'customer': instance, 'event_type': 'customer_deleted'})

@@ -106,7 +106,8 @@ class EventFormatter(logging.Formatter):
 
         # customer
         customer = self.get_related('customer', record, project, cloud, project_group)
-        self.add_related_details(message, customer, 'customer')
+        self.add_related_details(message, customer, 'customer',
+            name_attrs=('name', 'abbreviation', 'contact_details'))
 
         return json.dumps(message)
 
@@ -121,7 +122,7 @@ class EventFormatter(logging.Formatter):
 
         return None
 
-    def add_related_details(self, message, related, related_name, name_attr='name'):
+    def add_related_details(self, message, related, related_name, name_attrs='name'):
         if related is None:
             return
 
@@ -132,10 +133,12 @@ class EventFormatter(logging.Formatter):
         except AttributeError:
             related_uuid = ''
 
-        message.update({
-            "{0}_{1}".format(related_name, name_attr): getattr(related, name_attr, ''),
-            "{0}_uuid".format(related_name): related_uuid,
-        })
+        if not isinstance(name_attrs, (list, tuple)):
+            name_attrs = (name_attrs,)
+
+        message["{0}_uuid".format(related_name)] = related_uuid
+        for name_attr in name_attrs:
+            message["{0}_{1}".format(related_name, name_attr)] = getattr(related, name_attr, '')
 
 
 class TCPEventHandler(SocketHandler, object):
