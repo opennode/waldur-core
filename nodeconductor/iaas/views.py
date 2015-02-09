@@ -330,10 +330,16 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     @action()
     def stop(self, request, uuid=None):
+        instance = self.get_object()
+        event_logger.info('Virtual machine %s has been scheduled to stop.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_stop_scheduled'})
         return self._schedule_transition(request, uuid, 'stop')
 
     @action()
     def start(self, request, uuid=None):
+        instance = self.get_object()
+        event_logger.info('Virtual machine %s has been scheduled to start.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_start_scheduled'})
         return self._schedule_transition(request, uuid, 'start')
 
     def destroy(self, request, uuid):
@@ -354,6 +360,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     @action()
     def restart(self, request, uuid=None):
+        instance = self.get_object()
+        event_logger.info('Virtual machine %s has been scheduled to restart.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_restart_scheduled'})
         return self._schedule_transition(request, uuid, 'restart')
 
     @action()
