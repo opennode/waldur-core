@@ -31,6 +31,12 @@ class StructureConfig(AppConfig):
         )
 
         signals.post_save.connect(
+            handlers.log_project_save,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.models.log_project_save',
+        )
+
+        signals.post_save.connect(
             handlers.create_project_group_roles,
             sender=ProjectGroup,
             dispatch_uid='nodeconductor.structure.models.create_project_group_roles',
@@ -41,6 +47,13 @@ class StructureConfig(AppConfig):
             sender=ProjectGroup,
             dispatch_uid='nodeconductor.structure.handlers.prevent_non_empty_project_group_deletion',
         )
+
+        signals.post_delete.connect(
+            handlers.log_project_delete,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.models.log_project_delete',
+        )
+
         User = get_user_model()
 
         filters.set_permissions_for_model(
