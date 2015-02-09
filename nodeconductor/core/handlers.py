@@ -19,7 +19,7 @@ def check_user_updated(sender, instance, **kwargs):
 def log_user_save(sender, instance, created=False, **kwargs):
     if created:
         event_logger.info(
-            'User %s has been created.', instance,
+            'User %s has been created.', instance.username,
             extra={'affected_user': instance, 'event_type': 'user_created'})
     else:
         pwd_changed = hasattr(instance, 'old_password') and instance.old_password != instance.password
@@ -27,24 +27,24 @@ def log_user_save(sender, instance, created=False, **kwargs):
         if pwd_changed or act_changed:
             if pwd_changed:
                 event_logger.info(
-                    'Password has been changed for user %s.', instance,
+                    'Password has been changed for user %s.', instance.username,
                     extra={'affected_user': instance, 'event_type': 'user_password_updated'})
             if act_changed:
                 if instance.is_active:
                     event_logger.info(
-                        'User %s has been activated.', instance,
+                        'User %s has been activated.', instance.username,
                         extra={'affected_user': instance, 'event_type': 'user_activated'})
                 else:
                     event_logger.info(
-                        'User %s has been deactivated.', instance,
+                        'User %s has been deactivated.', instance.username,
                         extra={'affected_user': instance, 'event_type': 'user_deactivated'})
         else:
             event_logger.info(
-                'User %s has been updated.', instance,
+                'User %s has been updated.', instance.username,
                 extra={'affected_user': instance, 'event_type': 'user_updated'})
 
 
 def log_user_delete(sender, instance, **kwargs):
     event_logger.info(
-        'User %s has been deleted.', instance,
+        'User %s has been deleted.', instance.username,
         extra={'affected_user': instance, 'event_type': 'user_deleted'})
