@@ -1138,7 +1138,7 @@ class OpenStackBackend(object):
             elif old_core_size > new_core_size:
                 logger.warning('Not extending volume %s: desired size %d MiB is less then current size %d MiB',
                                volume.id, new_core_size, old_core_size)
-                event_logger.warning(
+                event_logger.error(
                     "Virtual machine %s disk extension has failed "
                     "due to new size being less than old size.",
                     instance.hostname,
@@ -1157,7 +1157,7 @@ class OpenStackBackend(object):
                     'Failed to extend volume: exceeded quota limit while trying to extend volume %s',
                     volume.id,
                 )
-                event_logger.warning(
+                event_logger.error(
                     "Virtual machine %s disk extension has failed due to quota limits.",
                     instance.hostname,
                     extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_failed'},
