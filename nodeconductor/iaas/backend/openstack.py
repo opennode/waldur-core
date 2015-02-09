@@ -808,9 +808,13 @@ class OpenStackBackend(object):
                 nova_exceptions.ClientException,
                 neutron_exceptions.NeutronClientException) as e:
             logger.exception('Failed to boot instance %s', instance.uuid)
+            event_logger.error('Virtual machine %s creation has failed.', instance.hostname,
+                               extra={'instance': instance, 'event_type': 'iaas_instance_creation_failed'})
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully booted instance %s', instance.uuid)
+            event_logger.info('Virtual machine %s has been created.', instance.hostname,
+                              extra={'instance': instance, 'event_type': 'iaas_instance_creation_succeeded'})
 
     def start_instance(self, instance):
         logger.debug('About to start instance %s', instance.uuid)
@@ -885,6 +889,8 @@ class OpenStackBackend(object):
 
             if not self._wait_for_instance_deletion(instance.backend_id, nova):
                 logger.info('Failed to delete instance %s', instance.uuid)
+                event_logger.error('Virtual machine %s deletion has failed.', instance.hostname,
+                                   extra={'instance': instance, 'event_type': 'iaas_instance_deletion_failed'})
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
             else:
                 membership.update_resource_quota_usage('max_instances', -1)
@@ -895,9 +901,13 @@ class OpenStackBackend(object):
 
         except nova_exceptions.ClientException as e:
             logger.info('Failed to delete instance %s', instance.uuid)
+            event_logger.error('Virtual machine %s deletion has failed.', instance.hostname,
+                               extra={'instance': instance, 'event_type': 'iaas_instance_deletion_failed'})
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully deleted instance %s', instance.uuid)
+            event_logger.info('Virtual machine %s has been deleted.', instance.hostname,
+                              extra={'instance': instance, 'event_type': 'iaas_instance_deletion_succeeded'})
 
     # XXX: This method is not used now
     def backup_instance(self, instance):
@@ -1100,7 +1110,6 @@ class OpenStackBackend(object):
             new_backend_size = self.get_backend_disk_size(new_core_size)
 
             new_core_size_gib = int(round(new_core_size / 1024.0))
-            old_core_size_gib = int(round(old_core_size / 1024.0))
 
             if old_core_size == new_core_size:
                 logger.info('Not extending volume %s: it is already of size %d MiB',
@@ -1110,9 +1119,10 @@ class OpenStackBackend(object):
                 logger.warning('Not extending volume %s: desired size %d MiB is less then current size %d MiB',
                                volume.id, new_core_size, old_core_size)
                 event_logger.warning(
-                    "Data Volume of VM with hostname %s could not be shrunk from %d GB to %d GB.",
-                    instance.hostname, old_core_size_gib, new_core_size_gib,
-                    extra={'instance': instance, 'event_type': 'vm_volume_update_failed'},
+                    "Virtual machine %s disk extension has failed "
+                    "due to new size being less than old size.",
+                    instance.hostname,
+                    extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_failed'},
                 )
                 return
 
@@ -1128,10 +1138,9 @@ class OpenStackBackend(object):
                     volume.id,
                 )
                 event_logger.warning(
-                    "Data Volume of VM with hostname %s could not be extended "
-                    "from %d GB to %d GB due to quota limits.",
-                    instance.hostname, old_core_size_gib, new_core_size_gib,
-                    extra={'instance': instance, 'event_type': 'vm_volume_update_failed'},
+                    "Virtual machine %s disk extension has failed due to quota limits.",
+                    instance.hostname,
+                    extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_failed'},
                 )
                 # Reset instance.data_volume_size back so that model reflects actual state
                 instance.data_volume_size = old_core_size
@@ -1150,10 +1159,9 @@ class OpenStackBackend(object):
         else:
             logger.info('Successfully extended disk of an instance %s', instance.uuid)
             event_logger.info(
-                "Data Volume of VM with hostname %s has been extended "
-                "from %d GB to %d GB.",
-                instance.hostname, old_core_size_gib, new_core_size_gib,
-                extra={'instance': instance, 'event_type': 'vm_volume_updated'},
+                "Virtual machine %s disk has been extended to %d GB.",
+                instance.hostname, new_core_size_gib,
+                extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_succeeded'},
             )
 
     def update_flavor(self, instance, flavor):
@@ -1189,9 +1197,26 @@ class OpenStackBackend(object):
                 )
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
             logger.exception('Failed to change flavor of an instance %s', instance.uuid)
+            event_logger.error(
+                'Virtual machine %s flavor change has failed.',
+                instance.hostname,
+                extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_failed'},
+            )
             six.reraise(CloudBackendError, e)
+        except CloudBackendError:
+            event_logger.error(
+                'Virtual machine %s flavor change has failed.',
+                instance.hostname,
+                extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_failed'},
+            )
+            raise
         else:
             logger.info('Successfully changed flavor of an instance %s', instance.uuid)
+            event_logger.info(
+                'Virtual machine %s flavor has been changed to %s.',
+                instance.hostname, flavor.name,
+                extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_succeeded'},
+            )
 
     # Helper methods
     def get_floating_ips(self, tenant_id, neutron):
