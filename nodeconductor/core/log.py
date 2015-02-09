@@ -87,7 +87,7 @@ class EventFormatter(logging.Formatter):
 
         # instance
         instance = self.get_related('instance', record)
-        self.add_related_details(message, instance, 'vm_instance', 'hostname')
+        self.add_related_details(message, instance, 'iaas_instance', 'hostname')
 
         # cloud project membership
         membership = self.get_related('membership', instance)
