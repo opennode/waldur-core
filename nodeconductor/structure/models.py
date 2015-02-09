@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-import logging
-
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -10,13 +8,8 @@ from django.db import transaction
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
 
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.models import UuidMixin, DescribableMixin
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
-
-
-logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 @python_2_unicode_compatible
