@@ -14,10 +14,16 @@ class CoreConfig(AppConfig):
     def ready(self):
         User = get_user_model()
 
-        signals.pre_save.connect(
-            handlers.check_user_updated,
+        signals.post_save.connect(
+            handlers.create_auth_token,
             sender=User,
-            dispatch_uid='nodeconductor.core.handlers.check_user_updated',
+            dispatch_uid='nodeconductor.core.handlers.create_auth_token',
+        )
+
+        signals.pre_save.connect(
+            handlers.preserve_fields_before_update,
+            sender=User,
+            dispatch_uid='nodeconductor.core.handlers.preserve_fields_before_update',
         )
 
         signals.post_save.connect(
