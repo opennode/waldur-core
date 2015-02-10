@@ -42,7 +42,7 @@ class InstanceBackupStrategy(BackupStrategy):
             raise BackupStrategyExecutionError('No space for instance %s backup' % instance.uuid.hex)
         try:
             backend = cls._get_backend(instance)
-            cloned_volumes, snapshot_ids = backend.clone_volumes(
+            cloned_volumes = backend.clone_volumes(
                 membership=instance.cloud_project_membership,
                 volume_ids=[instance.system_volume_id, instance.data_volume_id],
                 prefix='Backup volume'
@@ -55,7 +55,6 @@ class InstanceBackupStrategy(BackupStrategy):
         metadata = cls._get_instance_metadata(instance)
         metadata['system_volume_id'] = cloned_system_volume_id
         metadata['data_volume_id'] = cloned_data_volume_id
-        metadata['snapshot_ids'] = snapshot_ids
 
         return metadata
 
@@ -101,7 +100,7 @@ class InstanceBackupStrategy(BackupStrategy):
         # create a copy of the volumes to be used by a new VM
         try:
             backend = cls._get_backend(instance)
-            cloned_system_volume_id, cloned_data_volume_id = backend.clone_volumes(
+            cloned_volumes_ids = backend.clone_volumes(
                 membership=instance.cloud_project_membership,
                 volume_ids=[instance.system_volume_id, instance.data_volume_id],
                 prefix='Restored volume'
@@ -115,11 +114,9 @@ class InstanceBackupStrategy(BackupStrategy):
         tasks.schedule_provisioning.delay(
             instance.uuid.hex,
             backend_flavor_id=flavor.backend_id,
-            system_volume_id=cloned_system_volume_id,
-            data_volume_id=cloned_data_volume_id
+            system_volume_id=cloned_volumes_ids[0],
+            data_volume_id=cloned_volumes_ids[1]
         )
-
-        return instance
 
     @classmethod
     def delete(cls, source, metadata):
@@ -128,7 +125,6 @@ class InstanceBackupStrategy(BackupStrategy):
             backend.delete_volumes(
                 membership=source.cloud_project_membership,
                 volume_ids=[metadata['system_volume_id'], metadata['data_volume_id']],
-                snapshot_ids=metadata['snapshot_ids']
             )
         except CloudBackendError as e:
             six.reraise(BackupStrategyExecutionError, e)

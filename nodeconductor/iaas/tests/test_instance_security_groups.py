@@ -58,10 +58,16 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.user = structure_factories.UserFactory.create()
         self.client.force_authenticate(self.user)
 
-        self.instance = factories.InstanceFactory()
+        self.instance = factories.InstanceFactory(state=models.Instance.States.OFFLINE)
         membership = self.instance.cloud_project_membership
         membership.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
-        factories.ResourceQuotaFactory(cloud_project_membership=membership, storage=10 * 1024 * 1024)
+        factories.ResourceQuotaFactory(
+            cloud_project_membership=membership,
+            storage=10 * 1024 * 1024,
+            vcpu=20,
+            ram=10 * 1024,
+            max_instances=10,
+        )
 
         factories.ImageFactory(template=self.instance.template, cloud=self.instance.cloud_project_membership.cloud)
 
@@ -83,7 +89,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
                                    for g in self.instance_security_groups]
 
         response = self.client.post(_instance_list_url(), data=data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
 
     def test_change_instance_security_groups_single_field(self):
         membership = self.instance.cloud_project_membership

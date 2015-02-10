@@ -7,6 +7,7 @@ import time
 
 
 from django.db import models as django_models
+from django.db.models import Sum
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 import django_filters
@@ -23,6 +24,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.core.filters import DjangoMappingFilterBackend
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.utils import sort_dict
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
@@ -33,6 +35,7 @@ from nodeconductor.structure.models import ProjectRole, Project, Customer, Proje
 
 
 logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 
 class InstanceFilter(django_filters.FilterSet):
@@ -83,6 +86,9 @@ class InstanceFilter(django_filters.FilterSet):
 
     hostname = django_filters.CharFilter(lookup_type='icontains')
     state = django_filters.CharFilter()
+    description = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
 
     class Meta(object):
         model = models.Instance
@@ -98,6 +104,12 @@ class InstanceFilter(django_filters.FilterSet):
             'project_group',
             'template_name',
             'start_time',
+            'cores',
+            'ram',
+            'system_volume_size',
+            'data_volume_size',
+            'description',
+            'created',
         ]
         order_by = [
             'hostname',
@@ -118,6 +130,15 @@ class InstanceFilter(django_filters.FilterSet):
             '-cloud_project_membership__project__project_groups__name',
             'template__name',
             '-template__name',
+            '-cores',
+            'ram',
+            '-ram',
+            'system_volume_size',
+            '-system_volume_size',
+            'data_volume_size',
+            '-data_volume_size',
+            'created',
+            '-created',
         ]
         order_by_mapping = {
             # Proper field naming
@@ -139,6 +160,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       mixins.UpdateModelMixin,
                       core_mixins.ListModelMixin,
+                      core_mixins.UpdateOnlyStableMixin,
                       viewsets.GenericViewSet):
     """List of VM instances that are accessible by this user.
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#vm-instance-management
@@ -147,6 +169,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
+    provisioning_restricted_actions = 'update', 'partial_update', 'destroy', 'stop', 'start', 'resize'
     filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = InstanceFilter
@@ -166,6 +189,16 @@ class InstanceViewSet(mixins.CreateModelMixin,
         context = super(InstanceViewSet, self).get_serializer_context()
         context['user'] = self.request.user
         return context
+
+    def initial(self, request, *args, **kwargs):
+        if hasattr(self, 'provisioning_restricted_actions'):
+            if self.action in self.provisioning_restricted_actions:
+                instance = self.get_object()
+                if instance and instance.state == instance.States.PROVISIONING_SCHEDULED:
+                    raise core_exceptions.IncorrectStateException(
+                        'Provisioning scheduled. Disabled modifications.')
+
+        return super(InstanceViewSet, self).initial(request, *args, **kwargs)
 
     def pre_save(self, obj):
         super(InstanceViewSet, self).pre_save(obj)
@@ -197,8 +230,13 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def post_save(self, obj, created=False):
         super(InstanceViewSet, self).post_save(obj, created)
         if created:
+            event_logger.info('Virtual machine %s creation has been scheduled.', obj.hostname,
+                              extra={'instance': obj, 'event_type': 'iaas_instance_creation_scheduled'})
             tasks.schedule_provisioning.delay(obj.uuid.hex, backend_flavor_id=obj.flavor.backend_id)
             return
+
+        event_logger.info('Virtual machine %s has been updated.', obj.hostname,
+                          extra={'instance': obj, 'event_type': 'iaas_instance_update_succeeded'})
 
         # We care only about update flow
         old_security_groups = dict(
@@ -234,6 +272,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
         instance.ram = flavor.ram
         instance.cores = flavor.cores
         instance.save()
+
+        event_logger.info('Virtual machine %s has been scheduled to change flavor.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_scheduled'})
         # This is suboptimal, since it reads and writes instance twice
         return self._schedule_transition(self.request, instance.uuid.hex, 'flavor change',
                                          flavor_uuid=flavor.uuid.hex)
@@ -245,6 +286,8 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         instance.data_volume_size = new_size
         instance.save()
+        event_logger.info('Virtual machine %s has been scheduled to extend disk.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_scheduled'})
         # This is suboptimal, since it reads and writes instance twice
         return self._schedule_transition(self.request, instance.uuid.hex, 'disk extension')
 
@@ -287,27 +330,39 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     @action()
     def stop(self, request, uuid=None):
+        instance = self.get_object()
+        event_logger.info('Virtual machine %s has been scheduled to stop.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_stop_scheduled'})
         return self._schedule_transition(request, uuid, 'stop')
 
     @action()
     def start(self, request, uuid=None):
+        instance = self.get_object()
+        event_logger.info('Virtual machine %s has been scheduled to start.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_start_scheduled'})
         return self._schedule_transition(request, uuid, 'start')
 
     def destroy(self, request, uuid):
         # check if deletion is allowed
         # TODO: it duplicates the signal check, but signal-based is useless when deletion is done in bg task
         # TODO: come up with a better way for checking
-        instance = models.Instance.objects.get(uuid=uuid)
+        instance = self.get_object()
         try:
             from nodeconductor.iaas.handlers import prevent_deletion_of_instances_with_connected_backups
             prevent_deletion_of_instances_with_connected_backups(None, instance)
         except django_models.ProtectedError as e:
             return Response({'detail': e.args[0]}, status=status.HTTP_409_CONFLICT)
 
+        event_logger.info('Virtual machine %s has been scheduled for deletion.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_deletion_scheduled'})
+
         return self._schedule_transition(request, uuid, 'destroy')
 
     @action()
     def restart(self, request, uuid=None):
+        instance = self.get_object()
+        event_logger.info('Virtual machine %s has been scheduled to restart.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_restart_scheduled'})
         return self._schedule_transition(request, uuid, 'restart')
 
     @action()
@@ -336,6 +391,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
     @link()
     def usage(self, request, uuid):
         instance = self.get_object()
+
+        if not instance.backend_id or instance.state in (models.Instance.States.PROVISIONING_SCHEDULED,
+                                                         models.Instance.States.PROVISIONING):
+            raise Http404()
 
         hour = 60 * 60
         data = {
@@ -671,35 +730,36 @@ class ResourceStatsView(views.APIView):
         if not request.user.is_staff:
             raise exceptions.PermissionDenied()
 
-    def _get_quotas_stats(self, clouds):
-        quotas_list = models.ResourceQuota.objects.filter(
-            cloud_project_membership__cloud__in=clouds).values('vcpu', 'ram', 'storage', 'backup_storage')
-        return {
-            'vcpu_quota': sum([q['vcpu'] for q in quotas_list]),
-            'memory_quota': sum([q['ram'] for q in quotas_list]),
-            'storage_quota': sum([q['storage'] for q in quotas_list]),
-            'backup_quota': sum([q['backup_storage'] for q in quotas_list]),
-        }
-
     def get(self, request, format=None):
         self._check_user(request)
-        if not 'auth_url' in request.QUERY_PARAMS:
-            return Response('GET parameter "auth_url" have to be defined', status=status.HTTP_400_BAD_REQUEST)
-        auth_url = request.QUERY_PARAMS['auth_url']
 
-        try:
-            clouds = models.Cloud.objects.filter(auth_url=auth_url)
-            cloud_backend = clouds[0].get_backend()
-        except IndexError:
-            return Response('No clouds with auth url: %s' % auth_url, status=status.HTTP_400_BAD_REQUEST)
+        auth_url = request.QUERY_PARAMS.get('auth_url')
+        # TODO: auth_url should be coming as a reference to NodeConductor object. Consider introducing this concept.
+        if 'auth_url' is None:
+            return Response(
+                {'detail': 'GET parameter "auth_url" has to be defined'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        cloud = models.Cloud.objects.filter(auth_url=auth_url).first()
+
+        if cloud is None:
+            return Response(
+                {'detail': 'No clouds with auth url: %s' % auth_url},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        quota_stats = models.ResourceQuota.objects.filter(
+            cloud_project_membership__cloud__auth_url=auth_url,
+        ).aggregate(
+            vcpu_quota=Sum('vcpu'),
+            memory_quota=Sum('ram'),
+            storage_quota=Sum('storage'),
+        )
+
+        cloud_backend = cloud.get_backend()
         stats = cloud_backend.get_resource_stats(auth_url)
-        quotas_stats = self._get_quotas_stats(clouds)
-        stats.update(quotas_stats)
-
-        # TODO: get from OpenStack once we have Juno and properly working backup quotas
-        full_usage = QuotaStatsView.get_sum_of_quotas(models.CloudProjectMembership.objects.filter(cloud__in=clouds))
-        stats['backups'] = full_usage.get('backup_storage_usage', 0)
+        stats.update(quota_stats)
 
         return Response(sort_dict(stats), status=status.HTTP_200_OK)
 
@@ -715,10 +775,14 @@ class CustomerStatsView(views.APIView):
             project_groups_count = structure_filters.filter_queryset_for_user(
                 ProjectGroup.objects.filter(customer=customer), request.user).count()
             instances_count = structure_filters.filter_queryset_for_user(
-                models.Instance.objects.filter(cloud_project_membership__project__customer=customer), request.user).count()
+                models.Instance.objects.filter(cloud_project_membership__project__customer=customer),
+                request.user).count()
             customer_statistics.append({
-                'name': customer.name, 'projects': projects_count,
-                'project_groups': project_groups_count, 'instances': instances_count
+                'name': customer.name,
+                'abbreviation': customer.abbreviation,
+                'projects': projects_count,
+                'project_groups': project_groups_count,
+                'instances': instances_count,
             })
 
         return Response(customer_statistics, status=status.HTTP_200_OK)
@@ -824,7 +888,7 @@ class CloudFilter(django_filters.FilterSet):
         ]
 
 
-class CloudViewSet(core_viewsets.ModelViewSet):
+class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#cloud-model
@@ -863,6 +927,7 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
                                     core_mixins.ListModelMixin,
+                                    core_mixins.UpdateOnlyStableMixin,
                                     viewsets.GenericViewSet):
     """
     List of project-cloud connections
@@ -983,7 +1048,7 @@ class QuotaStatsView(views.APIView):
     # This method should be moved from view (to utils.py maybe), when stats will be moved to separate application
     @staticmethod
     def get_sum_of_quotas(memberships):
-        fields = ['vcpu', 'ram', 'storage', 'max_instances', 'backup_storage']
+        fields = ['vcpu', 'ram', 'storage', 'max_instances']
         sum_of_quotas = defaultdict(lambda: 0)
 
         for membership in memberships:

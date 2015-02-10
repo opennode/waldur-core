@@ -10,7 +10,8 @@ Available request parameters:
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
 - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
   object with given uuid)
-- ?item=instance_usage_item (required. Have to be from list: 'cpu', 'memory', 'storage')
+- ?item=instance_usage_item (required. Have to be from list: 'cpu', 'memory', 'storage').
+  CPU is reported as utilisation and goes from 0 to 100% as reported by 'ps -o %cpu'. Memory and storage are in MiB.
 - ?from=timestamp (default: now - one hour, example: 1415910025)
 - ?to=timestamp (default: now, example: 1415912625)
 - ?datapoints=how many data points have to be in answer(default: 6)
@@ -95,8 +96,6 @@ Answer will be list dictionaries with fields:
 - vcpu_quota - maximum number of vCPUs (from quotas)
 - vcpus - maximum number of vCPUs (from hypervisors)
 - vcpus_used - currently number of used vCPUs
-- backup_quota - maximal size of backups (from quotas)
-- backups - currently allocated size of backups
 
 
 The exact semantics of the remaining fields are left as a puzzle to the reader.
@@ -120,9 +119,7 @@ Example:
         "storage_quota": 0,
         "vcpu_quota": 0,
         "vcpus": 64,
-        "vcpus_used": 4,
-        "backup_quota": 123123123,
-        "backups": 1231231
+        "vcpus_used": 4
     }
 
 
@@ -174,12 +171,10 @@ Answer will be dictionary with fields:
 - ram - max RAM size in MiB
 - storage - max storage size in MiB
 - max_instances - max number of running instance
-- backup_storage - max backup storage size in MiB
 - vcpu_usage - virtual CPUs usage
 - ram_usage - RAM usage
 - storage_usage - storage usage in MiB
 - max_instances_usage - number of running instance
-- backup_storage_usage - backup storage usage in MiB
 
 
 Example result:
@@ -191,10 +186,8 @@ Example result:
         'ram': 4096,
         'storage': 16384,
         'max_instances': 4,
-        'backup_storage': 32768,
         'vcpu_usage': 1,
         'ram_usage': 4096,
         'storage_usage': 16000,
-        'max_instances_usage': 3,
-        'backup_storage_usage: 16384,
+        'max_instances_usage': 3
     }

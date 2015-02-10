@@ -82,8 +82,8 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
                         core_serializers.RelatedResourcesFieldMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
-    resource_quota = serializers.SerializerMethodField('get_resource_quota')
-    resource_quota_usage = serializers.SerializerMethodField('get_resource_quota_usage')
+    resource_quota = serializers.SerializerMethodField()
+    resource_quota_usage = serializers.SerializerMethodField()
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
     customer_abbreviation = serializers.ReadOnlyField(source='customer.abbreviation')
 
@@ -94,37 +94,12 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
             'name',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups',
-            'resource_quota', 'resource_quota_usage',
             'description',
         )
         lookup_field = 'uuid'
 
     def get_related_paths(self):
         return 'customer',
-
-    def get_resource_quota(self, obj):
-        # XXX: this method adds dependencies from 'iaas' application. It has to be removed or refactored.
-        from nodeconductor.iaas import models as iaas_models
-        quotas = list(iaas_models.ResourceQuota.objects.filter(cloud_project_membership__project=obj))
-        return {
-            'vcpu': sum([q.vcpu for q in quotas]),
-            'ram': sum([q.ram for q in quotas]),
-            'storage': sum([q.storage for q in quotas]),
-            'max_instances': sum([q.max_instances for q in quotas]),
-            'backup_storage': sum([q.backup_storage for q in quotas]),
-        }
-
-    def get_resource_quota_usage(self, obj):
-        # XXX: this method adds dependencies from 'iaas' application. It has to be removed or refactored.
-        from nodeconductor.iaas import models as iaas_models
-        quotas = list(iaas_models.ResourceQuotaUsage.objects.filter(cloud_project_membership__project=obj))
-        return {
-            'vcpu': sum([q.vcpu for q in quotas]),
-            'ram': sum([q.ram for q in quotas]),
-            'storage': sum([q.storage for q in quotas]),
-            'max_instances': sum([q.max_instances for q in quotas]),
-            'backup_storage': sum([q.backup_storage for q in quotas]),
-        }
 
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):
@@ -153,6 +128,9 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
             project_groups = self.object.project_groups.all()
         else:
             project_groups = attrs.get('project_groups', [])
+            # remove project groups if nothing is specified to avoid m2m serializer errors (NC-366)
+            if project_groups is None:
+                del attrs['project_groups']
         customer = attrs['customer'] if 'customer' in attrs else self.object.customer
 
         if user.is_staff:

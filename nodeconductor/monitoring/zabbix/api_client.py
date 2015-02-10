@@ -98,8 +98,9 @@ class ZabbixApiClient(object):
 
             if not created and warn_if_service_exists:
                 logger.warn(
-                    'Can not create new Zabbix service for instance %s. Service with name %s already exists',
-                    (instance, name))
+                    'Can not create new Zabbix service for instance %s. Service with name %s already exists' %
+                    (instance, name)
+                )
 
         except ZabbixAPIException as e:
             logger.exception('Can not create Zabbix IT service.')

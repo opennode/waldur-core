@@ -33,6 +33,12 @@ class IaasConfig(AppConfig):
             dispatch_uid='nodeconductor.iaas.handlers.add_clouds_to_project',
         )
 
+        pre_serializer_fields.connect(
+            handlers.add_quota_stats_to_project,
+            sender=ProjectSerializer,
+            dispatch_uid='nodeconductor.iaas.handlers.add_quota_stats_to_project',
+        )
+
         signals.post_save.connect(
             handlers.propagate_new_users_key_to_his_projects_clouds,
             sender=SshPublicKey,

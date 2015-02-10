@@ -5,6 +5,29 @@ Coming in the next release
 --------------------------
 
 (Fixes/changes that are in develop branch.)
+- Dropped backup quota. Rely on storage quota only.
+
+Release 0.33.0
+--------------
+
+- Improved user key propagation speed to the backend.
+- Refactored OpenStack backups to use volumes only.
+
+Release 0.32.0
+--------------
+
+- Staff users are now listed to staff users only.
+- Bugfixes
+
+Release 0.31.0
+--------------
+
+- Bugfixes
+
+Release 0.30.0
+--------------
+
+- Bugfixes
 
 Release 0.29.0
 --------------

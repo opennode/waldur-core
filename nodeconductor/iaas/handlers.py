@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import logging
 
 from django.conf import settings
+from django.db.models.aggregates import Sum
 from django.utils.lru_cache import lru_cache
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -10,6 +11,8 @@ from django.db import models
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.iaas.models import ResourceQuota, ResourceQuotaUsage
+
 
 logger = logging.getLogger('nodeconductor.iaas')
 
@@ -32,6 +35,24 @@ def get_related_clouds(obj, request):
 
 def add_clouds_to_related_model(sender, fields, **kwargs):
     fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
+
+
+def calculate_resource_quota(obj, request, cls):
+    return cls.objects.filter(
+        cloud_project_membership__project=obj,
+    ).aggregate(
+        vcpu=Sum('vcpu'),
+        ram=Sum('ram'),
+        storage=Sum('storage'),
+        max_instances=Sum('max_instances'),
+    )
+
+
+def add_quota_stats_to_project(sender, fields, **kwargs):
+    fields['resource_quota'] = UnboundSerializerMethodField(
+        lambda obj, request: calculate_resource_quota(obj, request, ResourceQuota))
+    fields['resource_quota_usage'] = UnboundSerializerMethodField(
+        lambda obj, request: calculate_resource_quota(obj, request, ResourceQuotaUsage))
 
 
 def propagate_new_users_key_to_his_projects_clouds(sender, instance=None, created=False, **kwargs):

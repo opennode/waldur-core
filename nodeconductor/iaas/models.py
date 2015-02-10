@@ -10,6 +10,7 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
+from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.iaas.backend import CloudBackendError
@@ -219,7 +220,6 @@ class AbstractResourceQuota(models.Model):
     ram = models.FloatField(help_text='RAM size')
     storage = models.FloatField(help_text='Storage size (incl. backup)')
     max_instances = models.PositiveIntegerField(help_text='Number of running instances')
-    backup_storage = models.FloatField(default=200*1024, help_text='Backup storage size')
 
 
 # TODO: Refactor to use CloudProjectMember
@@ -250,7 +250,7 @@ class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
                # This needs to be inlined in order to set on_delete
                # CloudProjectMember,
-               models.Model):
+               TimeStampedModel):
     """
     A generalization of a single virtual machine.
 
@@ -315,7 +315,7 @@ class Instance(core_models.UuidMixin,
         # Stable instances are the ones for which
         # no tasks are scheduled or are in progress
 
-        STABLE_STATES = set([ONLINE, OFFLINE, ERRED])
+        STABLE_STATES = set([ONLINE, OFFLINE])
         UNSTABLE_STATES = set([
             s for (s, _) in CHOICES
             if s not in STABLE_STATES
@@ -424,10 +424,7 @@ class Instance(core_models.UuidMixin,
         pass
 
     def __str__(self):
-        return '%(name)s - %(status)s' % {
-            'name': self.hostname,
-            'status': self.get_state_display(),
-        }
+        return self.hostname
 
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)

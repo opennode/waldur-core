@@ -110,10 +110,6 @@ def set_state(model_class, uuid_or_pk, transition):
         'Managed to %s %s with id %s',
         logged_operation, entity_name, uuid_or_pk
     )
-    event_logger.info(
-        'Finished to %s %s with id %s',
-        logged_operation, entity_name, uuid_or_pk
-    )
 
 
 def tracked_processing(model_class, processing_state, desired_state, error_state='set_erred'):

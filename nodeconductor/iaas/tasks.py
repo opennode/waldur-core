@@ -4,6 +4,7 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from celery import shared_task
+from django.core.exceptions import ObjectDoesNotExist
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import SynchronizationStates
@@ -109,11 +110,7 @@ def schedule_deleting(instance_uuid):
         delete_zabbix_host_and_service(instance)
     except Exception:
         # noinspection PyProtectedMember
-        logger.exception('Failed to begin_deleting Instance with id %s', instance_uuid)
-        event_logger.exception(
-            'Failed to begin_deleting Instance with id %s', instance_uuid,
-            extra={'instance': instance, 'event_type': 'instance_deletion'}
-        )
+        logger.exception('Failed to begin deleting Instance with id %s', instance_uuid)
         set_state(models.Instance, instance_uuid, 'set_erred')
     else:
         # Actually remove the instance from the database
@@ -302,11 +299,15 @@ def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
     for membership in membership_queryset.iterator():
         if membership.state != core_models.SynchronizationStates.IN_SYNC:
             logging.warn(
-                'Not pushing public keys to cloud membership %s which is in state %s. Re-scheduling.',
+                'Not pushing public keys to cloud membership %s which is in state %s.',
                 membership.pk, membership.get_state_display()
             )
             if membership.state != core_models.SynchronizationStates.ERRED:
                 # reschedule a task for this membership if membership is in a sane state
+                logging.debug(
+                    'Rescheduling synchronisation of keys for membership %s in state %s.',
+                        membership.pk, membership.get_state_display()
+                )
                 potential_rerunnable.append(membership.id)
             continue
 
@@ -321,8 +322,8 @@ def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
                     exc_info=1,
                 )
     # reschedule sync to membership that were blocked
-    # TODO: temporarily disable -- NC-305
-    #push_ssh_public_keys.delay(ssh_public_keys_uuids, potential_rerunnable)
+    if potential_rerunnable:
+        push_ssh_public_keys.delay(ssh_public_keys_uuids, potential_rerunnable)
 
 
 @shared_task
@@ -347,8 +348,12 @@ def check_cloud_memberships_quotas():
     )
 
     for membership in queryset.iterator():
-        quota = membership.resource_quota
-        usage = membership.resource_quota_usage
+        try:
+            quota = membership.resource_quota
+            usage = membership.resource_quota_usage
+        except ObjectDoesNotExist:
+            logger.exception('Missing quota or usage')
+            continue
 
         for resource_name in resources:
             resource_quota = getattr(quota, resource_name)

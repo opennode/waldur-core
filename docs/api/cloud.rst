@@ -15,8 +15,8 @@ The following relationships are true for cloud operations:
 - Project administrators can list all the clouds that are connected to any of the projects they are administrators in.
 - Project managers can list all the clouds that are connected to any of the projects they are managers in.
 
-Customer list
--------------
+Cloud list
+----------
 
 To get a list of cloud, run GET against **/api/clouds/** as authenticated user.
 
@@ -70,6 +70,8 @@ For example,
     }
 
 To remove a link, issue DELETE to url of the corresponding connection as stuff user or customer owner.
+
+Any modification of a cloud in unstable state is prohibited and will fail with 409 response code.
 
 Project-cloud connection list
 -----------------------------

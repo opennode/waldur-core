@@ -19,6 +19,12 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - ?project_group=<project group uuid>
 - ?project_group=<project group name>
 - ?template_name=<template name>
+- ?description=<description>
+- ?cores=<number of cores>
+- ?ram=<size of ram in MiB>
+- ?created=<time of creation in iso-8601 format>
+- ?system_volume_size=<size of system disk in MiB>
+- ?data_volume_size=<size of data disk in MiB>
 
 Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
 
@@ -32,6 +38,11 @@ Sorting is supported in ascending and descending order by specifying a field to 
 - ?o=template_name - sort by template name
 - ?o=project__customer__name - **deprecated**, use ?o=customer_name instead
 - ?o=project__project_groups__name - **deprecated**, use ?o=project_group_name instead
+- ?o=cores - sort by number of cores
+- ?o=ram - sort by size of ram
+- ?o=system_volume_size - sort by system volume size
+- ?o=data_volume_size - sort by data volume size
+- ?o=created - sort by creation time
 - ?o=project__name - **deprecated**, use ?o=project_name instead
 - ?o=template__name - **deprecated**, use ?o=template_name instead
 
@@ -74,6 +85,9 @@ In a DB, state is stored encoded with a symbol. States are:
 - RESIZING = 14
 - RESTARTING_SCHEDULED = 15
 - RESTARTING = 16
+
+Any modification of an instance in unstable or PROVISIONING_SCHEDULED state is prohibited
+and will fail with 409 response code. Assuming stable states are ONLINE and OFFLINE.
 
 A graph of possible state transitions is shown below.
 
@@ -134,7 +148,7 @@ Example rendering of the Instance object:
 
     [
         {
-            "url": "http://localhost:8000/api/instances/20602b6283c446ad9420b3230bb83dc5/",
+            "url": "http://example.com/api/instances/20602b6283c446ad9420b3230bb83dc5/",
             "uuid": "20602b6283c446ad9420b3230bb83dc5",
             "hostname": "host 123",
             "description": "My instance",
@@ -151,7 +165,7 @@ Example rendering of the Instance object:
             "customer": "http://localhost:8000/api/customers/ea5f18624b3346fa8290dac3ef032085/",
             "customer_name": "Customer fGSu",
             "customer_abbreviation": "MYpzQXOr",
-            "key_name": "public key 793",
+            "key_name": "public key X",
             "key_fingerprint": "74:1c:72:cc:07:66:9e:17:cb:84:63:70:c2:e7:89:ec",
             "project_groups": [
                 {
@@ -210,7 +224,8 @@ Example rendering of the Instance object:
             "system_volume_size": 46080,
             "data_volume_size": 20480,
             "cores": 2,
-            "ram": 1024
+            "ram": 1024,
+            "created": "2015-01-26T14:06:00.978Z"
         }
     ]
 

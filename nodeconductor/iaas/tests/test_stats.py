@@ -2,7 +2,6 @@ from django.core.urlresolvers import reverse
 from mock import patch, Mock
 from rest_framework import test, status
 
-from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.iaas import models
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure import models as structure_models
@@ -53,12 +52,14 @@ class CustomerStatsTest(test.APITransactionTestCase):
         expected_result = [
             {
                 'name': self.customer.name,
+                'abbreviation': self.customer.abbreviation,
                 'projects': 2,
                 'project_groups': 1,
                 'instances': 4,
             },
             {
                 'name': self.other_customer.name,
+                'abbreviation': self.other_customer.abbreviation,
                 'projects': 1,
                 'project_groups': 0,
                 'instances': 0,
@@ -74,6 +75,7 @@ class CustomerStatsTest(test.APITransactionTestCase):
         expected_result = [
             {
                 'name': self.customer.name,
+                'abbreviation': self.customer.abbreviation,
                 'projects': 2,
                 'project_groups': 1,
                 'instances': 4,
@@ -89,6 +91,7 @@ class CustomerStatsTest(test.APITransactionTestCase):
         expected_result = [
             {
                 'name': self.customer.name,
+                'abbreviation': self.customer.abbreviation,
                 'projects': 1,
                 'project_groups': 1,
                 'instances': 2,
@@ -104,6 +107,7 @@ class CustomerStatsTest(test.APITransactionTestCase):
         expected_result = [
             {
                 'name': self.customer.name,
+                'abbreviation': self.customer.abbreviation,
                 'projects': 1,
                 'project_groups': 0,
                 'instances': 2,
@@ -275,9 +279,7 @@ class ResourceStatsTest(test.APITransactionTestCase):
             'vcpu_quota': self.quota1.vcpu + self.quota2.vcpu,
             'memory_quota': self.quota1.ram + self.quota2.ram,
             'storage_quota': self.quota1.storage + self.quota2.storage,
-            'backup_quota': self.quota1.backup_storage + self.quota2.backup_storage,
         })
-        expected_result['backups'] = self.quota_usage1.backup_storage + self.quota_usage2.backup_storage
 
         with patch('nodeconductor.iaas.models.Cloud.get_backend', return_value=mocked_backend):
             self.client.force_authenticate(self.staff)
@@ -312,7 +314,7 @@ class QuotaStatsTest(test.APITransactionTestCase):
         self.project1_admin = structure_factories.UserFactory()
         self.project1.add_user(self.project1_admin, structure_models.ProjectRole.ADMINISTRATOR)
 
-        fields = ['vcpu', 'ram', 'storage', 'max_instances', 'backup_storage']
+        fields = ['vcpu', 'ram', 'storage', 'max_instances']
 
         self.expected_quotas_for_project1 = dict((f, getattr(self.membership1.resource_quota, f)) for f in fields)
         self.expected_quotas_for_project1.update(

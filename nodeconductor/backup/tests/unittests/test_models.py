@@ -66,6 +66,7 @@ class BackupScheduleTest(TestCase):
         schedule.next_trigger_at = None
         schedule.schedule = '*/10 * * * *'
         schedule.save()
+        schedule = models.BackupSchedule.objects.get(id=schedule.id)
         self.assertGreater(schedule.next_trigger_at, timezone.now())
 
 
