@@ -18,6 +18,8 @@ def process_backup_task(backup_uuid):
         source = backup.backup_source
         if source is not None:
             logger.debug('About to perform backup for backup source: %s', backup.backup_source)
+            logger.info('Backup for %s has been started.', backup.backup_source,
+                        extra={'backup': backup, 'event_type': 'iaas_backup_start_succeeded'})
             try:
                 backup.metadata = backup.get_strategy().backup(backup.backup_source)
                 backup.confirm_backup()
@@ -25,20 +27,20 @@ def process_backup_task(backup_uuid):
                 schedule = backup.backup_schedule
                 if schedule:
                     event_logger.info(
-                        'Backup schedule deactivated for backup source: %s', backup.backup_source,
+                        'Backup schedule for %s has been deactivated.', backup.backup_source,
                         extra={'backup': backup, 'event_type': 'iaas_backup_schedule_deactivated'}
                     )
                     schedule.is_active = False
                     schedule.save(update_fields=['is_active'])
 
                 logger.exception('Failed to perform backup for backup source: %s', backup.backup_source)
-                event_logger.error('Backup creation for %s failed', backup.backup_source,
-                                   extra={'event_type': 'iaas_backup_create_failed'})
+                event_logger.error('Backup creation for %s has failed.', backup.backup_source,
+                                   extra={'backup': backup, 'event_type': 'iaas_backup_create_failed'})
                 backup.erred()
             else:
                 logger.info('Successfully performed backup for backup source: %s', backup.backup_source)
-                event_logger.info('Backup was created for %s' % backup.backup_source,
-                                  extra={'event_type': 'iaas_backup_created'})
+                event_logger.info('Backup for %s has been created.' % backup.backup_source,
+                                  extra={'backup': backup, 'event_type': 'iaas_backup_create_succeeded'})
         else:
             logger.exception('Process backup task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:
@@ -52,19 +54,21 @@ def restoration_task(backup_uuid, instance_uuid, user_raw_input):
         source = backup.backup_source
         if source is not None:
             logger.debug('About to restore backup for backup source: %s', backup.backup_source)
+            logger.info('Backup restoration for %s has been started.', backup.backup_source,
+                        extra={'backup': backup, 'event_type': 'iaas_backup_restore_started'})
             try:
                 backup.get_strategy().restore(instance_uuid, user_raw_input)
                 backup.confirm_restoration()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to restore backup for backup source: %s', backup.backup_source)
-                event_logger.error('Backup restoration for %s failed', backup.backup_source,
-                                   extra={'event_type': 'iaas_backup_restore_failed'})
+                event_logger.error('Backup restoration for %s has failed.', backup.backup_source,
+                                   extra={'backup': backup, 'event_type': 'iaas_backup_restore_failed'})
                 backup.erred()
             else:
                 logger.info('Successfully restored backup for backup source: %s', backup.backup_source)
-                event_logger.info('Backup of %s was restored, created on %s',
+                event_logger.info('Backup of %s has been restored, created on %s.',
                                   backup.backup_source, backup.created_at.strftime('%d/%m/%y'),
-                                  extra={'event_type': 'iaas_backup_restored'})
+                                  extra={'backup': backup, 'event_type': 'iaas_backup_restore_succeeded'})
         else:
             logger.exception('Restoration task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:
@@ -78,18 +82,20 @@ def deletion_task(backup_uuid):
         source = backup.backup_source
         if source is not None:
             logger.debug('About to delete backup for backup source: %s', backup.backup_source)
+            logger.info('Backup deletion for %s has been started.', backup.backup_source,
+                        extra={'backup': backup, 'event_type': 'iaas_backup_delete_started'})
             try:
                 backup.get_strategy().delete(backup.backup_source, backup.metadata)
                 backup.confirm_deletion()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to delete backup for backup source: %s', backup.backup_source)
-                event_logger.error('Backup deletion for %s failed', backup.backup_source,
-                                   extra={'event_type': 'iaas_backup_delete_failed'})
+                event_logger.error('Backup deletion for %s has failed.', backup.backup_source,
+                                   extra={'backup': backup, 'event_type': 'iaas_backup_delete_failed'})
                 backup.erred()
             else:
                 logger.info('Successfully deleted backup for backup source: %s', backup.backup_source)
-                event_logger.info('Backup was deleted for %s', backup.backup_source,
-                                  extra={'event_type': 'iaas_backup_deleted'})
+                event_logger.info('Backup for %s has been deleted.', backup.backup_source,
+                                  extra={'backup': backup, 'event_type': 'iaas_backup_delete_succeeded'})
         else:
             logger.exception('Deletion task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:
