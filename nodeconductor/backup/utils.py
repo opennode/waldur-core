@@ -7,7 +7,7 @@ from django.utils.lru_cache import lru_cache
 @lru_cache()
 def get_backup_strategies():
     entry_points = pkg_resources.get_entry_map('nodeconductor').get('backup_strategies', {})
-    strategies = dict((name.upper(), entry_point.load()) for name, entry_point in entry_points.iteritems())
+    strategies = {name.upper(): entry_point.load() for name, entry_point in six.iteritems(entry_points)}
     return strategies
 
 
