@@ -59,14 +59,14 @@ def log_customer_save(sender, instance, created=False, **kwargs):
     if created:
         event_logger.info(
             'Customer %s has been created.', instance.name,
-            extra={'customer': instance, 'event_type': 'customer_created'})
+            extra={'customer': instance, 'event_type': 'customer_creation_succeeded'})
     else:
         event_logger.info(
             'Customer %s has been updated.', instance.name,
-            extra={'customer': instance, 'event_type': 'customer_updated'})
+            extra={'customer': instance, 'event_type': 'customer_update_succeeded'})
 
 
 def log_customer_delete(sender, instance, **kwargs):
     event_logger.info(
         'Customer %s has been deleted.', instance.name,
-        extra={'customer': instance, 'event_type': 'customer_deleted'})
+        extra={'customer': instance, 'event_type': 'customer_deletion_succeeded'})
