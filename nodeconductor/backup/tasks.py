@@ -19,7 +19,7 @@ def process_backup_task(backup_uuid):
         if source is not None:
             logger.debug('About to perform backup for backup source: %s', backup.backup_source)
             logger.info('Backup for %s has been started.', backup.backup_source,
-                        extra={'backup': backup, 'event_type': 'iaas_backup_start_succeeded'})
+                        extra={'backup': backup, 'event_type': 'iaas_backup_create_started'})
             try:
                 backup.metadata = backup.get_strategy().backup(backup.backup_source)
                 backup.confirm_backup()
