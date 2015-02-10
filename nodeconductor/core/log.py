@@ -107,7 +107,7 @@ class EventFormatter(logging.Formatter):
         # customer
         customer = self.get_related('customer', record, project, cloud, project_group)
         self.add_related_details(message, customer, 'customer',
-            name_attrs=('name', 'abbreviation', 'contact_details'))
+            'name', 'abbreviation', 'contact_details')
 
         return json.dumps(message)
 
@@ -135,9 +135,6 @@ class EventFormatter(logging.Formatter):
             related_uuid = str(uuid.UUID(related.uuid.hex))
         except AttributeError:
             related_uuid = ''
-
-        if not isinstance(name_attrs, (list, tuple)):
-            name_attrs = (name_attrs,)
 
         message["{0}_uuid".format(related_name)] = related_uuid
         for name_attr in name_attrs:
