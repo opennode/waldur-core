@@ -122,9 +122,12 @@ class EventFormatter(logging.Formatter):
 
         return None
 
-    def add_related_details(self, message, related, related_name, name_attrs='name'):
+    def add_related_details(self, message, related, related_name, *name_attrs):
         if related is None:
             return
+
+        if not name_attrs:
+            name_attrs = ('name',)
 
         # This way we don't rely on the model field "hyphenated" setting
         # and always log UUID in its canonical hyphenated representation
