@@ -4,7 +4,6 @@ import time
 
 from django.contrib import auth
 from django.db.models.query_utils import Q
-from django.http.response import Http404
 import django_filters
 from rest_framework import filters as rf_filter
 from rest_framework import mixins as rf_mixins
@@ -12,7 +11,7 @@ from rest_framework import permissions as rf_permissions
 from rest_framework import status
 from rest_framework import views
 from rest_framework import viewsets as rf_viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
@@ -491,19 +490,16 @@ class UserViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    @action()
+    @detail_route(methods=['post'])
     def password(self, request, uuid=None):
-        try:
-            user = User.objects.get(uuid=uuid)
-        except User.DoesNotExist:
-            raise Http404()
+        user = self.get_object()
 
-        password_data = request.DATA
-        serializer = serializers.PasswordSerializer(data=password_data)
+        serializer = serializers.PasswordSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user.set_password(password_data['password'])
+        new_password = serializer.validated_data['password']
+        user.set_password(new_password)
         user.save()
 
         return Response({'detail': "Password has been successfully updated"},
@@ -838,6 +834,7 @@ class CustomerPermissionFilter(django_filters.FilterSet):
 
 class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
                                 mixins.ListModelMixin,
+                                rf_mixins.DestroyModelMixin,
                                 rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.exclude(group__customerrole=None)
     serializer_class = serializers.CustomerPermissionSerializer
@@ -846,12 +843,10 @@ class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
     filter_backends = (rf_filter.DjangoFilterBackend,)
     filter_class = CustomerPermissionFilter
 
-    def can_save(self, user_group):
+    def can_assign_role(self, customer):
         user = self.request.user
         if user.is_staff:
             return True
-
-        customer = user_group.group.customerrole.customer
 
         if customer.has_user(user, CustomerRole.OWNER):
             return True
@@ -861,7 +856,6 @@ class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
 
-        # TODO: Test for it!
         if not self.request.user.is_staff:
             queryset = queryset.filter(
                 Q(group__customerrole__customer__roles__permission_group__user=self.request.user,
@@ -880,58 +874,44 @@ class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
         except (TypeError, KeyError):
             return {}
 
-    def pre_save(self, obj):
-        if not self.can_save(obj):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # perform_create
+        customer = serializer.validated_data['group']['customerrole']['customer']
+        user = serializer.validated_data['user']
+        role = serializer.validated_data['group']['customerrole']['role_type']
+
+        if not self.can_assign_role(customer):
             raise PermissionDenied()
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+        permission, created = customer.add_user(user, role)
 
-        if serializer.is_valid():
-            self.pre_save(serializer.object)
+        # Instantiating serializer again, this time with instance
+        # to make urls render properly.
+        serializer = self.get_serializer(instance=permission)
 
-            customer = serializer.object.group.customerrole.customer
-            user = serializer.object.user
-            role = serializer.object.group.customerrole.role_type
+        headers = self.get_success_headers(serializer.data)
 
-            self.object, created = customer.add_user(user, role)
+        if created:
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED,
+                headers=headers,
+            )
+        else:
+            return Response(
+                status=status.HTTP_303_SEE_OTHER,
+                headers=headers,
+            )
 
-            self.post_save(self.object, created=created)
-
-            # Instantiating serializer again, this time with instance
-            # to make urls render properly.
-            serializer = self.get_serializer(instance=self.object)
-
-            headers = self.get_success_headers(serializer.data)
-
-            if created:
-                return Response(
-                    serializer.data,
-                    status=status.HTTP_201_CREATED,
-                    headers=headers,
-                )
-            else:
-                return Response(
-                    {'detail': 'Permissions were not modified'},
-                    status=status.HTTP_304_NOT_MODIFIED,
-                    headers=headers,
-                )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def destroy(self, request, *args, **kwargs):
-        obj = self.get_object()
-        self.pre_delete(obj)
-
-        user = obj.user
-        customer = obj.group.customerrole.customer
-        role = obj.group.customerrole.role_type
+    def perform_destroy(self, instance):
+        user = instance.user
+        customer = instance.group.customerrole.customer
+        role = instance.group.customerrole.role_type
 
         customer.remove_user(user, role)
-
-        self.post_delete(obj)
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CreationTimeStatsView(views.APIView):

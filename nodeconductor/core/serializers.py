@@ -151,8 +151,8 @@ class RelatedResourcesFieldMixin(object):
                 read_only=len(path_components) > 1,
             )
 
-            fields['{0}_name'.format(entity_name)] = serializers.Field(source='{0}.name'.format(path))
-            fields['{0}_uuid'.format(entity_name)] = serializers.Field(source='{0}.uuid'.format(path))
+            fields['{0}_name'.format(entity_name)] = serializers.ReadOnlyField(source='{0}.name'.format(path))
+            fields['{0}_uuid'.format(entity_name)] = serializers.ReadOnlyField(source='{0}.uuid'.format(path))
 
         return fields
 
