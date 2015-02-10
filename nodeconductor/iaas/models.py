@@ -103,18 +103,6 @@ class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.Abst
     def __str__(self):
         return '{0} | {1}'.format(self.cloud.name, self.project.name)
 
-    def update_resource_quota_usage(self, field, value):
-        try:
-            resource_quota_usage = ResourceQuotaUsage.objects.get(cloud_project_membership=self)
-        except ResourceQuotaUsage.DoesNotExist:
-            resource_quota_usage = ResourceQuotaUsage(cloud_project_membership=self)
-            for resource_field in AbstractResourceQuota._meta.get_all_field_names():
-                setattr(resource_quota_usage, resource_field, 0)
-
-        old_value = getattr(resource_quota_usage, field, 0)
-        setattr(resource_quota_usage, field, old_value + value)
-        resource_quota_usage.save()
-
     def can_user_update_quotas(self, user):
         return user.is_staff
 

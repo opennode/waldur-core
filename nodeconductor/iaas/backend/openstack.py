@@ -489,16 +489,10 @@ class OpenStackBackend(object):
         else:
             logger.info('Successfully get quotas for tenant %s', membership.tenant_id)
 
-        try:
-            resource_quota = membership.resource_quota
-        except models.ResourceQuota.DoesNotExist:
-            resource_quota = models.ResourceQuota(cloud_project_membership=membership)
-
-        resource_quota.ram = self.get_core_ram_size(nova_quotas.ram)
-        resource_quota.vcpu = nova_quotas.cores
-        resource_quota.max_instances = nova_quotas.instances
-        resource_quota.storage = self.get_core_disk_size(cinder_quotas.gigabytes)
-        resource_quota.save()
+        membership.set_quota_limit('ram', self.get_core_ram_size(nova_quotas.ram))
+        membership.set_quota_limit('vcpu', nova_quotas.cores)
+        membership.set_quota_limit('max_instances', nova_quotas.instances)
+        membership.set_quota_limit('storage', self.get_core_disk_size(cinder_quotas.gigabytes))
 
     def pull_resource_quota_usage(self, membership):
         try:
@@ -523,15 +517,10 @@ class OpenStackBackend(object):
             logger.info(
                 'Successfully got volumes, snapshots, flavors and instances for tenant %s', membership.tenant_id)
 
-        try:
-            resource_quota_usage = membership.resource_quota_usage
-        except models.ResourceQuotaUsage.DoesNotExist:
-            resource_quota_usage = models.ResourceQuotaUsage(cloud_project_membership=membership)
-
         # ram and vcpu
         instance_flavor_ids = [instance.flavor['id'] for instance in instances]
-        resource_quota_usage.ram = 0
-        resource_quota_usage.vcpu = 0
+        ram = 0
+        vcpu = 0
 
         for flavor_id in instance_flavor_ids:
             flavor = flavors[flavor_id]
@@ -541,15 +530,13 @@ class OpenStackBackend(object):
                 logger.warning('Cannot find flavor with id %s', flavor_id)
                 continue
 
-            resource_quota_usage.ram += self.get_core_ram_size(getattr(flavor, 'ram', 0))
-            resource_quota_usage.vcpu += getattr(flavor, 'vcpus', 0)
+            ram += self.get_core_ram_size(getattr(flavor, 'ram', 0))
+            vcpu += getattr(flavor, 'vcpus', 0)
 
-        # max instances
-        resource_quota_usage.max_instances = len(instances)
-        # storage
-        resource_quota_usage.storage = sum([self.get_core_disk_size(v.size) for v in volumes + snapshots])
-
-        resource_quota_usage.save()
+        membership.set_quota_usage('ram', ram)
+        membership.set_quota_usage('vcpu', vcpu)
+        membership.set_quota_usage('max_instances', len(instances))
+        membership.set_quota_usage('storage', sum([self.get_core_disk_size(v.size) for v in volumes + snapshots]))
 
     def pull_floating_ips(self, membership):
         logger.debug('Pulling floating ips for membership %s', membership.id)
@@ -693,7 +680,7 @@ class OpenStackBackend(object):
                     imageRef=backend_image.id,
                 )
                 system_volume_id = system_volume.id
-                membership.update_resource_quota_usage('storage', self.get_core_disk_size(size))
+                membership.change_quota_usage('storage', self.get_core_disk_size(size))
 
             if not data_volume_id:
                 data_volume_name = '{0}-data'.format(instance.hostname)
@@ -706,7 +693,7 @@ class OpenStackBackend(object):
                     display_description='',
                 )
                 data_volume_id = data_volume.id
-                membership.update_resource_quota_usage('storage', self.get_core_disk_size(size))
+                membership.change_quota_usage('storage', self.get_core_disk_size(size))
 
             if not self._wait_for_volume_status(system_volume_id, cinder, 'available', 'error'):
                 logger.error(
@@ -774,9 +761,9 @@ class OpenStackBackend(object):
             instance.data_volume_id = data_volume_id
             instance.save()
 
-            membership.update_resource_quota_usage('max_instances', 1)
-            membership.update_resource_quota_usage('ram', self.get_core_ram_size(backend_flavor.ram))
-            membership.update_resource_quota_usage('vcpu', backend_flavor.vcpus)
+            membership.change_quota_usage('max_instances', 1)
+            membership.change_quota_usage('ram', self.get_core_ram_size(backend_flavor.ram))
+            membership.change_quota_usage('vcpu', backend_flavor.vcpus)
 
             if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
                 logger.error(
@@ -858,12 +845,12 @@ class OpenStackBackend(object):
             if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
                 logger.error('Failed to stop instance %s', instance.uuid)
                 event_logger.error('Virtual machine %s stop has failed.', instance.hostname,
-                                  extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
+                                   extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
                 raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to stop instance %s', instance.uuid)
             event_logger.error('Virtual machine %s stop has failed.', instance.hostname,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
+                               extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
             six.reraise(CloudBackendError, e)
         else:
             instance.start_time = None
@@ -913,10 +900,10 @@ class OpenStackBackend(object):
                                    extra={'instance': instance, 'event_type': 'iaas_instance_deletion_failed'})
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
             else:
-                membership.update_resource_quota_usage('max_instances', -1)
-                membership.update_resource_quota_usage('vcpu', -instance.cores)
-                membership.update_resource_quota_usage('ram', -instance.ram)
-                membership.update_resource_quota_usage(
+                membership.change_quota_usage('max_instances', -1)
+                membership.change_quota_usage('vcpu', -instance.cores)
+                membership.change_quota_usage('ram', -instance.ram)
+                membership.change_quota_usage(
                     'storage', -(instance.system_volume_size + instance.data_volume_size))
 
         except nova_exceptions.ClientException as e:
@@ -969,13 +956,13 @@ class OpenStackBackend(object):
             for volume_id in volume_ids:
                 # create a temporary snapshot
                 snapshot = self.create_snapshot(volume_id, cinder)
-                membership.update_resource_quota_usage('storage', self.get_core_disk_size(snapshot.size))
+                membership.change_quota_usage('storage', self.get_core_disk_size(snapshot.size))
 
                 # volume
                 promoted_volume_id = self.create_volume_from_snapshot(snapshot.id, cinder, prefix=prefix)
                 cloned_volume_ids.append(promoted_volume_id)
                 # volume size should be equal to a snapshot size
-                membership.update_resource_quota_usage('storage', self.get_core_disk_size(snapshot.size))
+                membership.change_quota_usage('storage', self.get_core_disk_size(snapshot.size))
 
                 # clean-up created snapshot
                 self.delete_snapshot(snapshot.id, cinder)
@@ -983,7 +970,7 @@ class OpenStackBackend(object):
                     logger.exception('Timed out waiting for snapshot %s to become available', snapshot.id)
                     raise CloudBackendInternalError()
 
-                membership.update_resource_quota_usage('storage', -self.get_core_disk_size(snapshot.size))
+                membership.change_quota_usage('storage', -self.get_core_disk_size(snapshot.size))
 
         except (cinder_exceptions.ClientException,
                 keystone_exceptions.ClientException, CloudBackendInternalError) as e:
@@ -1005,7 +992,7 @@ class OpenStackBackend(object):
                 self.delete_volume(volume_id, cinder)
 
                 if self._wait_for_volume_deletion(volume_id, cinder):
-                    membership.update_resource_quota_usage('storage', -self.get_core_disk_size(size))
+                    membership.change_quota_usage('storage', -self.get_core_disk_size(size))
                 else:
                     logger.exception('Failed to delete volume %s', volume_id)
 
@@ -1151,7 +1138,7 @@ class OpenStackBackend(object):
             try:
                 self._extend_volume(cinder, volume, new_backend_size)
                 storage_delta = new_core_size - old_core_size
-                membership.update_resource_quota_usage('storage', storage_delta)
+                membership.change_quota_usage('storage', storage_delta)
             except cinder_exceptions.OverLimit:
                 logger.warning(
                     'Failed to extend volume: exceeded quota limit while trying to extend volume %s',
