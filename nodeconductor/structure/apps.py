@@ -19,6 +19,18 @@ class StructureConfig(AppConfig):
         ProjectGroup = self.get_model('ProjectGroup')
 
         signals.post_save.connect(
+            handlers.log_project_group_save,
+            sender=ProjectGroup,
+            dispatch_uid='nodeconductor.structure.handlers.log_project_group_save',
+        )
+
+        signals.post_delete.connect(
+            handlers.log_project_group_delete,
+            sender=ProjectGroup,
+            dispatch_uid='nodeconductor.structure.handlers.log_project_group_delete',
+        )
+
+        signals.post_save.connect(
             handlers.create_customer_roles,
             sender=Customer,
             dispatch_uid='nodeconductor.structure.models.create_customer_roles',
