@@ -59,14 +59,14 @@ def log_project_group_save(sender, instance, created=False, **kwargs):
     if created:
         event_logger.info(
             'Project group %s has been created.', instance,
-            extra={'project_group': instance, 'event_type': 'project_group_created'})
+            extra={'project_group': instance, 'event_type': 'project_group_creation_succeeded'})
     else:
         event_logger.info(
             'Project group %s has been updated.', instance,
-            extra={'project_group': instance, 'event_type': 'project_group_updated'})
+            extra={'project_group': instance, 'event_type': 'project_group_update_succeeded'})
 
 
 def log_project_group_delete(sender, instance, **kwargs):
     event_logger.info(
         'Project group %s has been deleted.', instance,
-        extra={'project_group': instance, 'event_type': 'project_group_deleted'})
+        extra={'project_group': instance, 'event_type': 'project_group_deletion_succeeded'})
