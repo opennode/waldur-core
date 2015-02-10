@@ -1,8 +1,6 @@
 from django.contrib import admin
-from django import forms
 
 from nodeconductor.structure import models
-from nodeconductor.iaas.models import Cloud, CloudProjectMembership
 
 
 class ProjectAdmin(admin.ModelAdmin):

@@ -78,7 +78,7 @@ class EventFormatter(logging.Formatter):
         }
 
         # user
-        user = get_current_user()
+        user = self.get_related('user', record, lambda _: get_current_user())
         self.add_related_details(message, user, 'user', 'username')
 
         # affected user
@@ -87,7 +87,7 @@ class EventFormatter(logging.Formatter):
 
         # instance
         instance = self.get_related('instance', record)
-        self.add_related_details(message, instance, 'vm_instance', 'hostname')
+        self.add_related_details(message, instance, 'iaas_instance', 'hostname')
 
         # cloud project membership
         membership = self.get_related('membership', instance)
@@ -113,8 +113,10 @@ class EventFormatter(logging.Formatter):
     def get_related(self, related_name, *sources):
         for source in sources:
             try:
+                if callable(source):
+                    return source(related_name)
                 return getattr(source, related_name)
-            except AttributeError:
+            except (AttributeError, TypeError):
                 pass
 
         return None

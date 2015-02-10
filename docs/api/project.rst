@@ -39,7 +39,6 @@ descending sorting prefix field name with a **-**.
 - ?o=vcpu - sort by project's quota of vCPU number
 - ?o=ram - sort by project's quota of RAM
 - ?o=storage - sort by project's quota of storage
-- ?o=backup - sort by project's quota of backups
 - ?o=max_instances - sort by project's quota of instance number
 - ?o=project_groups__name - **deprecated**, use ?o=project_group instead
 - ?o=resource_quota__vcpu - **deprecated**, use ?=vcpu instead

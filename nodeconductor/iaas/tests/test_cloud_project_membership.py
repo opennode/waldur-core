@@ -7,6 +7,7 @@ from rest_framework import test
 
 from nodeconductor.iaas import models
 from nodeconductor.iaas.tests import factories
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -143,11 +144,27 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
 
         project = self.connected_project
         cloud = self.cloud
-        membership = factories.CloudProjectMembershipFactory(project=project, cloud=cloud)
+        membership = factories.CloudProjectMembershipFactory(
+            state=SynchronizationStates.IN_SYNC, project=project, cloud=cloud)
 
         url = factories.CloudProjectMembershipFactory.get_url(membership)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_cannot_modify_in_unstable_state(self):
+        user = self.users['group_manager']
+        self.client.force_authenticate(user=user)
+
+        project = self.connected_project
+        cloud = self.cloud
+
+        for state in SynchronizationStates.UNSTABLE_STATES:
+            membership = factories.CloudProjectMembershipFactory(
+                state=state, project=project, cloud=cloud)
+
+            url = factories.CloudProjectMembershipFactory.get_url(membership)
+            response = self.client.delete(url)
+            self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     def _get_valid_payload(self, cloud=None, project=None):
         cloud = cloud or factories.CloudFactory()
