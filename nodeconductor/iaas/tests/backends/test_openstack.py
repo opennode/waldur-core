@@ -9,7 +9,7 @@ import mock
 
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.backend.openstack import OpenStackBackend
-from nodeconductor.iaas.models import Flavor, Instance, Image, ResourceQuota, ResourceQuotaUsage, FloatingIP
+from nodeconductor.iaas.models import Flavor, Instance, Image, FloatingIP
 from nodeconductor.iaas.tests import factories
 
 NovaFlavor = collections.namedtuple(
@@ -194,11 +194,10 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         # when
         self.backend.pull_resource_quota(membership)
         # then
-        resource_quota = membership.resource_quota
-        self.assertEqual(resource_quota.ram, self.nova_quota.ram)
-        self.assertEqual(resource_quota.max_instances, self.nova_quota.instances)
-        self.assertEqual(resource_quota.vcpu, self.nova_quota.cores)
-        self.assertEqual(resource_quota.storage, self.cinder_quota.gigabytes * 1024)
+        self.assertEqual(membership.quotas.get(name='ram').limit, self.nova_quota.ram)
+        self.assertEqual(membership.quotas.get(name='max_instances').limit, self.nova_quota.instances)
+        self.assertEqual(membership.quotas.get(name='vcpu').limit, self.nova_quota.cores)
+        self.assertEqual(membership.quotas.get(name='storage').limit, self.cinder_quota.gigabytes * 1024)
 
     def test_pull_quota_resource_calls_clients_quotas_gets_methods_with_membership_tenant_id(self):
         membership = factories.CloudProjectMembershipFactory(tenant_id='test_backend_id')
@@ -210,33 +209,30 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
 
     def test_pull_quota_resource_rewrite_old_resource_quota_data(self):
         membership = factories.CloudProjectMembershipFactory(tenant_id='test_backend_id')
-        quota = factories.ResourceQuotaFactory(max_instances=3, cloud_project_membership=membership)
         # when
         self.backend.pull_resource_quota(membership)
         # then
-        reread_quota = ResourceQuota.objects.get(id=quota.id)
-        self.assertEqual(reread_quota.max_instances, self.nova_quota.instances)
+        self.assertEqual(membership.quotas.get(name='max_instances').limit, self.nova_quota.instances)
 
     def test_pull_quota_resource_usage_initiates_quota_parameters(self):
         membership = factories.CloudProjectMembershipFactory()
         # when
         self.backend.pull_resource_quota_usage(membership)
         # then
-        resource_quota_usage = membership.resource_quota_usage
         instance_flavors = [f for f in self.flavors if f.id in [i.flavor['id'] for i in self.instances]]
-        self.assertEqual(resource_quota_usage.ram, sum([f.ram for f in instance_flavors]))
-        self.assertEqual(resource_quota_usage.max_instances, len(self.instances))
-        self.assertEqual(resource_quota_usage.vcpu, sum([f.vcpus for f in instance_flavors]))
-        self.assertEqual(resource_quota_usage.storage, sum([int(v.size * 1024) for v in self.volumes + self.snapshots]))
+        self.assertEqual(membership.quotas.get(name='ram').usage, sum([f.ram for f in instance_flavors]))
+        self.assertEqual(membership.quotas.get(name='max_instances').usage, len(self.instances))
+        self.assertEqual(membership.quotas.get(name='vcpu').usage, sum([f.vcpus for f in instance_flavors]))
+        self.assertEqual(
+            membership.quotas.get(name='storage').usage,
+            sum([int(v.size * 1024) for v in self.volumes + self.snapshots]))
 
     def test_pull_quota_resource_usage_rewrite_old_resource_quota_usage_data(self):
         membership = factories.CloudProjectMembershipFactory()
-        quota_usage = factories.ResourceQuotaUsageFactory(max_instances=3, cloud_project_membership=membership)
         # when
         self.backend.pull_resource_quota_usage(membership)
         # then
-        reread_quota_usage = ResourceQuotaUsage.objects.get(id=quota_usage.id)
-        self.assertEqual(reread_quota_usage.max_instances, len(self.instances))
+        self.assertEqual(membership.quotas.get(name='max_instances').usage, len(self.instances))
 
 
 class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
