@@ -1,6 +1,5 @@
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Sum
 
@@ -11,12 +10,14 @@ from nodeconductor.core.models import UuidMixin
 class Quota(UuidMixin, models.Model):
     """
     Abstract quota for any resource
+
+    If quota limit is defined as -1 quota will never be exceeded
     """
     class Meta:
         unique_together = (('name', 'content_type', 'object_id'),)
 
     name = models.CharField(max_length=31)
-    limit = models.FloatField(default=0)
+    limit = models.FloatField(default=-1)
     usage = models.FloatField(default=0)
 
     content_type = models.ForeignKey(ct_models.ContentType)
@@ -26,6 +27,8 @@ class Quota(UuidMixin, models.Model):
     objects = managers.QuotaManager()
 
     def is_exceeded(self, delta):
+        if self.limit == -1:
+            return False
         return self.usage + delta > self.limit
 
 
@@ -39,15 +42,29 @@ class QuotaModelMixin(object):
         self.quotas.filter(name=quota_name).update(limit=limit)
 
     def set_quota_usage(self, quota_name, usage):
-        self.quotas.filter(name=quota_name).update(usage=usage)
+        original_quota = self.quotas.get(name=quota_name)
+        self._add_usage_to_ancestors(quota_name, usage - original_quota.usage)
+        original_quota.usage = usage
+        original_quota.save()
 
     def change_quota_usage(self, quota_name, usage_delta):
         """
         Add to usage_delta to current quota usage
         """
-        quota = self.quotas.get(name=quota_name)
-        quota.usage += usage_delta
-        quota.save()
+        original_quota = self.quotas.get(name=quota_name)
+        original_quota.usage += usage_delta
+        original_quota.save()
+        self._add_usage_to_ancestors(quota_name, usage_delta)
+
+    def _add_usage_to_ancestors(self, quota_name, usage):
+        for ancestor in self._get_quota_ancestors():
+            try:
+                quota = ancestor.quotas.get(name=quota_name)
+                quota.usage += usage
+                quota.save()
+            except Quota.DoesNotExist:
+                # we do not do anything if ancestor does not have such quota
+                pass
 
     def get_quota_errors(self, quota_deltas):
         """
@@ -66,9 +83,21 @@ class QuotaModelMixin(object):
             if quota.is_exceeded(delta):
                 errors.append('%s quota limit: %s, requires %s (%s)\n' % (
                     quota.name, quota.limit, quota.usage + delta, quota.owner))
-        # for parent in self.get_quota_parents():
-        #     errors += parent.get_quota_errors(quota_deltas)
+        for parent in self.get_quota_parents():
+            errors += parent.get_quota_errors(quota_deltas)
         return errors
+
+    def _get_quota_ancestors(self):
+        """
+        Get all unique quota ancestors
+        """
+        ancestors = list(self.get_quota_parents())
+        ancestor_unique_attributes = [(a.__class__, a.id) for a in ancestors]
+        for ancestor in ancestors:
+            for parent in ancestor.get_quota_parents():
+                if (parent.__class__, parent.id) not in ancestor_unique_attributes:
+                    ancestors.append(parent)
+        return ancestors
 
     def get_quota_parents(self):
         """
@@ -76,7 +105,7 @@ class QuotaModelMixin(object):
 
         Example: Customer quotas contain quotas of all customers projects.
         """
-        raise NotImplementedError('This method have to be defined for each quota owner separately')
+        return []
 
     def can_user_update_quotas(self, user):
         """
