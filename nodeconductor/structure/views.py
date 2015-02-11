@@ -438,14 +438,17 @@ class UserViewSet(viewsets.ModelViewSet):
         # TODO: refactor to a separate endpoint or structure
         # a special query for all users with assigned privileges that the current user can remove privileges from
         if 'potential' in self.request.QUERY_PARAMS:
-            # XXX: Let the DB cry...
-            connected_customers_query = models.Customer.objects.filter(
-                Q(roles__permission_group__user=user)
-                |
-                Q(projects__roles__permission_group__user=user)
-                |
-                Q(project_groups__roles__permission_group__user=user)
-            ).distinct()
+            connected_customers_query = models.Customer.objects.all()
+            # is user is not staff, allow only connected customers
+            if not user.is_staff:
+                # XXX: Let the DB cry...
+                connected_customers_query = connected_customers_query.filter(
+                    Q(roles__permission_group__user=user)
+                    |
+                    Q(projects__roles__permission_group__user=user)
+                    |
+                    Q(project_groups__roles__permission_group__user=user)
+                ).distinct()
 
             # check if we need to filter potential users by a customer
             potential_customer = self.request.QUERY_PARAMS.get('potential_customer', None)

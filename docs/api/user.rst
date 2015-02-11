@@ -23,7 +23,7 @@ In addition, several custom filters are supported:
 - ?civil_number=XXX - filters out users with a specified civil number
 - ?is_active=True|False - show only active (non-active) users
 - ?potential - shows users that have common connections to the customers and are potential collaborators. Exclude staff
-  users.
+  users. Staff users can see all the customers.
 - ?potential_customer=<Customer UUID> - optionally filter potential users by customer UUID
 
 Ordering is supported by the fields below. Descending sorting can be achieved through prefixing

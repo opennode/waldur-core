@@ -70,3 +70,16 @@ def log_user_delete(sender, instance, **kwargs):
     event_logger.info(
         'User %s has been deleted.', instance.username,
         extra={'affected_user': instance, 'event_type': 'user_deletion_succeeded'})
+
+
+def log_ssh_key_save(sender, instance, created=False, **kwargs):
+    if created:
+        event_logger.info(
+            'SSH key %s has been created.', instance.name,
+            extra={'ssh_key': instance, 'event_type': 'ssh_key_creation_succeeded'})
+
+
+def log_ssh_key_delete(sender, instance, **kwargs):
+    event_logger.info(
+        'SSH key %s has been deleted.', instance.name,
+        extra={'ssh_key': instance, 'event_type': 'ssh_key_deletion_succeeded'})

@@ -424,10 +424,7 @@ class Instance(core_models.UuidMixin,
         pass
 
     def __str__(self):
-        return '%(name)s - %(status)s' % {
-            'name': self.hostname,
-            'status': self.get_state_display(),
-        }
+        return self.hostname
 
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)
