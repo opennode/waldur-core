@@ -1,5 +1,6 @@
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Sum
 
@@ -24,6 +25,9 @@ class Quota(UuidMixin, models.Model):
 
     objects = managers.QuotaManager()
 
+    def is_exceeded(self, delta):
+        return self.usage + delta > self.limit
+
 
 class QuotaModelMixin(object):
     """
@@ -45,11 +49,39 @@ class QuotaModelMixin(object):
         quota.usage += usage_delta
         quota.save()
 
-    def is_quota_limit_exceeded(self, quota_name, usage_delta):
-        quota = self.quotas.get(name=quota_name)
-        return quota.usage + usage_delta > quota.limit
+    def get_quota_errors(self, quota_deltas):
+        """
+        Get error messages about quotas that will be existed if quota_delta will be added to them
+
+        quota_deltas - dictionary of quotas deltas, example:
+        {
+            'ram': 1024,
+            'storage': 2048,
+            ...
+        }
+        """
+        errors = []
+        for name, delta in quota_deltas.iteritems():
+            quota = self.quotas.get(name=name)
+            if quota.is_exceeded(delta):
+                errors.append('%s quota limit: %s, requires %s (%s)\n' % (
+                    quota.name, quota.limit, quota.usage + delta, quota.owner))
+        # for parent in self.get_quota_parents():
+        #     errors += parent.get_quota_errors(quota_deltas)
+        return errors
+
+    def get_quota_parents(self):
+        """
+        Return list of other quota owners that contain quotas of current owner.
+
+        Example: Customer quotas contain quotas of all customers projects.
+        """
+        raise NotImplementedError('This method have to be defined for each quota owner separately')
 
     def can_user_update_quotas(self, user):
+        """
+        Return True if user has permission to update quota
+        """
         raise NotImplementedError('This method have to be defined for each quota owner separately')
 
     @classmethod

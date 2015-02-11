@@ -106,6 +106,9 @@ class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.Abst
     def can_user_update_quotas(self, user):
         return user.is_staff
 
+    def get_quota_parents(self):
+        return [self.project]
+
 
 class CloudProjectMember(models.Model):
     class Meta(object):
