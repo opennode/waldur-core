@@ -59,17 +59,17 @@ def log_project_save(sender, instance, created=False, **kwargs):
     if created:
         event_logger.info(
             'Project %s has been created.', instance.name,
-            extra={'project': instance, 'event_type': 'project_created'}
+            extra={'project': instance, 'event_type': 'project_creation_succeeded'}
         )
     else:
         event_logger.info(
             'Project %s has been updated.', instance.name,
-            extra={'project': instance, 'event_type': 'project_updated'}
+            extra={'project': instance, 'event_type': 'project_update_succeeded'}
         )
 
 
 def log_project_delete(sender, instance, **kwargs):
     event_logger.info(
         'Project %s has been deleted.', instance.name,
-        extra={'project': instance, 'event_type': 'project_deleted'}
+        extra={'project': instance, 'event_type': 'project_deletion_succeeded'}
     )
