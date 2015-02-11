@@ -365,12 +365,16 @@ def check_cloud_memberships_quotas():
 
             if resource_usage >= threshold * resource_quota:
                 event_logger.warning(
-                    '%s quota limit is about to be reached.', resource_name,
+                    '%s quota threshold has been reached for %s.', resource_name, membership.project.name,
                     extra=dict(
                         event_type='quota_threshold_reached',
+                        quota_type=resource_name,
+                        quota_container_type=membership,
                         cloud=membership.cloud,
                         project=membership.project,
                         project_group=membership.project.project_groups.first(),
+                        threshold=threshold * resource_quota,
+                        resource_usage=resource_usage,
                     ))
 
 

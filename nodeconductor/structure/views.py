@@ -350,16 +350,16 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
 
     def post_save(self, obj, created=False):
             event_logger.info(
-                'Environment %s has been added to project %s.', obj.project.name, obj.projectgroup.name,
+                'Project %s has been added to project group %s.', obj.project.name, obj.projectgroup.name,
                 extra={'project': obj.project, 'project_group': obj.projectgroup,
-                       'event_type': 'environment_added_to_project'}
+                       'event_type': 'project_added_to_project_group'}
             )
 
     def post_delete(self, obj):
         event_logger.info(
-            'Environment %s has been removed from project %s.', obj.project.name, obj.projectgroup.name,
+            'Project %s has been removed from project group %s.', obj.project.name, obj.projectgroup.name,
             extra={'project': obj.project, 'project_group': obj.projectgroup,
-                   'event_type': 'environment_removed_from_project'}
+                   'event_type': 'project_removed_from_project_group'}
         )
 
 # XXX: This should be put to models

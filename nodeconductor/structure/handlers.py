@@ -58,18 +58,18 @@ def create_project_group_roles(sender, instance, created, **kwargs):
 def log_project_save(sender, instance, created=False, **kwargs):
     if created:
         event_logger.info(
-            'Environment %s has been created.', instance.name,
-            extra={'project': instance, 'event_type': 'environment_created'}
+            'Project %s has been created.', instance.name,
+            extra={'project': instance, 'event_type': 'project_created'}
         )
     else:
         event_logger.info(
-            'Environment %s has been updated.', instance.name,
-            extra={'project': instance, 'event_type': 'environment_updated'}
+            'Project %s has been updated.', instance.name,
+            extra={'project': instance, 'event_type': 'project_updated'}
         )
 
 
 def log_project_delete(sender, instance, **kwargs):
     event_logger.info(
-        'Environment %s has been deleted.', instance.name,
-        extra={'project': instance, 'event_type': 'environment_deleted'}
+        'Project %s has been deleted.', instance.name,
+        extra={'project': instance, 'event_type': 'project_deleted'}
     )
