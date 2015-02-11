@@ -49,8 +49,6 @@ class BackupViewSetTest(TestCase):
         )
         request = Mock()
         flavor = iaas_factories.FlavorFactory(cloud=backup.backup_source.cloud_project_membership.cloud)
-        iaas_factories.ResourceQuotaFactory(
-            cloud_project_membership=backup.backup_source.cloud_project_membership, storage=10 * 1024 * 1024)
         request.DATA = {
             'hostname': 'new.hostname',
             'flavor': iaas_factories.FlavorFactory.get_url(flavor)

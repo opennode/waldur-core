@@ -17,21 +17,13 @@ class InstanceBackupStrategy(BackupStrategy):
     @classmethod
     def _is_storage_resource_available(cls, instance):
         membership = instance.cloud_project_membership
-        try:
-            storage_size = models.ResourceQuota.objects.get(cloud_project_membership=membership).storage
-        except models.ResourceQuota.DoesNotExist:
-            return False
 
-        try:
-            storage_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership).storage
-        except models.ResourceQuotaUsage.DoesNotExist:
-            storage_usage = 0
+        quota_usage = {
+            'storage': instance.system_volume_size + instance.data_volume_size
+        }
+        quota_errors = membership.get_quota_errors(quota_usage)
 
-        backup_size = 2 * (instance.system_volume_size + instance.data_volume_size)
-        if backup_size + storage_usage > storage_size:
-            return False
-
-        return True
+        return not bool(quota_errors)
 
     @classmethod
     def backup(cls, instance):

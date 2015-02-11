@@ -25,8 +25,6 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         factories.TemplateLicenseFactory(templates=(self.template,))
 
         self.instance = factories.InstanceFactory(template=self.template)
-        factories.ResourceQuotaFactory(
-            cloud_project_membership=self.instance.cloud_project_membership, storage=10 * 1024 * 1024)
         self.backup = backup_factories.BackupFactory(
             backup_source=self.instance,
             metadata={
@@ -92,8 +90,7 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         )
 
     def test_strategy_restore_method_fails_if_where_is_no_space_on_resource_storage(self):
-        factories.ResourceQuotaUsageFactory(
-            cloud_project_membership=self.instance.cloud_project_membership, storage=10 * 1024 * 1024)
+        self.instance.cloud_project_membership.set_quota_limit('storage', self.instance.system_volume_size)
         self.assertRaises(BackupStrategyExecutionError, lambda: InstanceBackupStrategy.backup(self.instance))
 
 
