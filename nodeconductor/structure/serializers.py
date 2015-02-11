@@ -119,6 +119,9 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
             project_groups = self.object.project_groups.all()
         else:
             project_groups = attrs.get('project_groups', [])
+            # remove project groups if nothing is specified to avoid m2m serializer errors (NC-366)
+            if project_groups is None:
+                del attrs['project_groups']
         customer = attrs['customer'] if 'customer' in attrs else self.object.customer
 
         if user.is_staff:

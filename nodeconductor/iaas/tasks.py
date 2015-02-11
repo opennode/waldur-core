@@ -110,11 +110,7 @@ def schedule_deleting(instance_uuid):
         delete_zabbix_host_and_service(instance)
     except Exception:
         # noinspection PyProtectedMember
-        logger.exception('Failed to begin_deleting Instance with id %s', instance_uuid)
-        event_logger.exception(
-            'Failed to begin_deleting Instance with id %s', instance_uuid,
-            extra={'instance': instance, 'event_type': 'instance_deletion'}
-        )
+        logger.exception('Failed to begin deleting Instance with id %s', instance_uuid)
         set_state(models.Instance, instance_uuid, 'set_erred')
     else:
         # Actually remove the instance from the database
