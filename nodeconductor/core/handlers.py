@@ -24,6 +24,7 @@ def preserve_fields_before_update(sender, instance, **kwargs):
     old_values = {
         field_name: getattr(old_instance, field_name)
         for field_name in instance._meta.get_all_field_names()
+        if hasattr(old_instance, field_name)
     }
 
     setattr(instance, '_old_values', old_values)
