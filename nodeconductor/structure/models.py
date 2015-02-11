@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import logging
+
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -8,8 +10,13 @@ from django.db import transaction
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
 
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.models import UuidMixin, DescribableMixin
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
+
+
+logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 
 @python_2_unicode_compatible
@@ -42,6 +49,12 @@ class Customer(UuidMixin, TimeStampedModel):
                     user=user,
                     role=role_type,
                 )
+                event_logger.info(
+                    'User %s has gained role of %s in customer %s.',
+                    user.username, role.get_role_type_display(), self.name,
+                    extra={'customer': self, 'affected_user': user,
+                           'event_type': 'role_granted'},
+                )
 
             return membership, created
 
@@ -58,14 +71,23 @@ class Customer(UuidMixin, TimeStampedModel):
                 memberships = memberships.filter(group__customerrole__role_type=role_type)
 
             for membership in memberships.iterator():
+                role = membership.group.customerrole
+
                 structure_role_revoked.send(
                     sender=Customer,
                     structure=self,
                     user=membership.user,
-                    role=membership.group.customerrole.role_type,
+                    role=role.role_type,
                 )
 
                 membership.delete()
+
+                event_logger.info(
+                    'User %s has lost role of %s in customer %s.',
+                    user.username, role.get_role_type_display(), self.name,
+                    extra={'customer': self, 'affected_user': user,
+                           'event_type': 'role_revoked'},
+                )
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
@@ -167,6 +189,12 @@ class Project(DescribableMixin, UuidMixin, TimeStampedModel):
                     user=user,
                     role=role_type,
                 )
+                event_logger.info(
+                    'User %s has gained role of %s in project %s.',
+                    user.username, role.get_role_type_display(), self.name,
+                    extra={'project': self, 'affected_user': user,
+                           'event_type': 'role_granted'},
+                )
 
             return membership, created
 
@@ -183,14 +211,22 @@ class Project(DescribableMixin, UuidMixin, TimeStampedModel):
                 memberships = memberships.filter(group__projectrole__role_type=role_type)
 
             for membership in memberships.iterator():
+                role = membership.group.projectrole
                 structure_role_revoked.send(
                     sender=Project,
                     structure=self,
                     user=membership.user,
-                    role=membership.group.projectrole.role_type,
+                    role=role.role_type,
                 )
 
                 membership.delete()
+
+                event_logger.info(
+                    'User %s has lost role of %s in project %s.',
+                    user.username, role.get_role_type_display(), self.name,
+                    extra={'project': self, 'affected_user': user,
+                           'event_type': 'role_revoked'},
+                )
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
@@ -265,6 +301,12 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
                     user=user,
                     role=role_type,
                 )
+                event_logger.info(
+                    'User %s has gained role of %s in project group %s.',
+                    user.username, role.get_role_type_display(), self.name,
+                    extra={'project_group': self, 'affected_user': user,
+                           'event_type': 'role_granted'},
+                )
 
             return membership, created
 
@@ -281,14 +323,22 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
                 memberships = memberships.filter(group__projectgrouprole__role_type=role_type)
 
             for membership in memberships.iterator():
+                role = membership.group.projectgrouprole
                 structure_role_revoked.send(
                     sender=ProjectGroup,
                     structure=self,
                     user=membership.user,
-                    role=membership.group.projectgrouprole.role_type,
+                    role=role.role_type,
                 )
 
                 membership.delete()
+
+                event_logger.info(
+                    'User %s has lost role of %s in project group %s.',
+                    user.username, role.get_role_type_display(), self.name,
+                    extra={'project_group': self, 'affected_user': user,
+                           'event_type': 'role_revoked'},
+                )
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
