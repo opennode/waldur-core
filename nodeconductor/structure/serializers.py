@@ -78,6 +78,9 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
     customer_native_name = serializers.Field(source='customer.native_name')
     customer_abbreviation = serializers.Field(source='customer.abbreviation')
+    # This fields exists for backward compitibility
+    resource_quota = serializers.SerializerMethodField('get_resource_quotas')
+    resource_quota_usage = serializers.SerializerMethodField('get_resource_quotas_usage')
 
     class Meta(object):
         model = models.Project
@@ -87,6 +90,7 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups',
             'description',
+            'resource_quota', 'resource_quota_usage',
         )
         lookup_field = 'uuid'
 
@@ -96,6 +100,18 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):
         return fix_non_nullable_attrs(attrs)
+
+    def get_resource_quotas(self, obj):
+        return models.Project.get_sum_of_quotas_as_dict(
+            [obj], ['ram', 'storage', 'max_instances', 'vcpu'], fields=['limit'])
+
+    def get_resource_quotas_usage(self, obj):
+        quota_values = models.Project.get_sum_of_quotas_as_dict(
+            [obj], ['ram', 'storage', 'max_instances', 'vcpu'], fields=['usage'])
+        # No need for '_usage' suffix in quotas names
+        return {
+            key[:-6]: value for key, value in quota_values.iteritems()
+        }
 
 
 class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,

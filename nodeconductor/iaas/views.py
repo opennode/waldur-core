@@ -749,13 +749,15 @@ class ResourceStatsView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        quota_stats = models.ResourceQuota.objects.filter(
-            cloud_project_membership__cloud__auth_url=auth_url,
-        ).aggregate(
-            vcpu_quota=Sum('vcpu'),
-            memory_quota=Sum('ram'),
-            storage_quota=Sum('storage'),
-        )
+        memberships = models.CloudProjectMembership.objects.filter(cloud__auth_url=auth_url)
+        quota_values = models.CloudProjectMembership.get_sum_of_quotas_as_dict(
+            memberships, ('vcpu', 'ram', 'storage'), fields=['limit'])
+        # for backward compatibility we need to use this names:
+        quota_stats = {
+            'vcpu_quota': quota_values['vcpu'],
+            'storage_quota': quota_values['storage'],
+            'memory_quota': quota_values['ram'],
+        }
 
         cloud_backend = cloud.get_backend()
         stats = cloud_backend.get_resource_stats(auth_url)
@@ -1045,29 +1047,6 @@ class FloatingIPViewSet(core_viewsets.ReadOnlyModelViewSet):
 
 class QuotaStatsView(views.APIView):
 
-    # This method should be moved from view (to utils.py maybe), when stats will be moved to separate application
-    @staticmethod
-    def get_sum_of_quotas(memberships):
-        fields = ['vcpu', 'ram', 'storage', 'max_instances']
-        sum_of_quotas = defaultdict(lambda: 0)
-
-        for membership in memberships:
-            # quota fields:
-            try:
-                for field in fields:
-                    sum_of_quotas[field] += getattr(membership.resource_quota, field)
-            except models.ResourceQuota.DoesNotExist:
-                # we ignore memberships without quotas
-                pass
-            # quota usage fields:
-            try:
-                for field in fields:
-                    sum_of_quotas[field + '_usage'] += getattr(membership.resource_quota_usage, field)
-            except models.ResourceQuotaUsage.DoesNotExist:
-                # we ignore memberships without quotas
-                pass
-        return sum_of_quotas
-
     def get(self, request, format=None):
         serializer = serializers.StatsAggregateSerializer(data={
             'model_name': request.QUERY_PARAMS.get('aggregate', 'customer'),
@@ -1077,5 +1056,6 @@ class QuotaStatsView(views.APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         memberships = serializer.get_memberships(request.user)
-        sum_of_quotas = self.get_sum_of_quotas(memberships)
+        sum_of_quotas = models.CloudProjectMembership.get_sum_of_quotas_as_dict(
+            memberships, ['vcpu', 'ram', 'storage', 'max_instances'])
         return Response(sum_of_quotas, status=status.HTTP_200_OK)

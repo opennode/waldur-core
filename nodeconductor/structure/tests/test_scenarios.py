@@ -16,38 +16,31 @@ class ResourceQuotasTest(test.APITransactionTestCase):
         self.project.add_user(self.admin, models.ProjectRole.ADMINISTRATOR)
         from nodeconductor.iaas.tests import factories as iaas_factories
         # resource quotas
-        self.membership1 = iaas_factories.CloudProjectMembershipFactory(project=self.project)
-        self.quota = iaas_factories.ResourceQuotaFactory(cloud_project_membership=self.membership1)
-        self.membership2 = iaas_factories.CloudProjectMembershipFactory(project=self.project)
-        self.quota2 = iaas_factories.ResourceQuotaFactory(cloud_project_membership=self.membership2)
-        self.quota_usage = iaas_factories.ResourceQuotaUsageFactory(cloud_project_membership=self.membership1)
+        quotas = [
+            {'name': 'vcpu', 'usage': 5, 'limit': 10},
+            {'name': 'ram', 'usage': 1024, 'limit': 2048},
+            {'name': 'storage', 'usage': 512, 'limit': 20 * 1048},
+            {'name': 'max_instances', 'usage': 5, 'limit': 10},
+        ]
+        self.membership1 = iaas_factories.CloudProjectMembershipFactory(project=self.project, quotas=quotas)
+        self.membership2 = iaas_factories.CloudProjectMembershipFactory(project=self.project, quotas=quotas)
 
     def _execute_request_to_project(self, user):
         self.client.force_authenticate(user)
         return self.client.get(factories.ProjectFactory.get_url(self.project))
-
-    def test_project_returns_sum_of_membership_resource_quotas(self):
-        # when
-        response = self._execute_request_to_project(self.admin)
-        # then
-        self.assertEqual(response.status_code, 200)
-        expected_resource_quotas = {
-            'vcpu': self.quota.vcpu + self.quota2.vcpu,
-            'ram': self.quota.ram + self.quota2.ram,
-            'storage': self.quota.storage + self.quota2.storage,
-            'max_instances': self.quota.max_instances + self.quota2.max_instances,
-        }
-        self.assertEqual(response.data['resource_quota'], expected_resource_quotas)
 
     def test_project_returns_sum_of_membership_resource_quotas_usages(self):
         # when
         response = self._execute_request_to_project(self.staff)
         # then
         self.assertEqual(response.status_code, 200)
+        quotas1 = self.membership1.quotas
+        quotas2 = self.membership2.quotas
+
         expected_resource_quotas_usages = {
-            'vcpu': self.quota_usage.vcpu,
-            'ram': self.quota_usage.ram,
-            'storage': self.quota_usage.storage,
-            'max_instances': self.quota_usage.max_instances,
+            'vcpu': quotas1.get(name='vcpu').usage + quotas2.get(name='vcpu').usage,
+            'ram': quotas1.get(name='ram').usage + quotas2.get(name='ram').usage,
+            'storage': quotas1.get(name='storage').usage + quotas2.get(name='storage').usage,
+            'max_instances': quotas1.get(name='max_instances').usage + quotas2.get(name='max_instances').usage,
         }
         self.assertEqual(response.data['resource_quota_usage'], expected_resource_quotas_usages)
