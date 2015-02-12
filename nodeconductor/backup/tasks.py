@@ -19,7 +19,7 @@ def process_backup_task(backup_uuid):
         if source is not None:
             logger.debug('About to perform backup for backup source: %s', backup.backup_source)
             # TODO: Instance's hostname should be converted to the name field (NC-367)
-            logger.info('Backup for %s has been scheduled.', backup.backup_source.hostname,
+            logger.info('Backup for %s has been scheduled.', source.hostname,
                         extra={'backup': backup, 'event_type': 'iaas_backup_creation_scheduled'})
             try:
                 backup.metadata = backup.get_strategy().backup(backup.backup_source)
@@ -27,22 +27,22 @@ def process_backup_task(backup_uuid):
             except exceptions.BackupStrategyExecutionError:
                 schedule = backup.backup_schedule
                 if schedule:
+                    schedule.is_active = False
+                    schedule.save()
                     # TODO: Instance's hostname should be converted to the name field (NC-367)
                     event_logger.info(
-                        'Backup schedule for %s has been deactivated.', backup.backup_source.hostname,
-                        extra={'backup': backup, 'event_type': 'iaas_backup_schedule_deactivated'}
+                        'Backup schedule for %s has been deactivated.', source.hostname,
+                        extra={'backup_schedule': schedule, 'event_type': 'iaas_backup_schedule_deactivated'}
                     )
-                    schedule.is_active = False
-                    schedule.save(update_fields=['is_active'])
 
-                logger.exception('Failed to perform backup for backup source: %s', backup.backup_source)
+                logger.exception('Failed to perform backup for backup source: %s', source.hostname)
                 # TODO: Instance's hostname should be converted to the name field (NC-367)
-                event_logger.error('Backup creation for %s has failed.', backup.backup_source.hostname,
+                event_logger.error('Backup creation for %s has failed.', source.hostname,
                                    extra={'backup': backup, 'event_type': 'iaas_backup_creation_failed'})
                 backup.erred()
             else:
-                logger.info('Successfully performed backup for backup source: %s', backup.backup_source)
-                event_logger.info('Backup for %s has been created.' % backup.backup_source.hostname,
+                logger.info('Successfully performed backup for backup source: %s', source.hostname)
+                event_logger.info('Backup for %s has been created.', source.hostname,
                                   extra={'backup': backup, 'event_type': 'iaas_backup_creation_succeeded'})
         else:
             logger.exception('Process backup task was called for backup with no source. Backup uuid: %s', backup_uuid)
