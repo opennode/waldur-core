@@ -49,11 +49,17 @@ class Customer(UuidMixin, TimeStampedModel):
                     user=user,
                     role=role_type,
                 )
+                role_name = role.get_role_type_display().lower()
                 event_logger.info(
                     'User %s has gained role of %s in customer %s.',
-                    user.username, role.get_role_type_display(), self.name,
-                    extra={'customer': self, 'affected_user': user,
-                           'event_type': 'role_granted'},
+                    user.username, role_name, self.name,
+                    extra={
+                        'customer': self,
+                        'affected_user': user,
+                        'event_type': 'role_granted',
+                        'structure_type': 'customer',
+                        'role_name': role_name,
+                    },
                 )
 
             return membership, created
@@ -82,11 +88,17 @@ class Customer(UuidMixin, TimeStampedModel):
 
                 membership.delete()
 
+                role_name = role.get_role_type_display().lower()
                 event_logger.info(
                     'User %s has lost role of %s in customer %s.',
-                    user.username, role.get_role_type_display(), self.name,
-                    extra={'customer': self, 'affected_user': user,
-                           'event_type': 'role_revoked'},
+                    user.username, role_name, self.name,
+                    extra={
+                        'customer': self,
+                        'affected_user': user,
+                        'event_type': 'role_revoked',
+                        'structure_type': 'customer',
+                        'role_name': role_name,
+                    },
                 )
 
     def has_user(self, user, role_type=None):
@@ -189,11 +201,17 @@ class Project(DescribableMixin, UuidMixin, TimeStampedModel):
                     user=user,
                     role=role_type,
                 )
+                role_name = role.get_role_type_display().lower()
                 event_logger.info(
                     'User %s has gained role of %s in project %s.',
-                    user.username, role.get_role_type_display(), self.name,
-                    extra={'project': self, 'affected_user': user,
-                           'event_type': 'role_granted'},
+                    user.username, role_name, self.name,
+                    extra={
+                        'project': self,
+                        'affected_user': user,
+                        'event_type': 'role_granted',
+                        'structure_type': 'project',
+                        'role_name': role_name,
+                    },
                 )
 
             return membership, created
@@ -221,11 +239,17 @@ class Project(DescribableMixin, UuidMixin, TimeStampedModel):
 
                 membership.delete()
 
+                role_name = role.get_role_type_display().lower()
                 event_logger.info(
                     'User %s has lost role of %s in project %s.',
-                    user.username, role.get_role_type_display(), self.name,
-                    extra={'project': self, 'affected_user': user,
-                           'event_type': 'role_revoked'},
+                    user.username, role_name, self.name,
+                    extra={
+                        'project': self,
+                        'affected_user': user,
+                        'event_type': 'role_revoked',
+                        'structure_type': 'project',
+                        'role_name': role_name,
+                    },
                 )
 
     def has_user(self, user, role_type=None):
@@ -301,11 +325,17 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
                     user=user,
                     role=role_type,
                 )
+                role_name = role.get_role_type_display().lower()
                 event_logger.info(
                     'User %s has gained role of %s in project group %s.',
-                    user.username, role.get_role_type_display(), self.name,
-                    extra={'project_group': self, 'affected_user': user,
-                           'event_type': 'role_granted'},
+                    user.username, role_name, self.name,
+                    extra={
+                        'project_group': self,
+                        'affected_user': user,
+                        'event_type': 'role_granted',
+                        'structure_type': 'project_group',
+                        'role_name': role_name,
+                    },
                 )
 
             return membership, created
@@ -333,11 +363,17 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
 
                 membership.delete()
 
+                role_name = role.get_role_type_display().lower()
                 event_logger.info(
                     'User %s has lost role of %s in project group %s.',
-                    user.username, role.get_role_type_display(), self.name,
-                    extra={'project_group': self, 'affected_user': user,
-                           'event_type': 'role_revoked'},
+                    user.username, role_name, self.name,
+                    extra={
+                        'project_group': self,
+                        'affected_user': user,
+                        'event_type': 'role_revoked',
+                        'structure_type': 'project_group',
+                        'role_name': role_name,
+                    },
                 )
 
     def has_user(self, user, role_type=None):
