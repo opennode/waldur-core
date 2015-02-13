@@ -943,6 +943,26 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         if created:
             tasks.sync_cloud_membership.delay(obj.pk)
 
+    @action()
+    def set_quotas(self, request, **kwargs):
+        instance = self.get_object()
+        if instance.state != core_models.SynchronizationStates.IN_SYNC:
+            return Response({'detail': 'Cloud project membership must be in sync state for setting quotas'},
+                            status=status.HTTP_409_CONFLICT)
+
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=request.DATA)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # TODO: schedule a task for quota update
+        instance.schedule_syncing()
+        instance.save()
+
+        tasks.push_cloud_membership_quotas.delay(instance.pk, quotas=serializer.data)
+
+        return Response({'status': 'Quota update was scheduled'},
+                        status=status.HTTP_202_ACCEPTED)
+
 
 class SecurityGroupFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(

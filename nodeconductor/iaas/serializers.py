@@ -343,6 +343,13 @@ class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
         many=True, required=False, read_only=False)
 
 
+class CloudProjectMembershipQuotaSerializer(serializers.Serializer):
+    storage = serializers.IntegerField(min_value=1, required=False)
+    max_instances = serializers.IntegerField(min_value=1, required=False)
+    ram = serializers.IntegerField(min_value=1, required=False)
+    vcpu = serializers.IntegerField(min_value=1, required=False)
+
+
 class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
                                serializers.Serializer):
     flavor = serializers.HyperlinkedRelatedField(

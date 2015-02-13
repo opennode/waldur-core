@@ -248,6 +248,56 @@ class OpenStackBackend(object):
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
             six.reraise(CloudBackendError, e)
 
+    def push_membership_quotas(self, membership, quotas):
+        # mapping to openstack terminology for quotas
+        cinder_quota_mapping = {
+            'storage': ('gigabytes', self.get_backend_disk_size),
+        }
+        nova_quota_mapping = {
+            'max_instances': ('instances', lambda x: x),
+            'ram': ('ram', self.get_backend_ram_size),
+            'vcpu': ('cores', lambda x: x),
+        }
+
+        # split quotas by components
+        cinder_quotas = {}
+        nova_quotas = {}
+
+        # process passed in quotas converting them to correct backend values
+        for quota_name, quota_value in quotas.items():
+            if quota_value is None:
+                continue
+
+            if quota_name in cinder_quota_mapping.keys():
+                quota_backend_mapping = cinder_quota_mapping[quota_name][1]
+                cinder_quotas[cinder_quota_mapping[quota_name][0]] = quota_backend_mapping(quota_value)
+                continue
+            if quota_name in nova_quota_mapping.keys():
+                quota_backend_mapping = nova_quota_mapping[quota_name][1]
+                nova_quotas[nova_quota_mapping[quota_name][0]] = quota_backend_mapping(quota_value)
+                continue
+
+        try:
+            session = self.create_tenant_session(membership)
+
+            try:
+                if len(cinder_quotas) > 0:
+                    cinder = self.create_cinder_client(session)
+                    cinder.quotas.update(membership.tenant_id, **cinder_quotas)
+            except cinder_exceptions.ClientException as e:
+                logger.exception('Failed to update membership %s cinder quotas %s', membership, cinder_quotas)
+
+            try:
+                if len(nova_quotas) > 0:
+                    nova = self.create_nova_client(session)
+                    nova.quotas.update(membership.tenant_id, **nova_quotas)
+            except nova_exceptions.ClientException as e:
+                logger.exception('Failed to update membership %s nova quotas %s', membership, quotas)
+
+        except keystone_exceptions.ClientException as e:
+            logger.exception('Failed to update membership %s quotas %s', membership, quotas)
+            six.reraise(CloudBackendError, e)
+
     def push_security_groups(self, membership):
         try:
             session = self.create_tenant_session(membership)
@@ -487,7 +537,7 @@ class OpenStackBackend(object):
             logger.exception('Failed to get quotas for tenant %s', membership.tenant_id)
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Successfully get quotas for tenant %s', membership.tenant_id)
+            logger.info('Successfully got quotas for tenant %s', membership.tenant_id)
 
         try:
             resource_quota = membership.resource_quota
