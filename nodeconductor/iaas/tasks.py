@@ -330,8 +330,6 @@ def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
 def check_cloud_memberships_quotas():
     threshold = 0.80  # Could have been configurable...
 
-    resources = models.AbstractResourceQuota._meta.get_all_field_names()
-
     queryset = (
         models.CloudProjectMembership.objects
         .all()
@@ -339,8 +337,6 @@ def check_cloud_memberships_quotas():
             'cloud',
             'cloud__customer',
             'project',
-            'resource_quota',
-            'resource_quota_usage',
         )
         .prefetch_related(
             'project__project_groups',
@@ -348,20 +344,10 @@ def check_cloud_memberships_quotas():
     )
 
     for membership in queryset.iterator():
-        try:
-            quota = membership.resource_quota
-            usage = membership.resource_quota_usage
-        except ObjectDoesNotExist:
-            logger.exception('Missing quota or usage')
-            continue
-
-        for resource_name in resources:
-            resource_quota = getattr(quota, resource_name)
-            resource_usage = getattr(usage, resource_name)
-
-            if resource_usage >= threshold * resource_quota:
+        for quota in membership.quotas.all():
+            if quota.is_exceeded(threshold=threshold):
                 event_logger.warning(
-                    "%s quota limit is about to be reached", resource_name,
+                    "%s quota limit is about to be reached", quota.name,
                     extra=dict(
                         event_type='quota_threshold_reached',
                         cloud=membership.cloud,

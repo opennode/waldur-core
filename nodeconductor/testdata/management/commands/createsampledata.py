@@ -12,7 +12,7 @@ from django.utils import timezone
 from nodeconductor.iaas.models import Cloud, CloudProjectMembership, IpMapping, SecurityGroup
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import (
-    Template, TemplateLicense, Instance, InstanceSecurityGroup, ResourceQuota, ResourceQuotaUsage)
+    Template, TemplateLicense, Instance, InstanceSecurityGroup)
 from nodeconductor.structure.models import *
 
 
@@ -483,18 +483,15 @@ Arguments:
     def create_resource_quotas(self, membership):
         # Adding quota to project:
         print 'Creating quota for membership %s' % membership
-        resource_quota = ResourceQuota.objects.create(vcpu=random.randint(60, 255),
-                                                      ram=random.randint(60, 255),
-                                                      storage=random.randint(60, 255) * 1024,
-                                                      max_instances=random.randint(60, 255),
-                                                      cloud_project_membership=membership)
+        membership.set_quota_limit('vcpu', random.randint(60, 255))
+        membership.set_quota_limit('ram', random.randint(60, 255))
+        membership.set_quota_limit('storage', random.randint(60, 255) * 1024)
+        membership.set_quota_limit('max_instances', random.randint(60, 255))
         print 'Generating approximate quota consumption for membership %s' % membership
-        ResourceQuotaUsage.objects.\
-            create(vcpu=resource_quota.vcpu - random.randint(0, 50),
-                   ram=resource_quota.ram - random.randint(0, 50),
-                   storage=resource_quota.storage - random.randint(0, 50),
-                   max_instances=resource_quota.max_instances - random.randint(0, 50),
-                   cloud_project_membership=membership)
+        membership.set_quota_usage('vcpu', random.randint(0, 60))
+        membership.set_quota_usage('ram', random.randint(0, 60))
+        membership.set_quota_usage('storage', random.randint(0, 60) * 1024)
+        membership.set_quota_usage('max_instances', random.randint(0, 60))
 
     def create_user(self):
         username = 'user%s' % random_string(3, 15, alphabet=string.digits)

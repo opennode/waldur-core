@@ -26,10 +26,25 @@ class Quota(UuidMixin, models.Model):
 
     objects = managers.QuotaManager()
 
-    def is_exceeded(self, delta):
+    def is_exceeded(self, delta=None, threshold=None):
+        """
+        Check is quota exceeded
+
+        If delta is not None then checks if quota exceeds with additional delta usage
+        If threshold is not None then checks if quota usage over threshold * limit
+        """
         if self.limit == -1:
             return False
-        return self.usage + delta > self.limit
+
+        usage = self.usage
+        limit = self.limit
+
+        if delta is not None:
+            usage += delta
+        if threshold is not None:
+            limit = threshold * limit
+
+        return usage > limit
 
 
 class QuotaModelMixin(object):
