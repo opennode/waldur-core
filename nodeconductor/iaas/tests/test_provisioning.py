@@ -24,9 +24,6 @@ class UrlResolverMixin(object):
     def _get_template_url(self, template):
         return 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
 
-    def _get_instance_url(self, instance):
-        return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
-
     def _get_ssh_public_key_url(self, key):
         return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': key.uuid})
 
@@ -42,7 +39,11 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         admined_project = self.admined_instance.cloud_project_membership.project
         factories.ResourceQuotaFactory(
-            cloud_project_membership=self.admined_instance.cloud_project_membership, storage=10 * 1024 * 1024)
+            cloud_project_membership=self.admined_instance.cloud_project_membership,
+            storage=10 * 1024 * 1024,
+            vcpu=10,
+            ram=20 * 1024,
+        )
         admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         project = self.managed_instance.cloud_project_membership.project
@@ -64,7 +65,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         response = self.client.get(reverse('instance-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        instance_url = self._get_instance_url(self.admined_instance)
+        instance_url = factories.InstanceFactory.get_url(self.admined_instance)
         self.assertIn(instance_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_instances_of_projects_he_is_manager_of(self):
@@ -73,7 +74,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         response = self.client.get(reverse('instance-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        instance_url = self._get_instance_url(self.managed_instance)
+        instance_url = factories.InstanceFactory.get_url(self.managed_instance)
         self.assertIn(instance_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_instances_of_projects_he_has_no_role_in(self):
@@ -84,25 +85,25 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         response = self.client.get(reverse('instance-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        instance_url = self._get_instance_url(inaccessible_instance)
+        instance_url = factories.InstanceFactory.get_url(inaccessible_instance)
         self.assertNotIn(instance_url, [instance['url'] for instance in response.data])
 
     # Direct instance access tests
     def test_anonymous_user_cannot_access_instance(self):
         instance = factories.InstanceFactory()
-        response = self.client.get(self._get_instance_url(instance))
+        response = self.client.get(factories.InstanceFactory.get_url(instance))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_access_instances_of_projects_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.get(self._get_instance_url(self.admined_instance))
+        response = self.client.get(factories.InstanceFactory.get_url(self.admined_instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_access_instances_of_projects_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.get(self._get_instance_url(self.managed_instance))
+        response = self.client.get(factories.InstanceFactory.get_url(self.managed_instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_access_instances_of_projects_he_has_no_role_in(self):
@@ -127,7 +128,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         instance.state = Instance.States.OFFLINE
         instance.save()
 
-        response = self.client.delete(self._get_instance_url(instance))
+        response = self.client.delete(factories.InstanceFactory.get_url(instance))
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
 
         reread_instance = Instance.objects.get(pk=instance.pk)
@@ -149,7 +150,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             instance = factories.InstanceFactory(state=state)
             instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-            response = self.client.delete(self._get_instance_url(instance))
+            response = self.client.delete(factories.InstanceFactory.get_url(instance))
 
             self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
@@ -166,7 +167,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_user_cannot_delete_instances_of_projects_he_is_manager_of(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.delete(self._get_instance_url(self.managed_instance))
+        response = self.client.delete(factories.InstanceFactory.get_url(self.managed_instance))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     # Mutation tests
@@ -176,7 +177,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         data = self._get_valid_payload(self.admined_instance)
         data['description'] = 'changed description1'
 
-        response = self.client.put(self._get_instance_url(self.admined_instance), data)
+        response = self.client.put(factories.InstanceFactory.get_url(self.admined_instance), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         changed_instance = Instance.objects.get(pk=self.admined_instance.pk)
@@ -195,7 +196,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             {'url': factories.SecurityGroupFactory.get_url(security_group)}
         ]
 
-        response = self.client.put(self._get_instance_url(self.admined_instance), data)
+        response = self.client.put(factories.InstanceFactory.get_url(self.admined_instance), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_cannot_change_description_of_instance_he_is_manager_of(self):
@@ -204,7 +205,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         data = self._get_valid_payload(self.managed_instance)
         data['description'] = 'changed description1'
 
-        response = self.client.put(self._get_instance_url(self.managed_instance), data)
+        response = self.client.put(factories.InstanceFactory.get_url(self.managed_instance), data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_cannot_change_description_of_instance_he_has_no_role_in(self):
@@ -214,7 +215,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         data = self._get_valid_payload(inaccessible_instance)
         data['description'] = 'changed description1'
 
-        response = self.client.put(self._get_instance_url(inaccessible_instance), data)
+        response = self.client.put(factories.InstanceFactory.get_url(inaccessible_instance), data)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_can_change_description_single_field_of_instance_he_is_administrator_of(self):
@@ -224,7 +225,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'description': 'changed description1',
         }
 
-        response = self.client.patch(self._get_instance_url(self.admined_instance), data)
+        response = self.client.patch(factories.InstanceFactory.get_url(self.admined_instance), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         changed_instance = Instance.objects.get(pk=self.admined_instance.pk)
@@ -237,7 +238,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'description': 'changed description1',
         }
 
-        response = self.client.patch(self._get_instance_url(self.managed_instance), data)
+        response = self.client.patch(factories.InstanceFactory.get_url(self.managed_instance), data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_cannot_change_description_single_field_of_instance_he_has_no_role_in(self):
@@ -248,7 +249,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'description': 'changed description1',
         }
 
-        response = self.client.patch(self._get_instance_url(inaccessible_instance), data)
+        response = self.client.patch(factories.InstanceFactory.get_url(inaccessible_instance), data)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_can_change_flavor_of_stopped_instance_he_is_administrator_of(self):
@@ -261,9 +262,9 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
-        response = self.client.post(self._get_instance_url(self.admined_instance) + 'resize/', data)
+        response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
 
-        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED, response.data)
 
         reread_instance = Instance.objects.get(pk=self.admined_instance.pk)
 
@@ -272,7 +273,28 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
                          'Instance should have been scheduled to resize')
 
-    def test_user_cannot_modify_instance_connected_to_failing_cloud_project_memebership(self):
+    def test_user_cannot_change_flavor_of_stopped_instance_he_is_administrator_of_if_quota_would_be_exceeded(self):
+        self.client.force_authenticate(user=self.user)
+
+        # check for ram
+        big_ram_flavor = factories.FlavorFactory(
+            cloud=self.admined_instance.cloud_project_membership.cloud,
+            ram=30 * 1024,
+        )
+        data = {'flavor': self._get_flavor_url(big_ram_flavor)}
+        response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.data)
+
+        # check for vcpu
+        many_core_flavor = factories.FlavorFactory(
+            cloud=self.admined_instance.cloud_project_membership.cloud,
+            cores=11,
+        )
+        data = {'flavor': self._get_flavor_url(many_core_flavor)}
+        response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.data)
+
+    def test_user_cannot_modify_instance_connected_to_failing_cloud_project_membership(self):
         self.client.force_authenticate(user=self.user)
         data = {
             'description': 'changed description1',
@@ -282,7 +304,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.admined_instance.cloud_project_membership.set_erred()
         self.admined_instance.cloud_project_membership.save()
 
-        response = self.client.patch(self._get_instance_url(self.admined_instance), data)
+        response = self.client.patch(factories.InstanceFactory.get_url(self.admined_instance), data)
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     def test_user_cannot_change_flavor_to_flavor_from_different_cloud(self):
@@ -299,7 +321,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
-        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+        response = self.client.post(factories.InstanceFactory.get_url(instance, action='resize'), data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset({'flavor': 'New flavor is not within the same cloud'},
@@ -315,7 +337,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = self.admined_instance
         data = {'disk_size': instance.cloud_project_membership.resource_quota.storage + 1 + instance.data_volume_size}
 
-        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+        response = self.client.post(factories.InstanceFactory.get_url(instance, action='resize'), data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         reread_instance = Instance.objects.get(pk=instance.pk)
@@ -333,7 +355,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
-        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+        response = self.client.post(factories.InstanceFactory.get_url(instance, action='resize'), data)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         reread_instance = Instance.objects.get(pk=instance.pk)
@@ -352,12 +374,53 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
-        response = self.client.post(self._get_instance_url(inaccessible_instance) + 'resize/', data)
+        response = self.client.post(factories.InstanceFactory.get_url(inaccessible_instance, action='resize'), data)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         reread_instance = Instance.objects.get(pk=inaccessible_instance.pk)
         self.assertEqual(reread_instance.system_volume_size, inaccessible_instance.system_volume_size,
                          'Instance system_volume_size not have changed')
+
+    def test_user_cannot_modify_instance_in_provisioning_scheduled_state(self):
+        self.client.force_authenticate(user=self.user)
+
+        instance = factories.InstanceFactory(state=Instance.States.PROVISIONING_SCHEDULED)
+        project = instance.cloud_project_membership.project
+        factories.ResourceQuotaFactory(
+            cloud_project_membership=instance.cloud_project_membership, storage=10 * 1024 * 1024)
+        project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        url = factories.InstanceFactory.get_url(instance)
+
+        for action in 'stop', 'start', 'resize':
+            response = self.client.post('%s%s/' % (url, action), {})
+            self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+        response = self.client.put(url, {})
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+        response = self.client.patch(url, {})
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_user_cannot_modify_in_unstable_state(self):
+        self.client.force_authenticate(user=self.user)
+
+        for state in Instance.States.UNSTABLE_STATES:
+            instance = factories.InstanceFactory(state=state)
+            project = instance.cloud_project_membership.project
+            factories.ResourceQuotaFactory(
+                cloud_project_membership=instance.cloud_project_membership, storage=10 * 1024 * 1024)
+            project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+            url = factories.InstanceFactory.get_url(instance)
+
+            for method in ('PUT', 'PATCH', 'DELETE'):
+                func = getattr(self.client, method.lower())
+                response = func(url)
+                self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     def test_user_cannot_change_flavor_of_non_offline_instance(self):
         self.client.force_authenticate(user=self.user)
@@ -379,10 +442,9 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
             data = {'flavor': self._get_flavor_url(changed_flavor)}
 
-            response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+            response = self.client.post(factories.InstanceFactory.get_url(instance) + 'resize/', data)
 
             self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-            self.assertDictContainsSubset({'detail': 'Instance must be offline'}, response.data)
 
             reread_instance = Instance.objects.get(pk=instance.pk)
             self.assertEqual(reread_instance.system_volume_size, instance.system_volume_size,
@@ -406,7 +468,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
             data = {'flavor': self._get_flavor_url(new_flavor)}
 
-            response = self.client.post(self._get_instance_url(managed_instance) + 'resize/', data)
+            response = self.client.post(factories.InstanceFactory.get_url(managed_instance, action='resize'), data)
 
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -427,7 +489,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'disk_size': 100,
         }
 
-        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+        response = self.client.post(factories.InstanceFactory.get_url(instance, action='resize'), data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset(
@@ -444,7 +506,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         data = {}
 
-        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+        response = self.client.post(factories.InstanceFactory.get_url(instance, action='resize'), data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset(
@@ -459,7 +521,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         new_size = instance.data_volume_size + 1024
 
         data = {'disk_size': new_size}
-        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+        response = self.client.post(factories.InstanceFactory.get_url(instance, action='resize'), data)
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
 
@@ -499,7 +561,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
     def _ensure_cannot_resize_disk_of_flavor(self, instance, expected_status):
         data = {'disk_size': 1024}
-        response = self.client.post(self._get_instance_url(instance) + 'resize/', data)
+        response = self.client.post(factories.InstanceFactory.get_url(instance, action='resize'), data)
 
         self.assertEqual(response.status_code, expected_status)
 
@@ -716,7 +778,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = factories.InstanceFactory()
         instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-        response = self.client.get(self._get_instance_url(instance))
+        response = self.client.get(factories.InstanceFactory.get_url(instance))
 
         external_ips = response.data['external_ips']
 
@@ -727,7 +789,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = factories.InstanceFactory()
         instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-        response = self.client.get(self._get_instance_url(instance))
+        response = self.client.get(factories.InstanceFactory.get_url(instance))
 
         internal_ips = response.data['internal_ips']
 
@@ -747,7 +809,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
         instance_license = factories.InstanceLicenseFactory(instance=instance)
 
-        response = self.client.get(self._get_instance_url(instance))
+        response = self.client.get(factories.InstanceFactory.get_url(instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('instance_licenses', response.data)
         self.assertEqual(response.data['instance_licenses'][0]['name'], instance_license.template_license.name)
@@ -847,8 +909,35 @@ class InstanceUsageTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
-        self.instance = factories.InstanceFactory()
+        self.instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
         self.url = factories.InstanceFactory.get_url(self.instance, action='usage')
+
+    def test_instance_does_not_have_backend_id(self):
+        self.client.force_authenticate(self.staff)
+
+        instance = factories.InstanceFactory(backend_id='')
+        url = factories.InstanceFactory.get_url(instance, action='usage')
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_instance_in_provisioning_scheduled_state(self):
+        self.client.force_authenticate(self.staff)
+
+        instance = factories.InstanceFactory(state=Instance.States.PROVISIONING_SCHEDULED)
+        url = factories.InstanceFactory.get_url(instance, action='usage')
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_instance_in_provisioning_state(self):
+        self.client.force_authenticate(self.staff)
+
+        instance = factories.InstanceFactory(state=Instance.States.PROVISIONING)
+        url = factories.InstanceFactory.get_url(instance, action='usage')
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_item_parameter_have_to_be_defined(self):
         self.client.force_authenticate(self.staff)
@@ -856,7 +945,7 @@ class InstanceUsageTest(test.APITransactionTestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_item_parameter_have_to_be_one_of_zabix_db_client_items(self):
+    def test_item_parameter_have_to_be_one_of_zabbix_db_client_items(self):
         self.client.force_authenticate(self.staff)
 
         response = self.client.get(self.url, {'item': 'undefined_item'})

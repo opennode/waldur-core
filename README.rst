@@ -1,32 +1,26 @@
 .. image:: https://travis-ci.org/opennode/nodeconductor.svg?branch=develop
     :target: https://travis-ci.org/opennode/nodeconductor
+    :alt: Build status
+
+.. image:: https://readthedocs.org/projects/nodeconductor/badge/?version=stable
+    :target: https://readthedocs.org/projects/nodeconductor/?badge=stable
+    :alt: Documentation Status
 
 NodeConductor
 =============
 
-Requirements
-------------
+NodeConductor is an open-source RESTful server for multi-tenant resource management. It aims to provide an
+easy way for sharing access to external systems. It is used as a platform for creating private and
+public clouds.
 
-* Python 2.7+ (Python 3 is not supported)
+Currently supported external services are:
 
-Development Environment Setup
+- OpenStack Icehouse
+
+Additional information can be found at http://nodeconductor.readthedocs.org.
+
+
+Development environment setup
 -----------------------------
 
-Instructions here: http://nodeconductor.readthedocs.org/en/latest/guide/intro.html#installation-from-source
-
-Development Guidelines
-----------------------
-
-1. Follow `PEP8 <http://python.org/dev/peps/pep-0008/>`_, except:
-
-  - Limit all lines to a maximum of 119 characters
-
-2. Use `git flow <https://github.com/nvie/gitflow>`_
-3. Write docstrings
-4. Use absolute imports, each import on its own line. Keep imports sorted:
-
-  .. code:: python
-
-    from nodeconductor.bar import foo
-    from nodeconductor.foo import bar
-    from nodeconductor.foo import baz
+Instructions here: http://nodeconductor.readthedocs.org/en/latest/guide/intro.html#installation-from-source.
