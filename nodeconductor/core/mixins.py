@@ -12,6 +12,8 @@ from rest_framework.mixins import _get_validation_exclusions
 from rest_framework.response import Response
 from rest_framework.templatetags.rest_framework import replace_query_param
 
+from nodeconductor.iaas.models import Instance
+from nodeconductor.core.models import SynchronizableMixin, SynchronizationStates
 from nodeconductor.core.exceptions import IncorrectStateException
 
 
@@ -157,3 +159,23 @@ class ListModelMixin(object):
             headers['Link'] = ', '.join(links)
 
         return headers
+
+
+class UpdateOnlyStableMixin(object):
+    """
+    Allow modification of entities in stable state only.
+    """
+
+    def initial(self, request, *args, **kwargs):
+        if self.action in ('update', 'partial_update', 'destroy'):
+            error_msg = 'Modification allowed in stable states only, while current state: %s'
+            instance = self.get_object()
+            if instance:
+                if isinstance(instance, Instance):
+                    if instance.state not in Instance.States.STABLE_STATES:
+                        raise IncorrectStateException(error_msg % instance.get_state_display())
+                elif isinstance(instance, SynchronizableMixin):
+                    if instance.state not in SynchronizationStates.STABLE_STATES:
+                        raise IncorrectStateException(error_msg % instance.get_state_display())
+
+        return super(UpdateOnlyStableMixin, self).initial(request, *args, **kwargs)

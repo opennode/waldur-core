@@ -10,20 +10,13 @@ from django.core import validators
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import models
-from django.db.models import signals
-from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
-from rest_framework.authtoken.models import Token
 from uuidfield import UUIDField
 
-from nodeconductor.core.log import EventLoggerAdapter
-
-
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 class DescribableMixin(models.Model):
@@ -185,6 +178,9 @@ class SynchronizationStates(object):
         (ERRED, _('Erred')),
     )
 
+    STABLE_STATES = {IN_SYNC}
+    UNSTABLE_STATES = set(dict(CHOICES).keys()) - STABLE_STATES
+
 
 class SynchronizableMixin(models.Model):
     class Meta(object):
@@ -210,18 +206,3 @@ class SynchronizableMixin(models.Model):
     @transition(field=state, source='*', target=SynchronizationStates.ERRED)
     def set_erred(self):
         pass
-
-
-# Signal handlers
-@receiver(signals.post_save, sender=User)
-def create_auth_token(sender, instance=None, created=False, **kwargs):
-    if created:
-        Token.objects.create(user=instance)
-
-
-@receiver(signals.post_save, sender=User)
-def log_user_creation(sender, instance=None, created=False, **kwargs):
-    if created:
-        event_logger.info(
-            'User %s was created', instance,
-            extra={'affected_user': instance, 'event_type': 'user_created'})

@@ -95,7 +95,7 @@ To perform backups on a regular basis, it is possible to define a backup schedul
     }
 
 For schedule to work, it should be activated - it's flag is_active set to true. If it's not, it won't be used
-for triggering the next backups.
+for triggering the next backups. Schedule will be deactivated if backup fails.
 
 - **retention time** is a duration in days during which backup is preserved.
 - **maximal_number_of_backups** is a maximal number of active backups connected to this schedule.

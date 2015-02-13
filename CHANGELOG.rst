@@ -6,6 +6,12 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+Release 0.34.0
+--------------
+
+- Dropped backup quota. Rely on storage quota only.
+- Added event logging for actions initiated by user or staff.
+
 Release 0.33.0
 --------------
 

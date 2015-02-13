@@ -14,26 +14,39 @@ class StructureConfig(AppConfig):
 
     # See, https://docs.djangoproject.com/en/1.7/ref/applications/#django.apps.AppConfig.ready
     def ready(self):
+        User = get_user_model()
         Customer = self.get_model('Customer')
         Project = self.get_model('Project')
         ProjectGroup = self.get_model('ProjectGroup')
 
         signals.post_save.connect(
+            handlers.log_customer_save,
+            sender=Customer,
+            dispatch_uid='nodeconductor.structure.handlers.log_customer_save',
+        )
+
+        signals.post_delete.connect(
+            handlers.log_customer_delete,
+            sender=Customer,
+            dispatch_uid='nodeconductor.structure.handlers.log_customer_delete',
+        )
+
+        signals.post_save.connect(
             handlers.create_customer_roles,
             sender=Customer,
-            dispatch_uid='nodeconductor.structure.models.create_customer_roles',
+            dispatch_uid='nodeconductor.structure.handlers.create_customer_roles',
         )
 
         signals.post_save.connect(
             handlers.create_project_roles,
             sender=Project,
-            dispatch_uid='nodeconductor.structure.models.create_project_roles',
+            dispatch_uid='nodeconductor.structure.handlers.create_project_roles',
         )
 
         signals.post_save.connect(
             handlers.create_project_group_roles,
             sender=ProjectGroup,
-            dispatch_uid='nodeconductor.structure.models.create_project_group_roles',
+            dispatch_uid='nodeconductor.structure.handlers.create_project_group_roles',
         )
 
         signals.pre_delete.connect(
@@ -41,7 +54,18 @@ class StructureConfig(AppConfig):
             sender=ProjectGroup,
             dispatch_uid='nodeconductor.structure.handlers.prevent_non_empty_project_group_deletion',
         )
-        User = get_user_model()
+
+        signals.post_save.connect(
+            handlers.log_project_group_save,
+            sender=ProjectGroup,
+            dispatch_uid='nodeconductor.structure.handlers.log_project_group_save',
+        )
+
+        signals.post_delete.connect(
+            handlers.log_project_group_delete,
+            sender=ProjectGroup,
+            dispatch_uid='nodeconductor.structure.handlers.log_project_group_delete',
+        )
 
         filters.set_permissions_for_model(
             User.groups.through,

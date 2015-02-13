@@ -136,10 +136,6 @@ class ProjectFilter(django_filters.FilterSet):
         name='cloudprojectmembership__resource_quota__max_instances',
     )
 
-    backup = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__backup_storage',
-    )
-
     class Meta(object):
         model = models.Project
         fields = [
@@ -153,7 +149,6 @@ class ProjectFilter(django_filters.FilterSet):
             'ram',
             'storage',
             'max_instances',
-            'backup',
         ]
         order_by = [
             'name',
@@ -174,8 +169,6 @@ class ProjectFilter(django_filters.FilterSet):
             '-cloudprojectmembership__resource_quota__storage',
             'cloudprojectmembership__resource_quota__max_instances',
             '-cloudprojectmembership__resource_quota__max_instances',
-            'cloudprojectmembership__resource_quota__backup_storage',
-            '-cloudprojectmembership__resource_quota__backup_storage',
         ]
 
         order_by_mapping = {
@@ -185,7 +178,6 @@ class ProjectFilter(django_filters.FilterSet):
             'ram': 'cloudprojectmembership__resource_quota__ram',
             'max_instances': 'cloudprojectmembership__resource_quota__max_instances',
             'storage': 'cloudprojectmembership__resource_quota__storage',
-            'backup': 'cloudprojectmembership__resource_quota__backup_storage',
             'customer_name': 'customer__name',
             'customer_abbreviation': 'customer__abbreviation',
             'customer_native_name': 'customer__native_name',
@@ -195,7 +187,6 @@ class ProjectFilter(django_filters.FilterSet):
             'resource_quota__vcpu': 'cloudprojectmembership__resource_quota__vcpu',
             'resource_quota__ram': 'cloudprojectmembership__resource_quota__ram',
             'resource_quota__storage': 'cloudprojectmembership__resource_quota__storage',
-            'resource_quota__backup_storage': 'cloudprojectmembership__resource_quota__backup_storage',
         }
 
 
@@ -447,14 +438,17 @@ class UserViewSet(viewsets.ModelViewSet):
         # TODO: refactor to a separate endpoint or structure
         # a special query for all users with assigned privileges that the current user can remove privileges from
         if 'potential' in self.request.QUERY_PARAMS:
-            # XXX: Let the DB cry...
-            connected_customers_query = models.Customer.objects.filter(
-                Q(roles__permission_group__user=user)
-                |
-                Q(projects__roles__permission_group__user=user)
-                |
-                Q(project_groups__roles__permission_group__user=user)
-            ).distinct()
+            connected_customers_query = models.Customer.objects.all()
+            # is user is not staff, allow only connected customers
+            if not user.is_staff:
+                # XXX: Let the DB cry...
+                connected_customers_query = connected_customers_query.filter(
+                    Q(roles__permission_group__user=user)
+                    |
+                    Q(projects__roles__permission_group__user=user)
+                    |
+                    Q(project_groups__roles__permission_group__user=user)
+                ).distinct()
 
             # check if we need to filter potential users by a customer
             potential_customer = self.request.QUERY_PARAMS.get('potential_customer', None)
@@ -464,7 +458,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
             connected_customers = list(connected_customers_query.all())
 
-            queryset = queryset.filter(
+            queryset = queryset.filter(is_staff=False).filter(
                 # customer owners
                 Q(
                     groups__customerrole__customer__in=connected_customers,
