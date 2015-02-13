@@ -67,6 +67,8 @@ Example of a creation request is below.
         "organization": "",
     }
 
+NB! Username field is case-insensitive. So "John" and "john" will be treated as the same user.
+
 Updating a user
 ---------------
 
