@@ -208,30 +208,6 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
         return '{0} <-> {1}'.format(self.template.name, self.backend_image_id)
 
 
-class AbstractResourceQuota(models.Model):
-    """ Abstract model for membership quotas """
-
-    class Meta(object):
-        abstract = True
-
-    vcpu = models.PositiveIntegerField(help_text='Virtual CPUs')
-    ram = models.FloatField(help_text='RAM size')
-    storage = models.FloatField(help_text='Storage size (incl. backup)')
-    max_instances = models.PositiveIntegerField(help_text='Number of running instances')
-
-
-# TODO: Refactor to use CloudProjectMember
-class ResourceQuota(AbstractResourceQuota):
-    """ CloudProjectMembership quota """
-    cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota')
-
-
-# TODO: Refactor to use CloudProjectMember
-class ResourceQuotaUsage(AbstractResourceQuota):
-    """ CloudProjectMembership quota usage """
-    cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota_usage')
-
-
 class FloatingIP(core_models.UuidMixin, CloudProjectMember):
     class Permissions(object):
         customer_path = 'cloud_project_membership__cloud__customer'
