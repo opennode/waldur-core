@@ -1,7 +1,9 @@
-Create a new project quota
---------------------------
+Setting a project-cloud link quota
+----------------------------------
 
-A new project quota can be created within project by users with staff privilege (is_staff=True) or customer owners.
+A project quota can be set within for a particular link between cloud and project by users with staff privilege.
+Setting the quota requires that the resource corresponding to the link would be created. Action  are located
+under **/api/project-cloud-memberships/<pk>/set_quotas/**
 
 The units of quotas relating to storage are defined in MiB_.
 
@@ -11,22 +13,23 @@ Example of a valid request (token is user specific):
 
 .. code-block:: http
 
-    POST /api/projects/ HTTP/1.1
+    POST /api/project-cloud-memberships/1/set_quotas/ HTTP/1.1
     Content-Type: application/json
     Accept: application/json
     Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
     Host: example.com
 
     {
-        "name": "Project A",
-        "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
-        "resource_quota": {
-                "vcpu": 2,
-                "ram": 2.0,
-                "storage": 36.15540199549969,
-                "max_instances": 10
-            },
+        "max_instances": "30",
+        "ram": "100000",
+        "storage": "1000000",
+        "vcpu": "30"
     }
+
+If a request was successful, response code will be **202**. In case link is in a non-stable status, the response would
+be **409**. In this case REST client is advised to repeat the request after some time. On successful completion, the
+task will synchronize quotas with a backend. Please note, that if provided quotas are conflicting with the backend
+(e.g. requested number of instances is below of the already existing ones), some quotas might not be applied.
 
 Getting project quota and usage
 -------------------------------
@@ -58,50 +61,4 @@ Example of a valid response:
             "max_instances": 186
         },
         ...
-    }
-
-Managing project quota
-----------------------
-
-Quota of the existing project can be changed by users with staff privilege (is_staff=True) or customer owners.
-
-Example of a valid request (token is user specific):
-
-.. code-block:: http
-
-    PATCH /api/projects/6c9b01c251c24174a6691a1f894fae31/ HTTP/1.1
-    Content-Type: application/json
-    Accept: application/json
-    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-    Host: example.com
-
-    {
-        "resource_quota": {
-                "vcpu": 2,
-                "ram": 2.0,
-                "storage": 36.15540199549969,
-                "max_instances": 11
-            },
-    }
-
-To fully update quota of the existing project, PUT a new quota to the project's url
-specifying name, customer and quota:
-
-.. code-block:: http
-
-    PUT /api/projects/6c9b01c251c24174a6691a1f894fae31/ HTTP/1.1
-    Content-Type: application/json
-    Accept: application/json
-    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-    Host: example.com
-
-    {
-        "name": "Project A",
-        "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
-        "resource_quota": {
-                "vcpu": 2,
-                "ram": 2.0,
-                "storage": 36.15540199549969,
-                "max_instances": 11
-            },
     }
