@@ -945,6 +945,9 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
 
     @action()
     def set_quotas(self, request, **kwargs):
+        if not request.user.is_staff:
+            raise exceptions.PermissionDenied()
+
         instance = self.get_object()
         if instance.state != core_models.SynchronizationStates.IN_SYNC:
             return Response({'detail': 'Cloud project membership must be in sync state for setting quotas'},
@@ -954,7 +957,6 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # TODO: schedule a task for quota update
         instance.schedule_syncing()
         instance.save()
 
