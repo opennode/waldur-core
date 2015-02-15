@@ -4,7 +4,7 @@ User list
 User list is available to all authenticated users. To get a list, issue authenticated GET request against **/api/users/**.
 
 User list supports several filters. All filters are set in HTTP query section.
-Field filters (all of the filters to case insensitive partial matching) are:
+Field filters are listed below. All of the filters apart from ?organization are using case insensitive partial matching.
 
 - ?full_name=
 - ?native_name=
@@ -25,6 +25,7 @@ In addition, several custom filters are supported:
 - ?potential - shows users that have common connections to the customers and are potential collaborators. Exclude staff
   users. Staff users can see all the customers.
 - ?potential_customer=<Customer UUID> - optionally filter potential users by customer UUID
+- ?potential_organization=<organization name> - optionally filter potential unconnected users by their organization name
 
 Ordering is supported by the fields below. Descending sorting can be achieved through prefixing
 field name with a dash (**-**).

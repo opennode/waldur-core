@@ -386,7 +386,6 @@ class UserFilter(django_filters.FilterSet):
     native_name = django_filters.CharFilter(lookup_type='icontains')
     organization = django_filters.CharFilter(lookup_type='icontains')
     job_title = django_filters.CharFilter(lookup_type='icontains')
-    description = django_filters.CharFilter(lookup_type='icontains')
     email = django_filters.CharFilter(lookup_type='icontains')
     is_active = django_filters.BooleanFilter()
 
@@ -470,12 +469,13 @@ class UserViewSet(viewsets.ModelViewSet):
                 ).distinct()
 
             # check if we need to filter potential users by a customer
-            potential_customer = self.request.QUERY_PARAMS.get('potential_customer', None)
+            potential_customer = self.request.QUERY_PARAMS.get('potential_customer')
             if potential_customer:
                 connected_customers_query = connected_customers_query.filter(uuid=potential_customer)
                 connected_customers_query = filters.filter_queryset_for_user(connected_customers_query, user)
 
             connected_customers = list(connected_customers_query.all())
+            potential_organization = self.request.QUERY_PARAMS.get('potential_organization')
 
             queryset = queryset.filter(is_staff=False).filter(
                 # customer owners
@@ -496,8 +496,11 @@ class UserViewSet(viewsets.ModelViewSet):
                     groups__customerrole=None,
                     groups__projectrole=None,
                     groups__projectgrouprole=None,
+                    organization_approved=True,
+                    organization__exact=potential_organization,
                 )
             ).distinct()
+
 
         if not user.is_staff:
             queryset = queryset.filter(is_active=True)

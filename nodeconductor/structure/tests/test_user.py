@@ -312,7 +312,6 @@ class UserFilterTest(test.APISimpleTestCase):
             'native_name',
             'organization',
             'email',
-            'description',
             'job_title',
         ]
         user = factories.UserFactory(is_staff=True)
