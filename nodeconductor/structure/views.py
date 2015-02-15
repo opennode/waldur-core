@@ -20,10 +20,10 @@ from rest_framework.settings import api_settings
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins
-from nodeconductor.core import permissions
 from nodeconductor.core import viewsets
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.structure import filters
+from nodeconductor.structure import permissions
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
@@ -441,7 +441,7 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     permission_classes = (
         rf_permissions.IsAuthenticated,
-        permissions.IsAdminOrOwner,
+        permissions.IsAdminOrOwnerOrOrganizationManager,
     )
     filter_class = UserFilter
 
@@ -522,6 +522,52 @@ class UserViewSet(viewsets.ModelViewSet):
         user.save()
 
         return Response({'detail': "Password has been successfully updated"},
+                        status=status.HTTP_200_OK)
+
+    @action()
+    def claim_organization(self, request, uuid=None):
+        instance = self.get_object()
+
+        # check if organization name is valid
+        serializer = serializers.UserOrganizationSerializer(data={'organization': request.DATA.get('organization')})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        obj = serializer.object
+
+        if instance.organization == "":
+            instance.organization = obj.organization
+            instance.organization_approved = False
+            instance.save()
+            return Response({'detail': "User request for joining the organization has been successfully submitted."},
+                            status=status.HTTP_200_OK)
+        else:
+            return Response({'detail': "User has an existing organization claim."}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action()
+    def approve_organization(self, request, uuid=None):
+        instance = self.get_object()
+
+        instance.organization_approved = True
+        instance.save()
+        return Response({'detail': "User request for joining the organization has been successfully approved"},
+                        status=status.HTTP_200_OK)
+
+    @action()
+    def reject_organization(self, request, uuid=None):
+        instance = self.get_object()
+        instance.organization = ""
+        instance.save()
+        return Response({'detail': "User has been successfully rejected from the organization"},
+                        status=status.HTTP_200_OK)
+
+    @action()
+    def remove_organization(self, request, uuid=None):
+        instance = self.get_object()
+        instance.organization_approved = False
+        instance.organization = ""
+        instance.save()
+        return Response({'detail': "User has been successfully removed from the organization"},
                         status=status.HTTP_200_OK)
 
 
