@@ -34,7 +34,7 @@ field name with a dash (**-**).
 - ?o=organization
 - ?o=email
 - ?o=phone_number
-- ?o=description'
+- ?o=description
 - ?o=job_title
 - ?o=username
 - ?o=active
@@ -123,3 +123,32 @@ Example of a valid request:
     {
         "password": "nQvqHzeP123",
     }
+
+
+User organization management
+----------------------------
+
+There is a lightweight mechanism available that allows users with customer owner roles to control
+claims of users about their organizations.
+
+A user can claim his belonging to a particular organization by POSTing its value
+to **/api/users/<uuid>/claim_organization/**. At most one claim can be done. Once the claim is done,
+it remains pending till customer owner or staff performs one of the actions described below.
+
+.. code-block:: http
+
+    POST /api/users/e0c058d06864441fb4f1c40dee5dd4fd/claim_organization/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "organization": "My Organization Abbreviation"
+    }
+
+A customer owner of a customer with an equal abbreviation can then approve or reject the claim by POSTing
+to **/api/users/<uuid>/approve_organization/** or **/api/users/<uuid>/reject_organization/**. A customer owner
+can also remove approved user by POSTing to **/api/users/<uuid>/remove_organization/**.
+
+A status of approval is visible from the **organization_approved** property of a user.
