@@ -259,25 +259,18 @@ class OpenStackBackend(object):
             'vcpu': ('cores', lambda x: x),
         }
 
+        def extract_backend_quotas(mapping):
+            return {
+                backend_name: get_backend_value(quotas[name])
+                for name, (backend_name, get_backend_value) in mapping.items()
+                if name in quotas
+            }
+
         # split quotas by components
-        cinder_quotas = {}
-        nova_quotas = {}
+        cinder_quotas = extract_backend_quotas(cinder_quota_mapping)
+        nova_quotas = extract_backend_quotas(nova_quota_mapping)
 
-        # process passed in quotas converting them to correct backend values
-        for quota_name, quota_value in quotas.items():
-            if quota_value is None:
-                continue
-
-            if quota_name in cinder_quota_mapping.keys():
-                quota_backend_mapping = cinder_quota_mapping[quota_name][1]
-                cinder_quotas[cinder_quota_mapping[quota_name][0]] = quota_backend_mapping(quota_value)
-                continue
-            if quota_name in nova_quota_mapping.keys():
-                quota_backend_mapping = nova_quota_mapping[quota_name][1]
-                nova_quotas[nova_quota_mapping[quota_name][0]] = quota_backend_mapping(quota_value)
-                continue
-
-        if len(cinder_quotas) == 0 and len(nova_quotas) == 0:
+        if not (cinder_quotas or nova_quotas):
             return
 
         try:
@@ -286,14 +279,14 @@ class OpenStackBackend(object):
                 if len(cinder_quotas) > 0:
                     cinder = self.create_cinder_client(session)
                     cinder.quotas.update(membership.tenant_id, **cinder_quotas)
-            except cinder_exceptions.ClientException as e:
+            except cinder_exceptions.ClientException:
                 logger.exception('Failed to update membership %s cinder quotas %s', membership, cinder_quotas)
 
             try:
                 if len(nova_quotas) > 0:
                     nova = self.create_nova_client(session)
                     nova.quotas.update(membership.tenant_id, **nova_quotas)
-            except nova_exceptions.ClientException as e:
+            except nova_exceptions.ClientException:
                 logger.exception('Failed to update membership %s nova quotas %s', membership, quotas)
 
         except keystone_exceptions.ClientException as e:
