@@ -277,9 +277,11 @@ class OpenStackBackend(object):
                 nova_quotas[nova_quota_mapping[quota_name][0]] = quota_backend_mapping(quota_value)
                 continue
 
+        if len(cinder_quotas) == 0 and len(nova_quotas) == 0:
+            return
+
         try:
             session = self.create_tenant_session(membership)
-
             try:
                 if len(cinder_quotas) > 0:
                     cinder = self.create_cinder_client(session)
