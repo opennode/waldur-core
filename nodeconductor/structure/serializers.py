@@ -4,9 +4,9 @@ from django.db import models as django_models
 from django.contrib import auth
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
-from rest_framework.reverse import reverse
 
 from nodeconductor.core import serializers as core_serializers, utils as core_utils
+from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, filters
 from nodeconductor.structure.filters import filter_queryset_for_user
 
@@ -78,6 +78,7 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
     customer_native_name = serializers.Field(source='customer.native_name')
     customer_abbreviation = serializers.Field(source='customer.abbreviation')
+    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
     # This fields exists for backward compitibility
     resource_quota = serializers.SerializerMethodField('get_resource_quotas')
     resource_quota_usage = serializers.SerializerMethodField('get_resource_quotas_usage')
@@ -90,6 +91,7 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups',
             'description',
+            'quotas',
             'resource_quota', 'resource_quota_usage',
         )
         lookup_field = 'uuid'
