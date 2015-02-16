@@ -1,9 +1,9 @@
 Setting a project-cloud link quota
 ----------------------------------
 
-A project quota can be set within for a particular link between cloud and project by users with staff privilege.
-Setting the quota requires that the resource corresponding to the link would be created. To set a quota, submit
-POST request to **/api/project-cloud-memberships/<pk>/set_quotas/**. The quota values are propagated to the backend.
+A project quota can be set for a particular link between cloud and project. Only staff users can do that. In order
+to set quota submit POST request to **/api/project-cloud-memberships/<pk>/set_quotas/**. The quota values are propagated
+to the backend.
 
 The following is a list of supported quotas. All values are expected to be integers:
 
@@ -35,9 +35,9 @@ Example of a valid request (token is user specific):
         "vcpu": 30
     }
 
-If a request was successful, response code will be **202**. In case link is in a non-stable status, the response would
-be **409**. In this case REST client is advised to repeat the request after some time. On successful completion, the
-task will synchronize quotas with a backend.
+Response code of a successful request is **202 ACCEPTED**. In case link is in a non-stable status, the response would
+be **409 CONFLICT**. In this case REST client is advised to repeat the request after some time. On successful
+completion the task will synchronize quotas with the backend.
 
 Getting project quota and usage
 -------------------------------
