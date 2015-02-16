@@ -276,14 +276,14 @@ class OpenStackBackend(object):
         try:
             session = self.create_tenant_session(membership)
             try:
-                if len(cinder_quotas) > 0:
+                if cinder_quotas:
                     cinder = self.create_cinder_client(session)
                     cinder.quotas.update(membership.tenant_id, **cinder_quotas)
             except cinder_exceptions.ClientException:
                 logger.exception('Failed to update membership %s cinder quotas %s', membership, cinder_quotas)
 
             try:
-                if len(nova_quotas) > 0:
+                if nova_quotas:
                     nova = self.create_nova_client(session)
                     nova.quotas.update(membership.tenant_id, **nova_quotas)
             except nova_exceptions.ClientException:
