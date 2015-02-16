@@ -19,8 +19,10 @@ def process_backup_task(backup_uuid):
         if source is not None:
             logger.debug('About to perform backup for backup source: %s', backup.backup_source)
             # TODO: Instance's hostname should be converted to the name field (NC-367)
-            logger.info('Backup for %s has been scheduled.', source.hostname,
-                        extra={'backup': backup, 'event_type': 'iaas_backup_creation_scheduled'})
+            event_logger.info(
+                'Backup for %s has been scheduled.', source.hostname,
+                extra={'backup': backup, 'event_type': 'iaas_backup_creation_scheduled'},
+            )
             try:
                 backup.metadata = backup.get_strategy().backup(backup.backup_source)
                 backup.confirm_backup()
@@ -58,8 +60,10 @@ def restoration_task(backup_uuid, instance_uuid, user_raw_input):
         if source is not None:
             logger.debug('About to restore backup for backup source: %s', backup.backup_source)
             # TODO: Instance's hostname should be converted to the name field (NC-367)
-            logger.info('Backup restoration for %s has been scheduled.', backup.backup_source.hostname,
-                        extra={'backup': backup, 'event_type': 'iaas_backup_restoration_scheduled'})
+            event_logger.info(
+                'Backup restoration for %s has been scheduled.', backup.backup_source.hostname,
+                extra={'backup': backup, 'event_type': 'iaas_backup_restoration_scheduled'},
+            )
             try:
                 backup.get_strategy().restore(instance_uuid, user_raw_input)
                 backup.confirm_restoration()
@@ -89,8 +93,10 @@ def deletion_task(backup_uuid):
         if source is not None:
             logger.debug('About to delete backup for backup source: %s', backup.backup_source)
             # TODO: Instance's hostname should be converted to the name field (NC-367)
-            logger.info('Backup deletion for %s has been scheduled.', backup.backup_source.hostname,
-                        extra={'backup': backup, 'event_type': 'iaas_backup_deletion_scheduled'})
+            event_logger.info(
+                'Backup deletion for %s has been scheduled.', backup.backup_source.hostname,
+                extra={'backup': backup, 'event_type': 'iaas_backup_deletion_scheduled'},
+            )
             try:
                 backup.get_strategy().delete(backup.backup_source, backup.metadata)
                 backup.confirm_deletion()
