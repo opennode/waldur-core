@@ -489,8 +489,8 @@ CELERYBEAT_SCHEDULE = {
 NODECONDUCTOR = {
     'DEFAULT_SECURITY_GROUPS': (
         {
-            'name': 'ping',
-            'description': 'Security group for ICMP (ping)',
+            'name': 'icmp',
+            'description': 'Security group for ICMP',
             'rules': (
                 {
                     'protocol': 'icmp',
