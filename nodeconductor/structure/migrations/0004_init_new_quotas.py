@@ -8,11 +8,8 @@ from django.db import migrations
 
 
 def init_quotas(apps, schema_editor):
-    # We can't import the Person model directly as it may be a newer
-    # version than this migration expects. We use the historical version.
     quotas_names = ['vcpu', 'ram', 'storage', 'max_instances']
 
-    # projects:
     Project = apps.get_model("structure", "Project")
     Quota = apps.get_model("quotas", 'Quota')
     project_ct = ContentType.objects.get_for_model(Project)
