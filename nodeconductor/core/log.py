@@ -97,7 +97,8 @@ class EventFormatter(logging.Formatter):
         self.add_related_details(message, project, 'project')
 
         # project group
-        project_group = self.get_related('project_group', record)
+        project_group = self.get_related('project_group', record,
+                                         lambda _: project and project.project_groups.first())
         self.add_related_details(message, project_group, 'project_group')
 
         # cloud
