@@ -153,7 +153,7 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
                                  '{0} user sees privilege he is not supposed to see: {1}. '
                                  'Status code: {2}'.format(login_user, project, response.status_code))
                 self.assertDictContainsSubset(
-                    {'project': ['Invalid hyperlink - object does not exist.']}, response.data)
+                    {'project': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     # Manager tests
     def test_user_can_list_roles_of_projects_he_is_manager_of(self):
