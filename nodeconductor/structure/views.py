@@ -523,7 +523,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'detail': "Password has been successfully updated"},
                         status=status.HTTP_200_OK)
 
-    @action()
+    @detail_route(methods=['post'])
     def claim_organization(self, request, uuid=None):
         instance = self.get_object()
 
@@ -543,7 +543,7 @@ class UserViewSet(viewsets.ModelViewSet):
         else:
             return Response({'detail': "User has an existing organization claim."}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action()
+    @detail_route(methods=['post'])
     def approve_organization(self, request, uuid=None):
         instance = self.get_object()
 
@@ -552,7 +552,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'detail': "User request for joining the organization has been successfully approved"},
                         status=status.HTTP_200_OK)
 
-    @action()
+    @detail_route(methods=['post'])
     def reject_organization(self, request, uuid=None):
         instance = self.get_object()
         instance.organization = ""
@@ -561,7 +561,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'detail': "User has been successfully rejected from the organization"},
                         status=status.HTTP_200_OK)
 
-    @action()
+    @detail_route(methods=['post'])
     def remove_organization(self, request, uuid=None):
         instance = self.get_object()
         instance.organization_approved = False
