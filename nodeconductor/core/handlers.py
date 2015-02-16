@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import logging
 
+from django.forms import model_to_dict
+from django.utils import six
 from rest_framework.authtoken.models import Token
 
 from nodeconductor.core.log import EventLoggerAdapter
@@ -20,12 +22,12 @@ def preserve_fields_before_update(sender, instance, **kwargs):
     if instance.pk is None:
         return
 
-    old_instance = instance._meta.model._default_manager.get(pk=instance.pk)
-    old_values = {
-        field_name: getattr(old_instance, field_name)
-        for field_name in instance._meta.get_all_field_names()
-        if hasattr(old_instance, field_name)
-    }
+    meta = instance._meta
+    old_instance = meta.model._default_manager.get(pk=instance.pk)
+
+    excluded_fields = [field.name for field in meta.many_to_many]
+    excluded_fields.append(meta.pk.name)
+    old_values = model_to_dict(old_instance, exclude=excluded_fields)
 
     setattr(instance, '_old_values', old_values)
 
@@ -41,9 +43,9 @@ def log_user_save(sender, instance, created=False, **kwargs):
         password_changed = instance.password != old_values['password']
         activation_changed = instance.is_active != old_values['is_active']
         user_updated = any(
-            old_values[field_name] != getattr(instance, field_name)
-            for field_name in instance._meta.get_all_field_names()
-            if field_name not in ('password', 'is_active')
+            old_value != getattr(instance, field_name)
+            for field_name, old_value in six.iteritems(old_values)
+            if field_name not in ('password', 'is_active', 'last_login')
         )
 
         if password_changed:
