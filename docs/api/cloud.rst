@@ -77,5 +77,3 @@ Project-cloud connection list
 -----------------------------
 To get a list of connections between project and a cloud, run GET against **/api/project-cloud-memberships/**
 as authenticated user. Note that a user can only see connections of a project where a user has a role.
-
-

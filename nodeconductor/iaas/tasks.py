@@ -158,6 +158,30 @@ def pull_cloud_account(cloud_account_uuid):
 
 
 @shared_task
+@tracked_processing(
+    models.CloudProjectMembership,
+    processing_state='begin_syncing',
+    desired_state='set_in_sync',
+)
+def push_cloud_membership_quotas(membership_pk, quotas):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+
+    backend = membership.cloud.get_backend()
+    backend.push_membership_quotas(membership, quotas)
+
+    # Pull created membership quotas
+    try:
+        backend.pull_resource_quota(membership)
+        backend.pull_resource_quota_usage(membership)
+    except CloudBackendError:
+        logger.warn(
+            'Failed to pull resource quota and usage data to cloud membership %s',
+            membership_pk,
+            exc_info=1,
+        )
+
+
+@shared_task
 def pull_cloud_accounts():
     # TODO: Extract to a service
     queryset = models.Cloud.objects.filter(state=SynchronizationStates.IN_SYNC)

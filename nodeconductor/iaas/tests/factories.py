@@ -63,10 +63,11 @@ class CloudProjectMembershipFactory(factory.DjangoModelFactory):
     tenant_id = factory.Sequence(lambda n: 'tenant_id_%s' % n)
 
     @classmethod
-    def get_url(cls, membership=None):
+    def get_url(cls, membership=None, action=None):
         if membership is None:
             membership = CloudProjectMembershipFactory()
-        return 'http://testserver' + reverse('cloudproject_membership-detail', kwargs={'pk': membership.pk})
+        url = 'http://testserver' + reverse('cloudproject_membership-detail', kwargs={'pk': membership.pk})
+        return url if action is None else url + action + '/'
 
     @classmethod
     def get_list_url(cls):
