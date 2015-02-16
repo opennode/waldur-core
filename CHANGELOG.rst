@@ -6,6 +6,13 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+Release 0.35.0
+--------------
+
+- Added basic organization validation flow.
+- Modified user filtering to take into account organization validation status.
+- Bugfixes of the event logger.
+
 Release 0.34.0
 --------------
 
