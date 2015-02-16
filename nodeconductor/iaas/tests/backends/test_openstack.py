@@ -722,23 +722,6 @@ class OpenStackBackendInstanceApiTest(TransactionTestCase):
         self.assertEqual(expected_instance_count, actual_instance_count,
                          'No instances should have been deleted from the database')
 
-    # Creation tests
-    @unittest.skip("Not implemented yet")
-    def test_pull_instances_creates_instances_missing_in_database(self):
-        # Given
-        self.given_minimal_importable_instance()
-
-        # When
-        self.when()
-
-        # Then
-        membership_params = self._get_membership_params()
-
-        # TODO:
-        instance = Instance.objects.filter(backend_id='', **membership_params).first()
-        self.assertIsNotNone(instance,
-                             'Instance should have been created')
-
     # Helper methods
     def given_minimal_importable_instance(self):
         # Create a flavor

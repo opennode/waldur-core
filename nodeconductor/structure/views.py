@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import logging
 import time
 
 from django.contrib import auth
@@ -18,13 +19,17 @@ from rest_framework.settings import api_settings
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins
-from nodeconductor.core import permissions
 from nodeconductor.core import viewsets
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.structure import filters
+from nodeconductor.structure import permissions
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 
+
+logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 User = auth.get_user_model()
 
@@ -342,6 +347,20 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     filter_class = ProjectGroupMembershipFilter
 
+    def post_save(self, obj, created=False):
+            event_logger.info(
+                'Project %s has been added to project group %s.', obj.project.name, obj.projectgroup.name,
+                extra={'project': obj.project, 'project_group': obj.projectgroup,
+                       'event_type': 'project_added_to_project_group'}
+            )
+
+    def post_delete(self, obj):
+        event_logger.info(
+            'Project %s has been removed from project group %s.', obj.project.name, obj.projectgroup.name,
+            extra={'project': obj.project, 'project_group': obj.projectgroup,
+                   'event_type': 'project_removed_from_project_group'}
+        )
+
 # XXX: This should be put to models
 filters.set_permissions_for_model(
     models.ProjectGroup.projects.through,
@@ -366,7 +385,6 @@ class UserFilter(django_filters.FilterSet):
     native_name = django_filters.CharFilter(lookup_type='icontains')
     organization = django_filters.CharFilter(lookup_type='icontains')
     job_title = django_filters.CharFilter(lookup_type='icontains')
-    description = django_filters.CharFilter(lookup_type='icontains')
     email = django_filters.CharFilter(lookup_type='icontains')
     is_active = django_filters.BooleanFilter()
 
@@ -421,7 +439,7 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     permission_classes = (
         rf_permissions.IsAuthenticated,
-        permissions.IsAdminOrOwner,
+        permissions.IsAdminOrOwnerOrOrganizationManager,
     )
     filter_class = UserFilter
 
@@ -450,12 +468,13 @@ class UserViewSet(viewsets.ModelViewSet):
                 ).distinct()
 
             # check if we need to filter potential users by a customer
-            potential_customer = self.request.QUERY_PARAMS.get('potential_customer', None)
+            potential_customer = self.request.QUERY_PARAMS.get('potential_customer')
             if potential_customer:
                 connected_customers_query = connected_customers_query.filter(uuid=potential_customer)
                 connected_customers_query = filters.filter_queryset_for_user(connected_customers_query, user)
 
             connected_customers = list(connected_customers_query.all())
+            potential_organization = self.request.QUERY_PARAMS.get('potential_organization')
 
             queryset = queryset.filter(is_staff=False).filter(
                 # customer owners
@@ -476,8 +495,11 @@ class UserViewSet(viewsets.ModelViewSet):
                     groups__customerrole=None,
                     groups__projectrole=None,
                     groups__projectgrouprole=None,
+                    organization_approved=True,
+                    organization__exact=potential_organization,
                 )
             ).distinct()
+
 
         if not user.is_staff:
             queryset = queryset.filter(is_active=True)
@@ -499,6 +521,53 @@ class UserViewSet(viewsets.ModelViewSet):
         user.save()
 
         return Response({'detail': "Password has been successfully updated"},
+                        status=status.HTTP_200_OK)
+
+    @action()
+    def claim_organization(self, request, uuid=None):
+        instance = self.get_object()
+
+        # check if organization name is valid
+        serializer = serializers.UserOrganizationSerializer(data={'organization': request.DATA.get('organization')})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        obj = serializer.object
+
+        if instance.organization == "":
+            instance.organization = obj.organization
+            instance.organization_approved = False
+            instance.save()
+            return Response({'detail': "User request for joining the organization has been successfully submitted."},
+                            status=status.HTTP_200_OK)
+        else:
+            return Response({'detail': "User has an existing organization claim."}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action()
+    def approve_organization(self, request, uuid=None):
+        instance = self.get_object()
+
+        instance.organization_approved = True
+        instance.save()
+        return Response({'detail': "User request for joining the organization has been successfully approved"},
+                        status=status.HTTP_200_OK)
+
+    @action()
+    def reject_organization(self, request, uuid=None):
+        instance = self.get_object()
+        instance.organization = ""
+        instance.organization_approved = False
+        instance.save()
+        return Response({'detail': "User has been successfully rejected from the organization"},
+                        status=status.HTTP_200_OK)
+
+    @action()
+    def remove_organization(self, request, uuid=None):
+        instance = self.get_object()
+        instance.organization_approved = False
+        instance.organization = ""
+        instance.save()
+        return Response({'detail': "User has been successfully removed from the organization"},
                         status=status.HTTP_200_OK)
 
 

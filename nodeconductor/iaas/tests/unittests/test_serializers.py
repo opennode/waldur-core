@@ -154,3 +154,44 @@ class InstanceSerializerTest(TestCase):
         serializer = serializers.InstanceSerializer(instance=instance)
         data = serializer.data
         return data
+
+
+class CloudProjectMembershipQuotaSerializerTest(TestCase):
+    def test_cloud_project_membership_quota_serializer_accepts_positive_values(self):
+        data = {
+            'max_instances': 12,
+            'vcpu': 20,
+            'storage': 40 * 1024,
+            'ram': 20 * 1024,
+        }
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(data, serializer.data)
+
+    def test_cloud_project_membership_quota_serializer_fails_on_negative_values(self):
+        data = {
+            'max_instances': -1,
+            'vcpu': -1,
+            'storage': -1,
+            'ram': -1,
+        }
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_cloud_project_membership_quota_serializer_fails_on_symbolic_values(self):
+        data = {
+            'max_instances': 'lalala',
+            'vcpu': 'lalala',
+            'storage': 'lalala',
+            'ram': 'lalala',
+        }
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_cloud_project_membership_quota_serializer_ignores_unsupported_fields(self):
+        data = {
+            'some_strange_quota_name': 1,
+        }
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertTrue('some_strange_quota_name' not in serializer.data)
