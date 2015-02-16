@@ -44,6 +44,18 @@ class StructureConfig(AppConfig):
         )
 
         signals.post_save.connect(
+            handlers.log_project_save,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.log_project_save',
+        )
+
+        signals.post_delete.connect(
+            handlers.log_project_delete,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.log_project_delete',
+        )
+
+        signals.post_save.connect(
             handlers.create_project_group_roles,
             sender=ProjectGroup,
             dispatch_uid='nodeconductor.structure.handlers.create_project_group_roles',

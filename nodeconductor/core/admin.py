@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.contrib.auth import admin as auth_admin, get_user_model
+from django.contrib.auth.models import Group
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core import models
@@ -44,7 +45,8 @@ class UserAdmin(auth_admin.UserAdmin):
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         (_('Personal info'), {'fields': ('civil_number', 'full_name', 'native_name', 'email')}),
-        (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups')}),
+        (_('Organization'), {'fields': ('organization', 'organization_approved')}),
+        (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
     )
     form = UserChangeForm
@@ -59,4 +61,4 @@ class SshPublicKeyAdmin(admin.ModelAdmin):
 
 admin.site.register(models.User, UserAdmin)
 admin.site.register(models.SshPublicKey, SshPublicKeyAdmin)
-
+admin.site.unregister(Group)
