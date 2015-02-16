@@ -151,6 +151,32 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
+    def test_non_staff_user_cannot_request_cloud_project_link_quota_update(self):
+        for user in self.users.values():
+            self.client.force_authenticate(user=user)
+
+            project = self.connected_project
+            cloud = self.cloud
+            membership = factories.CloudProjectMembershipFactory(
+                state=SynchronizationStates.IN_SYNC, project=project, cloud=cloud)
+
+            url = factories.CloudProjectMembershipFactory.get_url(membership, action='set_quotas')
+            response = self.client.post(url)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_user_can_request_cloud_project_link_quota_update(self):
+        user = structure_factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=user)
+
+        project = self.connected_project
+        cloud = self.cloud
+        membership = factories.CloudProjectMembershipFactory(
+            state=SynchronizationStates.IN_SYNC, project=project, cloud=cloud)
+
+        url = factories.CloudProjectMembershipFactory.get_url(membership, action='set_quotas')
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+
     def test_user_cannot_modify_in_unstable_state(self):
         user = self.users['group_manager']
         self.client.force_authenticate(user=user)
