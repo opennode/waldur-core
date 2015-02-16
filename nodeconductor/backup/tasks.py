@@ -58,29 +58,29 @@ def restoration_task(backup_uuid, instance_uuid, user_raw_input):
         backup = models.Backup.objects.get(uuid=backup_uuid)
         source = backup.backup_source
         if source is not None:
-            logger.debug('About to restore backup for backup source: %s', backup.backup_source)
+            logger.debug('About to restore backup for backup source: %s', source)
             # TODO: Instance's hostname should be converted to the name field (NC-367)
             event_logger.info(
-                'Backup restoration for %s has been scheduled.', backup.backup_source.hostname,
+                'Backup restoration for %s has been scheduled.', source.hostname,
                 extra={'backup': backup, 'event_type': 'iaas_backup_restoration_scheduled'},
             )
             try:
                 backup.get_strategy().restore(instance_uuid, user_raw_input)
                 backup.confirm_restoration()
             except exceptions.BackupStrategyExecutionError:
-                logger.exception('Failed to restore backup for backup source: %s', backup.backup_source)
+                logger.exception('Failed to restore backup for backup source: %s', source)
                 # TODO: Instance's hostname should be converted to the name field (NC-367)
-                event_logger.error('Backup restoration for %s has failed.', backup.backup_source.hostname,
+                event_logger.error('Backup restoration for %s has failed.', source.hostname,
                                    extra={'backup': backup, 'event_type': 'iaas_backup_restoration_failed'})
                 backup.erred()
             else:
-                logger.info('Successfully restored backup for backup source: %s', backup.backup_source)
+                logger.info('Successfully restored backup for backup source: %s', source)
                 # TODO: Instance's hostname should be converted to the name field (NC-367)
                 event_logger.info('Backup of %s has been restored, created on %s.',
-                                  backup.backup_source.hostname, backup.created_at.strftime('%d/%m/%y'),
+                                  source.hostname, backup.created_at.strftime('%d/%m/%y'),
                                   extra={'backup': backup, 'event_type': 'iaas_backup_restoration_succeeded'})
         else:
-            logger.exception('Restoration task was called for backup with no source. Backup uuid: %s', backup_uuid)
+            logger.error('Restoration task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:
         logger.exception('Restoration task was called for backed with uuid %s which does not exist', backup_uuid)
 
@@ -91,28 +91,28 @@ def deletion_task(backup_uuid):
         backup = models.Backup.objects.get(uuid=backup_uuid)
         source = backup.backup_source
         if source is not None:
-            logger.debug('About to delete backup for backup source: %s', backup.backup_source)
+            logger.debug('About to delete backup for backup source: %s', source)
             # TODO: Instance's hostname should be converted to the name field (NC-367)
             event_logger.info(
-                'Backup deletion for %s has been scheduled.', backup.backup_source.hostname,
+                'Backup deletion for %s has been scheduled.', source.hostname,
                 extra={'backup': backup, 'event_type': 'iaas_backup_deletion_scheduled'},
             )
             try:
-                backup.get_strategy().delete(backup.backup_source, backup.metadata)
+                backup.get_strategy().delete(source, backup.metadata)
                 backup.confirm_deletion()
             except exceptions.BackupStrategyExecutionError:
-                logger.exception('Failed to delete backup for backup source: %s', backup.backup_source)
+                logger.exception('Failed to delete backup for backup source: %s', source)
                 # TODO: Instance's hostname should be converted to the name field (NC-367)
-                event_logger.error('Backup deletion for %s has failed.', backup.backup_source.hostname,
+                event_logger.error('Backup deletion for %s has failed.', source.hostname,
                                    extra={'backup': backup, 'event_type': 'iaas_backup_deletion_failed'})
                 backup.erred()
             else:
-                logger.info('Successfully deleted backup for backup source: %s', backup.backup_source)
+                logger.info('Successfully deleted backup for backup source: %s', source)
                 # TODO: Instance's hostname should be converted to the name field (NC-367)
-                event_logger.info('Backup for %s has been deleted.', backup.backup_source.hostname,
+                event_logger.info('Backup for %s has been deleted.', source.hostname,
                                   extra={'backup': backup, 'event_type': 'iaas_backup_deletion_succeeded'})
         else:
-            logger.exception('Deletion task was called for backup with no source. Backup uuid: %s', backup_uuid)
+            logger.error('Deletion task was called for backup with no source. Backup uuid: %s', backup_uuid)
     except models.Backup.DoesNotExist:
         logger.exception('Deletion task was called for backed with uuid %s which does not exist', backup_uuid)
 
