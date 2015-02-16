@@ -560,6 +560,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def reject_organization(self, request, uuid=None):
         instance = self.get_object()
         instance.organization = ""
+        instance.organization_approved = False
         instance.save()
         return Response({'detail': "User has been successfully rejected from the organization"},
                         status=status.HTTP_200_OK)
