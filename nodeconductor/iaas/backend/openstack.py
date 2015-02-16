@@ -263,7 +263,7 @@ class OpenStackBackend(object):
             return {
                 backend_name: get_backend_value(quotas[name])
                 for name, (backend_name, get_backend_value) in mapping.items()
-                if name in quotas
+                if name in quotas and quotas[name] is not None
             }
 
         # split quotas by components
