@@ -1,7 +1,8 @@
 Quotas overview
 ---------------
 
-Quotas - objects resource limits and their usage. Currently only projects and cloud project memberships have quotas. Quotas limits can be editable by users.
+Quotas - objects resource limits and their usage. Currently only projects and cloud project memberships have quotas.
+Quotas limits can be editable by users.
 
 Projects quotas names:
  - 'vcpu' - number of CPUs
@@ -9,15 +10,17 @@ Projects quotas names:
  - 'storage' - storage amount in MiB
  - 'max_instances' - total amount of instances(virtual machines)
 
-All current projects quotas are not editable by any user. Cloud project memberships has same quotas as projects.
+Cloud project memberships have same quotas as projects. All current projects and memberships quotas are based on
+backend limits and are not editable by any user. Quota limits auto update is executed every 5 minutes.
 
 
 Getting quota limit and usage
 -----------------------------
 
-To get an actual value for object quotas limit and usage issue a GET request against **/api/<objects>/** or **/api/<objects>/<object_uuid>/**.
+To get an actual value for object quotas limit and usage issue a GET request against **/api/<objects>/**.
 
-Currently you can get project quotas at **/api/projects/** or **/api/projects/<uuid>/** and cloud project membership quotas at **/api/project-cloud-memberships/** or **/api/project-cloud-memberships/<id>/**.
+Currently you can get project quotas at **/api/projects/** and cloud project membership quotas at
+**/api/project-cloud-memberships/**.
 
 Example:
 
@@ -129,7 +132,7 @@ Example:
 Setting quota limit and usage
 -----------------------------
 
-To set quota limit or usage issue PUT request at **/api/quotas/<quota uuid>** with new usage and/or limit values
+To set quota limit issue PUT request at **/api/quotas/<quota uuid>** with new usage and/or limit values
 
 .. code-block:: http
 
@@ -141,5 +144,4 @@ To set quota limit or usage issue PUT request at **/api/quotas/<quota uuid>** wi
 
     {
         "limit": 2000.0,
-        "usage": 0.0
     }
