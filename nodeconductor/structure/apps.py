@@ -88,7 +88,7 @@ class StructureConfig(AppConfig):
         )
 
         signals.post_save.connect(
-            quotas_handlers.add_quotas_to_owner,
+            quotas_handlers.add_quotas_to_scope,
             sender=Project,
             dispatch_uid='nodeconductor.structure.handlers.add_quotas_to_project',
         )

@@ -5,11 +5,11 @@ from nodeconductor.core.serializers import GenericRelatedField
 
 
 class QuotaSerializer(serializers.HyperlinkedModelSerializer):
-    owner = GenericRelatedField(related_models=utils.get_models_with_quotas(), read_only=True)
+    scope = GenericRelatedField(related_models=utils.get_models_with_quotas(), read_only=True)
 
     class Meta(object):
         model = models.Quota
-        fields = ('url', 'uuid', 'name', 'limit', 'usage', 'owner')
+        fields = ('url', 'uuid', 'name', 'limit', 'usage', 'scope')
         read_only_fields = ('uuid', 'name')
         lookup_field = 'uuid'
 

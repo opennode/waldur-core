@@ -22,7 +22,7 @@ class Quota(UuidMixin, models.Model):
 
     content_type = models.ForeignKey(ct_models.ContentType)
     object_id = models.PositiveIntegerField()
-    owner = ct_fields.GenericForeignKey('content_type', 'object_id')
+    scope = ct_fields.GenericForeignKey('content_type', 'object_id')
 
     objects = managers.QuotaManager()
 
@@ -113,7 +113,7 @@ class QuotaModelMixin(models.Model):
             quota = self.quotas.get(name=name)
             if quota.is_exceeded(delta):
                 errors.append('%s quota limit: %s, requires %s (%s)\n' % (
-                    quota.name, quota.limit, quota.usage + delta, quota.owner))
+                    quota.name, quota.limit, quota.usage + delta, quota.scope))
         for parent in self.get_quota_parents():
             errors += parent.get_quota_errors(quota_deltas)
         return errors
@@ -132,7 +132,7 @@ class QuotaModelMixin(models.Model):
 
     def get_quota_parents(self):
         """
-        Return list of other quota owners that contain quotas of current owner.
+        Return list of other quota scopes that contain quotas of current scope.
 
         Example: Customer quotas contain quotas of all customers projects.
         """
@@ -142,12 +142,12 @@ class QuotaModelMixin(models.Model):
         """
         Return True if user has permission to update quota
         """
-        raise NotImplementedError('This method have to be defined for each quota owner separately')
+        raise NotImplementedError('This method have to be defined for each quota scope separately')
 
     @classmethod
-    def get_sum_of_quotas_as_dict(cls, owners, quota_names=None, fields=['usage', 'limit']):
+    def get_sum_of_quotas_as_dict(cls, scopes, quota_names=None, fields=['usage', 'limit']):
         """
-        Return dictionary with sum of all owners quotas.
+        Return dictionary with sum of all scopes quotas.
 
         Dictionary format:
         {
@@ -155,20 +155,20 @@ class QuotaModelMixin(models.Model):
             'quota_name1_usage': 'sum of usages for quotas with such quota_name1',
             ...
         }
-        All `owners` have to be instances of the same model.
+        All `scopes` have to be instances of the same model.
         `fields` keyword argument defines sum of which fields of quotas will present in result.
         """
         if quota_names is None:
             quota_names = cls.QUOTAS_NAMES
 
-        owner_models = set([owner._meta.model for owner in owners])
-        if len(owner_models) > 1:
-            raise exceptions.QuotaError('All owners have to be instances of the same model')
+        scope_models = set([scope._meta.model for scope in scopes])
+        if len(scope_models) > 1:
+            raise exceptions.QuotaError('All scopes have to be instances of the same model')
 
         annotate_kwars = dict((field, Sum(field)) for field in fields)
         filter_kwargs = {
-            'content_type': ct_models.ContentType.objects.get_for_model(owners[0]),
-            'object_id__in': [owner.id for owner in owners],
+            'content_type': ct_models.ContentType.objects.get_for_model(scopes[0]),
+            'object_id__in': [scope.id for scope in scopes],
             'name__in': quota_names
         }
 

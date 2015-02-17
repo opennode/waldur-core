@@ -61,7 +61,7 @@ class IaasConfig(AppConfig):
         )
 
         signals.post_save.connect(
-            quotas_handlers.add_quotas_to_owner,
+            quotas_handlers.add_quotas_to_scope,
             sender=CloudProjectMembership,
             dispatch_uid='nodeconductor.iaas.handlers.add_quotas_to_membership',
         )

@@ -4,7 +4,6 @@ from django.utils.translation import ungettext
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.iaas import models
 from nodeconductor.iaas import tasks
-from nodeconductor.quotas import models as quotas_models
 
 
 # Inspired by Django Snippet https://djangosnippets.org/snippets/2629/
