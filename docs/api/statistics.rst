@@ -81,45 +81,45 @@ Required request GET parameter: *?auth_url* - cloud URL
 
 Answer will be list dictionaries with fields:
 
-- count - number of physical hosts (hypervisors)
-- current_workload
-- disk_available_least
-- free_disk_gb - total available disk space on all physical hosts
-- free_ram_mb - total available memory space on all physical hosts
-- local_gb
-- local_gb_used
-- memory_mb - total size of memory for allocation
-- memory_mb_used - currently used memory size
-- memory_quota - maximum number of memory (from quotas)
-- running_vms - total number of running VMs
-- storage_quota - allocated storage quota
-- vcpu_quota - maximum number of vCPUs (from quotas)
-- vcpus - maximum number of vCPUs (from hypervisors)
-- vcpus_used - currently number of used vCPUs
+**vCPUs:**
 
+- vcpus_free - total available number of vCPUs on all physical hosts
+- vcpus_used - currently number of used vCPUs on all physical hosts
+- vcpus_quota - number of vCPUs booked by quotas
+- vcpus_max - maximum number of vCPUs
 
-The exact semantics of the remaining fields are left as a puzzle to the reader.
+**Memory:**
+
+- memory_free - total available memory space on all physical hosts
+- memory_used - currently used memory size on all physical hosts
+- memory_quota - number of memory booked by quotas
+- memory_max - total size of memory for allocation
+
+**Storage:**
+
+- storage_free - total available disk space on all physical hosts
+- storage_used - currently used disk space on all physical hosts
+- storage_quota - number of disk space booked by quotas
+
+**NB!** Storage and memory values are shown in `MiB <http://en.wikipedia.org/wiki/Mebibyte>`_.
+
 
 Example:
 
 .. code-block:: javascript
 
     {
-        "count": 2,
-        "current_workload": 0,
-        "disk_available_least": 48,
-        "free_disk_gb": 14,
-        "free_ram_mb": 510444,
-        "local_gb": 56,
-        "local_gb_used": 42,
-        "memory_mb": 516588,
-        "memory_mb_used": 6144,
-        "memory_quota": 0,
-        "running_vms": 4,
-        "storage_quota": 0,
-        "vcpu_quota": 0,
-        "vcpus": 64,
-        "vcpus_used": 4
+        "vcpus_free": 60,
+        "vcpus_used": 4,
+        "vcpu_quota": 45,
+        "vcpus_max": 64,
+        "memory_free": 18325,
+        "memory_used": 1345,
+        "memory_quota": 15670,
+        "memory_max": 19670,
+        "storage_free": 143360,
+        "storage_used": 12228,
+        "storage_quota": 130108,
     }
 
 
