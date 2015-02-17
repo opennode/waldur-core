@@ -71,7 +71,7 @@ class Cloud(core_models.UuidMixin, core_models.SynchronizableMixin, models.Model
 
 
 @python_2_unicode_compatible
-class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.AbstractModelWithQuotas):
+class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin, models.Model):
     """
     This model represents many to many relationships between project and cloud
     """

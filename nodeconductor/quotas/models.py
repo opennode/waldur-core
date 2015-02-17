@@ -47,11 +47,26 @@ class Quota(UuidMixin, models.Model):
         return usage > limit
 
 
-class QuotaModelMixin(object):
+class QuotaModelMixin(models.Model):
     """
-    Add general fields and methods to model for quotas usage
+    Add general fields and methods to model for quotas usage. Model with quotas have inherit this mixin.
+
+    For quotas implementation such methods and fields have to be defined:
+      - QUOTAS_NAMES - list of names for object quotas
+      - can_user_update_quotas(self, user) - return True if user has permission to update quotas of this object
+      - get_quota_parents(self) - return list of 'quota parents'
+
+    Use such methods to change objects quotas:
+      set_quota_limit, set_quota_usage, change_quota_usage.
+
+    Other useful methods: get_quota_errors, get_sum_of_quotas_as_dict. Please check their docstrings for more details.
     """
     QUOTAS_NAMES = []  # this list has to be overridden
+
+    class Meta:
+        abstract = True
+
+    quotas = ct_fields.GenericRelation('quotas.Quota', related_query_name='quotas')
 
     def set_quota_limit(self, quota_name, limit):
         self.quotas.filter(name=quota_name).update(limit=limit)
@@ -83,7 +98,7 @@ class QuotaModelMixin(object):
 
     def get_quota_errors(self, quota_deltas):
         """
-        Get error messages about quotas that will be existed if quota_delta will be added to them
+        Get error messages about object and his ancestor quotas that will be exceeded if quota_delta will be added
 
         quota_deltas - dictionary of quotas deltas, example:
         {
@@ -91,6 +106,7 @@ class QuotaModelMixin(object):
             'storage': 2048,
             ...
         }
+        Example of error message:
         """
         errors = []
         for name, delta in quota_deltas.iteritems():
@@ -168,12 +184,3 @@ class QuotaModelMixin(object):
                 result[quota_sum['name']] = quota_sum['limit']
 
         return result
-
-
-# Mixin is better for quotas logic, but Django do not handle GenericRelation fields in Mixins
-# Question on SO: http://stackoverflow.com/questions/28115239/django-genericrelation-in-model-mixin
-class AbstractModelWithQuotas(QuotaModelMixin, models.Model):
-    class Meta:
-        abstract = True
-
-    quotas = ct_fields.GenericRelation('quotas.Quota', related_query_name='quotas')

@@ -174,7 +174,7 @@ class ProjectRole(UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class Project(DescribableMixin, UuidMixin, quotas_models.AbstractModelWithQuotas, TimeStampedModel):
+class Project(DescribableMixin, UuidMixin, quotas_models.QuotaModelMixin, TimeStampedModel):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
