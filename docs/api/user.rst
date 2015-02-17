@@ -9,6 +9,7 @@ Field filters are listed below. All of the filters apart from ?organization are 
 - ?full_name=
 - ?native_name=
 - ?organization=
+- ?organization_approved=
 - ?email=
 - ?phone_number=
 - ?description=
@@ -33,6 +34,7 @@ field name with a dash (**-**).
 - ?o=full_name
 - ?o=native_name
 - ?o=organization
+- ?o=organization_approved
 - ?o=email
 - ?o=phone_number
 - ?o=description
