@@ -57,7 +57,7 @@ class QuotaModelMixin(models.Model):
       - get_quota_parents(self) - return list of 'quota parents'
 
     Use such methods to change objects quotas:
-      set_quota_limit, set_quota_usage, change_quota_usage.
+      set_quota_limit, set_quota_usage, add_quota_usage.
 
     Other useful methods: get_quota_errors, get_sum_of_quotas_as_dict. Please check their docstrings for more details.
     """
@@ -77,7 +77,7 @@ class QuotaModelMixin(models.Model):
         original_quota.usage = usage
         original_quota.save()
 
-    def change_quota_usage(self, quota_name, usage_delta):
+    def add_quota_usage(self, quota_name, usage_delta):
         """
         Add to usage_delta to current quota usage
         """

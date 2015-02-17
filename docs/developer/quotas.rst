@@ -36,8 +36,13 @@ This guarantee that objects of the same model will have same quotas.
 Change object quotas usage and limit
 ------------------------------------
 
-Use ``set_quota_limit``, ``set_quota_usage`` and ``change_quota_usage`` to edit objects quotas. Do not edit quotas
-manually, because this will break quotas in objects ancestors.
+To edit objects quotas use:
+
+ - ``set_quota_limit`` - replace old quota limit with new one
+ - ``set_quota_usage`` - replace old quota usage with new one
+ - ``add_quota_usage`` - add value to quota usage
+
+Do not edit quotas manually, because this will break quotas in objects ancestors.
 
 
 Parents for object with quotas

@@ -10,7 +10,7 @@ class QuotaSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Quota
         fields = ('url', 'uuid', 'name', 'limit', 'usage', 'scope')
-        read_only_fields = ('uuid', 'name', 'scope', 'usage')
+        read_only_fields = ('uuid', 'name', 'usage')
         lookup_field = 'uuid'
 
     # TODO: cleanup after migration to drf 3
