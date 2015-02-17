@@ -15,6 +15,7 @@ class QuotaViewSet(core_viewsets.UpdateModelViewSet):
     def get_queryset(self):
         return models.Quota.objects.filtered_for_user(self.request.user)
 
+    # XXX: this method will be improved with fronend quotas implementation
     def pre_save(self, obj):
         super(QuotaViewSet, self).pre_save(obj)
         if not obj.owner.can_user_update_quotas(self.request.user):

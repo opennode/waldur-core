@@ -138,11 +138,12 @@ class QuotaModelMixin(models.Model):
         """
         return []
 
+    # XXX: This method will be improved with frontend quotas implementation.
     def can_user_update_quotas(self, user):
         """
         Return True if user has permission to update quota
         """
-        raise NotImplementedError('This method have to be defined for each quota scope separately')
+        return False
 
     @classmethod
     def get_sum_of_quotas_as_dict(cls, scopes, quota_names=None, fields=['usage', 'limit']):
