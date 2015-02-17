@@ -38,10 +38,11 @@ class UserFactory(factory.DjangoModelFactory):
                 self.customers.add(customer)
 
     @classmethod
-    def get_url(cls, user=None):
+    def get_url(cls, user=None, action=None):
         if user is None:
             user = UserFactory()
-        return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})
+        url = 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})
+        return url if action is None else url + action + '/'
 
     @classmethod
     def get_password_url(self, user):
@@ -57,7 +58,7 @@ class CustomerFactory(factory.DjangoModelFactory):
         model = models.Customer
 
     name = factory.Sequence(lambda n: 'Customer%s' % n)
-    abbreviation = factory.LazyAttribute(lambda o: o.name[:4])
+    abbreviation = factory.Sequence(lambda n: 'Cust%s' % n)
     contact_details = factory.Sequence(lambda n: 'contacts %s' % n)
 
     @classmethod

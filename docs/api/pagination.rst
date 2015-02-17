@@ -1,7 +1,14 @@
 Every NodeConductor REST request supports pagination. Links to the next, previous, first and last pages are included
 in the Link header. *X-Result-Count* contains a count of all entries in the response set.
 
-By default page size is set to 10. Page size can be modified by passing **?page_size=N** query parameter.
+By default page size is set to 10. Page size can be modified by passing **?page_size=N** query parameter. The maximal
+page size is a configuration specific and can be modified in settings by setting the value of the following block:
+
+.. code-block:: python
+
+    REST_FRAMEWORK = {
+        'MAX_PAGINATE_BY': 100
+    }
 
 Example of the header output for user listing:
 
