@@ -28,6 +28,8 @@ Base model with quotas have to inherit ``QuotaModelMixin`` and define ``QUOTAS_N
             dispatch_uid='nodeconductor.myapp.handlers.add_quotas_to_mymodel',
         )
 
+Notice: quotas can be created only in ``add_quotas_to_scope`` handler. They can not be added anywhere else in the code. This guarantee that objects of the same model will have same quotas.
+
 
 Change object quotas usage and limit
 ------------------------------------
@@ -38,7 +40,7 @@ Use ``set_quota_limit``, ``set_quota_usage`` and ``change_quota_usage`` to edit 
 Parents for object with quotas
 ------------------------------
 
-Object with quotas can have quota-parents. If usage in child was increased - it will be increased in parent too. Method ``get_quota_parents`` have to be overridden to return list of quota-parents if object has any of them. Only first level of ancestors has be added as parents, for example if membership is child of project and project is child if customer - memberships ``get_quota_parents`` has to return only project, not customer.
+Object with quotas can have quota-parents. If usage in child was increased - it will be increased in parent too. Method ``get_quota_parents`` have to be overridden to return list of quota-parents if object has any of them. Only first level of ancestors has be added as parents, for example if membership is child of project and project is child if customer - memberships ``get_quota_parents`` has to return only project, not customer. It is not necessary for parents to have the same quotas as children, but logically they should have at least one common quota.
 
 
 Check is quota exceeded

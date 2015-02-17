@@ -1,9 +1,23 @@
+Quotas overview
+---------------
+
+Quotas - objects resource limits and their usage. Currently only projects and cloud project memberships have quotas. Quotas limits can be editable by users.
+
+Projects quotas names:
+ - 'vcpu' - number of CPUs
+ - 'ram' - RAM amount in MiB
+ - 'storage' - storage amount in MiB
+ - 'max_instances' - total amount of instances(virtual machines)
+
+All current projects quotas are not editable by any user. Cloud project memberships has same quotas as projects.
+
+
 Getting quota limit and usage
 -----------------------------
 
-To get an actual value for object quotas limit and usage (in MiB) issue a GET request against **/api/<objects>/** or **/api/<objects>/<object_uuid>/**
+To get an actual value for object quotas limit and usage issue a GET request against **/api/<objects>/** or **/api/<objects>/<object_uuid>/**.
 
-Currently you can get project quotas at **/api/projects/** or **/api/projects/<uuid>/** and cloud project membership quotas at **/api/project-cloud-memberships/** or **/api/project-cloud-memberships/<id>/**
+Currently you can get project quotas at **/api/projects/** or **/api/projects/<uuid>/** and cloud project membership quotas at **/api/project-cloud-memberships/** or **/api/project-cloud-memberships/<id>/**.
 
 Example:
 
