@@ -693,8 +693,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
 
         period = self._get_period()
 
-        queryset = queryset.filter(slas__period=period, agreed_sla__isnull=False).\
-            values(
+        queryset = queryset.values(
                 'uuid',
                 'hostname',
                 'template__name',
@@ -711,7 +710,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     def events(self, request, uuid):
         service = self.get_object()
         period = self._get_period()
-        # TODO: this should use a generic service model
+        # TODO: this should use a generic resource model
         history = get_object_or_404(models.InstanceSlaHistory, instance__uuid=service['uuid'], period=period)
 
         history_events = history.events.all().order_by('-timestamp').values('timestamp', 'state')
@@ -923,6 +922,22 @@ class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet
             tasks.sync_cloud_account.delay(obj.uuid.hex)
 
 
+class CloudProjectMembershipFilter(django_filters.FilterSet):
+    cloud = django_filters.CharFilter(
+        name='cloud__uuid',
+    )
+    project = django_filters.CharFilter(
+        name='project__uuid',
+    )
+
+    class Meta(object):
+        model = models.CloudProjectMembership
+        fields = [
+            'cloud',
+            'project'
+        ]
+
+
 class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
@@ -936,8 +951,9 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
     """
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
-    filter_backends = (structure_filters.GenericRoleFilter,)
+    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+    filter_class = CloudProjectMembershipFilter
 
     def post_save(self, obj, created=False):
         if created:
