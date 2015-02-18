@@ -923,6 +923,22 @@ class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet
             tasks.sync_cloud_account.delay(obj.uuid.hex)
 
 
+class CloudProjectMembershipFilter(django_filters.FilterSet):
+    cloud = django_filters.CharFilter(
+        name='cloud__uuid',
+    )
+    project = django_filters.CharFilter(
+        name='project__uuid',
+    )
+
+    class Meta(object):
+        model = models.CloudProjectMembership
+        fields = [
+            'cloud',
+            'project'
+        ]
+
+
 class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
@@ -936,8 +952,9 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
     """
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
-    filter_backends = (structure_filters.GenericRoleFilter,)
+    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+    filter_class = CloudProjectMembershipFilter
 
     def post_save(self, obj, created=False):
         if created:
