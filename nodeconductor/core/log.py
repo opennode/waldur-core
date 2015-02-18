@@ -4,7 +4,6 @@ from datetime import datetime
 import logging
 from logging.handlers import SocketHandler
 import json
-import uuid
 
 from nodeconductor.core.middleware import get_current_user
 
@@ -131,9 +130,9 @@ class EventFormatter(logging.Formatter):
             name_attrs = ('name',)
 
         # This way we don't rely on the model field "hyphenated" setting
-        # and always log UUID in its canonical hyphenated representation
+        # and always log UUID without hyphens
         try:
-            related_uuid = str(uuid.UUID(related.uuid.hex))
+            related_uuid = related.uuid.hex
         except AttributeError:
             related_uuid = ''
 
