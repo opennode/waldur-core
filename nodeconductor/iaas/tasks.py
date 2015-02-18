@@ -110,11 +110,7 @@ def schedule_deleting(instance_uuid):
         delete_zabbix_host_and_service(instance)
     except Exception:
         # noinspection PyProtectedMember
-        logger.exception('Failed to begin_deleting Instance with id %s', instance_uuid)
-        event_logger.exception(
-            'Failed to begin_deleting Instance with id %s', instance_uuid,
-            extra={'instance': instance, 'event_type': 'instance_deletion'}
-        )
+        logger.exception('Failed to begin deleting Instance with id %s', instance_uuid)
         set_state(models.Instance, instance_uuid, 'set_erred')
     else:
         # Actually remove the instance from the database
@@ -159,6 +155,30 @@ def pull_cloud_account(cloud_account_uuid):
 
     backend = cloud_account.get_backend()
     backend.pull_cloud_account(cloud_account)
+
+
+@shared_task
+@tracked_processing(
+    models.CloudProjectMembership,
+    processing_state='begin_syncing',
+    desired_state='set_in_sync',
+)
+def push_cloud_membership_quotas(membership_pk, quotas):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+
+    backend = membership.cloud.get_backend()
+    backend.push_membership_quotas(membership, quotas)
+
+    # Pull created membership quotas
+    try:
+        backend.pull_resource_quota(membership)
+        backend.pull_resource_quota_usage(membership)
+    except CloudBackendError:
+        logger.warn(
+            'Failed to pull resource quota and usage data to cloud membership %s',
+            membership_pk,
+            exc_info=1,
+        )
 
 
 @shared_task
@@ -365,12 +385,16 @@ def check_cloud_memberships_quotas():
 
             if resource_usage >= threshold * resource_quota:
                 event_logger.warning(
-                    "%s quota limit is about to be reached", resource_name,
+                    '%s quota threshold has been reached for %s.', resource_name, membership.project.name,
                     extra=dict(
                         event_type='quota_threshold_reached',
+                        quota_type=resource_name,
+                        quota_container_type=membership,
                         cloud=membership.cloud,
                         project=membership.project,
                         project_group=membership.project.project_groups.first(),
+                        threshold=threshold * resource_quota,
+                        resource_usage=resource_usage,
                     ))
 
 

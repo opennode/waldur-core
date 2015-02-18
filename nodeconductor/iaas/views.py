@@ -24,6 +24,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.core.filters import DjangoMappingFilterBackend
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.utils import sort_dict
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
@@ -34,6 +35,7 @@ from nodeconductor.structure.models import ProjectRole, Project, Customer, Proje
 
 
 logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 
 class InstanceFilter(django_filters.FilterSet):
@@ -228,8 +230,13 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def post_save(self, obj, created=False):
         super(InstanceViewSet, self).post_save(obj, created)
         if created:
+            event_logger.info('Virtual machine %s creation has been scheduled.', obj.hostname,
+                              extra={'instance': obj, 'event_type': 'iaas_instance_creation_scheduled'})
             tasks.schedule_provisioning.delay(obj.uuid.hex, backend_flavor_id=obj.flavor.backend_id)
             return
+
+        event_logger.info('Virtual machine %s has been updated.', obj.hostname,
+                          extra={'instance': obj, 'event_type': 'iaas_instance_update_succeeded'})
 
         # We care only about update flow
         old_security_groups = dict(
@@ -265,6 +272,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
         instance.ram = flavor.ram
         instance.cores = flavor.cores
         instance.save()
+
+        event_logger.info('Virtual machine %s has been scheduled to change flavor.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_scheduled'})
         # This is suboptimal, since it reads and writes instance twice
         return self._schedule_transition(self.request, instance.uuid.hex, 'flavor change',
                                          flavor_uuid=flavor.uuid.hex)
@@ -276,6 +286,8 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         instance.data_volume_size = new_size
         instance.save()
+        event_logger.info('Virtual machine %s has been scheduled to extend disk.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_scheduled'})
         # This is suboptimal, since it reads and writes instance twice
         return self._schedule_transition(self.request, instance.uuid.hex, 'disk extension')
 
@@ -318,27 +330,39 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
     @action()
     def stop(self, request, uuid=None):
+        instance = self.get_object()
+        event_logger.info('Virtual machine %s has been scheduled to stop.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_stop_scheduled'})
         return self._schedule_transition(request, uuid, 'stop')
 
     @action()
     def start(self, request, uuid=None):
+        instance = self.get_object()
+        event_logger.info('Virtual machine %s has been scheduled to start.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_start_scheduled'})
         return self._schedule_transition(request, uuid, 'start')
 
     def destroy(self, request, uuid):
         # check if deletion is allowed
         # TODO: it duplicates the signal check, but signal-based is useless when deletion is done in bg task
         # TODO: come up with a better way for checking
-        instance = models.Instance.objects.get(uuid=uuid)
+        instance = self.get_object()
         try:
             from nodeconductor.iaas.handlers import prevent_deletion_of_instances_with_connected_backups
             prevent_deletion_of_instances_with_connected_backups(None, instance)
         except django_models.ProtectedError as e:
             return Response({'detail': e.args[0]}, status=status.HTTP_409_CONFLICT)
 
+        event_logger.info('Virtual machine %s has been scheduled for deletion.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_deletion_scheduled'})
+
         return self._schedule_transition(request, uuid, 'destroy')
 
     @action()
     def restart(self, request, uuid=None):
+        instance = self.get_object()
+        event_logger.info('Virtual machine %s has been scheduled to restart.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_restart_scheduled'})
         return self._schedule_transition(request, uuid, 'restart')
 
     @action()
@@ -918,6 +942,28 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
     def post_save(self, obj, created=False):
         if created:
             tasks.sync_cloud_membership.delay(obj.pk)
+
+    @action()
+    def set_quotas(self, request, **kwargs):
+        if not request.user.is_staff:
+            raise exceptions.PermissionDenied()
+
+        instance = self.get_object()
+        if instance.state != core_models.SynchronizationStates.IN_SYNC:
+            return Response({'detail': 'Cloud project membership must be in sync state for setting quotas'},
+                            status=status.HTTP_409_CONFLICT)
+
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=request.DATA)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        instance.schedule_syncing()
+        instance.save()
+
+        tasks.push_cloud_membership_quotas.delay(instance.pk, quotas=serializer.data)
+
+        return Response({'status': 'Quota update was scheduled'},
+                        status=status.HTTP_202_ACCEPTED)
 
 
 class SecurityGroupFilter(django_filters.FilterSet):

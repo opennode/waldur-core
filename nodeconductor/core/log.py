@@ -87,7 +87,7 @@ class EventFormatter(logging.Formatter):
 
         # instance
         instance = self.get_related('instance', record)
-        self.add_related_details(message, instance, 'vm_instance', 'hostname')
+        self.add_related_details(message, instance, 'iaas_instance', 'hostname')
 
         # cloud project membership
         membership = self.get_related('membership', instance)
@@ -97,7 +97,8 @@ class EventFormatter(logging.Formatter):
         self.add_related_details(message, project, 'project')
 
         # project group
-        project_group = self.get_related('project_group', record)
+        project_group = self.get_related('project_group', record,
+                                         lambda _: project and project.project_groups.first())
         self.add_related_details(message, project_group, 'project_group')
 
         # cloud
@@ -106,7 +107,8 @@ class EventFormatter(logging.Formatter):
 
         # customer
         customer = self.get_related('customer', record, project, cloud, project_group)
-        self.add_related_details(message, customer, 'customer')
+        self.add_related_details(message, customer, 'customer',
+            'name', 'abbreviation', 'contact_details')
 
         return json.dumps(message)
 
@@ -121,9 +123,12 @@ class EventFormatter(logging.Formatter):
 
         return None
 
-    def add_related_details(self, message, related, related_name, name_attr='name'):
+    def add_related_details(self, message, related, related_name, *name_attrs):
         if related is None:
             return
+
+        if not name_attrs:
+            name_attrs = ('name',)
 
         # This way we don't rely on the model field "hyphenated" setting
         # and always log UUID in its canonical hyphenated representation
@@ -132,10 +137,9 @@ class EventFormatter(logging.Formatter):
         except AttributeError:
             related_uuid = ''
 
-        message.update({
-            "{0}_{1}".format(related_name, name_attr): getattr(related, name_attr, ''),
-            "{0}_uuid".format(related_name): related_uuid,
-        })
+        message["{0}_uuid".format(related_name)] = related_uuid
+        for name_attr in name_attrs:
+            message["{0}_{1}".format(related_name, name_attr)] = getattr(related, name_attr, '')
 
 
 class TCPEventHandler(SocketHandler, object):

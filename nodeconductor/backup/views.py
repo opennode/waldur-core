@@ -19,6 +19,7 @@ from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.backup import models, serializers, utils
 from nodeconductor.structure import filters as structure_filters
 
+
 logger = logging.getLogger(__name__)
 event_logger = EventLoggerAdapter(logger)
 
@@ -54,6 +55,8 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
             raise PermissionDenied()
 
     def _get_backup_schedule(self, user, uuid, is_active):
+        # FIXME: Use standard get_queryset() & get_object() pair (NC-380)
+        # FIXME: Return 409 in stead of 404 in case schedule is already active (NC-380)
         schedule = get_object_or_404(models.BackupSchedule, uuid=uuid, is_active=is_active)
         if not schedule.user_has_perm_for_backup_source(user):
             raise Http404
@@ -64,6 +67,11 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         schedule = self._get_backup_schedule(request.user, uuid=uuid, is_active=False)
         schedule.is_active = True
         schedule.save()
+        # TODO: Instance's hostname should be converted to the name field (NC-367)
+        event_logger.info(
+            'Backup schedule for %s has been activated.', schedule.backup_source.hostname,
+            extra={'backup_schedule': schedule, 'event_type': 'iaas_backup_schedule_activated'}
+        )
         return Response({'status': 'BackupSchedule was activated'})
 
     @action()
@@ -71,6 +79,11 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         schedule = self._get_backup_schedule(request.user, uuid=uuid, is_active=True)
         schedule.is_active = False
         schedule.save()
+        # TODO: Instance's hostname should be converted to the name field (NC-367)
+        event_logger.info(
+            'Backup schedule for %s has been deactivated.', schedule.backup_source.hostname,
+            extra={'backup_schedule': schedule, 'event_type': 'iaas_backup_schedule_deactivated'}
+        )
         return Response({'status': 'BackupSchedule was deactivated'})
 
 

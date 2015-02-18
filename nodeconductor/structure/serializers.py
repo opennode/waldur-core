@@ -403,6 +403,12 @@ class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFiltering
         return 'project_group',
 
 
+class UserOrganizationSerializer(serializers.ModelSerializer):
+    class Meta(object):
+        model = User
+        fields = ('organization',)
+
+
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     email = serializers.EmailField()
 
@@ -412,7 +418,8 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'url',
             'uuid', 'username',
             'full_name', 'native_name',
-            'job_title', 'email', 'organization', 'phone_number',
+            'job_title', 'email', 'phone_number',
+            'organization', 'organization_approved',
             'civil_number',
             'description',
             'is_staff', 'is_active',
@@ -420,6 +427,8 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         read_only_fields = (
             'uuid',
             'civil_number',
+            'organization',
+            'organization_approved',
         )
         lookup_field = 'uuid'
 

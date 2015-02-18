@@ -68,7 +68,7 @@ REST_FRAMEWORK = {
         'nodeconductor.core.renderers.BrowsableAPIRenderer',
     ),
     'PAGINATE_BY_PARAM': 'page_size',
-    'MAX_PAGINATE_BY': 100,
+    'MAX_PAGINATE_BY': 200,
     'PAGINATE_BY': 10
 }
 
