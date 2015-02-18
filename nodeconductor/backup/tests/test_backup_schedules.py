@@ -7,6 +7,7 @@ from rest_framework import test
 from nodeconductor.backup import models
 from nodeconductor.backup.tests import factories
 from nodeconductor.core.tests import helpers
+from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.iaas.tests import factories as iaas_factories
 
@@ -98,25 +99,38 @@ class BackupSchedulePermissionsTest(helpers.PermissionsTest):
 
     def setUp(self):
         super(BackupSchedulePermissionsTest, self).setUp()
-        self.user_with_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
-        self.user_without_permission = structure_factories.UserFactory.create()
+        # objects
+        self.customer = structure_factories.CustomerFactory()
+        self.project = structure_factories.ProjectFactory(customer=self.customer)
+        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
+        self.project_group.projects.add(self.project)
+        self.cloud = iaas_factories.CloudFactory(customer=self.customer)
+        self.cpm = iaas_factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
+        self.instance = iaas_factories.InstanceFactory(cloud_project_membership=self.cpm)
+        # users
+        self.staff = structure_factories.UserFactory(username='staff', is_staff=True)
+        self.regular_user = structure_factories.UserFactory(username='regular user')
+        self.project_admin = structure_factories.UserFactory(username='admin')
+        self.project.add_user(self.project_admin, structure_models.ProjectRole.ADMINISTRATOR)
+        self.customer_owner = structure_factories.UserFactory(username='owner')
+        self.customer.add_user(self.customer_owner, structure_models.CustomerRole.OWNER)
+        self.project_group_manager = structure_factories.UserFactory(username='manager')
+        self.project_group.add_user(self.project_group_manager, structure_models.ProjectGroupRole.MANAGER)
 
     def get_users_with_permission(self, url, method):
-        return [self.user_with_permission]
+        return [self.staff, self.project_admin, self.project_group_manager, self.customer_owner]
 
     def get_users_without_permissions(self, url, method):
-        return [self.user_without_permission]
+        return [self.regular_user]
 
     def get_urls_configs(self):
-        instance = iaas_factories.InstanceFactory()
-        schedule = factories.BackupScheduleFactory(backup_source=instance)
+        schedule = factories.BackupScheduleFactory(backup_source=self.instance)
         yield {'url': _backup_schedule_url(schedule), 'method': 'GET'}
         yield {'url': _backup_schedule_url(schedule, action='deactivate'), 'method': 'POST'}
         yield {'url': _backup_schedule_url(schedule, action='activate'), 'method': 'POST'}
-        yield {'url': _backup_schedule_url(schedule), 'method': 'PATCH'}
         yield {'url': _backup_schedule_url(schedule), 'method': 'PUT'}
         yield {'url': _backup_schedule_url(schedule), 'method': 'DELETE'}
-        instance_url = 'http://testserver' + reverse('instance-detail', args=(str(instance.uuid),))
+        instance_url = 'http://testserver' + reverse('instance-detail', args=(self.instance.uuid.hex,))
         backup_schedule_data = {
             'retention_time': 3,
             'backup_source': instance_url,
