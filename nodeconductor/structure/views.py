@@ -384,7 +384,6 @@ class UserFilter(django_filters.FilterSet):
     full_name = django_filters.CharFilter(lookup_type='icontains')
     username = django_filters.CharFilter()
     native_name = django_filters.CharFilter(lookup_type='icontains')
-    organization = django_filters.CharFilter(lookup_type='icontains')
     job_title = django_filters.CharFilter(lookup_type='icontains')
     email = django_filters.CharFilter(lookup_type='icontains')
     is_active = django_filters.BooleanFilter()
@@ -395,6 +394,7 @@ class UserFilter(django_filters.FilterSet):
             'full_name',
             'native_name',
             'organization',
+            'organization_approved',
             'email',
             'phone_number',
             'description',
@@ -409,6 +409,7 @@ class UserFilter(django_filters.FilterSet):
             'full_name',
             'native_name',
             'organization',
+            'organization_approved',
             'email',
             'phone_number',
             'description',
@@ -419,6 +420,7 @@ class UserFilter(django_filters.FilterSet):
             '-full_name',
             '-native_name',
             '-organization',
+            '-organization_approved',
             '-email',
             '-phone_number',
             '-description',
@@ -449,7 +451,7 @@ class UserViewSet(viewsets.ModelViewSet):
         queryset = super(UserViewSet, self).get_queryset()
 
         # ?current
-        current_user = self.request.QUERY_PARAMS.get('current', None)
+        current_user = self.request.QUERY_PARAMS.get('current')
         if current_user is not None and not user.is_anonymous():
             queryset = User.objects.filter(uuid=user.uuid)
 
@@ -501,6 +503,9 @@ class UserViewSet(viewsets.ModelViewSet):
                 )
             ).distinct()
 
+        organization_claimed = self.request.QUERY_PARAMS.get('organization_claimed')
+        if organization_claimed is not None:
+            queryset = queryset.exclude(organization__isnull=True).exclude(organization__exact='')
 
         if not user.is_staff:
             queryset = queryset.filter(is_active=True)

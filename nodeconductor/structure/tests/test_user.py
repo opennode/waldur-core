@@ -310,7 +310,6 @@ class UserFilterTest(test.APISimpleTestCase):
         supported_filters = [
             'full_name',
             'native_name',
-            'organization',
             'email',
             'job_title',
         ]

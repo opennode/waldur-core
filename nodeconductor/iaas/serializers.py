@@ -619,6 +619,7 @@ class ServiceSerializer(serializers.Serializer):
     customer_abbreviation = serializers.Field(source='cloud_project_membership__project__customer__abbreviation')
     project_name = serializers.Field(source='cloud_project_membership__project__name')
     project_groups = serializers.SerializerMethodField('get_project_groups')
+    access_information = core_serializers.IPsField(source='external_ips')
 
     class Meta(object):
         fields = (
@@ -631,6 +632,7 @@ class ServiceSerializer(serializers.Serializer):
             'project_name', 'project_groups',
             'agreed_sla', 'actual_sla',
             'service_type',
+            'access_information',
         )
         view_name = 'service-detail'
         lookup_field = 'uuid'

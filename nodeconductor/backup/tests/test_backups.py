@@ -7,8 +7,9 @@ from rest_framework import test
 from nodeconductor.backup import models
 from nodeconductor.backup.tests import factories
 from nodeconductor.core.tests import helpers
-from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.iaas.tests import factories as iaas_factories
+from nodeconductor.structure import models as structure_models
+from nodeconductor.structure.tests import factories as structure_factories
 
 
 def _backup_url(backup, action=None):
@@ -100,23 +101,42 @@ class BackupListPermissionsTest(helpers.ListPermissionsTest):
 class BackupPermissionsTest(helpers.PermissionsTest):
 
     def setUp(self):
-        self.user_with_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
-        self.user_without_permission = structure_factories.UserFactory.create()
+        super(BackupPermissionsTest, self).setUp()
+        # objects
+        self.customer = structure_factories.CustomerFactory()
+        self.project = structure_factories.ProjectFactory(customer=self.customer)
+        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
+        self.project_group.projects.add(self.project)
+        self.cloud = iaas_factories.CloudFactory(customer=self.customer)
+        self.cpm = iaas_factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
+        self.instance = iaas_factories.InstanceFactory(cloud_project_membership=self.cpm)
+        self.backup = factories.BackupFactory(backup_source=self.instance)
+        # users
+        self.staff = structure_factories.UserFactory(username='staff', is_staff=True)
+        self.regular_user = structure_factories.UserFactory(username='regular user')
+        self.project_admin = structure_factories.UserFactory(username='admin')
+        self.project.add_user(self.project_admin, structure_models.ProjectRole.ADMINISTRATOR)
+        self.customer_owner = structure_factories.UserFactory(username='owner')
+        self.customer.add_user(self.customer_owner, structure_models.CustomerRole.OWNER)
+        self.project_group_manager = structure_factories.UserFactory(username='manager')
+        self.project_group.add_user(self.project_group_manager, structure_models.ProjectGroupRole.MANAGER)
 
     def get_users_with_permission(self, url, method):
-        return [self.user_with_permission]
+        if method == 'GET':
+            return [self.staff, self.project_admin, self.project_group_manager, self.customer_owner]
+        else:
+            return [self.staff, self.project_admin]
 
     def get_users_without_permissions(self, url, method):
-        return [self.user_without_permission]
+        if method == 'GET':
+            return [self.regular_user]
+        else:
+            return [self.regular_user, self.project_group_manager, self.customer_owner]
 
     def get_urls_configs(self):
-        instance = iaas_factories.InstanceFactory()
-        backup = factories.BackupFactory(backup_source=instance)
-        yield {'url': _backup_url(backup), 'method': 'GET'}
-        yield {'url': _backup_url(backup, action='delete'), 'method': 'POST'}
-        # we need to recreate backup because previous one was deleted
-        backup = factories.BackupFactory()
-        yield {'url': _backup_url(backup, action='restore'), 'method': 'POST'}
-        instance_url = 'http://testserver' + reverse('instance-detail', args=(str(instance.uuid),))
+        yield {'url': _backup_url(self.backup), 'method': 'GET'}
+        yield {'url': _backup_url(self.backup, action='restore'), 'method': 'POST'}
+        instance_url = 'http://testserver' + reverse('instance-detail', args=(self.instance.uuid.hex,))
         yield {'url': _backup_list_url(), 'method': 'POST',
                'data': {'backup_source': instance_url}}
+        yield {'url': _backup_url(self.backup, action='delete'), 'method': 'POST'}

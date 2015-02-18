@@ -6,6 +6,13 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+Release 0.36.0
+--------------
+
+- UUIDs in emitted logs are not hyphenated
+- Bugfixes and documentation extensions
+- Default value for the maximal page_size was set to 200
+
 Release 0.35.0
 --------------
 

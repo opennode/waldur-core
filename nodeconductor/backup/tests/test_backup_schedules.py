@@ -7,8 +7,9 @@ from rest_framework import test
 from nodeconductor.backup import models
 from nodeconductor.backup.tests import factories
 from nodeconductor.core.tests import helpers
-from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.iaas.tests import factories as iaas_factories
+from nodeconductor.structure import models as structure_models
+from nodeconductor.structure.tests import factories as structure_factories
 
 
 def _backup_list_url():
@@ -68,6 +69,16 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(models.BackupSchedule.objects.get(pk=schedule.pk).is_active)
 
+    def test_backup_schedule_do_not_start_activation_of_active_schedule(self):
+        schedule = factories.BackupScheduleFactory(is_active=True)
+        response = self.client.post(_backup_schedule_url(schedule, action='activate'))
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_backup_schedule_do_not_start_deactivation_of_not_active_schedule(self):
+        schedule = factories.BackupScheduleFactory(is_active=False)
+        response = self.client.post(_backup_schedule_url(schedule, action='deactivate'))
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
 
 class BackupScheduleListPermissionsTest(helpers.ListPermissionsTest):
 
@@ -98,25 +109,43 @@ class BackupSchedulePermissionsTest(helpers.PermissionsTest):
 
     def setUp(self):
         super(BackupSchedulePermissionsTest, self).setUp()
-        self.user_with_permission = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
-        self.user_without_permission = structure_factories.UserFactory.create()
+        # objects
+        self.customer = structure_factories.CustomerFactory()
+        self.project = structure_factories.ProjectFactory(customer=self.customer)
+        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
+        self.project_group.projects.add(self.project)
+        self.cloud = iaas_factories.CloudFactory(customer=self.customer)
+        self.cpm = iaas_factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
+        self.instance = iaas_factories.InstanceFactory(cloud_project_membership=self.cpm)
+        self.schedule = factories.BackupScheduleFactory(backup_source=self.instance)
+        # users
+        self.staff = structure_factories.UserFactory(username='staff', is_staff=True)
+        self.regular_user = structure_factories.UserFactory(username='regular user')
+        self.project_admin = structure_factories.UserFactory(username='admin')
+        self.project.add_user(self.project_admin, structure_models.ProjectRole.ADMINISTRATOR)
+        self.customer_owner = structure_factories.UserFactory(username='owner')
+        self.customer.add_user(self.customer_owner, structure_models.CustomerRole.OWNER)
+        self.project_group_manager = structure_factories.UserFactory(username='manager')
+        self.project_group.add_user(self.project_group_manager, structure_models.ProjectGroupRole.MANAGER)
 
     def get_users_with_permission(self, url, method):
-        return [self.user_with_permission]
+        if method == 'GET':
+            return [self.staff, self.project_admin, self.project_group_manager, self.customer_owner]
+        else:
+            return [self.staff, self.project_admin]
 
     def get_users_without_permissions(self, url, method):
-        return [self.user_without_permission]
+        if method == 'GET':
+            return [self.regular_user]
+        else:
+            return [self.regular_user, self.project_group_manager, self.customer_owner]
 
     def get_urls_configs(self):
-        instance = iaas_factories.InstanceFactory()
-        schedule = factories.BackupScheduleFactory(backup_source=instance)
-        yield {'url': _backup_schedule_url(schedule), 'method': 'GET'}
-        yield {'url': _backup_schedule_url(schedule, action='deactivate'), 'method': 'POST'}
-        yield {'url': _backup_schedule_url(schedule, action='activate'), 'method': 'POST'}
-        yield {'url': _backup_schedule_url(schedule), 'method': 'PATCH'}
-        yield {'url': _backup_schedule_url(schedule), 'method': 'PUT'}
-        yield {'url': _backup_schedule_url(schedule), 'method': 'DELETE'}
-        instance_url = 'http://testserver' + reverse('instance-detail', args=(str(instance.uuid),))
+        yield {'url': _backup_schedule_url(self.schedule), 'method': 'GET'}
+        yield {'url': _backup_schedule_url(self.schedule, action='deactivate'), 'method': 'POST'}
+        yield {'url': _backup_schedule_url(self.schedule, action='activate'), 'method': 'POST'}
+        yield {'url': _backup_schedule_url(self.schedule), 'method': 'PATCH', 'data': {'retention_time': 5}}
+        instance_url = 'http://testserver' + reverse('instance-detail', args=(self.instance.uuid.hex,))
         backup_schedule_data = {
             'retention_time': 3,
             'backup_source': instance_url,
@@ -124,3 +153,32 @@ class BackupSchedulePermissionsTest(helpers.PermissionsTest):
             'maximal_number_of_backups': 3,
         }
         yield {'url': _backup_list_url(), 'method': 'POST', 'data': backup_schedule_data}
+
+    # XXX: Current permissions tests helper does not work well with deletion, so we need to test deletion explicitly
+    def test_staff_can_delete_schedule(self):
+        self.client.force_authenticate(self.staff)
+
+        url = _backup_schedule_url(self.schedule)
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_admin_can_delete_schedule(self):
+        self.client.force_authenticate(self.staff)
+
+        url = _backup_schedule_url(self.schedule)
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_owner_cannot_delete_schedule(self):
+        self.client.force_authenticate(self.customer_owner)
+
+        url = _backup_schedule_url(self.schedule)
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_group_manager_cannot_delete_schedule(self):
+        self.client.force_authenticate(self.project_group_manager)
+
+        url = _backup_schedule_url(self.schedule)
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
