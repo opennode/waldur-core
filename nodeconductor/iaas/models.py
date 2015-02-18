@@ -89,6 +89,7 @@ class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
         help_text='Optional availability group. Will be used for all instances provisioned in this tenant')
 
     class Meta(object):
+        # TODO: why not unique by cloud and project?
         unique_together = ('cloud', 'tenant_id')
 
     class Permissions(object):

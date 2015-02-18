@@ -81,45 +81,39 @@ Required request GET parameter: *?auth_url* - cloud URL
 
 Answer will be list dictionaries with fields:
 
-- count - number of physical hosts (hypervisors)
-- current_workload
-- disk_available_least
-- free_disk_gb - total available disk space on all physical hosts
-- free_ram_mb - total available memory space on all physical hosts
-- local_gb
-- local_gb_used
-- memory_mb - total size of memory for allocation
-- memory_mb_used - currently used memory size
-- memory_quota - maximum number of memory (from quotas)
-- running_vms - total number of running VMs
-- storage_quota - allocated storage quota
+**vCPUs:**
+
+- vcpus_used - currently number of used vCPUs
 - vcpu_quota - maximum number of vCPUs (from quotas)
 - vcpus - maximum number of vCPUs (from hypervisors)
-- vcpus_used - currently number of used vCPUs
 
+**Memory:**
 
-The exact semantics of the remaining fields are left as a puzzle to the reader.
+- free_ram_mb - total available memory space on all physical hosts
+- memory_mb_used - currently used memory size on all physical hosts
+- memory_quota - maximum number of memory (from quotas)
+- memory_mb - total size of memory for allocation
+
+**Storage:**
+
+- free_disk_gb - total available disk space on all physical hosts
+- storage_quota - allocated storage quota
+
 
 Example:
 
 .. code-block:: javascript
 
     {
-        "count": 2,
-        "current_workload": 0,
-        "disk_available_least": 48,
-        "free_disk_gb": 14,
-        "free_ram_mb": 510444,
-        "local_gb": 56,
-        "local_gb_used": 42,
-        "memory_mb": 516588,
-        "memory_mb_used": 6144,
-        "memory_quota": 0,
-        "running_vms": 4,
-        "storage_quota": 0,
-        "vcpu_quota": 0,
-        "vcpus": 64,
-        "vcpus_used": 4
+    "free_disk_gb": 14,
+    "free_ram_mb": 510444,
+    "memory_mb": 516588,
+    "memory_mb_used": 6144,
+    "memory_quota": 0,
+    "storage_quota": 0,
+    "vcpu_quota": 0,
+    "vcpus": 64,
+    "vcpus_used": 4
     }
 
 

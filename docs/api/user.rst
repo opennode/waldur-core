@@ -9,6 +9,7 @@ Field filters are listed below. All of the filters apart from ?organization are 
 - ?full_name=
 - ?native_name=
 - ?organization=
+- ?organization_approved=
 - ?email=
 - ?phone_number=
 - ?description=
@@ -26,6 +27,7 @@ In addition, several custom filters are supported:
   users. Staff users can see all the customers.
 - ?potential_customer=<Customer UUID> - optionally filter potential users by customer UUID
 - ?potential_organization=<organization name> - optionally filter potential unconnected users by their organization name
+- ?organization_claimed - show only users with a non-empty organization
 
 Ordering is supported by the fields below. Descending sorting can be achieved through prefixing
 field name with a dash (**-**).
@@ -33,6 +35,7 @@ field name with a dash (**-**).
 - ?o=full_name
 - ?o=native_name
 - ?o=organization
+- ?o=organization_approved
 - ?o=email
 - ?o=phone_number
 - ?o=description

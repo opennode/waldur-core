@@ -39,6 +39,7 @@ def _service_to_dict(service):
         'actual_sla': Decimal('99.9'),
         'agreed_sla': service.agreed_sla,
         'service_type': 'IaaS',
+        'access_information': [service.external_ips],
     }
 
 
