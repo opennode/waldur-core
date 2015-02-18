@@ -693,8 +693,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
 
         period = self._get_period()
 
-        queryset = queryset.filter(slas__period=period, agreed_sla__isnull=False).\
-            values(
+        queryset = queryset.values(
                 'uuid',
                 'hostname',
                 'template__name',
@@ -711,7 +710,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     def events(self, request, uuid):
         service = self.get_object()
         period = self._get_period()
-        # TODO: this should use a generic service model
+        # TODO: this should use a generic resource model
         history = get_object_or_404(models.InstanceSlaHistory, instance__uuid=service['uuid'], period=period)
 
         history_events = history.events.all().order_by('-timestamp').values('timestamp', 'state')
