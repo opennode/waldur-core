@@ -60,9 +60,12 @@ Backup has a state, currently supported states are:
 Backup actions
 --------------
 
-Each created backup supports several operations. Operations are listed below:
+Created backups support several operations. Only users with write access to backup source are allowed to perform these
+operations:
 
 - **/api/backup/<backup_uuid>/restore/** - restore a specified backup. Restoring a backup can take user input.
+  Restoration is available only for backups in state ``READY``. If backup is not ready, status code of the response
+  will be **409 CONFLICT**.
   Supported inputs for VM Instance:
 
   - flavor - url to a flavor used for restoration. Mandatory.
@@ -105,9 +108,10 @@ Activating/deactivating a schedule
 ----------------------------------
 
 A schedule can be it two states: active or not. Non-active states are not used for scheduling the new tasks.
+Only users with write access to backup schedule source can activate or deactivate schedule.
 
 To activate a backup schedule, issue POST request to **/api/backup-schedules/<UUID>/activate/**. Note that
-if a schedule is already active, this will result in 404 code.
+if a schedule is already active, this will result in **409 CONFLICT** code.
 
 To deactivate a backup schedule, issue POST request to **/api/backup-schedules/<UUID>/deactivate/**. Note that
-if a schedule was already deactivated, this will result in 404 code.
+if a schedule was already deactivated, this will result in **409 CONFLICT** code.
