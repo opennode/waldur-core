@@ -691,19 +691,18 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         queryset = super(ServiceViewSet, self).get_queryset()
 
-        period = self._get_period()
-
         queryset = queryset.values(
-                'uuid',
-                'hostname',
-                'template__name',
-                'agreed_sla',
-                'slas__value', 'slas__period',
-                'cloud_project_membership__project__customer__name',
-                'cloud_project_membership__project__customer__native_name',
-                'cloud_project_membership__project__customer__abbreviation',
-                'cloud_project_membership__project__name',
-            )
+            'uuid',
+            'hostname',
+            'external_ips',
+            'template__name',
+            'agreed_sla',
+            'slas__value', 'slas__period',
+            'cloud_project_membership__project__customer__name',
+            'cloud_project_membership__project__customer__native_name',
+            'cloud_project_membership__project__customer__abbreviation',
+            'cloud_project_membership__project__name',
+        )
         return queryset
 
     @link()
