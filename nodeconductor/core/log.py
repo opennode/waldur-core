@@ -89,7 +89,7 @@ class EventFormatter(logging.Formatter):
         self.add_related_details(message, instance, 'iaas_instance', 'hostname')
 
         # cloud project membership
-        membership = self.get_related('membership', instance)
+        membership = self.get_related('cloud_project_membership', instance)
 
         # project
         project = self.get_related('project', record, membership)
