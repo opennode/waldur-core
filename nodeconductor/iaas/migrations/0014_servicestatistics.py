@@ -12,10 +12,10 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='CloudStats',
+            name='ServiceStatistics',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('variable', models.CharField(max_length=32)),
+                ('key', models.CharField(max_length=32)),
                 ('value', models.CharField(max_length=255)),
                 ('cloud', models.ForeignKey(related_name='stats', to='iaas.Cloud')),
             ],

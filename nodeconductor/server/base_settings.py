@@ -136,8 +136,8 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=60),
         'args': (),
     },
-    'pull-cloud-stats': {
-        'task': 'nodeconductor.iaas.tasks.pull_cloud_stats',
+    'pull-service-statistics': {
+        'task': 'nodeconductor.iaas.tasks.pull_service_statistics',
         'schedule': timedelta(minutes=15),
         'args': (),
     },

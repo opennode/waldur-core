@@ -755,7 +755,7 @@ class ResourceStatsView(views.APIView):
             storage_quota=Sum('storage'),
         )
 
-        stats = cloud.get_stats()
+        stats = cloud.get_statistics()
         stats.update(quota_stats)
 
         return Response(sort_dict(stats), status=status.HTTP_200_OK)

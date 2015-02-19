@@ -65,16 +65,16 @@ class Cloud(core_models.UuidMixin, core_models.SynchronizableMixin, models.Model
 
         return OpenStackBackend()
 
-    def get_stats(self):
-        return dict((s.variable, s.value) for s in self.stats.all())
+    def get_statistics(self):
+        return dict((s.key, s.value) for s in self.stats.all())
 
     def __str__(self):
         return self.name
 
 
-class CloudStats(models.Model):
+class ServiceStatistics(models.Model):
     cloud = models.ForeignKey(Cloud, related_name='stats')
-    variable = models.CharField(max_length=32)
+    key = models.CharField(max_length=32)
     value = models.CharField(max_length=255)
 
 
