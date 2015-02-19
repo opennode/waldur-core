@@ -250,8 +250,8 @@ class ResourceStatsTest(test.APITransactionTestCase):
             u'free_disk_gb': '12', u'disk_available_least': '6', u'local_gb': '12',
             u'free_ram_mb': '6636', u'memory_mb_used': '1024'
         }
-        models.CloudStats.objects.bulk_create(
-            models.CloudStats(cloud=self.cloud, variable=k, value=v) for k, v in self.stats.iteritems()
+        models.ServiceStatistics.objects.bulk_create(
+            models.ServiceStatistics(cloud=self.cloud, key=k, value=v) for k, v in self.stats.iteritems()
         )
 
         self.url = reverse('stats_resource')
