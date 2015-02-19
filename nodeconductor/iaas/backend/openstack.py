@@ -657,6 +657,20 @@ class OpenStackBackend(object):
             logger.info('Successfully for auth_url: %s was successfully taken', auth_url)
         return stats
 
+    def pull_stats(self, cloud_account):
+        nova_stats = self.get_resource_stats(cloud_account.auth_url)
+        cloud_stats = dict((s.variable, s) for s in cloud_account.stats.all())
+        for var, val in six.viewitems(nova_stats):
+            stats = cloud_stats.pop(var, None)
+            if stats:
+                stats.value = val
+                stats.save()
+            else:
+                cloud_account.stats.create(variable=var, value=val)
+
+        if cloud_stats:
+            cloud_account.stats.delete(variable__in=cloud_stats.keys())
+
     # Instance related methods
     def provision_instance(self, instance, backend_flavor_id, system_volume_id=None, data_volume_id=None):
         logger.info('About to boot instance %s', instance.uuid)

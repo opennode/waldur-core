@@ -733,7 +733,7 @@ class ResourceStatsView(views.APIView):
 
         auth_url = request.QUERY_PARAMS.get('auth_url')
         # TODO: auth_url should be coming as a reference to NodeConductor object. Consider introducing this concept.
-        if 'auth_url' is None:
+        if auth_url is None:
             return Response(
                 {'detail': 'GET parameter "auth_url" has to be defined'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -755,8 +755,7 @@ class ResourceStatsView(views.APIView):
             storage_quota=Sum('storage'),
         )
 
-        cloud_backend = cloud.get_backend()
-        stats = cloud_backend.get_resource_stats(auth_url)
+        stats = cloud.get_stats()
         stats.update(quota_stats)
 
         return Response(sort_dict(stats), status=status.HTTP_200_OK)
