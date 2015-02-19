@@ -612,12 +612,12 @@ class ServiceSerializer(serializers.Serializer):
     hostname = serializers.Field()
     uuid = serializers.Field()
     agreed_sla = serializers.Field()
-    actual_sla = serializers.Field(source='slas__value')
-    template_name = serializers.Field(source='template__name')
-    customer_name = serializers.Field(source='cloud_project_membership__project__customer__name')
-    customer_native_name = serializers.Field(source='cloud_project_membership__project__customer__native_name')
-    customer_abbreviation = serializers.Field(source='cloud_project_membership__project__customer__abbreviation')
-    project_name = serializers.Field(source='cloud_project_membership__project__name')
+    actual_sla = serializers.SerializerMethodField('get_actual_sla')
+    template_name = serializers.Field(source='template.name')
+    customer_name = serializers.Field(source='cloud_project_membership.project.customer.name')
+    customer_native_name = serializers.Field(source='cloud_project_membership.project.customer.native_name')
+    customer_abbreviation = serializers.Field(source='cloud_project_membership.project.customer.abbreviation')
+    project_name = serializers.Field(source='cloud_project_membership.project.name')
     project_groups = serializers.SerializerMethodField('get_project_groups')
     access_information = core_serializers.IPsField(source='external_ips')
 
@@ -640,6 +640,16 @@ class ServiceSerializer(serializers.Serializer):
     def get_service_type(self, obj):
         return 'IaaS'
 
+    def get_actual_sla(self, obj):
+        try:
+            period = self.context['period']
+        except (KeyError, AttributeError):
+            raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
+        try:
+            models.InstanceSlaHistory.objects.get(instance=obj, period=period).value
+        except models.InstanceSlaHistory.DoesNotExist:
+            pass
+
     def get_service_url(self, obj):
         try:
             request = self.context['request']
@@ -648,7 +658,7 @@ class ServiceSerializer(serializers.Serializer):
 
         # TODO: this could use something similar to backup's generic model for all resources
         view_name = 'service-detail'
-        service_instance = models.Instance.objects.get(uuid=obj['uuid'])
+        service_instance = obj
         hyperlinked_field = serializers.HyperlinkedRelatedField(
             view_name=view_name,
             lookup_field='uuid',
@@ -663,7 +673,7 @@ class ServiceSerializer(serializers.Serializer):
         except (KeyError, AttributeError):
             raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
 
-        service_instance = models.Instance.objects.get(uuid=obj['uuid'])
+        service_instance = obj
         groups = structure_serializers.BasicProjectGroupSerializer(
             service_instance.cloud_project_membership.project.project_groups.all(),
             many=True,

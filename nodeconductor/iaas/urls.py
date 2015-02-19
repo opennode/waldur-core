@@ -8,9 +8,9 @@ def register_in(router):
     router.register(r'iaas-templates', views.TemplateViewSet)
     router.register(r'keys', views.SshKeyViewSet)
     router.register(r'template-licenses', views.TemplateLicenseViewSet)
+    router.register(r'resources', views.ServiceViewSet, base_name='service')
     # TODO: pending deprecation, use 'resources' instead
     router.register(r'services', views.ServiceViewSet, base_name='service')
-    router.register(r'resources', views.ServiceViewSet, base_name='service')
     router.register(r'clouds', views.CloudViewSet)
     router.register(r'flavors', views.FlavorViewSet)
     router.register(r'project-cloud-memberships', views.CloudProjectMembershipViewSet, base_name='cloudproject_membership')

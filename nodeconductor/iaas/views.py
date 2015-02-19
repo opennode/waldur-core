@@ -688,22 +688,13 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
             period = '%s-%s' % (today.year, today.month)
         return period
 
-    def get_queryset(self):
-        queryset = super(ServiceViewSet, self).get_queryset()
-
-        queryset = queryset.values(
-            'uuid',
-            'hostname',
-            'external_ips',
-            'template__name',
-            'agreed_sla',
-            'slas__value', 'slas__period',
-            'cloud_project_membership__project__customer__name',
-            'cloud_project_membership__project__customer__native_name',
-            'cloud_project_membership__project__customer__abbreviation',
-            'cloud_project_membership__project__name',
-        )
-        return queryset
+    def get_serializer_context(self):
+        """
+        Extra context provided to the serializer class.
+        """
+        context = super(ServiceViewSet, self).get_serializer_context()
+        context['period'] = self._get_period()
+        return context
 
     @link()
     def events(self, request, uuid):
