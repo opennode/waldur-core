@@ -688,22 +688,13 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
             period = '%s-%s' % (today.year, today.month)
         return period
 
-    def get_queryset(self):
-        queryset = super(ServiceViewSet, self).get_queryset()
-
-        queryset = queryset.values(
-            'uuid',
-            'hostname',
-            'external_ips',
-            'template__name',
-            'agreed_sla',
-            'slas__value', 'slas__period',
-            'cloud_project_membership__project__customer__name',
-            'cloud_project_membership__project__customer__native_name',
-            'cloud_project_membership__project__customer__abbreviation',
-            'cloud_project_membership__project__name',
-        )
-        return queryset
+    def get_serializer_context(self):
+        """
+        Extra context provided to the serializer class.
+        """
+        context = super(ServiceViewSet, self).get_serializer_context()
+        context['period'] = self._get_period()
+        return context
 
     @link()
     def events(self, request, uuid):
@@ -733,7 +724,7 @@ class ResourceStatsView(views.APIView):
 
         auth_url = request.QUERY_PARAMS.get('auth_url')
         # TODO: auth_url should be coming as a reference to NodeConductor object. Consider introducing this concept.
-        if 'auth_url' is None:
+        if auth_url is None:
             return Response(
                 {'detail': 'GET parameter "auth_url" has to be defined'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -755,8 +746,7 @@ class ResourceStatsView(views.APIView):
             storage_quota=Sum('storage'),
         )
 
-        cloud_backend = cloud.get_backend()
-        stats = cloud_backend.get_resource_stats(auth_url)
+        stats = cloud.get_statistics()
         stats.update(quota_stats)
 
         return Response(sort_dict(stats), status=status.HTTP_200_OK)

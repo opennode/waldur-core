@@ -6,6 +6,13 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+Release 0.37.0
+--------------
+
+- More information added to existing event logs.
+- Improved performance of querying resource statistics.
+- Bugfixes of the event logger and service list.
+
 Release 0.36.0
 --------------
 

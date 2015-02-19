@@ -36,7 +36,7 @@ def _service_to_dict(service):
         'customer_native_name': service.cloud_project_membership.project.customer.native_name,
         'customer_abbreviation': service.cloud_project_membership.project.customer.abbreviation,
         'project_groups': project_groups,
-        'actual_sla': Decimal('99.9'),
+        'actual_sla': None,
         'agreed_sla': service.agreed_sla,
         'service_type': 'IaaS',
         'access_information': [service.external_ips],

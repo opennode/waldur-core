@@ -478,9 +478,13 @@ class UserViewSet(viewsets.ModelViewSet):
 
             connected_customers = list(connected_customers_query.all())
             potential_organization = self.request.QUERY_PARAMS.get('potential_organization')
+            if potential_organization is not None:
+                potential_organizations = potential_organization.split(',')
+            else:
+                potential_organizations = []
 
             queryset = queryset.filter(is_staff=False).filter(
-                # customer owners
+                # customer users
                 Q(
                     groups__customerrole__customer__in=connected_customers,
                 )
@@ -499,7 +503,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     groups__projectrole=None,
                     groups__projectgrouprole=None,
                     organization_approved=True,
-                    organization__exact=potential_organization,
+                    organization__in=potential_organizations,
                 )
             ).distinct()
 
