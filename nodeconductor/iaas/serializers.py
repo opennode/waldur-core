@@ -645,11 +645,10 @@ class ServiceSerializer(serializers.Serializer):
             period = self.context['period']
         except (KeyError, AttributeError):
             raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
-        print obj
         try:
             models.InstanceSlaHistory.objects.get(instance=obj, period=period).value
         except models.InstanceSlaHistory.DoesNotExist:
-            return 0
+            pass
 
     def get_service_url(self, obj):
         try:
