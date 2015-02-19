@@ -78,11 +78,13 @@ class EventFormatter(logging.Formatter):
 
         # user
         user = self.get_related('user', record, lambda _: get_current_user())
-        self.add_related_details(message, user, 'user', 'username')
+        self.add_related_details(message, user, 'user',
+                                 'username', 'full_name', 'native_name')
 
         # affected user
         affected_user = self.get_related('affected_user', record)
-        self.add_related_details(message, affected_user, 'affected_user', 'username')
+        self.add_related_details(message, affected_user, 'affected_user',
+                                 'username', 'full_name', 'native_name')
 
         # FIXME: this horribly introduces cyclic dependencies,
         # remove after logging refactoring
