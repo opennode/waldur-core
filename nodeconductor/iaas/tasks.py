@@ -194,6 +194,16 @@ def pull_cloud_accounts():
 
 
 @shared_task
+def pull_service_statistics():
+    # TODO: Extract to a service
+    queryset = models.Cloud.objects.filter(state=SynchronizationStates.IN_SYNC)
+
+    for cloud in queryset.iterator():
+        backend = cloud.get_backend()
+        backend.pull_service_statistics(cloud)
+
+
+@shared_task
 @tracked_processing(
     models.Cloud,
     processing_state='begin_syncing',
