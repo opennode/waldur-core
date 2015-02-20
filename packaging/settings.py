@@ -33,6 +33,7 @@ config_defaults = {
         'instance_monthly_sla_update_period': 300,
         'instance_yearly_sla_update_period': 600,
         'instance_zabbix_sync_period': 600,
+        'service_statistics_update_period': 600,
         'result_backend_url': 'redis://localhost',
     },
     'events': {
@@ -482,6 +483,12 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(seconds=config.getint('celery', 'instance_yearly_sla_update_period')),
         'args': ('yearly',),
     },
+    'pull-service-statistics': {
+        'task': 'nodeconductor.iaas.tasks.pull_service_statistics',
+        'schedule': timedelta(seconds=config.getint('celery', 'service_statistics_update_period')),
+        'args': (),
+    },
+
 }
 
 # NodeConductor internal configuration
