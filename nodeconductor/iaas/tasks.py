@@ -198,9 +198,20 @@ def pull_service_statistics():
     # TODO: Extract to a service
     queryset = models.Cloud.objects.filter(state=SynchronizationStates.IN_SYNC)
 
+    services = {}
     for cloud in queryset.iterator():
-        backend = cloud.get_backend()
-        backend.pull_service_statistics(cloud)
+        services.setdefault(cloud.auth_url, [])
+        services[cloud.auth_url].append(cloud)
+
+    for auth_url in services:
+        stats, backend = None, None
+        for cloud in services[auth_url]:
+            if not backend:
+                backend = cloud.get_backend()
+            if stats:
+                backend.pull_service_statistics(cloud, service_stats=stats)
+            else:
+                stats = backend.pull_service_statistics(cloud)
 
 
 @shared_task

@@ -546,4 +546,5 @@ Arguments:
         sec_group = SecurityGroup.objects.filter(
             cloud_project_membership=cloud_project_membership,
         ).first()
-        InstanceSecurityGroup.objects.create(instance=instance, security_group=sec_group)
+        if sec_group:
+            InstanceSecurityGroup.objects.create(instance=instance, security_group=sec_group)

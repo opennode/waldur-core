@@ -701,7 +701,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
         service = self.get_object()
         period = self._get_period()
         # TODO: this should use a generic resource model
-        history = get_object_or_404(models.InstanceSlaHistory, instance__uuid=service['uuid'], period=period)
+        history = get_object_or_404(models.InstanceSlaHistory, instance__uuid=service.uuid, period=period)
 
         history_events = history.events.all().order_by('-timestamp').values('timestamp', 'state')
 
