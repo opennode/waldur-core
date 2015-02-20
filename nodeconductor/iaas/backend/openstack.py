@@ -72,6 +72,7 @@ class OpenStackBackend(object):
     def pull_cloud_account(self, cloud_account):
         self.pull_flavors(cloud_account)
         self.pull_images(cloud_account)
+        self.pull_service_statistics(cloud_account)
 
     def pull_flavors(self, cloud_account):
         session = self.create_admin_session(cloud_account.auth_url)
@@ -657,10 +658,12 @@ class OpenStackBackend(object):
             logger.info('Successfully for auth_url: %s was successfully taken', auth_url)
         return stats
 
-    def pull_service_statistics(self, cloud_account):
-        nova_stats = self.get_resource_stats(cloud_account.auth_url)
+    def pull_service_statistics(self, cloud_account, service_stats=None):
+        if not service_stats:
+            service_stats = self.get_resource_stats(cloud_account.auth_url)
+
         cloud_stats = dict((s.key, s) for s in cloud_account.stats.all())
-        for key, val in six.viewitems(nova_stats):
+        for key, val in six.viewitems(service_stats):
             stats = cloud_stats.pop(key, None)
             if stats:
                 stats.value = val
@@ -669,7 +672,10 @@ class OpenStackBackend(object):
                 cloud_account.stats.create(key=key, value=val)
 
         if cloud_stats:
-            cloud_account.stats.delete(variable__in=cloud_stats.keys())
+            cloud_account.stats.delete(key__in=cloud_stats.keys())
+        cloud_account.stats.save()
+
+        return service_stats
 
     # Instance related methods
     def provision_instance(self, instance, backend_flavor_id, system_volume_id=None, data_volume_id=None):
