@@ -672,7 +672,8 @@ class OpenStackBackend(object):
                 cloud_account.stats.create(key=key, value=val)
 
         if cloud_stats:
-            cloud_account.stats.delete(variable__in=cloud_stats.keys())
+            cloud_account.stats.delete(key__in=cloud_stats.keys())
+        cloud_account.stats.save()
 
         return service_stats
 
