@@ -663,7 +663,7 @@ class OpenStackBackend(object):
             service_stats = self.get_resource_stats(cloud_account.auth_url)
 
         cloud_stats = dict((s.key, s) for s in cloud_account.stats.all())
-        for key, val in six.viewitems(service_stats):
+        for key, val in service_stats.items():
             stats = cloud_stats.pop(key, None)
             if stats:
                 stats.value = val
@@ -673,7 +673,6 @@ class OpenStackBackend(object):
 
         if cloud_stats:
             cloud_account.stats.delete(key__in=cloud_stats.keys())
-        cloud_account.stats.save()
 
         return service_stats
 
