@@ -9,6 +9,12 @@ Coming in the next release
 Release 0.37.0
 --------------
 
+- Optimized resource usage monitoring. Use background tasks for collecting statistics.
+- Bugfix of listing service events.
+
+Release 0.37.0
+--------------
+
 - More information added to existing event logs.
 - Improved performance of querying resource statistics.
 - Bugfixes of the event logger and service list.
