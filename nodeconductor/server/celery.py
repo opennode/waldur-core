@@ -19,6 +19,12 @@ app.config_from_object('django.conf:settings')
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 
+# The following signal handler should be gone after NC-389 is implemented.
+# The idea should stay the same:
+#  * at the logging site event context is generated
+#  * this context is then explicitly passed to the background task;
+#  * special base class for background task must be created, it will
+#    get the event context passed as task parameter, and bind it to thread local
 @signals.before_task_publish.connect
 def pass_event_context(sender=None, body=None, **kwargs):
     if body is None:
@@ -44,6 +50,13 @@ def bind_current_user(sender=None, **kwargs):
         return
 
     # XXX: This is just a compatibility layer, drop after NC-389 is done
+    # In contrast to what is prosed in NC-389, extraction of the event log
+    # attributes is currently done in EventFormatter.
+    # EventFormatter expects get_current_user() to return an object
+    # that looks like User from django.contrib.auth.
+    # FakeUser extracts the relevant user fields from the event context
+    # (whose structure is modeled after the one suggested in NC-389)
+    # and wraps them into an User-like object for EventFormatter to consume.
     import uuid
 
     class FakeUser(object):
