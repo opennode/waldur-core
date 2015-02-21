@@ -331,6 +331,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
     @action()
     def stop(self, request, uuid=None):
         instance = self.get_object()
+
+        if instance.state == models.Instance.States.OFFLINE:
+            logger.warning('Instance %s is already stopped', instance.uuid)
+            return Response({'status': 'Instance %s is already stopped' % instance.uuid},
+                            status=status.HTTP_200_OK)
+
         event_logger.info('Virtual machine %s has been scheduled to stop.', instance.hostname,
                           extra={'instance': instance, 'event_type': 'iaas_instance_stop_scheduled'})
         return self._schedule_transition(request, uuid, 'stop')
@@ -338,6 +344,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
     @action()
     def start(self, request, uuid=None):
         instance = self.get_object()
+
+        if instance.state == models.Instance.States.ONLINE:
+            logger.warning('Instance %s is already started', instance.uuid)
+            return Response({'status': 'Instance %s is already started' % instance.uuid},
+                            status=status.HTTP_200_OK)
+
         event_logger.info('Virtual machine %s has been scheduled to start.', instance.hostname,
                           extra={'instance': instance, 'event_type': 'iaas_instance_start_scheduled'})
         return self._schedule_transition(request, uuid, 'start')
