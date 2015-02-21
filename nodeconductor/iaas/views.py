@@ -7,7 +7,7 @@ import time
 
 
 from django.db import models as django_models
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 import django_filters
@@ -116,7 +116,6 @@ class InstanceFilter(django_filters.FilterSet):
             '-hostname',
             'state',
             '-state',
-            'start_time',
             '-start_time',
             'cloud_project_membership__project__customer__name',
             '-cloud_project_membership__project__customer__name',
@@ -173,6 +172,16 @@ class InstanceViewSet(mixins.CreateModelMixin,
     filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = InstanceFilter
+
+    def get_queryset(self):
+        queryset = super(InstanceViewSet, self).get_queryset()
+
+        order = self.request.QUERY_PARAMS.get('o', None)
+        if order == 'start_time':
+            # http://stackoverflow.com/questions/5235209/
+            queryset = queryset.annotate(is_null=Count('start_time')).order_by('-is_null', 'start_time')
+
+        return queryset
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -258,6 +267,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         from nodeconductor.iaas.tasks import push_instance_security_groups
         push_instance_security_groups.delay(self.object.uuid.hex)
+
+    def order_start_time(self, queryset, o=None):
+        return
 
     def change_flavor(self, instance, flavor):
         instance_cloud = instance.cloud_project_membership.cloud
