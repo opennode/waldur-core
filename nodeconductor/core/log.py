@@ -86,6 +86,11 @@ class EventFormatter(logging.Formatter):
         self.add_related_details(message, affected_user, 'affected_user',
                                  'username', 'full_name', 'native_name')
 
+        try:
+            message['affected_organization'] = record.affected_organization
+        except AttributeError:
+            pass
+
         # FIXME: this horribly introduces cyclic dependencies,
         # remove after logging refactoring
         def extract_instance(source_name):

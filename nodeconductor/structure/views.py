@@ -551,6 +551,12 @@ class UserViewSet(viewsets.ModelViewSet):
             instance.organization = obj.organization
             instance.organization_approved = False
             instance.save()
+
+            event_logger.info(
+                'User %s has claimed organization %s.', instance.username, instance.organization,
+                extra={'affected_user': instance, 'event_type': 'user_organization_claimed',
+                       'affected_organization': instance.organization})
+
             return Response({'detail': "User request for joining the organization has been successfully submitted."},
                             status=status.HTTP_200_OK)
         else:
@@ -562,24 +568,41 @@ class UserViewSet(viewsets.ModelViewSet):
 
         instance.organization_approved = True
         instance.save()
+        event_logger.info(
+            'User %s has been approved for organization %s.', instance.username, instance.organization,
+            extra={'affected_user': instance, 'event_type': 'user_organization_approved',
+                   'affected_organization': instance.organization})
+
         return Response({'detail': "User request for joining the organization has been successfully approved"},
                         status=status.HTTP_200_OK)
 
     @action()
     def reject_organization(self, request, uuid=None):
         instance = self.get_object()
+        old_organization = instance.organization
         instance.organization = ""
         instance.organization_approved = False
         instance.save()
+        event_logger.info(
+            'User %s claim for organization %s has been rejected.', instance.username, old_organization,
+            extra={'affected_user': instance, 'event_type': 'user_organization_rejected',
+                   'affected_organization': old_organization})
+
         return Response({'detail': "User has been successfully rejected from the organization"},
                         status=status.HTTP_200_OK)
 
     @action()
     def remove_organization(self, request, uuid=None):
         instance = self.get_object()
+        old_organization = instance.organization
         instance.organization_approved = False
         instance.organization = ""
         instance.save()
+        event_logger.info(
+            'User %s has been removed from organization %s.', instance.username, old_organization,
+            extra={'affected_user': instance, 'event_type': 'user_organization_removed',
+                   'affected_organization': old_organization})
+
         return Response({'detail': "User has been successfully removed from the organization"},
                         status=status.HTTP_200_OK)
 

@@ -7,6 +7,8 @@ class BackupAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'kept_until',)
     list_filter = ('uuid', 'state', 'content_type',)
 
+    list_display = ('uuid', 'content_type', 'backup_source', 'state')
+
 
 class BackupScheduleAdmin(admin.ModelAdmin):
     readonly_fields = ('next_trigger_at',)
