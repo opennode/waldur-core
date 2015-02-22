@@ -884,57 +884,65 @@ class OpenStackBackend(object):
 
     def start_instance(self, instance):
         logger.debug('About to start instance %s', instance.uuid)
-        try:
-            membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
+        if instance.state == models.Instance.States.ONLINE:
+            logger.warning('Instance %s is already started', instance.uuid)
+        else:
+            try:
+                membership = instance.cloud_project_membership
 
-            nova = self.create_nova_client(session)
-            nova.servers.start(instance.backend_id)
+                session = self.create_tenant_session(membership)
 
-            if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
-                logger.error('Failed to start instance %s', instance.uuid)
+                nova = self.create_nova_client(session)
+                nova.servers.start(instance.backend_id)
+
+                if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
+                    logger.error('Failed to start instance %s', instance.uuid)
+                    event_logger.error('Virtual machine %s start has failed.', instance.hostname,
+                                       extra={'instance': instance, 'event_type': 'iaas_instance_start_failed'})
+                    raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
+            except nova_exceptions.ClientException as e:
+                logger.exception('Failed to start instance %s', instance.uuid)
                 event_logger.error('Virtual machine %s start has failed.', instance.hostname,
                                    extra={'instance': instance, 'event_type': 'iaas_instance_start_failed'})
-                raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
-        except nova_exceptions.ClientException as e:
-            logger.exception('Failed to start instance %s', instance.uuid)
-            event_logger.error('Virtual machine %s start has failed.', instance.hostname,
-                               extra={'instance': instance, 'event_type': 'iaas_instance_start_failed'})
-            six.reraise(CloudBackendError, e)
-        else:
-            instance.start_time = timezone.now()
-            instance.save()
-            logger.info('Successfully started instance %s', instance.uuid)
-            event_logger.info('Virtual machine %s has been started.', instance.hostname,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_start_succeeded'})
+                six.reraise(CloudBackendError, e)
+            else:
+                instance.start_time = timezone.now()
+                instance.save()
+                logger.info('Successfully started instance %s', instance.uuid)
+                event_logger.info('Virtual machine %s has been started.', instance.hostname,
+                                  extra={'instance': instance, 'event_type': 'iaas_instance_start_succeeded'})
 
     def stop_instance(self, instance):
         logger.debug('About to stop instance %s', instance.uuid)
-        try:
-            membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
-
-            nova = self.create_nova_client(session)
-            nova.servers.stop(instance.backend_id)
-
-            if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
-                logger.error('Failed to stop instance %s', instance.uuid)
-                event_logger.error('Virtual machine %s stop has failed.', instance.hostname,
-                                  extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
-                raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
-        except nova_exceptions.ClientException as e:
-            logger.exception('Failed to stop instance %s', instance.uuid)
-            event_logger.error('Virtual machine %s stop has failed.', instance.hostname,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
-            six.reraise(CloudBackendError, e)
+        if instance.state == models.Instance.States.OFFLINE:
+            logger.warning('Instance %s is already stopped', instance.uuid)
         else:
-            instance.start_time = None
-            instance.save()
-            logger.info('Successfully stopped instance %s', instance.uuid)
-            event_logger.info('Virtual machine %s has been stopped.', instance.hostname,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_stop_succeeded'})
+            try:
+                membership = instance.cloud_project_membership
+
+                session = self.create_tenant_session(membership)
+
+                nova = self.create_nova_client(session)
+                nova.servers.stop(instance.backend_id)
+
+                if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
+                    logger.error('Failed to stop instance %s', instance.uuid)
+                    event_logger.error('Virtual machine %s stop has failed.', instance.hostname,
+                                       extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
+                    raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
+            except nova_exceptions.ClientException as e:
+                logger.exception('Failed to stop instance %s', instance.uuid)
+                event_logger.error('Virtual machine %s stop has failed.', instance.hostname,
+                                   extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
+                six.reraise(CloudBackendError, e)
+            else:
+                instance.start_time = None
+                instance.save()
+                logger.info('Successfully stopped instance %s', instance.uuid)
+                event_logger.info('Virtual machine %s has been stopped.', instance.hostname,
+                                  extra={'instance': instance, 'event_type': 'iaas_instance_stop_succeeded'})
 
     def restart_instance(self, instance):
         logger.debug('About to restart instance %s', instance.uuid)
