@@ -4,6 +4,7 @@ from collections import OrderedDict
 from itertools import groupby
 import logging
 from operator import itemgetter
+import uuid
 import pkg_resources
 import re
 import time
@@ -12,7 +13,7 @@ from cinderclient import exceptions as cinder_exceptions
 from cinderclient.v1 import client as cinder_client
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db import transaction, DatabaseError
+from django.db import transaction
 from django.db.models import ProtectedError
 from django.utils import dateparse
 from django.utils import six
@@ -693,21 +694,13 @@ class OpenStackBackend(object):
             glance = self.create_glance_client(session)
             neutron = self.create_neutron_client(session)
 
-            network_name = self.get_tenant_name(membership)
-
-            matching_networks = neutron.list_networks(name=network_name)['networks']
-            matching_networks_count = len(matching_networks)
-
-            if matching_networks_count > 1:
-                logger.error('Found %d networks named "%s", expected exactly one',
-                             matching_networks_count, network_name)
+            # verify if the internal network to connect to exists
+            try:
+                neutron.show_network(membership.internal_network_id)
+            except neutron_exceptions.NeutronClientException:
+                logger.exception('Internal network with id of %s was not found',
+                                 membership.internal_network_id)
                 raise CloudBackendError('Unable to find network to attach instance to')
-            elif matching_networks_count == 0:
-                logger.error('Found no networks named "%s", expected exactly one',
-                             network_name)
-                raise CloudBackendError('Unable to find network to attach instance to')
-
-            network = matching_networks[0]
 
             # instance key name and fingerprint are optional
             if instance.key_name:
@@ -823,7 +816,7 @@ class OpenStackBackend(object):
                     # },
                 ],
                 nics=[
-                    {'net-id': network['id']}
+                    {'net-id': membership.internal_network_id}
                 ],
                 key_name=backend_public_key.name if backend_public_key is not None else None,
                 security_groups=security_group_ids,
@@ -1653,26 +1646,37 @@ class OpenStackBackend(object):
                         username, tenant.name)
 
     def get_or_create_network(self, membership, neutron):
-        network_name = self.get_tenant_name(membership)
 
-        logger.info('Creating network %s', network_name)
-        if neutron.list_networks(name=network_name)['networks']:
-            logger.info('Network %s already exists, using it instead', network_name)
-            return
+        logger.info('Checking internal network of tenant %s', membership.tenant_id)
+        if membership.internal_network_id:
+            try:
+                # check if the network actually exists
+                neutron.show_network(membership.internal_network_id)
+            except neutron_exceptions.NeutronClientException as e:
+                logger.exception('Network with id %s does not exist. Stale data in database?',
+                                 membership.internal_network_id)
+                six.reraise(CloudBackendError, e)
+            else:
+                logger.info('Network with id %s exists', membership.internal_network_id)
+            return membership.internal_network_id
 
+        network_name = self.create_backend_name()
         network = {
             'name': network_name,
             'tenant_id': membership.tenant_id,
         }
 
+        # in case nothing fits, create and persist internal network
         create_response = neutron.create_network({'networks': [network]})
         network_id = create_response['networks'][0]['id']
+        membership.internal_network_id = network_id
+        membership.save()
 
         subnet_name = '{0}-sn01'.format(network_name)
 
         logger.info('Creating subnet %s', subnet_name)
         subnet = {
-            'network_id': network_id,
+            'network_id': membership.internal_network_id,
             'tenant_id': membership.tenant_id,
             'cidr': '192.168.42.0/24',
             'allocation_pools': [
@@ -1686,6 +1690,7 @@ class OpenStackBackend(object):
             'enable_dhcp': True,
         }
         neutron.create_subnet({'subnets': [subnet]})
+        return membership.internal_network_id
 
     def get_hypervisors_statistics(self, nova):
         return nova.hypervisors.statistics()._info
@@ -1704,6 +1709,9 @@ class OpenStackBackend(object):
 
     def get_tenant_name(self, membership):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
+
+    def create_backend_name(self):
+        return 'nc-{0}'.format(uuid.uuid4().hex)
 
     def _wait_for_instance_status(self, server_id, nova, complete_status,
                                   error_status=None, retries=300, poll_interval=3):

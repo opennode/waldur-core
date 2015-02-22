@@ -92,10 +92,12 @@ class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
     password = models.CharField(max_length=100, blank=True)
 
     tenant_id = models.CharField(max_length=64, blank=True)
+    internal_network_id = models.CharField(max_length=64, blank=True)
 
     availability_zone = models.CharField(
         max_length=100, blank=True,
-        help_text='Optional availability group. Will be used for all instances provisioned in this tenant')
+        help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
+    )
 
     class Meta(object):
         # TODO: why not unique by cloud and project?
@@ -347,8 +349,7 @@ class Instance(core_models.UuidMixin,
 
     state = FSMIntegerField(
         default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
-        help_text="WARNING! Should not be changed manually unless you really know what you are doing."
-    )
+        help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
     # fields, defined by flavor
     cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
