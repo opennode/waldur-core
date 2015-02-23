@@ -90,6 +90,9 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
+    # In order to return results when an invalid value is specified
+    strict = False
+
     class Meta(object):
         model = models.Instance
         fields = [
