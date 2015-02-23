@@ -7,7 +7,7 @@ import time
 
 
 from django.db import models as django_models
-from django.db.models import Sum, Count
+from django.db.models import Sum
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 import django_filters
@@ -178,8 +178,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         order = self.request.QUERY_PARAMS.get('o', None)
         if order == 'start_time':
-            # http://stackoverflow.com/questions/5235209/
-            queryset = queryset.annotate(is_null=Count('start_time')).order_by('-is_null', 'start_time')
+            queryset = queryset.extra(select={
+                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
+                .order_by('-is_null', 'start_time')
 
         return queryset
 
@@ -267,9 +268,6 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         from nodeconductor.iaas.tasks import push_instance_security_groups
         push_instance_security_groups.delay(self.object.uuid.hex)
-
-    def order_start_time(self, queryset, o=None):
-        return
 
     def change_flavor(self, instance, flavor):
         instance_cloud = instance.cloud_project_membership.cloud
