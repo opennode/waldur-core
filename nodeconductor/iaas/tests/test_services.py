@@ -29,6 +29,7 @@ def _service_to_dict(service):
     return {
         'url': _get_service_url(service),
         'uuid': service.uuid.hex,
+        'state': service.get_state_display(),
         'project_name': service.cloud_project_membership.project.name,
         'hostname': service.hostname,
         'template_name': service.template.name,
