@@ -119,7 +119,6 @@ class InstanceFilter(django_filters.FilterSet):
             '-hostname',
             'state',
             '-state',
-            '-start_time',
             'cloud_project_membership__project__customer__name',
             '-cloud_project_membership__project__customer__name',
             'cloud_project_membership__project__customer__native_name',
@@ -182,8 +181,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
         order = self.request.QUERY_PARAMS.get('o', None)
         if order == 'start_time':
             queryset = queryset.extra(select={
+                'is_null': 'CASE WHEN start_time IS NULL THEN 1 ELSE 0 END'}) \
+                .order_by('is_null', 'start_time')
+        elif order == '-start_time':
+            queryset = queryset.extra(select={
                 'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
-                .order_by('-is_null', 'start_time')
+                .order_by('-is_null', '-start_time')
 
         return queryset
 
