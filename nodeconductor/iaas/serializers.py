@@ -7,6 +7,7 @@ from rest_framework import serializers, status, exceptions
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core import models as core_models, serializers as core_serializers
 from nodeconductor.iaas import models
+from nodeconductor.iaas.models import Instance
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
@@ -341,6 +342,19 @@ class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
 class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
     security_groups = InstanceSecurityGroupSerializer(
         many=True, required=False, read_only=False)
+
+
+class CloudProjectMembershipLinkSerializer(serializers.Serializer):
+    id = serializers.CharField(required=True)
+
+    def validate_id(self, attrs, name):
+        backend_id = attrs[name]
+        cpm = self.context['membership']
+        if Instance.objects.filter(cloud_project_membership=cpm,
+                                   backend_id=backend_id).exists():
+            raise serializers.ValidationError(
+                "Instance with a specified backend ID already exists.")
+        return attrs
 
 
 class CloudProjectMembershipQuotaSerializer(serializers.Serializer):
