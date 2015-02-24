@@ -609,6 +609,7 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
 class ServiceSerializer(serializers.Serializer):
     url = serializers.SerializerMethodField('get_service_url')
     service_type = serializers.SerializerMethodField('get_service_type')
+    state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     hostname = serializers.Field()
     uuid = serializers.Field()
     agreed_sla = serializers.Field()
@@ -625,6 +626,7 @@ class ServiceSerializer(serializers.Serializer):
         fields = (
             'url',
             'uuid',
+            'state',
             'hostname', 'template_name',
             'customer_name',
             'customer_native_name',
