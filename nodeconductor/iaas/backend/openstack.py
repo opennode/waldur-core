@@ -34,7 +34,6 @@ from novaclient.v1_1 import client as nova_client
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
-from nodeconductor.iaas.models import SecurityGroup
 
 logger = logging.getLogger(__name__)
 event_logger = EventLoggerAdapter(logger)
@@ -1019,7 +1018,7 @@ class OpenStackBackend(object):
 
             # security groups
             for sg in backend_instance.security_groups:
-                nc_sg = SecurityGroup.objects.get(name=sg['name'], cloud_project_membership=membership)
+                nc_sg = models.SecurityGroup.objects.get(name=sg['name'], cloud_project_membership=membership)
                 models.InstanceSecurityGroup.objects.create(
                     instance=nc_instance,
                     security_group=nc_sg,
