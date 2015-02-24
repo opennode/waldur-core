@@ -171,3 +171,68 @@ Supported filters are:
 * ?project_group_name - matching of a project group name
 * ?project - matching of a project uuid
 * ?project_name - matching of a project name
+
+Managing project group roles
+----------------------------
+
+Project group permissions expresses connection of users to a project group. Each project group has an associated user
+groups that represents project group managers. The link is maintained
+through **/api/project-group-permissions/** endpoint.
+
+Note that project group membership can be viewed and modified only by customer owners and staff users.
+
+To list all visible links, run a GET query against a list.
+
+.. code-block:: http
+
+    GET /api/project-group-permissions/ HTTP/1.1
+    Accept: application/json
+    Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
+    Host: example.com
+
+Response will contain a list of project users and their brief data:
+
+.. code-block:: http
+
+    HTTP/1.0 200 OK
+    Allow: GET, POST, HEAD, OPTIONS
+    Content-Type: application/json
+    X-Result-Count: 1
+
+    [
+        {
+            "project_group": "http://localhost:8000/api/project-groups/df5910c7b0ac4230893ab57450f0fa70/",
+            "project_group_name": "Project1",
+            "role": "manager",
+            "url": "http://example.com/api/project-group-permissions/2/",
+            "user": "http://example.com/api/users/f08d1f447b5048128d6e38767694c52e/",
+            "user_full_name": "Project Manager 1",
+            "user_native_name": "Project Manager 1",
+            "user_username": "Manager1"
+        }
+    ]
+
+To add a new user to the project, POST a new relationship to **/api/project-group-permissions/** endpoint specifying
+project, user and the role of the user (the only supported role at the moment is 'manager'):
+
+.. code-block:: http
+
+    POST /api/project-group-permissions/ HTTP/1.1
+    Accept: application/json
+    Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
+    Host: example.com
+
+    {
+        "project_group": "http://example.com/api/project-groups/6c9b01c251c24174a6691a1f894fae31/",
+        "role": "manager",
+        "user": "http://example.com/api/users/82cec6c8e0484e0ab1429412fe4194b7/"
+    }
+
+To remove a user from a project group, delete corresponding connection (**url** field). Successful deletion
+will return status code 204.
+
+.. code-block:: http
+
+    DELETE /api/project-group-permissions/42/ HTTP/1.1
+    Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
+    Host: example.com
