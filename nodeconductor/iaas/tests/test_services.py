@@ -31,6 +31,8 @@ def _service_to_dict(service):
         'uuid': service.uuid.hex,
         'state': service.get_state_display(),
         'project_name': service.cloud_project_membership.project.name,
+        'project_uuid': service.cloud_project_membership.project.uuid.hex,
+        'project_url': structure_factories.ProjectFactory.get_url(service.cloud_project_membership.project),
         'hostname': service.hostname,
         'template_name': service.template.name,
         'customer_name': service.cloud_project_membership.project.customer.name,

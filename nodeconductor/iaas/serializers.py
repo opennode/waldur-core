@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.core.exceptions import ValidationError
+from django.core.urlresolvers import reverse
 from django.db import IntegrityError
 from rest_framework import serializers, status, exceptions
 
@@ -619,6 +620,8 @@ class ServiceSerializer(serializers.Serializer):
     customer_native_name = serializers.Field(source='cloud_project_membership.project.customer.native_name')
     customer_abbreviation = serializers.Field(source='cloud_project_membership.project.customer.abbreviation')
     project_name = serializers.Field(source='cloud_project_membership.project.name')
+    project_uuid = serializers.Field(source='cloud_project_membership.project.uuid')
+    project_url = serializers.SerializerMethodField('get_project_url')
     project_groups = serializers.SerializerMethodField('get_project_groups')
     access_information = core_serializers.IPsField(source='external_ips')
 
@@ -631,13 +634,22 @@ class ServiceSerializer(serializers.Serializer):
             'customer_name',
             'customer_native_name',
             'customer_abbreviation',
-            'project_name', 'project_groups',
+            'project_name', 'project_uuid', 'project_url',
+            'project_groups',
             'agreed_sla', 'actual_sla',
             'service_type',
             'access_information',
         )
         view_name = 'service-detail'
         lookup_field = 'uuid'
+
+    def get_project_url(self, obj):
+        try:
+            request = self.context['request']
+        except AttributeError:
+            raise AttributeError('RelatedBackupField have to be initialized with `request` in context')
+        return request.build_absolute_uri(
+            reverse('project-detail', kwargs={'uuid': obj.cloud_project_membership.project.uuid}))
 
     def get_service_type(self, obj):
         return 'IaaS'
