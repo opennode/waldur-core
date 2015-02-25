@@ -647,7 +647,7 @@ class ServiceSerializer(serializers.Serializer):
         try:
             request = self.context['request']
         except AttributeError:
-            raise AttributeError('RelatedBackupField have to be initialized with `request` in context')
+            raise AttributeError('ServiceSerializer have to be initialized with `request` in context')
         return request.build_absolute_uri(
             reverse('project-detail', kwargs={'uuid': obj.cloud_project_membership.project.uuid}))
 
