@@ -875,6 +875,23 @@ class OpenStackBackend(object):
             event_logger.info('Virtual machine %s has been started.', instance.hostname,
                               extra={'instance': instance, 'event_type': 'iaas_instance_start_succeeded'})
 
+    def check_instance_state(self, instance):
+        try:
+            membership = instance.cloud_project_membership
+            session = self.create_tenant_session(membership)
+            nova = self.create_nova_client(session)
+
+            backend_instance = nova.servers.find(id=instance.backend_id)
+            instance.state = self._get_instance_state(backend_instance)
+            instance.save()
+        except keystone_exceptions.ClientException as e:
+            logger.exception('Failed to create nova client')
+            six.reraise(CloudBackendError, e)
+        except (nova_exceptions.NotFound, nova_exceptions.NoUniqueMatch):
+            logger.exception('Failed to get openstack instance for instance %s', instance.uuid)
+            instance.set_erred()
+            instance.save()
+
     def start_instance(self, instance):
         logger.debug('About to start instance %s', instance.uuid)
 

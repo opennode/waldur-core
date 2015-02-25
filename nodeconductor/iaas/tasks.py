@@ -71,6 +71,7 @@ def schedule_stopping(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
     backend = instance.cloud_project_membership.cloud.get_backend()
+    backend.check_instance_state(instance)
     backend.stop_instance(instance)
 
 
@@ -89,6 +90,7 @@ def schedule_starting(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
     backend = instance.cloud_project_membership.cloud.get_backend()
+    backend.check_instance_state(instance)
     backend.start_instance(instance)
 
 
