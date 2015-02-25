@@ -57,7 +57,7 @@ Example of a valid request (token is user specific):
 
 .. code-block:: http
 
-    POST /api/project-cloud-memberships/1/import_instances/ HTTP/1.1
+    POST /api/project-cloud-memberships/1/import_instance/ HTTP/1.1
     Content-Type: application/json
     Accept: application/json
     Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
