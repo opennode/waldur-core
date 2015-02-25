@@ -970,6 +970,32 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         return Response({'status': 'Quota update was scheduled'},
                         status=status.HTTP_202_ACCEPTED)
 
+    @action()
+    def import_instance(self, request, **kwargs):
+        membership = self.get_object()
+        is_admin = membership.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
+
+        if not is_admin and not request.user.is_staff:
+            raise exceptions.PermissionDenied()
+
+        if membership.state == core_models.SynchronizationStates.ERRED:
+            return Response({'detail': 'Cloud project membership must be in non-erred state for instance import to work'},
+                            status=status.HTTP_409_CONFLICT)
+
+        serializer = serializers.CloudProjectMembershipLinkSerializer(data=request.DATA,
+                                                                      context={'membership': membership})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        instance_id = serializer.data['id']
+        tasks.import_instance.delay(membership.pk, instance_id=instance_id)
+
+        event_logger.info('Instance with backend id %s has been scheduled for import.', instance_id,
+                          extra={'event_type': 'iaas_instance_import_scheduled'})
+
+        return Response({'status': 'Instance import was scheduled'},
+                        status=status.HTTP_202_ACCEPTED)
+
 
 class SecurityGroupFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
