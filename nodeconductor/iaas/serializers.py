@@ -344,6 +344,19 @@ class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
         many=True, required=False, read_only=False)
 
 
+class CloudProjectMembershipLinkSerializer(serializers.Serializer):
+    id = serializers.CharField(required=True)
+
+    def validate_id(self, attrs, name):
+        backend_id = attrs[name]
+        cpm = self.context['membership']
+        if models.Instance.objects.filter(cloud_project_membership=cpm,
+                                   backend_id=backend_id).exists():
+            raise serializers.ValidationError(
+                "Instance with a specified backend ID already exists.")
+        return attrs
+
+
 class CloudProjectMembershipQuotaSerializer(serializers.Serializer):
     storage = serializers.IntegerField(min_value=1, required=False)
     max_instances = serializers.IntegerField(min_value=1, required=False)
