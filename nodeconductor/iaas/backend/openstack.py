@@ -882,8 +882,11 @@ class OpenStackBackend(object):
             nova = self.create_nova_client(session)
 
             backend_instance = nova.servers.find(id=instance.backend_id)
-            instance.state = self._get_instance_state(backend_instance)
-            instance.save()
+            backend_instance_state = self._get_instance_state(backend_instance)
+
+            if instance.state != backend_instance_state:
+                instance.state = backend_instance_state
+                instance.save()
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client')
             six.reraise(CloudBackendError, e)
