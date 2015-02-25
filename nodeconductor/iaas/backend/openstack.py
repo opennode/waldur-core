@@ -982,10 +982,21 @@ class OpenStackBackend(object):
                 template = self._get_instance_template(system_volume, membership, instance_id)
                 cores, ram = self._get_flavor_info(nova, backend_instance)
                 state = self._get_instance_state(backend_instance)
-            except LookupError:
+            except LookupError as e:
                 logger.exception('Failed to lookup instance %s information', instance_id)
+                six.reraise(CloudBackendError, e)
 
-            nc_instance = models.Instance.objects.create(
+            # check if all instance security groups exist in nc
+            nc_security_groups = []
+            for sg in backend_instance.security_groups:
+                try:
+                    nc_security_groups.append(
+                        models.SecurityGroup.objects.get(name=sg['name'], cloud_project_membership=membership))
+                except models.SecurityGroup.DoesNotExist as e:
+                    logger.exception('Failed to lookup instance %s information', instance_id)
+                    six.reraise(CloudBackendError, e)
+
+            nc_instance = models.Instance(
                 hostname=backend_instance.name or '',
                 template=template,
                 agreed_sla=template.sla_level,
@@ -1016,15 +1027,14 @@ class OpenStackBackend(object):
                         nc_instance.external_ips = ip['addr']
                         continue
 
-            # security groups
-            for sg in backend_instance.security_groups:
-                nc_sg = models.SecurityGroup.objects.get(name=sg['name'], cloud_project_membership=membership)
+            nc_instance.save()
+
+            # instance security groups
+            for nc_sg in nc_security_groups:
                 models.InstanceSecurityGroup.objects.create(
                     instance=nc_instance,
                     security_group=nc_sg,
                 )
-
-            nc_instance.save()
 
             event_logger.info('Virtual machine %s has been imported.', nc_instance.hostname,
                               extra={'instance': nc_instance, 'event_type': 'iaas_instance_import_succeeded'})
