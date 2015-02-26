@@ -410,10 +410,13 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
         # Validate flavor modification
         else:
             # the resize can only happen for an offline VM, so once it boots it will start consuming these quotas
-            if flavor.cores > vcpu_size - vcpu_usage:
+            old_cores = self.instance.cores
+            if flavor.cores - old_cores > vcpu_size - vcpu_usage:
                 raise serializers.ValidationError(
                     "Requested instance core number exceeds quota")
-            if flavor.ram > ram_size - ram_usage:
+
+            old_ram = self.instance.ram
+            if flavor.ram - old_ram > ram_size - ram_usage:
                 raise serializers.ValidationError(
                     "Requested instance RAM size exceeds quota")
         return attrs
