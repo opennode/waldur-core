@@ -544,7 +544,6 @@ class OpenStackBackend(object):
         resource_quota_usage.vcpu = 0
 
         for flavor_id in instance_flavor_ids:
-            flavor = flavors[flavor_id]
             try:
                 flavor = flavors.get(flavor_id, nova.flavors.get(flavor_id))
             except nova_exceptions.NotFound:
@@ -571,7 +570,8 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, e)
 
         try:
-            backend_floating_ips = dict((ip['id'], ip) for ip in self.get_floating_ips(membership.tenant_id, neutron))
+            backend_floating_ips = dict((ip['id'], ip) for ip in self.get_floating_ips(membership.tenant_id, neutron)
+                                        if ip.get('port_id') is not None)
         except neutron_exceptions.ClientException as e:
             logger.exception('Failed to get a list of floating IPs')
             six.reraise(CloudBackendError, e)
