@@ -722,13 +722,6 @@ class OpenStackBackendInstanceApiTest(TransactionTestCase):
         self.assertEqual(expected_instance_count, actual_instance_count,
                          'No instances should have been deleted from the database')
 
-    def test_instance_state_check_in_backend(self):
-        self.given_minimal_importable_instance()
-
-        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
-        self.backend.check_instance_state(instance)
-        self.assertEqual(Instance.objects.get(uuid=instance.uuid).state, Instance.States.ONLINE)
-
     # Helper methods
     def given_minimal_importable_instance(self):
         # Create a flavor
