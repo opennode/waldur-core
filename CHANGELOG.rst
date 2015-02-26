@@ -6,7 +6,13 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
-Release 0.37.0
+Release 0.39.0
+--------------
+- Added instance import helper.
+- Improved event logging.
+- Bugfixes of quota checks.
+
+Release 0.38.0
 --------------
 
 - Optimized resource usage monitoring. Use background tasks for collecting statistics.

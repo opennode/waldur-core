@@ -135,6 +135,19 @@ def extend_disk(instance_uuid):
     backend = instance.cloud_project_membership.cloud.get_backend()
     backend.extend_disk(instance)
 
+@shared_task
+def import_instance(membership_pk, instance_id):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+
+    backend = membership.cloud.get_backend()
+    imported_instance = backend.import_instance(membership, instance_id)
+    if imported_instance:
+        create_zabbix_host_and_service(imported_instance)
+    else:
+        # in case Instance object hasn't been created, emit an event for a user
+        event_logger.info('Import of a virtual machine with backend id %s has failed.', instance_id,
+                          extra={'event_type': 'iaas_instance_import_failed'})
+
 
 @shared_task
 def push_instance_security_groups(instance_uuid):
