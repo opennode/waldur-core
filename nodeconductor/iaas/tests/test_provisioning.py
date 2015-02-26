@@ -904,7 +904,7 @@ class InstanceListRetrieveTest(test.APITransactionTestCase):
         self.assertEqual(len(response.data['backups']), 1)
         self.assertEqual(response.data['backups'][0]['url'], backup_factories.BackupFactory.get_url(backup))
 
-    def test_ascending_sort_by_start_time(self):
+    def test_ascending_sort_by_start_time_puts_instances_with_null_value_first(self):
         self.client.force_authenticate(self.staff)
 
         factories.InstanceFactory.create_batch(2, start_time=None)
