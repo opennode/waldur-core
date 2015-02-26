@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.core.exceptions import ValidationError
+from django.core.urlresolvers import reverse
 from django.db import IntegrityError
 from rest_framework import serializers, status, exceptions
 
@@ -343,6 +344,19 @@ class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
         many=True, required=False, read_only=False)
 
 
+class CloudProjectMembershipLinkSerializer(serializers.Serializer):
+    id = serializers.CharField(required=True)
+
+    def validate_id(self, attrs, name):
+        backend_id = attrs[name]
+        cpm = self.context['membership']
+        if models.Instance.objects.filter(cloud_project_membership=cpm,
+                                   backend_id=backend_id).exists():
+            raise serializers.ValidationError(
+                "Instance with a specified backend ID already exists.")
+        return attrs
+
+
 class CloudProjectMembershipQuotaSerializer(serializers.Serializer):
     storage = serializers.IntegerField(min_value=1, required=False)
     max_instances = serializers.IntegerField(min_value=1, required=False)
@@ -410,10 +424,13 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
         # Validate flavor modification
         else:
             # the resize can only happen for an offline VM, so once it boots it will start consuming these quotas
-            if flavor.cores > vcpu_size - vcpu_usage:
+            old_cores = self.instance.cores
+            if flavor.cores - old_cores > vcpu_size - vcpu_usage:
                 raise serializers.ValidationError(
                     "Requested instance core number exceeds quota")
-            if flavor.ram > ram_size - ram_usage:
+
+            old_ram = self.instance.ram
+            if flavor.ram - old_ram > ram_size - ram_usage:
                 raise serializers.ValidationError(
                     "Requested instance RAM size exceeds quota")
         return attrs
@@ -609,6 +626,7 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
 class ServiceSerializer(serializers.Serializer):
     url = serializers.SerializerMethodField('get_service_url')
     service_type = serializers.SerializerMethodField('get_service_type')
+    state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     hostname = serializers.Field()
     uuid = serializers.Field()
     agreed_sla = serializers.Field()
@@ -618,6 +636,8 @@ class ServiceSerializer(serializers.Serializer):
     customer_native_name = serializers.Field(source='cloud_project_membership.project.customer.native_name')
     customer_abbreviation = serializers.Field(source='cloud_project_membership.project.customer.abbreviation')
     project_name = serializers.Field(source='cloud_project_membership.project.name')
+    project_uuid = serializers.Field(source='cloud_project_membership.project.uuid')
+    project_url = serializers.SerializerMethodField('get_project_url')
     project_groups = serializers.SerializerMethodField('get_project_groups')
     access_information = core_serializers.IPsField(source='external_ips')
 
@@ -625,17 +645,27 @@ class ServiceSerializer(serializers.Serializer):
         fields = (
             'url',
             'uuid',
+            'state',
             'hostname', 'template_name',
             'customer_name',
             'customer_native_name',
             'customer_abbreviation',
-            'project_name', 'project_groups',
+            'project_name', 'project_uuid', 'project_url',
+            'project_groups',
             'agreed_sla', 'actual_sla',
             'service_type',
             'access_information',
         )
         view_name = 'service-detail'
         lookup_field = 'uuid'
+
+    def get_project_url(self, obj):
+        try:
+            request = self.context['request']
+        except AttributeError:
+            raise AttributeError('ServiceSerializer have to be initialized with `request` in context')
+        return request.build_absolute_uri(
+            reverse('project-detail', kwargs={'uuid': obj.cloud_project_membership.project.uuid}))
 
     def get_service_type(self, obj):
         return 'IaaS'

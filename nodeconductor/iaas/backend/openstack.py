@@ -480,43 +480,6 @@ class OpenStackBackend(object):
                 nc_instance.save()
                 # TODO: synchronize also volume sizes
 
-            # TODO: commented out as instance import should be a separate task - NC-302
-            # Add new instances, the ones that are not yet in the database
-            # for instance_id in backend_ids - nc_ids:
-            #     backend_instance = backend_instances[instance_id]
-            #
-            #     try:
-            #         system_volume, data_volume = self._get_instance_volumes(nova, cinder, instance_id)
-            #         template = self._get_instance_template(system_volume, membership, instance_id)
-            #         cores, ram = self._get_flavor_info(nova, backend_instance)
-            #         state = self._get_instance_state(backend_instance)
-            #     except LookupError:
-            #         continue
-            #
-            #     nc_instance = models.Instance.objects.create(
-            #         hostname=backend_instance.name or '',
-            #         template=template,
-            #
-            #         cores=cores,
-            #         ram=ram,
-            #
-            #         key_name=backend_instance.key_name or '',
-            #
-            #         system_volume_id=system_volume.id,
-            #         system_volume_size=self.get_core_disk_size(system_volume.size),
-            #         data_volume_id=data_volume.id,
-            #         data_volume_size=self.get_core_disk_size(data_volume.size),
-            #
-            #         state=state,
-            #
-            #         start_time=self._get_instance_start_time(backend_instance),
-            #
-            #         cloud_project_membership=membership,
-            #         backend_id=backend_instance.id,
-            #     )
-            #
-            #     logger.info('Created new instance %s in database', nc_instance.uuid)
-
     def pull_resource_quota(self, membership):
         try:
             session = self.create_tenant_session(membership)
@@ -877,57 +840,65 @@ class OpenStackBackend(object):
 
     def start_instance(self, instance):
         logger.debug('About to start instance %s', instance.uuid)
-        try:
-            membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
+        if instance.state == models.Instance.States.ONLINE:
+            logger.warning('Instance %s is already started', instance.uuid)
+        else:
+            try:
+                membership = instance.cloud_project_membership
 
-            nova = self.create_nova_client(session)
-            nova.servers.start(instance.backend_id)
+                session = self.create_tenant_session(membership)
 
-            if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
-                logger.error('Failed to start instance %s', instance.uuid)
+                nova = self.create_nova_client(session)
+                nova.servers.start(instance.backend_id)
+
+                if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
+                    logger.error('Failed to start instance %s', instance.uuid)
+                    event_logger.error('Virtual machine %s start has failed.', instance.hostname,
+                                       extra={'instance': instance, 'event_type': 'iaas_instance_start_failed'})
+                    raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
+            except nova_exceptions.ClientException as e:
+                logger.exception('Failed to start instance %s', instance.uuid)
                 event_logger.error('Virtual machine %s start has failed.', instance.hostname,
                                    extra={'instance': instance, 'event_type': 'iaas_instance_start_failed'})
-                raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
-        except nova_exceptions.ClientException as e:
-            logger.exception('Failed to start instance %s', instance.uuid)
-            event_logger.error('Virtual machine %s start has failed.', instance.hostname,
-                               extra={'instance': instance, 'event_type': 'iaas_instance_start_failed'})
-            six.reraise(CloudBackendError, e)
-        else:
-            instance.start_time = timezone.now()
-            instance.save()
-            logger.info('Successfully started instance %s', instance.uuid)
-            event_logger.info('Virtual machine %s has been started.', instance.hostname,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_start_succeeded'})
+                six.reraise(CloudBackendError, e)
+            else:
+                instance.start_time = timezone.now()
+                instance.save()
+                logger.info('Successfully started instance %s', instance.uuid)
+                event_logger.info('Virtual machine %s has been started.', instance.hostname,
+                                  extra={'instance': instance, 'event_type': 'iaas_instance_start_succeeded'})
 
     def stop_instance(self, instance):
         logger.debug('About to stop instance %s', instance.uuid)
-        try:
-            membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
-
-            nova = self.create_nova_client(session)
-            nova.servers.stop(instance.backend_id)
-
-            if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
-                logger.error('Failed to stop instance %s', instance.uuid)
-                event_logger.error('Virtual machine %s stop has failed.', instance.hostname,
-                                  extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
-                raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
-        except nova_exceptions.ClientException as e:
-            logger.exception('Failed to stop instance %s', instance.uuid)
-            event_logger.error('Virtual machine %s stop has failed.', instance.hostname,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
-            six.reraise(CloudBackendError, e)
+        if instance.state == models.Instance.States.OFFLINE:
+            logger.warning('Instance %s is already stopped', instance.uuid)
         else:
-            instance.start_time = None
-            instance.save()
-            logger.info('Successfully stopped instance %s', instance.uuid)
-            event_logger.info('Virtual machine %s has been stopped.', instance.hostname,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_stop_succeeded'})
+            try:
+                membership = instance.cloud_project_membership
+
+                session = self.create_tenant_session(membership)
+
+                nova = self.create_nova_client(session)
+                nova.servers.stop(instance.backend_id)
+
+                if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
+                    logger.error('Failed to stop instance %s', instance.uuid)
+                    event_logger.error('Virtual machine %s stop has failed.', instance.hostname,
+                                       extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
+                    raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
+            except nova_exceptions.ClientException as e:
+                logger.exception('Failed to stop instance %s', instance.uuid)
+                event_logger.error('Virtual machine %s stop has failed.', instance.hostname,
+                                   extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
+                six.reraise(CloudBackendError, e)
+            else:
+                instance.start_time = None
+                instance.save()
+                logger.info('Successfully stopped instance %s', instance.uuid)
+                event_logger.info('Virtual machine %s has been stopped.', instance.hostname,
+                                  extra={'instance': instance, 'event_type': 'iaas_instance_stop_succeeded'})
 
     def restart_instance(self, instance):
         logger.debug('About to restart instance %s', instance.uuid)
@@ -985,6 +956,91 @@ class OpenStackBackend(object):
             logger.info('Successfully deleted instance %s', instance.uuid)
             event_logger.info('Virtual machine %s has been deleted.', instance.hostname,
                               extra={'instance': instance, 'event_type': 'iaas_instance_deletion_succeeded'})
+
+    def import_instance(self, membership, instance_id):
+        try:
+            session = self.create_tenant_session(membership)
+            nova = self.create_nova_client(session)
+            cinder = self.create_cinder_client(session)
+        except keystone_exceptions.ClientException as e:
+            logger.exception('Failed to create nova client')
+            six.reraise(CloudBackendError, e)
+        except cinder_exceptions.ClientException as e:
+            logger.exception('Failed to create cinder client')
+            six.reraise(CloudBackendError, e)
+
+        # Exclude instances that are booted from images
+        try:
+            backend_instance = nova.servers.get(instance_id)
+        except nova_exceptions.NotFound:
+            logger.exception('Requested instance with UUID %s was not found', instance_id)
+            return
+
+        with transaction.atomic():
+            try:
+                system_volume, data_volume = self._get_instance_volumes(nova, cinder, instance_id)
+                template = self._get_instance_template(system_volume, membership, instance_id)
+                cores, ram = self._get_flavor_info(nova, backend_instance)
+                state = self._get_instance_state(backend_instance)
+            except LookupError as e:
+                logger.exception('Failed to lookup instance %s information', instance_id)
+                six.reraise(CloudBackendError, e)
+
+            # check if all instance security groups exist in nc
+            nc_security_groups = []
+            for sg in backend_instance.security_groups:
+                try:
+                    nc_security_groups.append(
+                        models.SecurityGroup.objects.get(name=sg['name'], cloud_project_membership=membership))
+                except models.SecurityGroup.DoesNotExist as e:
+                    logger.exception('Failed to lookup instance %s information', instance_id)
+                    six.reraise(CloudBackendError, e)
+
+            nc_instance = models.Instance(
+                hostname=backend_instance.name or '',
+                template=template,
+                agreed_sla=template.sla_level,
+
+                cores=cores,
+                ram=ram,
+
+                key_name=backend_instance.key_name or '',
+
+                system_volume_id=system_volume.id,
+                system_volume_size=self.get_core_disk_size(system_volume.size),
+                data_volume_id=data_volume.id,
+                data_volume_size=self.get_core_disk_size(data_volume.size),
+
+                state=state,
+
+                start_time=self._get_instance_start_time(backend_instance),
+
+                cloud_project_membership=membership,
+                backend_id=backend_instance.id,
+            )
+            for net_name, net_conf in backend_instance.addresses.items():
+                for ip in net_conf:
+                    if ip['OS-EXT-IPS:type'] == 'fixed':
+                        nc_instance.internal_ips = ip['addr']
+                        continue
+                    if ip['OS-EXT-IPS:type'] == 'floating':
+                        nc_instance.external_ips = ip['addr']
+                        continue
+
+            nc_instance.save()
+
+            # instance security groups
+            for nc_sg in nc_security_groups:
+                models.InstanceSecurityGroup.objects.create(
+                    instance=nc_instance,
+                    security_group=nc_sg,
+                )
+
+            event_logger.info('Virtual machine %s has been imported.', nc_instance.hostname,
+                              extra={'instance': nc_instance, 'event_type': 'iaas_instance_import_succeeded'})
+            logger.info('Created new instance %s in database', nc_instance.uuid)
+
+            return nc_instance
 
     # XXX: This method is not used now
     def backup_instance(self, instance):
