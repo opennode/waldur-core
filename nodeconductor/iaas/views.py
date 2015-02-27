@@ -56,7 +56,7 @@ def schedule_transition():
             }
 
             # Define them in inner scope but call when transaction complete
-            processing_task, logger_info = None, None
+            response, processing_task, logger_info = None, None, None
 
             try:
                 with transaction.atomic():
@@ -72,29 +72,32 @@ def schedule_transition():
                     options = view_fn(self, request, instance, *args, **kwargs)
 
                     if isinstance(options, tuple):
+                        # Expecting operation, logger_info and optional celery_kwargs from a view
                         operation, logger_info = options[:2]
                         celery_kwargs = options[2] if len(options) >= 3 else {}
                         change_instance_state, processing_task = supported_operations[operation]
 
-                        try:
-                            transition = getattr(instance, change_instance_state)
-                            transition()
+                        transition = getattr(instance, change_instance_state)
+                        transition()
 
-                            instance.save(update_fields=['state'])
-
-                        except TransitionNotAllowed:
-                            message = 'Performing %s operation from instance state \'%s\' is not allowed'
-                            return Response({'status': message % (operation, instance.get_state_display())},
-                                            status=status.HTTP_409_CONFLICT)
-
+                        instance.save(update_fields=['state'])
                     else:
-                        # Break execution by return in a view
-                        assert isinstance(options, Response)
-                        return options
+                        # Break execution by return from a view
+                        response = options
+                        raise RuntimeError
+
+            except TransitionNotAllowed:
+                message = "Performing %s operation from instance state '%s' is not allowed"
+                return Response({'status': message % (operation, instance.get_state_display())},
+                                status=status.HTTP_409_CONFLICT)
 
             except IntegrityError:
                 return Response({'status': '%s was not scheduled' % operation},
                                 status=status.HTTP_400_BAD_REQUEST)
+
+            except RuntimeError:
+                assert isinstance(response, Response)
+                return response
 
             else:
                 # Call celery task AFTER transaction has been commited
