@@ -177,9 +177,8 @@ Managing project group roles
 
 Project group permissions expresses connection of users to a project group. Each project group has an associated user
 groups that represents project group managers. The link is maintained
-through **/api/project-group-permissions/** endpoint.
-
-Note that project group membership can be viewed and modified only by customer owners and staff users.
+through **/api/project-group-permissions/** endpoint. Note that project group membership can be viewed and modified
+only by customer owners and staff users.
 
 To list all visible links, run a GET query against a list.
 
@@ -194,14 +193,14 @@ Response will contain a list of project users and their brief data:
 
 .. code-block:: http
 
-    HTTP/1.0 200 OK
+    HTTP/1.1 200 OK
     Allow: GET, POST, HEAD, OPTIONS
     Content-Type: application/json
     X-Result-Count: 1
 
     [
         {
-            "project_group": "http://localhost:8000/api/project-groups/df5910c7b0ac4230893ab57450f0fa70/",
+            "project_group": "http://example.com/api/project-groups/df5910c7b0ac4230893ab57450f0fa70/",
             "project_group_name": "Project1",
             "role": "manager",
             "url": "http://example.com/api/project-group-permissions/2/",
