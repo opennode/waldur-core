@@ -950,6 +950,36 @@ class InstanceListRetrieveTest(test.APITransactionTestCase):
         self.assertEqual(len(response.data['backups']), 1)
         self.assertEqual(response.data['backups'][0]['url'], backup_factories.BackupFactory.get_url(backup))
 
+    def test_ascending_sort_by_start_time_puts_instances_with_null_value_first(self):
+        self.client.force_authenticate(self.staff)
+
+        factories.InstanceFactory.create_batch(2, start_time=None)
+        factories.InstanceFactory()
+
+        response = self.client.get(factories.InstanceFactory.get_list_url(),
+                                   data={'o': 'start_time'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for i in (0, 1):
+            self.assertEqual(response.data[i]['start_time'], None)
+
+        self.assertTrue(response.data[2]['start_time'] < response.data[3]['start_time'])
+
+    def test_descending_sort_by_start_time_puts_instances_with_null_value_last(self):
+        self.client.force_authenticate(self.staff)
+
+        factories.InstanceFactory.create_batch(2, start_time=None)
+        factories.InstanceFactory()
+
+        response = self.client.get(factories.InstanceFactory.get_list_url(),
+                                   data={'o': '-start_time'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertTrue(response.data[0]['start_time'] > response.data[1]['start_time'])
+
+        for i in (2, 3):
+            self.assertEqual(response.data[i]['start_time'], None)
+
 
 class InstanceUsageTest(test.APITransactionTestCase):
 

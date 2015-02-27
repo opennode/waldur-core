@@ -90,6 +90,9 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
+    # In order to return results when an invalid value is specified
+    strict = False
+
     class Meta(object):
         model = models.Instance
         fields = [
@@ -116,8 +119,6 @@ class InstanceFilter(django_filters.FilterSet):
             '-hostname',
             'state',
             '-state',
-            'start_time',
-            '-start_time',
             'cloud_project_membership__project__customer__name',
             '-cloud_project_membership__project__customer__name',
             'cloud_project_membership__project__customer__native_name',
@@ -173,6 +174,21 @@ class InstanceViewSet(mixins.CreateModelMixin,
     filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = InstanceFilter
+
+    def get_queryset(self):
+        queryset = super(InstanceViewSet, self).get_queryset()
+
+        order = self.request.QUERY_PARAMS.get('o', None)
+        if order == 'start_time':
+            queryset = queryset.extra(select={
+                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
+                .order_by('is_null', 'start_time')
+        elif order == '-start_time':
+            queryset = queryset.extra(select={
+                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
+                .order_by('-is_null', '-start_time')
+
+        return queryset
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
