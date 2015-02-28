@@ -6,6 +6,11 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+Release 0.40.0
+--------------
+- Enhanced support of instance import - added ability to set template.
+- Fix sorting of instances by start_time.
+
 Release 0.39.0
 --------------
 - Added instance import helper.

@@ -52,6 +52,8 @@ Importing a instance from a project-cloud link
 To import an instance with a specific ID from a backend, a person with admin role or staff can issue a POST
 request to **/api/project-cloud-memberships/<pk>/import_instances/**. ID of a backend instance has to be in the body
 of the request. This request triggers a background instance import task. If it succeeds, a new instance will be created.
+Optionally, a URL of an template to be used as a template of a newly created instance can be provided. If the
+template is not provided, it is attempted to be derived from the system volume's image metadata.
 
 Example of a valid request (token is user specific):
 
@@ -64,7 +66,8 @@ Example of a valid request (token is user specific):
     Host: example.com
 
     {
-        "id": "c267a5ea-4689-4d10-abdb-f35918125af7"
+        "id": "c267a5ea-4689-4d10-abdb-f35918125af7",
+        "template": "http://example.com/api/iaas-templates/4b3363cf838d4ac7aefde7a0bae8b111/"
     }
 
 If a project-cloud link is in a erred state, operation will return **409 CONFLICT**.
