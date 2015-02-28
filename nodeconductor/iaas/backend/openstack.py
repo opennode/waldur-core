@@ -960,7 +960,7 @@ class OpenStackBackend(object):
             event_logger.info('Virtual machine %s has been deleted.', instance.hostname,
                               extra={'instance': instance, 'event_type': 'iaas_instance_deletion_succeeded'})
 
-    def import_instance(self, membership, instance_id):
+    def import_instance(self, membership, instance_id, template_id=None):
         try:
             session = self.create_tenant_session(membership)
             nova = self.create_nova_client(session)
@@ -982,7 +982,15 @@ class OpenStackBackend(object):
         with transaction.atomic():
             try:
                 system_volume, data_volume = self._get_instance_volumes(nova, cinder, instance_id)
-                template = self._get_instance_template(system_volume, membership, instance_id)
+                if template_id:
+                    try:
+                        template = models.Template.objects.get(uuid=template_id)
+                    except models.Template.DoesNotExist:
+                        logger.exception('Failed to load provided template information for uuid %s', template_id)
+                        six.reraise(CloudBackendError, e)
+                else:
+                    # try to devise from volume image metadata
+                    template = self._get_instance_template(system_volume, membership, instance_id)
                 cores, ram = self._get_flavor_info(nova, backend_instance)
                 state = self._get_instance_state(backend_instance)
             except LookupError as e:

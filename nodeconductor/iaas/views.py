@@ -1003,8 +1003,10 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        instance_id = serializer.data['id']
-        tasks.import_instance.delay(membership.pk, instance_id=instance_id)
+        instance_id = serializer.object['id']
+        template = serializer.object.get('template')
+        template_id = template.uuid.hex if template else None
+        tasks.import_instance.delay(membership.pk, instance_id=instance_id, template_id=template_id)
 
         event_logger.info('Instance with backend id %s has been scheduled for import.', instance_id,
                           extra={'event_type': 'iaas_instance_import_scheduled'})
