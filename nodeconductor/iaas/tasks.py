@@ -136,11 +136,11 @@ def extend_disk(instance_uuid):
     backend.extend_disk(instance)
 
 @shared_task
-def import_instance(membership_pk, instance_id):
+def import_instance(membership_pk, instance_id, template_id=None):
     membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
 
     backend = membership.cloud.get_backend()
-    imported_instance = backend.import_instance(membership, instance_id)
+    imported_instance = backend.import_instance(membership, instance_id, template_id)
     if imported_instance:
         create_zabbix_host_and_service(imported_instance)
     else:

@@ -346,6 +346,12 @@ class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
 
 class CloudProjectMembershipLinkSerializer(serializers.Serializer):
     id = serializers.CharField(required=True)
+    template = serializers.HyperlinkedRelatedField(
+        view_name='template-detail',
+        lookup_field='uuid',
+        queryset=models.Template.objects.all(),
+        required=False,
+    )
 
     def validate_id(self, attrs, name):
         backend_id = attrs[name]
