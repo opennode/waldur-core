@@ -890,10 +890,11 @@ class OpenStackBackend(object):
 
             if backend_instance_state == models.Instance.States.ONLINE:
                 logger.warning('Instance %s is already started', instance.uuid)
-
-                instance.state = models.Instance.States.ONLINE
                 instance.start_time = timezone.now()
                 instance.save()
+                logger.info('Successfully started instance %s', instance.uuid)
+                event_logger.info('Virtual machine %s has been started.', instance.hostname,
+                                  extra={'instance': instance, 'event_type': 'iaas_instance_start_succeeded'})
                 return
 
             nova.servers.start(instance.backend_id)
@@ -930,10 +931,11 @@ class OpenStackBackend(object):
 
             if backend_instance_state == models.Instance.States.OFFLINE:
                 logger.warning('Instance %s is already stopped', instance.uuid)
-
-                instance.state = models.Instance.States.OFFLINE
                 instance.start_time = None
                 instance.save()
+                logger.info('Successfully stopped instance %s', instance.uuid)
+                event_logger.info('Virtual machine %s has been stopped.', instance.hostname,
+                                  extra={'instance': instance, 'event_type': 'iaas_instance_stop_succeeded'})
                 return
 
             nova.servers.stop(instance.backend_id)
