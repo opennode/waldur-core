@@ -750,6 +750,7 @@ class OpenStackBackendInstanceApiTest(TransactionTestCase):
         # Mock flavor fetches
         # Mock server fetches
         self.nova_client.servers.findall.return_value = [server]
+        self.nova_client.servers.find.return_value = server
 
     def when(self):
         self.backend.pull_instances(self.membership)
