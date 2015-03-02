@@ -890,6 +890,8 @@ class OpenStackBackend(object):
 
             if backend_instance_state == models.Instance.States.ONLINE:
                 logger.warning('Instance %s is already started', instance.uuid)
+                #TODO: throws exception for some reason, investigation pending
+                #instance.start_time = self._get_instance_start_time(backend_instance)
                 instance.start_time = timezone.now()
                 instance.save()
                 logger.info('Successfully started instance %s', instance.uuid)
@@ -2193,6 +2195,7 @@ class OpenStackBackend(object):
             'SHUTOFF': models.Instance.States.OFFLINE,
             'STOPPED': models.Instance.States.OFFLINE,
             'SUSPENDED': models.Instance.States.OFFLINE,
+            # TODO: VERIFY_RESIZE --> perhaps OFFLINE? resize is an offline procedure for flavor change
             'VERIFY_RESIZE': models.Instance.States.ONLINE,
         }
         return nova_to_nodeconductor.get(instance.status,
