@@ -189,7 +189,7 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
-* Mon Mar 3 2015 Ihor Kaharlichenko <ihor@opennodecloud.com> - 0.40.2-1.el7
+* Tue Mar 3 2015 Ihor Kaharlichenko <ihor@opennodecloud.com> - 0.40.2-1.el7
 - New upstream release
 
 * Mon Mar 2 2015 Ihor Kaharlichenko <ihor@opennodecloud.com> - 0.40.1-1.el7
