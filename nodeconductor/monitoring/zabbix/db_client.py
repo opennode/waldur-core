@@ -108,6 +108,12 @@ class ZabbixDBClient(object):
             ORDER BY hi.clock - (hi.clock %% 60) ASC
         """
 
+        # This is a work-around for MySQL-python<1.2.5
+        # that was unable to serialize lists with a single value properly.
+        # MySQL-python==1.2.3 is default in Centos 7 as of 2015-03-03.
+        if len(host_ids) == 1:
+            host_ids.append(host_ids[0])
+
         parameters = (host_ids, start_timestamp, end_timestamp)
 
         with connections['zabbix'].cursor() as cursor:
