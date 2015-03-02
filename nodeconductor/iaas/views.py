@@ -817,13 +817,21 @@ class UsageStatsView(views.APIView):
                 'Get parameter "aggregate" can take only this values: ' % ', '.join(self.aggregate_models.keys()),
                 status=status.HTTP_400_BAD_REQUEST)
 
+        # This filters out the things we group by (aka aggregate root) to those that can be seen
+        # by currently logged in user.
         aggregate_queryset = self._get_aggregate_queryset(request, aggregate_model_name)
 
         if 'uuid' in request.QUERY_PARAMS:
             aggregate_queryset = aggregate_queryset.filter(uuid=request.QUERY_PARAMS['uuid'])
 
+        # This filters out the vm Instances to those that can be seen
+        # by currently logged in user. This is done within each aggregate root separately.
+        visible_instances = structure_filters.filter_queryset_for_user(
+            models.Instance.objects.all(), request.user)
+
         for aggregate_object in aggregate_queryset:
-            instances = models.Instance.objects.filter(
+            # Narrow down the instance scope to aggregate root.
+            instances = visible_instances.filter(
                 **self._get_aggregate_filter(aggregate_model_name, aggregate_object))
             if instances:
                 hour = 60 * 60
