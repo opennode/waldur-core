@@ -12,6 +12,7 @@ from nodeconductor.core.routers import SortedDefaultRouter as DefaultRouter
 from nodeconductor.backup import urls as backup_urls
 from nodeconductor.iaas import urls as iaas_urls
 from nodeconductor.structure import urls as structure_urls
+from nodeconductor.template import urls as template_urls
 
 
 admin.autodiscover()
@@ -20,6 +21,7 @@ permission.autodiscover()
 router = DefaultRouter()
 iaas_urls.register_in(router)
 structure_urls.register_in(router)
+template_urls.register_in(router)
 backup_urls.register_in(router)
 
 
