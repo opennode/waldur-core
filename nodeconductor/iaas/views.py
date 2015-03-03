@@ -1,15 +1,18 @@
 from __future__ import unicode_literals
 
 from collections import defaultdict
+import functools
 import datetime
 import logging
 import time
 
 
 from django.db import models as django_models
+from django.db import transaction, IntegrityError
 from django.db.models import Sum
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django_fsm import TransitionNotAllowed
 import django_filters
 from rest_framework import exceptions
 from rest_framework import filters
@@ -36,6 +39,78 @@ from nodeconductor.structure.models import ProjectRole, Project, Customer, Proje
 
 logger = logging.getLogger(__name__)
 event_logger = EventLoggerAdapter(logger)
+
+
+def schedule_transition():
+    def decorator(view_fn):
+        @functools.wraps(view_fn)
+        def wrapped(self, request, *args, **kwargs):
+            supported_operations = {
+                # code: (scheduled_celery_task, instance_marker_state)
+                'start': ('schedule_starting', tasks.schedule_starting),
+                'stop': ('schedule_stopping', tasks.schedule_stopping),
+                'restart': ('schedule_restarting', tasks.schedule_restarting),
+                'destroy': ('schedule_deletion', tasks.schedule_deleting),
+                'flavor change': ('schedule_resizing', tasks.update_flavor),
+                'disk extension': ('schedule_resizing', tasks.extend_disk),
+            }
+
+            # Define them in inner scope but call when transaction complete
+            response, processing_task, logger_info = None, None, None
+
+            try:
+                with transaction.atomic():
+                    instance = self.get_object()
+
+                    membership = instance.cloud_project_membership
+                    is_admin = membership.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
+
+                    if not is_admin and not request.user.is_staff:
+                        raise exceptions.PermissionDenied()
+
+                    # Important! We are passing back the instance from current transaction to a view
+                    options = view_fn(self, request, instance, *args, **kwargs)
+
+                    if isinstance(options, tuple):
+                        # Expecting operation, logger_info and optional celery_kwargs from a view
+                        operation, logger_info = options[:2]
+                        celery_kwargs = options[2] if len(options) >= 3 else {}
+                        change_instance_state, processing_task = supported_operations[operation]
+
+                        transition = getattr(instance, change_instance_state)
+                        transition()
+
+                        instance.save(update_fields=['state'])
+                    else:
+                        # Break execution by return from a view
+                        response = options
+                        raise RuntimeError
+
+            except TransitionNotAllowed:
+                message = "Performing %s operation from instance state '%s' is not allowed"
+                return Response({'status': message % (operation, instance.get_state_display())},
+                                status=status.HTTP_409_CONFLICT)
+
+            except IntegrityError:
+                return Response({'status': '%s was not scheduled' % operation},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            except RuntimeError:
+                assert isinstance(response, Response)
+                return response
+
+            else:
+                # Call celery task AFTER transaction has been commited
+                processing_task.delay(instance.uuid.hex, **celery_kwargs)
+                event_logger.info(
+                    logger_info['message'], logger_info['context'],
+                    extra=logger_info['extra'])
+
+            return Response({'status': '%s was scheduled' % operation},
+                            status=status.HTTP_202_ACCEPTED)
+
+        return wrapped
+    return decorator
 
 
 class InstanceFilter(django_filters.FilterSet):
@@ -275,116 +350,59 @@ class InstanceViewSet(mixins.CreateModelMixin,
         from nodeconductor.iaas.tasks import push_instance_security_groups
         push_instance_security_groups.delay(self.object.uuid.hex)
 
-    def change_flavor(self, instance, flavor):
-        instance_cloud = instance.cloud_project_membership.cloud
-
-        if flavor.cloud != instance_cloud:
-            return Response({'flavor': "New flavor is not within the same cloud"},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        # System volume size does not get updated since some backends
-        # do not support resizing of a root volume
-        # instance.system_volume_size = flavor.disk
-        instance.ram = flavor.ram
-        instance.cores = flavor.cores
-        instance.save()
-
-        event_logger.info('Virtual machine %s has been scheduled to change flavor.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_scheduled'})
-        # This is suboptimal, since it reads and writes instance twice
-        return self._schedule_transition(self.request, instance.uuid.hex, 'flavor change',
-                                         flavor_uuid=flavor.uuid.hex)
-
-    def resize_disk(self, instance, new_size):
-        if new_size <= instance.data_volume_size:
-            return Response({'disk_size': "Disk size must be strictly greater than the current one"},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        instance.data_volume_size = new_size
-        instance.save()
-        event_logger.info('Virtual machine %s has been scheduled to extend disk.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_scheduled'})
-        # This is suboptimal, since it reads and writes instance twice
-        return self._schedule_transition(self.request, instance.uuid.hex, 'disk extension')
-
-    def _schedule_transition(self, request, uuid, operation, **kwargs):
-        instance = self.get_object()
-        membership = instance.cloud_project_membership
-
-        is_admin = membership.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
-
-        if not is_admin and not request.user.is_staff:
-            raise exceptions.PermissionDenied()
-
-        # Importing here to avoid circular imports
-        from nodeconductor.core.tasks import set_state, StateChangeError
-        from nodeconductor.iaas import tasks
-
-        supported_operations = {
-            # code: (scheduled_celery_task, instance_marker_state)
-            'start': ('schedule_starting', tasks.schedule_starting),
-            'stop': ('schedule_stopping', tasks.schedule_stopping),
-            'restart': ('schedule_restarting', tasks.schedule_restarting),
-            'destroy': ('schedule_deletion', tasks.schedule_deleting),
-            'flavor change': ('schedule_resizing', tasks.update_flavor),
-            'disk extension': ('schedule_resizing', tasks.extend_disk),
-        }
-
-        # logger.info('Scheduling %s of an instance with uuid %s', operation, uuid)
-        change_instance_state, processing_task = supported_operations[operation]
-
-        try:
-            set_state(models.Instance, uuid, change_instance_state)
-            processing_task.delay(uuid, **kwargs)
-        except StateChangeError:
-            return Response({'status': 'Performing %s operation from instance state \'%s\' is not allowed'
-                                       % (operation, instance.get_state_display())},
-                            status=status.HTTP_409_CONFLICT)
-
-        return Response({'status': '%s was scheduled' % operation},
-                        status=status.HTTP_202_ACCEPTED)
+    @action()
+    @schedule_transition()
+    def stop(self, request, instance, uuid=None):
+        logger_info = dict(
+            message='Virtual machine %s has been scheduled to stop.',
+            context=instance.hostname,
+            extra={'instance': instance, 'event_type': 'iaas_instance_stop_scheduled'}
+        )
+        return 'stop', logger_info
 
     @action()
-    def stop(self, request, uuid=None):
-        instance = self.get_object()
-        event_logger.info('Virtual machine %s has been scheduled to stop.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_stop_scheduled'})
-        return self._schedule_transition(request, uuid, 'stop')
+    @schedule_transition()
+    def start(self, request, instance, uuid=None):
+        logger_info = dict(
+            message='Virtual machine %s has been scheduled to start.',
+            context=instance.hostname,
+            extra={'instance': instance, 'event_type': 'iaas_instance_start_scheduled'}
+        )
+        return 'start', logger_info
 
     @action()
-    def start(self, request, uuid=None):
-        instance = self.get_object()
-        event_logger.info('Virtual machine %s has been scheduled to start.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_start_scheduled'})
-        return self._schedule_transition(request, uuid, 'start')
+    @schedule_transition()
+    def restart(self, request, instance, uuid=None):
+        logger_info = dict(
+            message='Virtual machine %s has been scheduled to restart.',
+            context=instance.hostname,
+            extra={'instance': instance, 'event_type': 'iaas_instance_restart_scheduled'}
+        )
+        return 'restart', logger_info
 
-    def destroy(self, request, uuid):
+    @schedule_transition()
+    def destroy(self, request, instance, uuid):
         # check if deletion is allowed
         # TODO: it duplicates the signal check, but signal-based is useless when deletion is done in bg task
         # TODO: come up with a better way for checking
-        instance = self.get_object()
+
         try:
             from nodeconductor.iaas.handlers import prevent_deletion_of_instances_with_connected_backups
             prevent_deletion_of_instances_with_connected_backups(None, instance)
+
         except django_models.ProtectedError as e:
             return Response({'detail': e.args[0]}, status=status.HTTP_409_CONFLICT)
 
-        event_logger.info('Virtual machine %s has been scheduled for deletion.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_deletion_scheduled'})
-
-        return self._schedule_transition(request, uuid, 'destroy')
-
-    @action()
-    def restart(self, request, uuid=None):
-        instance = self.get_object()
-        event_logger.info('Virtual machine %s has been scheduled to restart.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_restart_scheduled'})
-        return self._schedule_transition(request, uuid, 'restart')
+        logger_info = dict(
+            message='Virtual machine %s has been scheduled to deletion.',
+            context=instance.hostname,
+            extra={'instance': instance, 'event_type': 'iaas_instance_deletion_scheduled'}
+        )
+        return 'destroy', logger_info
 
     @action()
-    def resize(self, request, uuid=None):
-        instance = self.get_object()
-
+    @schedule_transition()
+    def resize(self, request, instance, uuid=None):
         if instance.state != models.Instance.States.OFFLINE:
             return Response({'detail': 'Instance must be offline'},
                             status=status.HTTP_409_CONFLICT)
@@ -394,15 +412,44 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         obj = serializer.object
+        flavor = obj['flavor']
 
-        changed_flavor = obj['flavor']
+        # Serializer makes sure that exactly one of the branches will match
+        if flavor is not None:
+            instance_cloud = instance.cloud_project_membership.cloud
+            if flavor.cloud != instance_cloud:
+                return Response({'flavor': "New flavor is not within the same cloud"},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-        # Serializer makes sure that exactly one of the branches
-        # will match
-        if changed_flavor is not None:
-            return self.change_flavor(instance, changed_flavor)
+            # System volume size does not get updated since some backends
+            # do not support resizing of a root volume
+            # instance.system_volume_size = flavor.disk
+            instance.ram = flavor.ram
+            instance.cores = flavor.cores
+            instance.save(update_fields=['ram', 'cores'])
+
+            logger_info = dict(
+                message='Virtual machine %s has been scheduled to change flavor.',
+                context=instance.hostname,
+                extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_scheduled'}
+            )
+            return 'flavor change', logger_info, dict(flavor_uuid=flavor.uuid.hex)
+
         else:
-            return self.resize_disk(instance, obj['disk_size'])
+            new_size = obj['disk_size']
+            if new_size <= instance.data_volume_size:
+                return Response({'disk_size': "Disk size must be strictly greater than the current one"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            instance.data_volume_size = new_size
+            instance.save(update_fields=['data_volume_size'])
+
+            logger_info = dict(
+                message='Virtual machine %s has been scheduled to extend disk.',
+                context=instance.hostname,
+                extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_scheduled'}
+            )
+            return 'disk extension', logger_info
 
     @link()
     def usage(self, request, uuid):
