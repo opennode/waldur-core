@@ -13,7 +13,9 @@ from django_fsm import transition
 from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
+from nodeconductor.core.fields import CronScheduleBaseField
 from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.template.models import TemplateService
 from nodeconductor.structure import models as structure_models
 
 
@@ -186,6 +188,15 @@ class Image(models.Model):
             cloud=self.cloud.name,
             template=self.template.name,
         )
+
+
+class ServiceTemplate(TemplateService):
+    service = models.ForeignKey(Cloud, related_name='+')
+    flavor = models.ForeignKey(Flavor, blank=True, null=True, related_name='+')
+    image = models.ForeignKey(Image, blank=True, null=True, related_name='+')
+    sla = models.BooleanField(default=False)
+    sla_level = models.DecimalField(max_digits=6, decimal_places=4, default=0, blank=True)
+    backup_schedule = CronScheduleBaseField(max_length=15, null=True, blank=True)
 
 
 @python_2_unicode_compatible

@@ -4,6 +4,7 @@ from django.apps import AppConfig
 from django.db.models import signals
 
 from nodeconductor.template import handlers
+from nodeconductor.template.utils import get_services
 
 
 class TemplateConfig(AppConfig):
@@ -11,4 +12,29 @@ class TemplateConfig(AppConfig):
     verbose_name = 'NodeConductor Template'
 
     def ready(self):
-        pass
+        Template = self.get_model('Template')
+
+        signals.post_save.connect(
+            handlers.log_template_save,
+            sender=Template,
+            dispatch_uid='nodeconductor.template.handlers.log_template_save',
+        )
+
+        signals.post_delete.connect(
+            handlers.log_template_delete,
+            sender=Template,
+            dispatch_uid='nodeconductor.template.handlers.log_template_delete',
+        )
+
+        for service in get_services():
+            signals.post_save.connect(
+                handlers.log_template_service_save,
+                sender=service,
+                dispatch_uid='nodeconductor.template.handlers.log_template_service_save',
+            )
+
+            signals.post_delete.connect(
+                handlers.log_template_service_delete,
+                sender=service,
+                dispatch_uid='nodeconductor.template.handlers.log_template_service_delete',
+            )

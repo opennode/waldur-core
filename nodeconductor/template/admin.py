@@ -5,35 +5,29 @@ from polymorphic.admin import (
 )
 
 from nodeconductor.template import models
+from nodeconductor.template.utils import get_services
 
 
-class TemplateServiceChildAdmin(PolymorphicChildModelAdmin):
+class TemplateServiceAdmin(PolymorphicChildModelAdmin):
     base_model = models.TemplateService
-
-
-class TemplateServiceIaaSAdmin(TemplateServiceChildAdmin):
-    pass
 
 
 class TemplateServiceParentAdmin(PolymorphicParentModelAdmin):
     list_display = ('name', 'template')
     list_filter = (PolymorphicChildModelFilter,)
     base_model = models.TemplateService
-    child_models = (
-        (models.TemplateServiceIaaS, TemplateServiceIaaSAdmin),
-    )
 
+    def get_child_models(self):
+        child_models = [(service, TemplateServiceAdmin) for service in get_services()]
+        if not child_models:
+            raise RuntimeError("There's no any template service defined")
 
-class TemplateServiceIaaSInline(admin.StackedInline):
-    model = models.TemplateServiceIaaS
-    readonly_fields = ('templateservice_ptr',)
-    extra = 1
+        return child_models
 
 
 class TemplateAdmin(admin.ModelAdmin):
     list_display = ('name', 'uuid', 'is_active')
-    inlines = (TemplateServiceIaaSInline,)
 
 
 admin.site.register(models.Template, TemplateAdmin)
-# admin.site.register(models.TemplateService, TemplateServiceParentAdmin)
+admin.site.register(models.TemplateService, TemplateServiceParentAdmin)
