@@ -12,7 +12,7 @@ class CronScheduleBaseField(models.CharField):
     description = "A cron schedule in textual form"
 
     def validate(self, value, model_instance):
-        super(CronScheduleField, self).validate(value, model_instance)
+        super(CronScheduleBaseField, self).validate(value, model_instance)
         try:
             base_time = timezone.now()
             croniter(value, base_time)

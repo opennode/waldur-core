@@ -140,13 +140,19 @@ class RelatedResourcesFieldMixin(object):
     def get_default_fields(self):
         fields = super(RelatedResourcesFieldMixin, self).get_default_fields()
 
+        # Avoid name clashes with nodeconductor.template
+        if self.__module__.startswith('nodeconductor.iaas'):
+            defaults = {'template': 'iaastemplate-detail'}
+        else:
+            defaults = {}
+
         for path in self.get_related_paths():
             path_components = path.split('.')
             entity_name = path_components[-1]
 
             fields[entity_name] = serializers.HyperlinkedRelatedField(
                 source=path,
-                view_name='{0}-detail'.format(entity_name),
+                view_name=defaults.get(entity_name) or '{0}-detail'.format(entity_name),
                 lookup_field='uuid',
                 read_only=len(path_components) > 1,
             )

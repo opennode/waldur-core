@@ -179,6 +179,12 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         required=False,
         write_only=True,
     )
+    template = serializers.HyperlinkedRelatedField(
+        view_name='iaastemplate-detail',
+        lookup_field='uuid',
+        queryset=models.Template.objects.all(),
+        required=True,
+    )
 
     external_ips = core_serializers.IPsField(required=False)
 
@@ -347,7 +353,7 @@ class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
 class CloudProjectMembershipLinkSerializer(serializers.Serializer):
     id = serializers.CharField(required=True)
     template = serializers.HyperlinkedRelatedField(
-        view_name='template-detail',
+        view_name='iaastemplate-detail',
         lookup_field='uuid',
         queryset=models.Template.objects.all(),
         required=False,
@@ -533,6 +539,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     template_licenses = TemplateLicenseSerializer()
 
     class Meta(object):
+        view_name = 'iaastemplate-detail'
         model = models.Template
         fields = (
             'url', 'uuid',
@@ -563,6 +570,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
+        view_name = 'iaastemplate-detail'
         model = models.Template
         fields = (
             'url', 'uuid',

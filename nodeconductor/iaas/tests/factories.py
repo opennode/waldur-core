@@ -137,11 +137,11 @@ class TemplateFactory(factory.DjangoModelFactory):
     def get_url(cls, template=None):
         template = template or TemplateFactory()
 
-        return 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
+        return 'http://testserver' + reverse('iaastemplate-detail', kwargs={'uuid': template.uuid})
 
     @classmethod
     def get_list_url(cls):
-        return 'http://testserver' + reverse('template-list')
+        return 'http://testserver' + reverse('iaastemplate-list')
 
 
 class TemplateMappingFactory(factory.DjangoModelFactory):

@@ -32,7 +32,7 @@ def get_template_services():
     for name, entry_point in entry_points.iteritems():
         service_cls = entry_point.load()
         service_model = service_cls.get_model()
-        setattr(service_model, 'service_type', name.lower())
+        setattr(service_model, 'service_type', name)
         setattr(service_model, '_admin_form', service_cls.get_admin_form())
         setattr(service_model, '_serializer', service_cls.get_serializer())
         setattr(service_model, '_admin_form', service_cls.get_admin_form())
