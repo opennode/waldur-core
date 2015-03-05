@@ -1,7 +1,13 @@
+
+import pkg_resources
+
+from django.utils.lru_cache import lru_cache
+
+
 default_app_config = 'nodeconductor.template.apps.TemplateConfig'
 
 
-class TemplateStrategy(object):
+class TemplateServiceStrategy(object):
     """ A parent class for the model-specific template strategies.
     """
     @classmethod
@@ -15,6 +21,20 @@ class TemplateStrategy(object):
             'Implement get_serializer() that would return TemplateService model serializer.')
 
     @classmethod
-    def deploy(cls, backup_source):
-        raise NotImplementedError(
-            'Implement deploy() that would perform deploy of a service.')
+    def get_admin_form(cls):
+        pass
+
+
+@lru_cache(maxsize=1)
+def get_template_services():
+    services = []
+    entry_points = pkg_resources.get_entry_map('nodeconductor').get('template_services', {})
+    for name, entry_point in entry_points.iteritems():
+        service_cls = entry_point.load()
+        service_model = service_cls.get_model()
+        setattr(service_model, 'service_type', name.lower())
+        setattr(service_model, '_admin_form', service_cls.get_admin_form())
+        setattr(service_model, '_serializer', service_cls.get_serializer())
+        setattr(service_model, '_admin_form', service_cls.get_admin_form())
+        services.append(service_model)
+    return services

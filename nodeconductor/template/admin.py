@@ -1,33 +1,51 @@
+
 from django.contrib import admin
 from polymorphic.admin import (
     PolymorphicParentModelAdmin, PolymorphicChildModelAdmin,
     PolymorphicChildModelFilter,
 )
 
-from nodeconductor.template import models
-from nodeconductor.template.utils import get_services
+from nodeconductor.template import get_template_services
+from nodeconductor.template.models import Template, TemplateService
 
 
-class TemplateServiceAdmin(PolymorphicChildModelAdmin):
-    base_model = models.TemplateService
+all_services = []
+admin_inlines = []
+for service in get_template_services():
+    class StandardAdminClass(PolymorphicChildModelAdmin):
+        base_model = TemplateService
 
+    class InlineAdminClass(admin.StackedInline):
+        readonly_fields = ['templateservice_ptr']
+        model = service
+        extra = 1
 
-class TemplateServiceParentAdmin(PolymorphicParentModelAdmin):
-    list_display = ('name', 'template')
-    list_filter = (PolymorphicChildModelFilter,)
-    base_model = models.TemplateService
+    if service._admin_form:
+        StandardAdminClass.form = service._admin_form
+        InlineAdminClass.form = service._admin_form
 
-    def get_child_models(self):
-        child_models = [(service, TemplateServiceAdmin) for service in get_services()]
-        if not child_models:
-            raise RuntimeError("There's no any template service defined")
-
-        return child_models
+    admin_inlines.append(InlineAdminClass)
+    all_services.append((service, StandardAdminClass))
 
 
 class TemplateAdmin(admin.ModelAdmin):
     list_display = ('name', 'uuid', 'is_active')
 
+    def add_view(self, *args, **kwargs):
+        self.inlines = tuple()
+        return super(TemplateAdmin, self).add_view(*args, **kwargs)
 
-admin.site.register(models.Template, TemplateAdmin)
-admin.site.register(models.TemplateService, TemplateServiceParentAdmin)
+    def change_view(self, *args, **kwargs):
+        self.inlines = admin_inlines
+        return super(TemplateAdmin, self).change_view(*args, **kwargs)
+
+
+class TemplateServiceAdmin(PolymorphicParentModelAdmin):
+    list_display = ('name', 'template')
+    list_filter = (PolymorphicChildModelFilter,)
+    base_model = TemplateService
+    child_models = all_services
+
+
+admin.site.register(Template, TemplateAdmin)
+# admin.site.register(TemplateService, TemplateServiceAdmin)

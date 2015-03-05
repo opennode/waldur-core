@@ -190,13 +190,16 @@ class Image(models.Model):
         )
 
 
-class ServiceTemplate(TemplateService):
+class IaasTemplateService(TemplateService):
     service = models.ForeignKey(Cloud, related_name='+')
-    flavor = models.ForeignKey(Flavor, blank=True, null=True, related_name='+')
-    image = models.ForeignKey(Image, blank=True, null=True, related_name='+')
+    flavor = models.ForeignKey(Flavor, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
+    image = models.ForeignKey(Image, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
     sla = models.BooleanField(default=False)
     sla_level = models.DecimalField(max_digits=6, decimal_places=4, default=0, blank=True)
     backup_schedule = CronScheduleBaseField(max_length=15, null=True, blank=True)
+
+    def provision(self):
+        pass
 
 
 @python_2_unicode_compatible

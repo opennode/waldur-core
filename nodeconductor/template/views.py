@@ -1,11 +1,11 @@
 from __future__ import unicode_literals
 
 from nodeconductor.core import viewsets
-from nodeconductor.template import models
-from nodeconductor.template import serializers
+from nodeconductor.template.models import Template
+from nodeconductor.template.serializers import TemplateSerializer
 
 
-class TemplateViewSet(viewsets.CreateModelViewSet):
-    queryset = models.Template.objects.all().prefetch_related('services')
-    serializer_class = serializers.TemplateSerializer
+class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Template.objects.all().prefetch_related('services')
+    serializer_class = TemplateSerializer
     lookup_field = 'uuid'

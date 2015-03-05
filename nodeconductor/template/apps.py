@@ -3,8 +3,7 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.db.models import signals
 
-from nodeconductor.template import handlers
-from nodeconductor.template.utils import get_services
+from nodeconductor.template import handlers, get_template_services
 
 
 class TemplateConfig(AppConfig):
@@ -26,7 +25,7 @@ class TemplateConfig(AppConfig):
             dispatch_uid='nodeconductor.template.handlers.log_template_delete',
         )
 
-        for service in get_services():
+        for service in get_template_services():
             signals.post_save.connect(
                 handlers.log_template_service_save,
                 sender=service,

@@ -14,6 +14,10 @@ class Template(core_models.UuidMixin,
     name = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=False)
 
+    def provision(self):
+        for service in self.services.all():
+            service.provision()
+
     def __str__(self):
         return self.name
 
@@ -22,6 +26,10 @@ class Template(core_models.UuidMixin,
 class TemplateService(PolymorphicModel):
     name = models.CharField(max_length=100)
     template = models.ForeignKey(Template, related_name='services')
+
+    def provision(self):
+        raise NotImplementedError(
+            'Implement provision() that would perform provision of a service.')
 
     def __str__(self):
         return self.name
