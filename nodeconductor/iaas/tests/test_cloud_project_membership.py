@@ -49,6 +49,20 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
             response = self.client.post(url, data)
             self.assertEqual(response.status_code, status.HTTP_302_FOUND)
 
+    def test_membership_creation_with_availability_zone_from_openstack_conf(self):
+        self.client.force_authenticate(self.owner)
+        url = factories.CloudProjectMembershipFactory.get_list_url()
+        data = {
+            'cloud': self._get_cloud_url(self.cloud),
+            'project': self._get_project_url(self.project)
+        }
+
+        nc_settings = {'OPENSTACK_CREDENTIALS': ({'default_availability_zone': 'abracadabra'},)}
+        with self.settings(NODECONDUCTOR=nc_settings):
+            response = self.client.post(url, data)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            membership = models.CloudProjectMembership.objects.get(project=self.project, cloud=self.cloud)
+            self.assertEqual(membership.availability_zone, 'abracadabra')
 
 # XXX: this have to be reworked to permissions test
 
