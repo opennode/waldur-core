@@ -49,7 +49,30 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
             response = self.client.post(url, data)
             self.assertEqual(response.status_code, status.HTTP_302_FOUND)
 
-    def test_membership_creation_with_availability_zone_from_openstack_conf(self):
+    def test_default_availability_zone_from_openstack_conf(self):
+        nc_settings = {'OPENSTACK_CREDENTIALS': ({'auth_url': self.cloud.auth_url,
+                                                  'default_availability_zone': 'zone1'},
+                                                 {'auth_url': 'url2',
+                                                  'default_availability_zone': 'zone2'})}
+        self._check_membership_availability_zone(nc_settings, 'zone1')
+
+    def test_default_availability_zone_from_openstack_conf_with_overlapping_auth_url(self):
+        nc_settings = {'OPENSTACK_CREDENTIALS': ({'auth_url': self.cloud.auth_url,
+                                                  'default_availability_zone': 'zone1'},
+                                                 {'auth_url': self.cloud.auth_url,
+                                                  'default_availability_zone': 'zone2'})}
+        with patch('nodeconductor.iaas.handlers.logger') as mocked_logger:
+            self._check_membership_availability_zone(nc_settings, '')
+            mocked_logger.warning.assert_called_with(
+                'More than one default availability zone was found for cloud %s', self.cloud.name)
+
+    def test_availability_zone_provided_by_user_overrides_default_availability_zone(self):
+        nc_settings = {'OPENSTACK_CREDENTIALS': ({'auth_url': self.cloud.auth_url,
+                                                  'default_availability_zone': 'zone1'},)}
+        self._check_membership_availability_zone(nc_settings, 'zone2', 'zone2')
+
+    # Helper methods
+    def _check_membership_availability_zone(self, nc_settings, output_value, input_value=''):
         self.client.force_authenticate(self.owner)
         url = factories.CloudProjectMembershipFactory.get_list_url()
         data = {
@@ -57,12 +80,16 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
             'project': self._get_project_url(self.project)
         }
 
-        nc_settings = {'OPENSTACK_CREDENTIALS': ({'default_availability_zone': 'abracadabra'},)}
         with self.settings(NODECONDUCTOR=nc_settings):
             response = self.client.post(url, data)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             membership = models.CloudProjectMembership.objects.get(project=self.project, cloud=self.cloud)
-            self.assertEqual(membership.availability_zone, 'abracadabra')
+
+            if input_value:
+                membership.availability_zone = input_value
+                membership.save()
+
+            self.assertEqual(membership.availability_zone, output_value)
 
 # XXX: this have to be reworked to permissions test
 
