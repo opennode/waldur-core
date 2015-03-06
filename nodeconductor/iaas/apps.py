@@ -65,3 +65,8 @@ class IaasConfig(AppConfig):
             dispatch_uid='nodeconductor.iaas.handlers.prevent_deletion_of_instances_with_connected_backups',
         )
 
+        signals.pre_save.connect(
+            handlers.set_cpm_default_availability_zone,
+            sender=CloudProjectMembership,
+            dispatch_uid='nodeconductor.iaas.handlers.set_cpm_default_availability_zone',
+        )
