@@ -9,6 +9,7 @@ import factory.fuzzy
 from nodeconductor.iaas import models
 from nodeconductor.core import models as core_models
 from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.template.tests import factories as template_factories
 
 
 class CloudFactory(factory.DjangoModelFactory):
@@ -313,3 +314,18 @@ class FloatingIPFactory(factory.DjangoModelFactory):
     @classmethod
     def get_list_url(self):
         return 'http://testserver' + reverse('floating_ip-list')
+
+
+class IaasTemplateServiceFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.IaasTemplateService
+
+    name = factory.Sequence(lambda n: 'My VM %s' % n)
+    template = factory.SubFactory(template_factories.TemplateFactory)
+
+    service = factory.SubFactory(CloudFactory)
+    flavor = factory.SubFactory(FlavorFactory)
+    image = factory.SubFactory(ImageFactory)
+    sla = True
+    sla_level = factory.LazyAttribute(lambda o: Decimal('99.9'))
+    backup_schedule = '*/5 * * * *'

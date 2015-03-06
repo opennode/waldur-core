@@ -5,6 +5,9 @@ from django.test import TestCase
 
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas.tests import factories
+from nodeconductor.iaas.template import serializers as iaastemplate_serializers
+from nodeconductor.template.tests import factories as template_factories
+from nodeconductor.template import serializers as template_serializers
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -195,3 +198,28 @@ class CloudProjectMembershipQuotaSerializerTest(TestCase):
         serializer = serializers.CloudProjectMembershipQuotaSerializer(data=data)
         self.assertTrue(serializer.is_valid())
         self.assertTrue('some_strange_quota_name' not in serializer.data)
+
+
+class IaasTemplateServiceTest(TestCase):
+
+    def setUp(self):
+        self.cloud = factories.CloudFactory()
+        self.flavor = factories.FlavorFactory(cloud=self.cloud)
+        self.image = factories.ImageFactory(cloud=self.cloud)
+        self.template = template_factories.TemplateFactory()
+        self.iaas_template_service = factories.IaasTemplateServiceFactory(
+            template=self.template,
+            service=self.cloud,
+            flavor=self.flavor,
+            image=self.image)
+
+    def test_create_template_service(self):
+        iaas_template_service = self.template.services.first()
+        self.assertIsNotNone(iaas_template_service)
+        self.assertIsInstance(iaas_template_service, factories.IaasTemplateServiceFactory._meta.model)
+        self.assertEqual(iaas_template_service.service, self.cloud)
+
+    def test_template_serializer_returns_proper_service_type(self):
+        serializer = template_serializers.TemplateSerializer(instance=self.template)
+        service_type = serializer.data['services'][0].get('service_type')
+        self.assertEqual(service_type, 'IaaS')
