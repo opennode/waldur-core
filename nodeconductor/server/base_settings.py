@@ -69,7 +69,7 @@ REST_FRAMEWORK = {
         'nodeconductor.core.renderers.BrowsableAPIRenderer',
     ),
     'PAGINATE_BY_PARAM': 'page_size',
-    'MAX_PAGINATE_BY': 100,
+    'MAX_PAGINATE_BY': 200,
     'PAGINATE_BY': 10
 }
 
@@ -135,6 +135,11 @@ CELERYBEAT_SCHEDULE = {
     'pull-cloud-accounts': {
         'task': 'nodeconductor.iaas.tasks.pull_cloud_accounts',
         'schedule': timedelta(minutes=60),
+        'args': (),
+    },
+    'pull-service-statistics': {
+        'task': 'nodeconductor.iaas.tasks.pull_service_statistics',
+        'schedule': timedelta(minutes=15),
         'args': (),
     },
     'pull-cloud-project-memberships': {

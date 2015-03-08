@@ -413,9 +413,9 @@ class OpenStackBackendFloatingIPTest(TransactionTestCase):
         self.backend.ensure_user_is_tenant_admin = mock.Mock()
         self.backend.create_tenant_session = mock.Mock()
         self.floating_ips = [
-            {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.163', 'id': '063795b7-23ac-4a0d-82f0-4326e73ee1bc'},
-            {'status': 'DOWN', 'floating_ip_address': '10.7.201.114', 'id': '063795b7-23ac-4a0d-82f0-432as73asdas'},
-            {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.107', 'id': '063795b7-asds-aq34-3df4-23asdasddssc'},
+            {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.163', 'id': '063795b7-23ac-4a0d-82f0-4326e73ee1bc', 'port_id': 'fakeport'},
+            {'status': 'DOWN', 'floating_ip_address': '10.7.201.114', 'id': '063795b7-23ac-4a0d-82f0-432as73asdas', 'port_id': 'fakeport'},
+            {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.107', 'id': '063795b7-asds-aq34-3df4-23asdasddssc', 'port_id': 'fakeport'},
         ]
         self.backend.get_floating_ips = mock.Mock(return_value=self.floating_ips)
 
@@ -746,6 +746,7 @@ class OpenStackBackendInstanceApiTest(TransactionTestCase):
         # Mock flavor fetches
         # Mock server fetches
         self.nova_client.servers.findall.return_value = [server]
+        self.nova_client.servers.find.return_value = server
 
     def when(self):
         self.backend.pull_instances(self.membership)

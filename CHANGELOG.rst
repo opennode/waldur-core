@@ -6,6 +6,37 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+Release 0.40.0
+--------------
+- Enhanced support of instance import - added ability to set template.
+- Fix sorting of instances by start_time.
+
+Release 0.39.0
+--------------
+- Added instance import helper.
+- Improved event logging.
+- Bugfixes of quota checks.
+
+Release 0.38.0
+--------------
+
+- Optimized resource usage monitoring. Use background tasks for collecting statistics.
+- Bugfix of listing service events.
+
+Release 0.37.0
+--------------
+
+- More information added to existing event logs.
+- Improved performance of querying resource statistics.
+- Bugfixes of the event logger and service list.
+
+Release 0.36.0
+--------------
+
+- UUIDs in emitted logs are not hyphenated
+- Bugfixes and documentation extensions
+- Default value for the maximal page_size was set to 200
+
 Release 0.35.0
 --------------
 

@@ -185,3 +185,24 @@ def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwa
             "Cannot delete instance because it has connected backups.",
             connected_backups
         )
+
+
+def set_cpm_default_availability_zone(sender, instance=None, **kwargs):
+    if instance.availability_zone:
+        return
+
+    # TODO: Change after different clouds support
+    nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+    openstacks = filter(lambda o: o.get('auth_url', '') == instance.cloud.auth_url,
+                        nc_settings.get('OPENSTACK_CREDENTIALS', []))
+
+    default_zones = [openstack['default_availability_zone'] for openstack in openstacks
+                     if 'default_availability_zone' in openstack]
+
+    if not default_zones:
+        return
+    elif len(default_zones) > 1:
+        logger.warning('More than one default availability zone was found for cloud %s',
+                       instance.cloud.name)
+    else:
+        instance.availability_zone = default_zones[0]

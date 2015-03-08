@@ -8,7 +8,7 @@ from rest_framework import test
 from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
-from nodeconductor.iaas.models import Instance, CloudProjectMembership, FloatingIP
+from nodeconductor.iaas.models import Instance, CloudProjectMembership, FloatingIP, ResourceQuotaUsage
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
@@ -265,6 +265,52 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
                          'Instance should have been scheduled to resize')
 
+    def test_user_can_change_flavor_to_flavor_with_less_cpu_if_result_cpu_quota_usage_is_less_then_cpu_limit(self):
+        self.client.force_authenticate(user=self.user)
+        instance = self.admined_instance
+        instance.cores = 5
+        instance.save()
+        cpu_limit = instance.cloud_project_membership.resource_quota.vcpu
+        ResourceQuotaUsage.objects.create(
+            cloud_project_membership=instance.cloud_project_membership,
+            storage=0, vcpu=cpu_limit, ram=0, max_instances=0)
+        new_flavor = factories.FlavorFactory(
+            cloud=self.admined_instance.cloud_project_membership.cloud,
+            disk=self.admined_instance.system_volume_size + 1,
+            cores=instance.cores - 1,
+        )
+        data = {'flavor': self._get_flavor_url(new_flavor)}
+
+        response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED, response.data)
+        reread_instance = Instance.objects.get(pk=self.admined_instance.pk)
+        self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
+                         'Instance should have been scheduled to resize')
+
+    def test_user_can_change_flavor_to_flavor_with_less_ram_if_result_ram_quota_usage_is_less_then_ram_limit(self):
+        self.client.force_authenticate(user=self.user)
+        instance = self.admined_instance
+        instance.cores = 5
+        instance.save()
+        ram_limit = instance.cloud_project_membership.resource_quota.ram
+        ResourceQuotaUsage.objects.create(
+            cloud_project_membership=instance.cloud_project_membership,
+            storage=0, vcpu=0, ram=ram_limit, max_instances=0)
+        new_flavor = factories.FlavorFactory(
+            cloud=self.admined_instance.cloud_project_membership.cloud,
+            disk=self.admined_instance.system_volume_size + 1,
+            ram=instance.ram - 1,
+        )
+        data = {'flavor': self._get_flavor_url(new_flavor)}
+
+        response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED, response.data)
+        reread_instance = Instance.objects.get(pk=self.admined_instance.pk)
+        self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
+                         'Instance should have been scheduled to resize')
+
     def test_user_cannot_change_flavor_of_stopped_instance_he_is_administrator_of_if_quota_would_be_exceeded(self):
         self.client.force_authenticate(user=self.user)
         membership = self.admined_instance.cloud_project_membership
@@ -272,7 +318,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         # check for ram
         big_ram_flavor = factories.FlavorFactory(
             cloud=membership.cloud,
-            ram=membership.quotas.get(name='ram').limit + 1,
+            ram=membership.quotas.get(name='ram').limit + self.admined_instance.ram + 1,
         )
         data = {'flavor': self._get_flavor_url(big_ram_flavor)}
         response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
@@ -281,7 +327,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         # check for vcpu
         many_core_flavor = factories.FlavorFactory(
             cloud=membership.cloud,
-            cores=membership.quotas.get(name='vcpu').limit + 1,
+            cores=membership.quotas.get(name='vcpu').limit + self.admined_instance.cores + 1,
         )
         data = {'flavor': self._get_flavor_url(many_core_flavor)}
         response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
@@ -888,6 +934,36 @@ class InstanceListRetrieveTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['backups']), 1)
         self.assertEqual(response.data['backups'][0]['url'], backup_factories.BackupFactory.get_url(backup))
+
+    def test_ascending_sort_by_start_time_puts_instances_with_null_value_first(self):
+        self.client.force_authenticate(self.staff)
+
+        factories.InstanceFactory.create_batch(2, start_time=None)
+        factories.InstanceFactory()
+
+        response = self.client.get(factories.InstanceFactory.get_list_url(),
+                                   data={'o': 'start_time'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for i in (0, 1):
+            self.assertEqual(response.data[i]['start_time'], None)
+
+        self.assertTrue(response.data[2]['start_time'] < response.data[3]['start_time'])
+
+    def test_descending_sort_by_start_time_puts_instances_with_null_value_last(self):
+        self.client.force_authenticate(self.staff)
+
+        factories.InstanceFactory.create_batch(2, start_time=None)
+        factories.InstanceFactory()
+
+        response = self.client.get(factories.InstanceFactory.get_list_url(),
+                                   data={'o': '-start_time'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertTrue(response.data[0]['start_time'] > response.data[1]['start_time'])
+
+        for i in (2, 3):
+            self.assertEqual(response.data[i]['start_time'], None)
 
 
 class InstanceUsageTest(test.APITransactionTestCase):

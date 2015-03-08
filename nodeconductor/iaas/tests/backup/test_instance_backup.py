@@ -7,10 +7,11 @@ from mock import Mock
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
-from nodeconductor.backup.models import Backup
+from nodeconductor.backup.models import Backup, BackupSchedule
 from nodeconductor.backup.exceptions import BackupStrategyExecutionError
 from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.iaas.backup.instance_backup import InstanceBackupStrategy
+from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -97,7 +98,7 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
 class InstanceDeletionTestCase(APITransactionTestCase):
 
     def test_cannot_delete_instance_with_connected_backup(self):
-        instance = factories.InstanceFactory()
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
         Backup.objects.create(
             backup_source=instance,
         )
@@ -108,3 +109,16 @@ class InstanceDeletionTestCase(APITransactionTestCase):
         self.client.force_authenticate(structure_factories.UserFactory(is_staff=True))
         response = self.client.delete(factories.InstanceFactory.get_url(instance))
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_can_initiate_deletion_of_instance_with_connected_backup_schedule(self):
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+        BackupSchedule.objects.create(
+            backup_source=instance,
+            schedule="* * * * *",
+            retention_time=1,
+            maximal_number_of_backups=2,
+        )
+
+        self.client.force_authenticate(structure_factories.UserFactory(is_staff=True))
+        response = self.client.delete(factories.InstanceFactory.get_url(instance))
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED, response.data)

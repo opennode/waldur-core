@@ -1,15 +1,18 @@
 from __future__ import unicode_literals
 
 from collections import defaultdict
+import functools
 import datetime
 import logging
 import time
 
 
 from django.db import models as django_models
+from django.db import transaction, IntegrityError
 from django.db.models import Sum
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django_fsm import TransitionNotAllowed
 import django_filters
 from rest_framework import exceptions
 from rest_framework import filters
@@ -36,6 +39,78 @@ from nodeconductor.structure.models import ProjectRole, Project, Customer, Proje
 
 logger = logging.getLogger(__name__)
 event_logger = EventLoggerAdapter(logger)
+
+
+def schedule_transition():
+    def decorator(view_fn):
+        @functools.wraps(view_fn)
+        def wrapped(self, request, *args, **kwargs):
+            supported_operations = {
+                # code: (scheduled_celery_task, instance_marker_state)
+                'start': ('schedule_starting', tasks.schedule_starting),
+                'stop': ('schedule_stopping', tasks.schedule_stopping),
+                'restart': ('schedule_restarting', tasks.schedule_restarting),
+                'destroy': ('schedule_deletion', tasks.schedule_deleting),
+                'flavor change': ('schedule_resizing', tasks.update_flavor),
+                'disk extension': ('schedule_resizing', tasks.extend_disk),
+            }
+
+            # Define them in inner scope but call when transaction complete
+            response, processing_task, logger_info = None, None, None
+
+            try:
+                with transaction.atomic():
+                    instance = self.get_object()
+
+                    membership = instance.cloud_project_membership
+                    is_admin = membership.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
+
+                    if not is_admin and not request.user.is_staff:
+                        raise exceptions.PermissionDenied()
+
+                    # Important! We are passing back the instance from current transaction to a view
+                    options = view_fn(self, request, instance, *args, **kwargs)
+
+                    if isinstance(options, tuple):
+                        # Expecting operation, logger_info and optional celery_kwargs from a view
+                        operation, logger_info = options[:2]
+                        celery_kwargs = options[2] if len(options) >= 3 else {}
+                        change_instance_state, processing_task = supported_operations[operation]
+
+                        transition = getattr(instance, change_instance_state)
+                        transition()
+
+                        instance.save(update_fields=['state'])
+                    else:
+                        # Break execution by return from a view
+                        response = options
+                        raise RuntimeError
+
+            except TransitionNotAllowed:
+                message = "Performing %s operation from instance state '%s' is not allowed"
+                return Response({'status': message % (operation, instance.get_state_display())},
+                                status=status.HTTP_409_CONFLICT)
+
+            except IntegrityError:
+                return Response({'status': '%s was not scheduled' % operation},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            except RuntimeError:
+                assert isinstance(response, Response)
+                return response
+
+            else:
+                # Call celery task AFTER transaction has been commited
+                processing_task.delay(instance.uuid.hex, **celery_kwargs)
+                event_logger.info(
+                    logger_info['message'], logger_info['context'],
+                    extra=logger_info['extra'])
+
+            return Response({'status': '%s was scheduled' % operation},
+                            status=status.HTTP_202_ACCEPTED)
+
+        return wrapped
+    return decorator
 
 
 class InstanceFilter(django_filters.FilterSet):
@@ -90,6 +165,9 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
+    # In order to return results when an invalid value is specified
+    strict = False
+
     class Meta(object):
         model = models.Instance
         fields = [
@@ -116,8 +194,6 @@ class InstanceFilter(django_filters.FilterSet):
             '-hostname',
             'state',
             '-state',
-            'start_time',
-            '-start_time',
             'cloud_project_membership__project__customer__name',
             '-cloud_project_membership__project__customer__name',
             'cloud_project_membership__project__customer__native_name',
@@ -173,6 +249,21 @@ class InstanceViewSet(mixins.CreateModelMixin,
     filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = InstanceFilter
+
+    def get_queryset(self):
+        queryset = super(InstanceViewSet, self).get_queryset()
+
+        order = self.request.QUERY_PARAMS.get('o', None)
+        if order == 'start_time':
+            queryset = queryset.extra(select={
+                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
+                .order_by('is_null', 'start_time')
+        elif order == '-start_time':
+            queryset = queryset.extra(select={
+                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
+                .order_by('-is_null', '-start_time')
+
+        return queryset
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -259,116 +350,59 @@ class InstanceViewSet(mixins.CreateModelMixin,
         from nodeconductor.iaas.tasks import push_instance_security_groups
         push_instance_security_groups.delay(self.object.uuid.hex)
 
-    def change_flavor(self, instance, flavor):
-        instance_cloud = instance.cloud_project_membership.cloud
-
-        if flavor.cloud != instance_cloud:
-            return Response({'flavor': "New flavor is not within the same cloud"},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        # System volume size does not get updated since some backends
-        # do not support resizing of a root volume
-        # instance.system_volume_size = flavor.disk
-        instance.ram = flavor.ram
-        instance.cores = flavor.cores
-        instance.save()
-
-        event_logger.info('Virtual machine %s has been scheduled to change flavor.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_scheduled'})
-        # This is suboptimal, since it reads and writes instance twice
-        return self._schedule_transition(self.request, instance.uuid.hex, 'flavor change',
-                                         flavor_uuid=flavor.uuid.hex)
-
-    def resize_disk(self, instance, new_size):
-        if new_size <= instance.data_volume_size:
-            return Response({'disk_size': "Disk size must be strictly greater than the current one"},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        instance.data_volume_size = new_size
-        instance.save()
-        event_logger.info('Virtual machine %s has been scheduled to extend disk.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_scheduled'})
-        # This is suboptimal, since it reads and writes instance twice
-        return self._schedule_transition(self.request, instance.uuid.hex, 'disk extension')
-
-    def _schedule_transition(self, request, uuid, operation, **kwargs):
-        instance = self.get_object()
-        membership = instance.cloud_project_membership
-
-        is_admin = membership.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
-
-        if not is_admin and not request.user.is_staff:
-            raise exceptions.PermissionDenied()
-
-        # Importing here to avoid circular imports
-        from nodeconductor.core.tasks import set_state, StateChangeError
-        from nodeconductor.iaas import tasks
-
-        supported_operations = {
-            # code: (scheduled_celery_task, instance_marker_state)
-            'start': ('schedule_starting', tasks.schedule_starting),
-            'stop': ('schedule_stopping', tasks.schedule_stopping),
-            'restart': ('schedule_restarting', tasks.schedule_restarting),
-            'destroy': ('schedule_deletion', tasks.schedule_deleting),
-            'flavor change': ('schedule_resizing', tasks.update_flavor),
-            'disk extension': ('schedule_resizing', tasks.extend_disk),
-        }
-
-        # logger.info('Scheduling %s of an instance with uuid %s', operation, uuid)
-        change_instance_state, processing_task = supported_operations[operation]
-
-        try:
-            set_state(models.Instance, uuid, change_instance_state)
-            processing_task.delay(uuid, **kwargs)
-        except StateChangeError:
-            return Response({'status': 'Performing %s operation from instance state \'%s\' is not allowed'
-                                       % (operation, instance.get_state_display())},
-                            status=status.HTTP_409_CONFLICT)
-
-        return Response({'status': '%s was scheduled' % operation},
-                        status=status.HTTP_202_ACCEPTED)
+    @action()
+    @schedule_transition()
+    def stop(self, request, instance, uuid=None):
+        logger_info = dict(
+            message='Virtual machine %s has been scheduled to stop.',
+            context=instance.hostname,
+            extra={'instance': instance, 'event_type': 'iaas_instance_stop_scheduled'}
+        )
+        return 'stop', logger_info
 
     @action()
-    def stop(self, request, uuid=None):
-        instance = self.get_object()
-        event_logger.info('Virtual machine %s has been scheduled to stop.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_stop_scheduled'})
-        return self._schedule_transition(request, uuid, 'stop')
+    @schedule_transition()
+    def start(self, request, instance, uuid=None):
+        logger_info = dict(
+            message='Virtual machine %s has been scheduled to start.',
+            context=instance.hostname,
+            extra={'instance': instance, 'event_type': 'iaas_instance_start_scheduled'}
+        )
+        return 'start', logger_info
 
     @action()
-    def start(self, request, uuid=None):
-        instance = self.get_object()
-        event_logger.info('Virtual machine %s has been scheduled to start.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_start_scheduled'})
-        return self._schedule_transition(request, uuid, 'start')
+    @schedule_transition()
+    def restart(self, request, instance, uuid=None):
+        logger_info = dict(
+            message='Virtual machine %s has been scheduled to restart.',
+            context=instance.hostname,
+            extra={'instance': instance, 'event_type': 'iaas_instance_restart_scheduled'}
+        )
+        return 'restart', logger_info
 
-    def destroy(self, request, uuid):
+    @schedule_transition()
+    def destroy(self, request, instance, uuid):
         # check if deletion is allowed
         # TODO: it duplicates the signal check, but signal-based is useless when deletion is done in bg task
         # TODO: come up with a better way for checking
-        instance = self.get_object()
+
         try:
             from nodeconductor.iaas.handlers import prevent_deletion_of_instances_with_connected_backups
             prevent_deletion_of_instances_with_connected_backups(None, instance)
+
         except django_models.ProtectedError as e:
             return Response({'detail': e.args[0]}, status=status.HTTP_409_CONFLICT)
 
-        event_logger.info('Virtual machine %s has been scheduled for deletion.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_deletion_scheduled'})
-
-        return self._schedule_transition(request, uuid, 'destroy')
-
-    @action()
-    def restart(self, request, uuid=None):
-        instance = self.get_object()
-        event_logger.info('Virtual machine %s has been scheduled to restart.', instance.hostname,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_restart_scheduled'})
-        return self._schedule_transition(request, uuid, 'restart')
+        logger_info = dict(
+            message='Virtual machine %s has been scheduled to deletion.',
+            context=instance.hostname,
+            extra={'instance': instance, 'event_type': 'iaas_instance_deletion_scheduled'}
+        )
+        return 'destroy', logger_info
 
     @action()
-    def resize(self, request, uuid=None):
-        instance = self.get_object()
-
+    @schedule_transition()
+    def resize(self, request, instance, uuid=None):
         if instance.state != models.Instance.States.OFFLINE:
             return Response({'detail': 'Instance must be offline'},
                             status=status.HTTP_409_CONFLICT)
@@ -378,15 +412,44 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         obj = serializer.object
+        flavor = obj['flavor']
 
-        changed_flavor = obj['flavor']
+        # Serializer makes sure that exactly one of the branches will match
+        if flavor is not None:
+            instance_cloud = instance.cloud_project_membership.cloud
+            if flavor.cloud != instance_cloud:
+                return Response({'flavor': "New flavor is not within the same cloud"},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-        # Serializer makes sure that exactly one of the branches
-        # will match
-        if changed_flavor is not None:
-            return self.change_flavor(instance, changed_flavor)
+            # System volume size does not get updated since some backends
+            # do not support resizing of a root volume
+            # instance.system_volume_size = flavor.disk
+            instance.ram = flavor.ram
+            instance.cores = flavor.cores
+            instance.save(update_fields=['ram', 'cores'])
+
+            logger_info = dict(
+                message='Virtual machine %s has been scheduled to change flavor.',
+                context=instance.hostname,
+                extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_scheduled'}
+            )
+            return 'flavor change', logger_info, dict(flavor_uuid=flavor.uuid.hex)
+
         else:
-            return self.resize_disk(instance, obj['disk_size'])
+            new_size = obj['disk_size']
+            if new_size <= instance.data_volume_size:
+                return Response({'disk_size': "Disk size must be strictly greater than the current one"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            instance.data_volume_size = new_size
+            instance.save(update_fields=['data_volume_size'])
+
+            logger_info = dict(
+                message='Virtual machine %s has been scheduled to extend disk.',
+                context=instance.hostname,
+                extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_scheduled'}
+            )
+            return 'disk extension', logger_info
 
     @link()
     def usage(self, request, uuid):
@@ -688,31 +751,20 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
             period = '%s-%s' % (today.year, today.month)
         return period
 
-    def get_queryset(self):
-        queryset = super(ServiceViewSet, self).get_queryset()
-
-        period = self._get_period()
-
-        queryset = queryset.filter(slas__period=period, agreed_sla__isnull=False).\
-            values(
-                'uuid',
-                'hostname',
-                'template__name',
-                'agreed_sla',
-                'slas__value', 'slas__period',
-                'cloud_project_membership__project__customer__name',
-                'cloud_project_membership__project__customer__native_name',
-                'cloud_project_membership__project__customer__abbreviation',
-                'cloud_project_membership__project__name',
-            )
-        return queryset
+    def get_serializer_context(self):
+        """
+        Extra context provided to the serializer class.
+        """
+        context = super(ServiceViewSet, self).get_serializer_context()
+        context['period'] = self._get_period()
+        return context
 
     @link()
     def events(self, request, uuid):
         service = self.get_object()
         period = self._get_period()
-        # TODO: this should use a generic service model
-        history = get_object_or_404(models.InstanceSlaHistory, instance__uuid=service['uuid'], period=period)
+        # TODO: this should use a generic resource model
+        history = get_object_or_404(models.InstanceSlaHistory, instance__uuid=service.uuid, period=period)
 
         history_events = history.events.all().order_by('-timestamp').values('timestamp', 'state')
 
@@ -735,7 +787,7 @@ class ResourceStatsView(views.APIView):
 
         auth_url = request.QUERY_PARAMS.get('auth_url')
         # TODO: auth_url should be coming as a reference to NodeConductor object. Consider introducing this concept.
-        if 'auth_url' is None:
+        if auth_url is None:
             return Response(
                 {'detail': 'GET parameter "auth_url" has to be defined'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -759,8 +811,7 @@ class ResourceStatsView(views.APIView):
             'memory_quota': quota_values['ram'],
         }
 
-        cloud_backend = cloud.get_backend()
-        stats = cloud_backend.get_resource_stats(auth_url)
+        stats = cloud.get_statistics()
         stats.update(quota_stats)
 
         return Response(sort_dict(stats), status=status.HTTP_200_OK)
@@ -815,13 +866,21 @@ class UsageStatsView(views.APIView):
                 'Get parameter "aggregate" can take only this values: ' % ', '.join(self.aggregate_models.keys()),
                 status=status.HTTP_400_BAD_REQUEST)
 
+        # This filters out the things we group by (aka aggregate root) to those that can be seen
+        # by currently logged in user.
         aggregate_queryset = self._get_aggregate_queryset(request, aggregate_model_name)
 
         if 'uuid' in request.QUERY_PARAMS:
             aggregate_queryset = aggregate_queryset.filter(uuid=request.QUERY_PARAMS['uuid'])
 
+        # This filters out the vm Instances to those that can be seen
+        # by currently logged in user. This is done within each aggregate root separately.
+        visible_instances = structure_filters.filter_queryset_for_user(
+            models.Instance.objects.all(), request.user)
+
         for aggregate_object in aggregate_queryset:
-            instances = models.Instance.objects.filter(
+            # Narrow down the instance scope to aggregate root.
+            instances = visible_instances.filter(
                 **self._get_aggregate_filter(aggregate_model_name, aggregate_object))
             if instances:
                 hour = 60 * 60
@@ -925,6 +984,22 @@ class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet
             tasks.sync_cloud_account.delay(obj.uuid.hex)
 
 
+class CloudProjectMembershipFilter(django_filters.FilterSet):
+    cloud = django_filters.CharFilter(
+        name='cloud__uuid',
+    )
+    project = django_filters.CharFilter(
+        name='project__uuid',
+    )
+
+    class Meta(object):
+        model = models.CloudProjectMembership
+        fields = [
+            'cloud',
+            'project'
+        ]
+
+
 class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
@@ -938,8 +1013,9 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
     """
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
-    filter_backends = (structure_filters.GenericRoleFilter,)
+    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+    filter_class = CloudProjectMembershipFilter
 
     def post_save(self, obj, created=False):
         if created:
@@ -965,6 +1041,34 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         tasks.push_cloud_membership_quotas.delay(instance.pk, quotas=serializer.data)
 
         return Response({'status': 'Quota update was scheduled'},
+                        status=status.HTTP_202_ACCEPTED)
+
+    @action()
+    def import_instance(self, request, **kwargs):
+        membership = self.get_object()
+        is_admin = membership.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
+
+        if not is_admin and not request.user.is_staff:
+            raise exceptions.PermissionDenied()
+
+        if membership.state == core_models.SynchronizationStates.ERRED:
+            return Response({'detail': 'Cloud project membership must be in non-erred state for instance import to work'},
+                            status=status.HTTP_409_CONFLICT)
+
+        serializer = serializers.CloudProjectMembershipLinkSerializer(data=request.DATA,
+                                                                      context={'membership': membership})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        instance_id = serializer.object['id']
+        template = serializer.object.get('template')
+        template_id = template.uuid.hex if template else None
+        tasks.import_instance.delay(membership.pk, instance_id=instance_id, template_id=template_id)
+
+        event_logger.info('Instance with backend id %s has been scheduled for import.', instance_id,
+                          extra={'event_type': 'iaas_instance_import_scheduled'})
+
+        return Response({'status': 'Instance import was scheduled'},
                         status=status.HTTP_202_ACCEPTED)
 
 

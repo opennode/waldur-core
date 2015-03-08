@@ -4,7 +4,6 @@ from datetime import datetime
 import logging
 from logging.handlers import SocketHandler
 import json
-import uuid
 
 from nodeconductor.core.middleware import get_current_user
 
@@ -79,18 +78,49 @@ class EventFormatter(logging.Formatter):
 
         # user
         user = self.get_related('user', record, lambda _: get_current_user())
-        self.add_related_details(message, user, 'user', 'username')
+        self.add_related_details(message, user, 'user',
+                                 'username', 'full_name', 'native_name')
 
         # affected user
         affected_user = self.get_related('affected_user', record)
-        self.add_related_details(message, affected_user, 'affected_user', 'username')
+        self.add_related_details(message, affected_user, 'affected_user',
+                                 'username', 'full_name', 'native_name')
+
+        try:
+            message['affected_organization'] = record.affected_organization
+        except AttributeError:
+            pass
+
+        # FIXME: this horribly introduces cyclic dependencies,
+        # remove after logging refactoring
+        def extract_instance(source_name):
+            from django.core.exceptions import ObjectDoesNotExist
+            from nodeconductor.iaas.models import Instance
+
+            source = self.get_related(source_name, record)
+            if source is None:
+                return None
+
+            try:
+                instance = source.backup_source
+            except ObjectDoesNotExist:
+                return None
+
+            if not isinstance(instance, Instance):
+                return None
+
+            return instance
 
         # instance
-        instance = self.get_related('instance', record)
+        instance = self.get_related(
+            'instance', record,
+            lambda _: extract_instance('backup'),
+            lambda _: extract_instance('backup_schedule'),
+        )
         self.add_related_details(message, instance, 'iaas_instance', 'hostname')
 
         # cloud project membership
-        membership = self.get_related('membership', instance)
+        membership = self.get_related('cloud_project_membership', instance)
 
         # project
         project = self.get_related('project', record, membership)
@@ -116,8 +146,12 @@ class EventFormatter(logging.Formatter):
         for source in sources:
             try:
                 if callable(source):
-                    return source(related_name)
-                return getattr(source, related_name)
+                    result = source(related_name)
+                else:
+                    result = getattr(source, related_name)
+
+                if result is not None:
+                    return result
             except (AttributeError, TypeError):
                 pass
 
@@ -131,9 +165,9 @@ class EventFormatter(logging.Formatter):
             name_attrs = ('name',)
 
         # This way we don't rely on the model field "hyphenated" setting
-        # and always log UUID in its canonical hyphenated representation
+        # and always log UUID without hyphens
         try:
-            related_uuid = str(uuid.UUID(related.uuid.hex))
+            related_uuid = related.uuid.hex
         except AttributeError:
             related_uuid = ''
 

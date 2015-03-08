@@ -65,3 +65,9 @@ class IaasConfig(AppConfig):
             sender=CloudProjectMembership,
             dispatch_uid='nodeconductor.iaas.handlers.add_quotas_to_membership',
         )
+
+        signals.pre_save.connect(
+            handlers.set_cpm_default_availability_zone,
+            sender=CloudProjectMembership,
+            dispatch_uid='nodeconductor.iaas.handlers.set_cpm_default_availability_zone',
+        )

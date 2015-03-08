@@ -7,7 +7,7 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('iaas', '0014_init_new_quotas'),
+        ('iaas', '0016_init_new_quotas'),
     ]
 
     operations = [

@@ -239,6 +239,16 @@ class ResourceStatsTest(test.APITransactionTestCase):
         self.user = structure_factories.UserFactory()
         self.staff = structure_factories.UserFactory(is_staff=True)
 
+        self.stats = {
+            u'count': '2', u'vcpus_used': '0', u'local_gb_used': '0', u'memory_mb': '7660',
+            u'current_workload': '0', u'vcpus': '2', u'running_vms': '0',
+            u'free_disk_gb': '12', u'disk_available_least': '6', u'local_gb': '12',
+            u'free_ram_mb': '6636', u'memory_mb_used': '1024'
+        }
+        models.ServiceStatistics.objects.bulk_create(
+            models.ServiceStatistics(cloud=self.cloud, key=k, value=v) for k, v in self.stats.iteritems()
+        )
+
         self.url = reverse('stats_resource')
 
     def test_resource_stats_is_not_available_for_user(self):
@@ -262,14 +272,9 @@ class ResourceStatsTest(test.APITransactionTestCase):
 
     def test_resource_stats_returns_backend_resource_stats(self):
         mocked_backend = Mock()
-        backend_result = {
-            u'count': 2, u'vcpus_used': 0, u'local_gb_used': 0, u'memory_mb': 7660, u'current_workload': 0,
-            u'vcpus': 2, u'running_vms': 0, u'free_disk_gb': 12, u'disk_available_least': 6, u'local_gb': 12,
-            u'free_ram_mb': 6636, u'memory_mb_used': 1024
-        }
 
-        mocked_backend.get_resource_stats = Mock(return_value=backend_result)
-        expected_result = backend_result.copy()
+        mocked_backend.get_resource_stats = Mock(return_value=self.stats)
+        expected_result = self.stats.copy()
         quotas1 = self.membership1.quotas
         quotas2 = self.membership2.quotas
         expected_result.update({
@@ -284,7 +289,6 @@ class ResourceStatsTest(test.APITransactionTestCase):
             response = self.client.get(self.url, {'auth_url': self.auth_url})
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data, expected_result)
-            mocked_backend.get_resource_stats.assert_called_once_with(self.auth_url)
 
 
 class QuotaStatsTest(test.APITransactionTestCase):

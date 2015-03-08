@@ -4,6 +4,7 @@ from collections import OrderedDict
 from itertools import groupby
 import logging
 from operator import itemgetter
+import uuid
 import pkg_resources
 import re
 import time
@@ -12,7 +13,7 @@ from cinderclient import exceptions as cinder_exceptions
 from cinderclient.v1 import client as cinder_client
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db import transaction, DatabaseError
+from django.db import transaction
 from django.db.models import ProtectedError
 from django.utils import dateparse
 from django.utils import six
@@ -72,6 +73,7 @@ class OpenStackBackend(object):
     def pull_cloud_account(self, cloud_account):
         self.pull_flavors(cloud_account)
         self.pull_images(cloud_account)
+        self.pull_service_statistics(cloud_account)
 
     def pull_flavors(self, cloud_account):
         session = self.create_admin_session(cloud_account.auth_url)
@@ -478,43 +480,6 @@ class OpenStackBackend(object):
                 nc_instance.save()
                 # TODO: synchronize also volume sizes
 
-            # TODO: commented out as instance import should be a separate task - NC-302
-            # Add new instances, the ones that are not yet in the database
-            # for instance_id in backend_ids - nc_ids:
-            #     backend_instance = backend_instances[instance_id]
-            #
-            #     try:
-            #         system_volume, data_volume = self._get_instance_volumes(nova, cinder, instance_id)
-            #         template = self._get_instance_template(system_volume, membership, instance_id)
-            #         cores, ram = self._get_flavor_info(nova, backend_instance)
-            #         state = self._get_instance_state(backend_instance)
-            #     except LookupError:
-            #         continue
-            #
-            #     nc_instance = models.Instance.objects.create(
-            #         hostname=backend_instance.name or '',
-            #         template=template,
-            #
-            #         cores=cores,
-            #         ram=ram,
-            #
-            #         key_name=backend_instance.key_name or '',
-            #
-            #         system_volume_id=system_volume.id,
-            #         system_volume_size=self.get_core_disk_size(system_volume.size),
-            #         data_volume_id=data_volume.id,
-            #         data_volume_size=self.get_core_disk_size(data_volume.size),
-            #
-            #         state=state,
-            #
-            #         start_time=self._get_instance_start_time(backend_instance),
-            #
-            #         cloud_project_membership=membership,
-            #         backend_id=backend_instance.id,
-            #     )
-            #
-            #     logger.info('Created new instance %s in database', nc_instance.uuid)
-
     def pull_resource_quota(self, membership):
         try:
             session = self.create_tenant_session(membership)
@@ -568,7 +533,6 @@ class OpenStackBackend(object):
         vcpu = 0
 
         for flavor_id in instance_flavor_ids:
-            flavor = flavors[flavor_id]
             try:
                 flavor = flavors.get(flavor_id, nova.flavors.get(flavor_id))
             except nova_exceptions.NotFound:
@@ -593,7 +557,11 @@ class OpenStackBackend(object):
             six.reraise(CloudBackendError, e)
 
         try:
-            backend_floating_ips = dict((ip['id'], ip) for ip in self.get_floating_ips(membership.tenant_id, neutron))
+            backend_floating_ips = {
+                ip['id']: ip
+                for ip in self.get_floating_ips(membership.tenant_id, neutron)
+                if ip.get('port_id')
+            }
         except neutron_exceptions.ClientException as e:
             logger.exception('Failed to get a list of floating IPs')
             six.reraise(CloudBackendError, e)
@@ -644,6 +612,24 @@ class OpenStackBackend(object):
             logger.info('Successfully for auth_url: %s was successfully taken', auth_url)
         return stats
 
+    def pull_service_statistics(self, cloud_account, service_stats=None):
+        if not service_stats:
+            service_stats = self.get_resource_stats(cloud_account.auth_url)
+
+        cloud_stats = dict((s.key, s) for s in cloud_account.stats.all())
+        for key, val in service_stats.items():
+            stats = cloud_stats.pop(key, None)
+            if stats:
+                stats.value = val
+                stats.save()
+            else:
+                cloud_account.stats.create(key=key, value=val)
+
+        if cloud_stats:
+            cloud_account.stats.delete(key__in=cloud_stats.keys())
+
+        return service_stats
+
     # Instance related methods
     def provision_instance(self, instance, backend_flavor_id, system_volume_id=None, data_volume_id=None):
         logger.info('About to boot instance %s', instance.uuid)
@@ -661,21 +647,13 @@ class OpenStackBackend(object):
             glance = self.create_glance_client(session)
             neutron = self.create_neutron_client(session)
 
-            network_name = self.get_tenant_name(membership)
-
-            matching_networks = neutron.list_networks(name=network_name)['networks']
-            matching_networks_count = len(matching_networks)
-
-            if matching_networks_count > 1:
-                logger.error('Found %d networks named "%s", expected exactly one',
-                             matching_networks_count, network_name)
+            # verify if the internal network to connect to exists
+            try:
+                neutron.show_network(membership.internal_network_id)
+            except neutron_exceptions.NeutronClientException:
+                logger.exception('Internal network with id of %s was not found',
+                                 membership.internal_network_id)
                 raise CloudBackendError('Unable to find network to attach instance to')
-            elif matching_networks_count == 0:
-                logger.error('Found no networks named "%s", expected exactly one',
-                             network_name)
-                raise CloudBackendError('Unable to find network to attach instance to')
-
-            network = matching_networks[0]
 
             # instance key name and fingerprint are optional
             if instance.key_name:
@@ -791,7 +769,7 @@ class OpenStackBackend(object):
                     # },
                 ],
                 nics=[
-                    {'net-id': network['id']}
+                    {'net-id': membership.internal_network_id}
                 ],
                 key_name=backend_public_key.name if backend_public_key is not None else None,
                 security_groups=security_group_ids,
@@ -852,12 +830,28 @@ class OpenStackBackend(object):
 
     def start_instance(self, instance):
         logger.debug('About to start instance %s', instance.uuid)
+
         try:
             membership = instance.cloud_project_membership
 
             session = self.create_tenant_session(membership)
 
             nova = self.create_nova_client(session)
+
+            backend_instance = nova.servers.find(id=instance.backend_id)
+            backend_instance_state = self._get_instance_state(backend_instance)
+
+            if backend_instance_state == models.Instance.States.ONLINE:
+                logger.warning('Instance %s is already started', instance.uuid)
+                #TODO: throws exception for some reason, investigation pending
+                #instance.start_time = self._get_instance_start_time(backend_instance)
+                instance.start_time = timezone.now()
+                instance.save()
+                logger.info('Successfully started instance %s', instance.uuid)
+                event_logger.info('Virtual machine %s has been started.', instance.hostname,
+                                  extra={'instance': instance, 'event_type': 'iaas_instance_start_succeeded'})
+                return
+
             nova.servers.start(instance.backend_id)
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
@@ -879,12 +873,26 @@ class OpenStackBackend(object):
 
     def stop_instance(self, instance):
         logger.debug('About to stop instance %s', instance.uuid)
+
         try:
             membership = instance.cloud_project_membership
 
             session = self.create_tenant_session(membership)
 
             nova = self.create_nova_client(session)
+
+            backend_instance = nova.servers.find(id=instance.backend_id)
+            backend_instance_state = self._get_instance_state(backend_instance)
+
+            if backend_instance_state == models.Instance.States.OFFLINE:
+                logger.warning('Instance %s is already stopped', instance.uuid)
+                instance.start_time = None
+                instance.save()
+                logger.info('Successfully stopped instance %s', instance.uuid)
+                event_logger.info('Virtual machine %s has been stopped.', instance.hostname,
+                                  extra={'instance': instance, 'event_type': 'iaas_instance_stop_succeeded'})
+                return
+
             nova.servers.stop(instance.backend_id)
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
@@ -960,6 +968,99 @@ class OpenStackBackend(object):
             logger.info('Successfully deleted instance %s', instance.uuid)
             event_logger.info('Virtual machine %s has been deleted.', instance.hostname,
                               extra={'instance': instance, 'event_type': 'iaas_instance_deletion_succeeded'})
+
+    def import_instance(self, membership, instance_id, template_id=None):
+        try:
+            session = self.create_tenant_session(membership)
+            nova = self.create_nova_client(session)
+            cinder = self.create_cinder_client(session)
+        except keystone_exceptions.ClientException as e:
+            logger.exception('Failed to create nova client')
+            six.reraise(CloudBackendError, e)
+        except cinder_exceptions.ClientException as e:
+            logger.exception('Failed to create cinder client')
+            six.reraise(CloudBackendError, e)
+
+        # Exclude instances that are booted from images
+        try:
+            backend_instance = nova.servers.get(instance_id)
+        except nova_exceptions.NotFound:
+            logger.exception('Requested instance with UUID %s was not found', instance_id)
+            return
+
+        with transaction.atomic():
+            try:
+                system_volume, data_volume = self._get_instance_volumes(nova, cinder, instance_id)
+                if template_id:
+                    try:
+                        template = models.Template.objects.get(uuid=template_id)
+                    except models.Template.DoesNotExist:
+                        logger.exception('Failed to load provided template information for uuid %s', template_id)
+                        six.reraise(CloudBackendError, e)
+                else:
+                    # try to devise from volume image metadata
+                    template = self._get_instance_template(system_volume, membership, instance_id)
+                cores, ram = self._get_flavor_info(nova, backend_instance)
+                state = self._get_instance_state(backend_instance)
+            except LookupError as e:
+                logger.exception('Failed to lookup instance %s information', instance_id)
+                six.reraise(CloudBackendError, e)
+
+            # check if all instance security groups exist in nc
+            nc_security_groups = []
+            for sg in backend_instance.security_groups:
+                try:
+                    nc_security_groups.append(
+                        models.SecurityGroup.objects.get(name=sg['name'], cloud_project_membership=membership))
+                except models.SecurityGroup.DoesNotExist as e:
+                    logger.exception('Failed to lookup instance %s information', instance_id)
+                    six.reraise(CloudBackendError, e)
+
+            nc_instance = models.Instance(
+                hostname=backend_instance.name or '',
+                template=template,
+                agreed_sla=template.sla_level,
+
+                cores=cores,
+                ram=ram,
+
+                key_name=backend_instance.key_name or '',
+
+                system_volume_id=system_volume.id,
+                system_volume_size=self.get_core_disk_size(system_volume.size),
+                data_volume_id=data_volume.id,
+                data_volume_size=self.get_core_disk_size(data_volume.size),
+
+                state=state,
+
+                start_time=self._get_instance_start_time(backend_instance),
+
+                cloud_project_membership=membership,
+                backend_id=backend_instance.id,
+            )
+            for net_name, net_conf in backend_instance.addresses.items():
+                for ip in net_conf:
+                    if ip['OS-EXT-IPS:type'] == 'fixed':
+                        nc_instance.internal_ips = ip['addr']
+                        continue
+                    if ip['OS-EXT-IPS:type'] == 'floating':
+                        nc_instance.external_ips = ip['addr']
+                        continue
+
+            nc_instance.save()
+
+            # instance security groups
+            for nc_sg in nc_security_groups:
+                models.InstanceSecurityGroup.objects.create(
+                    instance=nc_instance,
+                    security_group=nc_sg,
+                )
+
+            event_logger.info('Virtual machine %s has been imported.', nc_instance.hostname,
+                              extra={'instance': nc_instance, 'event_type': 'iaas_instance_import_succeeded'})
+            logger.info('Created new instance %s in database', nc_instance.uuid)
+
+            return nc_instance
 
     # XXX: This method is not used now
     def backup_instance(self, instance):
@@ -1621,26 +1722,37 @@ class OpenStackBackend(object):
                         username, tenant.name)
 
     def get_or_create_network(self, membership, neutron):
-        network_name = self.get_tenant_name(membership)
 
-        logger.info('Creating network %s', network_name)
-        if neutron.list_networks(name=network_name)['networks']:
-            logger.info('Network %s already exists, using it instead', network_name)
-            return
+        logger.info('Checking internal network of tenant %s', membership.tenant_id)
+        if membership.internal_network_id:
+            try:
+                # check if the network actually exists
+                neutron.show_network(membership.internal_network_id)
+            except neutron_exceptions.NeutronClientException as e:
+                logger.exception('Network with id %s does not exist. Stale data in database?',
+                                 membership.internal_network_id)
+                six.reraise(CloudBackendError, e)
+            else:
+                logger.info('Network with id %s exists', membership.internal_network_id)
+            return membership.internal_network_id
 
+        network_name = self.create_backend_name()
         network = {
             'name': network_name,
             'tenant_id': membership.tenant_id,
         }
 
+        # in case nothing fits, create and persist internal network
         create_response = neutron.create_network({'networks': [network]})
         network_id = create_response['networks'][0]['id']
+        membership.internal_network_id = network_id
+        membership.save()
 
         subnet_name = '{0}-sn01'.format(network_name)
 
         logger.info('Creating subnet %s', subnet_name)
         subnet = {
-            'network_id': network_id,
+            'network_id': membership.internal_network_id,
             'tenant_id': membership.tenant_id,
             'cidr': '192.168.42.0/24',
             'allocation_pools': [
@@ -1654,6 +1766,7 @@ class OpenStackBackend(object):
             'enable_dhcp': True,
         }
         neutron.create_subnet({'subnets': [subnet]})
+        return membership.internal_network_id
 
     def get_hypervisors_statistics(self, nova):
         return nova.hypervisors.statistics()._info
@@ -1672,6 +1785,9 @@ class OpenStackBackend(object):
 
     def get_tenant_name(self, membership):
         return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
+
+    def create_backend_name(self):
+        return 'nc-{0}'.format(uuid.uuid4().hex)
 
     def _wait_for_instance_status(self, server_id, nova, complete_status,
                                   error_status=None, retries=300, poll_interval=3):
@@ -2125,6 +2241,7 @@ class OpenStackBackend(object):
             'SHUTOFF': models.Instance.States.OFFLINE,
             'STOPPED': models.Instance.States.OFFLINE,
             'SUSPENDED': models.Instance.States.OFFLINE,
+            # TODO: VERIFY_RESIZE --> perhaps OFFLINE? resize is an offline procedure for flavor change
             'VERIFY_RESIZE': models.Instance.States.ONLINE,
         }
         return nova_to_nodeconductor.get(instance.status,

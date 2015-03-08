@@ -61,7 +61,7 @@ class CloudAdmin(admin.ModelAdmin):
 # noinspection PyMethodMayBeStatic
 class CloudProjectMembershipAdmin(admin.ModelAdmin):
     readonly_fields = ('cloud', 'project')
-    list_display = ('get_cloud_name', 'get_customer_name', 'get_project_name', 'state')
+    list_display = ('get_cloud_name', 'get_customer_name', 'get_project_name', 'state', 'tenant_id')
     ordering = ('cloud__customer__name', 'project__name', 'cloud__name')
     list_display_links = ('get_cloud_name',)
     search_fields = ('cloud__customer__name', 'project__name', 'cloud__name')

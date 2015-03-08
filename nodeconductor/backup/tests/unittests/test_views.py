@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from mock import Mock
 
 from django.test import TestCase
-from rest_framework import status
 
 from nodeconductor.backup import views, models
 from nodeconductor.backup.tests import factories

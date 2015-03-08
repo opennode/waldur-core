@@ -34,6 +34,39 @@ Ordering can be done by the following fields (prefix with **-** for descending o
 - ?o=project__project_groups__name - **deprecated**, use ?o=project_group_name instead
 - ?o=slas__value - **deprecated**, use ?o=actual_sla instead
 
+Response example:
+
+.. code-block:: http
+
+    GET /api/services/ HTTP/1.1
+
+    HTTP/1.0 200 OK
+    Content-Type: application/json
+    Vary: Accept
+    Allow: GET, HEAD, OPTIONS
+    X-Result-Count: 1
+
+    [
+        {
+            "url": "http://127.0.0.1:8000/api/services/0356addb8e9742e7b984ebcaf5912c6b/",
+            "uuid": "0356addb8e9742e7b984ebcaf5912c6b",
+            "state": "Offline",
+            "hostname": "FromBackup777",
+            "template_name": "cirros-0.3.1-x86_64",
+            "customer_name": "The Ministry of Civil Service",
+            "customer_native_name": "The Ministry of Civil Service",
+            "customer_abbreviation": "MoCS",
+            "project_name": "STG/Backups",
+            "project_uuid": "19e4581367cb4f93bf77c21f68fbc2d1",
+            "project_url": "http://127.0.0.1:8000/api/projects/19e4581367cb4f93bf77c21f68fbc2d1/",
+            "project_groups": [],
+            "agreed_sla": "95",
+            "actual_sla": null,
+            "service_type": "IaaS",
+            "access_information": []
+        }
+    ]
+
 
 SLA periods
 ^^^^^^^^^^^
@@ -62,7 +95,7 @@ Example output:
 
     [
         {
-            "timestamp": 1418043540, 
+            "timestamp": 1418043540,
             "state": "U"
         },
         {
