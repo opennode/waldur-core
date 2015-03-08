@@ -8,7 +8,7 @@ from rest_framework import test
 from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
-from nodeconductor.iaas.models import Instance, CloudProjectMembership, FloatingIP, ResourceQuotaUsage
+from nodeconductor.iaas.models import Instance, CloudProjectMembership, FloatingIP
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
@@ -270,15 +270,17 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = self.admined_instance
         instance.cores = 5
         instance.save()
-        cpu_limit = instance.cloud_project_membership.resource_quota.vcpu
-        ResourceQuotaUsage.objects.create(
-            cloud_project_membership=instance.cloud_project_membership,
-            storage=0, vcpu=cpu_limit, ram=0, max_instances=0)
+        membership = instance.cloud_project_membership
+        membership.set_quota_limit('vcpu', instance.cores)
+        membership.set_quota_limit('max_instances', 0)
+        membership.set_quota_limit('storage', 0)
+
         new_flavor = factories.FlavorFactory(
             cloud=self.admined_instance.cloud_project_membership.cloud,
             disk=self.admined_instance.system_volume_size + 1,
             cores=instance.cores - 1,
         )
+
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
         response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
@@ -293,10 +295,12 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = self.admined_instance
         instance.cores = 5
         instance.save()
-        ram_limit = instance.cloud_project_membership.resource_quota.ram
-        ResourceQuotaUsage.objects.create(
-            cloud_project_membership=instance.cloud_project_membership,
-            storage=0, vcpu=0, ram=ram_limit, max_instances=0)
+        membership = instance.cloud_project_membership
+        membership.set_quota_limit('ram', instance.ram)
+        membership.set_quota_limit('vcpu', instance.cores)
+        membership.set_quota_limit('max_instnces', 0)
+        membership.set_quota_limit('storage', 0)
+
         new_flavor = factories.FlavorFactory(
             cloud=self.admined_instance.cloud_project_membership.cloud,
             disk=self.admined_instance.system_volume_size + 1,
