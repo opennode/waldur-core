@@ -26,6 +26,7 @@ INSTALLED_APPS = (
     'nodeconductor.landing',
     'nodeconductor.core',
     'nodeconductor.backup',
+    'nodeconductor.template',
     'nodeconductor.monitoring',
     'nodeconductor.structure',
     'nodeconductor.iaas',
