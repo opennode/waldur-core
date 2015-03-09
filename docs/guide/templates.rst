@@ -1,25 +1,9 @@
 Templates
 ---------
 
-TODO: expand
+A NodeConductor template is a way to group typically provisioned resource templates. For example, a template called
+'My development infrastructure' can contain a template for IaaS service, an issue tracking service and a
+code repository service. In addition, it is possible to provide a default configuration for added value services
+like monitoring or backup.
 
-.. glossary::
-
-    Template
-      A configuration management formula. Contains a state description and a set of example variables. A Template corresponds
-      to a "correct way" of handling an certain component, e.g. MySQL DB or Liferay portal.
-
-    Host
-      A virtual or physical machine where application is running. Host is used for targeting by the configuration management
-      system.
-
-    Application
-      Instantiated and deployment specific instance of the template.
-
-    Environment
-      Collection of Applications.
-
-License management
-------------------
-
-TODO
+A REST client can request available packages and use them as a shortcut when provisioning resources.

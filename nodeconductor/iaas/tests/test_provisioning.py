@@ -22,7 +22,7 @@ class UrlResolverMixin(object):
         return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
 
     def _get_template_url(self, template):
-        return 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
+        return 'http://testserver' + reverse('iaastemplate-detail', kwargs={'uuid': template.uuid})
 
     def _get_ssh_public_key_url(self, key):
         return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': key.uuid})

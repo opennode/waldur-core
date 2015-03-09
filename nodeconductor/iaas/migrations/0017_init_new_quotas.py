@@ -40,7 +40,7 @@ def init_quotas(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('iaas', '0015_cloudprojectmembership_internal_network_id'),
+        ('iaas', '0016_iaastemplateservice'),
         ('structure', '0004_init_new_quotas'),
     ]
 

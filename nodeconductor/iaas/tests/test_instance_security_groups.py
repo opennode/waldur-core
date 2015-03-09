@@ -17,7 +17,7 @@ def _project_url(project):
 
 
 def _template_url(template, action=None):
-    url = 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
+    url = 'http://testserver' + reverse('iaastemplate-detail', kwargs={'uuid': template.uuid})
     return url if action is None else url + action + '/'
 
 
