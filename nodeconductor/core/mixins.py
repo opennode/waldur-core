@@ -124,14 +124,17 @@ class ListModelMixin(object):
             error_msg = self.empty_error % {'class_name': class_name}
             raise Http404(error_msg)
 
-        page = self.paginate_queryset(self.object_list)
-        headers = {}
-        if page is not None:
-            headers = self.get_pagination_headers(request, page)
+        if self.paginate_by is not None:
+            page = self.paginate_queryset(self.object_list)
+            headers = {}
+            if page is not None:
+                headers = self.get_pagination_headers(request, page)
 
-        serializer = self.get_serializer(page, many=True)
-
-        return Response(serializer.data, headers=headers)
+            serializer = self.get_serializer(page, many=True)
+            return Response(serializer.data, headers=headers)
+        else:
+            serializer = self.get_serializer(self.object_list, many=True)
+            return Response(serializer.data)
 
     def get_pagination_headers(self, request, page):
         links = []

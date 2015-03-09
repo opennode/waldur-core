@@ -16,6 +16,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleBaseField
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.template.models import TemplateService
+from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure import models as structure_models
 
 
@@ -81,10 +82,13 @@ class ServiceStatistics(models.Model):
 
 
 @python_2_unicode_compatible
-class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
+class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin, models.Model):
     """
     This model represents many to many relationships between project and cloud
     """
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
+    # This name will be used by generic relationships to membership model for URL creation
+    DEFAULT_URL_NAME = 'cloudproject_membership'
 
     cloud = models.ForeignKey(Cloud)
     project = models.ForeignKey(structure_models.Project)
@@ -113,17 +117,8 @@ class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
     def __str__(self):
         return '{0} | {1}'.format(self.cloud.name, self.project.name)
 
-    def update_resource_quota_usage(self, field, value):
-        try:
-            resource_quota_usage = ResourceQuotaUsage.objects.get(cloud_project_membership=self)
-        except ResourceQuotaUsage.DoesNotExist:
-            resource_quota_usage = ResourceQuotaUsage(cloud_project_membership=self)
-            for resource_field in AbstractResourceQuota._meta.get_all_field_names():
-                setattr(resource_quota_usage, resource_field, 0)
-
-        old_value = getattr(resource_quota_usage, field, 0)
-        setattr(resource_quota_usage, field, old_value + value)
-        resource_quota_usage.save()
+    def get_quota_parents(self):
+        return [self.project]
 
 
 class CloudProjectMember(models.Model):
@@ -234,30 +229,6 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
 
     def __str__(self):
         return '{0} <-> {1}'.format(self.template.name, self.backend_image_id)
-
-
-class AbstractResourceQuota(models.Model):
-    """ Abstract model for membership quotas """
-
-    class Meta(object):
-        abstract = True
-
-    vcpu = models.PositiveIntegerField(help_text='Virtual CPUs')
-    ram = models.FloatField(help_text='RAM size')
-    storage = models.FloatField(help_text='Storage size (incl. backup)')
-    max_instances = models.PositiveIntegerField(help_text='Number of running instances')
-
-
-# TODO: Refactor to use CloudProjectMember
-class ResourceQuota(AbstractResourceQuota):
-    """ CloudProjectMembership quota """
-    cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota')
-
-
-# TODO: Refactor to use CloudProjectMember
-class ResourceQuotaUsage(AbstractResourceQuota):
-    """ CloudProjectMembership quota usage """
-    cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota_usage')
 
 
 class FloatingIP(core_models.UuidMixin, CloudProjectMember):

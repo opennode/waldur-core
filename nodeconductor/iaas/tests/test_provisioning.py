@@ -8,7 +8,7 @@ from rest_framework import test
 from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
-from nodeconductor.iaas.models import Instance, CloudProjectMembership, FloatingIP, ResourceQuotaUsage
+from nodeconductor.iaas.models import Instance, CloudProjectMembership, FloatingIP
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
@@ -38,17 +38,9 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.managed_instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
 
         admined_project = self.admined_instance.cloud_project_membership.project
-        factories.ResourceQuotaFactory(
-            cloud_project_membership=self.admined_instance.cloud_project_membership,
-            storage=10 * 1024 * 1024,
-            vcpu=10,
-            ram=20 * 1024,
-        )
         admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         project = self.managed_instance.cloud_project_membership.project
-        factories.ResourceQuotaFactory(
-            cloud_project_membership=self.managed_instance.cloud_project_membership, storage=10 * 1024 * 1024)
         managed_project_group = structure_factories.ProjectGroupFactory()
         managed_project_group.projects.add(project)
 
@@ -278,15 +270,17 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = self.admined_instance
         instance.cores = 5
         instance.save()
-        cpu_limit = instance.cloud_project_membership.resource_quota.vcpu
-        ResourceQuotaUsage.objects.create(
-            cloud_project_membership=instance.cloud_project_membership,
-            storage=0, vcpu=cpu_limit, ram=0, max_instances=0)
+        membership = instance.cloud_project_membership
+        membership.set_quota_limit('vcpu', instance.cores)
+        membership.set_quota_limit('max_instances', 0)
+        membership.set_quota_limit('storage', 0)
+
         new_flavor = factories.FlavorFactory(
             cloud=self.admined_instance.cloud_project_membership.cloud,
             disk=self.admined_instance.system_volume_size + 1,
             cores=instance.cores - 1,
         )
+
         data = {'flavor': self._get_flavor_url(new_flavor)}
 
         response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
@@ -301,10 +295,12 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = self.admined_instance
         instance.cores = 5
         instance.save()
-        ram_limit = instance.cloud_project_membership.resource_quota.ram
-        ResourceQuotaUsage.objects.create(
-            cloud_project_membership=instance.cloud_project_membership,
-            storage=0, vcpu=0, ram=ram_limit, max_instances=0)
+        membership = instance.cloud_project_membership
+        membership.set_quota_limit('ram', instance.ram)
+        membership.set_quota_limit('vcpu', instance.cores)
+        membership.set_quota_limit('max_instnces', 0)
+        membership.set_quota_limit('storage', 0)
+
         new_flavor = factories.FlavorFactory(
             cloud=self.admined_instance.cloud_project_membership.cloud,
             disk=self.admined_instance.system_volume_size + 1,
@@ -321,11 +317,12 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
     def test_user_cannot_change_flavor_of_stopped_instance_he_is_administrator_of_if_quota_would_be_exceeded(self):
         self.client.force_authenticate(user=self.user)
+        membership = self.admined_instance.cloud_project_membership
 
         # check for ram
         big_ram_flavor = factories.FlavorFactory(
-            cloud=self.admined_instance.cloud_project_membership.cloud,
-            ram=self.admined_instance.cloud_project_membership.resource_quota.ram + self.admined_instance.ram + 1,
+            cloud=membership.cloud,
+            ram=membership.quotas.get(name='ram').limit + self.admined_instance.ram + 1,
         )
         data = {'flavor': self._get_flavor_url(big_ram_flavor)}
         response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
@@ -333,8 +330,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         # check for vcpu
         many_core_flavor = factories.FlavorFactory(
-            cloud=self.admined_instance.cloud_project_membership.cloud,
-            cores=self.admined_instance.cloud_project_membership.resource_quota.vcpu + self.admined_instance.cores + 1,
+            cloud=membership.cloud,
+            cores=membership.quotas.get(name='vcpu').limit + self.admined_instance.cores + 1,
         )
         data = {'flavor': self._get_flavor_url(many_core_flavor)}
         response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
@@ -381,7 +378,10 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_user_cannot_set_disk_size_greater_than_resource_quota(self):
         self.client.force_authenticate(user=self.user)
         instance = self.admined_instance
-        data = {'disk_size': instance.cloud_project_membership.resource_quota.storage + 1 + instance.data_volume_size}
+        membership = instance.cloud_project_membership
+        data = {
+            'disk_size': membership.quotas.get(name='storage').limit + 1 + instance.data_volume_size
+        }
 
         response = self.client.post(factories.InstanceFactory.get_url(instance, action='resize'), data)
 
@@ -432,8 +432,6 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         instance = factories.InstanceFactory(state=Instance.States.PROVISIONING_SCHEDULED)
         project = instance.cloud_project_membership.project
-        factories.ResourceQuotaFactory(
-            cloud_project_membership=instance.cloud_project_membership, storage=10 * 1024 * 1024)
         project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         url = factories.InstanceFactory.get_url(instance)
@@ -457,8 +455,6 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         for state in Instance.States.UNSTABLE_STATES:
             instance = factories.InstanceFactory(state=state)
             project = instance.cloud_project_membership.project
-            factories.ResourceQuotaFactory(
-                cloud_project_membership=instance.cloud_project_membership, storage=10 * 1024 * 1024)
             project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
             url = factories.InstanceFactory.get_url(instance)
@@ -630,13 +626,6 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.flavor = factories.FlavorFactory(cloud=self.cloud)
         self.project = structure_factories.ProjectFactory()
         self.membership = factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
-        self.resource_quota = factories.ResourceQuotaFactory(
-            cloud_project_membership=self.membership,
-            storage=10 * 1024 * 1024,
-            vcpu=10,
-            ram=2 * 1024,
-            max_instances=10,
-        )
         self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
@@ -879,7 +868,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
     def test_instance_size_can_not_be_bigger_than_quota(self):
         data = self.get_valid_data()
-        data['data_volume_size'] = self.resource_quota.storage + 1
+        data['data_volume_size'] = self.membership.quotas.get(name='storage').limit + 1
         response = self.client.post(self.instance_list_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

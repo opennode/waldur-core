@@ -6,6 +6,7 @@ from django.db.models import signals
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.iaas import handlers
+from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.models import Project
 from nodeconductor.structure.signals import structure_role_granted
 
@@ -33,12 +34,6 @@ class IaasConfig(AppConfig):
             dispatch_uid='nodeconductor.iaas.handlers.add_clouds_to_project',
         )
 
-        pre_serializer_fields.connect(
-            handlers.add_quota_stats_to_project,
-            sender=ProjectSerializer,
-            dispatch_uid='nodeconductor.iaas.handlers.add_quota_stats_to_project',
-        )
-
         signals.post_save.connect(
             handlers.propagate_new_users_key_to_his_projects_clouds,
             sender=SshPublicKey,
@@ -63,6 +58,12 @@ class IaasConfig(AppConfig):
             handlers.prevent_deletion_of_instances_with_connected_backups,
             sender=Instance,
             dispatch_uid='nodeconductor.iaas.handlers.prevent_deletion_of_instances_with_connected_backups',
+        )
+
+        signals.post_save.connect(
+            quotas_handlers.add_quotas_to_scope,
+            sender=CloudProjectMembership,
+            dispatch_uid='nodeconductor.iaas.handlers.add_quotas_to_membership',
         )
 
         signals.pre_save.connect(

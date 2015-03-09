@@ -74,6 +74,21 @@ class CloudProjectMembershipFactory(factory.DjangoModelFactory):
     def get_list_url(cls):
         return 'http://testserver' + reverse('cloudproject_membership-list')
 
+    @factory.post_generation
+    def quotas(self, create, extracted, **kwargs):
+        if create:
+            if extracted:
+                for quota in extracted:
+                    if 'limit' in quota:
+                        self.set_quota_limit(quota['name'], quota['limit'])
+                    if 'usage' in quota:
+                        self.set_quota_usage(quota['name'], quota['usage'])
+            else:
+                self.set_quota_limit('storage', 10 * 1024 * 1024)
+                self.set_quota_limit('vcpu', 20)
+                self.set_quota_limit('max_instances', 10)
+                self.set_quota_limit('ram', 20 * 1024)
+
 
 class SecurityGroupFactory(factory.DjangoModelFactory):
     class Meta(object):
@@ -274,27 +289,6 @@ class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
 
     instance = factory.SubFactory(InstanceFactory)
     security_group = factory.SubFactory(SecurityGroupFactory)
-
-
-class AbstractResourceQuotaFactory(factory.DjangoModelFactory):
-    class Meta:
-        abstract = True
-
-    cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
-    vcpu = factory.Iterator([1, 2, 3, 4])
-    ram = factory.Iterator([1024, 2048, 4096])
-    storage = factory.fuzzy.FuzzyFloat(10240, 51200)
-    max_instances = factory.Iterator([1, 2, 3, 4])
-
-
-class ResourceQuotaFactory(AbstractResourceQuotaFactory):
-    class Meta(object):
-        model = models.ResourceQuota
-
-
-class ResourceQuotaUsageFactory(AbstractResourceQuotaFactory):
-    class Meta(object):
-        model = models.ResourceQuotaUsage
 
 
 class FloatingIPFactory(factory.DjangoModelFactory):

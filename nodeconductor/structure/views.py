@@ -22,6 +22,7 @@ from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins
 from nodeconductor.core import viewsets
 from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
 from nodeconductor.structure import models
@@ -85,7 +86,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_class = CustomerFilter
 
 
-class ProjectFilter(django_filters.FilterSet):
+class ProjectFilter(quotas_views.QuotaFilterMixin, django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='customer__uuid',
         distinct=True,
@@ -124,23 +125,6 @@ class ProjectFilter(django_filters.FilterSet):
 
     description = django_filters.CharFilter(lookup_type='icontains')
 
-    # TODO: quota filters are matching quota values in every CloudProjectMembership quota, not aggregated.
-    vcpu = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__vcpu',
-    )
-
-    ram = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__ram',
-    )
-
-    storage = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__storage',
-    )
-
-    max_instances = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__max_instances',
-    )
-
     class Meta(object):
         model = models.Project
         fields = [
@@ -149,11 +133,6 @@ class ProjectFilter(django_filters.FilterSet):
             'name',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'description',
-            # quotas
-            'vcpu',
-            'ram',
-            'storage',
-            'max_instances',
         ]
         order_by = [
             'name',
@@ -166,32 +145,34 @@ class ProjectFilter(django_filters.FilterSet):
             '-customer__name',
             'customer__abbreviation',
             '-customer__abbreviation',
-            'cloudprojectmembership__resource_quota__vcpu',
-            '-cloudprojectmembership__resource_quota__vcpu',
-            'cloudprojectmembership__resource_quota__ram',
-            '-cloudprojectmembership__resource_quota__ram',
-            'cloudprojectmembership__resource_quota__storage',
-            '-cloudprojectmembership__resource_quota__storage',
-            'cloudprojectmembership__resource_quota__max_instances',
-            '-cloudprojectmembership__resource_quota__max_instances',
+            'quotas__limit__ram',
+            '-quotas__limit__ram',
+            'quotas__limit__vcpu',
+            '-quotas__limit__vcpu',
+            'quotas__limit__storage',
+            '-quotas__limit__storage',
+            'quotas__limit__max_instances',
+            '-quotas__limit__max_instances',
+            'quotas__limit',
+            '-quotas__limit',
         ]
 
         order_by_mapping = {
             # Proper field naming
             'project_group_name': 'project_groups__name',
-            'vcpu': 'cloudprojectmembership__resource_quota__vcpu',
-            'ram': 'cloudprojectmembership__resource_quota__ram',
-            'max_instances': 'cloudprojectmembership__resource_quota__max_instances',
-            'storage': 'cloudprojectmembership__resource_quota__storage',
+            'vcpu': 'quotas__limit__vcpu',
+            'ram': 'quotas__limit__ram',
+            'max_instances': 'quotas__limit__max_instances',
+            'storage': 'quotas__limit__storage',
             'customer_name': 'customer__name',
             'customer_abbreviation': 'customer__abbreviation',
             'customer_native_name': 'customer__native_name',
 
             # Backwards compatibility
             'project_groups__name': 'project_groups__name',
-            'resource_quota__vcpu': 'cloudprojectmembership__resource_quota__vcpu',
-            'resource_quota__ram': 'cloudprojectmembership__resource_quota__ram',
-            'resource_quota__storage': 'cloudprojectmembership__resource_quota__storage',
+            'resource_quota__vcpu': 'quotas__limit__vcpu',
+            'resource_quota__ram': 'quotas__limit__ram',
+            'resource_quota__storage': 'quotas__limit__storage',
         }
 
 
