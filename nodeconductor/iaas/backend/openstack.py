@@ -504,6 +504,13 @@ class OpenStackBackend(object):
         membership.set_quota_limit('max_instances', nova_quotas.instances)
         membership.set_quota_limit('storage', self.get_core_disk_size(cinder_quotas.gigabytes))
 
+        # XXX Horrible hack -- to be removed once the Portal has moved to new quotas. NC-421
+        membership.project.set_quota_limit('ram', self.get_core_ram_size(nova_quotas.ram))
+        membership.project.set_quota_limit('vcpu', nova_quotas.cores)
+        membership.project.set_quota_limit('max_instances', nova_quotas.instances)
+        membership.project.set_quota_limit('storage', self.get_core_disk_size(cinder_quotas.gigabytes))
+
+
     def pull_resource_quota_usage(self, membership):
         try:
             session = self.create_tenant_session(membership)
