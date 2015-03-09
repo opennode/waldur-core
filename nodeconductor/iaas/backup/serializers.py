@@ -76,7 +76,7 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
             'storage': system_volume_size + data_volume_size
         }
 
-        quota_errors = membership.get_quota_errors(quota_usage)
+        quota_errors = membership.validate_quota_change(quota_usage)
         if quota_errors:
             raise serializers.ValidationError(
                 'One or more quotas are over limit: \n' + '\n'.join(quota_errors))

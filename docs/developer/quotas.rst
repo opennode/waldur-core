@@ -62,7 +62,7 @@ Check is quota exceeded
 To check is one separate quota exceeded - use ``is_exceeded`` method of quota.  It can receive usage delta or
 threshold and check is quota exceeds considering delta and/or threshold.
 
-To check is any of object or his ancestors quotas exceeded - use ``get_quota_errors`` method of object with quotas.
+To check is any of object or his ancestors quotas exceeded - use ``validate_quota_change`` method of object with quotas.
 This method receive dictionary of quotas usage deltas and returns errors if one or more quotas of object or his
 quota-ancestors exceeded.
 

@@ -59,7 +59,7 @@ class QuotaModelMixin(models.Model):
     Use such methods to change objects quotas:
       set_quota_limit, set_quota_usage, add_quota_usage.
 
-    Other useful methods: get_quota_errors, get_sum_of_quotas_as_dict. Please check their docstrings for more details.
+    Other useful methods: validate_quota_change, get_sum_of_quotas_as_dict. Please check their docstrings for more details.
     """
     QUOTAS_NAMES = []  # this list has to be overridden
 
@@ -96,7 +96,7 @@ class QuotaModelMixin(models.Model):
                 # we do not do anything if ancestor does not have such quota
                 pass
 
-    def get_quota_errors(self, quota_deltas):
+    def validate_quota_change(self, quota_deltas):
         """
         Get error messages about object and his ancestor quotas that will be exceeded if quota_delta will be added
 
@@ -115,7 +115,7 @@ class QuotaModelMixin(models.Model):
                 errors.append('%s quota limit: %s, requires %s (%s)\n' % (
                     quota.name, quota.limit, quota.usage + delta, quota.scope))
         for parent in self.get_quota_parents():
-            errors += parent.get_quota_errors(quota_deltas)
+            errors += parent.validate_quota_change(quota_deltas)
         return errors
 
     def _get_quota_ancestors(self):
@@ -148,7 +148,7 @@ class QuotaModelMixin(models.Model):
     @classmethod
     def get_sum_of_quotas_as_dict(cls, scopes, quota_names=None, fields=['usage', 'limit']):
         """
-        Return dictionary with sum of all scopes quotas.
+        Return dictionary with sum of all scopes' quotas.
 
         Dictionary format:
         {

@@ -21,7 +21,7 @@ class InstanceBackupStrategy(BackupStrategy):
         quota_usage = {
             'storage': instance.system_volume_size + instance.data_volume_size
         }
-        quota_errors = membership.get_quota_errors(quota_usage)
+        quota_errors = membership.validate_quota_change(quota_usage)
 
         return not bool(quota_errors)
 

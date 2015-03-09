@@ -265,7 +265,7 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
             'ram': flavor.ram,
             'max_instances': 1
         }
-        quota_errors = membership.get_quota_errors(instance_quota_usage)
+        quota_errors = membership.validate_quota_change(instance_quota_usage)
         if quota_errors:
             raise serializers.ValidationError(
                 'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
@@ -393,7 +393,7 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
                 'ram': flavor.ram - old_ram,
             }
 
-        quota_errors = membership.get_quota_errors(quota_usage)
+        quota_errors = membership.validate_quota_change(quota_usage)
         if quota_errors:
             raise serializers.ValidationError(
                 'One or more quotas are over limit: \n' + '\n'.join(quota_errors))

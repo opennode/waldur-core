@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.utils.translation import ungettext
 
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.quotas import models as quotas_models
 from nodeconductor.iaas import models
 from nodeconductor.iaas import tasks
 
