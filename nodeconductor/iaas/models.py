@@ -496,11 +496,11 @@ class TemplateLicense(core_models.UuidMixin, models.Model):
 
     def get_projects(self):
         return structure_models.Project.objects.filter(
-            clouds__images__template__template_licenses=self)
+            clouds__images__template__template_licenses=self).distinct()
 
     def get_projects_groups(self):
         return structure_models.ProjectGroup.objects.filter(
-            projects__clouds__images__template__template_licenses=self)
+            projects__clouds__images__template__template_licenses=self).distinct()
 
 
 @python_2_unicode_compatible
