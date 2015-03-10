@@ -186,7 +186,7 @@ class Image(models.Model):
 
 
 class IaasTemplateService(TemplateService):
-    service = models.ForeignKey(Cloud, related_name='+')
+    service = models.ForeignKey(Cloud, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
     flavor = models.ForeignKey(Flavor, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
     image = models.ForeignKey(Image, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
     sla = models.BooleanField(default=False)
