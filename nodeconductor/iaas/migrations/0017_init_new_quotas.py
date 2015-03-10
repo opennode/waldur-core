@@ -25,14 +25,18 @@ def init_quotas(apps, schema_editor):
         try:
             resource_quota = membership.resource_quota
             for quota_name in quotas_names:
-                membership.set_quota_limit(quota_name, getattr(resource_quota, quota_name))
+                quota = Quota.objects.get(content_type_id=cpm_ct.id, object_id=membership.id, name=quota_name)
+                quota.limit = getattr(resource_quota, quota_name)
+                quota.save()
         except ObjectDoesNotExist:
             pass
 
         try:
             resource_quota_usage = membership.resource_quota_usage
             for quota_name in quotas_names:
-                membership.set_quota_usage(quota_name, getattr(resource_quota_usage, quota_name))
+                quota = Quota.objects.get(content_type_id=cpm_ct.id, object_id=membership.id, name=quota_name)
+                quota.usage = getattr(resource_quota_usage, quota_name)
+                quota.save()
         except ObjectDoesNotExist:
             pass
 
