@@ -234,7 +234,7 @@ LOGGING = {
             'formatter': 'message-only',
             'level': config.get('logging', 'log_level').upper(),
         },
-        'syslog-events': {
+        'syslog-event': {
             'class': 'logging.handlers.SysLogHandler',
             'filters': ['is-event'],
             'formatter': 'message-only',
@@ -344,15 +344,6 @@ STATIC_ROOT = config.get('global', 'static_root')
 # Cache group memberships for an 10 mins to minimize LDAP traffic
 #AUTH_LDAP_CACHE_GROUPS = True
 #AUTH_LDAP_GROUP_CACHE_TIMEOUT = 600
-
-# SAML2 (legacy)
-# TODO-0.35+: Remove
-for key in ['metadata_cert', 'metadata_file', 'metadata_url']:
-    if config.has_option('saml2', key) and config.get('saml2', key) != '' and config.get('saml2', 'idp_' + key) == '':
-        warnings.warn(
-           "Config option %s is deprectaed and will be removed in NodeConductor 0.23; use idp_%s instead" % (key, key),
-            DeprecationWarning)
-        config.set('saml2', 'idp_' + key, config.get(key))
 
 # SAML2
 SAML_CONFIG = {
