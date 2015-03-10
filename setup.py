@@ -60,7 +60,7 @@ setup(
     },
     entry_points={
         'backup_strategies': ('Instance = nodeconductor.iaas.backup.instance_backup:InstanceBackupStrategy',),
-        'template_services': ('IaaS = nodeconductor.iaas.template.strategy:IaasTemplateServiceStrategy'),
+        'template_services': ('IaaS = nodeconductor.iaas.template.strategy:IaasTemplateServiceStrategy',),
         'console_scripts': ('nodeconductor = nodeconductor.server.manage:main',),
     },
     tests_require=tests_requires,

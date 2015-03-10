@@ -26,14 +26,15 @@ class TemplateConfig(AppConfig):
         )
 
         for service in get_template_services():
+            service_type = service.service_type.lower()
             signals.post_save.connect(
                 handlers.log_template_service_save,
                 sender=service,
-                dispatch_uid='nodeconductor.template.handlers.log_template_service_save',
+                dispatch_uid='nodeconductor.template.handlers.log_template_service_%s_save' % service_type,
             )
 
             signals.post_delete.connect(
                 handlers.log_template_service_delete,
                 sender=service,
-                dispatch_uid='nodeconductor.template.handlers.log_template_service_delete',
+                dispatch_uid='nodeconductor.template.handlers.log_template_service_%s_delete' % service_type,
             )
