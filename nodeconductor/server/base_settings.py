@@ -157,7 +157,7 @@ CELERYBEAT_SCHEDULE = {
 
     'sync-instances-with-zabbix': {
         'task': 'nodeconductor.iaas.tasks.sync_instances_with_zabbix',
-        'schedule': timedelta(minutes=10),
+        'schedule': timedelta(minutes=30),
         'args': (),
     },
 
