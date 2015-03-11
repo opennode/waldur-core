@@ -51,7 +51,7 @@ def schedule_transition():
                 'stop': ('schedule_stopping', tasks.schedule_stopping),
                 'restart': ('schedule_restarting', tasks.schedule_restarting),
                 'destroy': ('schedule_deletion', tasks.schedule_deleting),
-                'flavor change': ('schedule_resizing', tasks.update_flavor),
+                'flavor change': ('schedule_resizing', tasks.resize_flavor),
                 'disk extension': ('schedule_resizing', tasks.extend_disk),
             }
 

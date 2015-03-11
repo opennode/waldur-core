@@ -117,14 +117,14 @@ def schedule_deleting(instance_uuid):
         models.Instance.objects.filter(uuid=instance_uuid).delete()
 
 
-@shared_task
-@tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
-def update_flavor(instance_uuid, flavor_uuid):
-    instance = models.Instance.objects.get(uuid=instance_uuid)
-    flavor = models.Flavor.objects.get(uuid=flavor_uuid)
+# @shared_task
+# @tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
+# def update_flavor(instance_uuid, flavor_uuid):
+#     instance = models.Instance.objects.get(uuid=instance_uuid)
+#     flavor = models.Flavor.objects.get(uuid=flavor_uuid)
 
-    backend = instance.cloud_project_membership.cloud.get_backend()
-    backend.update_flavor(instance, flavor)
+#     backend = instance.cloud_project_membership.cloud.get_backend()
+#     backend.update_flavor(instance, flavor)
 
 
 @shared_task
@@ -134,6 +134,7 @@ def extend_disk(instance_uuid):
 
     backend = instance.cloud_project_membership.cloud.get_backend()
     backend.extend_disk(instance)
+
 
 @shared_task
 def import_instance(membership_pk, instance_id, template_id=None):
