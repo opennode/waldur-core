@@ -32,7 +32,7 @@ class FlavorSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
 
 
-class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
+class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
                       core_serializers.RelatedResourcesFieldMixin,
                       serializers.HyperlinkedModelSerializer):
     flavors = FlavorSerializer(many=True, read_only=True)
@@ -77,7 +77,7 @@ class UniqueConstraintError(exceptions.APIException):
     default_detail = 'Entity already exists.'
 
 
-class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFilteringMixin,
+class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilteringMixin,
                                        core_serializers.RelatedResourcesFieldMixin,
                                        serializers.HyperlinkedModelSerializer):
 
@@ -157,7 +157,7 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
         view_name = 'security_group-detail'
 
 
-class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
+class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMixin,
                                serializers.HyperlinkedModelSerializer):
 
     security_groups = InstanceSecurityGroupSerializer(
@@ -352,7 +352,7 @@ class CloudProjectMembershipQuotaSerializer(serializers.Serializer):
     vcpu = serializers.IntegerField(min_value=1, required=False)
 
 
-class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
+class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMixin,
                                serializers.Serializer):
     flavor = serializers.HyperlinkedRelatedField(
         view_name='flavor-detail',
@@ -438,6 +438,11 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
     customer_native_name = serializers.Field(source='cloud_project_membership.project.customer.native_name')
     template_os = serializers.Field(source='template.os')
     created = serializers.DateTimeField(format='iso-8601')
+
+    # Avoid name clashes with nodeconductor.template
+    RELATED_FIELD_VIEW_NAMES = {
+        'template': 'iaastemplate-detail',
+    }
 
     class Meta(object):
         model = models.Instance
