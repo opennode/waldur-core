@@ -9,10 +9,11 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.iaas.models import Cloud, CloudProjectMembership, IpMapping, SecurityGroup
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import (
+    Cloud, CloudProjectMembership, IpMapping, SecurityGroup,
     Template, TemplateLicense, Instance, InstanceSecurityGroup)
+from nodeconductor.iaas.tests.factories import InstanceFactory
 from nodeconductor.structure.models import *
 
 
@@ -176,7 +177,13 @@ Arguments:
                                 'bells.org': {
                                     'admins': ['Charlie'],
                                     'managers': ['Dave'],
-                                    'connected_clouds': ['Stratus']
+                                    'connected_clouds': ['Stratus'],
+                                    'resources': [
+                                        {'hostname': 'resource#%s' % i,
+                                         'cloud': 'Stratus',
+                                         'template': 'CentOS 7 minimal jmHCYir'}
+                                        for i in range(10)
+                                    ]
                                 },
                             },
                         },
@@ -320,6 +327,14 @@ Arguments:
                             cloud=customer_params['clouds'][cloud_name], project=project)
                         self.stdout.write('Connection between "%s Cloud" cloud account and "%s" project %s.'
                                           % (cloud_name, project_name, "created" if was_created else "already exists"))
+                    for resource_params in project_params.get('resources', []):
+                        hostname = resource_params['hostname']
+                        self.stdout.write('Adding resource "%s" to project "%s"' % (hostname, project_name))
+                        template = Template.objects.get(name=resource_params['template'])
+                        cloud_project_membership = CloudProjectMembership.objects.get(
+                            cloud__name=resource_params['cloud'], project__name=project_name)
+                        InstanceFactory(
+                            cloud_project_membership=cloud_project_membership, template=template, hostname=hostname)
 
     def create_cloud(self, customer):
         cloud_name = 'CloudAccount of %s (%s)' % (customer.name, random_string(10, 20, with_spaces=True))
