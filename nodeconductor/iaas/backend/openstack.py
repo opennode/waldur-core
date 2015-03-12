@@ -1791,7 +1791,7 @@ class OpenStackBackend(object):
         return re.sub(r'[^-a-zA-Z0-9 _]+', '_', key_name)
 
     def get_tenant_name(self, membership):
-        return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
+        return 'nc-{0}'.format(membership.project.uuid.hex)
 
     def create_backend_name(self):
         return 'nc-{0}'.format(uuid.uuid4().hex)

@@ -778,7 +778,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
         tenant = self.backend.get_or_create_tenant(self.membership, self.keystone_client)
 
         self.keystone_client.tenants.create.assert_called_once_with(
-            tenant_name='project_uuid-project_name',
+            tenant_name='nc-project_uuid',
             description='project_description',
         )
 
@@ -793,7 +793,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
         tenant = self.backend.get_or_create_tenant(self.membership, self.keystone_client)
 
         self.keystone_client.tenants.find.assert_called_once_with(
-            name='project_uuid-project_name',
+            name='nc-project_uuid',
         )
 
         self.assertEquals(tenant, existing_tenant, 'Looked up tenant not returned')
