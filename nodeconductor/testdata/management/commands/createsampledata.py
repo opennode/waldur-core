@@ -290,7 +290,7 @@ Arguments:
 
                 for template_name in cloud_params['templates']:
                     self.stdout.write('Creating template "%s" for cloud account "%s"...' % (template_name, cloud_name))
-                    template, was_created = Template.objects.get_or_create(name=template_name,
+                    template, was_created = Template.objects.get_or_create(name=template_name, is_active=True,
                                                                            **cloud_params['templates'][template_name])
                     if was_created:
                         cloud.images.create(cloud=cloud, template=template)
