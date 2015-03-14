@@ -612,6 +612,19 @@ class OpenStackBackend(object):
             session = self.create_admin_session(auth_url)
             nova = self.create_nova_client(session)
             stats = self.get_hypervisors_statistics(nova)
+
+            # XXX a temporary workaround for https://bugs.launchpad.net/nova/+bug/1333520
+            if 'vcpus' in stats:
+                nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+                openstacks = nc_settings.get('OPENSTACK_OVERCOMMIT', ())
+                try:
+                    openstack = next(o for o in openstacks if o['auth_url'] == auth_url)
+                    cpu_overcommit_ratio = openstack.get('cpu_overcommit_ratio', 1)
+                except StopIteration as e:
+                    logger.debug('Failed to find OpenStack overcommit values for Keystone URL %s', auth_url)
+                    cpu_overcommit_ratio = 1
+                stats['vcpus'] = stats['vcpus'] * cpu_overcommit_ratio
+
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to get statistics for auth_url: %s', auth_url)
             six.reraise(CloudBackendError, e)
