@@ -32,7 +32,7 @@ config_defaults = {
         'expired_backup_delete_period': 600,
         'instance_monthly_sla_update_period': 300,
         'instance_yearly_sla_update_period': 600,
-        'instance_zabbix_sync_period': 600,
+        'instance_zabbix_sync_period': 1800,
         'service_statistics_update_period': 600,
         'result_backend_url': 'redis://localhost',
     },
