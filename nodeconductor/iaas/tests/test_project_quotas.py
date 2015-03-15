@@ -16,7 +16,6 @@ class ProjectResourceQuotasTest(test.APITransactionTestCase):
         # project
         self.project = structure_factories.ProjectFactory()
         self.project.add_user(self.admin, ProjectRole.ADMINISTRATOR)
-        from nodeconductor.iaas.tests import factories as iaas_factories
         # resource quotas
         quotas = [
             {'name': 'vcpu', 'usage': 5, 'limit': 10},
@@ -24,12 +23,12 @@ class ProjectResourceQuotasTest(test.APITransactionTestCase):
             {'name': 'storage', 'usage': 512, 'limit': 20 * 1048},
             {'name': 'max_instances', 'usage': 5, 'limit': 10},
         ]
-        self.membership1 = iaas_factories.CloudProjectMembershipFactory(project=self.project, quotas=quotas)
-        self.membership2 = iaas_factories.CloudProjectMembershipFactory(project=self.project, quotas=quotas)
+        self.membership1 = factories.CloudProjectMembershipFactory(project=self.project, quotas=quotas)
+        self.membership2 = factories.CloudProjectMembershipFactory(project=self.project, quotas=quotas)
 
     def _execute_request_to_project(self, user):
         self.client.force_authenticate(user)
-        return self.client.get(factories.ProjectFactory.get_url(self.project))
+        return self.client.get(structure_factories.ProjectFactory.get_url(self.project))
 
     def test_project_returns_sum_of_membership_resource_quotas_usages(self):
         # when
