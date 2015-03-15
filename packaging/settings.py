@@ -60,6 +60,7 @@ config_defaults = {
         'password': '',
         'tenant_name': '',
         'username': '',
+        'cpu_overcommit_ratio': 1,
     },
     'saml2': {
         'acs_url': '',
@@ -609,6 +610,13 @@ NODECONDUCTOR = {
             'tenant_name': 'test',
         },
     ),
+    'OPENSTACK_OVERCOMMIT': (
+        {
+            'auth_url': config.get('openstack', 'auth_url'),
+            'cpu_overcommit_ratio': config.getint('openstack', 'cpu_overcommit_ratio'),
+        },
+    ),
+
     'MONITORING': {
         'ZABBIX': {
             'server': config.get('zabbix', 'server_url'),
