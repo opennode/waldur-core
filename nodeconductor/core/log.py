@@ -140,6 +140,16 @@ class EventFormatter(logging.Formatter):
         self.add_related_details(message, customer, 'customer',
             'name', 'abbreviation', 'contact_details')
 
+        # adding/removing roles
+        try:
+            structure_type = getattr(record, 'structure_type')
+            role_name = getattr(record, 'role_name')
+        except AttributeError:
+            pass
+        else:
+            message['structure_type'] = structure_type
+            message['role_name'] = role_name
+
         return json.dumps(message)
 
     def get_related(self, related_name, *sources):
