@@ -141,9 +141,12 @@ class EventFormatter(logging.Formatter):
             'name', 'abbreviation', 'contact_details')
 
         # adding/removing roles
-        structure_type = getattr(record, 'structure_type')
-        role_name = getattr(record, 'role_name')
-        if structure_type is not None and role_name is not None:
+        try:
+            structure_type = getattr(record, 'structure_type')
+            role_name = getattr(record, 'role_name')
+        except AttributeError:
+            pass
+        else:
             message['structure_type'] = structure_type
             message['role_name'] = role_name
 
