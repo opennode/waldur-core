@@ -39,7 +39,9 @@ class BasicUserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = User
         fields = ('url', 'uuid', 'username', 'full_name', 'native_name',)
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
 
 class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
@@ -67,7 +69,9 @@ class ProjectGroupProjectMembershipSerializer(serializers.ModelSerializer):
     class Meta(object):
         model = models.ProjectGroup.projects.through
         fields = ('url', 'name',)
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
         view_name = 'projectgroup-detail'
 
     def restore_object(self, attrs, instance=None):
@@ -93,7 +97,10 @@ class ProjectSerializer(core_serializers.AugmentedSerializerMixin,
             'project_groups',
             'description',
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+            'customer': {'lookup_field': 'uuid'},
+        }
         related_paths = {
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
@@ -115,7 +122,10 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
     class Meta(object):
         model = models.Project
         fields = ('url', 'name', 'customer', 'description', 'project_groups')
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+            'customer': {'lookup_field': 'uuid'},
+        }
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -167,7 +177,9 @@ class CustomerSerializer(core_serializers.PermissionFieldFilteringMixin,
             'projects', 'project_groups',
             'owners'
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     def _get_filtered_data(self, objects, serializer):
         try:
@@ -208,7 +220,10 @@ class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
             'projects',
             'description',
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+            'customer': {'lookup_field': 'uuid'},
+        }
         related_paths = {
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
@@ -442,7 +457,9 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'organization',
             'organization_approved',
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):

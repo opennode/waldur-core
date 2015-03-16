@@ -126,7 +126,10 @@ class PermissionFieldFilteringMixin(object):
 class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         fields = ('url', 'name')
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+        list_serializer_class = CustomListSerializer
 
 
 class UnboundSerializerMethodField(Field):
