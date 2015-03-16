@@ -152,7 +152,7 @@ def tracked_processing(model_class, processing_state, desired_state, error_state
     return decorator
 
 
-def transition(model_class, processing_state):
+def transition(model_class, processing_state, error_state='set_erred'):
     """ Atomically runs state transition for a model_class instance.
         Executes desired task on success.
     """
@@ -197,11 +197,18 @@ def transition(model_class, processing_state):
             else:
                 logger.info(
                     'Managed to %s %s with id %s',
-                    logged_operation, entity_name, uuid_or_pk
-                )
+                    logged_operation, entity_name, uuid_or_pk)
 
-                task_kwargs['transition_entity'] = entity
-                return task_fn(uuid_or_pk, *task_args, **task_kwargs)
+                try:
+                    task_kwargs['transition_entity'] = entity
+                    return task_fn(uuid_or_pk, *task_args, **task_kwargs)
+                except:
+                    getattr(entity, error_state)()
+                    entity.save(update_fields=['state'])
+                    logger.error(
+                        'Failed to finish task %s after %s %s with id %s',
+                        task_fn.__name__, logged_operation, entity_name, uuid_or_pk)
+                    raise
 
         return wrapped
     return decorator

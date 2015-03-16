@@ -31,8 +31,10 @@ def resize_flavor(instance_uuid, flavor_uuid, transition_entity=None):
         nova_wait_for_server_status.s(server_id, 'VERIFY_RESIZE'),
         nova_server_resize_confirm.s(server_id),
         nova_wait_for_server_status.s(server_id, 'SHUTOFF'),
-        flavor_change_succeeded.si(instance_uuid, flavor_uuid),
-    ).apply_async(link_error=flavor_change_failed.si(instance_uuid))
+    ).apply_async(
+        link=flavor_change_succeeded.si(instance_uuid, flavor_uuid),
+        link_error=flavor_change_failed.si(instance_uuid),
+    )
 
 
 @shared_task
