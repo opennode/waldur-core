@@ -2,6 +2,7 @@ import base64
 
 from django.contrib.auth import authenticate
 from django.core import validators
+from django.core.exceptions import ImproperlyConfigured
 from rest_framework import serializers
 from rest_framework.fields import Field
 
@@ -119,46 +120,7 @@ class PermissionFieldFilteringMixin(object):
             'to return list of filtered fields')
 
 
-class RelatedResourcesFieldMixin(object):
-    """
-    Mixin that adds fields describing related resources.
 
-    For related resource Foo two fields are added:
-
-    1. `foo` containing a URL to the Foo resource
-    2. `foo_name` containing the name of the Foo resource
-    3. `foo_uuid` containing the uuid of the Foo resource
-
-    In order to add related resource fields:
-
-    1. Inherit from `RelatedResourcesFieldMixin`.
-
-    2. Implement `get_related_paths()` method
-       and return paths to related resources
-       from the current resource.
-    """
-    def get_default_fields(self):
-        fields = super(RelatedResourcesFieldMixin, self).get_default_fields()
-
-        for path in self.get_related_paths():
-            path_components = path.split('.')
-            entity_name = path_components[-1]
-
-            fields[entity_name] = serializers.HyperlinkedRelatedField(
-                source=path,
-                view_name='{0}-detail'.format(entity_name),
-                lookup_field='uuid',
-                read_only=len(path_components) > 1,
-            )
-
-            fields['{0}_name'.format(entity_name)] = serializers.ReadOnlyField(source='{0}.name'.format(path))
-            fields['{0}_uuid'.format(entity_name)] = serializers.ReadOnlyField(source='{0}.uuid'.format(path))
-
-        return fields
-
-    def get_related_paths(self):
-        raise NotImplementedError(
-            'Implement get_paths() to return list of filtered fields')
 
 
 class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
@@ -186,42 +148,150 @@ class UnboundSerializerMethodField(Field):
         return self.to_native(value)
 
 
-class CollectedFieldsMixin(object):
+class AugmentedSerializerMixin(object):
     """
-    A mixin that allows serializer to send a signal for modifying (e.g. adding) fields into the rendering.
-    Useful when you want to enrich output with fields coming from modules that are imported later
-    or from plugins.
+    This mixing provides several extensions to stock Serializer class:
 
-    Handler should bind to 'pre_serializer_fields' signal.
+    1.  Adding extra fields to serializer from dependent applications in a way
+        that doesn't introduce circular dependencies.
 
-    Example of signal handler implementation:
+        To achieve this, dependent application should subscribe
+        to pre_serializer_fields signal and inject additional fields.
 
-        def get_customer_clouds(obj, request):
-            customer_clouds = obj.clouds.all()
-            try:
-                user = request.user
-                customer_clouds = filter_queryset_for_user(customer_clouds, user)
-            except AttributeError:
-                pass
+        Example of signal handler implementation:
+            # handlers.py
+            def add_customer_name(sender, fields, **kwargs):
+                fields['customer_name'] = ReadOnlyField(source='customer.name')
 
-            from nodeconductor.iaas.serializers import BasicCloudSerializer
-            serializer_instance = BasicCloudSerializer(customer_clouds, context={'request': request})
+            # apps.py
+            class DependentAppConfig(AppConfig):
+                name = 'nodeconductor.structure_dependent'
+                verbose_name = "NodeConductor Structure Enhancements"
 
-            return serializer_instance.data
+                def ready(self):
+                    from nodeconductor.structure.serializers import CustomerSerializer
 
-        # @receiver(pre_serializer_fields, sender=CustomerSerializer)  # Django 1.7
-        @receiver(pre_serializer_fields)
-        def add_clouds_to_customer(sender, fields, **kwargs):
-            # Note: importing here to avoid circular import hell
-            from nodeconductor.structure.serializers import CustomerSerializer
-            if sender is not CustomerSerializer:
-                return
+                    pre_serializer_fields.connect(
+                        handlers.add_customer_name,
+                        sender=CustomerSerializer,
+                    )
 
-            fields['clouds'] = UnboundSerializerMethodField(get_customer_clouds)
+    2.  Declaratively add attributes fields of related entities for ModelSerializers.
+
+        To achieve list related fields whose attributes you want to include.
+
+        Example:
+            class ProjectSerializer(AugmentedSerializerMixin,
+                                    serializers.HyperlinkedModelSerializer):
+                class Meta(object):
+                    model = models.Project
+                    fields = (
+                        'url', 'uuid', 'name',
+                        'customer', 'customer_uuid', 'customer_name',
+                    )
+                    related_paths = ('customer',)
+
+            # This is equivalent to listing the fields explicitly,
+            # by default "uuid" and "name" fields of related object are added:
+
+            class ProjectSerializer(AugmentedSerializerMixin,
+                                    serializers.HyperlinkedModelSerializer):
+                customer_uuid = serializers.ReadOnlyField(source='customer.uuid')
+                customer_name = serializers.ReadOnlyField(source='customer.name')
+                class Meta(object):
+                    model = models.Project
+                    fields = (
+                        'url', 'uuid', 'name',
+                        'customer', 'customer_uuid', 'customer_name',
+                    )
+                    lookup_field = 'uuid'
+
+            # The fields of related object can be customized:
+
+            class ProjectSerializer(AugmentedSerializerMixin,
+                                    serializers.HyperlinkedModelSerializer):
+                class Meta(object):
+                    model = models.Project
+                    fields = (
+                        'url', 'uuid', 'name',
+                        'customer', 'customer_uuid',
+                        'customer_name', 'customer_native_name',
+                    )
+                    related_paths = {
+                        'customer': ('uuid', 'name', 'native_name')
+                    }
 
     """
 
     def get_fields(self):
-        fields = super(CollectedFieldsMixin, self).get_fields()
+        fields = super(AugmentedSerializerMixin, self).get_fields()
         pre_serializer_fields.send(sender=self.__class__, fields=fields)
         return fields
+
+    def _get_related_paths(self):
+        try:
+            related_paths = self.Meta.related_paths
+        except AttributeError:
+            if callable(getattr(self, 'get_related_paths', None)):
+                import warnings
+
+                warnings.warn(
+                    "get_related_paths() is deprecated. "
+                    "Inherit from AugmentedSerializerMixin and set Meta.related_paths instead.",
+                    DeprecationWarning,
+                )
+                related_paths = self.get_related_paths()
+            else:
+                return {}
+
+        if not isinstance(self, serializers.ModelSerializer):
+            raise ImproperlyConfigured(
+                'related_paths can be defined only for ModelSerializer.'
+            )
+
+        if isinstance(related_paths, (list, tuple)):
+            related_paths = {path: ('name', 'uuid') for path in related_paths}
+
+        return related_paths
+
+    def build_unknown_field(self, field_name, model_class):
+        related_paths = self._get_related_paths()
+
+        related_field_source_map = {
+            '{0}_{1}'.format(path.split('.')[-1], attribute): '{0}.{1}'.format(path, attribute)
+            for path, attributes in related_paths.items()
+            for attribute in attributes
+        }
+
+        try:
+            return serializers.ReadOnlyField, {'source': related_field_source_map[field_name]}
+        except KeyError:
+            return super(AugmentedSerializerMixin, self).build_unknown_field(field_name, model_class)
+
+
+class CollectedFieldsMixin(AugmentedSerializerMixin):
+    def __init__(self, *args, **kwargs):
+        import warnings
+
+        warnings.warn(
+            "CollectedFieldsMixin is deprecated. "
+            "Use AugmentedSerializerMixin instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        super(CollectedFieldsMixin, self).__init__(*args, **kwargs)
+
+
+class RelatedResourcesFieldMixin(AugmentedSerializerMixin):
+    def __init__(self, *args, **kwargs):
+        import warnings
+
+        warnings.warn(
+            "RelatedResourcesFieldMixin is deprecated. "
+            "Use AugmentedSerializerMixin instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        super(RelatedResourcesFieldMixin, self).__init__(*args, **kwargs)

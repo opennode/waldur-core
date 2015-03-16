@@ -78,14 +78,11 @@ class ProjectGroupProjectMembershipSerializer(serializers.ModelSerializer):
         return [super(ProjectGroupProjectMembershipSerializer, self).to_native(member) for member in memberships]
 
 
-class ProjectSerializer(core_serializers.CollectedFieldsMixin,
-                        core_serializers.RelatedResourcesFieldMixin,
+class ProjectSerializer(core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
     resource_quota = serializers.SerializerMethodField()
     resource_quota_usage = serializers.SerializerMethodField()
-    customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
-    customer_abbreviation = serializers.ReadOnlyField(source='customer.abbreviation')
 
     class Meta(object):
         model = models.Project
@@ -97,6 +94,9 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
             'description',
         )
         lookup_field = 'uuid'
+        related_paths = {
+            'customer': ('uuid', 'name', 'native_name', 'abbreviation')
+        }
 
     def get_related_paths(self):
         return 'customer',
@@ -107,6 +107,7 @@ class ProjectSerializer(core_serializers.CollectedFieldsMixin,
 
 
 class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
+                              core_serializers.AugmentedSerializerMixin,
                               serializers.HyperlinkedModelSerializer):
     # TODO: Reimplement using custom object save logic in view
     project_groups = ProjectGroupProjectMembershipSerializer(many=True, write_only=True, required=False)
@@ -150,7 +151,8 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         raise ValidationError('You cannot create project with such data')
 
 
-class CustomerSerializer(core_serializers.CollectedFieldsMixin,
+class CustomerSerializer(core_serializers.PermissionFieldFilteringMixin,
+                         core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField('get_customer_projects')
     project_groups = serializers.SerializerMethodField('get_customer_project_groups')
@@ -183,17 +185,18 @@ class CustomerSerializer(core_serializers.CollectedFieldsMixin,
     def get_customer_project_groups(self, obj):
         return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
 
+    def get_filtered_field_names(self):
+        return 'project_groups', 'projects', 'clouds'
+
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):
         return fix_non_nullable_attrs(attrs)
 
 
 class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
-                             core_serializers.RelatedResourcesFieldMixin,
+                             core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer):
     projects = BasicProjectSerializer(many=True, read_only=True)
-    customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
-    customer_abbreviation = serializers.ReadOnlyField(source='customer.abbreviation')
 
     class Meta(object):
         model = models.ProjectGroup
@@ -206,6 +209,9 @@ class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
             'description',
         )
         lookup_field = 'uuid'
+        related_paths = {
+            'customer': ('uuid', 'name', 'native_name', 'abbreviation')
+        }
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -223,9 +229,6 @@ class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
             fields['customer'].read_only = True
 
         return fields
-
-    def get_related_paths(self):
-        return 'customer',
 
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):
