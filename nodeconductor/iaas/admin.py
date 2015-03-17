@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.translation import ungettext
 
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.quotas import models as quotas_models
+from nodeconductor.structure.admin import ProtectedModelMixin
 from nodeconductor.iaas import models
 from nodeconductor.iaas import tasks
 
@@ -121,7 +121,7 @@ class InstanceLicenseInline(admin.TabularInline):
     extra = 1
 
 
-class InstanceAdmin(admin.ModelAdmin):
+class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
     inlines = (
         InstanceLicenseInline,
     )
