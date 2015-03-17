@@ -236,7 +236,6 @@ class InstanceViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       core_mixins.ListModelMixin,
                       core_mixins.UpdateOnlyModelMixin,
-                      core_mixins.UpdateOnlyStableMixin,
                       viewsets.GenericViewSet):
     """List of VM instances that are accessible by this user.
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#vm-instance-management
@@ -245,7 +244,6 @@ class InstanceViewSet(mixins.CreateModelMixin,
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     lookup_field = 'uuid'
-    provisioning_restricted_actions = 'update', 'partial_update', 'destroy', 'stop', 'start', 'resize'
     filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = InstanceFilter
@@ -282,12 +280,18 @@ class InstanceViewSet(mixins.CreateModelMixin,
         return context
 
     def initial(self, request, *args, **kwargs):
-        if hasattr(self, 'provisioning_restricted_actions'):
-            if self.action in self.provisioning_restricted_actions:
-                instance = self.get_object()
-                if instance and instance.state == instance.States.PROVISIONING_SCHEDULED:
-                    raise core_exceptions.IncorrectStateException(
-                        'Provisioning scheduled. Disabled modifications.')
+        if self.action in ('update', 'partial_update', 'destroy'):
+            instance = self.get_object()
+            if instance and instance.state not in instance.States.STABLE_STATES:
+                raise core_exceptions.IncorrectStateException(
+                    'Modification allowed in stable states only')
+
+        # TODO: Replace it with schedule_transition and common transition flow
+        elif self.action in ('stop', 'start', 'resize'):
+            instance = self.get_object()
+            if instance and instance.state == instance.States.PROVISIONING_SCHEDULED:
+                raise core_exceptions.IncorrectStateException(
+                    'Provisioning scheduled. Disabled modifications.')
 
         return super(InstanceViewSet, self).initial(request, *args, **kwargs)
 

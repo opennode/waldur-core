@@ -6,6 +6,9 @@ Coming in the next release
 
 (Fixes/changes that are in develop branch.)
 
+- Change OpenStack tenant name generation schema. Now it uses only project UUID, name is removed.
+
+
 Release 0.40.0
 --------------
 - Enhanced support of instance import - added ability to set template.

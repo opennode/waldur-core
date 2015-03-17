@@ -137,6 +137,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.backend.update_security_group = mock.Mock()
         self.backend.delete_security_group = mock.Mock()
         self.backend.push_security_group_rules = mock.Mock()
+        self.backend.get_hypervisors_statistics = mock.Mock(return_value=[])
 
     def test_push_membership_synchronizes_user(self):
         self.backend.push_membership(self.membership)
@@ -172,22 +173,17 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         with self.assertRaises(CloudBackendError):
             self.backend.push_membership(self.membership)
 
-    def test_get_resource_stats_gets_credetials_with_fiven_auth_url(self):
+    def test_get_resource_stats_gets_credentials_with_given_auth_url(self):
         auth_url = 'http://example.com/'
         self.backend.get_resource_stats(auth_url)
         self.backend.create_admin_session.assert_called_once_with(auth_url)
 
-    def test_get_resource_stats_raises_on_openstack_api_error(self):
+    def test_get_resource_stats_raises_openstack_api_error(self):
         self.backend.create_nova_client.side_effect = keystone_exceptions.AuthorizationFailure
 
         auth_url = 'http://example.com/'
         with self.assertRaises(CloudBackendError):
             self.backend.get_resource_stats(auth_url)
-
-    def test_get_resource_stats_calls_hypervisors_statistics_method(self):
-        auth_url = 'http://example.com/'
-        self.backend.get_resource_stats(auth_url)
-        self.nova_client.hypervisors.statistics.assert_called_once_with()
 
     def test_pull_quota_resource_initiates_quota_parameters(self):
         membership = factories.CloudProjectMembershipFactory(tenant_id='test_backend_id')
@@ -263,7 +259,7 @@ class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
         self.backend.delete_security_group = mock.Mock()
         self.backend.push_security_group_rules = mock.Mock()
 
-    def test_push_security_groups_creates_unexisted_groups(self):
+    def test_push_security_groups_creates_nonexisting_groups(self):
         group1 = factories.SecurityGroupFactory(cloud_project_membership=self.membership)
         group2 = factories.SecurityGroupFactory(cloud_project_membership=self.membership)
         self.nova_client.security_groups.list = mock.Mock(return_value=[])
@@ -284,7 +280,7 @@ class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
         # then
         self.backend.update_security_group.assert_any_call(group1, self.nova_client)
 
-    def test_push_security_groups_deletes_unexisted_groups(self):
+    def test_push_security_groups_deletes_nonexisting_groups(self):
         group1 = mock.Mock()
         group1.name = 'group1'
         group1.id = 1
@@ -778,7 +774,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
         tenant = self.backend.get_or_create_tenant(self.membership, self.keystone_client)
 
         self.keystone_client.tenants.create.assert_called_once_with(
-            tenant_name='project_uuid-project_name',
+            tenant_name='nc-project_uuid',
             description='project_description',
         )
 
@@ -793,7 +789,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
         tenant = self.backend.get_or_create_tenant(self.membership, self.keystone_client)
 
         self.keystone_client.tenants.find.assert_called_once_with(
-            name='project_uuid-project_name',
+            name='nc-project_uuid',
         )
 
         self.assertEquals(tenant, existing_tenant, 'Looked up tenant not returned')
