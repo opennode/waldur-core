@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.utils.translation import ungettext
 
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure.admin import ProtectedModelMixin
 from nodeconductor.iaas import models
 from nodeconductor.iaas import tasks
@@ -66,6 +67,7 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     ordering = ('cloud__customer__name', 'project__name', 'cloud__name')
     list_display_links = ('get_cloud_name',)
     search_fields = ('cloud__customer__name', 'project__name', 'cloud__name')
+    inlines = [QuotaInline]
 
     actions = ['pull_cloud_memberships']
 

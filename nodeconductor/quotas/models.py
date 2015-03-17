@@ -2,11 +2,13 @@ from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
 from django.db import models
 from django.db.models import Sum
+from django.utils.encoding import python_2_unicode_compatible
 
 from nodeconductor.quotas import exceptions, managers
 from nodeconductor.core.models import UuidMixin
 
 
+@python_2_unicode_compatible
 class Quota(UuidMixin, models.Model):
     """
     Abstract quota for any resource
@@ -45,6 +47,9 @@ class Quota(UuidMixin, models.Model):
             limit = threshold * limit
 
         return usage > limit
+
+    def __str__(self):
+        return '%s quota for %s' % (self.name, self.scope)
 
 
 class QuotaModelMixin(models.Model):
