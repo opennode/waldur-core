@@ -78,7 +78,7 @@ Project quota management
 Quotas
 ======
 
-.. include:: qutoas.rst
+.. include:: quotas.rst
 
 Security group management
 =========================
