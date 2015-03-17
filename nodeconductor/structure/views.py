@@ -18,7 +18,6 @@ from rest_framework.response import Response
 from rest_framework.settings import api_settings
 
 from nodeconductor.core import filters as core_filters
-from nodeconductor.core import mixins
 from nodeconductor.core import viewsets
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.structure import filters
@@ -335,7 +334,7 @@ class ProjectGroupMembershipFilter(django_filters.FilterSet):
 class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.RetrieveModelMixin,
                                     rf_mixins.DestroyModelMixin,
-                                    mixins.ListModelMixin,
+                                    rf_mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
     """List of project groups members that are accessible by this user.
 
@@ -613,7 +612,7 @@ class ProjectPermissionFilter(django_filters.FilterSet):
 
 
 class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
-                               mixins.ListModelMixin,
+                               rf_mixins.ListModelMixin,
                                rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.exclude(group__projectrole=None)
     serializer_class = serializers.ProjectPermissionSerializer
@@ -753,7 +752,7 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
 
 
 class ProjectGroupPermissionViewSet(rf_mixins.RetrieveModelMixin,
-                                    mixins.ListModelMixin,
+                                    rf_mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.all()
     serializer_class = serializers.ProjectGroupPermissionSerializer
@@ -897,7 +896,7 @@ class CustomerPermissionFilter(django_filters.FilterSet):
 
 
 class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
-                                mixins.ListModelMixin,
+                                rf_mixins.ListModelMixin,
                                 rf_mixins.DestroyModelMixin,
                                 rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.exclude(group__customerrole=None)

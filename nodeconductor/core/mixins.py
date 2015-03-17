@@ -1,20 +1,18 @@
 from __future__ import unicode_literals
 
-from collections import OrderedDict
-
-from django.core.paginator import EmptyPage
 from django.db.models import ProtectedError
 from django.utils.encoding import force_text
 
+from rest_framework import mixins
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.templatetags.rest_framework import replace_query_param
 
 from nodeconductor.iaas.models import Instance
 from nodeconductor.core.models import SynchronizableMixin, SynchronizationStates
 from nodeconductor.core.exceptions import IncorrectStateException
 
 
+# TODO: Deprecate this mixin, use DRF 3.x exception handler instead
 class DestroyModelMixin(object):
     """
     Destroy a model instance.
@@ -42,51 +40,17 @@ class DestroyModelMixin(object):
         instance.delete()
 
 
-class ListModelMixin(object):
-    """
-    List a queryset.
+class ListModelMixin(mixins.ListModelMixin):
+    def __init__(self, *args, **kwargs):
+        import warnings
 
-    Paginates result without modifying the format of the response.
-    Instead headers are used for pagination info.
-    """
-    page_field = 'page'
-    _siblings = OrderedDict((
-        ('first', lambda p: p.paginator.page_range[0]),
-        ('prev', lambda p: p.previous_page_number()),
-        ('next', lambda p: p.next_page_number()),
-        ('last', lambda p: p.paginator.page_range[-1]),
-    ))
+        warnings.warn(
+            "nodeconductor.core.mixins.ListModelMixin is deprecated. "
+            "Use stock rest_framework.mixins.ListModelMixin instead.",
+            DeprecationWarning,
+        )
 
-    def list(self, request, *args, **kwargs):
-        instance = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(instance)
-        serializer = self.get_serializer(page, many=True)
-        headers = self.get_pagination_headers(request, page)
-
-        return Response(serializer.data, headers=headers)
-
-    def get_pagination_headers(self, request, page):
-        if page is None:
-            return {}
-
-        links = []
-        url = request and request.build_absolute_uri() or ''
-
-        for rel, get_page_number in self._siblings.items():
-            try:
-                page_url = replace_query_param(url, self.page_field, get_page_number(page))
-                links.append('<%s>; rel="%s"' % (page_url, rel))
-            except EmptyPage:
-                pass
-
-        headers = {
-            'X-Result-Count': page.paginator.count,
-        }
-
-        if links:
-            headers['Link'] = ', '.join(links)
-
-        return headers
+        super(ListModelMixin, self).__init__(*args, **kwargs)
 
 
 class UpdateOnlyStableMixin(object):

@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import warnings
+
 from rest_framework import mixins as rf_mixins
 from rest_framework import viewsets as rf_viewsets
 
@@ -10,7 +12,7 @@ class ModelViewSet(rf_mixins.CreateModelMixin,
                    rf_mixins.RetrieveModelMixin,
                    rf_mixins.UpdateModelMixin,
                    mixins.DestroyModelMixin,
-                   mixins.ListModelMixin,
+                   rf_mixins.ListModelMixin,
                    rf_viewsets.GenericViewSet):
     """
     A viewset that provides default `create()`, `retrieve()`, `update()`,
@@ -20,30 +22,33 @@ class ModelViewSet(rf_mixins.CreateModelMixin,
 
 
 class ReadOnlyModelViewSet(rf_mixins.RetrieveModelMixin,
-                           mixins.ListModelMixin,
+                           rf_mixins.ListModelMixin,
                            rf_viewsets.GenericViewSet):
     """
     A viewset that provides default `list()` and `retrieve()` actions.
     """
-    pass
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "nodeconductor.core.viewsets.ReadOnlyModelViewSet is deprecated. "
+            "Use stock rest_framework.viewsets.ReadOnlyModelViewSet instead.",
+            DeprecationWarning,
+        )
+
+        super(ReadOnlyModelViewSet, self).__init__(*args, **kwargs)
 
 
 class CreateModelViewSet(rf_mixins.CreateModelMixin,
                          rf_mixins.RetrieveModelMixin,
-                         mixins.ListModelMixin,
+                         rf_mixins.ListModelMixin,
                          rf_viewsets.GenericViewSet):
     """
     A viewset that provides default `create()`, `list()` and `retrieve()` actions.
     """
-    pass
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "nodeconductor.core.viewsets.CreateModelViewSet is deprecated. "
+            "Use combination of stock rest_framework.mixins.* and GenericViewSet instead.",
+            DeprecationWarning,
+        )
 
-
-class UpdateModelViewSet(rf_mixins.RetrieveModelMixin,
-                         rf_mixins.UpdateModelMixin,
-                         mixins.ListModelMixin,
-                         rf_viewsets.GenericViewSet):
-    """
-    A viewset that provides default `retrieve()`, `update()`,
-    `partial_update()`, and `list()` actions.
-    """
-    pass
+        super(CreateModelViewSet, self).__init__(*args, **kwargs)
