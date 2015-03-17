@@ -377,11 +377,11 @@ class OpenStackBackend(object):
             logger.exception('Failed to get openstack security groups for membership %s', membership.id)
             six.reraise(CloudBackendError, e)
 
-        # list of openstack security groups, that do not exist in nc
+        # list of openstack security groups that do not exist in nc
         nonexistent_groups = []
-        # list of openstack security groups, that have wrong parameters in in nc
+        # list of openstack security groups that have wrong parameters in in nc
         unsynchronized_groups = []
-        # list of nc security groups, that have do not exist in openstack
+        # list of nc security groups that do not exist in openstack
 
         from nodeconductor.iaas.models import SecurityGroup
 
@@ -2155,7 +2155,7 @@ class OpenStackBackend(object):
             return False
         if backend_rule['ip_protocol'] != nc_rule.protocol:
             return False
-        if backend_rule['ip_range']['cidr'] != nc_rule.cidr:
+        if backend_rule['ip_range'].get('cidr', '') != nc_rule.cidr:
             return False
         return True
 
