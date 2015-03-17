@@ -99,3 +99,10 @@ Usage:
     to order ``<quota_name>``. For example ``quotas__limit__ram`` will enable ordering by ``ram`` quota.
 
 Ordering can be done only by one quota at a time.
+
+
+QuotaInline for admin models
+----------------------------
+
+``quotas.admin`` contains generic  inline model``QuotaInline``, which can be used for as inline model for any quota
+owner.
