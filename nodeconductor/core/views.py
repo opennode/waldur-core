@@ -32,7 +32,7 @@ class ObtainAuthToken(APIView):
     serializer_class = AuthTokenSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.DATA)
+        serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             user = serializer.object['user']
             token, created = Token.objects.get_or_create(user=user)
@@ -73,7 +73,7 @@ class Saml2AuthView(APIView):
         djangosaml2.backends.Saml2Backend that should be
         enabled in the settings.py
         """
-        serializer = self.serializer_class(data=request.DATA)
+        serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             errors = dict(serializer.errors)
 
