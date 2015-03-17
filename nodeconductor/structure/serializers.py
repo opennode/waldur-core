@@ -213,8 +213,7 @@ class ProjectCreateSerializer(PermissionFieldFilteringMixin,
         raise ValidationError('You cannot create project with such data')
 
 
-class CustomerSerializer(PermissionFieldFilteringMixin,
-                         core_serializers.AugmentedSerializerMixin,
+class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField('get_customer_projects')
     project_groups = serializers.SerializerMethodField('get_customer_project_groups')
@@ -248,9 +247,6 @@ class CustomerSerializer(PermissionFieldFilteringMixin,
 
     def get_customer_project_groups(self, obj):
         return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
-
-    def get_filtered_field_names(self):
-        return 'project_groups', 'projects', 'clouds'
 
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):
