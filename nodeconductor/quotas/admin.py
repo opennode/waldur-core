@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.contrib.contenttypes import models as ct_models
+from django.contrib.contenttypes import models as ct_models, generic
 
 from nodeconductor.quotas import models, utils
 
@@ -25,6 +25,14 @@ class QuotaScopeClassListFilter(admin.SimpleListFilter):
 class QuotaAdmin(admin.ModelAdmin):
     list_display = ['scope', 'name', 'limit', 'usage']
     list_filter = ['name', QuotaScopeClassListFilter]
+
+
+class QuotaInline(generic.GenericStackedInline):
+    model = models.Quota
+    fields = ('name', 'limit', 'usage')
+    readonly_fields = ('name',)
+    extra = 0
+    can_delete = False
 
 
 admin.site.register(models.Quota, QuotaAdmin)

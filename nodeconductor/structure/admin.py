@@ -2,6 +2,7 @@ from django.db import models as django_models
 from django.http import HttpResponseRedirect
 from django.contrib import admin, messages
 
+from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models
 
 
@@ -44,6 +45,7 @@ class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ['name', 'uuid', 'customer']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
+    inlines = [QuotaInline]
 
 
 class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
