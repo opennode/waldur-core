@@ -12,6 +12,7 @@ from model_utils.models import TimeStampedModel
 
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.models import UuidMixin, DescribableMixin
+from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
 
@@ -173,11 +174,13 @@ class ProjectRole(UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class Project(DescribableMixin, UuidMixin, TimeStampedModel):
+class Project(DescribableMixin, UuidMixin, quotas_models.QuotaModelMixin, TimeStampedModel):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
         project_group_path = 'project_groups'
+
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
 
     name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
@@ -265,6 +268,9 @@ class Project(DescribableMixin, UuidMixin, TimeStampedModel):
             'name': self.name,
             'customer': self.customer.name
         }
+
+    def can_user_update_quotas(self, user):
+        return user.is_staff
 
 
 @python_2_unicode_compatible

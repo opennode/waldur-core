@@ -20,6 +20,7 @@ from rest_framework.settings import api_settings
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import viewsets
 from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
 from nodeconductor.structure import models
@@ -83,7 +84,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_class = CustomerFilter
 
 
-class ProjectFilter(django_filters.FilterSet):
+class ProjectFilter(quotas_views.QuotaFilterMixin, django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='customer__uuid',
         distinct=True,
@@ -122,23 +123,6 @@ class ProjectFilter(django_filters.FilterSet):
 
     description = django_filters.CharFilter(lookup_type='icontains')
 
-    # TODO: quota filters are matching quota values in every CloudProjectMembership quota, not aggregated.
-    vcpu = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__vcpu',
-    )
-
-    ram = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__ram',
-    )
-
-    storage = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__storage',
-    )
-
-    max_instances = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__max_instances',
-    )
-
     class Meta(object):
         model = models.Project
         fields = [
@@ -147,11 +131,6 @@ class ProjectFilter(django_filters.FilterSet):
             'name',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'description',
-            # quotas
-            'vcpu',
-            'ram',
-            'storage',
-            'max_instances',
         ]
         order_by = [
             'name',
@@ -164,32 +143,34 @@ class ProjectFilter(django_filters.FilterSet):
             '-customer__name',
             'customer__abbreviation',
             '-customer__abbreviation',
-            'cloudprojectmembership__resource_quota__vcpu',
-            '-cloudprojectmembership__resource_quota__vcpu',
-            'cloudprojectmembership__resource_quota__ram',
-            '-cloudprojectmembership__resource_quota__ram',
-            'cloudprojectmembership__resource_quota__storage',
-            '-cloudprojectmembership__resource_quota__storage',
-            'cloudprojectmembership__resource_quota__max_instances',
-            '-cloudprojectmembership__resource_quota__max_instances',
+            'quotas__limit__ram',
+            '-quotas__limit__ram',
+            'quotas__limit__vcpu',
+            '-quotas__limit__vcpu',
+            'quotas__limit__storage',
+            '-quotas__limit__storage',
+            'quotas__limit__max_instances',
+            '-quotas__limit__max_instances',
+            'quotas__limit',
+            '-quotas__limit',
         ]
 
         order_by_mapping = {
             # Proper field naming
             'project_group_name': 'project_groups__name',
-            'vcpu': 'cloudprojectmembership__resource_quota__vcpu',
-            'ram': 'cloudprojectmembership__resource_quota__ram',
-            'max_instances': 'cloudprojectmembership__resource_quota__max_instances',
-            'storage': 'cloudprojectmembership__resource_quota__storage',
+            'vcpu': 'quotas__limit__vcpu',
+            'ram': 'quotas__limit__ram',
+            'max_instances': 'quotas__limit__max_instances',
+            'storage': 'quotas__limit__storage',
             'customer_name': 'customer__name',
             'customer_abbreviation': 'customer__abbreviation',
             'customer_native_name': 'customer__native_name',
 
             # Backwards compatibility
             'project_groups__name': 'project_groups__name',
-            'resource_quota__vcpu': 'cloudprojectmembership__resource_quota__vcpu',
-            'resource_quota__ram': 'cloudprojectmembership__resource_quota__ram',
-            'resource_quota__storage': 'cloudprojectmembership__resource_quota__storage',
+            'resource_quota__vcpu': 'quotas__limit__vcpu',
+            'resource_quota__ram': 'quotas__limit__ram',
+            'resource_quota__storage': 'quotas__limit__storage',
         }
 
 
@@ -382,7 +363,6 @@ class UserFilter(django_filters.FilterSet):
     full_name = django_filters.CharFilter(lookup_type='icontains')
     username = django_filters.CharFilter()
     native_name = django_filters.CharFilter(lookup_type='icontains')
-    organization = django_filters.CharFilter(lookup_type='icontains')
     job_title = django_filters.CharFilter(lookup_type='icontains')
     email = django_filters.CharFilter(lookup_type='icontains')
     is_active = django_filters.BooleanFilter()
@@ -393,6 +373,7 @@ class UserFilter(django_filters.FilterSet):
             'full_name',
             'native_name',
             'organization',
+            'organization_approved',
             'email',
             'phone_number',
             'description',
@@ -407,6 +388,7 @@ class UserFilter(django_filters.FilterSet):
             'full_name',
             'native_name',
             'organization',
+            'organization_approved',
             'email',
             'phone_number',
             'description',
@@ -417,6 +399,7 @@ class UserFilter(django_filters.FilterSet):
             '-full_name',
             '-native_name',
             '-organization',
+            '-organization_approved',
             '-email',
             '-phone_number',
             '-description',
@@ -447,7 +430,7 @@ class UserViewSet(viewsets.ModelViewSet):
         queryset = super(UserViewSet, self).get_queryset()
 
         # ?current
-        current_user = self.request.QUERY_PARAMS.get('current', None)
+        current_user = self.request.QUERY_PARAMS.get('current')
         if current_user is not None and not user.is_anonymous():
             queryset = User.objects.filter(uuid=user.uuid)
 
@@ -474,9 +457,13 @@ class UserViewSet(viewsets.ModelViewSet):
 
             connected_customers = list(connected_customers_query.all())
             potential_organization = self.request.QUERY_PARAMS.get('potential_organization')
+            if potential_organization is not None:
+                potential_organizations = potential_organization.split(',')
+            else:
+                potential_organizations = []
 
             queryset = queryset.filter(is_staff=False).filter(
-                # customer owners
+                # customer users
                 Q(
                     groups__customerrole__customer__in=connected_customers,
                 )
@@ -495,10 +482,13 @@ class UserViewSet(viewsets.ModelViewSet):
                     groups__projectrole=None,
                     groups__projectgrouprole=None,
                     organization_approved=True,
-                    organization__exact=potential_organization,
+                    organization__in=potential_organizations,
                 )
             ).distinct()
 
+        organization_claimed = self.request.QUERY_PARAMS.get('organization_claimed')
+        if organization_claimed is not None:
+            queryset = queryset.exclude(organization__isnull=True).exclude(organization__exact='')
 
         if not user.is_staff:
             queryset = queryset.filter(is_active=True)
@@ -537,6 +527,12 @@ class UserViewSet(viewsets.ModelViewSet):
             instance.organization = obj.organization
             instance.organization_approved = False
             instance.save()
+
+            event_logger.info(
+                'User %s has claimed organization %s.', instance.username, instance.organization,
+                extra={'affected_user': instance, 'event_type': 'user_organization_claimed',
+                       'affected_organization': instance.organization})
+
             return Response({'detail': "User request for joining the organization has been successfully submitted."},
                             status=status.HTTP_200_OK)
         else:
@@ -548,24 +544,41 @@ class UserViewSet(viewsets.ModelViewSet):
 
         instance.organization_approved = True
         instance.save()
+        event_logger.info(
+            'User %s has been approved for organization %s.', instance.username, instance.organization,
+            extra={'affected_user': instance, 'event_type': 'user_organization_approved',
+                   'affected_organization': instance.organization})
+
         return Response({'detail': "User request for joining the organization has been successfully approved"},
                         status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
     def reject_organization(self, request, uuid=None):
         instance = self.get_object()
+        old_organization = instance.organization
         instance.organization = ""
         instance.organization_approved = False
         instance.save()
+        event_logger.info(
+            'User %s claim for organization %s has been rejected.', instance.username, old_organization,
+            extra={'affected_user': instance, 'event_type': 'user_organization_rejected',
+                   'affected_organization': old_organization})
+
         return Response({'detail': "User has been successfully rejected from the organization"},
                         status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
     def remove_organization(self, request, uuid=None):
         instance = self.get_object()
+        old_organization = instance.organization
         instance.organization_approved = False
         instance.organization = ""
         instance.save()
+        event_logger.info(
+            'User %s has been removed from organization %s.', instance.username, old_organization,
+            extra={'affected_user': instance, 'event_type': 'user_organization_removed',
+                   'affected_organization': old_organization})
+
         return Response({'detail': "User has been successfully removed from the organization"},
                         status=status.HTTP_200_OK)
 

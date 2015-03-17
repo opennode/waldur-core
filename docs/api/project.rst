@@ -49,11 +49,14 @@ descending sorting prefix field name with a **-**.
 Project permissions
 -------------------
 
-- Projects are connected to customers, whereas the project may belong to one customer only, and the customer may have multiple projects.
-- Projects are connected to project groups, whereas the project may belong to multiple project groups, and the project group may contain multiple projects.
+- Projects are connected to customers, whereas the project may belong to one customer only, and the customer may have
+  multiple projects.
+- Projects are connected to project groups, whereas the project may belong to multiple project groups, and the project
+  group may contain multiple projects.
 - Projects are connected to clouds, whereas the project may contain multiple clouds, and the cloud may belong to multiple projects.
 - Staff members can list all available projects of any customer and create new projects.
-- Customer owners can list all projects that belong to any of the customers they own. Customer owners can also create projects for the customers they own.
+- Customer owners can list all projects that belong to any of the customers they own. Customer owners can also create
+  projects for the customers they own.
 - Project administrators can list all the projects they are administrators in.
 - Project managers can list all the projects they are managers in.
 
@@ -112,7 +115,7 @@ Project permissions expresses connection of users to a project. Each project has
 represent project managers and administrators. The link is maintained
 through **/api/project-permissions/** endpoint.
 
-Note that project group membership can be viewed and modified only by customer owners, corresponding project group
+Note that project membership can be viewed and modified only by customer owners, corresponding project group
 managers and staff users.
 
 To list all visible links, run a GET query against a list.

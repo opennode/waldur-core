@@ -22,7 +22,7 @@ class UrlResolverMixin(object):
         return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
 
     def _get_template_url(self, template):
-        return 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
+        return 'http://testserver' + reverse('iaastemplate-detail', kwargs={'uuid': template.uuid})
 
     def _get_ssh_public_key_url(self, key):
         return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': key.uuid})
@@ -38,17 +38,9 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.managed_instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
 
         admined_project = self.admined_instance.cloud_project_membership.project
-        factories.ResourceQuotaFactory(
-            cloud_project_membership=self.admined_instance.cloud_project_membership,
-            storage=10 * 1024 * 1024,
-            vcpu=10,
-            ram=20 * 1024,
-        )
         admined_project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         project = self.managed_instance.cloud_project_membership.project
-        factories.ResourceQuotaFactory(
-            cloud_project_membership=self.managed_instance.cloud_project_membership, storage=10 * 1024 * 1024)
         managed_project_group = structure_factories.ProjectGroupFactory()
         managed_project_group.projects.add(project)
 
@@ -273,13 +265,64 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
                          'Instance should have been scheduled to resize')
 
+    def test_user_can_change_flavor_to_flavor_with_less_cpu_if_result_cpu_quota_usage_is_less_then_cpu_limit(self):
+        self.client.force_authenticate(user=self.user)
+        instance = self.admined_instance
+        instance.cores = 5
+        instance.save()
+        membership = instance.cloud_project_membership
+        membership.set_quota_limit('vcpu', instance.cores)
+        membership.set_quota_limit('max_instances', 0)
+        membership.set_quota_limit('storage', 0)
+
+        new_flavor = factories.FlavorFactory(
+            cloud=self.admined_instance.cloud_project_membership.cloud,
+            disk=self.admined_instance.system_volume_size + 1,
+            cores=instance.cores - 1,
+        )
+
+        data = {'flavor': self._get_flavor_url(new_flavor)}
+
+        response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED, response.data)
+        reread_instance = Instance.objects.get(pk=self.admined_instance.pk)
+        self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
+                         'Instance should have been scheduled to resize')
+
+    def test_user_can_change_flavor_to_flavor_with_less_ram_if_result_ram_quota_usage_is_less_then_ram_limit(self):
+        self.client.force_authenticate(user=self.user)
+        instance = self.admined_instance
+        instance.cores = 5
+        instance.save()
+        membership = instance.cloud_project_membership
+        membership.set_quota_limit('ram', instance.ram)
+        membership.set_quota_limit('vcpu', instance.cores)
+        membership.set_quota_limit('max_instnces', 0)
+        membership.set_quota_limit('storage', 0)
+
+        new_flavor = factories.FlavorFactory(
+            cloud=self.admined_instance.cloud_project_membership.cloud,
+            disk=self.admined_instance.system_volume_size + 1,
+            ram=instance.ram - 1,
+        )
+        data = {'flavor': self._get_flavor_url(new_flavor)}
+
+        response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED, response.data)
+        reread_instance = Instance.objects.get(pk=self.admined_instance.pk)
+        self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
+                         'Instance should have been scheduled to resize')
+
     def test_user_cannot_change_flavor_of_stopped_instance_he_is_administrator_of_if_quota_would_be_exceeded(self):
         self.client.force_authenticate(user=self.user)
+        membership = self.admined_instance.cloud_project_membership
 
         # check for ram
         big_ram_flavor = factories.FlavorFactory(
-            cloud=self.admined_instance.cloud_project_membership.cloud,
-            ram=30 * 1024,
+            cloud=membership.cloud,
+            ram=membership.quotas.get(name='ram').limit + self.admined_instance.ram + 1,
         )
         data = {'flavor': self._get_flavor_url(big_ram_flavor)}
         response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
@@ -287,8 +330,8 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         # check for vcpu
         many_core_flavor = factories.FlavorFactory(
-            cloud=self.admined_instance.cloud_project_membership.cloud,
-            cores=11,
+            cloud=membership.cloud,
+            cores=membership.quotas.get(name='vcpu').limit + self.admined_instance.cores + 1,
         )
         data = {'flavor': self._get_flavor_url(many_core_flavor)}
         response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), data)
@@ -335,7 +378,10 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_user_cannot_set_disk_size_greater_than_resource_quota(self):
         self.client.force_authenticate(user=self.user)
         instance = self.admined_instance
-        data = {'disk_size': instance.cloud_project_membership.resource_quota.storage + 1 + instance.data_volume_size}
+        membership = instance.cloud_project_membership
+        data = {
+            'disk_size': membership.quotas.get(name='storage').limit + 1 + instance.data_volume_size
+        }
 
         response = self.client.post(factories.InstanceFactory.get_url(instance, action='resize'), data)
 
@@ -386,8 +432,6 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         instance = factories.InstanceFactory(state=Instance.States.PROVISIONING_SCHEDULED)
         project = instance.cloud_project_membership.project
-        factories.ResourceQuotaFactory(
-            cloud_project_membership=instance.cloud_project_membership, storage=10 * 1024 * 1024)
         project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         url = factories.InstanceFactory.get_url(instance)
@@ -411,8 +455,6 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         for state in Instance.States.UNSTABLE_STATES:
             instance = factories.InstanceFactory(state=state)
             project = instance.cloud_project_membership.project
-            factories.ResourceQuotaFactory(
-                cloud_project_membership=instance.cloud_project_membership, storage=10 * 1024 * 1024)
             project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
             url = factories.InstanceFactory.get_url(instance)
@@ -584,13 +626,6 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.flavor = factories.FlavorFactory(cloud=self.cloud)
         self.project = structure_factories.ProjectFactory()
         self.membership = factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
-        self.resource_quota = factories.ResourceQuotaFactory(
-            cloud_project_membership=self.membership,
-            storage=10 * 1024 * 1024,
-            vcpu=10,
-            ram=2 * 1024,
-            max_instances=10,
-        )
         self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
@@ -833,7 +868,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
     def test_instance_size_can_not_be_bigger_than_quota(self):
         data = self.get_valid_data()
-        data['data_volume_size'] = self.resource_quota.storage + 1
+        data['data_volume_size'] = self.membership.quotas.get(name='storage').limit + 1
         response = self.client.post(self.instance_list_url, data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -903,6 +938,36 @@ class InstanceListRetrieveTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['backups']), 1)
         self.assertEqual(response.data['backups'][0]['url'], backup_factories.BackupFactory.get_url(backup))
+
+    def test_ascending_sort_by_start_time_puts_instances_with_null_value_first(self):
+        self.client.force_authenticate(self.staff)
+
+        factories.InstanceFactory.create_batch(2, start_time=None)
+        factories.InstanceFactory()
+
+        response = self.client.get(factories.InstanceFactory.get_list_url(),
+                                   data={'o': 'start_time'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        for i in (0, 1):
+            self.assertEqual(response.data[i]['start_time'], None)
+
+        self.assertTrue(response.data[2]['start_time'] < response.data[3]['start_time'])
+
+    def test_descending_sort_by_start_time_puts_instances_with_null_value_last(self):
+        self.client.force_authenticate(self.staff)
+
+        factories.InstanceFactory.create_batch(2, start_time=None)
+        factories.InstanceFactory()
+
+        response = self.client.get(factories.InstanceFactory.get_list_url(),
+                                   data={'o': '-start_time'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.assertTrue(response.data[0]['start_time'] > response.data[1]['start_time'])
+
+        for i in (2, 3):
+            self.assertEqual(response.data[i]['start_time'], None)
 
 
 class InstanceUsageTest(test.APITransactionTestCase):

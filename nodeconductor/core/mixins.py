@@ -7,7 +7,6 @@ from rest_framework import mixins
 from rest_framework import status
 from rest_framework.response import Response
 
-from nodeconductor.iaas.models import Instance
 from nodeconductor.core.models import SynchronizableMixin, SynchronizationStates
 from nodeconductor.core.exceptions import IncorrectStateException
 
@@ -60,14 +59,10 @@ class UpdateOnlyStableMixin(object):
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update', 'destroy'):
-            error_msg = 'Modification allowed in stable states only, while current state: %s'
-            instance = self.get_object()
-            if instance:
-                if isinstance(instance, Instance):
-                    if instance.state not in Instance.States.STABLE_STATES:
-                        raise IncorrectStateException(error_msg % instance.get_state_display())
-                elif isinstance(instance, SynchronizableMixin):
-                    if instance.state not in SynchronizationStates.STABLE_STATES:
-                        raise IncorrectStateException(error_msg % instance.get_state_display())
+            obj = self.get_object()
+            if obj and isinstance(obj, SynchronizableMixin):
+                if obj.state not in SynchronizationStates.STABLE_STATES:
+                    raise IncorrectStateException(
+                        'Modification allowed in stable states only.')
 
         return super(UpdateOnlyStableMixin, self).initial(request, *args, **kwargs)

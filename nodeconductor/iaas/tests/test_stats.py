@@ -231,18 +231,23 @@ class ResourceStatsTest(test.APITransactionTestCase):
         self.project2 = structure_factories.ProjectFactory()
 
         self.cloud = factories.CloudFactory(auth_url=self.auth_url)
-        membership1 = models.CloudProjectMembership.objects.create(
+        self.membership1 = factories.CloudProjectMembershipFactory(
             cloud=self.cloud, project=self.project1, tenant_id='1')
-        membership2 = models.CloudProjectMembership.objects.create(
+        self.membership2 = factories.CloudProjectMembershipFactory(
             cloud=self.cloud, project=self.project2, tenant_id='2')
-
-        self.quota1 = factories.ResourceQuotaFactory(cloud_project_membership=membership1)
-        self.quota2 = factories.ResourceQuotaFactory(cloud_project_membership=membership2)
-        self.quota_usage1 = factories.ResourceQuotaUsageFactory(cloud_project_membership=membership1)
-        self.quota_usage2 = factories.ResourceQuotaUsageFactory(cloud_project_membership=membership2)
 
         self.user = structure_factories.UserFactory()
         self.staff = structure_factories.UserFactory(is_staff=True)
+
+        self.stats = {
+            u'count': '2', u'vcpus_used': '0', u'local_gb_used': '0', u'memory_mb': '7660',
+            u'current_workload': '0', u'vcpus': '2', u'running_vms': '0',
+            u'free_disk_gb': '12', u'disk_available_least': '6', u'local_gb': '12',
+            u'free_ram_mb': '6636', u'memory_mb_used': '1024'
+        }
+        models.ServiceStatistics.objects.bulk_create(
+            models.ServiceStatistics(cloud=self.cloud, key=k, value=v) for k, v in self.stats.iteritems()
+        )
 
         self.url = reverse('stats_resource')
 
@@ -267,18 +272,15 @@ class ResourceStatsTest(test.APITransactionTestCase):
 
     def test_resource_stats_returns_backend_resource_stats(self):
         mocked_backend = Mock()
-        backend_result = {
-            u'count': 2, u'vcpus_used': 0, u'local_gb_used': 0, u'memory_mb': 7660, u'current_workload': 0,
-            u'vcpus': 2, u'running_vms': 0, u'free_disk_gb': 12, u'disk_available_least': 6, u'local_gb': 12,
-            u'free_ram_mb': 6636, u'memory_mb_used': 1024
-        }
 
-        mocked_backend.get_resource_stats = Mock(return_value=backend_result)
-        expected_result = backend_result.copy()
+        mocked_backend.get_resource_stats = Mock(return_value=self.stats)
+        expected_result = self.stats.copy()
+        quotas1 = self.membership1.quotas
+        quotas2 = self.membership2.quotas
         expected_result.update({
-            'vcpu_quota': self.quota1.vcpu + self.quota2.vcpu,
-            'memory_quota': self.quota1.ram + self.quota2.ram,
-            'storage_quota': self.quota1.storage + self.quota2.storage,
+            'vcpu_quota': quotas1.get(name='vcpu').limit + quotas2.get(name='vcpu').limit,
+            'memory_quota': quotas1.get(name='ram').limit + quotas2.get(name='ram').limit,
+            'storage_quota': quotas1.get(name='storage').limit + quotas2.get(name='storage').limit,
         })
 
         with patch('nodeconductor.iaas.models.Cloud.get_backend', return_value=mocked_backend):
@@ -287,7 +289,6 @@ class ResourceStatsTest(test.APITransactionTestCase):
             response = self.client.get(self.url, {'auth_url': self.auth_url})
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data, expected_result)
-            mocked_backend.get_resource_stats.assert_called_once_with(self.auth_url)
 
 
 class QuotaStatsTest(test.APITransactionTestCase):
@@ -301,10 +302,6 @@ class QuotaStatsTest(test.APITransactionTestCase):
         self.membership2 = factories.CloudProjectMembershipFactory(project=self.project2)
 
         self.project_group.projects.add(self.project1)
-        # quotas:
-        for membership in self.membership1, self.membership2:
-            factories.ResourceQuotaFactory(cloud_project_membership=membership)
-            factories.ResourceQuotaUsageFactory(cloud_project_membership=membership)
         # users
         self.staff = structure_factories.UserFactory(is_staff=True)
         self.customer_owner = structure_factories.UserFactory()
@@ -314,16 +311,13 @@ class QuotaStatsTest(test.APITransactionTestCase):
         self.project1_admin = structure_factories.UserFactory()
         self.project1.add_user(self.project1_admin, structure_models.ProjectRole.ADMINISTRATOR)
 
-        fields = ['vcpu', 'ram', 'storage', 'max_instances']
+        quota_names = ['vcpu', 'ram', 'storage', 'max_instances']
 
-        self.expected_quotas_for_project1 = dict((f, getattr(self.membership1.resource_quota, f)) for f in fields)
-        self.expected_quotas_for_project1.update(
-            dict((f + '_usage', getattr(self.membership1.resource_quota_usage, f)) for f in fields))
+        self.expected_quotas_for_project1 = models.CloudProjectMembership.get_sum_of_quotas_as_dict(
+            [self.membership1], quota_names)
 
-        self.expected_quotas_for_both_projects = self.expected_quotas_for_project1.copy()
-        for f in fields:
-            self.expected_quotas_for_both_projects[f] += getattr(self.membership2.resource_quota, f)
-            self.expected_quotas_for_both_projects[f + '_usage'] += getattr(self.membership2.resource_quota_usage, f)
+        self.expected_quotas_for_both_projects = models.CloudProjectMembership.get_sum_of_quotas_as_dict(
+            [self.membership1, self.membership2], quota_names)
 
     def execute_request_with_data(self, user, data):
         self.client.force_authenticate(user)

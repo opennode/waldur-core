@@ -26,7 +26,9 @@ INSTALLED_APPS = (
     'nodeconductor.landing',
     'nodeconductor.core',
     'nodeconductor.backup',
+    'nodeconductor.template',
     'nodeconductor.monitoring',
+    'nodeconductor.quotas',
     'nodeconductor.structure',
     'nodeconductor.iaas',
     'nodeconductor.ldapsync',
@@ -135,6 +137,11 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=60),
         'args': (),
     },
+    'pull-service-statistics': {
+        'task': 'nodeconductor.iaas.tasks.pull_service_statistics',
+        'schedule': timedelta(minutes=15),
+        'args': (),
+    },
     'pull-cloud-project-memberships': {
         'task': 'nodeconductor.iaas.tasks.pull_cloud_memberships',
         'schedule': timedelta(minutes=30),
@@ -149,7 +156,7 @@ CELERYBEAT_SCHEDULE = {
 
     'sync-instances-with-zabbix': {
         'task': 'nodeconductor.iaas.tasks.sync_instances_with_zabbix',
-        'schedule': timedelta(minutes=10),
+        'schedule': timedelta(minutes=30),
         'args': (),
     },
 

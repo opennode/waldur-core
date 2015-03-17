@@ -9,6 +9,7 @@ from rest_framework import serializers
 
 from nodeconductor.core import serializers as core_serializers, utils as core_utils
 from nodeconductor.core.fields import MappedChoiceField
+from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, filters
 from nodeconductor.structure.filters import filter_queryset_for_user
 
@@ -33,6 +34,41 @@ def fix_non_nullable_attrs(attrs):
             if value is None:
                 attrs[source] = ''
     return attrs
+
+
+class PermissionFieldFilteringMixin(object):
+    """
+    Mixin allowing to filter related fields.
+
+    In order to constrain the list of entities that can be used
+    as a value for the field:
+
+    1. Make sure that the entity in question has corresponding
+       Permission class defined.
+
+    2. Implement `get_filtered_field_names()` method
+       in the class that this mixin is mixed into and return
+       the field in question from that method.
+    """
+    def get_fields(self):
+        fields = super(PermissionFieldFilteringMixin, self).get_fields()
+
+        try:
+            request = self.context['view'].request
+            user = request.user
+        except (KeyError, AttributeError):
+            return fields
+
+        for field_name in self.get_filtered_field_names():
+            fields[field_name].queryset = filter_queryset_for_user(
+                fields[field_name].queryset, user)
+
+        return fields
+
+    def get_filtered_field_names(self):
+        raise NotImplementedError(
+            'Implement get_filtered_field_names() '
+            'to return list of filtered fields')
 
 
 class BasicUserSerializer(serializers.HyperlinkedModelSerializer):
@@ -85,8 +121,10 @@ class ProjectGroupProjectMembershipSerializer(serializers.ModelSerializer):
 class ProjectSerializer(core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
-    resource_quota = serializers.SerializerMethodField()
-    resource_quota_usage = serializers.SerializerMethodField()
+    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
+    # These fields exist for backward compatibility
+    resource_quota = serializers.SerializerMethodField('get_resource_quotas')
+    resource_quota_usage = serializers.SerializerMethodField('get_resource_quotas_usage')
 
     class Meta(object):
         model = models.Project
@@ -96,6 +134,8 @@ class ProjectSerializer(core_serializers.AugmentedSerializerMixin,
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups',
             'description',
+            'quotas',
+            'resource_quota', 'resource_quota_usage',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -112,8 +152,20 @@ class ProjectSerializer(core_serializers.AugmentedSerializerMixin,
     def validate(self, attrs):
         return fix_non_nullable_attrs(attrs)
 
+    def get_resource_quotas(self, obj):
+        return models.Project.get_sum_of_quotas_as_dict(
+            [obj], ['ram', 'storage', 'max_instances', 'vcpu'], fields=['limit'])
 
-class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
+    def get_resource_quotas_usage(self, obj):
+        quota_values = models.Project.get_sum_of_quotas_as_dict(
+            [obj], ['ram', 'storage', 'max_instances', 'vcpu'], fields=['usage'])
+        # No need for '_usage' suffix in quotas names
+        return {
+            key[:-6]: value for key, value in quota_values.iteritems()
+        }
+
+
+class ProjectCreateSerializer(PermissionFieldFilteringMixin,
                               core_serializers.AugmentedSerializerMixin,
                               serializers.HyperlinkedModelSerializer):
     # TODO: Reimplement using custom object save logic in view
@@ -161,7 +213,7 @@ class ProjectCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         raise ValidationError('You cannot create project with such data')
 
 
-class CustomerSerializer(core_serializers.PermissionFieldFilteringMixin,
+class CustomerSerializer(PermissionFieldFilteringMixin,
                          core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField('get_customer_projects')
@@ -205,7 +257,7 @@ class CustomerSerializer(core_serializers.PermissionFieldFilteringMixin,
         return fix_non_nullable_attrs(attrs)
 
 
-class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
+class ProjectGroupSerializer(PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer):
     projects = BasicProjectSerializer(many=True, read_only=True)
@@ -250,7 +302,7 @@ class ProjectGroupSerializer(core_serializers.PermissionFieldFilteringMixin,
         return fix_non_nullable_attrs(attrs)
 
 
-class ProjectGroupMembershipSerializer(core_serializers.PermissionFieldFilteringMixin,
+class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
                                        serializers.HyperlinkedModelSerializer):
     project_group = serializers.HyperlinkedRelatedField(
         source='projectgroup',
@@ -308,7 +360,7 @@ class ProjectGroupRoleField(serializers.ChoiceField):
 
 
 # TODO: refactor to abstract class, subclass by CustomerPermissions and ProjectPermissions
-class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
+class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
                                    serializers.HyperlinkedModelSerializer):
     customer = serializers.HyperlinkedRelatedField(
         source='group.customerrole.customer',
@@ -348,7 +400,7 @@ class CustomerPermissionSerializer(core_serializers.PermissionFieldFilteringMixi
         return 'customer',
 
 
-class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
+class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
                                   serializers.HyperlinkedModelSerializer):
     project = serializers.HyperlinkedRelatedField(
         source='group.projectrole.project',
@@ -389,7 +441,7 @@ class ProjectPermissionSerializer(core_serializers.PermissionFieldFilteringMixin
         return 'project',
 
 
-class ProjectGroupPermissionSerializer(core_serializers.PermissionFieldFilteringMixin,
+class ProjectGroupPermissionSerializer(PermissionFieldFilteringMixin,
                                        serializers.HyperlinkedModelSerializer):
     project_group = serializers.HyperlinkedRelatedField(
         source='group.projectgrouprole.project_group',

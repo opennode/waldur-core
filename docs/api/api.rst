@@ -18,6 +18,12 @@ Cloud management
 
 .. include:: cloud.rst
 
+Cloud-project link management
+=============================
+
+.. include:: cloud_project_membership.rst
+
+
 Flavor management
 =================
 
@@ -69,6 +75,10 @@ Project quota management
 
 .. include:: project_quotas.rst
 
+Quotas
+======
+
+.. include:: qutoas.rst
 
 Security group management
 =========================

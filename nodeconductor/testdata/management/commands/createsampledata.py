@@ -9,10 +9,10 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from nodeconductor.iaas.models import Cloud, CloudProjectMembership, IpMapping, SecurityGroup
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import (
-    Template, TemplateLicense, Instance, InstanceSecurityGroup, ResourceQuota, ResourceQuotaUsage)
+    Cloud, CloudProjectMembership, IpMapping, SecurityGroup,
+    Template, TemplateLicense, Instance, InstanceSecurityGroup)
 from nodeconductor.structure.models import *
 
 
@@ -164,7 +164,7 @@ Arguments:
                                 'm1.tiny': {'cores': 1, 'ram': 512, 'disk': 1024},
                             },
                             'templates': {
-                                'CentOS 7 minimal jmHCYir': {'os': 'CentOS 7'},
+                                'CentOS 7 64-bit': {'os': 'CentOS 7'},
                             },
                         },
                     },
@@ -176,7 +176,13 @@ Arguments:
                                 'bells.org': {
                                     'admins': ['Charlie'],
                                     'managers': ['Dave'],
-                                    'connected_clouds': ['Stratus']
+                                    'connected_clouds': ['Stratus'],
+                                    'resources': [
+                                        {'hostname': 'resource#%s' % i,
+                                         'cloud': 'Stratus',
+                                         'template': 'CentOS 7 64-bit'}
+                                        for i in range(10)
+                                    ]
                                 },
                             },
                         },
@@ -283,7 +289,7 @@ Arguments:
 
                 for template_name in cloud_params['templates']:
                     self.stdout.write('Creating template "%s" for cloud account "%s"...' % (template_name, cloud_name))
-                    template, was_created = Template.objects.get_or_create(name=template_name,
+                    template, was_created = Template.objects.get_or_create(name=template_name, is_active=True,
                                                                            **cloud_params['templates'][template_name])
                     if was_created:
                         cloud.images.create(cloud=cloud, template=template)
@@ -320,6 +326,39 @@ Arguments:
                             cloud=customer_params['clouds'][cloud_name], project=project)
                         self.stdout.write('Connection between "%s Cloud" cloud account and "%s" project %s.'
                                           % (cloud_name, project_name, "created" if was_created else "already exists"))
+                    for index, resource_params in enumerate(project_params.get('resources', [])):
+                        hostname = resource_params['hostname']
+                        template = Template.objects.get(name=resource_params['template'])
+                        cloud_project_membership = CloudProjectMembership.objects.get(
+                            cloud__name=resource_params['cloud'], project__name=project_name)
+                        if not Instance.objects.filter(
+                                hostname=hostname, cloud_project_membership=cloud_project_membership).exists():
+                            self.stdout.write('Adding resource "%s" to project "%s"' % (hostname, project_name))
+                            Instance.objects.create(
+                                hostname=hostname,
+                                template=template,
+                                start_time=timezone.now(),
+
+                                external_ips='.'.join('%s' % random.randint(0, 255) for _ in range(4)),
+                                internal_ips='.'.join('%s' % random.randint(0, 255) for _ in range(4)),
+                                cores=5,
+                                ram=1024,
+
+                                cloud_project_membership=cloud_project_membership,
+                                key_name='instance key %s' % index,
+                                key_fingerprint='instance key fingerprint %s' % index,
+
+                                system_volume_id='sys-vol-id-%s' % index,
+                                system_volume_size=10 * 1024,
+                                data_volume_id='dat-vol-id-%s' % index,
+                                data_volume_size=20 * 1024,
+
+                                backend_id='instance-id %s' % index,
+                                agreed_sla=Decimal('99.9')
+                            )
+                        else:
+                            self.stdout.write(
+                                'Resource "%s" already exists in project "%s"' % (hostname, project_name))
 
     def create_cloud(self, customer):
         cloud_name = 'CloudAccount of %s (%s)' % (customer.name, random_string(10, 20, with_spaces=True))
@@ -483,18 +522,15 @@ Arguments:
     def create_resource_quotas(self, membership):
         # Adding quota to project:
         print 'Creating quota for membership %s' % membership
-        resource_quota = ResourceQuota.objects.create(vcpu=random.randint(60, 255),
-                                                      ram=random.randint(60, 255),
-                                                      storage=random.randint(60, 255) * 1024,
-                                                      max_instances=random.randint(60, 255),
-                                                      cloud_project_membership=membership)
+        membership.set_quota_limit('vcpu', random.randint(60, 255))
+        membership.set_quota_limit('ram', random.randint(60, 255))
+        membership.set_quota_limit('storage', random.randint(60, 255) * 1024)
+        membership.set_quota_limit('max_instances', random.randint(60, 255))
         print 'Generating approximate quota consumption for membership %s' % membership
-        ResourceQuotaUsage.objects.\
-            create(vcpu=resource_quota.vcpu - random.randint(0, 50),
-                   ram=resource_quota.ram - random.randint(0, 50),
-                   storage=resource_quota.storage - random.randint(0, 50),
-                   max_instances=resource_quota.max_instances - random.randint(0, 50),
-                   cloud_project_membership=membership)
+        membership.set_quota_usage('vcpu', random.randint(0, 60))
+        membership.set_quota_usage('ram', random.randint(0, 60))
+        membership.set_quota_usage('storage', random.randint(0, 60) * 1024)
+        membership.set_quota_usage('max_instances', random.randint(0, 60))
 
     def create_user(self):
         username = 'user%s' % random_string(3, 15, alphabet=string.digits)
@@ -546,4 +582,5 @@ Arguments:
         sec_group = SecurityGroup.objects.filter(
             cloud_project_membership=cloud_project_membership,
         ).first()
-        InstanceSecurityGroup.objects.create(instance=instance, security_group=sec_group)
+        if sec_group:
+            InstanceSecurityGroup.objects.create(instance=instance, security_group=sec_group)
