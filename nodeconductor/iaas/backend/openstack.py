@@ -2155,7 +2155,7 @@ class OpenStackBackend(object):
             return False
         if backend_rule['ip_protocol'] != nc_rule.protocol:
             return False
-        if backend_rule['ip_range']['cidr'] != nc_rule.cidr:
+        if 'cidr' in backend_rule['ip_range'] and backend_rule['ip_range']['cidr'] != nc_rule.cidr:
             return False
         return True
 
