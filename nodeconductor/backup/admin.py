@@ -14,7 +14,7 @@ class BackupScheduleAdmin(admin.ModelAdmin):
     readonly_fields = ('next_trigger_at',)
     list_filter = ('is_active', 'content_type')
 
-    list_display = ('uuid', 'next_trigger_at', 'is_active', 'backup_source', 'content_type')
+    list_display = ('uuid', 'next_trigger_at', 'is_active', 'backup_source', 'content_type', 'timezone')
 
 
 admin.site.register(models.Backup, BackupAdmin)

@@ -5,7 +5,8 @@ import pytz
 
 from croniter.croniter import croniter
 from django.db import models
-from django.utils import timezone, six
+from django.utils import timezone as django_timezone
+from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from django.contrib.contenttypes import models as ct_models
 from django.contrib.contenttypes import fields as ct_fields
@@ -47,9 +48,8 @@ class BackupSchedule(core_models.UuidMixin,
     schedule = core_fields.CronScheduleField(max_length=15)
     next_trigger_at = models.DateTimeField(null=True)
     is_active = models.BooleanField(default=False)
-    tz = models.CharField(verbose_name='timezone', max_length=50, blank=True,
-                          choices=[(t, t) for t in pytz.all_timezones],
-                          default=timezone.get_current_timezone_name)
+    timezone = models.CharField(max_length=50, blank=True,
+                                choices=[(t, t) for t in pytz.all_timezones])
 
     def __str__(self):
         return '%(uuid)s BackupSchedule of %(object)s' % {
@@ -62,7 +62,8 @@ class BackupSchedule(core_models.UuidMixin,
         """
         Defines next backup creation time
         """
-        base_time = datetime.now(pytz.timezone(self.tz))
+        timezone = self.timezone or django_timezone.get_current_timezone_name()
+        base_time = datetime.now(pytz.timezone(timezone))
         self.next_trigger_at = croniter(self.schedule, base_time).get_next(datetime)
 
     def _create_backup(self):
@@ -72,7 +73,7 @@ class BackupSchedule(core_models.UuidMixin,
         backup = Backup.objects.create(
             backup_schedule=self,
             backup_source=self.backup_source,
-            kept_until=timezone.now() + timedelta(days=self.retention_time),
+            kept_until=django_timezone.now() + timedelta(days=self.retention_time),
             description='scheduled backup')
         backup.start_backup()
         return backup

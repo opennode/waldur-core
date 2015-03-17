@@ -1,3 +1,5 @@
+import pytz
+
 from rest_framework import serializers
 
 from nodeconductor.backup import models, utils
@@ -10,7 +12,7 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.BackupSchedule
-        fields = ('url', 'description', 'backups', 'retention_time', 'tz',
+        fields = ('url', 'description', 'backups', 'retention_time', 'timezone',
                   'backup_source', 'maximal_number_of_backups', 'schedule', 'is_active')
         read_only_fields = ('is_active', 'backups')
         lookup_field = 'uuid'
