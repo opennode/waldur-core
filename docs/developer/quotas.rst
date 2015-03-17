@@ -104,5 +104,5 @@ Ordering can be done only by one quota at a time.
 QuotaInline for admin models
 ----------------------------
 
-``quotas.admin`` contains generic  inline model``QuotaInline``, which can be used for as inline model for any quota
-owner.
+``quotas.admin`` contains generic inline model``QuotaInline``, which can be used for as inline model for any quota
+scope.
