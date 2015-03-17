@@ -4,10 +4,13 @@ CHANGELOG
 Coming in the next release
 --------------------------
 
-(Fixes/changes that are in develop branch.)
-
+- Introducing new quotas module prototype. Support for backend and frontend quotas.
+- Introducing new template module prototype. Support for multi-service templates.
+- Support for default availability zone of OpenStack deployment in configuration.
+- Support for setting cpu overcommit ratio for OpenStack versions prior to Kilo.
 - Change OpenStack tenant name generation schema. Now it uses only project UUID, name is removed.
-
+- More resilient start/stop operations for OpenStack.
+- Bugfixes.
 
 Release 0.40.0
 --------------
