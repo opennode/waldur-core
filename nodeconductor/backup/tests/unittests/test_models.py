@@ -31,7 +31,7 @@ class BackupScheduleTest(TestCase):
     def test_execute(self):
         # we have schedule
         schedule = factories.BackupScheduleFactory(maximal_number_of_backups=1)
-        # with 2 backups ready backups
+        # with 2 ready backups
         old_backup1 = factories.BackupFactory(backup_schedule=schedule)
         old_backup2 = factories.BackupFactory(backup_schedule=schedule)
         # and 1 deleted

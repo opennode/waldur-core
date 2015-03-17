@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
+import pytz
 
 from croniter.croniter import croniter
 from django.db import models
@@ -46,6 +47,9 @@ class BackupSchedule(core_models.UuidMixin,
     schedule = core_fields.CronScheduleField(max_length=15)
     next_trigger_at = models.DateTimeField(null=True)
     is_active = models.BooleanField(default=False)
+    tz = models.CharField(verbose_name='timezone', max_length=50, blank=True,
+                          choices=[(t, t) for t in pytz.all_timezones],
+                          default=timezone.get_current_timezone_name)
 
     def __str__(self):
         return '%(uuid)s BackupSchedule of %(object)s' % {
@@ -58,7 +62,7 @@ class BackupSchedule(core_models.UuidMixin,
         """
         Defines next backup creation time
         """
-        base_time = timezone.now()
+        base_time = datetime.now(pytz.timezone(self.tz))
         self.next_trigger_at = croniter(self.schedule, base_time).get_next(datetime)
 
     def _create_backup(self):
