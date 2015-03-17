@@ -93,7 +93,7 @@ class ProjectSerializer(core_serializers.AugmentedSerializerMixin,
         fields = (
             'url', 'uuid',
             'name',
-            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
+            'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups',
             'description',
         )
@@ -175,7 +175,7 @@ class CustomerSerializer(core_serializers.PermissionFieldFilteringMixin,
             'uuid',
             'name', 'native_name', 'abbreviation', 'contact_details',
             'projects', 'project_groups',
-            'owners'
+            'owners',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
