@@ -1,10 +1,14 @@
-from rest_framework import permissions as rf_permissions, exceptions as rf_exceptions
+from __future__ import unicode_literals
 
-from nodeconductor.core import viewsets as core_viewsets
+from rest_framework import permissions as rf_permissions, exceptions as rf_exceptions
+from rest_framework import mixins
+from rest_framework import viewsets
+
 from nodeconductor.quotas import models, serializers
 
 
-class QuotaViewSet(core_viewsets.UpdateModelViewSet):
+class QuotaViewSet(mixins.UpdateModelMixin,
+                   viewsets.ReadOnlyModelViewSet):
 
     queryset = models.Quota.objects.all()
     serializer_class = serializers.QuotaSerializer
@@ -15,7 +19,7 @@ class QuotaViewSet(core_viewsets.UpdateModelViewSet):
     def get_queryset(self):
         return models.Quota.objects.filtered_for_user(self.request.user)
 
-    # XXX: this method will be improved with fronend quotas implementation
+    # XXX: this method will be improved with frontend quotas implementation
     def pre_save(self, obj):
         super(QuotaViewSet, self).pre_save(obj)
         if not obj.owner.can_user_update_quotas(self.request.user):

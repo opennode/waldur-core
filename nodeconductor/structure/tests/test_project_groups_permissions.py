@@ -127,7 +127,7 @@ class TestGroupPermissionsCreateDelete(test.APITransactionTestCase):
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, {u'project_group': [u'Invalid hyperlink - object does not exist.']})
+        self.assertEqual(response.data, {u'project_group': [u'Invalid hyperlink - Object does not exist.']})
 
 
 class TestGroupPermissionsListRetrieve(test.APITransactionTestCase):

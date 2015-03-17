@@ -69,9 +69,8 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer',
         'nodeconductor.core.renderers.BrowsableAPIRenderer',
     ),
-    'PAGINATE_BY_PARAM': 'page_size',
-    'MAX_PAGINATE_BY': 200,
-    'PAGINATE_BY': 10
+    'DEFAULT_PAGINATION_CLASS': 'nodeconductor.core.pagination.LinkHeaderPagination',
+    'PAGE_SIZE': 10,
 }
 
 AUTHENTICATION_BACKENDS = (

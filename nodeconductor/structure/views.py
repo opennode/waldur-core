@@ -18,7 +18,6 @@ from rest_framework.response import Response
 from rest_framework.settings import api_settings
 
 from nodeconductor.core import filters as core_filters
-from nodeconductor.core import mixins
 from nodeconductor.core import viewsets
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.quotas import views as quotas_views
@@ -316,7 +315,7 @@ class ProjectGroupMembershipFilter(django_filters.FilterSet):
 class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
                                     rf_mixins.RetrieveModelMixin,
                                     rf_mixins.DestroyModelMixin,
-                                    mixins.ListModelMixin,
+                                    rf_mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
     """List of project groups members that are accessible by this user.
 
@@ -513,7 +512,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'detail': "Password has been successfully updated"},
                         status=status.HTTP_200_OK)
 
-    @action()
+    @detail_route(methods=['post'])
     def claim_organization(self, request, uuid=None):
         instance = self.get_object()
 
@@ -539,7 +538,7 @@ class UserViewSet(viewsets.ModelViewSet):
         else:
             return Response({'detail': "User has an existing organization claim."}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action()
+    @detail_route(methods=['post'])
     def approve_organization(self, request, uuid=None):
         instance = self.get_object()
 
@@ -553,7 +552,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'detail': "User request for joining the organization has been successfully approved"},
                         status=status.HTTP_200_OK)
 
-    @action()
+    @detail_route(methods=['post'])
     def reject_organization(self, request, uuid=None):
         instance = self.get_object()
         old_organization = instance.organization
@@ -568,7 +567,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'detail': "User has been successfully rejected from the organization"},
                         status=status.HTTP_200_OK)
 
-    @action()
+    @detail_route(methods=['post'])
     def remove_organization(self, request, uuid=None):
         instance = self.get_object()
         old_organization = instance.organization
@@ -626,7 +625,7 @@ class ProjectPermissionFilter(django_filters.FilterSet):
 
 
 class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
-                               mixins.ListModelMixin,
+                               rf_mixins.ListModelMixin,
                                rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.exclude(group__projectrole=None)
     serializer_class = serializers.ProjectPermissionSerializer
@@ -766,7 +765,7 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
 
 
 class ProjectGroupPermissionViewSet(rf_mixins.RetrieveModelMixin,
-                                    mixins.ListModelMixin,
+                                    rf_mixins.ListModelMixin,
                                     rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.all()
     serializer_class = serializers.ProjectGroupPermissionSerializer
@@ -910,7 +909,7 @@ class CustomerPermissionFilter(django_filters.FilterSet):
 
 
 class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
-                                mixins.ListModelMixin,
+                                rf_mixins.ListModelMixin,
                                 rf_mixins.DestroyModelMixin,
                                 rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.exclude(group__customerrole=None)

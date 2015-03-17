@@ -440,6 +440,7 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
     created = serializers.DateTimeField(format='iso-8601')
 
     # Avoid name clashes with nodeconductor.template
+    # FIXME: RELATED_FIELD_VIEW_NAMES is no longer supported, provide extra_kwargs instead
     RELATED_FIELD_VIEW_NAMES = {
         'template': 'iaastemplate-detail',
     }
