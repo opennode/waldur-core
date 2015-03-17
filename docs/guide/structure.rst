@@ -14,9 +14,9 @@ is below:
     Customer
       A standalone entity. Represents a company or a department.
 
-    Cloud
-      Represents an account in IaaS like OpenStack. Currently for OpenStack it should be an account with admin
-      privileges.
+    Service (deprecated name: Cloud)
+      Represents an account in service, for example, AWS, OpenStack or GitHub. Currently for OpenStack it should be an
+      account with admin privileges.
 
     Customer owner
       A role of the user that allows her to represent a corresponding customer. In this role, a user can create new

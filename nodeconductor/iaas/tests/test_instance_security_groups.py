@@ -17,7 +17,7 @@ def _project_url(project):
 
 
 def _template_url(template, action=None):
-    url = 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
+    url = 'http://testserver' + reverse('iaastemplate-detail', kwargs={'uuid': template.uuid})
     return url if action is None else url + action + '/'
 
 
@@ -61,13 +61,6 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.instance = factories.InstanceFactory(state=models.Instance.States.OFFLINE)
         membership = self.instance.cloud_project_membership
         membership.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
-        factories.ResourceQuotaFactory(
-            cloud_project_membership=membership,
-            storage=10 * 1024 * 1024,
-            vcpu=20,
-            ram=10 * 1024,
-            max_instances=10,
-        )
 
         factories.ImageFactory(template=self.instance.template, cloud=self.instance.cloud_project_membership.cloud)
 

@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import logging
+
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -13,8 +15,13 @@ from rest_framework.exceptions import PermissionDenied
 from nodeconductor.backup.models import Backup
 
 from nodeconductor.core import viewsets
+from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.backup import models, serializers, utils
 from nodeconductor.structure import filters as structure_filters
+
+
+logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 
 class BackupPermissionFilter():
@@ -47,24 +54,42 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         if not obj.user_has_perm_for_backup_source(self.request.user):
             raise PermissionDenied()
 
-    def _get_backup_schedule(self, user, uuid, is_active):
-        schedule = get_object_or_404(models.BackupSchedule, uuid=uuid, is_active=is_active)
+    def pre_delete(self, obj):
+        if not obj.user_has_perm_for_backup_source(self.request.user):
+            raise PermissionDenied()
+
+    def _get_backup_schedule(self, user):
+        schedule = self.get_object()
         if not schedule.user_has_perm_for_backup_source(user):
-            raise Http404
+            raise PermissionDenied()
         return schedule
 
     @action()
     def activate(self, request, uuid):
-        schedule = self._get_backup_schedule(request.user, uuid=uuid, is_active=False)
+        schedule = self._get_backup_schedule(request.user)
+        if schedule.is_active:
+            return Response({'status': 'BackupSchedule is already activated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = True
         schedule.save()
+        # TODO: Instance's hostname should be converted to the name field (NC-367)
+        event_logger.info(
+            'Backup schedule for %s has been activated.', schedule.backup_source.hostname,
+            extra={'backup_schedule': schedule, 'event_type': 'iaas_backup_schedule_activated'}
+        )
         return Response({'status': 'BackupSchedule was activated'})
 
     @action()
     def deactivate(self, request, uuid):
-        schedule = self._get_backup_schedule(request.user, uuid=uuid, is_active=True)
+        schedule = self._get_backup_schedule(request.user)
+        if not schedule.is_active:
+            return Response({'status': 'BackupSchedule is already deactivated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = False
         schedule.save()
+        # TODO: Instance's hostname should be converted to the name field (NC-367)
+        event_logger.info(
+            'Backup schedule for %s has been deactivated.', schedule.backup_source.hostname,
+            extra={'backup_schedule': schedule, 'event_type': 'iaas_backup_schedule_deactivated'}
+        )
         return Response({'status': 'BackupSchedule was deactivated'})
 
 
@@ -87,9 +112,9 @@ class BackupViewSet(viewsets.CreateModelViewSet):
             backup.start_backup()
 
     def _get_backup(self, user, uuid):
-        backup = get_object_or_404(models.Backup, uuid=uuid)
+        backup = self.get_object()
         if not backup.user_has_perm_for_backup_source(user):
-            raise Http404
+            raise PermissionDenied()
         return backup
 
     @action()
@@ -97,7 +122,7 @@ class BackupViewSet(viewsets.CreateModelViewSet):
         backup = self._get_backup(request.user, uuid)
         if backup.state != Backup.States.READY:
             return Response('Cannot restore a backup in state \'%s\'' % backup.get_state_display(),
-                            status=status.HTTP_400_BAD_REQUEST)
+                            status=status.HTTP_409_CONFLICT)
         # fail early if inputs are incorrect during the call time
         instance, user_input, errors = backup.get_strategy().deserialize_instance(backup.metadata, request.DATA)
         if not errors:
@@ -106,7 +131,7 @@ class BackupViewSet(viewsets.CreateModelViewSet):
             except TransitionNotAllowed:
                 # this should never be hit as the check is done on function entry
                 return Response('Cannot restore a backup in state \'%s\'' % backup.get_state_display(),
-                                status=status.HTTP_400_BAD_REQUEST)
+                                status=status.HTTP_409_CONFLICT)
             return Response({'status': 'Backup restoration process was started'})
 
         return Response(errors, status=status.HTTP_400_BAD_REQUEST)
@@ -118,6 +143,6 @@ class BackupViewSet(viewsets.CreateModelViewSet):
             backup.start_deletion()
         except TransitionNotAllowed:
             return Response('Cannot delete a backup in state \'%s\'' % backup.get_state_display(),
-                            status=status.HTTP_400_BAD_REQUEST)
+                            status=status.HTTP_409_CONFLICT)
 
         return Response({'status': 'Backup deletion was started'})

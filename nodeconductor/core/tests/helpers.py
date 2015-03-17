@@ -75,16 +75,16 @@ class PermissionsTest(test.APITransactionTestCase):
                 response = getattr(self.client, method.lower())(url, data=data)
                 self.assertFalse(
                     response.status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND),
-                    'Error. User %s can not reach url: %s (method:%s). (Response status code %s)'
-                    % (user, url, method, response.status_code))
+                    'Error. User %s can not reach url: %s (method:%s). (Response status code %s, data %s)'
+                    % (user, url, method, response.status_code, response.data))
 
             for user in self.get_users_without_permissions(url, method):
                 self.client.force_authenticate(user=user)
                 response = getattr(self.client, method.lower())(url, data=data)
                 self.assertTrue(
                     response.status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND),
-                    'Error. User %s can reach url: %s (method:%s). (Response status code %s)'
-                    % (user, url, method, response.status_code))
+                    'Error. User %s can reach url: %s (method:%s). (Response status code %s, data %s)'
+                    % (user, url, method, response.status_code, response.data))
 
 
 class ListPermissionsTest(test.APITransactionTestCase):

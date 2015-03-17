@@ -24,15 +24,19 @@ class ZabbixDBClient(object):
         self.zabbix_api_client = api_client.ZabbixApiClient()
 
     def get_item_stats(self, instances, item, start_timestamp, end_timestamp, segments_count):
+        # FIXME: Quick and dirty hack to handle storage in a separate flow
+        if item == 'storage':
+            return self.get_storage_stats(instances, start_timestamp, end_timestamp, segments_count)
+
         host_ids = []
         for instance in instances:
             try:
                 host_ids.append(self.zabbix_api_client.get_host(instance)['hostid'])
             except ZabbixError:
-                logger.warn('Failed to get a Zabbix host for instance %s' % instance.uuid)
+                logger.warn('Failed to get a Zabbix host for instance %s', instance.uuid)
 
         # return an empty list if no hosts were found
-        if len(host_ids) == 0:
+        if not host_ids:
             return []
 
         item_key = self.items[item]['key']
@@ -74,3 +78,71 @@ class ZabbixDBClient(object):
         cursor = connections['zabbix'].cursor()
         cursor.execute(query)
         return cursor.fetchall()
+
+    def get_storage_stats(self, instances, start_timestamp, end_timestamp, segments_count):
+        host_ids = []
+        for instance in instances:
+            try:
+                host_data = self.zabbix_api_client.get_host(instance)
+                host_ids.append(int(host_data['hostid']))
+            except (ZabbixError, ValueError, KeyError):
+                logger.warn('Failed to get Zabbix hostid for instance %s', instance.uuid)
+
+        # return an empty list if no hosts were found
+        if not host_ids:
+            return []
+
+        query = """
+            SELECT
+              hi.clock - (hi.clock %% 60)               `time`,
+              SUM(hi.value) / (1024 * 1024)             `value`
+            FROM zabbix.items it
+              JOIN zabbix.history_uint hi ON hi.itemid = it.itemid
+            WHERE
+              it.key_ = 'openstack.vm.disk.size'
+              AND
+              it.hostid IN %s
+              AND
+              hi.clock >= %s AND hi.clock < %s
+            GROUP BY hi.clock - (hi.clock %% 60)
+            ORDER BY hi.clock - (hi.clock %% 60) ASC
+        """
+
+        # This is a work-around for MySQL-python<1.2.5
+        # that was unable to serialize lists with a single value properly.
+        # MySQL-python==1.2.3 is default in Centos 7 as of 2015-03-03.
+        if len(host_ids) == 1:
+            host_ids.append(host_ids[0])
+
+        parameters = (host_ids, start_timestamp, end_timestamp)
+
+        with connections['zabbix'].cursor() as cursor:
+            cursor.execute(query, parameters)
+            actual_values = cursor.fetchall()
+
+        # Poor man's resampling
+        resampled_values = []
+        sampling_step = (end_timestamp - start_timestamp) / segments_count
+
+        for i in range(segments_count):
+            segment_start_timestamp = start_timestamp + sampling_step * i
+            segment_end_timestamp = segment_start_timestamp + sampling_step
+
+            # Get the closest value that was known before the requested data point
+            # This could be written in much more efficient way.
+            preceding_values = [
+                value for time, value in actual_values
+                if time < segment_end_timestamp
+            ]
+            try:
+                value = preceding_values[-1]
+            except IndexError:
+                value = '0.0000'
+
+            resampled_values.append({
+                'from': segment_start_timestamp,
+                'to': segment_end_timestamp,
+                'value': value,
+            })
+
+        return resampled_values

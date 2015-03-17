@@ -70,24 +70,16 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Template %s is not available on cloud %s"
                                               % (template, flavor.cloud))
 
-        try:
-            storage_size = models.ResourceQuota.objects.get(cloud_project_membership=membership).storage
-        except models.ResourceQuota.DoesNotExist:
-            raise serializers.ValidationError(
-                "Instance can not be added to cloud account membership, which does not have resource quotas yet.")
-
-        try:
-            storage_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership).storage
-        except models.ResourceQuotaUsage.DoesNotExist:
-            storage_usage = 0
-
         system_volume_size = attrs['system_volume_size']
         data_volume_size = attrs.get('data_volume_size', models.Instance.DEFAULT_DATA_VOLUME_SIZE)
+        quota_usage = {
+            'storage': system_volume_size + data_volume_size
+        }
 
-        if system_volume_size + data_volume_size > storage_size - storage_usage:
+        quota_errors = membership.validate_quota_change(quota_usage)
+        if quota_errors:
             raise serializers.ValidationError(
-                "Requested instance size is over the quota: %s. Available quota: %s" %
-                (data_volume_size + system_volume_size, storage_size - storage_usage))
+                'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
 
         # TODO: cleanup after migration to drf 3
         return fix_non_nullable_attrs(attrs)

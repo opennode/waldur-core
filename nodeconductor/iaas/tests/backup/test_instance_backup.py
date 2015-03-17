@@ -7,10 +7,11 @@ from mock import Mock
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
-from nodeconductor.backup.models import Backup
+from nodeconductor.backup.models import Backup, BackupSchedule
 from nodeconductor.backup.exceptions import BackupStrategyExecutionError
 from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.iaas.backup.instance_backup import InstanceBackupStrategy
+from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -25,8 +26,6 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         factories.TemplateLicenseFactory(templates=(self.template,))
 
         self.instance = factories.InstanceFactory(template=self.template)
-        factories.ResourceQuotaFactory(
-            cloud_project_membership=self.instance.cloud_project_membership, storage=10 * 1024 * 1024)
         self.backup = backup_factories.BackupFactory(
             backup_source=self.instance,
             metadata={
@@ -92,15 +91,14 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         )
 
     def test_strategy_restore_method_fails_if_where_is_no_space_on_resource_storage(self):
-        factories.ResourceQuotaUsageFactory(
-            cloud_project_membership=self.instance.cloud_project_membership, storage=10 * 1024 * 1024)
+        self.instance.cloud_project_membership.set_quota_limit('storage', self.instance.system_volume_size)
         self.assertRaises(BackupStrategyExecutionError, lambda: InstanceBackupStrategy.backup(self.instance))
 
 
 class InstanceDeletionTestCase(APITransactionTestCase):
 
     def test_cannot_delete_instance_with_connected_backup(self):
-        instance = factories.InstanceFactory()
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
         Backup.objects.create(
             backup_source=instance,
         )
@@ -111,3 +109,16 @@ class InstanceDeletionTestCase(APITransactionTestCase):
         self.client.force_authenticate(structure_factories.UserFactory(is_staff=True))
         response = self.client.delete(factories.InstanceFactory.get_url(instance))
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_can_initiate_deletion_of_instance_with_connected_backup_schedule(self):
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+        BackupSchedule.objects.create(
+            backup_source=instance,
+            schedule="* * * * *",
+            retention_time=1,
+            maximal_number_of_backups=2,
+        )
+
+        self.client.force_authenticate(structure_factories.UserFactory(is_staff=True))
+        response = self.client.delete(factories.InstanceFactory.get_url(instance))
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED, response.data)

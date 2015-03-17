@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.core.exceptions import ValidationError
+from django.core.urlresolvers import reverse
 from django.db import IntegrityError
 from rest_framework import serializers, status, exceptions
 
@@ -8,6 +9,7 @@ from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core import models as core_models, serializers as core_serializers
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
+from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.serializers import fix_non_nullable_attrs
@@ -30,7 +32,7 @@ class FlavorSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
 
 
-class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
+class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
                       core_serializers.RelatedResourcesFieldMixin,
                       serializers.HyperlinkedModelSerializer):
     flavors = FlavorSerializer(many=True, read_only=True)
@@ -75,9 +77,11 @@ class UniqueConstraintError(exceptions.APIException):
     default_detail = 'Entity already exists.'
 
 
-class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFilteringMixin,
+class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilteringMixin,
                                        core_serializers.RelatedResourcesFieldMixin,
                                        serializers.HyperlinkedModelSerializer):
+
+    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.CloudProjectMembership
@@ -85,6 +89,7 @@ class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFiltering
             'url',
             'project', 'project_name',
             'cloud', 'cloud_name',
+            'quotas',
         )
         view_name = 'cloudproject_membership-detail'
 
@@ -152,7 +157,7 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
         view_name = 'security_group-detail'
 
 
-class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
+class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMixin,
                                serializers.HyperlinkedModelSerializer):
 
     security_groups = InstanceSecurityGroupSerializer(
@@ -177,6 +182,12 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         queryset=core_models.SshPublicKey.objects.all(),
         required=False,
         write_only=True,
+    )
+    template = serializers.HyperlinkedRelatedField(
+        view_name='iaastemplate-detail',
+        lookup_field='uuid',
+        queryset=models.Template.objects.all(),
+        required=True,
     )
 
     external_ips = core_serializers.IPsField(required=False)
@@ -254,44 +265,16 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         data_volume_size = attrs.get('data_volume_size', models.Instance.DEFAULT_DATA_VOLUME_SIZE)
 
-        try:
-            resource_quota = models.ResourceQuota.objects.get(cloud_project_membership=membership)
-            storage_size = resource_quota.storage
-            vcpu_size = resource_quota.vcpu
-            ram_size = resource_quota.ram
-            instance_size = resource_quota.max_instances
-        except models.ResourceQuota.DoesNotExist:
+        instance_quota_usage = {
+            'storage': data_volume_size + system_volume_size,
+            'vcpu': flavor.cores,
+            'ram': flavor.ram,
+            'max_instances': 1
+        }
+        quota_errors = membership.validate_quota_change(instance_quota_usage)
+        if quota_errors:
             raise serializers.ValidationError(
-                "Instance can not be added to cloud account membership, which does not have resource quotas yet.")
-
-        try:
-            resource_quota_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership)
-            storage_usage = resource_quota_usage.storage
-            vcpu_usage = resource_quota_usage.vcpu
-            ram_usage = resource_quota_usage.ram
-            instance_usage = resource_quota_usage.max_instances
-        except models.ResourceQuotaUsage.DoesNotExist:
-            storage_usage = 0
-            vcpu_usage = 0
-            ram_usage = 0
-            instance_usage = 0
-
-        if data_volume_size + system_volume_size > storage_size - storage_usage:
-            raise serializers.ValidationError(
-                "Requested instance size is over the quota: %s. Available quota: %s" %
-                (data_volume_size + system_volume_size, storage_size - storage_usage))
-
-        if flavor.cores > vcpu_size - vcpu_usage:
-            raise serializers.ValidationError(
-                "Requested instance core number exceeds quota")
-
-        if flavor.ram > ram_size - ram_usage:
-            raise serializers.ValidationError(
-                "Requested instance RAM size exceeds quota")
-
-        if 1 > instance_size - instance_usage:
-            raise serializers.ValidationError(
-                "Number of existing instances exceeds quota")
+                'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
 
         # TODO: cleanup after migration to drf 3
         return fix_non_nullable_attrs(attrs)
@@ -343,7 +326,33 @@ class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
         many=True, required=False, read_only=False)
 
 
-class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
+class CloudProjectMembershipLinkSerializer(serializers.Serializer):
+    id = serializers.CharField(required=True)
+    template = serializers.HyperlinkedRelatedField(
+        view_name='iaastemplate-detail',
+        lookup_field='uuid',
+        queryset=models.Template.objects.all(),
+        required=False,
+    )
+
+    def validate_id(self, attrs, name):
+        backend_id = attrs[name]
+        cpm = self.context['membership']
+        if models.Instance.objects.filter(cloud_project_membership=cpm,
+                                   backend_id=backend_id).exists():
+            raise serializers.ValidationError(
+                "Instance with a specified backend ID already exists.")
+        return attrs
+
+
+class CloudProjectMembershipQuotaSerializer(serializers.Serializer):
+    storage = serializers.IntegerField(min_value=1, required=False)
+    max_instances = serializers.IntegerField(min_value=1, required=False)
+    ram = serializers.IntegerField(min_value=1, required=False)
+    vcpu = serializers.IntegerField(min_value=1, required=False)
+
+
+class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMixin,
                                serializers.Serializer):
     flavor = serializers.HyperlinkedRelatedField(
         view_name='flavor-detail',
@@ -372,43 +381,29 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
         membership = self.instance.cloud_project_membership
         # TODO: consider abstracting the validation below and merging with the InstanceCreateSerializer one
         # check quotas in advance
-        try:
-            resource_quota = models.ResourceQuota.objects.get(cloud_project_membership=membership)
-            storage_size = resource_quota.storage
-            vcpu_size = resource_quota.vcpu
-            ram_size = resource_quota.ram
-        except models.ResourceQuota.DoesNotExist:
-            raise serializers.ValidationError(
-                "Instance resize can not be triggered for cloud account membership, "
-                "which does not have resource quotas yet.")
-
-        try:
-            resource_quota_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership)
-            storage_usage = resource_quota_usage.storage
-            vcpu_usage = resource_quota_usage.vcpu
-            ram_usage = resource_quota_usage.ram
-        except models.ResourceQuotaUsage.DoesNotExist:
-            storage_usage = 0
-            vcpu_usage = 0
-            ram_usage = 0
 
         # If disk size was changed - we need to check if it fits quotas
         if disk_size is not None:
             old_size = self.instance.data_volume_size
-            new_size = disk_size or flavor.disk
-            if (new_size - old_size) > storage_size - storage_usage:
-                raise serializers.ValidationError(
-                    "Requested instance additional size is over the quota: %s. Available quota: %s" %
-                    (new_size - old_size, storage_size - storage_usage))
+            new_size = disk_size
+            quota_usage = {
+                'storage': new_size - old_size
+            }
+
         # Validate flavor modification
         else:
-            # the resize can only happen for an offline VM, so once it boots it will start consuming these quotas
-            if flavor.cores > vcpu_size - vcpu_usage:
-                raise serializers.ValidationError(
-                    "Requested instance core number exceeds quota")
-            if flavor.ram > ram_size - ram_usage:
-                raise serializers.ValidationError(
-                    "Requested instance RAM size exceeds quota")
+            old_cores = self.instance.cores
+            old_ram = self.instance.ram
+            quota_usage = {
+                'vcpu': flavor.cores - old_cores,
+                'ram': flavor.ram - old_ram,
+            }
+
+        quota_errors = membership.validate_quota_change(quota_usage)
+        if quota_errors:
+            raise serializers.ValidationError(
+                'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
+
         return attrs
 
 
@@ -443,6 +438,11 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
     customer_native_name = serializers.Field(source='cloud_project_membership.project.customer.native_name')
     template_os = serializers.Field(source='template.os')
     created = serializers.DateTimeField(format='iso-8601')
+
+    # Avoid name clashes with nodeconductor.template
+    RELATED_FIELD_VIEW_NAMES = {
+        'template': 'iaastemplate-detail',
+    }
 
     class Meta(object):
         model = models.Instance
@@ -503,6 +503,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     template_licenses = TemplateLicenseSerializer()
 
     class Meta(object):
+        view_name = 'iaastemplate-detail'
         model = models.Template
         fields = (
             'url', 'uuid',
@@ -533,6 +534,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
+        view_name = 'iaastemplate-detail'
         model = models.Template
         fields = (
             'url', 'uuid',
@@ -602,34 +604,59 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
 class ServiceSerializer(serializers.Serializer):
     url = serializers.SerializerMethodField('get_service_url')
     service_type = serializers.SerializerMethodField('get_service_type')
+    state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
     hostname = serializers.Field()
     uuid = serializers.Field()
     agreed_sla = serializers.Field()
-    actual_sla = serializers.Field(source='slas__value')
-    template_name = serializers.Field(source='template__name')
-    customer_name = serializers.Field(source='cloud_project_membership__project__customer__name')
-    customer_native_name = serializers.Field(source='cloud_project_membership__project__customer__native_name')
-    customer_abbreviation = serializers.Field(source='cloud_project_membership__project__customer__abbreviation')
-    project_name = serializers.Field(source='cloud_project_membership__project__name')
+    actual_sla = serializers.SerializerMethodField('get_actual_sla')
+    template_name = serializers.Field(source='template.name')
+    customer_name = serializers.Field(source='cloud_project_membership.project.customer.name')
+    customer_native_name = serializers.Field(source='cloud_project_membership.project.customer.native_name')
+    customer_abbreviation = serializers.Field(source='cloud_project_membership.project.customer.abbreviation')
+    project_name = serializers.Field(source='cloud_project_membership.project.name')
+    project_uuid = serializers.Field(source='cloud_project_membership.project.uuid')
+    project_url = serializers.SerializerMethodField('get_project_url')
     project_groups = serializers.SerializerMethodField('get_project_groups')
+    access_information = core_serializers.IPsField(source='external_ips')
 
     class Meta(object):
         fields = (
             'url',
             'uuid',
+            'state',
             'hostname', 'template_name',
             'customer_name',
             'customer_native_name',
             'customer_abbreviation',
-            'project_name', 'project_groups',
+            'project_name', 'project_uuid', 'project_url',
+            'project_groups',
             'agreed_sla', 'actual_sla',
             'service_type',
+            'access_information',
         )
         view_name = 'service-detail'
         lookup_field = 'uuid'
 
+    def get_project_url(self, obj):
+        try:
+            request = self.context['request']
+        except AttributeError:
+            raise AttributeError('ServiceSerializer have to be initialized with `request` in context')
+        return request.build_absolute_uri(
+            reverse('project-detail', kwargs={'uuid': obj.cloud_project_membership.project.uuid}))
+
     def get_service_type(self, obj):
         return 'IaaS'
+
+    def get_actual_sla(self, obj):
+        try:
+            period = self.context['period']
+        except (KeyError, AttributeError):
+            raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
+        try:
+            return models.InstanceSlaHistory.objects.get(instance=obj, period=period).value
+        except models.InstanceSlaHistory.DoesNotExist:
+            return None
 
     def get_service_url(self, obj):
         try:
@@ -639,7 +666,7 @@ class ServiceSerializer(serializers.Serializer):
 
         # TODO: this could use something similar to backup's generic model for all resources
         view_name = 'service-detail'
-        service_instance = models.Instance.objects.get(uuid=obj['uuid'])
+        service_instance = obj
         hyperlinked_field = serializers.HyperlinkedRelatedField(
             view_name=view_name,
             lookup_field='uuid',
@@ -654,7 +681,7 @@ class ServiceSerializer(serializers.Serializer):
         except (KeyError, AttributeError):
             raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
 
-        service_instance = models.Instance.objects.get(uuid=obj['uuid'])
+        service_instance = obj
         groups = structure_serializers.BasicProjectGroupSerializer(
             service_instance.cloud_project_membership.project.project_groups.all(),
             many=True,

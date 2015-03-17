@@ -5,6 +5,9 @@ from django.test import TestCase
 
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas.tests import factories
+from nodeconductor.iaas.template import serializers as iaastemplate_serializers
+from nodeconductor.template.tests import factories as template_factories
+from nodeconductor.template import serializers as template_serializers
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -65,13 +68,6 @@ class InstanceCreateSerializer2Test(TestCase):
         self.membership = factories.CloudProjectMembershipFactory(
             cloud=self.flavor.cloud,
             project=self.project,
-        )
-        self.resource_quota = factories.ResourceQuotaFactory(
-            cloud_project_membership=self.membership,
-            storage=10 * 1024 * 1024,
-            vcpu=10,
-            ram=2 * 1024,
-            max_instances=10,
         )
 
         factories.ImageFactory(template=self.template, cloud=self.flavor.cloud)
@@ -154,3 +150,69 @@ class InstanceSerializerTest(TestCase):
         serializer = serializers.InstanceSerializer(instance=instance)
         data = serializer.data
         return data
+
+
+class CloudProjectMembershipQuotaSerializerTest(TestCase):
+    def test_cloud_project_membership_quota_serializer_accepts_positive_values(self):
+        data = {
+            'max_instances': 12,
+            'vcpu': 20,
+            'storage': 40 * 1024,
+            'ram': 20 * 1024,
+        }
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(data, serializer.data)
+
+    def test_cloud_project_membership_quota_serializer_fails_on_negative_values(self):
+        data = {
+            'max_instances': -1,
+            'vcpu': -1,
+            'storage': -1,
+            'ram': -1,
+        }
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_cloud_project_membership_quota_serializer_fails_on_symbolic_values(self):
+        data = {
+            'max_instances': 'lalala',
+            'vcpu': 'lalala',
+            'storage': 'lalala',
+            'ram': 'lalala',
+        }
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_cloud_project_membership_quota_serializer_ignores_unsupported_fields(self):
+        data = {
+            'some_strange_quota_name': 1,
+        }
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertTrue('some_strange_quota_name' not in serializer.data)
+
+
+class IaasTemplateServiceTest(TestCase):
+
+    def setUp(self):
+        self.cloud = factories.CloudFactory()
+        self.flavor = factories.FlavorFactory(cloud=self.cloud)
+        self.image = factories.ImageFactory(cloud=self.cloud)
+        self.template = template_factories.TemplateFactory()
+        self.iaas_template_service = factories.IaasTemplateServiceFactory(
+            template=self.template,
+            service=self.cloud,
+            flavor=self.flavor,
+            image=self.image)
+
+    def test_create_template_service(self):
+        iaas_template_service = self.template.services.first()
+        self.assertIsNotNone(iaas_template_service)
+        self.assertIsInstance(iaas_template_service, factories.IaasTemplateServiceFactory._meta.model)
+        self.assertEqual(iaas_template_service.service, self.cloud)
+
+    def test_template_serializer_returns_proper_service_type(self):
+        serializer = template_serializers.TemplateSerializer(instance=self.template)
+        service_type = serializer.data['services'][0].get('service_type')
+        self.assertEqual(service_type, 'IaaS')

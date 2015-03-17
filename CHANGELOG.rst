@@ -5,7 +5,53 @@ Coming in the next release
 --------------------------
 
 (Fixes/changes that are in develop branch.)
+
+- Change OpenStack tenant name generation schema. Now it uses only project UUID, name is removed.
+
+
+Release 0.40.0
+--------------
+- Enhanced support of instance import - added ability to set template.
+- Fix sorting of instances by start_time.
+
+Release 0.39.0
+--------------
+- Added instance import helper.
+- Improved event logging.
+- Bugfixes of quota checks.
+
+Release 0.38.0
+--------------
+
+- Optimized resource usage monitoring. Use background tasks for collecting statistics.
+- Bugfix of listing service events.
+
+Release 0.37.0
+--------------
+
+- More information added to existing event logs.
+- Improved performance of querying resource statistics.
+- Bugfixes of the event logger and service list.
+
+Release 0.36.0
+--------------
+
+- UUIDs in emitted logs are not hyphenated
+- Bugfixes and documentation extensions
+- Default value for the maximal page_size was set to 200
+
+Release 0.35.0
+--------------
+
+- Added basic organization validation flow.
+- Modified user filtering to take into account organization validation status.
+- Bugfixes of the event logger.
+
+Release 0.34.0
+--------------
+
 - Dropped backup quota. Rely on storage quota only.
+- Added event logging for actions initiated by user or staff.
 
 Release 0.33.0
 --------------

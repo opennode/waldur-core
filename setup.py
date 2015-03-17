@@ -25,7 +25,8 @@ install_requires = [
     'django-model-utils==2.2',
     'django-permission==0.8.2',
     'django-uuidfield==0.5.0',
-    'djangorestframework>=3.0.0,<3.1.0',
+    'django-polymorphic>=0.6.0',
+    'djangorestframework>=3.1.0,<3.2.0',
     'djangosaml2==0.12.0.dev0',
     'drf-extensions==0.2.6',
     'jsonfield==1.0.0',
@@ -36,12 +37,13 @@ install_requires = [
     'python-novaclient==2.17.0',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
+    'requests<=2.5.1',
 ]
 
 
 setup(
     name='nodeconductor',
-    version='0.34.0.dev0',
+    version='0.41.0.dev0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
@@ -58,6 +60,7 @@ setup(
     },
     entry_points={
         'backup_strategies': ('Instance = nodeconductor.iaas.backup.instance_backup:InstanceBackupStrategy',),
+        'template_services': ('IaaS = nodeconductor.iaas.template.strategy:IaasTemplateServiceStrategy',),
         'console_scripts': ('nodeconductor = nodeconductor.server.manage:main',),
     },
     tests_require=tests_requires,

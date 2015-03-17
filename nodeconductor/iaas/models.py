@@ -13,7 +13,10 @@ from django_fsm import transition
 from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
+from nodeconductor.core.fields import CronScheduleBaseField
 from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.template.models import TemplateService
+from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure import models as structure_models
 
 
@@ -65,15 +68,27 @@ class Cloud(core_models.UuidMixin, core_models.SynchronizableMixin, models.Model
 
         return OpenStackBackend()
 
+    def get_statistics(self):
+        return dict((s.key, s.value) for s in self.stats.all())
+
     def __str__(self):
         return self.name
 
 
+class ServiceStatistics(models.Model):
+    cloud = models.ForeignKey(Cloud, related_name='stats')
+    key = models.CharField(max_length=32)
+    value = models.CharField(max_length=255)
+
+
 @python_2_unicode_compatible
-class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
+class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin, models.Model):
     """
     This model represents many to many relationships between project and cloud
     """
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
+    # This name will be used by generic relationships to membership model for URL creation
+    DEFAULT_URL_NAME = 'cloudproject_membership'
 
     cloud = models.ForeignKey(Cloud)
     project = models.ForeignKey(structure_models.Project)
@@ -83,12 +98,15 @@ class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
     password = models.CharField(max_length=100, blank=True)
 
     tenant_id = models.CharField(max_length=64, blank=True)
+    internal_network_id = models.CharField(max_length=64, blank=True)
 
     availability_zone = models.CharField(
         max_length=100, blank=True,
-        help_text='Optional availability group. Will be used for all instances provisioned in this tenant')
+        help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
+    )
 
     class Meta(object):
+        # TODO: why not unique by cloud and project?
         unique_together = ('cloud', 'tenant_id')
 
     class Permissions(object):
@@ -99,17 +117,8 @@ class CloudProjectMembership(core_models.SynchronizableMixin, models.Model):
     def __str__(self):
         return '{0} | {1}'.format(self.cloud.name, self.project.name)
 
-    def update_resource_quota_usage(self, field, value):
-        try:
-            resource_quota_usage = ResourceQuotaUsage.objects.get(cloud_project_membership=self)
-        except ResourceQuotaUsage.DoesNotExist:
-            resource_quota_usage = ResourceQuotaUsage(cloud_project_membership=self)
-            for resource_field in AbstractResourceQuota._meta.get_all_field_names():
-                setattr(resource_quota_usage, resource_field, 0)
-
-        old_value = getattr(resource_quota_usage, field, 0)
-        setattr(resource_quota_usage, field, old_value + value)
-        resource_quota_usage.save()
+    def get_quota_parents(self):
+        return [self.project]
 
 
 class CloudProjectMember(models.Model):
@@ -176,6 +185,18 @@ class Image(models.Model):
         )
 
 
+class IaasTemplateService(TemplateService):
+    service = models.ForeignKey(Cloud, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
+    flavor = models.ForeignKey(Flavor, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
+    image = models.ForeignKey(Image, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
+    sla = models.BooleanField(default=False)
+    sla_level = models.DecimalField(max_digits=6, decimal_places=4, default=0, blank=True)
+    backup_schedule = CronScheduleBaseField(max_length=15, null=True, blank=True)
+
+    def provision(self):
+        pass
+
+
 @python_2_unicode_compatible
 class Template(core_models.UuidMixin,
                core_models.UiDescribableMixin,
@@ -208,30 +229,6 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
 
     def __str__(self):
         return '{0} <-> {1}'.format(self.template.name, self.backend_image_id)
-
-
-class AbstractResourceQuota(models.Model):
-    """ Abstract model for membership quotas """
-
-    class Meta(object):
-        abstract = True
-
-    vcpu = models.PositiveIntegerField(help_text='Virtual CPUs')
-    ram = models.FloatField(help_text='RAM size')
-    storage = models.FloatField(help_text='Storage size (incl. backup)')
-    max_instances = models.PositiveIntegerField(help_text='Number of running instances')
-
-
-# TODO: Refactor to use CloudProjectMember
-class ResourceQuota(AbstractResourceQuota):
-    """ CloudProjectMembership quota """
-    cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota')
-
-
-# TODO: Refactor to use CloudProjectMember
-class ResourceQuotaUsage(AbstractResourceQuota):
-    """ CloudProjectMembership quota usage """
-    cloud_project_membership = models.OneToOneField('CloudProjectMembership', related_name='resource_quota_usage')
 
 
 class FloatingIP(core_models.UuidMixin, CloudProjectMember):
@@ -337,8 +334,7 @@ class Instance(core_models.UuidMixin,
 
     state = FSMIntegerField(
         default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
-        help_text="WARNING! Should not be changed manually unless you really know what you are doing."
-    )
+        help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
     # fields, defined by flavor
     cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
@@ -500,11 +496,11 @@ class TemplateLicense(core_models.UuidMixin, models.Model):
 
     def get_projects(self):
         return structure_models.Project.objects.filter(
-            clouds__images__template__template_licenses=self)
+            clouds__images__template__template_licenses=self).distinct()
 
     def get_projects_groups(self):
         return structure_models.ProjectGroup.objects.filter(
-            projects__clouds__images__template__template_licenses=self)
+            projects__clouds__images__template__template_licenses=self).distinct()
 
 
 @python_2_unicode_compatible

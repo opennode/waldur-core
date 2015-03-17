@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from mock import Mock
 
 from django.test import TestCase
-from rest_framework import status
 
 from nodeconductor.backup import views, models
 from nodeconductor.backup.tests import factories
@@ -35,34 +34,3 @@ class BackupPermissionFilterTest(TestCase):
         self.filter._get_user_visible_model_instances_ids = lambda u, m: []
         filtered = self.filter.filter_queryset(mocked_request, models.Backup.objects.all(), None)
         self.assertFalse(filtered)
-
-
-class BackupViewSetTest(TestCase):
-
-    def setUp(self):
-        self.view = views.BackupViewSet()
-        self.user = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
-
-    def test_restore(self):
-        backup = factories.BackupFactory.create(
-            state=models.Backup.States.READY,
-        )
-        request = Mock()
-        flavor = iaas_factories.FlavorFactory(cloud=backup.backup_source.cloud_project_membership.cloud)
-        iaas_factories.ResourceQuotaFactory(
-            cloud_project_membership=backup.backup_source.cloud_project_membership, storage=10 * 1024 * 1024)
-        request.DATA = {
-            'hostname': 'new.hostname',
-            'flavor': iaas_factories.FlavorFactory.get_url(flavor)
-        }
-        response = self.view.restore(request, backup.uuid)
-        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
-        self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.RESTORING)
-
-    def test_delete(self):
-        request = Mock()
-        request.user = self.user
-        backup = factories.BackupFactory(state=models.Backup.States.READY)
-        response = self.view.delete(request, backup.uuid)
-        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
-        self.assertEqual(models.Backup.objects.get(pk=backup.pk).state, models.Backup.States.DELETING)

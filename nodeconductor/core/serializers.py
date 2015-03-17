@@ -2,11 +2,14 @@ import base64
 
 from django.contrib.auth import authenticate
 from django.core import validators
+from django.core.exceptions import ValidationError
+from django.core.urlresolvers import reverse, resolve, Resolver404
 from rest_framework import serializers
 from rest_framework.fields import Field
+from rest_framework.relations import RelatedField
 
 from nodeconductor.core.signals import pre_serializer_fields
-from nodeconductor.structure.filters import filter_queryset_for_user
+
 
 validate_ipv4_address_within_list = validators.RegexValidator(
     validators.ipv4_re, 'Enter a list of valid IPv4 addresses.',
@@ -84,41 +87,6 @@ class Saml2ResponseSerializer(serializers.Serializer):
     saml2response = Base64Field(required=True)
 
 
-class PermissionFieldFilteringMixin(object):
-    """
-    Mixin allowing to filter related fields.
-
-    In order to constrain the list of entities that can be used
-    as a value for the field:
-
-    1. Make sure that the entity in question has corresponding
-       Permission class defined.
-
-    2. Implement `get_filtered_field_names()` method
-       in the class that this mixin is mixed into and return
-       the field in question from that method.
-    """
-    def get_fields(self):
-        fields = super(PermissionFieldFilteringMixin, self).get_fields()
-
-        try:
-            request = self.context['view'].request
-            user = request.user
-        except (KeyError, AttributeError):
-            return fields
-
-        for field_name in self.get_filtered_field_names():
-            fields[field_name].queryset = filter_queryset_for_user(
-                fields[field_name].queryset, user)
-
-        return fields
-
-    def get_filtered_field_names(self):
-        raise NotImplementedError(
-            'Implement get_filtered_field_names() '
-            'to return list of filtered fields')
-
-
 class RelatedResourcesFieldMixin(object):
     """
     Mixin that adds fields describing related resources.
@@ -140,13 +108,18 @@ class RelatedResourcesFieldMixin(object):
     def get_default_fields(self):
         fields = super(RelatedResourcesFieldMixin, self).get_default_fields()
 
+        try:
+            defaults = getattr(self, 'RELATED_FIELD_VIEW_NAMES')
+        except AttributeError:
+            defaults = {}
+
         for path in self.get_related_paths():
             path_components = path.split('.')
             entity_name = path_components[-1]
 
             fields[entity_name] = serializers.HyperlinkedRelatedField(
                 source=path,
-                view_name='{0}-detail'.format(entity_name),
+                view_name=defaults.get(entity_name) or '{0}-detail'.format(entity_name),
                 lookup_field='uuid',
                 read_only=len(path_components) > 1,
             )
@@ -225,3 +198,90 @@ class CollectedFieldsMixin(object):
         fields = super(CollectedFieldsMixin, self).get_fields()
         pre_serializer_fields.send(sender=self.__class__, fields=fields)
         return fields
+
+
+class GenericRelatedField(RelatedField):
+    """
+    A custom field to use for the `tagged_object` generic relationship.
+    """
+    read_only = False
+    _default_view_name = '%(model_name)s-detail'
+    lookup_fields = ['uuid', 'pk']
+
+    def __init__(self, related_models=[], **kwargs):
+        super(GenericRelatedField, self).__init__(**kwargs)
+        self.related_models = related_models
+
+    def _get_url(self, obj):
+        """
+        Gets object url
+        """
+        format_kwargs = {
+            'app_label': obj._meta.app_label,
+        }
+        try:
+            format_kwargs['model_name'] = getattr(obj, 'DEFAULT_URL_NAME')
+        except AttributeError:
+            format_kwargs['model_name'] = obj._meta.object_name.lower()
+        return self._default_view_name % format_kwargs
+
+    def to_native(self, obj):
+        """
+        Serializes any object to his url representation
+        """
+        kwargs = None
+        for field in self.lookup_fields:
+            if hasattr(obj, field):
+                kwargs = {field: getattr(obj, field)}
+                break
+        if kwargs is None:
+            raise AttributeError('Related object does not have any of of lookup_fields')
+        try:
+            request = self.context['request']
+        except AttributeError:
+            raise AttributeError('GenericRelatedField have to be initialized with `request` in context')
+        return request.build_absolute_uri(reverse(self._get_url(obj), kwargs=kwargs))
+
+    def _format_url(self, url):
+        """
+        Removes domain and protocol from url
+        """
+        if url.startswith('http'):
+            return '/' + url.split('/', 3)[-1]
+        return url
+
+    def _get_model_from_resolve_match(self, match):
+        queryset = match.func.cls.queryset
+        if queryset is not None:
+            return queryset.model
+        else:
+            return match.func.cls.model
+
+    def from_native(self, data):
+        """
+        Restores model instance from its url
+        """
+        try:
+            url = self._format_url(data)
+            match = resolve(url)
+            model = self._get_model_from_resolve_match(match)
+            obj = model.objects.get(**match.kwargs)
+        except (Resolver404, AttributeError):
+            raise ValidationError("Can`t restore object from url: %s" % data)
+        if model not in self.related_models:
+            raise ValidationError('%s object does not support such relationship' % str(obj))
+        return obj
+
+    # this method tries to initialize queryset based on field.rel.to._default_manager
+    # but generic field does not have default manager
+    def initialize(self, parent, field_name):
+        super(RelatedField, self).initialize(parent, field_name)
+
+        if len(self.related_models) < 1:
+            self.queryset = set()
+            return
+
+        # XXX ideally this queryset has to return all available for generic key instances
+        # Now we just take first backupable model and return all its instances
+        model = self.related_models[0]
+        self.queryset = model.objects.all()

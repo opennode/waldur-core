@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import logging
 import time
 
 from django.contrib import auth
@@ -18,13 +19,18 @@ from rest_framework.settings import api_settings
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins
-from nodeconductor.core import permissions
 from nodeconductor.core import viewsets
+from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import filters
+from nodeconductor.structure import permissions
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 
+
+logger = logging.getLogger(__name__)
+event_logger = EventLoggerAdapter(logger)
 
 User = auth.get_user_model()
 
@@ -79,7 +85,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_class = CustomerFilter
 
 
-class ProjectFilter(django_filters.FilterSet):
+class ProjectFilter(quotas_views.QuotaFilterMixin, django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='customer__uuid',
         distinct=True,
@@ -118,23 +124,6 @@ class ProjectFilter(django_filters.FilterSet):
 
     description = django_filters.CharFilter(lookup_type='icontains')
 
-    # TODO: quota filters are matching quota values in every CloudProjectMembership quota, not aggregated.
-    vcpu = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__vcpu',
-    )
-
-    ram = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__ram',
-    )
-
-    storage = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__storage',
-    )
-
-    max_instances = django_filters.NumberFilter(
-        name='cloudprojectmembership__resource_quota__max_instances',
-    )
-
     class Meta(object):
         model = models.Project
         fields = [
@@ -143,11 +132,6 @@ class ProjectFilter(django_filters.FilterSet):
             'name',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'description',
-            # quotas
-            'vcpu',
-            'ram',
-            'storage',
-            'max_instances',
         ]
         order_by = [
             'name',
@@ -160,32 +144,34 @@ class ProjectFilter(django_filters.FilterSet):
             '-customer__name',
             'customer__abbreviation',
             '-customer__abbreviation',
-            'cloudprojectmembership__resource_quota__vcpu',
-            '-cloudprojectmembership__resource_quota__vcpu',
-            'cloudprojectmembership__resource_quota__ram',
-            '-cloudprojectmembership__resource_quota__ram',
-            'cloudprojectmembership__resource_quota__storage',
-            '-cloudprojectmembership__resource_quota__storage',
-            'cloudprojectmembership__resource_quota__max_instances',
-            '-cloudprojectmembership__resource_quota__max_instances',
+            'quotas__limit__ram',
+            '-quotas__limit__ram',
+            'quotas__limit__vcpu',
+            '-quotas__limit__vcpu',
+            'quotas__limit__storage',
+            '-quotas__limit__storage',
+            'quotas__limit__max_instances',
+            '-quotas__limit__max_instances',
+            'quotas__limit',
+            '-quotas__limit',
         ]
 
         order_by_mapping = {
             # Proper field naming
             'project_group_name': 'project_groups__name',
-            'vcpu': 'cloudprojectmembership__resource_quota__vcpu',
-            'ram': 'cloudprojectmembership__resource_quota__ram',
-            'max_instances': 'cloudprojectmembership__resource_quota__max_instances',
-            'storage': 'cloudprojectmembership__resource_quota__storage',
+            'vcpu': 'quotas__limit__vcpu',
+            'ram': 'quotas__limit__ram',
+            'max_instances': 'quotas__limit__max_instances',
+            'storage': 'quotas__limit__storage',
             'customer_name': 'customer__name',
             'customer_abbreviation': 'customer__abbreviation',
             'customer_native_name': 'customer__native_name',
 
             # Backwards compatibility
             'project_groups__name': 'project_groups__name',
-            'resource_quota__vcpu': 'cloudprojectmembership__resource_quota__vcpu',
-            'resource_quota__ram': 'cloudprojectmembership__resource_quota__ram',
-            'resource_quota__storage': 'cloudprojectmembership__resource_quota__storage',
+            'resource_quota__vcpu': 'quotas__limit__vcpu',
+            'resource_quota__ram': 'quotas__limit__ram',
+            'resource_quota__storage': 'quotas__limit__storage',
         }
 
 
@@ -342,6 +328,20 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     filter_class = ProjectGroupMembershipFilter
 
+    def post_save(self, obj, created=False):
+            event_logger.info(
+                'Project %s has been added to project group %s.', obj.project.name, obj.projectgroup.name,
+                extra={'project': obj.project, 'project_group': obj.projectgroup,
+                       'event_type': 'project_added_to_project_group'}
+            )
+
+    def post_delete(self, obj):
+        event_logger.info(
+            'Project %s has been removed from project group %s.', obj.project.name, obj.projectgroup.name,
+            extra={'project': obj.project, 'project_group': obj.projectgroup,
+                   'event_type': 'project_removed_from_project_group'}
+        )
+
 # XXX: This should be put to models
 filters.set_permissions_for_model(
     models.ProjectGroup.projects.through,
@@ -364,9 +364,7 @@ class UserFilter(django_filters.FilterSet):
     full_name = django_filters.CharFilter(lookup_type='icontains')
     username = django_filters.CharFilter()
     native_name = django_filters.CharFilter(lookup_type='icontains')
-    organization = django_filters.CharFilter(lookup_type='icontains')
     job_title = django_filters.CharFilter(lookup_type='icontains')
-    description = django_filters.CharFilter(lookup_type='icontains')
     email = django_filters.CharFilter(lookup_type='icontains')
     is_active = django_filters.BooleanFilter()
 
@@ -376,6 +374,7 @@ class UserFilter(django_filters.FilterSet):
             'full_name',
             'native_name',
             'organization',
+            'organization_approved',
             'email',
             'phone_number',
             'description',
@@ -390,6 +389,7 @@ class UserFilter(django_filters.FilterSet):
             'full_name',
             'native_name',
             'organization',
+            'organization_approved',
             'email',
             'phone_number',
             'description',
@@ -400,6 +400,7 @@ class UserFilter(django_filters.FilterSet):
             '-full_name',
             '-native_name',
             '-organization',
+            '-organization_approved',
             '-email',
             '-phone_number',
             '-description',
@@ -421,7 +422,7 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     permission_classes = (
         rf_permissions.IsAuthenticated,
-        permissions.IsAdminOrOwner,
+        permissions.IsAdminOrOwnerOrOrganizationManager,
     )
     filter_class = UserFilter
 
@@ -430,7 +431,7 @@ class UserViewSet(viewsets.ModelViewSet):
         queryset = super(UserViewSet, self).get_queryset()
 
         # ?current
-        current_user = self.request.QUERY_PARAMS.get('current', None)
+        current_user = self.request.QUERY_PARAMS.get('current')
         if current_user is not None and not user.is_anonymous():
             queryset = User.objects.filter(uuid=user.uuid)
 
@@ -450,15 +451,20 @@ class UserViewSet(viewsets.ModelViewSet):
                 ).distinct()
 
             # check if we need to filter potential users by a customer
-            potential_customer = self.request.QUERY_PARAMS.get('potential_customer', None)
+            potential_customer = self.request.QUERY_PARAMS.get('potential_customer')
             if potential_customer:
                 connected_customers_query = connected_customers_query.filter(uuid=potential_customer)
                 connected_customers_query = filters.filter_queryset_for_user(connected_customers_query, user)
 
             connected_customers = list(connected_customers_query.all())
+            potential_organization = self.request.QUERY_PARAMS.get('potential_organization')
+            if potential_organization is not None:
+                potential_organizations = potential_organization.split(',')
+            else:
+                potential_organizations = []
 
             queryset = queryset.filter(is_staff=False).filter(
-                # customer owners
+                # customer users
                 Q(
                     groups__customerrole__customer__in=connected_customers,
                 )
@@ -476,8 +482,14 @@ class UserViewSet(viewsets.ModelViewSet):
                     groups__customerrole=None,
                     groups__projectrole=None,
                     groups__projectgrouprole=None,
+                    organization_approved=True,
+                    organization__in=potential_organizations,
                 )
             ).distinct()
+
+        organization_claimed = self.request.QUERY_PARAMS.get('organization_claimed')
+        if organization_claimed is not None:
+            queryset = queryset.exclude(organization__isnull=True).exclude(organization__exact='')
 
         if not user.is_staff:
             queryset = queryset.filter(is_active=True)
@@ -499,6 +511,76 @@ class UserViewSet(viewsets.ModelViewSet):
         user.save()
 
         return Response({'detail': "Password has been successfully updated"},
+                        status=status.HTTP_200_OK)
+
+    @action()
+    def claim_organization(self, request, uuid=None):
+        instance = self.get_object()
+
+        # check if organization name is valid
+        serializer = serializers.UserOrganizationSerializer(data={'organization': request.DATA.get('organization')})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        obj = serializer.object
+
+        if instance.organization == "":
+            instance.organization = obj.organization
+            instance.organization_approved = False
+            instance.save()
+
+            event_logger.info(
+                'User %s has claimed organization %s.', instance.username, instance.organization,
+                extra={'affected_user': instance, 'event_type': 'user_organization_claimed',
+                       'affected_organization': instance.organization})
+
+            return Response({'detail': "User request for joining the organization has been successfully submitted."},
+                            status=status.HTTP_200_OK)
+        else:
+            return Response({'detail': "User has an existing organization claim."}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action()
+    def approve_organization(self, request, uuid=None):
+        instance = self.get_object()
+
+        instance.organization_approved = True
+        instance.save()
+        event_logger.info(
+            'User %s has been approved for organization %s.', instance.username, instance.organization,
+            extra={'affected_user': instance, 'event_type': 'user_organization_approved',
+                   'affected_organization': instance.organization})
+
+        return Response({'detail': "User request for joining the organization has been successfully approved"},
+                        status=status.HTTP_200_OK)
+
+    @action()
+    def reject_organization(self, request, uuid=None):
+        instance = self.get_object()
+        old_organization = instance.organization
+        instance.organization = ""
+        instance.organization_approved = False
+        instance.save()
+        event_logger.info(
+            'User %s claim for organization %s has been rejected.', instance.username, old_organization,
+            extra={'affected_user': instance, 'event_type': 'user_organization_rejected',
+                   'affected_organization': old_organization})
+
+        return Response({'detail': "User has been successfully rejected from the organization"},
+                        status=status.HTTP_200_OK)
+
+    @action()
+    def remove_organization(self, request, uuid=None):
+        instance = self.get_object()
+        old_organization = instance.organization
+        instance.organization_approved = False
+        instance.organization = ""
+        instance.save()
+        event_logger.info(
+            'User %s has been removed from organization %s.', instance.username, old_organization,
+            extra={'affected_user': instance, 'event_type': 'user_organization_removed',
+                   'affected_organization': old_organization})
+
+        return Response({'detail': "User has been successfully removed from the organization"},
                         status=status.HTTP_200_OK)
 
 
