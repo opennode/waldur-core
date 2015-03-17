@@ -27,7 +27,7 @@ class QuotaAdmin(admin.ModelAdmin):
     list_filter = ['name', QuotaScopeClassListFilter]
 
 
-class QuotaInline(generic.GenericStackedInline):
+class QuotaInline(generic.GenericTabularInline):
     model = models.Quota
     fields = ('name', 'limit', 'usage')
     readonly_fields = ('name',)
