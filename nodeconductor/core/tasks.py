@@ -3,11 +3,15 @@ from __future__ import unicode_literals
 import functools
 import logging
 
-from django.db import transaction, DatabaseError
+from django.db import transaction, IntegrityError, DatabaseError
 from django.utils import six
 from django_fsm import TransitionNotAllowed
 
+from celery.task import current
+from celery.exceptions import MaxRetriesExceededError
+
 from nodeconductor.core.log import EventLoggerAdapter
+
 
 logger = logging.getLogger(__name__)
 event_logger = EventLoggerAdapter(logger)
@@ -146,3 +150,79 @@ def tracked_processing(model_class, processing_state, desired_state, error_state
 
         return wrapped
     return decorator
+
+
+def transition(model_class, processing_state, error_state='set_erred'):
+    """ Atomically runs state transition for a model_class instance.
+        Executes desired task on success.
+    """
+    def decorator(task_fn):
+        @functools.wraps(task_fn)
+        def wrapped(uuid_or_pk, *task_args, **task_kwargs):
+            logged_operation = processing_state.replace('_', ' ')
+            entity_name = model_class._meta.model_name
+
+            try:
+                with transaction.atomic():
+                    if 'uuid' in model_class._meta.get_all_field_names():
+                        kwargs = {'uuid': uuid_or_pk}
+                    else:
+                        kwargs = {'pk': uuid_or_pk}
+                    entity = model_class._default_manager.get(**kwargs)
+
+                    getattr(entity, processing_state)()
+                    entity.save(update_fields=['state'])
+
+            except model_class.DoesNotExist as e:
+                logger.error(
+                    'Could not %s %s with id %s. Instance has gone',
+                    logged_operation, entity_name, uuid_or_pk)
+
+                six.reraise(StateChangeError, e)
+
+            except IntegrityError as e:
+                logger.error(
+                    'Could not %s %s with id %s due to concurrent update',
+                    logged_operation, entity_name, uuid_or_pk)
+
+                six.reraise(StateChangeError, e)
+
+            except TransitionNotAllowed as e:
+                logger.error(
+                    'Could not %s %s with id %s, transition not allowed',
+                    logged_operation, entity_name, uuid_or_pk)
+
+                six.reraise(StateChangeError, e)
+
+            else:
+                logger.info(
+                    'Managed to %s %s with id %s',
+                    logged_operation, entity_name, uuid_or_pk)
+
+                try:
+                    task_kwargs['transition_entity'] = entity
+                    return task_fn(uuid_or_pk, *task_args, **task_kwargs)
+                except:
+                    getattr(entity, error_state)()
+                    entity.save(update_fields=['state'])
+                    logger.error(
+                        'Failed to finish task %s after %s %s with id %s',
+                        task_fn.__name__, logged_operation, entity_name, uuid_or_pk)
+                    raise
+
+        return wrapped
+    return decorator
+
+
+def retry_if_false(func):
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+        is_true = func(*args, **kwargs)
+        if not is_true:
+            try:
+                current.retry()
+            except MaxRetriesExceededError:
+                raise RuntimeError('Task %s failed to retry' % current.name)
+
+        return is_true
+    return wrapped

@@ -134,29 +134,29 @@ CELERYBEAT_SCHEDULE = {
     },
 
     'pull-cloud-accounts': {
-        'task': 'nodeconductor.iaas.tasks.pull_cloud_accounts',
+        'task': 'nodeconductor.iaas.tasks.iaas.pull_cloud_accounts',
         'schedule': timedelta(minutes=60),
         'args': (),
     },
     'pull-service-statistics': {
-        'task': 'nodeconductor.iaas.tasks.pull_service_statistics',
+        'task': 'nodeconductor.iaas.tasks.iaas.pull_service_statistics',
         'schedule': timedelta(minutes=15),
         'args': (),
     },
     'pull-cloud-project-memberships': {
-        'task': 'nodeconductor.iaas.tasks.pull_cloud_memberships',
+        'task': 'nodeconductor.iaas.tasks.iaas.pull_cloud_memberships',
         'schedule': timedelta(minutes=30),
         'args': (),
     },
 
     'check-cloud-project-memberships-quotas': {
-        'task': 'nodeconductor.iaas.tasks.check_cloud_memberships_quotas',
+        'task': 'nodeconductor.iaas.tasks.iaas.check_cloud_memberships_quotas',
         'schedule': timedelta(minutes=1440),
         'args': (),
     },
 
     'sync-instances-with-zabbix': {
-        'task': 'nodeconductor.iaas.tasks.sync_instances_with_zabbix',
+        'task': 'nodeconductor.iaas.tasks.iaas.sync_instances_with_zabbix',
         'schedule': timedelta(minutes=30),
         'args': (),
     },

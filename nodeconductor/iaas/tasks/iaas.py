@@ -4,7 +4,6 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from celery import shared_task
-from django.core.exceptions import ObjectDoesNotExist
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import SynchronizationStates
@@ -119,21 +118,12 @@ def schedule_deleting(instance_uuid):
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
-def update_flavor(instance_uuid, flavor_uuid):
-    instance = models.Instance.objects.get(uuid=instance_uuid)
-    flavor = models.Flavor.objects.get(uuid=flavor_uuid)
-
-    backend = instance.cloud_project_membership.cloud.get_backend()
-    backend.update_flavor(instance, flavor)
-
-
-@shared_task
-@tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
 def extend_disk(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
     backend = instance.cloud_project_membership.cloud.get_backend()
     backend.extend_disk(instance)
+
 
 @shared_task
 def import_instance(membership_pk, instance_id, template_id=None):
