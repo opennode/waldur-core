@@ -4,6 +4,7 @@ from django.apps import AppConfig
 from django.contrib.auth import get_user_model
 from django.db.models import signals
 
+from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure import filters
 from nodeconductor.structure import handlers
 
@@ -84,4 +85,10 @@ class StructureConfig(AppConfig):
             customer_path='group__projectrole__project__customer',
             project_group_path='group__projectrole__project__project_groups',
             project_path='group__projectrole__project',
+        )
+
+        signals.post_save.connect(
+            quotas_handlers.add_quotas_to_scope,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.add_quotas_to_project',
         )

@@ -9,6 +9,7 @@ import factory.fuzzy
 from nodeconductor.iaas import models
 from nodeconductor.core import models as core_models
 from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.template.tests import factories as template_factories
 
 
 class CloudFactory(factory.DjangoModelFactory):
@@ -72,6 +73,21 @@ class CloudProjectMembershipFactory(factory.DjangoModelFactory):
     @classmethod
     def get_list_url(cls):
         return 'http://testserver' + reverse('cloudproject_membership-list')
+
+    @factory.post_generation
+    def quotas(self, create, extracted, **kwargs):
+        if create:
+            if extracted:
+                for quota in extracted:
+                    if 'limit' in quota:
+                        self.set_quota_limit(quota['name'], quota['limit'])
+                    if 'usage' in quota:
+                        self.set_quota_usage(quota['name'], quota['usage'])
+            else:
+                self.set_quota_limit('storage', 10 * 1024 * 1024)
+                self.set_quota_limit('vcpu', 20)
+                self.set_quota_limit('max_instances', 10)
+                self.set_quota_limit('ram', 20 * 1024)
 
 
 class SecurityGroupFactory(factory.DjangoModelFactory):
@@ -137,11 +153,11 @@ class TemplateFactory(factory.DjangoModelFactory):
     def get_url(cls, template=None):
         template = template or TemplateFactory()
 
-        return 'http://testserver' + reverse('template-detail', kwargs={'uuid': template.uuid})
+        return 'http://testserver' + reverse('iaastemplate-detail', kwargs={'uuid': template.uuid})
 
     @classmethod
     def get_list_url(cls):
-        return 'http://testserver' + reverse('template-list')
+        return 'http://testserver' + reverse('iaastemplate-list')
 
 
 class TemplateMappingFactory(factory.DjangoModelFactory):
@@ -275,27 +291,6 @@ class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
     security_group = factory.SubFactory(SecurityGroupFactory)
 
 
-class AbstractResourceQuotaFactory(factory.DjangoModelFactory):
-    class Meta:
-        abstract = True
-
-    cloud_project_membership = factory.SubFactory(CloudProjectMembershipFactory)
-    vcpu = factory.Iterator([1, 2, 3, 4])
-    ram = factory.Iterator([1024, 2048, 4096])
-    storage = factory.fuzzy.FuzzyFloat(10240, 51200)
-    max_instances = factory.Iterator([1, 2, 3, 4])
-
-
-class ResourceQuotaFactory(AbstractResourceQuotaFactory):
-    class Meta(object):
-        model = models.ResourceQuota
-
-
-class ResourceQuotaUsageFactory(AbstractResourceQuotaFactory):
-    class Meta(object):
-        model = models.ResourceQuotaUsage
-
-
 class FloatingIPFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.FloatingIP
@@ -313,3 +308,18 @@ class FloatingIPFactory(factory.DjangoModelFactory):
     @classmethod
     def get_list_url(self):
         return 'http://testserver' + reverse('floating_ip-list')
+
+
+class IaasTemplateServiceFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.IaasTemplateService
+
+    name = factory.Sequence(lambda n: 'My VM %s' % n)
+    template = factory.SubFactory(template_factories.TemplateFactory)
+
+    service = factory.SubFactory(CloudFactory)
+    flavor = factory.SubFactory(FlavorFactory)
+    image = factory.SubFactory(ImageFactory)
+    sla = True
+    sla_level = factory.LazyAttribute(lambda o: Decimal('99.9'))
+    backup_schedule = '*/5 * * * *'

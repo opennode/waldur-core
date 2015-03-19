@@ -49,8 +49,6 @@ class BackupUsageTest(test.APITransactionTestCase):
 
     def test_backup_restore(self):
         backup = factories.BackupFactory()
-        iaas_factories.ResourceQuotaFactory(
-            cloud_project_membership=backup.backup_source.cloud_project_membership, storage=10 * 1024 * 1024)
         url = _backup_url(backup, action='restore')
         user_input = {
             'flavor': iaas_factories.FlavorFactory.get_url(iaas_factories.FlavorFactory(

@@ -2,6 +2,7 @@ Getting project quota and usage
 -------------------------------
 
 To get an actual value for project quotas and project usage issue a GET request against **/api/projects/**.
+Notice: "resource_quota" and "resource_quota_usage" is deprecated. Please use "quota" field to get information about quotas. More details at "quotas" section.
 
 Example of a valid response:
 

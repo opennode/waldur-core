@@ -1,10 +1,9 @@
 from __future__ import unicode_literals
 
-from mock import call, patch
+from mock import call
 
-from django.core.urlresolvers import reverse, resolve
+from django.core.urlresolvers import reverse
 from django.test import TransactionTestCase
-from django.utils import unittest
 from mock_django import mock_signal_receiver
 from rest_framework import status
 from rest_framework import test
@@ -209,7 +208,6 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
-
 
     def test_owner_can_create_project_belonging_to_the_customer_he_owns(self):
         self.client.force_authenticate(self.owner)

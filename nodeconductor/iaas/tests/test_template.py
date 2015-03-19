@@ -67,13 +67,13 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
 
     # List filtration tests
     def test_anonymous_user_cannot_list_templates(self):
-        response = self.client.get(reverse('template-list'))
+        response = self.client.get(reverse('iaastemplate-list'))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_non_staff_user_can_list_active_templates(self):
         self.client.force_authenticate(user=self.users['non_staff'])
 
-        response = self.client.get(reverse('template-list'))
+        response = self.client.get(reverse('iaastemplate-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         for template in self.templates['active']:
@@ -83,7 +83,7 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
     def test_non_staff_user_cannot_list_inactive_templates(self):
         self.client.force_authenticate(user=self.users['non_staff'])
 
-        response = self.client.get(reverse('template-list'))
+        response = self.client.get(reverse('iaastemplate-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         for template in self.templates['inactive']:
@@ -93,7 +93,7 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
     def test_staff_user_can_list_active_templates(self):
         self.client.force_authenticate(user=self.users['staff'])
 
-        response = self.client.get(reverse('template-list'))
+        response = self.client.get(reverse('iaastemplate-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         for template in self.templates['active']:
@@ -103,7 +103,7 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
     def test_staff_user_can_list_inactive_templates(self):
         self.client.force_authenticate(user=self.users['staff'])
 
-        response = self.client.get(reverse('template-list'))
+        response = self.client.get(reverse('iaastemplate-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         for template in self.templates['inactive']:
@@ -113,7 +113,7 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
     def test_staff_user_can_list_all_templates(self):
         self.client.force_authenticate(user=self.users['staff'])
 
-        response = self.client.get(reverse('template-list'))
+        response = self.client.get(reverse('iaastemplate-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         from itertools import chain
@@ -134,7 +134,7 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
         for role, cloud_index, template_indexes in tests:
             self.client.force_authenticate(user=self.users[role])
 
-            response = self.client.get(reverse('template-list'),
+            response = self.client.get(reverse('iaastemplate-list'),
                                        {'cloud': self.clouds[cloud_index].uuid})
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -151,7 +151,7 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
             self.client.force_authenticate(user=self.users[role])
 
             cloud = factories.CloudFactory()
-            response = self.client.get(reverse('template-list'),
+            response = self.client.get(reverse('iaastemplate-list'),
                                        {'cloud': cloud.uuid})
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -200,12 +200,12 @@ class TemplateApiPermissionTest(test.APITransactionTestCase):
 
     # Helper methods
     def _get_template_url(self, image):
-        return 'http://testserver' + reverse('template-detail', kwargs={'uuid': image.uuid})
+        return 'http://testserver' + reverse('iaastemplate-detail', kwargs={'uuid': image.uuid})
 
     # def _ensure_list_access_forbidden(self, user_role, image):
     #     self.client.force_authenticate(user=user_role)
     #
-    #     response = self.client.get(reverse('template-list'))
+    #     response = self.client.get(reverse('iaastemplate-list'))
     #     self.assertEqual(response.status_code, status.HTTP_200_OK)
     #
     #     image_url = self._get_template_url(self.templates[image])

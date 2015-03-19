@@ -71,6 +71,7 @@ Therefore configuration might look like this:
                 'username': 'node',
                 'password': 'conductor',
                 'tenant_name': 'admin',
+                'default_availability_zone': 'default-zone',
             },
         ),
         'DEFAULT_SECURITY_GROUPS': (
@@ -130,6 +131,9 @@ Therefore configuration might look like this:
 
       tenant_name
         Name of administrative tenant. Typically this is set to 'admin'.
+
+      default_availability_zone
+        Availability zone which will be set by default.
 
     DEFAULT_SECURITY_GROUPS
       A list of security groups that will be created in IaaS backend for each cloud.

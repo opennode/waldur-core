@@ -4,7 +4,6 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from celery import shared_task
-from django.core.exceptions import ObjectDoesNotExist
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import SynchronizationStates
@@ -119,21 +118,12 @@ def schedule_deleting(instance_uuid):
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
-def update_flavor(instance_uuid, flavor_uuid):
-    instance = models.Instance.objects.get(uuid=instance_uuid)
-    flavor = models.Flavor.objects.get(uuid=flavor_uuid)
-
-    backend = instance.cloud_project_membership.cloud.get_backend()
-    backend.update_flavor(instance, flavor)
-
-
-@shared_task
-@tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
 def extend_disk(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
     backend = instance.cloud_project_membership.cloud.get_backend()
     backend.extend_disk(instance)
+
 
 @shared_task
 def import_instance(membership_pk, instance_id, template_id=None):
@@ -327,6 +317,7 @@ def sync_cloud_membership(membership_pk):
             exc_info=1,
         )
 
+
 @shared_task
 @tracked_processing(
     models.Cloud,
@@ -364,7 +355,7 @@ def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
                 # reschedule a task for this membership if membership is in a sane state
                 logging.debug(
                     'Rescheduling synchronisation of keys for membership %s in state %s.',
-                        membership.pk, membership.get_state_display()
+                    membership.pk, membership.get_state_display()
                 )
                 potential_rerunnable.append(membership.id)
             continue
@@ -388,8 +379,6 @@ def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
 def check_cloud_memberships_quotas():
     threshold = 0.80  # Could have been configurable...
 
-    resources = models.AbstractResourceQuota._meta.get_all_field_names()
-
     queryset = (
         models.CloudProjectMembership.objects
         .all()
@@ -397,8 +386,6 @@ def check_cloud_memberships_quotas():
             'cloud',
             'cloud__customer',
             'project',
-            'resource_quota',
-            'resource_quota_usage',
         )
         .prefetch_related(
             'project__project_groups',
@@ -406,39 +393,31 @@ def check_cloud_memberships_quotas():
     )
 
     for membership in queryset.iterator():
-        try:
-            quota = membership.resource_quota
-            usage = membership.resource_quota_usage
-        except ObjectDoesNotExist:
-            logger.exception('Missing quota or usage')
-            continue
-
-        for resource_name in resources:
-            resource_quota = getattr(quota, resource_name)
-            resource_usage = getattr(usage, resource_name)
-
-            if resource_usage >= threshold * resource_quota:
+        for quota in membership.quotas.all():
+            if quota.is_exceeded(threshold=threshold):
                 event_logger.warning(
-                    '%s quota threshold has been reached for %s.', resource_name, membership.project.name,
+                    '%s quota threshold has been reached for %s.', quota.name, membership.project.name,
                     extra=dict(
                         event_type='quota_threshold_reached',
-                        quota_type=resource_name,
+                        quota_type=quota.name,
                         quota_container_type=membership,
                         cloud=membership.cloud,
                         project=membership.project,
                         project_group=membership.project.project_groups.first(),
-                        threshold=threshold * resource_quota,
-                        resource_usage=resource_usage,
+                        threshold=threshold * quota.limit,
+                        resource_usage=quota.usage,
                     ))
 
 
 @shared_task
 def sync_instances_with_zabbix():
-    for instance in models.Instance.objects.all():
-        if instance.backend_id:
-            logger.info(
-                'Synchronizing instance %s with zabbix',
-                instance.uuid,
-                exc_info=1,
-            )
-            create_zabbix_host_and_service(instance, warn_if_exists=False)
+    instances = models.Instance.objects.exclude(backend_id='').values_list('uuid', flat=True)
+    for instance_uuid in instances:
+        sync_instance_with_zabbix.delay(instance_uuid)
+
+
+@shared_task
+def sync_instance_with_zabbix(instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+    logger.info('Synchronizing instance %s with zabbix', instance.uuid, exc_info=1)
+    create_zabbix_host_and_service(instance, warn_if_exists=False)
