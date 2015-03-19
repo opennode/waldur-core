@@ -25,6 +25,7 @@ class BackupScheduleForm(ModelForm):
 
 
 class BackupScheduleAdmin(admin.ModelAdmin):
+    form = BackupScheduleForm
     readonly_fields = ('next_trigger_at',)
     list_filter = ('is_active', 'content_type')
 
