@@ -58,19 +58,19 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
 
         with self.settings(NODECONDUCTOR=nc_settings):
             handlers.sync_openstack_settings(apps.get_app_config('iaas'))
-            settings = models.OpenstackSettings.objects.get(auth_url=self.cloud.auth_url)
+            settings = models.OpenStackSettings.objects.get(auth_url=self.cloud.auth_url)
             self.assertEqual(settings.availability_zone, 'zone1')
-            settings = models.OpenstackSettings.objects.get(auth_url='url2')
+            settings = models.OpenStackSettings.objects.get(auth_url='url2')
             self.assertNotEqual(settings.availability_zone, 'zone1')
 
-    def _test_default_availability_zone_from_openstack_conf(self):
+    def test_default_availability_zone_from_openstack_conf(self):
         nc_settings = {'OPENSTACK_CREDENTIALS': ({'auth_url': self.cloud.auth_url,
                                                   'default_availability_zone': 'zone1'},
                                                  {'auth_url': 'url2',
                                                   'default_availability_zone': 'zone2'})}
         self._check_membership_availability_zone(nc_settings, 'zone1')
 
-    def _test_availability_zone_provided_by_user_overrides_default_availability_zone(self):
+    def test_availability_zone_provided_by_user_overrides_default_availability_zone(self):
         nc_settings = {'OPENSTACK_CREDENTIALS': ({'auth_url': self.cloud.auth_url,
                                                   'default_availability_zone': 'zone1'},)}
         self._check_membership_availability_zone(nc_settings, 'zone2', 'zone2')

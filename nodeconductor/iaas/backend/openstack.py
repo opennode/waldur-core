@@ -1527,8 +1527,8 @@ class OpenStackBackend(object):
 
     def create_admin_session(self, keystone_url):
         try:
-            credentials = models.OpenstackSettings.objects.get(auth_url=keystone_url).get_credentials()
-        except models.OpenstackSettings.DoesNotExist as e:
+            credentials = models.OpenStackSettings.objects.get(auth_url=keystone_url).get_credentials()
+        except models.OpenStackSettings.DoesNotExist as e:
             logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
             six.reraise(CloudBackendError, e)
 

@@ -21,7 +21,7 @@ from novaclient.v1_1 import client as nova_client
 from glanceclient.v1 import client as glance_client
 from cinderclient.v1 import client as cinder_client
 
-from nodeconductor.iaas.models import Instance, OpenstackSettings
+from nodeconductor.iaas.models import Instance, OpenStackSettings
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.core.tasks import retry_if_false
 
@@ -90,8 +90,8 @@ class OpenStackClient(object):
     @classmethod
     def create_admin_session(cls, keystone_url):
         try:
-            credentials = OpenstackSettings.objects.get(auth_url=keystone_url).get_credentials()
-        except OpenstackSettings.DoesNotExist as e:
+            credentials = OpenStackSettings.objects.get(auth_url=keystone_url).get_credentials()
+        except OpenStackSettings.DoesNotExist as e:
             logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
             six.reraise(CloudBackendError, e)
 

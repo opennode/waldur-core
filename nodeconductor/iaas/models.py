@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 @python_2_unicode_compatible
-class OpenstackSettings(models.Model):
+class OpenStackSettings(models.Model):
     """ OpenStack deployment admin credentials and settings """
 
     auth_url = models.URLField(max_length=200, unique=True, help_text='Keystone endpoint url')
@@ -39,9 +39,13 @@ class OpenstackSettings(models.Model):
     def __str__(self):
         return self.auth_url
 
+    class Meta:
+        verbose_name = "OpenStack settings"
+        verbose_name_plural = "OpenStack settings"
+
 
 def validate_known_keystone_urls(value):
-    if not OpenstackSettings.objects.filter(auth_url=value).exists():
+    if not OpenStackSettings.objects.filter(auth_url=value).exists():
         raise ValidationError('%s is not a known OpenStack deployment.' % value)
 
 

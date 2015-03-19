@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='OpenstackSettings',
+            name='OpenStackSettings',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('auth_url', models.URLField(help_text='Keystone endpoint url', unique=True)),
@@ -22,6 +22,8 @@ class Migration(migrations.Migration):
                 ('availability_zone', models.CharField(max_length=100, blank=True)),
             ],
             options={
+                'verbose_name': 'OpenStack settings',
+                'verbose_name_plural': 'OpenStack settings',
             },
             bases=(models.Model,),
         ),

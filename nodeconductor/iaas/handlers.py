@@ -17,18 +17,26 @@ logger = logging.getLogger('nodeconductor.iaas')
 
 
 def sync_openstack_settings(app_config, using=DEFAULT_DB_ALIAS, **kwargs):
-    OpenstackSettings = app_config.get_model('OpenstackSettings')
+    OpenStackSettings = app_config.get_model('OpenStackSettings')
 
-    if not router.allow_migrate(using, OpenstackSettings):
+    if not router.allow_migrate(using, OpenStackSettings):
         return
+
+    import warnings
+
+    logger.info("Sync OpenStack credentials")
+    warnings.warn(
+        "OPENSTACK_CREDENTIALS setting is deprecated. "
+        "Create OpenStackSetting model instance instead.",
+        DeprecationWarning,
+    )
 
     nc_settings = getattr(settings, 'NODECONDUCTOR', {})
     openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
 
-    logger.info("Sync OpenStack credentials")
     for opts in openstacks:
         opts['availability_zone'] = opts.pop('default_availability_zone', '')
-        OpenstackSettings._default_manager.using(using).get_or_create(**opts)
+        OpenStackSettings._default_manager.using(using).get_or_create(**opts)
 
 
 def get_related_clouds(obj, request):
@@ -206,9 +214,9 @@ def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwa
 def set_cpm_default_availability_zone(sender, instance=None, **kwargs):
     if not instance.availability_zone:
         try:
-            OpenstackSettings = apps.get_model('iaas', 'OpenstackSettings')
-            options = OpenstackSettings.objects.get(auth_url=instance.cloud.auth_url)
-        except OpenstackSettings.DoesNotExist:
+            OpenStackSettings = apps.get_model('iaas', 'OpenStackSettings')
+            options = OpenStackSettings.objects.get(auth_url=instance.cloud.auth_url)
+        except OpenStackSettings.DoesNotExist:
             pass
         else:
             instance.availability_zone = options.availability_zone
