@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.utils.translation import ungettext
 
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.quotas.admin import QuotaInline
+from nodeconductor.structure.admin import ProtectedModelMixin
 from nodeconductor.iaas import models
 from nodeconductor.iaas import tasks
 
@@ -58,25 +60,14 @@ class CloudAdmin(admin.ModelAdmin):
     pull_clouds.short_description = "Update selected cloud accounts from backend"
 
 
-class ResourceQuotaInline(admin.TabularInline):
-    model = models.ResourceQuota
-
-
-class ResourceQuotaUsageInline(admin.TabularInline):
-    model = models.ResourceQuotaUsage
-
-
 # noinspection PyMethodMayBeStatic
 class CloudProjectMembershipAdmin(admin.ModelAdmin):
-    inlines = (
-        ResourceQuotaInline,
-        ResourceQuotaUsageInline,
-    )
     readonly_fields = ('cloud', 'project')
     list_display = ('get_cloud_name', 'get_customer_name', 'get_project_name', 'state', 'tenant_id')
     ordering = ('cloud__customer__name', 'project__name', 'cloud__name')
     list_display_links = ('get_cloud_name',)
     search_fields = ('cloud__customer__name', 'project__name', 'cloud__name')
+    inlines = [QuotaInline]
 
     actions = ['pull_cloud_memberships']
 
@@ -132,7 +123,7 @@ class InstanceLicenseInline(admin.TabularInline):
     extra = 1
 
 
-class InstanceAdmin(admin.ModelAdmin):
+class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
     inlines = (
         InstanceLicenseInline,
     )

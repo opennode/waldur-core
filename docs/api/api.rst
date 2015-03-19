@@ -75,6 +75,10 @@ Project quota management
 
 .. include:: project_quotas.rst
 
+Quotas
+======
+
+.. include:: quotas.rst
 
 Security group management
 =========================

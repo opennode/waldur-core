@@ -12,7 +12,6 @@ from rest_framework.mixins import _get_validation_exclusions
 from rest_framework.response import Response
 from rest_framework.templatetags.rest_framework import replace_query_param
 
-from nodeconductor.iaas.models import Instance
 from nodeconductor.core.models import SynchronizableMixin, SynchronizationStates
 from nodeconductor.core.exceptions import IncorrectStateException
 
@@ -124,14 +123,17 @@ class ListModelMixin(object):
             error_msg = self.empty_error % {'class_name': class_name}
             raise Http404(error_msg)
 
-        page = self.paginate_queryset(self.object_list)
-        headers = {}
-        if page is not None:
-            headers = self.get_pagination_headers(request, page)
+        if self.paginate_by is not None:
+            page = self.paginate_queryset(self.object_list)
+            headers = {}
+            if page is not None:
+                headers = self.get_pagination_headers(request, page)
 
-        serializer = self.get_serializer(page, many=True)
-
-        return Response(serializer.data, headers=headers)
+            serializer = self.get_serializer(page, many=True)
+            return Response(serializer.data, headers=headers)
+        else:
+            serializer = self.get_serializer(self.object_list, many=True)
+            return Response(serializer.data)
 
     def get_pagination_headers(self, request, page):
         links = []
@@ -168,14 +170,10 @@ class UpdateOnlyStableMixin(object):
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update', 'destroy'):
-            error_msg = 'Modification allowed in stable states only, while current state: %s'
-            instance = self.get_object()
-            if instance:
-                if isinstance(instance, Instance):
-                    if instance.state not in Instance.States.STABLE_STATES:
-                        raise IncorrectStateException(error_msg % instance.get_state_display())
-                elif isinstance(instance, SynchronizableMixin):
-                    if instance.state not in SynchronizationStates.STABLE_STATES:
-                        raise IncorrectStateException(error_msg % instance.get_state_display())
+            obj = self.get_object()
+            if obj and isinstance(obj, SynchronizableMixin):
+                if obj.state not in SynchronizationStates.STABLE_STATES:
+                    raise IncorrectStateException(
+                        'Modification allowed in stable states only.')
 
         return super(UpdateOnlyStableMixin, self).initial(request, *args, **kwargs)

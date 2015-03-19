@@ -9,6 +9,7 @@ from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core import models as core_models, serializers as core_serializers
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
+from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.serializers import fix_non_nullable_attrs
@@ -31,7 +32,7 @@ class FlavorSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
 
 
-class CloudSerializer(core_serializers.PermissionFieldFilteringMixin,
+class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
                       core_serializers.RelatedResourcesFieldMixin,
                       serializers.HyperlinkedModelSerializer):
     flavors = FlavorSerializer(many=True, read_only=True)
@@ -76,9 +77,11 @@ class UniqueConstraintError(exceptions.APIException):
     default_detail = 'Entity already exists.'
 
 
-class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFilteringMixin,
+class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilteringMixin,
                                        core_serializers.RelatedResourcesFieldMixin,
                                        serializers.HyperlinkedModelSerializer):
+
+    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.CloudProjectMembership
@@ -86,6 +89,7 @@ class CloudProjectMembershipSerializer(core_serializers.PermissionFieldFiltering
             'url',
             'project', 'project_name',
             'cloud', 'cloud_name',
+            'quotas',
         )
         view_name = 'cloudproject_membership-detail'
 
@@ -153,7 +157,7 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
         view_name = 'security_group-detail'
 
 
-class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
+class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMixin,
                                serializers.HyperlinkedModelSerializer):
 
     security_groups = InstanceSecurityGroupSerializer(
@@ -178,6 +182,12 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
         queryset=core_models.SshPublicKey.objects.all(),
         required=False,
         write_only=True,
+    )
+    template = serializers.HyperlinkedRelatedField(
+        view_name='iaastemplate-detail',
+        lookup_field='uuid',
+        queryset=models.Template.objects.all(),
+        required=True,
     )
 
     external_ips = core_serializers.IPsField(required=False)
@@ -255,44 +265,16 @@ class InstanceCreateSerializer(core_serializers.PermissionFieldFilteringMixin,
 
         data_volume_size = attrs.get('data_volume_size', models.Instance.DEFAULT_DATA_VOLUME_SIZE)
 
-        try:
-            resource_quota = models.ResourceQuota.objects.get(cloud_project_membership=membership)
-            storage_size = resource_quota.storage
-            vcpu_size = resource_quota.vcpu
-            ram_size = resource_quota.ram
-            instance_size = resource_quota.max_instances
-        except models.ResourceQuota.DoesNotExist:
+        instance_quota_usage = {
+            'storage': data_volume_size + system_volume_size,
+            'vcpu': flavor.cores,
+            'ram': flavor.ram,
+            'max_instances': 1
+        }
+        quota_errors = membership.validate_quota_change(instance_quota_usage)
+        if quota_errors:
             raise serializers.ValidationError(
-                "Instance can not be added to cloud account membership, which does not have resource quotas yet.")
-
-        try:
-            resource_quota_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership)
-            storage_usage = resource_quota_usage.storage
-            vcpu_usage = resource_quota_usage.vcpu
-            ram_usage = resource_quota_usage.ram
-            instance_usage = resource_quota_usage.max_instances
-        except models.ResourceQuotaUsage.DoesNotExist:
-            storage_usage = 0
-            vcpu_usage = 0
-            ram_usage = 0
-            instance_usage = 0
-
-        if data_volume_size + system_volume_size > storage_size - storage_usage:
-            raise serializers.ValidationError(
-                "Requested instance size is over the quota: %s. Available quota: %s" %
-                (data_volume_size + system_volume_size, storage_size - storage_usage))
-
-        if flavor.cores > vcpu_size - vcpu_usage:
-            raise serializers.ValidationError(
-                "Requested instance core number exceeds quota")
-
-        if flavor.ram > ram_size - ram_usage:
-            raise serializers.ValidationError(
-                "Requested instance RAM size exceeds quota")
-
-        if 1 > instance_size - instance_usage:
-            raise serializers.ValidationError(
-                "Number of existing instances exceeds quota")
+                'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
 
         # TODO: cleanup after migration to drf 3
         return fix_non_nullable_attrs(attrs)
@@ -347,7 +329,7 @@ class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
 class CloudProjectMembershipLinkSerializer(serializers.Serializer):
     id = serializers.CharField(required=True)
     template = serializers.HyperlinkedRelatedField(
-        view_name='template-detail',
+        view_name='iaastemplate-detail',
         lookup_field='uuid',
         queryset=models.Template.objects.all(),
         required=False,
@@ -370,7 +352,7 @@ class CloudProjectMembershipQuotaSerializer(serializers.Serializer):
     vcpu = serializers.IntegerField(min_value=1, required=False)
 
 
-class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
+class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMixin,
                                serializers.Serializer):
     flavor = serializers.HyperlinkedRelatedField(
         view_name='flavor-detail',
@@ -399,46 +381,29 @@ class InstanceResizeSerializer(core_serializers.PermissionFieldFilteringMixin,
         membership = self.instance.cloud_project_membership
         # TODO: consider abstracting the validation below and merging with the InstanceCreateSerializer one
         # check quotas in advance
-        try:
-            resource_quota = models.ResourceQuota.objects.get(cloud_project_membership=membership)
-            storage_size = resource_quota.storage
-            vcpu_size = resource_quota.vcpu
-            ram_size = resource_quota.ram
-        except models.ResourceQuota.DoesNotExist:
-            raise serializers.ValidationError(
-                "Instance resize can not be triggered for cloud account membership, "
-                "which does not have resource quotas yet.")
-
-        try:
-            resource_quota_usage = models.ResourceQuotaUsage.objects.get(cloud_project_membership=membership)
-            storage_usage = resource_quota_usage.storage
-            vcpu_usage = resource_quota_usage.vcpu
-            ram_usage = resource_quota_usage.ram
-        except models.ResourceQuotaUsage.DoesNotExist:
-            storage_usage = 0
-            vcpu_usage = 0
-            ram_usage = 0
 
         # If disk size was changed - we need to check if it fits quotas
         if disk_size is not None:
             old_size = self.instance.data_volume_size
-            new_size = disk_size or flavor.disk
-            if (new_size - old_size) > storage_size - storage_usage:
-                raise serializers.ValidationError(
-                    "Requested instance additional size is over the quota: %s. Available quota: %s" %
-                    (new_size - old_size, storage_size - storage_usage))
+            new_size = disk_size
+            quota_usage = {
+                'storage': new_size - old_size
+            }
+
         # Validate flavor modification
         else:
-            # the resize can only happen for an offline VM, so once it boots it will start consuming these quotas
             old_cores = self.instance.cores
-            if flavor.cores - old_cores > vcpu_size - vcpu_usage:
-                raise serializers.ValidationError(
-                    "Requested instance core number exceeds quota")
-
             old_ram = self.instance.ram
-            if flavor.ram - old_ram > ram_size - ram_usage:
-                raise serializers.ValidationError(
-                    "Requested instance RAM size exceeds quota")
+            quota_usage = {
+                'vcpu': flavor.cores - old_cores,
+                'ram': flavor.ram - old_ram,
+            }
+
+        quota_errors = membership.validate_quota_change(quota_usage)
+        if quota_errors:
+            raise serializers.ValidationError(
+                'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
+
         return attrs
 
 
@@ -473,6 +438,11 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
     customer_native_name = serializers.Field(source='cloud_project_membership.project.customer.native_name')
     template_os = serializers.Field(source='template.os')
     created = serializers.DateTimeField(format='iso-8601')
+
+    # Avoid name clashes with nodeconductor.template
+    RELATED_FIELD_VIEW_NAMES = {
+        'template': 'iaastemplate-detail',
+    }
 
     class Meta(object):
         model = models.Instance
@@ -533,6 +503,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     template_licenses = TemplateLicenseSerializer()
 
     class Meta(object):
+        view_name = 'iaastemplate-detail'
         model = models.Template
         fields = (
             'url', 'uuid',
@@ -563,6 +534,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
+        view_name = 'iaastemplate-detail'
         model = models.Template
         fields = (
             'url', 'uuid',
