@@ -36,7 +36,9 @@ def sync_openstack_settings(app_config, using=DEFAULT_DB_ALIAS, **kwargs):
 
     for opts in openstacks:
         opts['availability_zone'] = opts.pop('default_availability_zone', '')
-        OpenStackSettings._default_manager.using(using).get_or_create(**opts)
+        queryset = OpenStackSettings._default_manager.using(using)
+        if not queryset.filter(auth_url=opts['auth_url']).exists():
+            queryset.create(**opts)
 
 
 def get_related_clouds(obj, request):
