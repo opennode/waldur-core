@@ -119,6 +119,12 @@ class EventFormatter(logging.Formatter):
         )
         self.add_related_details(message, instance, 'iaas_instance', 'hostname')
 
+        flavor = self.get_related(
+            'flavor',
+            lambda _: getattr(instance, 'flavor', None),
+        )
+        self.add_related_details(message, flavor, 'iaas_instance_flavor', 'name', 'cores', 'ram', 'disk')
+
         # cloud project membership
         membership = self.get_related('cloud_project_membership', instance)
 
