@@ -1,4 +1,9 @@
+import pytz
+
 from django.contrib import admin
+from django.core.exceptions import ValidationError
+from django.forms import ModelForm
+from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.backup import models
 
@@ -8,6 +13,15 @@ class BackupAdmin(admin.ModelAdmin):
     list_filter = ('uuid', 'state', 'content_type',)
 
     list_display = ('uuid', 'content_type', 'backup_source', 'state')
+
+
+class BackupScheduleForm(ModelForm):
+    def clean_timezone(self):
+        tz = self.cleaned_data['timezone']
+        if tz not in pytz.all_timezones:
+            raise ValidationError(_('Invalid timezone'), code='invalid')
+
+        return self.cleaned_data['timezone']
 
 
 class BackupScheduleAdmin(admin.ModelAdmin):

@@ -104,7 +104,7 @@ for triggering the next backups. Schedule will be deactivated if backup fails.
 - **retention time** is a duration in days during which backup is preserved.
 - **maximal_number_of_backups** is a maximal number of active backups connected to this schedule.
 - **schedule** is a backup schedule defined in a cron format.
-- **timezone** is used for calculating next run of the backup.
+- **timezone** is used for calculating next run of the backup (optional).
 
 Activating/deactivating a schedule
 ----------------------------------

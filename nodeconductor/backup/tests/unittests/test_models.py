@@ -26,8 +26,7 @@ class BackupScheduleTest(TestCase):
         schedule._update_next_trigger_at()
 
         # next_trigger_at field's timezone and schedule's timezone must be equal.
-        self.assertEqual(schedule.timezone, schedule.next_trigger_at.tzinfo.zone,
-                         '')
+        self.assertEqual(schedule.timezone, schedule.next_trigger_at.tzinfo.zone)
 
     def test_default_timezone(self):
         schedule = factories.BackupScheduleFactory()

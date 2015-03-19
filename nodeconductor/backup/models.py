@@ -48,8 +48,7 @@ class BackupSchedule(core_models.UuidMixin,
     schedule = core_fields.CronScheduleField(max_length=15)
     next_trigger_at = models.DateTimeField(null=True)
     is_active = models.BooleanField(default=False)
-    timezone = models.CharField(max_length=50, blank=True,
-                                choices=[(t, t) for t in pytz.all_timezones])
+    timezone = models.CharField(max_length=50, default=django_timezone.get_current_timezone_name)
 
     def __str__(self):
         return '%(uuid)s BackupSchedule of %(object)s' % {
@@ -62,8 +61,7 @@ class BackupSchedule(core_models.UuidMixin,
         """
         Defines next backup creation time
         """
-        timezone = self.timezone or django_timezone.get_current_timezone_name()
-        base_time = datetime.now(pytz.timezone(timezone))
+        base_time = datetime.now(pytz.timezone(self.timezone))
         self.next_trigger_at = croniter(self.schedule, base_time).get_next(datetime)
 
     def _create_backup(self):
