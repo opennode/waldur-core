@@ -15,7 +15,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.40.2
+Version: 0.41.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -42,6 +42,7 @@ Requires: python-glanceclient = 1:0.12.0
 Requires: python-keystoneclient = 1:0.9.0
 Requires: python-neutronclient = 2.3.4
 Requires: python-novaclient = 1:2.17.0
+Requires: python-django-polymorphic >= 0.6.1
 Requires: python-redis = 2.10.3
 Requires: python-zabbix >= 0.7.2
 Requires: xmlsec1-openssl
@@ -61,7 +62,7 @@ BuildRequires: python-setuptools
 BuildRequires: systemd
 
 %description
-NodeConductor is a infrastructure and application management server developed by OpenNode.
+NodeConductor is an infrastructure and application management server developed by OpenNode.
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -189,6 +190,10 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Thu Mar 19 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.41.0-1.el7
+- New upstream release
+- Added dependency on python-django-polymorphic
+
 * Tue Mar 3 2015 Ihor Kaharlichenko <ihor@opennodecloud.com> - 0.40.2-1.el7
 - New upstream release
 
