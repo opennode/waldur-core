@@ -18,35 +18,35 @@ class InstanceBackupStrategy(BackupStrategy):
     def _is_storage_resource_available(cls, instance):
         membership = instance.cloud_project_membership
 
-        quota_usage = {
+        storage_delta = {
             'storage': instance.system_volume_size + instance.data_volume_size
         }
-        quota_errors = membership.validate_quota_change(quota_usage)
+        quota_errors = membership.validate_quota_change(storage_delta)
 
         return not bool(quota_errors)
 
     @classmethod
     def backup(cls, instance):
         """
-        Copy instance volumes and return new volumes ids and info about instance
+        Snapshot instance volumes and return snapshot ids and info about instance
         """
         if not cls._is_storage_resource_available(instance):
             raise BackupStrategyExecutionError('No space for instance %s backup' % instance.uuid.hex)
         try:
             backend = cls._get_backend(instance)
-            cloned_volumes = backend.clone_volumes(
+            snapshots = backend.create_snapshots(
                 membership=instance.cloud_project_membership,
                 volume_ids=[instance.system_volume_id, instance.data_volume_id],
-                prefix='Backup volume'
+                prefix='Instance %s backup: ' % instance.uuid,
             )
-            cloned_system_volume_id, cloned_data_volume_id = cloned_volumes
+            system_volume_snapshot_id, data_volume_snapshot_id = snapshots
         except CloudBackendError as e:
             six.reraise(BackupStrategyExecutionError, e)
 
         # populate backup metadata
         metadata = cls._get_instance_metadata(instance)
-        metadata['system_volume_id'] = cloned_system_volume_id
-        metadata['data_volume_id'] = cloned_data_volume_id
+        metadata['system_snapshot_id'] = system_volume_snapshot_id
+        metadata['data_snapshot_id'] = data_volume_snapshot_id
 
         return metadata
 
@@ -58,18 +58,29 @@ class InstanceBackupStrategy(BackupStrategy):
         }
         # overwrite metadata attributes with user provided ones
         input_parameters = dict(metadata.items() + [u for u in user_input.items() if u[1] is not None])
+        # special treatment for volume sizes -- they will be created equal to snapshot sizes
+        try:
+            input_parameters['system_volume_size'] = metadata['system_snapshot_size']
+            input_parameters['data_volume_size'] = metadata['data_snapshot_size']
+        except (KeyError, IndexError):
+            return None, None, None, {'detail': 'Missing system_snapshot_size or data_snapshot_size in metadata'}
 
         # import here to avoid circular dependency
         serializer = InstanceBackupRestorationSerializer(data=input_parameters)
 
         if serializer.is_valid():
+            try:
+                system_volume_snapshot_id = metadata['system_snapshot_id']
+                data_volume_snapshot_id = metadata['data_snapshot_id']
+            except (KeyError, IndexError):
+                return None, None, None, {'detail': 'Missing system_snapshot_id or data_snapshot_id in metadata'}
             serializer.object.save()
             # all user_input should be json serializable
             user_input = {
                 'flavor_uuid': serializer.object.flavor.uuid.hex,
             }
             # note that root/system volumes of a backup will be linked to the volumes belonging to a backup
-            return serializer.object, user_input, None
+            return serializer.object, user_input, [system_volume_snapshot_id, data_volume_snapshot_id], None
 
         # if there were errors in input parameters
         errors = dict(serializer.errors)
@@ -80,10 +91,10 @@ class InstanceBackupStrategy(BackupStrategy):
         except (KeyError, IndexError):
             pass
 
-        return None, None, errors
+        return None, None, None, errors
 
     @classmethod
-    def restore(cls, instance_uuid, user_input):
+    def restore(cls, instance_uuid, user_input, snapshot_ids):
         """
         Create a new instance from the backup and user input. Input is expected to be previously validated.
         """
@@ -92,9 +103,9 @@ class InstanceBackupStrategy(BackupStrategy):
         # create a copy of the volumes to be used by a new VM
         try:
             backend = cls._get_backend(instance)
-            cloned_volumes_ids = backend.clone_volumes(
+            cloned_volumes_ids = backend.promote_snapshots_to_volumes(
                 membership=instance.cloud_project_membership,
-                volume_ids=[instance.system_volume_id, instance.data_volume_id],
+                snapshot_ids=snapshot_ids,
                 prefix='Restored volume'
             )
         except CloudBackendError as e:
@@ -114,9 +125,9 @@ class InstanceBackupStrategy(BackupStrategy):
     def delete(cls, source, metadata):
         try:
             backend = cls._get_backend(source)
-            backend.delete_volumes(
+            backend.delete_snapshots(
                 membership=source.cloud_project_membership,
-                volume_ids=[metadata['system_volume_id'], metadata['data_volume_id']],
+                snapshot_ids=[metadata['system_snapshot_id'], metadata['data_snapshot_id']],
             )
         except CloudBackendError as e:
             six.reraise(BackupStrategyExecutionError, e)

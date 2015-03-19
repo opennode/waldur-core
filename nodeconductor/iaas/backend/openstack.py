@@ -1146,6 +1146,50 @@ class OpenStackBackend(object):
             logger.info('Successfully cloned volumes %s', ', '.join(volume_ids))
         return cloned_volume_ids
 
+    def create_snapshots(self, membership, volume_ids, prefix='Cloned volume'):
+        logger.debug('About to snapshot volumes %s', ', '.join(volume_ids))
+        try:
+            session = self.create_tenant_session(membership)
+            cinder = self.create_cinder_client(session)
+
+            snapshot_ids = []
+            for volume_id in volume_ids:
+                # create a temporary snapshot
+                snapshot = self.create_snapshot(volume_id, cinder)
+                membership.add_quota_usage('storage', self.get_core_disk_size(snapshot.size))
+                snapshot_ids.append(snapshot.id)
+
+        except (cinder_exceptions.ClientException,
+                keystone_exceptions.ClientException, CloudBackendInternalError) as e:
+            logger.exception('Failed to snapshot volumes %s', ', '.join(volume_ids))
+            six.reraise(CloudBackendError, e)
+        else:
+            logger.info('Successfully created snapshots %s for volumes.', ', '.join(snapshot_ids))
+        return snapshot_ids
+
+    def promote_snapshots_to_volumes(self, membership, snapshot_ids, prefix='Promoted volume'):
+        logger.debug('About to promote snapshots %s', ', '.join(snapshot_ids))
+        try:
+            session = self.create_tenant_session(membership)
+            cinder = self.create_cinder_client(session)
+
+            promoted_volume_ids = []
+            for snapshot_id in snapshot_ids:
+                # volume
+                snapshot = cinder.volume_snapshots.get(snapshot_id)
+                promoted_volume_id = self.create_volume_from_snapshot(snapshot_id, cinder, prefix=prefix)
+                promoted_volume_ids.append(promoted_volume_id)
+                # volume size should be equal to a snapshot size
+                membership.add_quota_usage('storage', self.get_core_disk_size(snapshot.size))
+
+        except (cinder_exceptions.ClientException,
+                keystone_exceptions.ClientException, CloudBackendInternalError) as e:
+            logger.exception('Failed to promote snapshots %s', ', '.join(snapshot_ids))
+            six.reraise(CloudBackendError, e)
+        else:
+            logger.info('Successfully promoted volumes %s', ', '.join(promoted_volume_ids))
+        return promoted_volume_ids
+
     def delete_volumes(self, membership, volume_ids):
         logger.debug('About to delete volumes %s ', ', '.join(volume_ids))
         try:
@@ -1171,52 +1215,30 @@ class OpenStackBackend(object):
             logger.info(
                 'Successfully deleted volumes %s', ', '.join(volume_ids))
 
-    # XXX: This method is not used now
-    def restore_instance(self, instance, instance_backup_ids):
-        logger.debug('About to restore instance %s backup', instance.uuid)
+    def delete_snapshots(self, membership, snapshot_ids):
+        logger.debug('About to delete volumes %s ', ', '.join(snapshot_ids))
         try:
-            membership = instance.cloud_project_membership
-
-            session = self.create_tenant_session(membership)
-
-            nova = self.create_nova_client(session)
-            cinder = self.create_cinder_client(session)
-
-            restored_volumes = []
-
-            for backup_id in instance_backup_ids:
-                restored_volume = self.restore_volume_backup(backup_id, cinder)
-                backup = cinder.backups.get(backup_id)
-                restored_volumes.append((str(backup.description), str(restored_volume)))
-
-            restored_volumes = OrderedDict(sorted(restored_volumes, key=itemgetter(0)))
-
-            new_vm = self.create_vm(instance.backend_id, restored_volumes, nova)
-        except (cinder_exceptions.ClientException, keystone_exceptions.ClientException,
-                CloudBackendInternalError, nova_exceptions.ClientException) as e:
-            logger.exception('Failed to restore backup for instance %s', instance.uuid)
-            six.reraise(CloudBackendError, e)
-        else:
-            logger.info('Successfully restored backup for instance %s', instance.uuid)
-        return new_vm
-
-    # XXX: This method is not used now
-    def delete_instance_backup(self, instance, instance_backup_ids):
-        logger.debug('About to delete instance %s backup', instance.uuid)
-
-        try:
-            membership = instance.cloud_project_membership
-
             session = self.create_tenant_session(membership)
             cinder = self.create_cinder_client(session)
 
-            for backup_id in instance_backup_ids:
-                self.delete_backup(backup_id, cinder)
-        except (cinder_exceptions.ClientException, keystone_exceptions.ClientException, CloudBackendInternalError) as e:
-            logger.exception('Failed to delete backup for instance %s', instance.uuid)
+            for snapshot_id in snapshot_ids:
+                # volume
+                size = cinder.volume_snapshots.get(snapshot_id).size
+                self.delete_snapshot(snapshot_id, cinder)
+
+                if self._wait_for_snapshot_deletion(snapshot_id, cinder):
+                    membership.add_quota_usage('storage', -self.get_core_disk_size(size))
+                else:
+                    logger.exception('Failed to delete snapshot %s', snapshot_id)
+
+        except (cinder_exceptions.ClientException,
+                keystone_exceptions.ClientException, CloudBackendInternalError) as e:
+            logger.exception(
+                'Failed to delete snapshots %s', ', '.join(snapshot_ids))
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Successfully deleted backup for instance %s', instance.uuid)
+            logger.info(
+                'Successfully deleted snapshots %s', ', '.join(snapshot_ids))
 
     def push_instance_security_groups(self, instance):
         from nodeconductor.iaas.models import SecurityGroup

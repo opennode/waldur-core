@@ -99,8 +99,9 @@ class BackupTest(TestCase):
 
         instance = iaas_factories.InstanceFactory()
         user_input = {}
-        backup.start_restoration(instance.uuid, user_input)
-        mocked_task.assert_called_with(backup.uuid.hex, instance.uuid.hex, user_input)
+        snapshot_ids = []
+        backup.start_restoration(instance.uuid, user_input, snapshot_ids)
+        mocked_task.assert_called_with(backup.uuid.hex, instance.uuid.hex, user_input, snapshot_ids)
         self.assertEqual(backup.state, models.Backup.States.RESTORING)
 
     @patch('nodeconductor.backup.tasks.deletion_task.delay')
