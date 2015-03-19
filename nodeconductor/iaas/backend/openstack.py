@@ -1526,19 +1526,17 @@ class OpenStackBackend(object):
                 logger.info('Created new security group rule %s in database', rule.id)
 
     def create_admin_session(self, keystone_url):
-        nc_settings = getattr(settings, 'NODECONDUCTOR', {})
-        openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
-
         try:
-            credentials = next(o for o in openstacks if o['auth_url'] == keystone_url)
-            auth_plugin = v2.Password(**credentials)
-            session = keystone_session.Session(auth=auth_plugin)
-            # This will eagerly sign in throwing AuthorizationFailure on bad credentials
-            session.get_token()
-            return session
-        except StopIteration as e:
+            credentials = models.OpenstackSettings.objects.get(auth_url=keystone_url).get_credentials()
+        except models.OpenstackSettings.DoesNotExist as e:
             logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
             six.reraise(CloudBackendError, e)
+
+        auth_plugin = v2.Password(**credentials)
+        session = keystone_session.Session(auth=auth_plugin)
+        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+        session.get_token()
+        return session
 
     def create_tenant_session(self, membership):
         credentials = {
@@ -1569,17 +1567,6 @@ class OpenStackBackend(object):
         # This will eagerly sign in throwing AuthorizationFailure on bad credentials
         session.get_token()
         return session
-
-    # TODO: Remove it, reimplement url validation in some other way
-    def get_credentials(self, keystone_url):
-        nc_settings = getattr(settings, 'NODECONDUCTOR', {})
-        openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
-
-        try:
-            return next(o for o in openstacks if o['auth_url'] == keystone_url)
-        except StopIteration as e:
-            logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
-            six.reraise(CloudBackendError, e)
 
     def get_backend_disk_size(self, core_disk_size):
         return core_disk_size / 1024
