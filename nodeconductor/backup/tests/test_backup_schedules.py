@@ -58,6 +58,44 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('backup_source', response.content)
 
+    def test_backup_schedule_creation_with_correct_timezone(self):
+        backupable = iaas_factories.InstanceFactory()
+        backup_schedule_data = {
+            'retention_time': 3,
+            'backup_source': iaas_factories.InstanceFactory.get_url(backupable),
+            'schedule': '*/5 * * * *',
+            'timezone': 'Europe/London',
+            'maximal_number_of_backups': 3,
+        }
+        response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['timezone'], 'Europe/London')
+
+    def test_backup_schedule_creation_with_incorrect_timezone(self):
+        backupable = iaas_factories.InstanceFactory()
+        backup_schedule_data = {
+            'retention_time': 3,
+            'backup_source': iaas_factories.InstanceFactory.get_url(backupable),
+            'schedule': '*/5 * * * *',
+            'timezone': 'incorrect',
+            'maximal_number_of_backups': 3,
+        }
+        response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('timezone', response.data)
+
+    def test_backup_schedule_creation_with_default_timezone(self):
+        backupable = iaas_factories.InstanceFactory()
+        backup_schedule_data = {
+            'retention_time': 3,
+            'backup_source': iaas_factories.InstanceFactory.get_url(backupable),
+            'schedule': '*/5 * * * *',
+            'maximal_number_of_backups': 3,
+        }
+        response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['timezone'], 'UTC')
+
     def test_schedule_activation_and_deactivation(self):
         schedule = factories.BackupScheduleFactory(is_active=False)
         # activate

@@ -22,19 +22,17 @@ class BackupScheduleTest(TestCase):
 
     def test_update_next_trigger_at_with_provided_timezone(self):
         schedule = factories.BackupScheduleFactory(timezone='Europe/London')
-        schedule.schedule = '*/10 * * * *'
         schedule._update_next_trigger_at()
 
-        # next_trigger_at field's timezone and schedule's timezone must be equal.
+        # next_trigger_at timezone and schedule's timezone must be equal.
         self.assertEqual(schedule.timezone, schedule.next_trigger_at.tzinfo.zone)
 
-    def test_default_timezone(self):
+    def test_update_next_trigger_at_with_default_timezone(self):
         schedule = factories.BackupScheduleFactory()
-        schedule.schedule = '*/10 * * * *'
         schedule._update_next_trigger_at()
 
         # If timezone is not provided, default timezone must be set.
-        self.assertEqual(timezone.now().tzinfo.zone, schedule.timezone)
+        self.assertEqual('UTC', schedule.timezone)
 
     def test_create_backup(self):
         now = timezone.now()
