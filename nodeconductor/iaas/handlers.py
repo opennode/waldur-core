@@ -22,17 +22,17 @@ def sync_openstack_settings(app_config, using=DEFAULT_DB_ALIAS, **kwargs):
     if not router.allow_migrate(using, OpenStackSettings):
         return
 
-    import warnings
-
-    logger.info("Sync OpenStack credentials")
-    warnings.warn(
-        "OPENSTACK_CREDENTIALS setting is deprecated. "
-        "Create OpenStackSetting model instance instead.",
-        DeprecationWarning,
-    )
-
     nc_settings = getattr(settings, 'NODECONDUCTOR', {})
     openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
+
+    if openstacks:
+        import warnings
+        logger.info("Sync OpenStack credentials")
+        warnings.warn(
+            "OPENSTACK_CREDENTIALS setting is deprecated. "
+            "Create OpenStackSetting model instance instead.",
+            DeprecationWarning,
+        )
 
     for opts in openstacks:
         opts['availability_zone'] = opts.pop('default_availability_zone', '')
