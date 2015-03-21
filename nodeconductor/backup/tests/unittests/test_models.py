@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from datetime import timedelta
 from mock import patch
 
+from django.conf import settings
 from django.test import TestCase
 from django.utils import timezone, unittest
 
@@ -32,7 +33,7 @@ class BackupScheduleTest(TestCase):
         schedule._update_next_trigger_at()
 
         # If timezone is not provided, default timezone must be set.
-        self.assertEqual('UTC', schedule.timezone)
+        self.assertEqual(settings.TIME_ZONE, schedule.timezone)
 
     def test_create_backup(self):
         now = timezone.now()

@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
@@ -94,7 +95,7 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         }
         response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['timezone'], 'UTC')
+        self.assertEqual(response.data['timezone'], settings.TIME_ZONE)
 
     def test_schedule_activation_and_deactivation(self):
         schedule = factories.BackupScheduleFactory(is_active=False)
