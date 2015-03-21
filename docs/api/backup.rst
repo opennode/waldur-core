@@ -92,6 +92,7 @@ To perform backups on a regular basis, it is possible to define a backup schedul
         "backup_source": "/api/instances/430abd492a384f9bbce5f6b999ac766c/",
         "description": "schedule description",
         "retention_time": 0,
+        "timezone": "Europe/London",
         "maximal_number_of_backups": 10,
         "schedule": "1 1 1 1 1",
         "is_active": true
@@ -103,6 +104,7 @@ for triggering the next backups. Schedule will be deactivated if backup fails.
 - **retention time** is a duration in days during which backup is preserved.
 - **maximal_number_of_backups** is a maximal number of active backups connected to this schedule.
 - **schedule** is a backup schedule defined in a cron format.
+- **timezone** is used for calculating next run of the backup (optional).
 
 Activating/deactivating a schedule
 ----------------------------------
