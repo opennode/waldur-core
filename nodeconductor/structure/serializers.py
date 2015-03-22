@@ -368,8 +368,12 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
 
     role = MappedChoiceField(
         source='group.customerrole.role_type',
-        choices=models.CustomerRole.TYPE_CHOICES,
-        choice_mappings={models.CustomerRole.OWNER: 'owner'},
+        choices=(
+            ('owner', 'Owner'),
+        ),
+        choice_mappings={
+            'owner': models.CustomerRole.OWNER,
+        },
     )
 
     class Meta(object):
