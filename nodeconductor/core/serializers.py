@@ -1,6 +1,5 @@
 import base64
 
-from django.contrib.auth import authenticate
 from django.core import validators
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.urlresolvers import reverse, resolve, Resolver404
@@ -17,29 +16,12 @@ validate_ipv4_address_within_list = validators.RegexValidator(
 
 class AuthTokenSerializer(serializers.Serializer):
     """
-    Api token serializer loosely based on DRF's default AuthTokenSerializer,
-    but with the response text and aligned with BasicAuthentication behavior.
+    Api token serializer loosely based on DRF's default AuthTokenSerializer.
+    but with the logic of authorization is extracted to view.
     """
-    username = serializers.CharField(required=True)
-    password = serializers.CharField(required=True)
-
-    def validate(self, attrs):
-        # Since the fields are both required and non-blank
-        # and field-validation is performed before object-level validation
-        # it is safe to assume these dict keys present.
-        username = attrs['username']
-        password = attrs['password']
-
-        user = authenticate(username=username, password=password)
-
-        if not user:
-            raise serializers.ValidationError('Invalid username/password')
-
-        if not user.is_active:
-            raise serializers.ValidationError('User account is disabled')
-        attrs['user'] = user
-
-        return attrs
+    # Fields are both required, non-blank and don't allow nulls by default
+    username = serializers.CharField()
+    password = serializers.CharField()
 
 
 class Base64Field(serializers.CharField):
