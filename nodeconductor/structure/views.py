@@ -908,26 +908,20 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         ]
 
 
-class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
+class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
+                                rf_mixins.RetrieveModelMixin,
                                 rf_mixins.ListModelMixin,
                                 rf_mixins.DestroyModelMixin,
                                 rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.exclude(group__customerrole=None)
     serializer_class = serializers.CustomerPermissionSerializer
-    permission_classes = (rf_permissions.IsAuthenticated,
-                          rf_permissions.DjangoObjectPermissions)
+    permission_classes = (
+        rf_permissions.IsAuthenticated,
+        # DjangoObjectPermissions not used on purpose, see below.
+        # rf_permissions.DjangoObjectPermissions,
+    )
     filter_backends = (rf_filter.DjangoFilterBackend,)
     filter_class = CustomerPermissionFilter
-
-    def can_assign_role(self, customer):
-        user = self.request.user
-        if user.is_staff:
-            return True
-
-        if customer.has_user(user, CustomerRole.OWNER):
-            return True
-
-        return False
 
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
@@ -944,50 +938,34 @@ class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
 
         return queryset
 
-    def get_success_headers(self, data):
-        try:
-            return {'Location': data[api_settings.URL_FIELD_NAME]}
-        except (TypeError, KeyError):
-            return {}
+    # DjangoObjectPermissions is not used because it cannot enforce
+    # create permissions based on the body of the request.
+    # Another reason is to foster symmetry: check for both granting
+    # and revocation are kept in one place - the view.
+    def perform_create(self, serializer):
+        user = self.request.user
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        affected_customer = serializer.validated_data['customer']
 
-        # perform_create
-        customer = serializer.validated_data['group']['customerrole']['customer']
-        user = serializer.validated_data['user']
-        role = serializer.validated_data['group']['customerrole']['role_type']
+        if not (user.is_staff or affected_customer.has_user(user, models.CustomerRole.OWNER)):
+            raise PermissionDenied('You do not have permission to perform this action.')
 
-        if not self.can_assign_role(customer):
-            raise PermissionDenied()
-
-        permission, created = customer.add_user(user, role)
-
-        # Instantiating serializer again, this time with instance
-        # to make urls render properly.
-        serializer = self.get_serializer(instance=permission)
-
-        headers = self.get_success_headers(serializer.data)
-
-        if created:
-            return Response(
-                serializer.data,
-                status=status.HTTP_201_CREATED,
-                headers=headers,
-            )
-        else:
-            return Response(
-                status=status.HTTP_303_SEE_OTHER,
-                headers=headers,
-            )
+        # It would be nice to put customer.add_user() logic here as well.
+        # But it is pushed down to serializer.create() because otherwise
+        # no url will be rendered in response.
+        super(CustomerPermissionViewSet, self).perform_create(serializer)
 
     def perform_destroy(self, instance):
-        user = instance.user
-        customer = instance.group.customerrole.customer
+        user = self.request.user
+
+        affected_user = instance.user
+        affected_customer = instance.group.customerrole.customer
         role = instance.group.customerrole.role_type
 
-        customer.remove_user(user, role)
+        if not (user.is_staff or affected_customer.has_user(user, models.CustomerRole.OWNER)):
+            raise PermissionDenied('You do not have permission to perform this action.')
+
+        affected_customer.remove_user(affected_user, role)
 
 
 class CreationTimeStatsView(views.APIView):
