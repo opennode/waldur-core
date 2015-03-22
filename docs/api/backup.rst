@@ -42,7 +42,7 @@ Example of a created backup representation:
         "description": "a new manual backup",
         "created_at": "2014-10-19T20:43:37.370Z",
         "kept_until": null,
-        "state": "Backing up"
+        "state": "Backing up",
         "backup_schedule": "http://example.com/api/backup-schedules/075c3525b9af42e08f54c3ccf87e998a/"
     }
 
