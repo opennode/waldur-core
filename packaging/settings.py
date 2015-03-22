@@ -435,11 +435,6 @@ CELERY_RESULT_BACKEND = config.get('celery', 'result_backend_url')
 # Regular tasks
 # See also: http://celery.readthedocs.org/en/latest/userguide/periodic-tasks.html#entries
 CELERYBEAT_SCHEDULE = {
-    'check-cloud-project-memberships-quotas': {
-        'task': 'nodeconductor.iaas.tasks.check_cloud_memberships_quotas',
-        'schedule': timedelta(seconds=config.getint('celery', 'cloud_project_membership_quota_check_period')),
-        'args': (),
-    },
     'delete-expired-backups': {
         'task': 'nodeconductor.backup.tasks.delete_expired_backups',
         'schedule': timedelta(seconds=config.getint('celery', 'expired_backup_delete_period')),
@@ -450,18 +445,28 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(seconds=config.getint('celery', 'backup_schedule_execute_period')),
         'args': (),
     },
+    'check-cloud-project-memberships-quotas': {
+        'task': 'nodeconductor.iaas.tasks.iaas.check_cloud_memberships_quotas',
+        'schedule': timedelta(seconds=config.getint('celery', 'cloud_project_membership_quota_check_period')),
+        'args': (),
+    },
     'pull-cloud-accounts': {
-        'task': 'nodeconductor.iaas.tasks.pull_cloud_accounts',
+        'task': 'nodeconductor.iaas.tasks.iaas.pull_cloud_accounts',
         'schedule': timedelta(seconds=config.getint('celery', 'cloud_account_pull_period')),
         'args': (),
     },
     'pull-cloud-project-memberships': {
-        'task': 'nodeconductor.iaas.tasks.pull_cloud_memberships',
+        'task': 'nodeconductor.iaas.tasks.iaas.pull_cloud_memberships',
         'schedule': timedelta(seconds=config.getint('celery', 'cloud_project_membership_pull_period')),
         'args': (),
     },
+    'pull-service-statistics': {
+        'task': 'nodeconductor.iaas.tasks.iaas.pull_service_statistics',
+        'schedule': timedelta(seconds=config.getint('celery', 'service_statistics_update_period')),
+        'args': (),
+    },
     'sync-instances-with-zabbix': {
-        'task': 'nodeconductor.iaas.tasks.sync_instances_with_zabbix',
+        'task': 'nodeconductor.iaas.tasks.iaas.sync_instances_with_zabbix',
         'schedule': timedelta(seconds=config.getint('celery', 'instance_zabbix_sync_period')),
         'args': (),
     },
@@ -475,12 +480,6 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(seconds=config.getint('celery', 'instance_yearly_sla_update_period')),
         'args': ('yearly',),
     },
-    'pull-service-statistics': {
-        'task': 'nodeconductor.iaas.tasks.pull_service_statistics',
-        'schedule': timedelta(seconds=config.getint('celery', 'service_statistics_update_period')),
-        'args': (),
-    },
-
 }
 
 # NodeConductor internal configuration
