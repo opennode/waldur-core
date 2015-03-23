@@ -277,9 +277,6 @@ class ProjectGroupRole(UuidMixin, models.Model):
         (MANAGER, 'Group Manager'),
     )
 
-    ROLE_TO_NAME = {MANAGER: 'manager'}
-    NAME_TO_ROLE = dict((v, k) for k, v in ROLE_TO_NAME.items())
-
     project_group = models.ForeignKey('structure.ProjectGroup', related_name='roles')
     role_type = models.SmallIntegerField(choices=TYPE_CHOICES)
     permission_group = models.OneToOneField(Group)
