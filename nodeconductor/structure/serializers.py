@@ -327,20 +327,6 @@ class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
         return 'project', 'project_group'
 
 
-class ProjectRoleField(serializers.ChoiceField):
-
-    def field_to_native(self, obj, field_name):
-        if obj is not None:
-            return models.ProjectRole.ROLE_TO_NAME[obj.group.projectrole.role_type]
-
-    def field_from_native(self, data, files, field_name, into):
-        role = data.get('role')
-        if role in models.ProjectRole.NAME_TO_ROLE:
-            into[field_name] = models.ProjectRole.NAME_TO_ROLE[role]
-        else:
-            raise ValidationError('Unknown role')
-
-
 class ProjectGroupRoleField(serializers.ChoiceField):
 
     def field_to_native(self, obj, field_name):
@@ -355,7 +341,6 @@ class ProjectGroupRoleField(serializers.ChoiceField):
             raise ValidationError('Unknown role')
 
 
-# TODO: refactor to abstract class, subclass by CustomerPermissions and ProjectPermissions
 class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
                                    core_serializers.AugmentedSerializerMixin,
                                    serializers.HyperlinkedModelSerializer):
@@ -401,7 +386,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
         user = validated_data['user']
         role = validated_data['role']
 
-        permission, created = customer.add_user(user, role)
+        permission, _ = customer.add_user(user, role)
 
         return permission
 
@@ -428,6 +413,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
 
 
 class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
+                                  core_serializers.AugmentedSerializerMixin,
                                   serializers.HyperlinkedModelSerializer):
     project = serializers.HyperlinkedRelatedField(
         source='group.projectrole.project',
@@ -435,18 +421,18 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
         lookup_field='uuid',
         queryset=models.Project.objects.all(),
     )
-    project_name = serializers.ReadOnlyField(source='group.projectrole.project.name')
 
-    user = serializers.HyperlinkedRelatedField(
-        view_name='user-detail',
-        lookup_field='uuid',
-        queryset=User.objects.all(),
+    role = MappedChoiceField(
+        source='group.projectrole.role_type',
+        choices=(
+            ('admin', 'Administrator'),
+            ('manager', 'Manager'),
+        ),
+        choice_mappings={
+            'admin': models.ProjectRole.ADMINISTRATOR,
+            'manager': models.ProjectRole.MANAGER,
+        },
     )
-    user_full_name = serializers.ReadOnlyField(source='user.full_name')
-    user_native_name = serializers.ReadOnlyField(source='user.native_name')
-    user_username = serializers.ReadOnlyField(source='user.username')
-
-    role = ProjectRoleField(choices=models.ProjectRole.TYPE_CHOICES)
 
     class Meta(object):
         model = User.groups.through
@@ -456,13 +442,45 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
             'project', 'project_name',
             'user', 'user_full_name', 'user_native_name', 'user_username',
         )
+        related_paths = {
+            'user': ('username', 'full_name', 'native_name'),
+            'group.projectrole.project': ('name',)
+        }
+        extra_kwargs = {
+            'user': {
+                'view_name': 'user-detail',
+                'lookup_field': 'uuid',
+                'queryset': User.objects.all(),
+            },
+        }
         view_name = 'project_permission-detail'
 
-    def restore_object(self, attrs, instance=None):
-        project = attrs['group.projectrole.project']
-        group = project.roles.get(role_type=attrs['role']).permission_group
-        UserGroup = User.groups.through
-        return UserGroup(user=attrs['user'], group=group)
+    def create(self, validated_data):
+        project = validated_data['project']
+        user = validated_data['user']
+        role = validated_data['role']
+
+        permission, _ = project.add_user(user, role)
+
+        return permission
+
+    def to_internal_value(self, data):
+        value = super(ProjectPermissionSerializer, self).to_internal_value(data)
+        return {
+            'user': value['user'],
+            'project': value['group']['projectrole']['project'],
+            'role': value['group']['projectrole']['role_type'],
+        }
+
+    def validate(self, data):
+        project = data['project']
+        user = data['user']
+        role = data['role']
+
+        if project.has_user(user, role):
+            raise serializers.ValidationError('The fields project, user, role must make a unique set.')
+
+        return data
 
     def get_filtered_field_names(self):
         return 'project',

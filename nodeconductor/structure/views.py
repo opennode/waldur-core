@@ -25,7 +25,6 @@ from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
-from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 
 
 logger = logging.getLogger(__name__)
@@ -624,31 +623,29 @@ class ProjectPermissionFilter(django_filters.FilterSet):
         ]
 
 
-class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
+class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
+                               rf_mixins.RetrieveModelMixin,
                                rf_mixins.ListModelMixin,
+                               rf_mixins.DestroyModelMixin,
                                rf_viewsets.GenericViewSet):
+    # See CustomerPermissionViewSet for implementation details.
+
     queryset = User.groups.through.objects.exclude(group__projectrole=None)
     serializer_class = serializers.ProjectPermissionSerializer
-    permission_classes = (rf_permissions.IsAuthenticated,
-                          rf_permissions.DjangoObjectPermissions)
+    permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     filter_class = ProjectPermissionFilter
 
-    def can_save(self, user_group):
+    def can_manage_roles_for(self, project):
         user = self.request.user
         if user.is_staff:
             return True
 
-        project = user_group.group.projectrole.project
-
-        if project.has_user(user, ProjectRole.MANAGER):
-            return True
-
-        if project.customer.has_user(user, CustomerRole.OWNER):
+        if project.customer.has_user(user, models.CustomerRole.OWNER):
             return True
 
         for project_group in project.project_groups.iterator():
-            if project_group.has_user(user, ProjectGroupRole.MANAGER):
+            if project_group.has_user(user, models.ProjectGroupRole.MANAGER):
                 return True
 
         return False
@@ -663,64 +660,23 @@ class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
 
         return queryset
 
-    def get_success_headers(self, data):
-        try:
-            return {'Location': data[api_settings.URL_FIELD_NAME]}
-        except (TypeError, KeyError):
-            return {}
+    def perform_create(self, serializer):
+        affected_project = serializer.validated_data['project']
 
-    def pre_save(self, obj):
-        if not self.can_save(obj):
-            raise PermissionDenied()
+        if not self.can_manage_roles_for(affected_project):
+            raise PermissionDenied('You do not have permission to perform this action.')
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        super(ProjectPermissionViewSet, self).perform_create(serializer)
 
-        if serializer.is_valid():
-            self.pre_save(serializer.object)
+    def perform_destroy(self, instance):
+        affected_user = instance.user
+        affected_project = instance.group.projectrole.project
+        role = instance.group.projectrole.role_type
 
-            project = serializer.object.group.projectrole.project
-            user = serializer.object.user
-            role = serializer.object.group.projectrole.role_type
+        if not self.can_manage_roles_for(affected_project):
+            raise PermissionDenied('You do not have permission to perform this action.')
 
-            self.object, created = project.add_user(user, role)
-
-            self.post_save(self.object, created=created)
-
-            # Instantiating serializer again, this time with instance
-            # to make urls render properly.
-            serializer = self.get_serializer(instance=self.object)
-
-            headers = self.get_success_headers(serializer.data)
-
-            if created:
-                return Response(
-                    serializer.data,
-                    status=status.HTTP_201_CREATED,
-                    headers=headers,
-                )
-            else:
-                return Response(
-                    {'detail': 'Permissions were not modified'},
-                    status=status.HTTP_304_NOT_MODIFIED,
-                    headers=headers,
-                )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def destroy(self, request, *args, **kwargs):
-        obj = self.get_object()
-        self.pre_delete(obj)
-
-        user = obj.user
-        project = obj.group.projectrole.project
-        role = obj.group.projectrole.role_type
-
-        project.remove_user(user, role)
-
-        self.post_delete(obj)
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        affected_project.remove_user(affected_user, role)
 
 
 class ProjectGroupPermissionFilter(django_filters.FilterSet):
@@ -804,7 +760,7 @@ class ProjectGroupPermissionViewSet(rf_mixins.RetrieveModelMixin,
 
         project_group = user_group.group.projectgrouprole.project_group
 
-        if project_group.customer.has_user(user, CustomerRole.OWNER):
+        if project_group.customer.has_user(user, models.CustomerRole.OWNER):
             return True
 
         return False
@@ -923,6 +879,16 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
     filter_backends = (rf_filter.DjangoFilterBackend,)
     filter_class = CustomerPermissionFilter
 
+    def can_manage_roles_for(self, customer):
+        user = self.request.user
+        if user.is_staff:
+            return True
+
+        if customer.has_user(user, models.CustomerRole.OWNER):
+            return True
+
+        return False
+
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
 
@@ -943,11 +909,9 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
     # Another reason is to foster symmetry: check for both granting
     # and revocation are kept in one place - the view.
     def perform_create(self, serializer):
-        user = self.request.user
-
         affected_customer = serializer.validated_data['customer']
 
-        if not (user.is_staff or affected_customer.has_user(user, models.CustomerRole.OWNER)):
+        if not self.can_manage_roles_for(affected_customer):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         # It would be nice to put customer.add_user() logic here as well.
@@ -956,13 +920,11 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
         super(CustomerPermissionViewSet, self).perform_create(serializer)
 
     def perform_destroy(self, instance):
-        user = self.request.user
-
         affected_user = instance.user
         affected_customer = instance.group.customerrole.customer
         role = instance.group.customerrole.role_type
 
-        if not (user.is_staff or affected_customer.has_user(user, models.CustomerRole.OWNER)):
+        if not self.can_manage_roles_for(affected_customer):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         affected_customer.remove_user(affected_user, role)
