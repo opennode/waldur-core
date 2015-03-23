@@ -65,6 +65,10 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         expected = InstanceBackupStrategy._get_instance_metadata(self.instance)
         expected['system_snapshot_id'] = self.system_volume_snapshot_id
         expected['data_snapshot_id'] = self.data_volume_snapshot_id
+        expected['system_snapshot_size'] = self.instance.system_volume_size
+        expected['data_snapshot_size'] = self.instance.data_volume_size
+
+        self.maxDiff = None
         self.assertEqual(result, expected)
 
     def test_strategy_restore_method_calls_backend_restore_instance_method(self):
