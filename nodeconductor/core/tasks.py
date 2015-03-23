@@ -7,7 +7,7 @@ from django.db import transaction, IntegrityError, DatabaseError
 from django.utils import six
 from django_fsm import TransitionNotAllowed
 
-from celery.task import current
+from celery import current_app, current_task
 from celery.exceptions import MaxRetriesExceededError
 
 from nodeconductor.core.log import EventLoggerAdapter
@@ -15,6 +15,14 @@ from nodeconductor.core.log import EventLoggerAdapter
 
 logger = logging.getLogger(__name__)
 event_logger = EventLoggerAdapter(logger)
+
+
+class Throttled(RuntimeError):
+    pass
+
+
+class TaskNotFound(RuntimeError):
+    pass
 
 
 class StateChangeError(RuntimeError):
@@ -152,6 +160,101 @@ def tracked_processing(model_class, processing_state, desired_state, error_state
     return decorator
 
 
+class Throttle(object):
+    """ Limit a number of celery tasks running in parallel.
+        Retry task until conditions meet or timeout exceed.
+
+        An instance can be used either as a decorator or as a context manager.
+
+        .. code-block:: python
+            @shared_task()
+            def change_instance1(instance_uuid):
+                instance = Instance.objects.get(uuid=instance_uuid)
+                with throttle(key=instance.cloud_project_membership.cloud.auth_url):
+                    instance.change_instance()
+
+            @shared_task()
+            @throttle(concurrency=3)
+            def change_instance2(instance_uuid):
+                instance = Instance.objects.get(uuid=instance_uuid)
+                instance.change_instance()
+
+        :param key: an additional key to be used with task name
+        :param concurrency: a number of tasks running at once
+        :param retry_delay: a time in seconds before the next try
+        :param timeout: a time in seconds to keep a lock
+    """
+
+    def __init__(self, concurrency=1, key='*', retry_delay=30, timeout=3600):
+        self.concurrency = concurrency
+        self.retry_delay = retry_delay
+        self.task_name = None
+        self.task_key = key
+        self.timeout = timeout
+
+    def __enter__(self):
+        if self.acquire_lock():
+            return self
+
+        try:
+            # max_retries should be big enought to retry until lock expired
+            # this guaranties that task will be executed rather than failed
+            current_task.retry(
+                countdown=self.retry_delay,
+                max_retries=10000)
+        except MaxRetriesExceededError as e:
+            six.reraise(Throttled, e)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.release_lock()
+
+    def __call__(self, task_fn):
+        @functools.wraps(task_fn)
+        def inner(*args, **kwargs):
+            self.task_name = current_task.name
+            with self:
+                return task_fn(*args, **kwargs)
+        return inner
+
+    @property
+    def key(self):
+        if not self.task_name:
+            self.task_name = current_task.name
+
+        return 'nc:{}:{}'.format(self.task_name, self.task_key)
+
+    @property
+    def redis(self):
+        return current_app.backend.client
+
+    def acquire_lock(self):
+        currently_running = self.redis.get(self.key) or 0
+        if int(currently_running) >= int(self.concurrency):
+            logger.debug('Tasks limit exceed for %s, limit: %s', self.key, self.concurrency)
+            return False
+
+        pipe = self.redis.pipeline()
+        pipe.incr(self.key)
+        pipe.expire(self.key, self.timeout)
+        pipe.execute()
+        logger.debug('Acquire lock for %s, total: %s', self.key, currently_running)
+        return True
+
+    def release_lock(self):
+        pipe = self.redis.pipeline()
+        pipe.decr(self.key)
+        pipe.expire(self.key, self.timeout)
+        pipe.execute()
+        logger.debug('Release lock for %s, remaining: %s', self.key, self.redis.get(self.key))
+        return True
+
+
+def throttle(*args, **kwargs):
+    if args and callable(args[0]):
+        return Throttle(**kwargs)(args[0])
+    return Throttle(*args, **kwargs)
+
+
 def transition(model_class, processing_state, error_state='set_erred'):
     """ Atomically runs state transition for a model_class instance.
         Executes desired task on success.
@@ -220,9 +323,37 @@ def retry_if_false(func):
         is_true = func(*args, **kwargs)
         if not is_true:
             try:
-                current.retry()
+                current_task.retry()
             except MaxRetriesExceededError:
-                raise RuntimeError('Task %s failed to retry' % current.name)
+                raise RuntimeError('Task %s failed to retry' % current_task.name)
 
         return is_true
     return wrapped
+
+
+def send_task(app_label, task_name):
+    """ A helper function to deal with nodeconductor "high-level" tasks.
+        Define high-level task with explicit name using a pattern:
+        nodeconductor.<app_label>.<task_name>
+
+        .. code-block:: python
+            @shared_task(name='nodeconductor.iaas.provision_instance')
+            def provision_instance_fn(instance_uuid, backend_flavor_id)
+                pass
+
+        Call it by name:
+
+        .. code-block:: python
+            send_task('iaas', 'provision_instance')(instance_uuid, backend_flavor_id)
+
+        Which is identical to:
+
+        .. code-block:: python
+            provision_instance_fn.delay(instance_uuid, backend_flavor_id)
+
+    """
+    try:
+        task = current_app.tasks.get('nodeconductor.%s.%s' % (app_label, task_name))
+    except KeyError as e:
+        six.reraise(TaskNotFound, e)
+    return task.delay

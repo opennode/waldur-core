@@ -4,3 +4,4 @@
 .. include:: openstack.rst
 .. include:: logging.rst
 .. include:: quotas.rst
+.. include:: celery.rst

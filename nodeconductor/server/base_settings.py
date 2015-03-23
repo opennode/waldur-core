@@ -120,6 +120,13 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_RESULT_SERIALIZER = 'json'
 
+CELERY_QUEUES = {
+    'tasks': {'exchange': 'tasks'},
+    'heavy': {'exchange': 'heavy'},
+}
+CELERY_DEFAULT_QUEUE = 'tasks'
+CELERY_ROUTES = ('nodeconductor.server.celery.PriorityRouter',)
+
 # Regular tasks
 CELERYBEAT_SCHEDULE = {
     'update-instance-monthly-slas': {

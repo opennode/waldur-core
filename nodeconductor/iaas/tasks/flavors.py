@@ -9,7 +9,7 @@ from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.tasks import transition
 from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tasks.openstack import (
-    create_openstack_session, nova_wait_for_server_status,
+    openstack_create_session, nova_wait_for_server_status,
     nova_server_resize, nova_server_resize_confirm)
 
 
@@ -26,7 +26,7 @@ def resize_flavor(instance_uuid, flavor_uuid, transition_entity=None):
     flavor_id = flavor.backend_id
 
     chain(
-        create_openstack_session.s(instance_uuid=instance_uuid),
+        openstack_create_session.s(instance_uuid=instance_uuid),
         nova_server_resize.s(server_id, flavor_id),
         nova_wait_for_server_status.s(server_id, 'VERIFY_RESIZE'),
         nova_server_resize_confirm.s(server_id),
