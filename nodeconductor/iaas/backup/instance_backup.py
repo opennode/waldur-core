@@ -47,6 +47,8 @@ class InstanceBackupStrategy(BackupStrategy):
         metadata = cls._get_instance_metadata(instance)
         metadata['system_snapshot_id'] = system_volume_snapshot_id
         metadata['data_snapshot_id'] = data_volume_snapshot_id
+        metadata['system_snapshot_size'] = instance.system_volume_size
+        metadata['data_snapshot_size'] = instance.data_volume_size
 
         return metadata
 
