@@ -28,31 +28,42 @@ class ObtainAuthToken(APIView):
     """
     throttle_classes = ()
     permission_classes = ()
-    queryset = Token.objects.all()
     serializer_class = AuthTokenSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.DATA)
-        if serializer.is_valid():
-            user = serializer.object['user']
-            token, created = Token.objects.get_or_create(user=user)
-            event_logger.info(
-                "User '%s' with full name '%s' authenticated successfully with username and password",
-                user.username, user.full_name,
-                extra={'user': user, 'event_type': 'auth_logged_in_with_username'})
-            logger.debug('Returning token for successful login of user %s', user)
-            return Response({'token': token.key})
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        errors = dict(serializer.errors)
+        username = serializer.validated_data['username']
 
-        try:
-            non_field_errors = errors.pop('non_field_errors')
-            errors['detail'] = non_field_errors[0]
-        except (KeyError, IndexError):
-            pass
+        user = auth.authenticate(
+            username=username,
+            password=serializer.validated_data['password'],
+        )
 
-        logger.debug('Failed session token retrieval due to %s', errors)
-        return Response(errors, status=status.HTTP_401_UNAUTHORIZED)
+        if not user:
+            logger.debug('Not returning auth token: '
+                         'user %s does not exist', username)
+            return Response(
+                data={'detail': 'Invalid username/password'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if not user.is_active:
+            logger.debug('Not returning auth token: '
+                         'user %s is disabled', username)
+            return Response(
+                data={'detail': 'User account is disabled'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        token, _ = Token.objects.get_or_create(user=user)
+        event_logger.info(
+            "User '%s' with full name '%s' authenticated successfully with username and password",
+            user.username, user.full_name,
+            extra={'user': user, 'event_type': 'auth_logged_in_with_username'})
+        logger.debug('Returning token for successful login of user %s', user)
+        return Response({'token': token.key})
 
 
 obtain_auth_token = ObtainAuthToken.as_view()
@@ -73,7 +84,7 @@ class Saml2AuthView(APIView):
         djangosaml2.backends.Saml2Backend that should be
         enabled in the settings.py
         """
-        serializer = self.serializer_class(data=request.DATA)
+        serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             errors = dict(serializer.errors)
 

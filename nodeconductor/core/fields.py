@@ -76,10 +76,13 @@ class MappedChoiceField(serializers.ChoiceField):
     >>>         model = IceCream
     >>>
     >>>     flavor = MappedChoiceField(
-    >>>         choices=IceCream.FLAVOR_CHOICES,
+    >>>         choices={
+    >>>             'chocolate': _('Chocolate'),
+    >>>             'vanilla': _('Vanilla'),
+    >>>         },
     >>>         choice_mappings={
-    >>>             IceCream.CHOCOLATE: 'chocolate',
-    >>>             IceCream.VANILLA: 'vanilla',
+    >>>             'chocolate': IceCream.CHOCOLATE,
+    >>>             'vanilla': IceCream.VANILLA,
     >>>         },
     >>>     )
     >>>
@@ -101,24 +104,24 @@ class MappedChoiceField(serializers.ChoiceField):
         assert set(self.choices.keys()) == set(choice_mappings.keys()), 'Choices do not match mappings'
         assert len(set(choice_mappings.values())) == len(choice_mappings), 'Mappings are not unique'
 
-        self.model_to_mapped = choice_mappings
-        self.mapped_to_model = {v: k for k, v in six.iteritems(choice_mappings)}
+        self.mapped_to_model = choice_mappings
+        self.model_to_mapped = {v: k for k, v in six.iteritems(choice_mappings)}
 
     def to_internal_value(self, data):
         if data == '' and self.allow_blank:
             return ''
 
+        data = super(MappedChoiceField, self).to_internal_value(data)
+
         try:
-            data = self.mapped_to_model[six.text_type(data)]
+            return self.mapped_to_model[six.text_type(data)]
         except KeyError:
             self.fail('invalid_choice', input=data)
-        else:
-            return super(MappedChoiceField, self).to_internal_value(data)
 
     def to_representation(self, value):
-        value = super(MappedChoiceField, self).to_representation(value)
-
         if value in ('', None):
             return value
 
-        return self.model_to_mapped[value]
+        value = self.model_to_mapped[value]
+
+        return super(MappedChoiceField, self).to_representation(value)

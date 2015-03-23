@@ -192,7 +192,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = super(ProjectViewSet, self).get_queryset()
 
-        can_manage = self.request.QUERY_PARAMS.get('can_manage', None)
+        can_manage = self.request.query_params.get('can_manage', None)
         if can_manage is not None:
             #XXX: Let the DB cry...
             queryset = queryset.filter(
@@ -203,7 +203,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                   roles__role_type=models.ProjectRole.MANAGER)
             ).distinct()
 
-        can_admin = self.request.QUERY_PARAMS.get('can_admin', None)
+        can_admin = self.request.query_params.get('can_admin', None)
 
         if can_admin is not None:
             queryset = queryset.filter(
@@ -430,13 +430,13 @@ class UserViewSet(viewsets.ModelViewSet):
         queryset = super(UserViewSet, self).get_queryset()
 
         # ?current
-        current_user = self.request.QUERY_PARAMS.get('current')
+        current_user = self.request.query_params.get('current')
         if current_user is not None and not user.is_anonymous():
             queryset = User.objects.filter(uuid=user.uuid)
 
         # TODO: refactor to a separate endpoint or structure
         # a special query for all users with assigned privileges that the current user can remove privileges from
-        if 'potential' in self.request.QUERY_PARAMS:
+        if 'potential' in self.request.query_params:
             connected_customers_query = models.Customer.objects.all()
             # is user is not staff, allow only connected customers
             if not user.is_staff:
@@ -450,13 +450,13 @@ class UserViewSet(viewsets.ModelViewSet):
                 ).distinct()
 
             # check if we need to filter potential users by a customer
-            potential_customer = self.request.QUERY_PARAMS.get('potential_customer')
+            potential_customer = self.request.query_params.get('potential_customer')
             if potential_customer:
                 connected_customers_query = connected_customers_query.filter(uuid=potential_customer)
                 connected_customers_query = filters.filter_queryset_for_user(connected_customers_query, user)
 
             connected_customers = list(connected_customers_query.all())
-            potential_organization = self.request.QUERY_PARAMS.get('potential_organization')
+            potential_organization = self.request.query_params.get('potential_organization')
             if potential_organization is not None:
                 potential_organizations = potential_organization.split(',')
             else:
@@ -486,7 +486,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 )
             ).distinct()
 
-        organization_claimed = self.request.QUERY_PARAMS.get('organization_claimed')
+        organization_claimed = self.request.query_params.get('organization_claimed')
         if organization_claimed is not None:
             queryset = queryset.exclude(organization__isnull=True).exclude(organization__exact='')
 
@@ -517,7 +517,7 @@ class UserViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
 
         # check if organization name is valid
-        serializer = serializers.UserOrganizationSerializer(data={'organization': request.DATA.get('organization')})
+        serializer = serializers.UserOrganizationSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -657,7 +657,7 @@ class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
         queryset = super(ProjectPermissionViewSet, self).get_queryset()
 
         # TODO: refactor against django filtering
-        user_uuid = self.request.QUERY_PARAMS.get('user', None)
+        user_uuid = self.request.query_params.get('user', None)
         if user_uuid is not None:
             queryset = queryset.filter(user__uuid=user_uuid)
 
@@ -674,7 +674,7 @@ class ProjectPermissionViewSet(rf_mixins.RetrieveModelMixin,
             raise PermissionDenied()
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+        serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
             self.pre_save(serializer.object)
@@ -779,7 +779,7 @@ class ProjectGroupPermissionViewSet(rf_mixins.RetrieveModelMixin,
         queryset = queryset.exclude(group__projectgrouprole=None)
 
         # TODO: refactor against django filtering
-        user_uuid = self.request.QUERY_PARAMS.get('user', None)
+        user_uuid = self.request.query_params.get('user', None)
         if user_uuid is not None:
             queryset = queryset.filter(user__uuid=user_uuid)
 
@@ -820,7 +820,7 @@ class ProjectGroupPermissionViewSet(rf_mixins.RetrieveModelMixin,
             return {}
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.DATA, files=request.FILES)
+        serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
             self.pre_save(serializer.object)
@@ -908,26 +908,20 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         ]
 
 
-class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
+class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
+                                rf_mixins.RetrieveModelMixin,
                                 rf_mixins.ListModelMixin,
                                 rf_mixins.DestroyModelMixin,
                                 rf_viewsets.GenericViewSet):
     queryset = User.groups.through.objects.exclude(group__customerrole=None)
     serializer_class = serializers.CustomerPermissionSerializer
-    permission_classes = (rf_permissions.IsAuthenticated,
-                          rf_permissions.DjangoObjectPermissions)
+    permission_classes = (
+        rf_permissions.IsAuthenticated,
+        # DjangoObjectPermissions not used on purpose, see below.
+        # rf_permissions.DjangoObjectPermissions,
+    )
     filter_backends = (rf_filter.DjangoFilterBackend,)
     filter_class = CustomerPermissionFilter
-
-    def can_assign_role(self, customer):
-        user = self.request.user
-        if user.is_staff:
-            return True
-
-        if customer.has_user(user, CustomerRole.OWNER):
-            return True
-
-        return False
 
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
@@ -944,50 +938,34 @@ class CustomerPermissionViewSet(rf_mixins.RetrieveModelMixin,
 
         return queryset
 
-    def get_success_headers(self, data):
-        try:
-            return {'Location': data[api_settings.URL_FIELD_NAME]}
-        except (TypeError, KeyError):
-            return {}
+    # DjangoObjectPermissions is not used because it cannot enforce
+    # create permissions based on the body of the request.
+    # Another reason is to foster symmetry: check for both granting
+    # and revocation are kept in one place - the view.
+    def perform_create(self, serializer):
+        user = self.request.user
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        affected_customer = serializer.validated_data['customer']
 
-        # perform_create
-        customer = serializer.validated_data['group']['customerrole']['customer']
-        user = serializer.validated_data['user']
-        role = serializer.validated_data['group']['customerrole']['role_type']
+        if not (user.is_staff or affected_customer.has_user(user, models.CustomerRole.OWNER)):
+            raise PermissionDenied('You do not have permission to perform this action.')
 
-        if not self.can_assign_role(customer):
-            raise PermissionDenied()
-
-        permission, created = customer.add_user(user, role)
-
-        # Instantiating serializer again, this time with instance
-        # to make urls render properly.
-        serializer = self.get_serializer(instance=permission)
-
-        headers = self.get_success_headers(serializer.data)
-
-        if created:
-            return Response(
-                serializer.data,
-                status=status.HTTP_201_CREATED,
-                headers=headers,
-            )
-        else:
-            return Response(
-                status=status.HTTP_303_SEE_OTHER,
-                headers=headers,
-            )
+        # It would be nice to put customer.add_user() logic here as well.
+        # But it is pushed down to serializer.create() because otherwise
+        # no url will be rendered in response.
+        super(CustomerPermissionViewSet, self).perform_create(serializer)
 
     def perform_destroy(self, instance):
-        user = instance.user
-        customer = instance.group.customerrole.customer
+        user = self.request.user
+
+        affected_user = instance.user
+        affected_customer = instance.group.customerrole.customer
         role = instance.group.customerrole.role_type
 
-        customer.remove_user(user, role)
+        if not (user.is_staff or affected_customer.has_user(user, models.CustomerRole.OWNER)):
+            raise PermissionDenied('You do not have permission to perform this action.')
+
+        affected_customer.remove_user(affected_user, role)
 
 
 class CreationTimeStatsView(views.APIView):
@@ -995,10 +973,10 @@ class CreationTimeStatsView(views.APIView):
     def get(self, request, format=None):
         month = 60 * 60 * 24 * 30
         data = {
-            'start_timestamp': request.QUERY_PARAMS.get('from', int(time.time() - month)),
-            'end_timestamp': request.QUERY_PARAMS.get('to', int(time.time())),
-            'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
-            'model_name': request.QUERY_PARAMS.get('type', 'customer'),
+            'start_timestamp': request.query_params.get('from', int(time.time() - month)),
+            'end_timestamp': request.query_params.get('to', int(time.time())),
+            'segments_count': request.query_params.get('datapoints', 6),
+            'model_name': request.query_params.get('type', 'customer'),
         }
 
         serializer = serializers.CreationTimeStatsSerializer(data=data)

@@ -12,10 +12,10 @@ class LinkHeaderPagination(pagination.PageNumberPagination):
 
     def get_paginated_response(self, data):
         link_candidates = OrderedDict((
-            ('first', lambda: self.get_first_link),
-            ('prev', lambda: self.get_previous_link),
-            ('next', lambda: self.get_next_link),
-            ('last', lambda: self.get_last_link),
+            ('first', self.get_first_link),
+            ('prev', self.get_previous_link),
+            ('next', self.get_next_link),
+            ('last', self.get_last_link),
         ))
 
         link = ', '.join(

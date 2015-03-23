@@ -54,7 +54,7 @@ class PermissionFieldFilteringMixin(object):
         fields = super(PermissionFieldFilteringMixin, self).get_fields()
 
         try:
-            request = self.context['view'].request
+            request = self.context['request']
             user = request.user
         except (KeyError, AttributeError):
             return fields
@@ -213,8 +213,7 @@ class ProjectCreateSerializer(PermissionFieldFilteringMixin,
         raise ValidationError('You cannot create project with such data')
 
 
-class CustomerSerializer(PermissionFieldFilteringMixin,
-                         core_serializers.AugmentedSerializerMixin,
+class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField('get_customer_projects')
     project_groups = serializers.SerializerMethodField('get_customer_project_groups')
@@ -248,9 +247,6 @@ class CustomerSerializer(PermissionFieldFilteringMixin,
 
     def get_customer_project_groups(self, obj):
         return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
-
-    def get_filtered_field_names(self):
-        return 'project_groups', 'projects', 'clouds'
 
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):
@@ -361,6 +357,7 @@ class ProjectGroupRoleField(serializers.ChoiceField):
 
 # TODO: refactor to abstract class, subclass by CustomerPermissions and ProjectPermissions
 class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
+                                   core_serializers.AugmentedSerializerMixin,
                                    serializers.HyperlinkedModelSerializer):
     customer = serializers.HyperlinkedRelatedField(
         source='group.customerrole.customer',
@@ -368,23 +365,15 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
         lookup_field='uuid',
         queryset=models.Customer.objects.all(),
     )
-    customer_abbreviation = serializers.ReadOnlyField(source='group.customerrole.customer.abbreviation')
-    customer_name = serializers.ReadOnlyField(source='group.customerrole.customer.name')
-    customer_native_name = serializers.ReadOnlyField(source='group.customerrole.customer.native_name')
-
-    user = serializers.HyperlinkedRelatedField(
-        view_name='user-detail',
-        lookup_field='uuid',
-        queryset=User.objects.all(),
-    )
-    user_full_name = serializers.ReadOnlyField(source='user.full_name')
-    user_native_name = serializers.ReadOnlyField(source='user.native_name')
-    user_username = serializers.ReadOnlyField(source='user.username')
 
     role = MappedChoiceField(
         source='group.customerrole.role_type',
-        choices=models.CustomerRole.TYPE_CHOICES,
-        choice_mappings={models.CustomerRole.OWNER: 'owner'},
+        choices=(
+            ('owner', 'Owner'),
+        ),
+        choice_mappings={
+            'owner': models.CustomerRole.OWNER,
+        },
     )
 
     class Meta(object):
@@ -394,7 +383,45 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'user', 'user_full_name', 'user_native_name', 'user_username',
         )
+        related_paths = {
+            'user': ('username', 'full_name', 'native_name'),
+            'group.customerrole.customer': ('name', 'native_name', 'abbreviation')
+        }
+        extra_kwargs = {
+            'user': {
+                'view_name': 'user-detail',
+                'lookup_field': 'uuid',
+                'queryset': User.objects.all(),
+            },
+        }
         view_name = 'customer_permission-detail'
+
+    def create(self, validated_data):
+        customer = validated_data['customer']
+        user = validated_data['user']
+        role = validated_data['role']
+
+        permission, created = customer.add_user(user, role)
+
+        return permission
+
+    def to_internal_value(self, data):
+        value = super(CustomerPermissionSerializer, self).to_internal_value(data)
+        return {
+            'user': value['user'],
+            'customer': value['group']['customerrole']['customer'],
+            'role': value['group']['customerrole']['role_type'],
+        }
+
+    def validate(self, data):
+        customer = data['customer']
+        user = data['user']
+        role = data['role']
+
+        if customer.has_user(user, role):
+            raise serializers.ValidationError('The fields customer, user, role must make a unique set.')
+
+        return data
 
     def get_filtered_field_names(self):
         return 'customer',
