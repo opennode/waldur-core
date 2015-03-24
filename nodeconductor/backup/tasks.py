@@ -76,8 +76,7 @@ def restoration_task(backup_uuid, instance_uuid, user_raw_input, snapshot_ids):
             else:
                 logger.info('Successfully restored backup for backup source: %s', source)
                 # TODO: Instance's hostname should be converted to the name field (NC-367)
-                event_logger.info('Backup of %s has been restored, created on %s.',
-                                  source.hostname, backup.created_at.strftime('%d/%m/%y'),
+                event_logger.info('Backup for %s has been restored.', source.hostname,
                                   extra={'backup': backup, 'event_type': 'iaas_backup_restoration_succeeded'})
         else:
             logger.error('Restoration task was called for backup with no source. Backup uuid: %s', backup_uuid)
