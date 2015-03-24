@@ -50,29 +50,21 @@ avoid parallel execution. Here's an example of how you can achieve this.
         chain(
             slow.si(uuid),
             fast.si(uuid),
-            dangerous.si(uuid),
         )()
 
 
-    # Place task into a separate queue for heavy tasks
-    @shared_task(is_heavy_task=True)
+    @shared_task
     def slow(uuid=0):
         # Run only one task at a time
         # It will be throttled based on task name and key pair
         throttle_key = key_by_uuid(uuid)
-        with throttle(key=throttle_key):
+        with throttle(concurrency=1, key=throttle_key):
             print '** Start %s' % uuid
             time.sleep(50)
             print '** End %s' % uuid
 
 
-    @shared_task()
-    @throttle(concurrency=3)
-    def dangerous(uuid=0):
-        print '** Dangerous %s' % uuid
-
-
-    @shared_task()
+    @shared_task
     def fast(uuid):
         print '** Fast %s' % uuid
 
@@ -83,4 +75,24 @@ Now you can schedule two similar tasks:
     demo.delay(10)
     demo.delay(20)
 
-But they will be executed one after another due to concurrency=1
+But they will be executed one after another due to concurrency=1 on "slow" subtask.
+
+It's also possible to throttle a whole task with help of @throttle decorator.
+
+.. code-block:: python
+
+    @shared_task
+    @throttle
+    def dangerous(uuid=0):
+        # Allow only one instane of "dangerous" task at a time
+        # Default throttle concurrency is 1
+        print '** Dangerous %s' % uuid
+
+Use separate queue for heavy task which takes too long in order not to flood general queue.
+
+.. code-block:: python
+
+    # Place task into a separate queue for heavy tasks
+    @shared_task(is_heavy_task=True)
+    def heavy(uuid=0):
+        print '** Heavy %s' % uuid
