@@ -53,7 +53,7 @@ def process_backup_task(backup_uuid):
 
 
 @shared_task
-def restoration_task(backup_uuid, instance_uuid, user_raw_input):
+def restoration_task(backup_uuid, instance_uuid, user_raw_input, snapshot_ids):
     try:
         backup = models.Backup.objects.get(uuid=backup_uuid)
         source = backup.backup_source
@@ -65,7 +65,7 @@ def restoration_task(backup_uuid, instance_uuid, user_raw_input):
                 extra={'backup': backup, 'event_type': 'iaas_backup_restoration_scheduled'},
             )
             try:
-                backup.get_strategy().restore(instance_uuid, user_raw_input)
+                backup.get_strategy().restore(instance_uuid, user_raw_input, snapshot_ids)
                 backup.confirm_restoration()
             except exceptions.BackupStrategyExecutionError:
                 logger.exception('Failed to restore backup for backup source: %s', source)

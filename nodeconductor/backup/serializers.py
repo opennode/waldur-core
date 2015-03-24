@@ -1,3 +1,7 @@
+import pytz
+
+from django.utils import timezone as django_timezone
+
 from rest_framework import serializers
 
 from nodeconductor.backup import models, utils
@@ -7,11 +11,13 @@ from nodeconductor.structure.serializers import fix_non_nullable_attrs
 
 class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
     backup_source = GenericRelatedField(related_models=utils.get_backupable_models())
+    timezone = serializers.ChoiceField(choices=[(t, t) for t in pytz.all_timezones],
+                                       default=django_timezone.get_current_timezone_name)
 
     class Meta(object):
         model = models.BackupSchedule
-        fields = ('url', 'description', 'backups', 'retention_time', 'backup_source',
-                  'maximal_number_of_backups', 'schedule', 'is_active')
+        fields = ('url', 'description', 'backups', 'retention_time', 'timezone',
+                  'backup_source', 'maximal_number_of_backups', 'schedule', 'is_active')
         read_only_fields = ('is_active', 'backups')
         lookup_field = 'uuid'
 

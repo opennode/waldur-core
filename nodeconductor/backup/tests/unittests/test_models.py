@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from datetime import timedelta
 from mock import patch
 
+from django.conf import settings
 from django.test import TestCase
 from django.utils import timezone, unittest
 
@@ -20,6 +21,20 @@ class BackupScheduleTest(TestCase):
         self.assertTrue(schedule.next_trigger_at)
         self.assertGreater(schedule.next_trigger_at, now)
 
+    def test_update_next_trigger_at_with_provided_timezone(self):
+        schedule = factories.BackupScheduleFactory(timezone='Europe/London')
+        schedule._update_next_trigger_at()
+
+        # next_trigger_at timezone and schedule's timezone must be equal.
+        self.assertEqual(schedule.timezone, schedule.next_trigger_at.tzinfo.zone)
+
+    def test_update_next_trigger_at_with_default_timezone(self):
+        schedule = factories.BackupScheduleFactory()
+        schedule._update_next_trigger_at()
+
+        # If timezone is not provided, default timezone must be set.
+        self.assertEqual(settings.TIME_ZONE, schedule.timezone)
+
     def test_create_backup(self):
         now = timezone.now()
         schedule = factories.BackupScheduleFactory(retention_time=3)
@@ -31,7 +46,7 @@ class BackupScheduleTest(TestCase):
     def test_execute(self):
         # we have schedule
         schedule = factories.BackupScheduleFactory(maximal_number_of_backups=1)
-        # with 2 backups ready backups
+        # with 2 ready backups
         old_backup1 = factories.BackupFactory(backup_schedule=schedule)
         old_backup2 = factories.BackupFactory(backup_schedule=schedule)
         # and 1 deleted
@@ -99,8 +114,9 @@ class BackupTest(TestCase):
 
         instance = iaas_factories.InstanceFactory()
         user_input = {}
-        backup.start_restoration(instance.uuid, user_input)
-        mocked_task.assert_called_with(backup.uuid.hex, instance.uuid.hex, user_input)
+        snapshot_ids = []
+        backup.start_restoration(instance.uuid, user_input, snapshot_ids)
+        mocked_task.assert_called_with(backup.uuid.hex, instance.uuid.hex, user_input, snapshot_ids)
         self.assertEqual(backup.state, models.Backup.States.RESTORING)
 
     @patch('nodeconductor.backup.tasks.deletion_task.delay')

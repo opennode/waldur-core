@@ -8,7 +8,6 @@ import dateutil.parser
 
 from datetime import timedelta
 
-from django.conf import settings
 from django.utils import six, timezone
 from django.utils.lru_cache import lru_cache
 from celery import shared_task
@@ -22,11 +21,9 @@ from novaclient.v1_1 import client as nova_client
 from glanceclient.v1 import client as glance_client
 from cinderclient.v1 import client as cinder_client
 
-# Temporary dependency
-from nodeconductor.iaas.backend.openstack import OpenStackBackend
-
-from nodeconductor.iaas.models import Instance
+from nodeconductor.iaas.models import Instance, OpenStackSettings
 from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.iaas.backend.openstack import OpenStackBackend
 from nodeconductor.core.tasks import throttle, retry_if_false
 
 
@@ -93,12 +90,9 @@ class OpenStackClient(object):
 
     @classmethod
     def create_admin_session(cls, keystone_url):
-        nc_settings = getattr(settings, 'NODECONDUCTOR', {})
-        openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
-
         try:
-            credentials = next(o for o in openstacks if o['auth_url'] == keystone_url)
-        except StopIteration as e:
+            credentials = OpenStackSettings.objects.get(auth_url=keystone_url).get_credentials()
+        except OpenStackSettings.DoesNotExist as e:
             logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
             six.reraise(CloudBackendError, e)
 
