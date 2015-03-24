@@ -1,9 +1,9 @@
-Celry workflow
-==============
+Celery workflow
+===============
 
 **Transition state management**
 
-While working with some entities it's required to honour their transition state.
+While working with some entities it's required to honor their transition state.
 There's a decorator which allows to safely execute state transition.
 
 .. code-block:: python
@@ -36,7 +36,7 @@ There's a decorator which allows to safely execute state transition.
 
 **Throttle and route 'heavy' tasks**
 
-There's could be heavy parts in your complex task which you might want to throttle and
+There could be heavy parts in your complex task which you might want to throttle and
 avoid parallel execution. Here's an example of how you can achieve this.
 
 .. code-block:: python

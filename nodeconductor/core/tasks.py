@@ -197,11 +197,9 @@ class Throttle(object):
             return self
 
         try:
-            # max_retries should be big enought to retry until lock expired
+            # max_retries should be big enough to retry until lock expired
             # this guaranties that task will be executed rather than failed
-            current_task.retry(
-                countdown=self.retry_delay,
-                max_retries=10000)
+            current_task.retry(countdown=self.retry_delay, max_retries=10000)
         except MaxRetriesExceededError as e:
             six.reraise(Throttled, e)
 
@@ -220,7 +218,6 @@ class Throttle(object):
     def key(self):
         if not self.task_name:
             self.task_name = current_task.name
-
         return 'nc:{}:{}'.format(self.task_name, self.task_key)
 
     @property
