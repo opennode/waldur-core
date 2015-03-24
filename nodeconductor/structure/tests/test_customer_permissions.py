@@ -1,18 +1,49 @@
 from __future__ import unicode_literals
 
 import collections
+import unittest
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework import test
 from rest_framework.reverse import reverse
 
+from nodeconductor.structure import serializers
+from nodeconductor.structure import views
 from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories
 
 User = get_user_model()
 
 TestRole = collections.namedtuple('TestRole', ['user', 'customer', 'role'])
+
+
+class CustomerPermissionViewSetTest(unittest.TestCase):
+    def setUp(self):
+        self.view_set = views.CustomerPermissionViewSet()
+
+    def test_cannot_modify_permission_in_place(self):
+        self.assertNotIn('PUT', self.view_set.allowed_methods)
+        self.assertNotIn('PATCH', self.view_set.allowed_methods)
+
+    def test_project_group_permission_serializer_is_used(self):
+        self.assertIs(
+            serializers.CustomerPermissionSerializer,
+            self.view_set.get_serializer_class(),
+        )
+
+
+class CustomerPermissionSerializerTest(unittest.TestCase):
+    def setUp(self):
+        self.serializer = serializers.CustomerPermissionSerializer()
+
+    def test_payload_has_required_fields(self):
+        expected_fields = [
+            'url', 'role',
+            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
+            'user', 'user_full_name', 'user_native_name', 'user_username'
+        ]
+        self.assertItemsEqual(expected_fields, self.serializer.fields.keys())
 
 
 class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):

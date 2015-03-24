@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
 
 import collections
+import unittest
 
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
-from django.utils import unittest
 from rest_framework import test, status
 
 from nodeconductor.structure import serializers
@@ -37,7 +37,7 @@ class ProjectGroupPermissionSerializerTest(unittest.TestCase):
     def setUp(self):
         self.serializer = serializers.ProjectGroupPermissionSerializer()
 
-    def test_FOO(self):
+    def test_payload_has_required_fields(self):
         expected_fields = [
             'url', 'role', 'project_group', 'project_group_name',
             'user', 'user_full_name', 'user_native_name', 'user_username'

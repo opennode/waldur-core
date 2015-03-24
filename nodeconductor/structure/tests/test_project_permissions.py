@@ -1,18 +1,48 @@
 from __future__ import unicode_literals
 
 import collections
+import unittest
 
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
+from nodeconductor.structure import serializers
+from nodeconductor.structure import views
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories
 
 User = get_user_model()
 
 TestRole = collections.namedtuple('TestRole', ['user', 'project', 'role'])
+
+
+class ProjectPermissionViewSetTest(unittest.TestCase):
+    def setUp(self):
+        self.view_set = views.ProjectPermissionViewSet()
+
+    def test_cannot_modify_permission_in_place(self):
+        self.assertNotIn('PUT', self.view_set.allowed_methods)
+        self.assertNotIn('PATCH', self.view_set.allowed_methods)
+
+    def test_project_group_permission_serializer_is_used(self):
+        self.assertIs(
+            serializers.ProjectPermissionSerializer,
+            self.view_set.get_serializer_class(),
+        )
+
+
+class ProjectPermissionSerializerTest(unittest.TestCase):
+    def setUp(self):
+        self.serializer = serializers.ProjectPermissionSerializer()
+
+    def test_payload_has_required_fields(self):
+        expected_fields = [
+            'url', 'role', 'project', 'project_name',
+            'user', 'user_full_name', 'user_native_name', 'user_username'
+        ]
+        self.assertItemsEqual(expected_fields, self.serializer.fields.keys())
 
 
 class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
