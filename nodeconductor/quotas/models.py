@@ -164,6 +164,9 @@ class QuotaModelMixin(models.Model):
         All `scopes` have to be instances of the same model.
         `fields` keyword argument defines sum of which fields of quotas will present in result.
         """
+        if not scopes:
+            return {}
+
         if quota_names is None:
             quota_names = cls.QUOTAS_NAMES
 
