@@ -174,7 +174,7 @@ class Backup(core_models.UuidMixin,
         self.__save()
         tasks.process_backup_task.delay(self.uuid.hex)
 
-    def start_restoration(self, instance_uuid, user_input):
+    def start_restoration(self, instance_uuid, user_input, snapshot_ids):
         """
         Starts backup restoration task.
         """
@@ -183,7 +183,7 @@ class Backup(core_models.UuidMixin,
         self._starting_restoration()
         self.__save()
         # all user input is supposed to be strings/numbers
-        tasks.restoration_task.delay(self.uuid.hex, instance_uuid.hex, user_input)
+        tasks.restoration_task.delay(self.uuid.hex, instance_uuid.hex, user_input, snapshot_ids)
 
     def start_deletion(self):
         """
