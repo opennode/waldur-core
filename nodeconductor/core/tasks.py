@@ -10,11 +10,8 @@ from django_fsm import TransitionNotAllowed
 from celery.task import current
 from celery.exceptions import MaxRetriesExceededError
 
-from nodeconductor.core.log import EventLoggerAdapter
-
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 class StateChangeError(RuntimeError):

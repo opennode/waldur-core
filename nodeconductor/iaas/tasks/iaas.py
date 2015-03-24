@@ -286,7 +286,7 @@ def sync_cloud_membership(membership_pk):
                 exc_info=1,
             )
             event_logger.warning(
-                'Failed to push public key %s to cloud membership %s',
+                'Failed to push public key %s to cloud membership %s.',
                 public_key.uuid, membership.pk,
                 extra={'project': membership.project, 'cloud': membership.cloud, 'event_type': 'sync_cloud_membership'}
             )
@@ -301,7 +301,7 @@ def sync_cloud_membership(membership_pk):
             exc_info=1,
         )
         event_logger.warning(
-            'Failed to push security groups to cloud membership %s',
+            'Failed to push security groups to cloud membership %s.',
             public_key.uuid, membership.pk,
             extra={'project': membership.project, 'cloud': membership.cloud, 'event_type': 'sync_cloud_membership'}
         )
