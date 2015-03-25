@@ -4,7 +4,6 @@ import re
 
 from django.db import models as django_models
 from django.contrib import auth
-from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
 from nodeconductor.core import serializers as core_serializers, utils as core_utils
@@ -85,11 +84,14 @@ class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
         model = models.Project
 
 
-class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
-    class Meta(core_serializers.BasicInfoSerializer.Meta):
+class BasicProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSerializer):
+    class Meta(object):
         model = models.ProjectGroup
         fields = ('url', 'name', 'uuid')
         read_only_fields = ('name', 'uuid')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
 
 class ProjectGroupProjectMembershipSerializer(serializers.ModelSerializer):
@@ -118,9 +120,16 @@ class ProjectGroupProjectMembershipSerializer(serializers.ModelSerializer):
         return [super(ProjectGroupProjectMembershipSerializer, self).to_native(member) for member in memberships]
 
 
-class ProjectSerializer(core_serializers.AugmentedSerializerMixin,
+class ProjectSerializer(PermissionFieldFilteringMixin,
+                        core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
-    project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
+    project_groups = BasicProjectGroupSerializer(
+        queryset=models.ProjectGroup.objects.all(),
+        many=True,
+        required=False,
+        default=(),
+    )
+
     quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
     # These fields exist for backward compatibility
     resource_quota = serializers.SerializerMethodField('get_resource_quotas')
@@ -145,12 +154,12 @@ class ProjectSerializer(core_serializers.AugmentedSerializerMixin,
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
 
-    def get_related_paths(self):
-        return 'customer',
+    def create(self, validated_data):
+        project_groups = validated_data.pop('project_groups')
+        project = super(ProjectSerializer, self).create(validated_data)
+        project.project_groups.add(*project_groups)
 
-    # TODO: cleanup after migration to drf 3
-    def validate(self, attrs):
-        return fix_non_nullable_attrs(attrs)
+        return project
 
     def get_resource_quotas(self, obj):
         return models.Project.get_sum_of_quotas_as_dict(
@@ -164,53 +173,8 @@ class ProjectSerializer(core_serializers.AugmentedSerializerMixin,
             key[:-6]: value for key, value in quota_values.iteritems()
         }
 
-
-class ProjectCreateSerializer(PermissionFieldFilteringMixin,
-                              core_serializers.AugmentedSerializerMixin,
-                              serializers.HyperlinkedModelSerializer):
-    # TODO: Reimplement using custom object save logic in view
-    project_groups = ProjectGroupProjectMembershipSerializer(many=True, write_only=True, required=False)
-
-    class Meta(object):
-        model = models.Project
-        fields = ('url', 'name', 'customer', 'description', 'project_groups')
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
-            'customer': {'lookup_field': 'uuid'},
-        }
-
     def get_filtered_field_names(self):
         return 'customer',
-
-    # TODO: cleanup after migration to drf 3
-    def validate(self, attrs):
-        attrs = super(ProjectCreateSerializer, self).validate(attrs)
-
-        user = self.context['request'].user
-        if 'project_groups' not in attrs and self.object is not None:
-            project_groups = self.object.project_groups.all()
-        else:
-            project_groups = attrs.get('project_groups', [])
-            # remove project groups if nothing is specified to avoid m2m serializer errors (NC-366)
-            if project_groups is None:
-                del attrs['project_groups']
-        customer = attrs['customer'] if 'customer' in attrs else self.object.customer
-
-        if user.is_staff:
-            return fix_non_nullable_attrs(attrs)
-
-        if customer.has_user(user, models.CustomerRole.OWNER):
-            return fix_non_nullable_attrs(attrs)
-
-        if project_groups is not None:
-            project_groups_access = [
-                project_group.has_user(user, models.ProjectGroupRole.MANAGER)
-                for project_group in project_groups
-            ]
-            if project_groups_access and all(project_groups_access):
-                return fix_non_nullable_attrs(attrs)
-
-        raise ValidationError('You cannot create project with such data')
 
 
 class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
