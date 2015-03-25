@@ -35,7 +35,7 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         )
         self.flavor = factories.FlavorFactory(cloud=self.backup.backup_source.cloud_project_membership.cloud)
         self.user_input = {
-            'hostname': 'new_hostname',
+            'name': 'new_name',
             'flavor': factories.FlavorFactory.get_url(self.flavor),
         }
         self.metadata = InstanceBackupStrategy._get_instance_metadata(self.instance)
@@ -86,7 +86,7 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         new_instance, user_input, snapshot_ids, errors = InstanceBackupStrategy.\
             deserialize_instance(self.backup.metadata, self.user_input)
         self.assertIsNone(errors, 'Deserialization errors: %s' % errors)
-        self.assertEqual(new_instance.hostname, 'new_hostname')
+        self.assertEqual(new_instance.name, 'new_name')
         self.assertNotEqual(new_instance.id, self.instance.id)
         self.assertEqual(new_instance.agreed_sla, self.agreed_sla)
 

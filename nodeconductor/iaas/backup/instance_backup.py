@@ -55,7 +55,7 @@ class InstanceBackupStrategy(BackupStrategy):
     @classmethod
     def deserialize_instance(cls, metadata, user_raw_input):
         user_input = {
-            'hostname': user_raw_input.get('hostname'),
+            'name': user_raw_input.get('name'),
             'flavor': user_raw_input.get('flavor'),
         }
         # overwrite metadata attributes with user provided ones
@@ -144,7 +144,7 @@ class InstanceBackupStrategy(BackupStrategy):
         # populate backup metadata
         metadata = {
             'cloud_project_membership': instance.cloud_project_membership.pk,
-            'hostname': instance.hostname,
+            'name': instance.name,
             'template': instance.template.pk,
             'system_volume_id': instance.system_volume_id,
             'system_volume_size': instance.system_volume_size,
