@@ -149,19 +149,6 @@ def push_instance_security_groups(instance_uuid):
 
 @shared_task
 @tracked_processing(
-    models.Cloud,
-    processing_state='begin_syncing',
-    desired_state='set_in_sync',
-)
-def pull_cloud_account(cloud_account_uuid):
-    cloud_account = models.Cloud.objects.get(uuid=cloud_account_uuid)
-
-    backend = cloud_account.get_backend()
-    backend.pull_cloud_account(cloud_account)
-
-
-@shared_task
-@tracked_processing(
     models.CloudProjectMembership,
     processing_state='begin_syncing',
     desired_state='set_in_sync',
@@ -185,18 +172,6 @@ def push_cloud_membership_quotas(membership_pk, quotas):
 
 
 @shared_task
-def pull_cloud_accounts():
-    # TODO: Extract to a service
-    queryset = models.Cloud.objects.filter(state=SynchronizationStates.IN_SYNC)
-
-    for cloud_account in queryset.iterator():
-        cloud_account.schedule_syncing()
-        cloud_account.save()
-
-        pull_cloud_account.delay(cloud_account.uuid.hex)
-
-
-@shared_task
 def pull_service_statistics():
     # TODO: Extract to a service
     queryset = models.Cloud.objects.filter(state=SynchronizationStates.IN_SYNC)
@@ -215,20 +190,6 @@ def pull_service_statistics():
                 backend.pull_service_statistics(cloud, service_stats=stats)
             else:
                 stats = backend.pull_service_statistics(cloud)
-
-
-@shared_task
-@tracked_processing(
-    models.Cloud,
-    processing_state='begin_syncing',
-    desired_state='set_in_sync',
-)
-def sync_cloud_account(cloud_account_uuid):
-    cloud = models.Cloud.objects.get(uuid=cloud_account_uuid)
-
-    backend = cloud.get_backend()
-    backend.push_cloud_account(cloud)
-    backend.pull_cloud_account(cloud)
 
 
 @shared_task
@@ -316,17 +277,6 @@ def sync_cloud_membership(membership_pk):
             membership.pk,
             exc_info=1,
         )
-
-
-@shared_task
-@tracked_processing(
-    models.Cloud,
-    processing_state='begin_syncing',
-    desired_state='set_in_sync',
-)
-def pull_images(cloud_account_uuid):
-    cloud = models.Cloud.objects.get(uuid=cloud_account_uuid)
-    cloud.get_backend().pull_images(cloud)
 
 
 @shared_task
