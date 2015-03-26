@@ -187,13 +187,29 @@ class ProjectViewSet(viewsets.ModelViewSet):
                           rf_permissions.DjangoObjectPermissions)
     filter_class = ProjectFilter
 
+    def can_create_project_with(self, customer, project_groups):
+        user = self.request.user
+
+        if user.is_staff:
+            return True
+
+        if customer.has_user(user, models.CustomerRole.OWNER):
+            return True
+
+        if project_groups and all(
+                project_group.has_user(user, models.ProjectGroupRole.MANAGER)
+                for project_group in project_groups
+        ):
+            return True
+
+        return False
+
     def get_queryset(self):
         user = self.request.user
         queryset = super(ProjectViewSet, self).get_queryset()
 
         can_manage = self.request.query_params.get('can_manage', None)
         if can_manage is not None:
-            #XXX: Let the DB cry...
             queryset = queryset.filter(
                 Q(customer__roles__permission_group__user=user,
                   customer__roles__role_type=models.CustomerRole.OWNER)
@@ -212,11 +228,14 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    def get_serializer_class(self):
-        if self.request.method in ('POST', 'PUT', 'PATCH'):
-            return serializers.ProjectCreateSerializer
+    def perform_create(self, serializer):
+        customer = serializer.validated_data['customer']
+        project_groups = serializer.validated_data['project_groups']
 
-        return super(ProjectViewSet, self).get_serializer_class()
+        if not self.can_create_project_with(customer, project_groups):
+            raise PermissionDenied('You do not have permission to perform this action.')
+
+        super(ProjectViewSet, self).perform_create(serializer)
 
 
 class ProjectGroupFilter(django_filters.FilterSet):

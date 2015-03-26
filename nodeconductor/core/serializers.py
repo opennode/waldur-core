@@ -329,3 +329,35 @@ class RelatedResourcesFieldMixin(AugmentedSerializerMixin):
         )
 
         super(RelatedResourcesFieldMixin, self).__init__(*args, **kwargs)
+
+
+class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):
+    def __init__(self, **kwargs):
+        self.queryset = kwargs.pop('queryset', None)
+        assert self.queryset is not None or kwargs.get('read_only', None), (
+            'Relational field must provide a `queryset` argument, '
+            'or set read_only=`True`.'
+        )
+        assert not (self.queryset is not None and kwargs.get('read_only', None)), (
+            'Relational fields should not provide a `queryset` argument, '
+            'when setting read_only=`True`.'
+        )
+        super(HyperlinkedRelatedModelSerializer, self).__init__(**kwargs)
+
+    def to_internal_value(self, data):
+        url_field = self.fields['url']
+
+        # This is tricky: self.fields['url'] is the one generated
+        # based on Meta.fields.
+        # By default ModelSerializer generates it as HyperlinkedIdentityField,
+        # which is read-only, thus it doesn't get deserialized from POST body.
+        # So, we "borrow" its view_name and lookup_field to create
+        # a HyperlinkedRelatedField which can turn url into a proper model
+        # instance.
+        url = serializers.HyperlinkedRelatedField(
+            queryset=self.queryset.all(),
+            view_name=url_field.view_name,
+            lookup_field=url_field.lookup_field,
+        )
+
+        return url.to_internal_value(data['url'])
