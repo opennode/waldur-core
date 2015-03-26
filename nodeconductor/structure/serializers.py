@@ -84,7 +84,14 @@ class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
         model = models.Project
 
 
-class BasicProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSerializer):
+class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
+    class Meta(core_serializers.BasicInfoSerializer.Meta):
+        model = models.ProjectGroup
+        fields = ('url', 'name', 'uuid')
+        read_only_fields = ('name', 'uuid')
+
+
+class NestedProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSerializer):
     class Meta(object):
         model = models.ProjectGroup
         fields = ('url', 'name', 'uuid')
@@ -94,36 +101,10 @@ class BasicProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSerial
         }
 
 
-class ProjectGroupProjectMembershipSerializer(serializers.ModelSerializer):
-
-    name = serializers.ReadOnlyField(source='projectgroup.name')
-    url = serializers.HyperlinkedRelatedField(
-        source='projectgroup',
-        lookup_field='uuid',
-        view_name='projectgroup-detail',
-        queryset=models.ProjectGroup.objects.all(),
-    )
-
-    class Meta(object):
-        model = models.ProjectGroup.projects.through
-        fields = ('url', 'name',)
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
-        }
-        view_name = 'projectgroup-detail'
-
-    def restore_object(self, attrs, instance=None):
-        return attrs['projectgroup']
-
-    def to_native(self, obj):
-        memberships = list(models.ProjectGroup.projects.through.objects.filter(projectgroup=obj).all())
-        return [super(ProjectGroupProjectMembershipSerializer, self).to_native(member) for member in memberships]
-
-
 class ProjectSerializer(PermissionFieldFilteringMixin,
                         core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
-    project_groups = BasicProjectGroupSerializer(
+    project_groups = NestedProjectGroupSerializer(
         queryset=models.ProjectGroup.objects.all(),
         many=True,
         required=False,
@@ -179,8 +160,8 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
 class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer):
-    projects = serializers.SerializerMethodField('get_customer_projects')
-    project_groups = serializers.SerializerMethodField('get_customer_project_groups')
+    projects = serializers.SerializerMethodField()
+    project_groups = serializers.SerializerMethodField()
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
 
     class Meta(object):
@@ -203,13 +184,13 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             return None
 
         queryset = filter_queryset_for_user(objects, user)
-        serializer_instance = serializer(queryset, many=True, context={'request': self.context['request']})
+        serializer_instance = serializer(queryset, many=True, context=self.context)
         return serializer_instance.data
 
-    def get_customer_projects(self, obj):
+    def get_projects(self, obj):
         return self._get_filtered_data(obj.projects.all(), BasicProjectSerializer)
 
-    def get_customer_project_groups(self, obj):
+    def get_project_groups(self, obj):
         return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
 
     # TODO: cleanup after migration to drf 3
