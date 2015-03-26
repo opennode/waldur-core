@@ -103,9 +103,9 @@ class GenericRelatedField(RelatedField):
     _default_view_name = '%(model_name)s-detail'
     lookup_fields = ['uuid', 'pk']
 
-    def __init__(self, related_models=[], **kwargs):
+    def __init__(self, related_models=None, **kwargs):
         super(GenericRelatedField, self).__init__(**kwargs)
-        self.related_models = related_models
+        self.related_models = related_models if related_models is not None else []
 
     def _get_url(self, obj):
         """
@@ -120,7 +120,7 @@ class GenericRelatedField(RelatedField):
             format_kwargs['model_name'] = obj._meta.object_name.lower()
         return self._default_view_name % format_kwargs
 
-    def to_native(self, obj):
+    def to_representation(self, obj):
         """
         Serializes any object to his url representation
         """
@@ -152,7 +152,7 @@ class GenericRelatedField(RelatedField):
         else:
             return match.func.cls.model
 
-    def from_native(self, data):
+    def to_internal_value(self, data):
         """
         Restores model instance from its url
         """
