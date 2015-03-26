@@ -386,7 +386,16 @@ class UserOrganizationApprovalApiTest(test.APITransactionTestCase):
         url = factories.UserFactory.get_url(user, action='claim_organization')
 
         response = self.client.post(url, data={'organization': self.customer.abbreviation})
-        self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST, response.data)
+        self.assertEquals(response.status_code, status.HTTP_409_CONFLICT, response.data)
+
+    def test_user_cannot_claim_empty_organization_name(self):
+        user = self.users['no_role']
+        self.client.force_authenticate(user)
+        url = factories.UserFactory.get_url(user, action='claim_organization')
+
+        response = self.client.post(url, data={'organization': ''})
+        self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset({'organization': ['This field may not be blank.']}, response.data)
 
     def test_user_who_is_not_staff_cannot_claim_organization_membership_of_another_user(self):
         user = self.users['user_with_request_to_a_customer']

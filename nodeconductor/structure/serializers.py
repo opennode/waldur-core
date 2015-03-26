@@ -469,10 +469,8 @@ class ProjectGroupPermissionSerializer(PermissionFieldFilteringMixin,
         return 'project_group',
 
 
-class UserOrganizationSerializer(serializers.ModelSerializer):
-    class Meta(object):
-        model = User
-        fields = ('organization',)
+class UserOrganizationSerializer(serializers.Serializer):
+    organization = serializers.CharField(max_length=80)
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
