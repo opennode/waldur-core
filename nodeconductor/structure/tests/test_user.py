@@ -74,14 +74,6 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         created_user = User.objects.get(username=data['username'])
         self.assertIsNone(created_user.civil_number, "User's civil_number should be unset")
 
-    def test_staff_user_can_create_account_with_null_optional_data(self):
-        self.client.force_authenticate(self.users['staff'])
-
-        data = self._get_null_payload()
-
-        response = self.client.post(factories.UserFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
     # Manipulation tests
     def test_user_can_change_his_account_email(self):
         data = {'email': 'example@example.com'}

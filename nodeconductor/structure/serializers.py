@@ -18,20 +18,9 @@ User = auth.get_user_model()
 
 # TODO: cleanup after migration to drf 3. Assures that non-nullable fields get empty value
 def fix_non_nullable_attrs(attrs):
-    non_nullable_char_fields = [
-        'job_title',
-        'organization',
-        'phone_number',
-        'description',
-        'full_name',
-        'native_name',
-        'contact_details',
-    ]
-    for source in attrs:
-        if source in non_nullable_char_fields:
-            value = attrs[source]
-            if value is None:
-                attrs[source] = ''
+    import warnings
+    warnings.warn('fix_non_nullable_attrs is deprecated. '
+                  'Remove it as it is no-op now.', DeprecationWarning)
     return attrs
 
 
@@ -193,10 +182,6 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
     def get_project_groups(self, obj):
         return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
 
-    # TODO: cleanup after migration to drf 3
-    def validate(self, attrs):
-        return fix_non_nullable_attrs(attrs)
-
 
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
@@ -237,10 +222,6 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin,
             fields['customer'].read_only = True
 
         return fields
-
-    # TODO: cleanup after migration to drf 3
-    def validate(self, attrs):
-        return fix_non_nullable_attrs(attrs)
 
 
 class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
@@ -519,10 +500,6 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
-
-    # TODO: cleanup after migration to drf 3
-    def validate(self, attrs):
-        return fix_non_nullable_attrs(attrs)
 
     def get_fields(self):
         fields = super(UserSerializer, self).get_fields()
