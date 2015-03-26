@@ -20,7 +20,7 @@ class QuotaViewSet(mixins.UpdateModelMixin,
         return models.Quota.objects.filtered_for_user(self.request.user)
 
     # XXX: this method will be improved with frontend quotas implementation
-    def pre_save(self, obj):
+    def perform_create(self, obj):
         super(QuotaViewSet, self).pre_save(obj)
         if not obj.owner.can_user_update_quotas(self.request.user):
             raise rf_exceptions.PermissionDenied()
