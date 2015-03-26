@@ -269,16 +269,15 @@ LOGGING = {
         'django': {
             'handlers': [],
         },
-        'requests': {
+        'djangosaml2': {
             'handlers': [],
-            'level': 'WARNING',
         },
         'nodeconductor': {
             'handlers': [],
         },
-        # Loggers for plugins
-        'djangosaml2': {
+        'requests': {
             'handlers': [],
+            'level': 'WARNING',
         },
     },
 }
