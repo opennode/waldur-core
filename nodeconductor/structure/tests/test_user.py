@@ -224,41 +224,42 @@ class UserPermissionApiTest(test.APITransactionTestCase):
 
 
 class PasswordSerializerTest(unittest.TestCase):
-    def test_short_password_raises_validation_error(self):
+    def test_password_must_be_at_least_7_characters_long(self):
         data = {'password': '123abc'}
 
         serializer = PasswordSerializer(data=data)
 
         self.assertFalse(serializer.is_valid())
-        self.assertIn('Ensure this value has at least 7 characters (it has 6).',
-                      serializer.errors['password'])
+        self.assertDictContainsSubset(
+            {'password': ['Ensure this field has at least 7 characters.']}, serializer.errors)
 
-    def test_password_without_digits_raises_validation_error(self):
+    def test_password_must_contain_digits(self):
         data = {'password': 'abcdefg'}
 
         serializer = PasswordSerializer(data=data)
 
         self.assertFalse(serializer.is_valid())
-        self.assertIn('Password must contain one or more digits',
-                      serializer.errors['non_field_errors'])
+        self.assertDictContainsSubset(
+            {'password': ['Ensure this field has at least one digit.']}, serializer.errors)
 
-    def test_password_without_characters_raises_validation_error(self):
+    def test_password_must_contain_letters(self):
         data = {'password': '1234567'}
 
         serializer = PasswordSerializer(data=data)
 
         self.assertFalse(serializer.is_valid())
-        self.assertIn('Password must contain one or more upper- or lower-case characters',
-                      serializer.errors['non_field_errors'])
+        self.assertDictContainsSubset(
+            {'password': ['Ensure this field has at least one latin letter.']},
+            serializer.errors)
 
-    def test_empty_password_field_raises_validation_error(self):
+    def test_password_must_not_be_blank(self):
         data = {'password': ''}
 
         serializer = PasswordSerializer(data=data)
 
         self.assertFalse(serializer.is_valid())
-        self.assertIn('This field is required.',
-                      serializer.errors['password'])
+        self.assertDictContainsSubset(
+            {'password': ['This field may not be blank.']}, serializer.errors)
 
 
 class UserFilterTest(test.APISimpleTestCase):

@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 
-import re
-
-from django.db import models as django_models
+from django.core.validators import RegexValidator
 from django.contrib import auth
+from django.db import models as django_models
 from rest_framework import serializers
 
 from nodeconductor.core import serializers as core_serializers, utils as core_utils
@@ -551,13 +550,13 @@ class CreationTimeStatsSerializer(serializers.Serializer):
 
 
 class PasswordSerializer(serializers.Serializer):
-    password = serializers.CharField(min_length=7)
-
-    def validate_password(self, value):
-        if not re.search('\d+', value):
-            raise serializers.ValidationError("Password must contain one or more digits")
-
-        if not re.search('[^\W\d_]+', value):
-            raise serializers.ValidationError("Password must contain one or more upper- or lower-case characters")
-
-        return value
+    password = serializers.CharField(min_length=7, validators=[
+        RegexValidator(
+            regex='\d',
+            message='Ensure this field has at least one digit.',
+        ),
+        RegexValidator(
+            regex='[a-zA-Z]',
+            message='Ensure this field has at least one latin letter.',
+        ),
+    ])
