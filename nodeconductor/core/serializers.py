@@ -347,6 +347,13 @@ class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):
     def to_internal_value(self, data):
         url_field = self.fields['url']
 
+        # This is tricky: self.fields['url'] is the one generated
+        # based on Meta.fields.
+        # By default ModelSerializer generates it as HyperlinkedIdentityField,
+        # which is read-only, thus it doesn't get deserialized from POST body.
+        # So, we "borrow" its view_name and lookup_field to create
+        # a HyperlinkedRelatedField which can turn url into a proper model
+        # instance.
         url = serializers.HyperlinkedRelatedField(
             queryset=self.queryset.all(),
             view_name=url_field.view_name,
