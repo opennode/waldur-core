@@ -345,18 +345,35 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     filter_class = ProjectGroupMembershipFilter
 
-    def post_save(self, obj, created=False):
-            event_logger.info(
-                'Project %s has been added to project group %s.', obj.project.name, obj.projectgroup.name,
-                extra={'project': obj.project, 'project_group': obj.projectgroup,
-                       'event_type': 'project_added_to_project_group'}
-            )
+    def perform_create(self, serializer):
+        super(ProjectGroupMembershipViewSet, self).perform_create(serializer)
 
-    def post_delete(self, obj):
+        project = serializer.validated_data['project']
+        project_group = serializer.validated_data['projectgroup']
+
         event_logger.info(
-            'Project %s has been removed from project group %s.', obj.project.name, obj.projectgroup.name,
-            extra={'project': obj.project, 'project_group': obj.projectgroup,
-                   'event_type': 'project_removed_from_project_group'}
+            'Project %s has been added to project group %s.',
+            project.name, project_group.name,
+            extra={
+                'project': project,
+                'project_group': project_group,
+                'event_type': 'project_added_to_project_group',
+            }
+        )
+
+    def perform_destroy(self, instance):
+        super(ProjectGroupMembershipViewSet, self).perform_destroy(instance)
+
+        project = instance.project
+        project_group = instance.projectgroup
+        event_logger.info(
+            'Project %s has been removed from project group %s.',
+            project.name, project_group.name,
+            extra={
+                'project': project,
+                'project_group': project_group,
+                'event_type': 'project_removed_from_project_group',
+            }
         )
 
 # XXX: This should be put to models
