@@ -269,6 +269,10 @@ LOGGING = {
         'django': {
             'handlers': [],
         },
+        'requests': {
+            'handlers': [],
+            'level': 'WARNING',
+        },
         'nodeconductor': {
             'handlers': [],
         },
