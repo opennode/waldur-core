@@ -33,6 +33,7 @@ config_defaults = {
         'instance_monthly_sla_update_period': 300,
         'instance_yearly_sla_update_period': 600,
         'instance_zabbix_sync_period': 1800,
+        'instance_provisioning_concurrency': 1,
         'service_statistics_update_period': 600,
         'result_backend_url': 'redis://localhost',
     },
@@ -479,6 +480,13 @@ CELERYBEAT_SCHEDULE = {
         'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
         'schedule': timedelta(seconds=config.getint('celery', 'instance_yearly_sla_update_period')),
         'args': ('yearly',),
+    },
+}
+
+# NodeConductor throttling settings for celery tasks
+CELERY_TASK_THROTTLING = {
+    'nodeconductor.iaas.tasks.openstack.openstack_provision_instance': {
+        'concurrency': config.getint('celery', 'instance_provisioning_concurrency'),
     },
 }
 
