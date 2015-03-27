@@ -1,3 +1,5 @@
+from croniter import croniter
+from django.utils import six
 from rest_framework import serializers
 
 from nodeconductor.backup import models, utils
@@ -15,6 +17,13 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+
+    def validate_schedule(self, value):
+        try:
+            croniter(value)
+        except ValueError, e:
+            six.reraise(serializers.ValidationError, e)
+        return value
 
 
 class BackupSerializer(serializers.HyperlinkedModelSerializer):
