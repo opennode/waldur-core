@@ -30,21 +30,14 @@ class CloudAdmin(admin.ModelAdmin):
     list_display = ('name', 'customer', 'state')
     ordering = ('name', 'customer')
 
-    actions = ['pull_clouds']
+    actions = ['sync_services']
 
-    def pull_clouds(self, request, queryset):
-        # TODO: Extract to a service
-
+    def sync_services(self, request, queryset):
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
+        service_uuids = list(queryset.values_list('uuid', flat=True))
+        tasks_scheduled = queryset.count()
 
-        tasks_scheduled = 0
-
-        for cloud_account in queryset.iterator():
-            cloud_account.schedule_syncing()
-            cloud_account.save()
-
-            tasks.pull_cloud_account.delay(cloud_account.uuid.hex)
-            tasks_scheduled += 1
+        tasks.sync_services.delay(service_uuids)
 
         message = ungettext(
             'One cloud account scheduled for update',
@@ -57,7 +50,7 @@ class CloudAdmin(admin.ModelAdmin):
 
         self.message_user(request, message)
 
-    pull_clouds.short_description = "Update selected cloud accounts from backend"
+    sync_services.short_description = "Update selected cloud accounts from backend"
 
 
 # noinspection PyMethodMayBeStatic

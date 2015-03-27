@@ -985,7 +985,7 @@ class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet
 
     def post_save(self, obj, created=False):
         if created:
-            tasks.sync_cloud_account.delay(obj.uuid.hex)
+            tasks.sync_service.delay(obj.uuid.hex)
 
 
 class CloudProjectMembershipFilter(django_filters.FilterSet):

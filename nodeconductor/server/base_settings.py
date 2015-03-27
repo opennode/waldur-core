@@ -140,8 +140,8 @@ CELERYBEAT_SCHEDULE = {
         'args': ('yearly',),
     },
 
-    'pull-cloud-accounts': {
-        'task': 'nodeconductor.iaas.tasks.iaas.pull_cloud_accounts',
+    'sync-services': {
+        'task': 'nodeconductor.iaas.sync_services',
         'schedule': timedelta(minutes=60),
         'args': (),
     },

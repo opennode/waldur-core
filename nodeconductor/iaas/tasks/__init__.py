@@ -4,8 +4,9 @@ from __future__ import absolute_import
 # Required for proper work of celery autodiscover
 # and adding all tasks to the registry.
 
-from .iaas import *
-from .zabbix import *
-from .instance import *
 from .flavors import *
+from .iaas import *
+from .instance import *
 from .openstack import *
+from .services import *
+from .zabbix import *
