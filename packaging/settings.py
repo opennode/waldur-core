@@ -451,8 +451,8 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(seconds=config.getint('celery', 'cloud_project_membership_quota_check_period')),
         'args': (),
     },
-    'pull-cloud-accounts': {
-        'task': 'nodeconductor.iaas.tasks.iaas.pull_cloud_accounts',
+    'sync-services': {
+        'task': 'nodeconductor.iaas.sync_services',
         'schedule': timedelta(seconds=config.getint('celery', 'cloud_account_pull_period')),
         'args': (),
     },
