@@ -181,6 +181,13 @@ CELERYBEAT_SCHEDULE = {
     }
 }
 
+CELERY_TASK_THROTTLING = {
+    'nodeconductor.iaas.tasks.openstack.openstack_provision_instance': {
+        'concurrency': 1,
+        'retry_delay': 30,
+    },
+}
+
 NODECONDUCTOR = {
     'DEFAULT_SECURITY_GROUPS': (
         {

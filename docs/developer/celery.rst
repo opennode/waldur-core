@@ -45,7 +45,7 @@ avoid parallel execution. Here's an example of how you can achieve this.
     from nodeconductor.core.tasks import throttle
 
     @shared_task(name='nodeconductor.demo')
-    def demo(uuid=0):
+    def demo(uuid):
         """ This whole task will be partialy throttled by it's "slow/dangerous" part. """
         chain(
             slow.si(uuid),
@@ -54,7 +54,7 @@ avoid parallel execution. Here's an example of how you can achieve this.
 
 
     @shared_task
-    def slow(uuid=0):
+    def slow(uuid):
         # Run only one task at a time
         # It will be throttled based on task name and key pair
         throttle_key = key_by_uuid(uuid)
@@ -73,7 +73,7 @@ Now you can schedule two similar tasks:
 .. code-block:: python
 
     demo.delay(10)
-    demo.delay(20)
+    demo.delay(10)
 
 But they will be executed one after another due to concurrency=1 on "slow" subtask.
 

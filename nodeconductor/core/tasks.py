@@ -4,6 +4,7 @@ import functools
 import logging
 
 from django.db import transaction, IntegrityError, DatabaseError
+from django.conf import settings
 from django.utils import six
 from django_fsm import TransitionNotAllowed
 
@@ -167,7 +168,7 @@ class Throttle(object):
         An instance can be used either as a decorator or as a context manager.
 
         .. code-block:: python
-            @shared_task()
+            @shared_task(name="change_instance")
             def change_instance1(instance_uuid):
                 instance = Instance.objects.get(uuid=instance_uuid)
                 with throttle(key=instance.cloud_project_membership.cloud.auth_url):
@@ -183,14 +184,32 @@ class Throttle(object):
         :param concurrency: a number of tasks running at once
         :param retry_delay: a time in seconds before the next try
         :param timeout: a time in seconds to keep a lock
+
+        Concurrency and other options can be set via django settings:
+
+        .. code-block:: python
+            CELERY_TASK_THROTTLING = {
+                'change_instance': {
+                    'concurrency': 2,
+                    'retry_delay': 60,
+                    'timeout': 2 * 3600,
+                },
+            }
+
+        But these settings have lower priority and will be used only when
+        they omitted during task definition.
     """
 
-    def __init__(self, concurrency=1, key='*', retry_delay=30, timeout=3600):
-        self.concurrency = concurrency
-        self.retry_delay = retry_delay
+    DEFAULT_OPTIONS = {
+        'concurrency': 1,
+        'retry_delay': 30,
+        'timeout': 3600,
+    }
+
+    def __init__(self, key='*', **kwargs):
+        self.set_options(**kwargs)
         self.task_name = None
         self.task_key = key
-        self.timeout = timeout
 
     def __enter__(self):
         if self.acquire_lock():
@@ -199,7 +218,7 @@ class Throttle(object):
         try:
             # max_retries should be big enough to retry until lock expired
             # this guaranties that task will be executed rather than failed
-            current_task.retry(countdown=self.retry_delay, max_retries=10000)
+            current_task.retry(countdown=self.opt('retry_delay'), max_retries=10000)
         except MaxRetriesExceededError as e:
             six.reraise(Throttled, e)
 
@@ -209,10 +228,23 @@ class Throttle(object):
     def __call__(self, task_fn):
         @functools.wraps(task_fn)
         def inner(*args, **kwargs):
+            self.set_options()
             self.task_name = current_task.name
             with self:
                 return task_fn(*args, **kwargs)
         return inner
+
+    def set_options(self, **kwargs):
+        conf = {}
+        if current_task:
+            conf = getattr(settings, 'CELERY_TASK_THROTTLING', {}).get(current_task.name, {})
+
+        for opt_name in self.DEFAULT_OPTIONS:
+            opt_val = getattr(self, opt_name, None) or kwargs.get(opt_name) or conf.get(opt_name)
+            setattr(self, opt_name, opt_val)
+
+    def opt(self, opt_name):
+        return getattr(self, opt_name, None) or self.DEFAULT_OPTIONS.get(opt_name)
 
     @property
     def key(self):
@@ -225,14 +257,15 @@ class Throttle(object):
         return current_app.backend.client
 
     def acquire_lock(self):
+        concurrency = self.opt('concurrency')
         currently_running = self.redis.get(self.key) or 0
-        if int(currently_running) >= int(self.concurrency):
-            logger.debug('Tasks limit exceed for %s, limit: %s', self.key, self.concurrency)
+        if int(currently_running) >= int(concurrency):
+            logger.debug('Tasks limit exceed for %s, limit: %s', self.key, concurrency)
             return False
 
         pipe = self.redis.pipeline()
         pipe.incr(self.key)
-        pipe.expire(self.key, self.timeout)
+        pipe.expire(self.key, self.opt('timeout'))
         pipe.execute()
         logger.debug('Acquire lock for %s, total: %s', self.key, currently_running)
         return True
@@ -240,7 +273,7 @@ class Throttle(object):
     def release_lock(self):
         pipe = self.redis.pipeline()
         pipe.decr(self.key)
-        pipe.expire(self.key, self.timeout)
+        pipe.expire(self.key, self.opt('timeout'))
         pipe.execute()
         logger.debug('Release lock for %s, remaining: %s', self.key, self.redis.get(self.key))
         return True

@@ -228,7 +228,7 @@ def openstack_provision_instance(instance_uuid, backend_flavor_id,
                                  system_volume_id=None, data_volume_id=None):
     instance = Instance.objects.get(uuid=instance_uuid)
 
-    with throttle(concurrency=1, key=instance.cloud_project_membership.cloud.auth_url):
+    with throttle(key=instance.cloud_project_membership.cloud.auth_url):
         # TODO: split it into a series of smaller tasks
         backend = OpenStackBackend()
         backend.provision_instance(
