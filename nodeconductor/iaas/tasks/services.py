@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 import logging
 
-from celery import shared_task, current_app, chain
+from celery import shared_task, current_app
 
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.tasks import transition
@@ -22,11 +22,12 @@ def sync_services(service_uuids=None):
         services = services.filter(uuid__in=service_uuids)
 
     for service in services:
+        service.schedule_syncing()
+        service.save()
+
         service_uuid = service.uuid.hex
-        chain(
-            sync_service_schedule.si(service_uuid),
-            sync_service.si(service_uuid),
-        ).apply_async(
+        sync_service.apply_async(
+            args=(service_uuid,),
             link=sync_service_succeeded.si(service_uuid),
             link_error=sync_service_log_error.s(service_uuid),
         )
@@ -39,12 +40,6 @@ def sync_service(service_uuid, transition_entity=None):
     # TODO: Move it from OpenStackBackend to iaas.tasks.openstack
     backend = cloud.get_backend()
     backend.pull_cloud_account(cloud)
-
-
-@shared_task
-@transition(Cloud, 'schedule_syncing')
-def sync_service_schedule(service_uuid, transition_entity=None):
-    pass
 
 
 @shared_task
@@ -64,7 +59,7 @@ def sync_service_log_error(task_uuid, service_uuid):
     result = current_app.AsyncResult(task_uuid)
     cloud = Cloud.objects.get(uuid=service_uuid)
     event_logger.error(
-        'Cloud service %s failed to sync with error: %s.', cloud.name, result.result,
+        'Cloud service %s has been failed to sync with error: %s.', cloud.name, result.result,
         extra={'cloud': cloud, 'event_type': 'iaas_service_sync_failed'},
     )
 

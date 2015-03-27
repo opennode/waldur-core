@@ -12,3 +12,17 @@ It takes one parameter as input: sample data set
   more data.
 
 .. image:: ../images/testdata-alice.png
+
+
+Other objects from alice dataset:
+ - **resources** - project "bells.org" has 10 OpenStack instances
+ - **OpenStackSettings** - settings with such attributes:
+
+   .. code-block:: python
+
+    {
+        'auth_url': 'http://keystone.example.com:5000/v2.0',
+        'username': 'test_user',
+        'password': 'test_password',
+        'tenant_name': 'test_tenant'
+    }

@@ -23,7 +23,8 @@ from cinderclient.v1 import client as cinder_client
 
 from nodeconductor.iaas.models import Instance, OpenStackSettings
 from nodeconductor.iaas.backend import CloudBackendError
-from nodeconductor.core.tasks import retry_if_false
+from nodeconductor.iaas.backend.openstack import OpenStackBackend
+from nodeconductor.core.tasks import throttle, retry_if_false
 
 
 logger = logging.getLogger(__name__)
@@ -182,7 +183,7 @@ def track_openstack_session(task_fn):
 
 
 @shared_task
-def create_openstack_session(keystone_url=None, instance_uuid=None, check_tenant=True):
+def openstack_create_session(keystone_url=None, instance_uuid=None, check_tenant=True):
     if keystone_url:
         return OpenStackClient.create_admin_session(keystone_url)
 
@@ -220,3 +221,15 @@ def nova_server_resize_confirm(session, server_id):
 def nova_wait_for_server_status(session, server_id, status):
     server = OpenStackClient.create_nova_client(session).servers.get(server_id)
     return server.status == status
+
+
+@shared_task(is_heavy_task=True)
+def openstack_provision_instance(instance_uuid, backend_flavor_id,
+                                 system_volume_id=None, data_volume_id=None):
+    instance = Instance.objects.get(uuid=instance_uuid)
+
+    with throttle(key=instance.cloud_project_membership.cloud.auth_url):
+        # TODO: split it into a series of smaller tasks
+        backend = OpenStackBackend()
+        backend.provision_instance(
+            instance, backend_flavor_id, system_volume_id, data_volume_id)

@@ -12,7 +12,7 @@ from django.utils import timezone
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.iaas.models import (
     Cloud, CloudProjectMembership, IpMapping, SecurityGroup,
-    Template, TemplateLicense, Instance, InstanceSecurityGroup)
+    Template, TemplateLicense, Instance, InstanceSecurityGroup, OpenStackSettings)
 from nodeconductor.structure.models import *
 
 
@@ -220,6 +220,12 @@ Arguments:
                     },
                 },
             },
+            'openstack_settings': [{
+                'auth_url': 'http://keystone.example.com:5000/v2.0',
+                'username': 'test_user',
+                'password': 'test_password',
+                'tenant_name': 'test_tenant',
+            }],
         }
 
         users = {}
@@ -359,6 +365,11 @@ Arguments:
                         else:
                             self.stdout.write(
                                 'Resource "%s" already exists in project "%s"' % (hostname, project_name))
+
+        for settings in data.get('openstack_settings', []):
+            created_settings, was_created = OpenStackSettings.objects.get_or_create(**settings)
+            self.stdout.write('OpenStack settings with url "%s" %s.'
+                              % (created_settings.auth_url, "created" if was_created else "already exists"))
 
     def create_cloud(self, customer):
         cloud_name = 'CloudAccount of %s (%s)' % (customer.name, random_string(10, 20, with_spaces=True))

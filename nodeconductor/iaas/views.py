@@ -327,7 +327,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         if created:
             event_logger.info('Virtual machine %s creation has been scheduled.', obj.hostname,
                               extra={'instance': obj, 'event_type': 'iaas_instance_creation_scheduled'})
-            tasks.schedule_provisioning.delay(obj.uuid.hex, backend_flavor_id=obj.flavor.backend_id)
+            tasks.provision_instance.delay(obj.uuid.hex, backend_flavor_id=obj.flavor.backend_id)
             return
 
         event_logger.info('Virtual machine %s has been updated.', obj.hostname,

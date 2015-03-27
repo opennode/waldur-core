@@ -1,8 +1,12 @@
 from __future__ import absolute_import
 
+# Global import of all tasks from submodules.
+# Required for proper work of celery autodiscover
+# and adding all tasks to the registry.
+
+from .flavors import *
 from .iaas import *
+from .instance import *
+from .openstack import *
 from .services import *
-from .flavors import resize_flavor, flavor_change_succeeded, flavor_change_failed
-from nodeconductor.iaas.tasks.openstack import (
-    create_openstack_session, nova_wait_for_server_status,
-    nova_server_resize, nova_server_resize_confirm)
+from .zabbix import *
