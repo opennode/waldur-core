@@ -120,6 +120,13 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_RESULT_SERIALIZER = 'json'
 
+CELERY_QUEUES = {
+    'tasks': {'exchange': 'tasks'},
+    'heavy': {'exchange': 'heavy'},
+}
+CELERY_DEFAULT_QUEUE = 'tasks'
+CELERY_ROUTES = ('nodeconductor.server.celery.PriorityRouter',)
+
 # Regular tasks
 CELERYBEAT_SCHEDULE = {
     'update-instance-monthly-slas': {
@@ -172,6 +179,13 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=10),
         'args': (),
     }
+}
+
+CELERY_TASK_THROTTLING = {
+    'nodeconductor.iaas.tasks.openstack.openstack_provision_instance': {
+        'concurrency': 1,
+        'retry_delay': 30,
+    },
 }
 
 NODECONDUCTOR = {

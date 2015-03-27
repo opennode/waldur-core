@@ -116,7 +116,7 @@ class InstanceBackupStrategy(BackupStrategy):
         # flavor is required for provisioning - it is filled in by serializer and is mandatory
         flavor = models.Flavor.objects.get(uuid=user_input['flavor_uuid'])
 
-        tasks.schedule_provisioning.delay(
+        tasks.provision_instance.delay(
             instance.uuid.hex,
             backend_flavor_id=flavor.backend_id,
             system_volume_id=cloned_volumes_ids[0],
