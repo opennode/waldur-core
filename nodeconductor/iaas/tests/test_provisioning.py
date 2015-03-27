@@ -671,35 +671,6 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_user_can_create_instance_with_name_as_hostname_field_value(self):
-        data = self.get_valid_data()
-        response = self.client.post(self.instance_list_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-    def test_user_can_create_instance_with_name_as_name_field_value(self):
-        data = self.get_valid_data()
-        data['hostname'] = data.pop('name')
-        response = self.client.post(self.instance_list_url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-    def test_user_can_access_instances_name_via_name_field(self):
-        instance = factories.InstanceFactory()
-        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
-
-        response = self.client.get(factories.InstanceFactory.get_url(instance))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['name'], instance.name)
-
-    def test_user_can_access_instances_name_via_hostname_field(self):
-        instance = factories.InstanceFactory()
-        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
-
-        response = self.client.get(factories.InstanceFactory.get_url(instance))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['hostname'], instance.name)
-
     # TODO: Ensure that managers cannot provision instances
     # Negative tests
     def test_cannot_create_instance_with_flavor_not_from_supplied_project(self):
