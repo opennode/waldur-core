@@ -59,7 +59,7 @@ def sync_service_log_error(task_uuid, service_uuid):
     result = current_app.AsyncResult(task_uuid)
     cloud = Cloud.objects.get(uuid=service_uuid)
     event_logger.error(
-        'Cloud service %s has been failed to sync with error: %s.', cloud.name, result.result,
+        'Cloud service %s has failed to sync with error: %s.', cloud.name, result.result,
         extra={'cloud': cloud, 'event_type': 'iaas_service_sync_failed'},
     )
 
