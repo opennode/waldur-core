@@ -74,14 +74,6 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         created_user = User.objects.get(username=data['username'])
         self.assertIsNone(created_user.civil_number, "User's civil_number should be unset")
 
-    def test_staff_user_can_create_account_with_null_optional_data(self):
-        self.client.force_authenticate(self.users['staff'])
-
-        data = self._get_null_payload()
-
-        response = self.client.post(factories.UserFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
     # Manipulation tests
     def test_user_can_change_his_account_email(self):
         data = {'email': 'example@example.com'}
@@ -232,41 +224,42 @@ class UserPermissionApiTest(test.APITransactionTestCase):
 
 
 class PasswordSerializerTest(unittest.TestCase):
-    def test_short_password_raises_validation_error(self):
+    def test_password_must_be_at_least_7_characters_long(self):
         data = {'password': '123abc'}
 
         serializer = PasswordSerializer(data=data)
 
         self.assertFalse(serializer.is_valid())
-        self.assertIn('Ensure this value has at least 7 characters (it has 6).',
-                      serializer.errors['password'])
+        self.assertDictContainsSubset(
+            {'password': ['Ensure this field has at least 7 characters.']}, serializer.errors)
 
-    def test_password_without_digits_raises_validation_error(self):
+    def test_password_must_contain_digits(self):
         data = {'password': 'abcdefg'}
 
         serializer = PasswordSerializer(data=data)
 
         self.assertFalse(serializer.is_valid())
-        self.assertIn('Password must contain one or more digits',
-                      serializer.errors['non_field_errors'])
+        self.assertDictContainsSubset(
+            {'password': ['Ensure this field has at least one digit.']}, serializer.errors)
 
-    def test_password_without_characters_raises_validation_error(self):
+    def test_password_must_contain_letters(self):
         data = {'password': '1234567'}
 
         serializer = PasswordSerializer(data=data)
 
         self.assertFalse(serializer.is_valid())
-        self.assertIn('Password must contain one or more upper- or lower-case characters',
-                      serializer.errors['non_field_errors'])
+        self.assertDictContainsSubset(
+            {'password': ['Ensure this field has at least one latin letter.']},
+            serializer.errors)
 
-    def test_empty_password_field_raises_validation_error(self):
+    def test_password_must_not_be_blank(self):
         data = {'password': ''}
 
         serializer = PasswordSerializer(data=data)
 
         self.assertFalse(serializer.is_valid())
-        self.assertIn('This field is required.',
-                      serializer.errors['password'])
+        self.assertDictContainsSubset(
+            {'password': ['This field may not be blank.']}, serializer.errors)
 
 
 class UserFilterTest(test.APISimpleTestCase):
@@ -393,7 +386,16 @@ class UserOrganizationApprovalApiTest(test.APITransactionTestCase):
         url = factories.UserFactory.get_url(user, action='claim_organization')
 
         response = self.client.post(url, data={'organization': self.customer.abbreviation})
-        self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST, response.data)
+        self.assertEquals(response.status_code, status.HTTP_409_CONFLICT, response.data)
+
+    def test_user_cannot_claim_empty_organization_name(self):
+        user = self.users['no_role']
+        self.client.force_authenticate(user)
+        url = factories.UserFactory.get_url(user, action='claim_organization')
+
+        response = self.client.post(url, data={'organization': ''})
+        self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset({'organization': ['This field may not be blank.']}, response.data)
 
     def test_user_who_is_not_staff_cannot_claim_organization_membership_of_another_user(self):
         user = self.users['user_with_request_to_a_customer']

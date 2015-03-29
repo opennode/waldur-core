@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 
-import re
-
-from django.db import models as django_models
+from django.core.validators import RegexValidator
 from django.contrib import auth
+from django.db import models as django_models
 from rest_framework import serializers
 
 from nodeconductor.core import serializers as core_serializers, utils as core_utils
@@ -18,20 +17,9 @@ User = auth.get_user_model()
 
 # TODO: cleanup after migration to drf 3. Assures that non-nullable fields get empty value
 def fix_non_nullable_attrs(attrs):
-    non_nullable_char_fields = [
-        'job_title',
-        'organization',
-        'phone_number',
-        'description',
-        'full_name',
-        'native_name',
-        'contact_details',
-    ]
-    for source in attrs:
-        if source in non_nullable_char_fields:
-            value = attrs[source]
-            if value is None:
-                attrs[source] = ''
+    import warnings
+    warnings.warn('fix_non_nullable_attrs is deprecated. '
+                  'Remove it as it is no-op now.', DeprecationWarning)
     return attrs
 
 
@@ -84,7 +72,14 @@ class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
         model = models.Project
 
 
-class BasicProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSerializer):
+class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
+    class Meta(core_serializers.BasicInfoSerializer.Meta):
+        model = models.ProjectGroup
+        fields = ('url', 'name', 'uuid')
+        read_only_fields = ('name', 'uuid')
+
+
+class NestedProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSerializer):
     class Meta(object):
         model = models.ProjectGroup
         fields = ('url', 'name', 'uuid')
@@ -94,36 +89,10 @@ class BasicProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSerial
         }
 
 
-class ProjectGroupProjectMembershipSerializer(serializers.ModelSerializer):
-
-    name = serializers.ReadOnlyField(source='projectgroup.name')
-    url = serializers.HyperlinkedRelatedField(
-        source='projectgroup',
-        lookup_field='uuid',
-        view_name='projectgroup-detail',
-        queryset=models.ProjectGroup.objects.all(),
-    )
-
-    class Meta(object):
-        model = models.ProjectGroup.projects.through
-        fields = ('url', 'name',)
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
-        }
-        view_name = 'projectgroup-detail'
-
-    def restore_object(self, attrs, instance=None):
-        return attrs['projectgroup']
-
-    def to_native(self, obj):
-        memberships = list(models.ProjectGroup.projects.through.objects.filter(projectgroup=obj).all())
-        return [super(ProjectGroupProjectMembershipSerializer, self).to_native(member) for member in memberships]
-
-
 class ProjectSerializer(PermissionFieldFilteringMixin,
                         core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
-    project_groups = BasicProjectGroupSerializer(
+    project_groups = NestedProjectGroupSerializer(
         queryset=models.ProjectGroup.objects.all(),
         many=True,
         required=False,
@@ -179,8 +148,8 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
 class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer):
-    projects = serializers.SerializerMethodField('get_customer_projects')
-    project_groups = serializers.SerializerMethodField('get_customer_project_groups')
+    projects = serializers.SerializerMethodField()
+    project_groups = serializers.SerializerMethodField()
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
 
     class Meta(object):
@@ -203,18 +172,14 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             return None
 
         queryset = filter_queryset_for_user(objects, user)
-        serializer_instance = serializer(queryset, many=True, context={'request': self.context['request']})
+        serializer_instance = serializer(queryset, many=True, context=self.context)
         return serializer_instance.data
 
-    def get_customer_projects(self, obj):
+    def get_projects(self, obj):
         return self._get_filtered_data(obj.projects.all(), BasicProjectSerializer)
 
-    def get_customer_project_groups(self, obj):
+    def get_project_groups(self, obj):
         return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
-
-    # TODO: cleanup after migration to drf 3
-    def validate(self, attrs):
-        return fix_non_nullable_attrs(attrs)
 
 
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
@@ -256,10 +221,6 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin,
             fields['customer'].read_only = True
 
         return fields
-
-    # TODO: cleanup after migration to drf 3
-    def validate(self, attrs):
-        return fix_non_nullable_attrs(attrs)
 
 
 class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
@@ -508,10 +469,8 @@ class ProjectGroupPermissionSerializer(PermissionFieldFilteringMixin,
         return 'project_group',
 
 
-class UserOrganizationSerializer(serializers.ModelSerializer):
-    class Meta(object):
-        model = User
-        fields = ('organization',)
+class UserOrganizationSerializer(serializers.Serializer):
+    organization = serializers.CharField(max_length=80)
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -538,10 +497,6 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
-
-    # TODO: cleanup after migration to drf 3
-    def validate(self, attrs):
-        return fix_non_nullable_attrs(attrs)
 
     def get_fields(self):
         fields = super(UserSerializer, self).get_fields()
@@ -593,13 +548,13 @@ class CreationTimeStatsSerializer(serializers.Serializer):
 
 
 class PasswordSerializer(serializers.Serializer):
-    password = serializers.CharField(min_length=7)
-
-    def validate_password(self, value):
-        if not re.search('\d+', value):
-            raise serializers.ValidationError("Password must contain one or more digits")
-
-        if not re.search('[^\W\d_]+', value):
-            raise serializers.ValidationError("Password must contain one or more upper- or lower-case characters")
-
-        return value
+    password = serializers.CharField(min_length=7, validators=[
+        RegexValidator(
+            regex='\d',
+            message='Ensure this field has at least one digit.',
+        ),
+        RegexValidator(
+            regex='[a-zA-Z]',
+            message='Ensure this field has at least one latin letter.',
+        ),
+    ])

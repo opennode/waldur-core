@@ -345,18 +345,35 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
     filter_class = ProjectGroupMembershipFilter
 
-    def post_save(self, obj, created=False):
-            event_logger.info(
-                'Project %s has been added to project group %s.', obj.project.name, obj.projectgroup.name,
-                extra={'project': obj.project, 'project_group': obj.projectgroup,
-                       'event_type': 'project_added_to_project_group'}
-            )
+    def perform_create(self, serializer):
+        super(ProjectGroupMembershipViewSet, self).perform_create(serializer)
 
-    def post_delete(self, obj):
+        project = serializer.validated_data['project']
+        project_group = serializer.validated_data['projectgroup']
+
         event_logger.info(
-            'Project %s has been removed from project group %s.', obj.project.name, obj.projectgroup.name,
-            extra={'project': obj.project, 'project_group': obj.projectgroup,
-                   'event_type': 'project_removed_from_project_group'}
+            'Project %s has been added to project group %s.',
+            project.name, project_group.name,
+            extra={
+                'project': project,
+                'project_group': project_group,
+                'event_type': 'project_added_to_project_group',
+            }
+        )
+
+    def perform_destroy(self, instance):
+        super(ProjectGroupMembershipViewSet, self).perform_destroy(instance)
+
+        project = instance.project
+        project_group = instance.projectgroup
+        event_logger.info(
+            'Project %s has been removed from project group %s.',
+            project.name, project_group.name,
+            extra={
+                'project': project,
+                'project_group': project_group,
+                'event_type': 'project_removed_from_project_group',
+            }
         )
 
 # XXX: This should be put to models
@@ -520,8 +537,7 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
 
         serializer = serializers.PasswordSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         new_password = serializer.validated_data['password']
         user.set_password(new_password)
@@ -536,25 +552,25 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # check if organization name is valid
         serializer = serializers.UserOrganizationSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
-        obj = serializer.object
+        if instance.organization:
+            return Response({'detail': "User has an existing organization claim."},
+                            status=status.HTTP_409_CONFLICT)
 
-        if instance.organization == "":
-            instance.organization = obj.organization
-            instance.organization_approved = False
-            instance.save()
+        organization = serializer.validated_data['organization']
 
-            event_logger.info(
-                'User %s has claimed organization %s.', instance.username, instance.organization,
-                extra={'affected_user': instance, 'event_type': 'user_organization_claimed',
-                       'affected_organization': instance.organization})
+        instance.organization = organization
+        instance.organization_approved = False
+        instance.save()
 
-            return Response({'detail': "User request for joining the organization has been successfully submitted."},
-                            status=status.HTTP_200_OK)
-        else:
-            return Response({'detail': "User has an existing organization claim."}, status=status.HTTP_400_BAD_REQUEST)
+        event_logger.info(
+            'User %s has claimed organization %s.', instance.username, instance.organization,
+            extra={'affected_user': instance, 'event_type': 'user_organization_claimed',
+                   'affected_organization': instance.organization})
+
+        return Response({'detail': "User request for joining the organization has been successfully submitted."},
+                        status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
     def approve_organization(self, request, uuid=None):
@@ -920,8 +936,7 @@ class CreationTimeStatsView(views.APIView):
         }
 
         serializer = serializers.CreationTimeStatsSerializer(data=data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         stats = serializer.get_stats(request.user)
         return Response(stats, status=status.HTTP_200_OK)
