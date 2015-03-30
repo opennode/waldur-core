@@ -1,6 +1,6 @@
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Sum
 from django.utils.encoding import python_2_unicode_compatible
 
@@ -77,19 +77,21 @@ class QuotaModelMixin(models.Model):
         self.quotas.filter(name=quota_name).update(limit=limit)
 
     def set_quota_usage(self, quota_name, usage):
-        original_quota = self.quotas.get(name=quota_name)
-        self._add_usage_to_ancestors(quota_name, usage - original_quota.usage)
-        original_quota.usage = usage
-        original_quota.save()
+        with transaction.atomic():
+            original_quota = self.quotas.get(name=quota_name)
+            self._add_usage_to_ancestors(quota_name, usage - original_quota.usage)
+            original_quota.usage = usage
+            original_quota.save()
 
     def add_quota_usage(self, quota_name, usage_delta):
         """
         Add to usage_delta to current quota usage
         """
-        original_quota = self.quotas.get(name=quota_name)
-        original_quota.usage += usage_delta
-        original_quota.save()
-        self._add_usage_to_ancestors(quota_name, usage_delta)
+        with transaction.atomic():
+            original_quota = self.quotas.get(name=quota_name)
+            original_quota.usage += usage_delta
+            original_quota.save()
+            self._add_usage_to_ancestors(quota_name, usage_delta)
 
     def _add_usage_to_ancestors(self, quota_name, usage):
         for ancestor in self._get_quota_ancestors():
@@ -164,6 +166,9 @@ class QuotaModelMixin(models.Model):
         All `scopes` have to be instances of the same model.
         `fields` keyword argument defines sum of which fields of quotas will present in result.
         """
+        if not scopes:
+            return {}
+
         if quota_names is None:
             quota_names = cls.QUOTAS_NAMES
 
