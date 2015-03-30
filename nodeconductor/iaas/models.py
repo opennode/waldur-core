@@ -14,7 +14,6 @@ from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleBaseField
-from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.template.models import TemplateService
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure import models as structure_models
@@ -23,13 +22,30 @@ from nodeconductor.structure import models as structure_models
 logger = logging.getLogger(__name__)
 
 
-def validate_known_keystone_urls(value):
-    from nodeconductor.iaas.backend.openstack import OpenStackBackend
+@python_2_unicode_compatible
+class OpenStackSettings(models.Model):
+    """ OpenStack deployment admin credentials and settings """
 
-    backend = OpenStackBackend()
-    try:
-        backend.get_credentials(value)
-    except CloudBackendError:
+    auth_url = models.URLField(max_length=200, unique=True, help_text='Keystone endpoint url')
+    username = models.CharField(max_length=100)
+    password = models.CharField(max_length=100)
+    tenant_name = models.CharField(max_length=100)
+    availability_zone = models.CharField(max_length=100, blank=True)
+
+    def get_credentials(self):
+        options = ('auth_url', 'username', 'password', 'tenant_name')
+        return {opt: getattr(self, opt) for opt in options}
+
+    def __str__(self):
+        return self.auth_url
+
+    class Meta:
+        verbose_name = "OpenStack settings"
+        verbose_name_plural = "OpenStack settings"
+
+
+def validate_known_keystone_urls(value):
+    if not OpenStackSettings.objects.filter(auth_url=value).exists():
         raise ValidationError('%s is not a known OpenStack deployment.' % value)
 
 
@@ -58,6 +74,7 @@ class Cloud(core_models.UuidMixin, core_models.SynchronizableMixin, models.Model
         structure_models.Project, related_name='clouds', through='CloudProjectMembership')
 
     # OpenStack backend specific fields
+    # Consider replacing it with credentials FK
     auth_url = models.CharField(max_length=200, help_text='Keystone endpoint url',
                                 validators=[URLValidator(), validate_known_keystone_urls])
 
@@ -69,7 +86,7 @@ class Cloud(core_models.UuidMixin, core_models.SynchronizableMixin, models.Model
         return OpenStackBackend()
 
     def get_statistics(self):
-        return dict((s.key, s.value) for s in self.stats.all())
+        return {s.key: s.value for s in self.stats.all()}
 
     def __str__(self):
         return self.name

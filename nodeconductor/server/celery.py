@@ -19,6 +19,17 @@ app.config_from_object('django.conf:settings')
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 
+class PriorityRouter(object):
+    """ Run heavy tasks in a separate queue.
+        One must supply is_heavy_task=True as a keyword argument to task decorator.
+    """
+    def route_for_task(self, task_name, *args, **kwargs):
+        task = app.tasks.get(task_name)
+        if getattr(task, 'is_heavy_task', False):
+            return {'queue': 'heavy'}
+        return None
+
+
 # The following signal handler should be gone after NC-389 is implemented.
 # The idea should stay the same:
 #  * at the logging site event context is generated

@@ -2,10 +2,11 @@ from __future__ import unicode_literals
 
 import logging
 
+from django.apps import apps
 from django.conf import settings
 from django.utils.lru_cache import lru_cache
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, router, DEFAULT_DB_ALIAS
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import UnboundSerializerMethodField
@@ -13,6 +14,31 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 
 
 logger = logging.getLogger('nodeconductor.iaas')
+
+
+def sync_openstack_settings(app_config, using=DEFAULT_DB_ALIAS, **kwargs):
+    OpenStackSettings = app_config.get_model('OpenStackSettings')
+
+    if not router.allow_migrate(using, OpenStackSettings):
+        return
+
+    nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+    openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
+
+    if openstacks:
+        import warnings
+        logger.info("Sync OpenStack credentials")
+        warnings.warn(
+            "OPENSTACK_CREDENTIALS setting is deprecated. "
+            "Create OpenStackSetting model instance instead.",
+            DeprecationWarning,
+        )
+
+    for opts in openstacks:
+        opts['availability_zone'] = opts.pop('default_availability_zone', '')
+        queryset = OpenStackSettings._default_manager.using(using)
+        if not queryset.filter(auth_url=opts['auth_url']).exists():
+            queryset.create(**opts)
 
 
 def get_related_clouds(obj, request):
@@ -188,21 +214,11 @@ def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwa
 
 
 def set_cpm_default_availability_zone(sender, instance=None, **kwargs):
-    if instance.availability_zone:
-        return
-
-    # TODO: Change after different clouds support
-    nc_settings = getattr(settings, 'NODECONDUCTOR', {})
-    openstacks = filter(lambda o: o.get('auth_url', '') == instance.cloud.auth_url,
-                        nc_settings.get('OPENSTACK_CREDENTIALS', []))
-
-    default_zones = [openstack['default_availability_zone'] for openstack in openstacks
-                     if 'default_availability_zone' in openstack]
-
-    if not default_zones:
-        return
-    elif len(default_zones) > 1:
-        logger.warning('More than one default availability zone was found for cloud %s',
-                       instance.cloud.name)
-    else:
-        instance.availability_zone = default_zones[0]
+    if not instance.availability_zone:
+        try:
+            OpenStackSettings = apps.get_model('iaas', 'OpenStackSettings')
+            options = OpenStackSettings.objects.get(auth_url=instance.cloud.auth_url)
+        except OpenStackSettings.DoesNotExist:
+            pass
+        else:
+            instance.availability_zone = options.availability_zone

@@ -1,10 +1,12 @@
 from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
+import pytz
 
 from croniter.croniter import croniter
 from django.db import models
-from django.utils import timezone, six
+from django.utils import timezone as django_timezone
+from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from django.contrib.contenttypes import models as ct_models
 from django.contrib.contenttypes import fields as ct_fields
@@ -46,6 +48,7 @@ class BackupSchedule(core_models.UuidMixin,
     schedule = core_fields.CronScheduleField(max_length=15)
     next_trigger_at = models.DateTimeField(null=True)
     is_active = models.BooleanField(default=False)
+    timezone = models.CharField(max_length=50, default=django_timezone.get_current_timezone_name)
 
     def __str__(self):
         return '%(uuid)s BackupSchedule of %(object)s' % {
@@ -58,7 +61,7 @@ class BackupSchedule(core_models.UuidMixin,
         """
         Defines next backup creation time
         """
-        base_time = timezone.now()
+        base_time = datetime.now(pytz.timezone(self.timezone))
         self.next_trigger_at = croniter(self.schedule, base_time).get_next(datetime)
 
     def _create_backup(self):
@@ -68,7 +71,7 @@ class BackupSchedule(core_models.UuidMixin,
         backup = Backup.objects.create(
             backup_schedule=self,
             backup_source=self.backup_source,
-            kept_until=timezone.now() + timedelta(days=self.retention_time),
+            kept_until=django_timezone.now() + timedelta(days=self.retention_time),
             description='scheduled backup')
         backup.start_backup()
         return backup
@@ -171,7 +174,7 @@ class Backup(core_models.UuidMixin,
         self.__save()
         tasks.process_backup_task.delay(self.uuid.hex)
 
-    def start_restoration(self, instance_uuid, user_input):
+    def start_restoration(self, instance_uuid, user_input, snapshot_ids):
         """
         Starts backup restoration task.
         """
@@ -180,7 +183,7 @@ class Backup(core_models.UuidMixin,
         self._starting_restoration()
         self.__save()
         # all user input is supposed to be strings/numbers
-        tasks.restoration_task.delay(self.uuid.hex, instance_uuid.hex, user_input)
+        tasks.restoration_task.delay(self.uuid.hex, instance_uuid.hex, user_input, snapshot_ids)
 
     def start_deletion(self):
         """
