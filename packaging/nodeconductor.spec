@@ -15,8 +15,8 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.41.0
-Release: 2.el7
+Version: 0.42.0
+Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # openssl package is needed to generate SAML2 keys during NodeConductor install
@@ -190,6 +190,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Mon Mar 30 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.42.0-1.el7
+- New upstream release
+
 * Sun Mar 22 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.41.0-2.el7
 - Fixed settings.py to include correct references to celery tasks
 
