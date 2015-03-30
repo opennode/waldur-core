@@ -102,9 +102,9 @@ class GenericRelatedField(Field):
     _default_view_name = '%(model_name)s-detail'
     lookup_fields = ['uuid', 'pk']
 
-    def __init__(self, related_models=None, **kwargs):
+    def __init__(self, related_models=(), **kwargs):
         super(GenericRelatedField, self).__init__(**kwargs)
-        self.related_models = related_models if related_models is not None else []
+        self.related_models = related_models
 
     def _get_url(self, obj):
         """
