@@ -58,6 +58,10 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         _check_backup_source_permission(self.request.user, serializer)
         super(BackupScheduleViewSet, self).perform_create(serializer)
 
+    def perform_update(self, serializer):
+        _check_backup_source_permission(self.request.user, serializer)
+        super(BackupScheduleViewSet, self).perform_update(serializer)
+
     def perform_destroy(self, instance):
         if not has_user_permission_for_instance(self.request.user, instance):
             raise PermissionDenied('You do not have permission to perform this action.')
