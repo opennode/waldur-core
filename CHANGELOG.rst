@@ -3,6 +3,11 @@ CHANGELOG
 
 Coming in the next release
 --------------------------
+
+- <none yet>
+
+Release 0.42.0
+--------------
 - Refactored OpenStack backups to use snapshots instead of full volume backups.
 - Moved OpenStack credentials to DB from configuration. Old credential format is still supported.
 - Added support for TZ in backup schedule definition.
