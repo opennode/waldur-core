@@ -34,12 +34,9 @@ NODECONDUCTOR = {
     ),
     'MONITORING': {
         'ZABBIX': {
-            # 'server': "http://127.0.0.1:8888/zabbix",
-            # 'username': "admin",
-            # 'password': "zabbix",
-            'server': "https://zabbix-prd.gcloud.csl/zabbix/api_jsonrpc.php",
-            'username': "nodeconductor",
-            'password': "jitwynOrk0",
+            'server': "http://127.0.0.1:8888/zabbix",
+            'username': "admin",
+            'password': "zabbix",
 
             'interface_parameters': {"ip": "0.0.0.0", "main": 1, "port": "10050", "type": 1, "useip": 1, "dns": ""},
             'templateid': '10106',
