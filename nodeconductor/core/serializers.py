@@ -5,7 +5,6 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.urlresolvers import reverse, resolve, Resolver404
 from rest_framework import serializers
 from rest_framework.fields import Field
-from rest_framework.relations import RelatedField
 
 from nodeconductor.core.signals import pre_serializer_fields
 
@@ -95,7 +94,7 @@ class UnboundSerializerMethodField(Field):
         return self.to_native(value)
 
 
-class GenericRelatedField(RelatedField):
+class GenericRelatedField(Field):
     """
     A custom field to use for the `tagged_object` generic relationship.
     """
@@ -103,7 +102,7 @@ class GenericRelatedField(RelatedField):
     _default_view_name = '%(model_name)s-detail'
     lookup_fields = ['uuid', 'pk']
 
-    def __init__(self, related_models=[], **kwargs):
+    def __init__(self, related_models=(), **kwargs):
         super(GenericRelatedField, self).__init__(**kwargs)
         self.related_models = related_models
 
@@ -120,7 +119,7 @@ class GenericRelatedField(RelatedField):
             format_kwargs['model_name'] = obj._meta.object_name.lower()
         return self._default_view_name % format_kwargs
 
-    def to_native(self, obj):
+    def to_representation(self, obj):
         """
         Serializes any object to his url representation
         """
@@ -152,7 +151,7 @@ class GenericRelatedField(RelatedField):
         else:
             return match.func.cls.model
 
-    def from_native(self, data):
+    def to_internal_value(self, data):
         """
         Restores model instance from its url
         """
@@ -166,20 +165,6 @@ class GenericRelatedField(RelatedField):
         if model not in self.related_models:
             raise ValidationError('%s object does not support such relationship' % str(obj))
         return obj
-
-    # this method tries to initialize queryset based on field.rel.to._default_manager
-    # but generic field does not have default manager
-    def initialize(self, parent, field_name):
-        super(RelatedField, self).initialize(parent, field_name)
-
-        if len(self.related_models) < 1:
-            self.queryset = set()
-            return
-
-        # XXX ideally this queryset has to return all available for generic key instances
-        # Now we just take first backupable model and return all its instances
-        model = self.related_models[0]
-        self.queryset = model.objects.all()
 
 
 class AugmentedSerializerMixin(object):
