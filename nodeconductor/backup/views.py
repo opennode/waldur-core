@@ -3,19 +3,17 @@ from __future__ import unicode_literals
 import logging
 
 from django.db.models import Q
-from django.http import Http404
-from django.shortcuts import get_object_or_404
 from django.contrib.contenttypes import models as ct_models
 from django_fsm import TransitionNotAllowed
 
-from rest_framework import permissions as rf_permissions, status
+from rest_framework import permissions as rf_permissions, status, viewsets, mixins
 from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
 from nodeconductor.backup.models import Backup
 
-from nodeconductor.core import viewsets
 from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.core.permissions import has_user_permission_for_instance
 from nodeconductor.backup import models, serializers, utils
 from nodeconductor.structure import filters as structure_filters
 
@@ -43,6 +41,12 @@ class BackupPermissionFilter():
         return queryset.filter(q_query)
 
 
+def _check_backup_source_permission(user, serializer):
+    source = serializer.validated_data['backup_source']
+    if not has_user_permission_for_instance(user, source):
+        raise PermissionDenied('You do not have permission to perform this action.')
+
+
 class BackupScheduleViewSet(viewsets.ModelViewSet):
     queryset = models.BackupSchedule.objects.all()
     serializer_class = serializers.BackupScheduleSerializer
@@ -50,21 +54,26 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
     filter_backends = (BackupPermissionFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,)
 
-    def pre_save(self, obj):
-        if not obj.user_has_perm_for_backup_source(self.request.user):
-            raise PermissionDenied()
+    def perform_create(self, serializer):
+        _check_backup_source_permission(self.request.user, serializer)
+        super(BackupScheduleViewSet, self).perform_create(serializer)
 
-    def pre_delete(self, obj):
-        if not obj.user_has_perm_for_backup_source(self.request.user):
-            raise PermissionDenied()
+    def perform_update(self, serializer):
+        _check_backup_source_permission(self.request.user, serializer)
+        super(BackupScheduleViewSet, self).perform_update(serializer)
+
+    def perform_destroy(self, instance):
+        if not has_user_permission_for_instance(self.request.user, instance):
+            raise PermissionDenied('You do not have permission to perform this action.')
+        super(BackupScheduleViewSet, self).perform_destroy(instance)
 
     def _get_backup_schedule(self, user):
         schedule = self.get_object()
-        if not schedule.user_has_perm_for_backup_source(user):
-            raise PermissionDenied()
+        if not has_user_permission_for_instance(user, schedule.backup_source):
+            raise PermissionDenied('You do not have permission to perform this action.')
         return schedule
 
-    @action()
+    @detail_route(methods=['post'])
     def activate(self, request, uuid):
         schedule = self._get_backup_schedule(request.user)
         if schedule.is_active:
@@ -78,7 +87,7 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         )
         return Response({'status': 'BackupSchedule was activated'})
 
-    @action()
+    @detail_route(methods=['post'])
     def deactivate(self, request, uuid):
         schedule = self._get_backup_schedule(request.user)
         if not schedule.is_active:
@@ -93,31 +102,28 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         return Response({'status': 'BackupSchedule was deactivated'})
 
 
-class BackupViewSet(viewsets.CreateModelViewSet):
+class BackupViewSet(mixins.CreateModelMixin,
+                    mixins.RetrieveModelMixin,
+                    mixins.ListModelMixin,
+                    viewsets.GenericViewSet):
     queryset = models.Backup.objects.all()
     serializer_class = serializers.BackupSerializer
     lookup_field = 'uuid'
     filter_backends = (BackupPermissionFilter,)
     permission_classes = (rf_permissions.IsAuthenticated,)
 
-    def pre_save(self, obj):
-        if not obj.user_has_perm_for_backup_source(self.request.user):
-            raise PermissionDenied()
-
-    def post_save(self, backup, created):
-        """
-        Starts backup process if backup was created successfully
-        """
-        if created:
-            backup.start_backup()
+    def perform_create(self, serializer):
+        _check_backup_source_permission(self.request.user, serializer)
+        backup = serializer.save()
+        backup.start_backup()
 
     def _get_backup(self, user, uuid):
         backup = self.get_object()
-        if not backup.user_has_perm_for_backup_source(user):
-            raise PermissionDenied()
+        if not has_user_permission_for_instance(user, backup):
+            raise PermissionDenied('You do not have permission to perform this action.')
         return backup
 
-    @action()
+    @detail_route(methods=['post'])
     def restore(self, request, uuid):
         backup = self._get_backup(request.user, uuid)
         if backup.state != Backup.States.READY:
@@ -136,7 +142,7 @@ class BackupViewSet(viewsets.CreateModelViewSet):
 
         return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action()
+    @detail_route(methods=['post'])
     def delete(self, request, uuid):
         backup = self._get_backup(request.user, uuid)
         try:

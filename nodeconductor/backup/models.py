@@ -28,10 +28,6 @@ class BackupSourceAbstractModel(models.Model):
     class Meta(object):
         abstract = True
 
-    def user_has_perm_for_backup_source(self, user):
-        permission_name = '%s.add_%s' % (self.content_type.app_label, self.content_type.model)
-        return user.has_perm(permission_name, self.backup_source)
-
 
 @python_2_unicode_compatible
 class BackupSchedule(core_models.UuidMixin,
