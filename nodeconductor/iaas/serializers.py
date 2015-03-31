@@ -35,7 +35,7 @@ class FlavorSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
-                      core_serializers.RelatedResourcesFieldMixin,
+                      core_serializers.AugmentedSerializerMixin,
                       serializers.HyperlinkedModelSerializer):
     flavors = FlavorSerializer(many=True, read_only=True)
     projects = structure_serializers.BasicProjectSerializer(many=True, read_only=True)
@@ -83,7 +83,7 @@ class UniqueConstraintError(exceptions.APIException):
 
 
 class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilteringMixin,
-                                       core_serializers.RelatedResourcesFieldMixin,
+                                       core_serializers.AugmentedSerializerMixin,
                                        serializers.HyperlinkedModelSerializer):
 
     quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
@@ -97,6 +97,10 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             'quotas',
         )
         view_name = 'cloudproject_membership-detail'
+        extra_kwargs = {
+            'cloud': {'lookup_field': 'uuid'},
+            'project': {'lookup_field': 'uuid'},
+        }
 
     def get_filtered_field_names(self):
         return 'project', 'cloud'

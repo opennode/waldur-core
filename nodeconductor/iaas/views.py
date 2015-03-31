@@ -979,7 +979,7 @@ class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet
     def perform_create(self, serializer):
         self._check_permission(serializer)
         cloud = serializer.save()
-        tasks.sync_cloud_account(cloud.uuid.hex)
+        tasks.sync_cloud_account.delay(cloud.uuid.hex)
 
     def perform_update(self, serializer):
         self._check_permission(serializer)
@@ -1005,7 +1005,7 @@ class CloudProjectMembershipFilter(django_filters.FilterSet):
 class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
-                                    core_mixins.ListModelMixin,
+                                    mixins.ListModelMixin,
                                     core_mixins.UpdateOnlyStableMixin,
                                     viewsets.GenericViewSet):
     """
@@ -1019,9 +1019,9 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = CloudProjectMembershipFilter
 
-    def post_save(self, obj, created=False):
-        if created:
-            tasks.sync_cloud_membership.delay(obj.pk)
+    def perform_create(self, serializer):
+        membership = serializer.save()
+        tasks.sync_cloud_membership.delay(membership.pk)
 
     @action()
     def set_quotas(self, request, **kwargs):
