@@ -969,23 +969,21 @@ class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
     filter_class = CloudFilter
 
-    def pre_save(self, cloud):
-        super(CloudViewSet, self).pre_save(cloud)
-
-        if cloud.pk is not None:
-            return
-
+    def _check_permission(self, serializer):
         if self.request.user.is_staff:
             return
-
-        if cloud.customer.has_user(self.request.user, CustomerRole.OWNER):
+        if serializer.validated_data['customer'].has_user(self.request.user, CustomerRole.OWNER):
             return
-
         raise exceptions.PermissionDenied()
 
-    def post_save(self, obj, created=False):
-        if created:
-            tasks.sync_cloud_account.delay(obj.uuid.hex)
+    def perform_create(self, serializer):
+        self._check_permission(serializer)
+        cloud = serializer.save()
+        tasks.sync_cloud_account(cloud.uuid.hex)
+
+    def perform_update(self, serializer):
+        self._check_permission(serializer)
+        super(CloudViewSet, self).perform_update(serializer)
 
 
 class CloudProjectMembershipFilter(django_filters.FilterSet):

@@ -7,9 +7,9 @@ from nodeconductor.structure.serializers import fix_non_nullable_attrs
 
 class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
 
-    cloud_project_membership = serializers.PrimaryKeyRelatedField()
+    cloud_project_membership = serializers.PrimaryKeyRelatedField(queryset=models.CloudProjectMembership.objects.all())
     # TODO: consider unbinding template and persisting its data into backup metadata
-    template = serializers.PrimaryKeyRelatedField()
+    template = serializers.PrimaryKeyRelatedField(queryset=models.Template.objects.all())
     flavor = serializers.HyperlinkedRelatedField(
         view_name='flavor-detail',
         lookup_field='uuid',

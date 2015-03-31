@@ -29,7 +29,9 @@ class FlavorSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Flavor
         fields = ('url', 'uuid', 'name', 'ram', 'disk', 'cores')
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
 
 class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
@@ -37,7 +39,7 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
                       serializers.HyperlinkedModelSerializer):
     flavors = FlavorSerializer(many=True, read_only=True)
     projects = structure_serializers.BasicProjectSerializer(many=True, read_only=True)
-    customer_native_name = serializers.Field(source='customer.native_name')
+    customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
 
     class Meta(object):
         model = models.Cloud
@@ -48,7 +50,10 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
             'customer', 'customer_name', 'customer_native_name',
             'flavors', 'projects', 'auth_url',
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+            'customer': {'lookup_field': 'uuid'},
+        }
 
     def get_fields(self):
         # TODO: Extract to a proper mixin
@@ -122,7 +127,9 @@ class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.SecurityGroup
         fields = ('url', 'uuid', 'name', 'description', 'rules', 'cloud_project_membership')
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
         view_name = 'security_group-detail'
 
     # TODO: cleanup after migration to drf 3
@@ -134,7 +141,9 @@ class IpMappingSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = models.IpMapping
         fields = ('url', 'uuid', 'public_ip', 'private_ip', 'project')
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
         view_name = 'ip_mapping-detail'
 
 
@@ -146,14 +155,20 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
         many=True,
         read_only=True
     )
-    url = serializers.HyperlinkedRelatedField(source='security_group', lookup_field='uuid',
-                                              view_name='security_group-detail')
+    url = serializers.HyperlinkedRelatedField(
+        source='security_group',
+        lookup_field='uuid',
+        view_name='security_group-detail',
+        queryset=models.SecurityGroup.objects.all()
+    )
     description = serializers.Field(source='security_group.description')
 
     class Meta(object):
         model = models.InstanceSecurityGroup
         fields = ('url', 'name', 'rules', 'description')
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
         view_name = 'security_group-detail'
 
 
@@ -161,7 +176,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
                                serializers.HyperlinkedModelSerializer):
 
     security_groups = InstanceSecurityGroupSerializer(
-        many=True, required=False, allow_add_remove=True, read_only=False)
+        many=True, required=False, read_only=False)  # DRF: allow_add_remove was here
     project = serializers.HyperlinkedRelatedField(
         view_name='project-detail',
         lookup_field='uuid',
@@ -202,7 +217,9 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
             'security_groups', 'flavor', 'ssh_public_key', 'external_ips',
             'system_volume_size', 'data_volume_size',
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     def get_fields(self):
         fields = super(InstanceCreateSerializer, self).get_fields()
@@ -304,12 +321,14 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
 class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
 
     security_groups = InstanceSecurityGroupSerializer(
-        many=True, required=False, allow_add_remove=True, read_only=False)
+        many=True, required=False, read_only=False)  # DRF: allow_add_remove was here
 
     class Meta(object):
         model = models.Instance
         fields = ('url', 'hostname', 'description', 'security_groups')
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     def validate_security_groups(self, attrs, attr_name):
         if attr_name in attrs and attrs[attr_name] is None:
@@ -339,7 +358,7 @@ class CloudProjectMembershipLinkSerializer(serializers.Serializer):
         backend_id = attrs[name]
         cpm = self.context['membership']
         if models.Instance.objects.filter(cloud_project_membership=cpm,
-                                   backend_id=backend_id).exists():
+                                          backend_id=backend_id).exists():
             raise serializers.ValidationError(
                 "Instance with a specified backend ID already exists.")
         return attrs
@@ -418,7 +437,9 @@ class InstanceLicenseSerializer(serializers.ModelSerializer):
         fields = (
             'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
 
 class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
@@ -471,7 +492,9 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
             'system_volume_size',
             'data_volume_size',
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     def get_related_paths(self):
         return (
@@ -496,7 +519,9 @@ class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
             'url', 'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
             'projects', 'projects_groups',
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
@@ -516,7 +541,9 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'monthly_fee',
             'template_licenses',
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     def get_fields(self):
         fields = super(TemplateSerializer, self).get_fields()
@@ -547,7 +574,9 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'monthly_fee',
             'template_licenses',
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     # TODO: cleanup after migration to drf 3
     def validate(self, attrs):
@@ -560,7 +589,9 @@ class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = models.FloatingIP
         fields = ('url', 'uuid', 'status', 'address', 'cloud_project_membership')
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
         view_name = 'floating_ip-detail'
 
 
@@ -571,7 +602,9 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         model = core_models.SshPublicKey
         fields = ('url', 'uuid', 'name', 'public_key', 'fingerprint', 'user_uuid')
         read_only_fields = ('fingerprint',)
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     def validate(self, attrs):
         """
@@ -636,7 +669,9 @@ class ServiceSerializer(serializers.Serializer):
             'access_information',
         )
         view_name = 'service-detail'
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     def get_project_url(self, obj):
         try:
