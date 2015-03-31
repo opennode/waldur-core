@@ -41,12 +41,6 @@ class BackupPermissionFilter():
         return queryset.filter(q_query)
 
 
-def _check_backup_source_permission(user, serializer):
-    source = serializer.validated_data['backup_source']
-    if not has_user_permission_for_instance(user, source):
-        raise PermissionDenied('You do not have permission to perform this action.')
-
-
 class BackupScheduleViewSet(viewsets.ModelViewSet):
     queryset = models.BackupSchedule.objects.all()
     serializer_class = serializers.BackupScheduleSerializer
@@ -55,11 +49,13 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated,)
 
     def perform_create(self, serializer):
-        _check_backup_source_permission(self.request.user, serializer)
+        if not has_user_permission_for_instance(self.request.user, serializer.validated_data['backup_source']):
+            raise PermissionDenied('You do not have permission to perform this action.')
         super(BackupScheduleViewSet, self).perform_create(serializer)
 
     def perform_update(self, serializer):
-        _check_backup_source_permission(self.request.user, serializer)
+        if not has_user_permission_for_instance(self.request.user, serializer.validated_data['backup_source']):
+            raise PermissionDenied('You do not have permission to perform this action.')
         super(BackupScheduleViewSet, self).perform_update(serializer)
 
     def perform_destroy(self, instance):
@@ -113,7 +109,8 @@ class BackupViewSet(mixins.CreateModelMixin,
     permission_classes = (rf_permissions.IsAuthenticated,)
 
     def perform_create(self, serializer):
-        _check_backup_source_permission(self.request.user, serializer)
+        if not has_user_permission_for_instance(self.request.user, serializer.validated_data['backup_source']):
+            raise PermissionDenied('You do not have permission to perform this action.')
         backup = serializer.save()
         backup.start_backup()
 
