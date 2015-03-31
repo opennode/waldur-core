@@ -4,7 +4,7 @@ from django.core import validators
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.urlresolvers import reverse, resolve, Resolver404
 from rest_framework import serializers
-from rest_framework.fields import Field
+from rest_framework.fields import Field, ReadOnlyField
 
 from nodeconductor.core.signals import pre_serializer_fields
 
@@ -75,7 +75,7 @@ class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
         }
 
 
-class UnboundSerializerMethodField(Field):
+class UnboundSerializerMethodField(ReadOnlyField):
     """
     A field that gets its value by calling a provided filter callback.
     """
@@ -84,14 +84,9 @@ class UnboundSerializerMethodField(Field):
         self.filter_function = filter_function
         super(UnboundSerializerMethodField, self).__init__(*args, **kwargs)
 
-    def field_to_native(self, obj, field_name):
-        try:
-            request = self.context['request']
-        except KeyError:
-            return self.to_native(obj)
-
-        value = self.filter_function(obj, request)
-        return self.to_native(value)
+    def to_representation(self, value):
+        request = self.context.get('request')
+        return self.filter_function(value, request)
 
 
 class GenericRelatedField(Field):
