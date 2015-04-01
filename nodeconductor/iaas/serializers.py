@@ -507,8 +507,8 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
         model = models.Template
         fields = (
             'url', 'uuid',
-            'name', 'description', 'icon_url',
-            'os',
+            'name', 'description', 'icon_url', 'icon_name',
+            'os', 'os_type',
             'is_active',
             'sla_level',
             'setup_fee',
