@@ -1,7 +1,10 @@
 import logging
 
 from django.contrib import auth
+from django.db.models import ProtectedError
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.encoding import force_text
+
 from djangosaml2.conf import get_config
 from djangosaml2.signals import post_authenticated
 from djangosaml2.utils import get_custom_setting
@@ -10,9 +13,11 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.views import exception_handler as rf_exception_handler
 from saml2.client import Saml2Client
 
 from nodeconductor import __version__
+from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.serializers import AuthTokenSerializer, Saml2ResponseSerializer
 
@@ -157,3 +162,29 @@ def version_detail(request):
     """Retrieve version of the application"""
 
     return Response({'version': __version__})
+
+
+# noinspection PyProtectedMember
+def exception_handler(exc, context):
+    if isinstance(exc, ProtectedError):
+        dependent_meta = exc.protected_objects.model._meta
+
+        try:
+            # This exception should be raised from a viewset
+            instance_meta = context['view'].get_queryset().model._meta
+        except (AttributeError, KeyError):
+            # Fallback, when instance being deleted cannot be inferred
+            instance_name = 'object'
+        else:
+            instance_name = force_text(instance_meta.verbose_name)
+
+        detail = 'Cannot delete {instance_name} with existing {dependant_objects}'.format(
+            instance_name=instance_name,
+            dependant_objects=force_text(dependent_meta.verbose_name_plural),
+        )
+
+        # We substitute exception here to get consistent representation
+        # for both ProtectError and manually raised IncorrectStateException
+        exc = IncorrectStateException(detail=detail)
+
+    return rf_exception_handler(exc, context)

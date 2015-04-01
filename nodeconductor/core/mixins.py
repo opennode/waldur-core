@@ -1,42 +1,9 @@
 from __future__ import unicode_literals
 
-from django.db.models import ProtectedError
-from django.utils.encoding import force_text
-
 from rest_framework import mixins
-from rest_framework import status
-from rest_framework.response import Response
 
 from nodeconductor.core.models import SynchronizableMixin, SynchronizationStates
 from nodeconductor.core.exceptions import IncorrectStateException
-
-
-# TODO: Deprecate this mixin, use DRF 3.x exception handler instead
-class DestroyModelMixin(object):
-    """
-    Destroy a model instance.
-    """
-
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-
-        try:
-            self.perform_destroy(instance)
-        except ProtectedError as e:
-            instance_meta = instance._meta
-            dependent_meta = e.protected_objects.model._meta
-
-            detail = 'Cannot delete {instance} with existing {dependant_objects}'.format(
-                instance=force_text(instance_meta.verbose_name),
-                dependant_objects=force_text(dependent_meta.verbose_name_plural),
-            )
-            raise IncorrectStateException(detail=detail)
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    # noinspection PyMethodMayBeStatic
-    def perform_destroy(self, instance):
-        instance.delete()
 
 
 class ListModelMixin(mixins.ListModelMixin):

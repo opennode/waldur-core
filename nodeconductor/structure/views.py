@@ -6,19 +6,17 @@ import time
 from django.contrib import auth
 from django.db.models.query_utils import Q
 import django_filters
-from rest_framework import filters as rf_filter
-from rest_framework import mixins as rf_mixins
+from rest_framework import filters as rf_filters
+from rest_framework import mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import status
 from rest_framework import views
-from rest_framework import viewsets as rf_viewsets
+from rest_framework import viewsets
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from rest_framework.settings import api_settings
 
 from nodeconductor.core import filters as core_filters
-from nodeconductor.core import viewsets
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import filters
@@ -79,7 +77,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = CustomerFilter
 
 
@@ -330,11 +328,11 @@ class ProjectGroupMembershipFilter(django_filters.FilterSet):
         ]
 
 
-class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
-                                    rf_mixins.RetrieveModelMixin,
-                                    rf_mixins.DestroyModelMixin,
-                                    rf_mixins.ListModelMixin,
-                                    rf_viewsets.GenericViewSet):
+class ProjectGroupMembershipViewSet(mixins.CreateModelMixin,
+                                    mixins.RetrieveModelMixin,
+                                    mixins.DestroyModelMixin,
+                                    mixins.ListModelMixin,
+                                    viewsets.GenericViewSet):
     """List of project groups members that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#managing-project-roles
@@ -342,7 +340,7 @@ class ProjectGroupMembershipViewSet(rf_mixins.CreateModelMixin,
 
     queryset = models.ProjectGroup.projects.through.objects.all()
     serializer_class = serializers.ProjectGroupMembershipSerializer
-    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = ProjectGroupMembershipFilter
 
     def perform_create(self, serializer):
@@ -658,17 +656,17 @@ class ProjectPermissionFilter(django_filters.FilterSet):
         ]
 
 
-class ProjectPermissionViewSet(rf_mixins.CreateModelMixin,
-                               rf_mixins.RetrieveModelMixin,
-                               rf_mixins.ListModelMixin,
-                               rf_mixins.DestroyModelMixin,
-                               rf_viewsets.GenericViewSet):
+class ProjectPermissionViewSet(mixins.CreateModelMixin,
+                               mixins.RetrieveModelMixin,
+                               mixins.ListModelMixin,
+                               mixins.DestroyModelMixin,
+                               viewsets.GenericViewSet):
     # See CustomerPermissionViewSet for implementation details.
 
     queryset = User.groups.through.objects.exclude(group__projectrole=None)
     serializer_class = serializers.ProjectPermissionSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
-    filter_backends = (filters.GenericRoleFilter, rf_filter.DjangoFilterBackend,)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = ProjectPermissionFilter
 
     def can_manage_roles_for(self, project):
@@ -755,16 +753,16 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
         ]
 
 
-class ProjectGroupPermissionViewSet(rf_mixins.CreateModelMixin,
-                                    rf_mixins.RetrieveModelMixin,
-                                    rf_mixins.ListModelMixin,
-                                    rf_mixins.DestroyModelMixin,
-                                    rf_viewsets.GenericViewSet):
+class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
+                                    mixins.RetrieveModelMixin,
+                                    mixins.ListModelMixin,
+                                    mixins.DestroyModelMixin,
+                                    viewsets.GenericViewSet):
     # See CustomerPermissionViewSet for implementation details.
     queryset = User.groups.through.objects.exclude(group__projectgrouprole=None)
     serializer_class = serializers.ProjectGroupPermissionSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
-    filter_backends = (rf_filter.DjangoFilterBackend,)
+    filter_backends = (rf_filters.DjangoFilterBackend,)
     filter_class = ProjectGroupPermissionFilter
 
     def can_manage_roles_for(self, project_group):
@@ -858,11 +856,11 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         ]
 
 
-class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
-                                rf_mixins.RetrieveModelMixin,
-                                rf_mixins.ListModelMixin,
-                                rf_mixins.DestroyModelMixin,
-                                rf_viewsets.GenericViewSet):
+class CustomerPermissionViewSet(mixins.CreateModelMixin,
+                                mixins.RetrieveModelMixin,
+                                mixins.ListModelMixin,
+                                mixins.DestroyModelMixin,
+                                viewsets.GenericViewSet):
     queryset = User.groups.through.objects.exclude(group__customerrole=None)
     serializer_class = serializers.CustomerPermissionSerializer
     permission_classes = (
@@ -870,7 +868,7 @@ class CustomerPermissionViewSet(rf_mixins.CreateModelMixin,
         # DjangoObjectPermissions not used on purpose, see below.
         # rf_permissions.DjangoObjectPermissions,
     )
-    filter_backends = (rf_filter.DjangoFilterBackend,)
+    filter_backends = (rf_filters.DjangoFilterBackend,)
     filter_class = CustomerPermissionFilter
 
     def can_manage_roles_for(self, customer):

@@ -71,6 +71,7 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'nodeconductor.core.pagination.LinkHeaderPagination',
     'PAGE_SIZE': 10,
+    'EXCEPTION_HANDLER': 'nodeconductor.core.views.exception_handler',
 }
 
 AUTHENTICATION_BACKENDS = (
