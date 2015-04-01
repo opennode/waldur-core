@@ -20,7 +20,7 @@ from rest_framework import mixins
 from rest_framework import permissions, status
 from rest_framework import viewsets, views
 from rest_framework.response import Response
-from rest_framework_extensions.decorators import action, link
+from rest_framework.decorators import detail_route, list_route
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
@@ -295,66 +295,85 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         return super(InstanceViewSet, self).initial(request, *args, **kwargs)
 
-    def pre_save(self, obj):
-        super(InstanceViewSet, self).pre_save(obj)
-
-        if obj.pk is None:
-            # Create flow
-            obj.agreed_sla = obj.template.sla_level
-        else:
-            # Update flow
-            related_data = getattr(self.object, '_related_data', {})
-
-            self.new_security_group_ids = set(
-                isg.security_group_id
-                for isg in related_data.get('security_groups', [])
-            )
-
-            # Prevent DRF from trashing m2m security_group relation
-            try:
-                del related_data['security_groups']
-            except KeyError:
-                pass
-
+    def perform_create(self, serializer):
+        serializer.validated_data['agreed_sla'] = serializer.validated_data['template'].sla_level
         # check if connected cloud_project_membership is in a sane state - fail modification operation otherwise
-        if obj.cloud_project_membership.state == core_models.SynchronizationStates.ERRED:
+        if serializer.validated_data['cloud_project_membership'].state == core_models.SynchronizationStates.ERRED:
             raise core_exceptions.IncorrectStateException(
                 detail='Cannot modify an instance if it is connected to a cloud project membership in erred state.'
             )
 
-    def post_save(self, obj, created=False):
-        super(InstanceViewSet, self).post_save(obj, created)
-        if created:
-            event_logger.info('Virtual machine %s creation has been scheduled.', obj.hostname,
-                              extra={'instance': obj, 'event_type': 'iaas_instance_creation_scheduled'})
-            tasks.schedule_provisioning.delay(obj.uuid.hex, backend_flavor_id=obj.flavor.backend_id)
-            return
-
-        event_logger.info('Virtual machine %s has been updated.', obj.hostname,
-                          extra={'instance': obj, 'event_type': 'iaas_instance_update_succeeded'})
-
-        # We care only about update flow
-        old_security_groups = dict(
-            (isg.security_group_id, isg)
-            for isg in self.object.security_groups.all()
-        )
-
-        # Remove stale security groups
-        for security_group_id, isg in old_security_groups.items():
-            if security_group_id not in self.new_security_group_ids:
-                isg.delete()
-
-        # Add missing ones
-        for security_group_id in self.new_security_group_ids - set(old_security_groups.keys()):
-            models.InstanceSecurityGroup.objects.create(
-                instance=self.object,
-                security_group_id=security_group_id,
-            )
+        instance = serializer.save()
+        event_logger.info('Virtual machine %s creation has been scheduled.', instance.hostname,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_creation_scheduled'})
+        tasks.schedule_provisioning.delay(instance.uuid.hex, backend_flavor_id=instance.flavor.backend_id)
 
         from nodeconductor.iaas.tasks import push_instance_security_groups
-        push_instance_security_groups.delay(self.object.uuid.hex)
+        push_instance_security_groups.delay(instance.uuid.hex)
 
-    @action()
+    def perform_update(self, serializer):
+        membership = self.get_object().cloud_project_membership
+        if membership.state == core_models.SynchronizationStates.ERRED:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot modify an instance if it is connected to a cloud project membership in erred state.'
+            )
+        instance = serializer.save()
+
+        from nodeconductor.iaas.tasks import push_instance_security_groups
+        push_instance_security_groups.delay(instance.uuid.hex)
+
+
+    # def pre_save(self, obj):
+    #     super(InstanceViewSet, self).pre_save(obj)
+
+    #     if obj.pk is None:
+    #         # Create flow
+    #         obj.agreed_sla = obj.template.sla_level
+    #     else:
+    #         # Update flow
+    #         related_data = getattr(self.object, '_related_data', {})
+
+    #         self.new_security_group_ids = set(
+    #             isg.security_group_id
+    #             for isg in related_data.get('security_groups', [])
+    #         )
+
+    #         # Prevent DRF from trashing m2m security_group relation
+    #         try:
+    #             del related_data['security_groups']
+    #         except KeyError:
+    #             pass
+
+
+
+    # def post_save(self, obj, created=False):
+    #     super(InstanceViewSet, self).post_save(obj, created)
+
+    #     event_logger.info('Virtual machine %s has been updated.', obj.hostname,
+    #                       extra={'instance': obj, 'event_type': 'iaas_instance_update_succeeded'})
+
+    #     # We care only about update flow
+    #     old_security_groups = dict(
+    #         (isg.security_group_id, isg)
+    #         for isg in self.object.security_groups.all()
+    #     )
+
+    #     # Remove stale security groups
+    #     for security_group_id, isg in old_security_groups.items():
+    #         if security_group_id not in self.new_security_group_ids:
+    #             isg.delete()
+
+    #     # Add missing ones
+    #     for security_group_id in self.new_security_group_ids - set(old_security_groups.keys()):
+    #         models.InstanceSecurityGroup.objects.create(
+    #             instance=self.object,
+    #             security_group_id=security_group_id,
+    #         )
+
+    #     from nodeconductor.iaas.tasks import push_instance_security_groups
+    #     push_instance_security_groups.delay(self.object.uuid.hex)
+
+    @detail_route(methods=['post'])
     @schedule_transition()
     def stop(self, request, instance, uuid=None):
         logger_info = dict(
@@ -364,7 +383,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         )
         return 'stop', logger_info
 
-    @action()
+    @detail_route(methods=['post'])
     @schedule_transition()
     def start(self, request, instance, uuid=None):
         logger_info = dict(
@@ -374,7 +393,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         )
         return 'start', logger_info
 
-    @action()
+    @detail_route(methods=['post'])
     @schedule_transition()
     def restart(self, request, instance, uuid=None):
         logger_info = dict(
@@ -404,7 +423,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         )
         return 'destroy', logger_info
 
-    @action()
+    @detail_route(methods=['post'])
     @schedule_transition()
     def resize(self, request, instance, uuid=None):
         if instance.state != models.Instance.States.OFFLINE:
@@ -415,8 +434,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        obj = serializer.object
-        flavor = obj['flavor']
+        flavor = serializer.validated_data.get('flavor')
 
         # Serializer makes sure that exactly one of the branches will match
         if flavor is not None:
@@ -440,7 +458,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return 'flavor change', logger_info, dict(flavor_uuid=flavor.uuid.hex)
 
         else:
-            new_size = obj['disk_size']
+            new_size = serializer.validated_data['disk_size']
             if new_size <= instance.data_volume_size:
                 return Response({'disk_size': "Disk size must be strictly greater than the current one"},
                                 status=status.HTTP_400_BAD_REQUEST)
@@ -455,7 +473,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
             )
             return 'disk extension', logger_info
 
-    @link()
+    @detail_route()
     def usage(self, request, uuid):
         instance = self.get_object()
 
@@ -597,7 +615,7 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
             queryset = queryset.filter(template_license__license_type=self.request.QUERY_PARAMS['type'])
         return queryset
 
-    @link(is_for_list=True)
+    @list_route()
     def stats(self, request):
         queryset = structure_filters.filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
         queryset = self._filter_queryset(queryset)
@@ -763,7 +781,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
         context['period'] = self._get_period()
         return context
 
-    @link()
+    @detail_route()
     def events(self, request, uuid):
         service = self.get_object()
         period = self._get_period()
@@ -1023,7 +1041,7 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         membership = serializer.save()
         tasks.sync_cloud_membership.delay(membership.pk)
 
-    @action()
+    @detail_route(methods=['post'])
     def set_quotas(self, request, **kwargs):
         if not request.user.is_staff:
             raise exceptions.PermissionDenied()
@@ -1045,7 +1063,7 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         return Response({'status': 'Quota update was scheduled'},
                         status=status.HTTP_202_ACCEPTED)
 
-    @action()
+    @detail_route(methods=['post'])
     def import_instance(self, request, **kwargs):
         membership = self.get_object()
         is_admin = membership.project.has_user(request.user, ProjectRole.ADMINISTRATOR)

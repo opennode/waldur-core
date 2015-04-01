@@ -136,12 +136,14 @@ class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
         }
         view_name = 'security_group-detail'
 
-    # TODO: cleanup after migration to drf 3
-    def validate(self, attrs):
-        return fix_non_nullable_attrs(attrs)
-
 
 class IpMappingSerializer(serializers.HyperlinkedModelSerializer):
+    project = serializers.HyperlinkedRelatedField(
+        lookup_field='uuid',
+        view_name='project-detail',
+        queryset=structure_models.Project.objects.all()
+    )
+
     class Meta:
         model = models.IpMapping
         fields = ('url', 'uuid', 'public_ip', 'private_ip', 'project')
@@ -153,7 +155,7 @@ class IpMappingSerializer(serializers.HyperlinkedModelSerializer):
 
 class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
-    name = serializers.Field(source='security_group.name')
+    name = serializers.ReadOnlyField(source='security_group.name')
     rules = BasicSecurityGroupRuleSerializer(
         source='security_group.rules',
         many=True,
@@ -165,7 +167,7 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
         view_name='security_group-detail',
         queryset=models.SecurityGroup.objects.all()
     )
-    description = serializers.Field(source='security_group.description')
+    description = serializers.ReadOnlyField(source='security_group.description')
 
     class Meta(object):
         model = models.InstanceSecurityGroup
@@ -180,7 +182,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
                                serializers.HyperlinkedModelSerializer):
 
     security_groups = InstanceSecurityGroupSerializer(
-        many=True, required=False, read_only=False)  # DRF: allow_add_remove was here
+        many=True, required=False, read_only=False)
     project = serializers.HyperlinkedRelatedField(
         view_name='project-detail',
         lookup_field='uuid',
@@ -209,7 +211,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         required=True,
     )
 
-    external_ips = core_serializers.IPsField(required=False)
+    external_ips = core_serializers.IPsField(required=False, allow_blank=True, allow_null=True)
 
     class Meta(object):
         model = models.Instance
@@ -245,24 +247,20 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
     def get_filtered_field_names(self):
         return 'project', 'flavor'
 
-    def validate_security_groups(self, attrs, attr_name):
-        if attr_name in attrs and attrs[attr_name] is None:
-            del attrs[attr_name]
-        return attrs
-
     def validate(self, attrs):
         flavor = attrs['flavor']
-        project = attrs['project']
+        project = attrs.pop('project')
         try:
             membership = models.CloudProjectMembership.objects.get(
                 project=project,
                 cloud=flavor.cloud,
             )
+            attrs['cloud_project_membership'] = membership
         except models.CloudProjectMembership.DoesNotExist:
             raise ValidationError("Flavor is not within project's clouds.")
 
         external_ips = attrs.get('external_ips')
-        if external_ips is not None:
+        if external_ips:
             ip_exists = models.FloatingIP.objects.filter(
                 address=external_ips,
                 status='DOWN',
@@ -297,29 +295,32 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
             raise serializers.ValidationError(
                 'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
 
-        # TODO: cleanup after migration to drf 3
-        return fix_non_nullable_attrs(attrs)
+        return attrs
 
-    def restore_object(self, attrs, instance=None):
-        key = attrs.get('ssh_public_key')
+    def create(self, validated_data):
+        key = validated_data.pop('ssh_public_key')
         if key:
-            attrs['key_name'] = key.name
-            attrs['key_fingerprint'] = key.fingerprint
+            validated_data['key_name'] = key.name
+            validated_data['key_fingerprint'] = key.fingerprint
 
-        flavor = attrs['flavor']
-        attrs['cores'] = flavor.cores
-        attrs['ram'] = flavor.ram
-        attrs['cloud'] = flavor.cloud
-        if 'system_volume_size' not in attrs:
-            attrs['system_volume_size'] = flavor.disk
+        flavor = validated_data.pop('flavor')
+        validated_data['cores'] = flavor.cores
+        validated_data['ram'] = flavor.ram
 
-        membership = models.CloudProjectMembership.objects.get(
-            project=attrs['project'],
-            cloud=flavor.cloud,
-        )
-        attrs['cloud_project_membership'] = membership
+        if 'system_volume_size' not in validated_data:
+            validated_data['system_volume_size'] = flavor.disk
 
-        return super(InstanceCreateSerializer, self).restore_object(attrs, instance)
+        security_groups = [data['security_group'] for data in validated_data.pop('security_groups', [])]
+        instance = super(InstanceCreateSerializer, self).create(validated_data)
+        for security_group in security_groups:
+            models.InstanceSecurityGroup(instance=instance, security_group=security_group)
+
+        # XXX: dirty fix - we need it because first provisioning looks for key and flavor as instance attributes
+        instance.flavor = flavor
+        instance.key = key
+        instance.cloud = flavor.cloud
+
+        return instance
 
 
 class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
@@ -334,14 +335,13 @@ class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
             'url': {'lookup_field': 'uuid'},
         }
 
-    def validate_security_groups(self, attrs, attr_name):
-        if attr_name in attrs and attrs[attr_name] is None:
-            del attrs[attr_name]
-        return attrs
-
-    # TODO: cleanup after migration to drf 3
-    def validate(self, attrs):
-        return fix_non_nullable_attrs(attrs)
+    def update(self, instance, validated_data):
+        security_groups = [data['security_group'] for data in validated_data.pop('security_groups', [])]
+        instance = super(InstanceUpdateSerializer, self).update(instance, validated_data)
+        models.InstanceSecurityGroup.objects.filter(instance=instance).delete()
+        for security_group in security_groups:
+            models.InstanceSecurityGroup.objects.create(instance=instance, security_group=security_group)
+        return instance
 
 
 class InstanceSecurityGroupsInlineUpdateSerializer(serializers.Serializer):
@@ -386,7 +386,7 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
     disk_size = serializers.IntegerField(min_value=1, required=False)
 
     def __init__(self, instance, *args, **kwargs):
-        self.instance = instance
+        self.resized_instance = instance
         super(InstanceResizeSerializer, self).__init__(*args, **kwargs)
 
     def get_filtered_field_names(self):
@@ -401,13 +401,13 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
         if flavor is None and disk_size is None:
             raise serializers.ValidationError("Either disk_size or flavor is required")
 
-        membership = self.instance.cloud_project_membership
+        membership = self.resized_instance.cloud_project_membership
         # TODO: consider abstracting the validation below and merging with the InstanceCreateSerializer one
         # check quotas in advance
 
         # If disk size was changed - we need to check if it fits quotas
         if disk_size is not None:
-            old_size = self.instance.data_volume_size
+            old_size = self.resized_instance.data_volume_size
             new_size = disk_size
             quota_usage = {
                 'storage': new_size - old_size
@@ -415,8 +415,8 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
 
         # Validate flavor modification
         else:
-            old_cores = self.instance.cores
-            old_ram = self.instance.ram
+            old_cores = self.resized_instance.cores
+            old_ram = self.resized_instance.ram
             quota_usage = {
                 'vcpu': flavor.cores - old_cores,
                 'ram': flavor.ram - old_ram,
@@ -432,9 +432,9 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
 
 class InstanceLicenseSerializer(serializers.ModelSerializer):
 
-    name = serializers.Field(source='template_license.name')
-    license_type = serializers.Field(source='template_license.license_type')
-    service_type = serializers.Field(source='template_license.service_type')
+    name = serializers.ReadOnlyField(source='template_license.name')
+    license_type = serializers.ReadOnlyField(source='template_license.license_type')
+    service_type = serializers.ReadOnlyField(source='template_license.service_type')
 
     class Meta(object):
         model = models.InstanceLicense
@@ -446,29 +446,52 @@ class InstanceLicenseSerializer(serializers.ModelSerializer):
         }
 
 
-class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
+class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer):
-    state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
+    state = serializers.ReadOnlyField(source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='cloud_project_membership.project.project_groups', many=True, read_only=True)
     external_ips = core_serializers.IPsField()
     internal_ips = core_serializers.IPsField(read_only=True)
-    backups = backup_serializers.BackupSerializer()
-    backup_schedules = backup_serializers.BackupScheduleSerializer()
+    backups = backup_serializers.BackupSerializer(many=True)
+    backup_schedules = backup_serializers.BackupScheduleSerializer(many=True)
 
-    security_groups = InstanceSecurityGroupSerializer(read_only=True)
-    instance_licenses = InstanceLicenseSerializer(read_only=True)
-    # special field for customer
-    customer_abbreviation = serializers.Field(source='cloud_project_membership.project.customer.abbreviation')
-    customer_native_name = serializers.Field(source='cloud_project_membership.project.customer.native_name')
-    template_os = serializers.Field(source='template.os')
+    security_groups = InstanceSecurityGroupSerializer(many=True, read_only=True)
+    instance_licenses = InstanceLicenseSerializer(many=True, read_only=True)
+    # project
+    project = serializers.HyperlinkedRelatedField(
+        source='cloud_project_membership.project',
+        view_name='project-detail',
+        read_only=True,
+        lookup_field='uuid')
+    project_name = serializers.ReadOnlyField(source='cloud_project_membership.project.name')
+    project_uuid = serializers.ReadOnlyField(source='cloud_project_membership.project.uuid')
+    # cloud
+    cloud = serializers.HyperlinkedRelatedField(
+        source='cloud_project_membership.cloud',
+        view_name='cloud-detail',
+        read_only=True,
+        lookup_field='uuid')
+    cloud_name = serializers.ReadOnlyField(source='cloud_project_membership.cloud.name')
+    cloud_uuid = serializers.ReadOnlyField(source='cloud_project_membership.cloud.uuid')
+    # customer
+    customer = serializers.HyperlinkedRelatedField(
+        source='cloud_project_membership.project.customer',
+        view_name='customer-detail',
+        read_only=True,
+        lookup_field='uuid')
+    customer_name = serializers.ReadOnlyField(source='cloud_project_membership.project.customer.name')
+    customer_abbreviation = serializers.ReadOnlyField(source='cloud_project_membership.project.customer.abbreviation')
+    customer_native_name = serializers.ReadOnlyField(source='cloud_project_membership.project.customer.native_name')
+    # template
+    template = serializers.HyperlinkedRelatedField(
+        view_name='iaastemplate-detail',
+        read_only=True,
+        lookup_field='uuid')
+    template_name = serializers.ReadOnlyField(source='template.name')
+    template_os = serializers.ReadOnlyField(source='template.os')
+
     created = serializers.DateTimeField(format='iso-8601')
-
-    # Avoid name clashes with nodeconductor.template
-    # FIXME: RELATED_FIELD_VIEW_NAMES is no longer supported, provide extra_kwargs instead
-    RELATED_FIELD_VIEW_NAMES = {
-        'template': 'iaastemplate-detail',
-    }
 
     class Meta(object):
         model = models.Instance
@@ -499,14 +522,6 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
-
-    def get_related_paths(self):
-        return (
-            'template',
-            'cloud_project_membership.project',
-            'cloud_project_membership.project.customer',
-            'cloud_project_membership.cloud',
-        )
 
 
 class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
@@ -641,20 +656,20 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
 
 class ServiceSerializer(serializers.Serializer):
     url = serializers.SerializerMethodField('get_service_url')
-    service_type = serializers.SerializerMethodField('get_service_type')
-    state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
-    hostname = serializers.Field()
-    uuid = serializers.Field()
-    agreed_sla = serializers.Field()
-    actual_sla = serializers.SerializerMethodField('get_actual_sla')
-    template_name = serializers.Field(source='template.name')
-    customer_name = serializers.Field(source='cloud_project_membership.project.customer.name')
-    customer_native_name = serializers.Field(source='cloud_project_membership.project.customer.native_name')
-    customer_abbreviation = serializers.Field(source='cloud_project_membership.project.customer.abbreviation')
-    project_name = serializers.Field(source='cloud_project_membership.project.name')
-    project_uuid = serializers.Field(source='cloud_project_membership.project.uuid')
-    project_url = serializers.SerializerMethodField('get_project_url')
-    project_groups = serializers.SerializerMethodField('get_project_groups')
+    service_type = serializers.SerializerMethodField()
+    state = serializers.ReadOnlyField(source='get_state_display')
+    hostname = serializers.ReadOnlyField()
+    uuid = serializers.ReadOnlyField()
+    agreed_sla = serializers.ReadOnlyField()
+    actual_sla = serializers.SerializerMethodField()
+    template_name = serializers.ReadOnlyField(source='template.name')
+    customer_name = serializers.ReadOnlyField(source='cloud_project_membership.project.customer.name')
+    customer_native_name = serializers.ReadOnlyField(source='cloud_project_membership.project.customer.native_name')
+    customer_abbreviation = serializers.ReadOnlyField(source='cloud_project_membership.project.customer.abbreviation')
+    project_name = serializers.ReadOnlyField(source='cloud_project_membership.project.name')
+    project_uuid = serializers.ReadOnlyField(source='cloud_project_membership.project.uuid')
+    project_url = serializers.SerializerMethodField()
+    project_groups = serializers.SerializerMethodField()
     access_information = core_serializers.IPsField(source='external_ips')
 
     class Meta(object):
@@ -737,12 +752,11 @@ class UsageStatsSerializer(serializers.Serializer):
     end_timestamp = serializers.IntegerField(min_value=0)
     item = serializers.CharField()
 
-    def validate_item(self, attrs, name):
-        item = attrs[name]
-        if not item in ZabbixDBClient.items:
+    def validate_item(self, value):
+        if not value in ZabbixDBClient.items:
             raise serializers.ValidationError(
                 "GET parameter 'item' have to be from list: %s" % ZabbixDBClient.items.keys())
-        return attrs
+        return value
 
     def get_stats(self, instances):
         self.attrs = self.data

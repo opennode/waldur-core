@@ -37,25 +37,25 @@ class Base64Field(serializers.CharField):
 
 
 class IPsField(serializers.CharField):
-    def to_native(self, value):
-        value = super(IPsField, self).to_native(value)
+    def to_representation(self, value):
+        value = super(IPsField, self).to_representation(value)
         if value is None:
             return []
         else:
             return [value]
 
-    def from_native(self, value):
-        if value in validators.EMPTY_VALUES:
+    def to_internal_value(self, data):
+        if data in validators.EMPTY_VALUES:
             return None
 
-        if not isinstance(value, (list, tuple)):
+        if not isinstance(data, (list, tuple)):
             raise validators.ValidationError('Enter a list of valid IPv4 addresses.')
 
-        value_count = len(value)
+        value_count = len(data)
         if value_count > 1:
             raise validators.ValidationError('Only one ip address is supported.')
         elif value_count == 1:
-            value = value[0]
+            value = data[0]
             validate_ipv4_address_within_list(value)
         else:
             value = None

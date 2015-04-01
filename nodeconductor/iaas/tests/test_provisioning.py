@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+from decimal import Decimal
+
 from django.core.urlresolvers import reverse
 from mock import patch, Mock
 from rest_framework import status
@@ -645,7 +647,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         data[field_name] = empty_value
         response = self.client.post(self.instance_list_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({field_name: ['This field is required.']}, response.data)
+        self.assertIn(field_name, response.data)
 
     # Positive tests
     def test_can_create_instance_without_description(self):
@@ -662,7 +664,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         sla_level = self.template.sla_level
         created_instance = self.client.get(factories.InstanceFactory.get_list_url() + response.data['uuid'] + '/')
-        self.assertEqual(sla_level, created_instance.data['agreed_sla'])
+        self.assertEqual(sla_level, Decimal(created_instance.data['agreed_sla']))
 
     def test_can_create_instance_with_empty_description(self):
         data = self.get_valid_data()
@@ -695,7 +697,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         response = self.client.post(self.instance_list_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'flavor': ['Invalid hyperlink - object does not exist.']}, response.data)
+        self.assertDictContainsSubset({'flavor': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     def test_cannot_create_instance_with_project_not_from_users_projects(self):
         data = self.get_valid_data()
@@ -704,7 +706,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         response = self.client.post(self.instance_list_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'project': ['Invalid hyperlink - object does not exist.']}, response.data)
+        self.assertDictContainsSubset({'project': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     def test_cannot_create_instance_with_empty_hostname_name(self):
         self.assert_field_non_empty('hostname')
@@ -885,7 +887,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
             response = self.client.post(self.instance_list_url, data)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-            self.assertDictContainsSubset({'template': ['Invalid hyperlink - object does not exist.']}, response.data)
+            self.assertDictContainsSubset({'template': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     def test_external_ips_have_to_from_membership_floating_ips(self):
         random_address = '127.0.0.1'
@@ -929,8 +931,7 @@ class InstanceListRetrieveTest(test.APITransactionTestCase):
     def test_user_does_not_receive_deleted_instances_backups(self):
         self.client.force_authenticate(self.staff)
 
-        backup_factories.BackupFactory(
-            state=backup_models.Backup.States.DELETED, backup_source=self.instance)
+        backup_factories.BackupFactory(state=backup_models.Backup.States.DELETED, backup_source=self.instance)
         backup = backup_factories.BackupFactory(backup_source=self.instance)
 
         url = factories.InstanceFactory.get_url(self.instance)
