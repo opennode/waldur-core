@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='template',
             name='os_type',
-            field=models.CharField(default='Linux', max_length=10, blank=True, choices=[('Linux', 'Linux'), ('Windows', 'Windows'), ('Unix', 'Unix'), ('Other', 'Other')]),
+            field=models.CharField(default='Linux', max_length=10, choices=[('Linux', 'Linux'), ('Windows', 'Windows'), ('Unix', 'Unix'), ('Other', 'Other')]),
             preserve_default=True,
         ),
     ]

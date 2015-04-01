@@ -232,7 +232,7 @@ class Template(core_models.UuidMixin,
 
     name = models.CharField(max_length=100, unique=True)
     os = models.CharField(max_length=100, blank=True)
-    os_type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=OsTypes.LINUX, blank=True)
+    os_type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=OsTypes.LINUX)
     is_active = models.BooleanField(default=False)
     sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
