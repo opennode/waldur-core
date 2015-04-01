@@ -593,7 +593,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         flavor = factories.FlavorFactory(cloud=membership.cloud)
 
         return {
-            'hostname': resource.hostname,
+            'name': resource.name,
             'description': resource.description,
             'project': self._get_project_url(membership.project),
             'template': self._get_template_url(resource.template),
@@ -706,11 +706,11 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset({'project': ['Invalid hyperlink - object does not exist.']}, response.data)
 
-    def test_cannot_create_instance_with_empty_hostname_name(self):
-        self.assert_field_non_empty('hostname')
+    def test_cannot_create_instance_with_empty_name(self):
+        self.assert_field_non_empty('name')
 
-    def test_cannot_create_instance_without_hostname_name(self):
-        self.assert_field_required('hostname')
+    def test_cannot_create_instance_without_name(self):
+        self.assert_field_required('name')
 
     def test_cannot_create_instance_with_empty_template_name(self):
         self.assert_field_non_empty('template')
@@ -903,7 +903,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
     def get_valid_data(self):
         return {
             # Cloud independent parameters
-            'hostname': 'host1',
+            'name': 'host1',
             'description': 'description1',
 
             # TODO: Make sure both project and flavor belong to the same customer

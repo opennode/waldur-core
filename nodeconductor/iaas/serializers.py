@@ -196,7 +196,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         model = models.Instance
         fields = (
             'url', 'uuid',
-            'hostname', 'description',
+            'name', 'description',
             'template',
             'project',
             'security_groups', 'flavor', 'ssh_public_key', 'external_ips',
@@ -308,7 +308,7 @@ class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'description', 'security_groups')
+        fields = ('url', 'name', 'description', 'security_groups')
         lookup_field = 'uuid'
 
     def validate_security_groups(self, attrs, attr_name):
@@ -447,7 +447,7 @@ class InstanceSerializer(core_serializers.RelatedResourcesFieldMixin,
     class Meta(object):
         model = models.Instance
         fields = (
-            'url', 'uuid', 'hostname', 'description', 'start_time',
+            'url', 'uuid', 'name', 'description', 'start_time',
             'template', 'template_name', 'template_os',
             'cloud', 'cloud_name', 'cloud_uuid',
             'project', 'project_name', 'project_uuid',
@@ -605,7 +605,7 @@ class ServiceSerializer(serializers.Serializer):
     url = serializers.SerializerMethodField('get_service_url')
     service_type = serializers.SerializerMethodField('get_service_type')
     state = serializers.ChoiceField(choices=models.Instance.States.CHOICES, source='get_state_display')
-    hostname = serializers.Field()
+    name = serializers.Field()
     uuid = serializers.Field()
     agreed_sla = serializers.Field()
     actual_sla = serializers.SerializerMethodField('get_actual_sla')
@@ -624,7 +624,7 @@ class ServiceSerializer(serializers.Serializer):
             'url',
             'uuid',
             'state',
-            'hostname', 'template_name',
+            'name', 'template_name',
             'customer_name',
             'customer_native_name',
             'customer_abbreviation',

@@ -343,7 +343,7 @@ class Instance(core_models.UuidMixin,
     backups = ct_generic.GenericRelation('backup.Backup')
     backup_schedules = ct_generic.GenericRelation('backup.BackupSchedule')
 
-    hostname = models.CharField(max_length=80)
+    name = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
     external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
@@ -437,7 +437,7 @@ class Instance(core_models.UuidMixin,
         pass
 
     def __str__(self):
-        return self.hostname
+        return self.name
 
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)
