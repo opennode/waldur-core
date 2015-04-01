@@ -13,6 +13,12 @@ A user with staff role will be able to see all of the templates, non-staff user 
 An optional filter **?cloud=<CLOUD_UUID>** can be used - if defined, only templates that can be instantiated
 on a defined cloud are shown.
 
+In addition, the following filters are supported:
+
+- ?name - case insensitive matching of a template name
+- ?os_type - enum matching of an OS type (supported options are: Linux, Windows, Unix, Other).
+- ?os - case insensitive matching of a template OS name
+
 IaaS Template permissions
 -------------------------
 
@@ -43,7 +49,9 @@ A new template can only be created by users with staff privilege (is_staff=True)
         "name": "CentOS 7 minimal",
         "description": "Minimal installation of CentOS7",
         "icon_url": "http://centos.org/images/logo_small.png",
+        "icon_name": "my_image_stored_in_different_place.png",
         "os": "CentOS 7",
+        "os_type": "Linux",
         "is_active": true,
         "sla_level": 99.9,
         "setup_fee": "10",
