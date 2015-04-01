@@ -221,8 +221,18 @@ class Template(core_models.UuidMixin,
     """
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
     """
+    class OsTypes(object):
+        LINUX = 'Linux'
+        WINDOWS = 'Windows'
+        UNIX = 'Unix'
+        OTHER = 'Other'
+
+    SERVICE_TYPES = (
+        (OsTypes.LINUX, 'Linux'), (OsTypes.WINDOWS, 'Windows'), (OsTypes.UNIX, 'Unix'), (OsTypes.OTHER, 'Other'))
+
     name = models.CharField(max_length=100, unique=True)
     os = models.CharField(max_length=100, blank=True)
+    os_type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=OsTypes.LINUX, blank=True)
     is_active = models.BooleanField(default=False)
     sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
@@ -231,6 +241,7 @@ class Template(core_models.UuidMixin,
     monthly_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                       validators=[MinValueValidator(Decimal('0.1')),
                                                   MaxValueValidator(Decimal('100000.0'))])
+    icon_name = models.CharField(max_length=100, blank=True)
 
     def __str__(self):
         return self.name

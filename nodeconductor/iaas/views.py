@@ -479,6 +479,20 @@ class InstanceViewSet(mixins.CreateModelMixin,
         return Response(stats, status=status.HTTP_200_OK)
 
 
+class TemplateFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
+
+    class Meta(object):
+        model = models.Template
+        fields = [
+            'os',
+            'os_type',
+            'name',
+        ]
+
+
 class TemplateViewSet(core_viewsets.ModelViewSet):
     """
     List of VM templates that are accessible by this user.
@@ -490,6 +504,8 @@ class TemplateViewSet(core_viewsets.ModelViewSet):
     serializer_class = serializers.TemplateSerializer
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     lookup_field = 'uuid'
+    filter_backends = (DjangoMappingFilterBackend,)
+    filter_class = TemplateFilter
 
     def get_serializer_class(self):
         if self.request.method in ('POST', 'PUT', 'PATCH'):
