@@ -12,7 +12,6 @@ from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
-from nodeconductor.structure.serializers import fix_non_nullable_attrs
 
 
 class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
@@ -211,7 +210,11 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         required=True,
     )
 
-    external_ips = core_serializers.IPsField(required=False, allow_blank=True, allow_null=True)
+    external_ips = core_serializers.FakeListField(
+        child=core_serializers.IPField(),
+        allow_null=True,
+        required=False,
+    )
 
     class Meta(object):
         model = models.Instance
@@ -451,8 +454,13 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
     state = serializers.ReadOnlyField(source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='cloud_project_membership.project.project_groups', many=True, read_only=True)
-    external_ips = core_serializers.IPsField()
-    internal_ips = core_serializers.IPsField(read_only=True)
+    external_ips = external_ips = core_serializers.FakeListField(
+        child=core_serializers.IPField()
+    )
+    internal_ips = core_serializers.FakeListField(
+        child=core_serializers.IPField(),
+        read_only=True,
+    )
     backups = backup_serializers.BackupSerializer(many=True)
     backup_schedules = backup_serializers.BackupScheduleSerializer(many=True)
 
@@ -522,6 +530,15 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+
+    def to_representation(self, instance):
+        representation = super(InstanceSerializer, self).to_representation(instance)
+        # We need this hook, because basic serializer does not call field to_representation method
+        if representation['external_ips'] is None:
+            representation['external_ips'] = []
+        if representation['internal_ips'] is None:
+            representation['internal_ips'] = []
+        return representation
 
 
 class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
@@ -669,7 +686,11 @@ class ServiceSerializer(serializers.Serializer):
     project_uuid = serializers.ReadOnlyField(source='cloud_project_membership.project.uuid')
     project_url = serializers.SerializerMethodField()
     project_groups = serializers.SerializerMethodField()
-    access_information = core_serializers.IPsField(source='external_ips')
+    access_information = core_serializers.FakeListField(
+        source='external_ips',
+        child=core_serializers.IPField(),
+        read_only=True,
+    )
 
     class Meta(object):
         fields = (
@@ -743,6 +764,13 @@ class ServiceSerializer(serializers.Serializer):
             context={'request': request}
         )
         return groups.data
+
+    def to_representation(self, instance):
+        representation = super(ServiceSerializer, self).to_representation(instance)
+        # We need this hook, because basic serializer does not call field to_representation method
+        if representation['access_information'] is None:
+            representation['access_information'] = []
+        return representation
 
 
 class UsageStatsSerializer(serializers.Serializer):

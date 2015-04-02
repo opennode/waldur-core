@@ -67,7 +67,10 @@ class InstanceCreateSerializer2Test(TestCase):
 
         for invalid_value in invalid_values:
             errors = self.get_deserialization_errors(external_ips=invalid_value)
-            self.assertDictContainsSubset({'external_ips': ['Enter a list of valid IPv4 addresses.']}, errors)
+            self.assertDictContainsSubset(
+                {'external_ips': ['Expected a list of items but got type "%s".' % type(invalid_value).__name__]},
+                errors
+            )
 
     def test_external_ips_must_contain_less_then_two_items(self):
         errors = self.get_deserialization_errors(external_ips=['127.0.0.1', '10.10.10.10'])

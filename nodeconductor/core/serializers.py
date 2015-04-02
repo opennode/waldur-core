@@ -4,7 +4,7 @@ from django.core import validators
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.urlresolvers import reverse, resolve, Resolver404
 from rest_framework import serializers
-from rest_framework.fields import Field, ReadOnlyField
+from rest_framework.fields import Field, ReadOnlyField, empty
 
 from nodeconductor.core.signals import pre_serializer_fields
 
@@ -36,31 +36,38 @@ class Base64Field(serializers.CharField):
         return base64.b64encode(value)
 
 
-class IPsField(serializers.CharField):
-    def to_representation(self, value):
-        value = super(IPsField, self).to_representation(value)
-        if value is None:
-            return []
-        else:
-            return [value]
+# XXX: this field has to be replaced with default drf IPAddressField after it implementation:
+# https://github.com/tomchristie/django-rest-framework/issues/1853
+
+class IPField(serializers.CharField):
+
+    def run_validation(self, data=empty):
+        value = super(IPField, self).run_validation(data)
+        validate_ipv4_address_within_list(value)
+        return value
+
+
+class FakeListField(serializers.ListField):
+    """
+    This field imitates list field, but stores only one value into database
+    """
 
     def to_internal_value(self, data):
-        if data in validators.EMPTY_VALUES:
+        if not data:
+            return None
+        value = super(FakeListField, self).to_internal_value(data)
+        if len(value) > 1:
+            raise validators.ValidationError('Only one ip address is supported.')
+        if value:
+            return value[0]
+        else:
             return None
 
-        if not isinstance(data, (list, tuple)):
-            raise validators.ValidationError('Enter a list of valid IPv4 addresses.')
-
-        value_count = len(data)
-        if value_count > 1:
-            raise validators.ValidationError('Only one ip address is supported.')
-        elif value_count == 1:
-            value = data[0]
-            validate_ipv4_address_within_list(value)
-        else:
-            value = None
-
-        return value
+    def to_representation(self, data):
+        """
+        List of object instances -> List of dicts of primitive datatypes.
+        """
+        return [self.child.to_representation(data)]
 
 
 class Saml2ResponseSerializer(serializers.Serializer):
