@@ -9,7 +9,6 @@ import time
 
 from django.db import models as django_models
 from django.db import transaction, IntegrityError
-from django.db.models import Sum
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django_fsm import TransitionNotAllowed
@@ -25,7 +24,6 @@ from rest_framework.decorators import detail_route, list_route
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
-from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.utils import sort_dict
@@ -235,7 +233,7 @@ class InstanceFilter(django_filters.FilterSet):
 class InstanceViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       mixins.UpdateModelMixin,
-                      core_mixins.ListModelMixin,
+                      mixins.ListModelMixin,
                       viewsets.GenericViewSet):
     """List of VM instances that are accessible by this user.
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#vm-instance-management
@@ -446,7 +444,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         return Response(stats, status=status.HTTP_200_OK)
 
 
-class TemplateViewSet(core_viewsets.ModelViewSet):
+class TemplateViewSet(viewsets.ModelViewSet):
     """
     List of VM templates that are accessible by this user.
 
@@ -509,7 +507,7 @@ class SshKeyFilter(django_filters.FilterSet):
         ]
 
 
-class SshKeyViewSet(core_viewsets.ModelViewSet):
+class SshKeyViewSet(viewsets.ModelViewSet):
     """
     List of SSH public keys that are accessible by this user.
 
@@ -532,7 +530,7 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
         return queryset.filter(user=user)
 
 
-class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
+class TemplateLicenseViewSet(viewsets.ModelViewSet):
     """List of template licenses that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#template-licenses
@@ -703,7 +701,7 @@ class ServiceFilter(django_filters.FilterSet):
 
 
 # XXX: This view has to be rewritten or removed after haystack implementation
-class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
+class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.Instance.objects.exclude(
         state=models.Instance.States.DELETING,
     )
@@ -870,7 +868,7 @@ class UsageStatsView(views.APIView):
         return Response(usage_stats, status=status.HTTP_200_OK)
 
 
-class FlavorViewSet(core_viewsets.ReadOnlyModelViewSet):
+class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
     """List of VM instance flavors that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#flavor-management
@@ -917,7 +915,7 @@ class CloudFilter(django_filters.FilterSet):
         ]
 
 
-class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet):
+class CloudViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#cloud-model
@@ -1064,7 +1062,7 @@ class SecurityGroupFilter(django_filters.FilterSet):
         ]
 
 
-class SecurityGroupViewSet(core_viewsets.ReadOnlyModelViewSet):
+class SecurityGroupViewSet(viewsets.ReadOnlyModelViewSet):
     """
     List of security groups
 
@@ -1093,7 +1091,7 @@ class IpMappingFilter(django_filters.FilterSet):
         ]
 
 
-class IpMappingViewSet(core_viewsets.ModelViewSet):
+class IpMappingViewSet(viewsets.ModelViewSet):
     """
     List of mappings between public IPs and private IPs
 
@@ -1125,7 +1123,7 @@ class FloatingIPFilter(django_filters.FilterSet):
         ]
 
 
-class FloatingIPViewSet(core_viewsets.ReadOnlyModelViewSet):
+class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
     """
     List of floating ips
     """
