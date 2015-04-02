@@ -28,7 +28,6 @@ install_requires = [
     'django-polymorphic>=0.6.0',
     'djangorestframework>=3.1.0,<3.2.0',
     'djangosaml2==0.12.0.dev0',
-    'drf-extensions==0.2.6',
     'jsonfield==1.0.0',
     'python-cinderclient==1.0.9',
     'python-glanceclient==0.12.0',
