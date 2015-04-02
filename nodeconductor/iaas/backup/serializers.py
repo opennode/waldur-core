@@ -84,10 +84,9 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
         # TODO: cleanup after migration to drf 3
         return fix_non_nullable_attrs(attrs)
 
-    def restore_object(self, attrs, instance=None):
-        flavor = attrs['flavor']
-        attrs['cores'] = flavor.cores
-        attrs['ram'] = flavor.ram
-        attrs['cloud'] = flavor.cloud
+    def create(self, validated_data):
+        flavor = validated_data.pop('flavor')
+        validated_data['cores'] = flavor.cores
+        validated_data['ram'] = flavor.ram
 
-        return super(InstanceBackupRestorationSerializer, self).restore_object(attrs, instance)
+        return super(InstanceBackupRestorationSerializer, self).create(validated_data)
