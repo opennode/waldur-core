@@ -53,9 +53,11 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.zabbix_client.create_host(self.instance)
 
         expected_host_name = self.zabbix_client.get_host_name(self.instance)
+        expected_visible_name = self.zabbix_client.get_host_visible_name(self.instance)
         self.api.host.exists.assert_called_once_with(host=expected_host_name)
         self.api.host.create.assert_called_once_with({
             "host": expected_host_name,
+            "name": expected_visible_name,
             "interfaces": [self.zabbix_parameters['interface_parameters']],
             "groups": [{"groupid": '8'}],
             "templates": [{"templateid": self.zabbix_parameters['templateid']}],
@@ -72,6 +74,32 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.api.host.exists.side_effect = ZabbixAPIException
 
         self.assertRaises(ZabbixError, lambda: self.zabbix_client.create_host(self.instance))
+
+    # Host visible name update
+    def test_host_visible_name_is_not_updated_if_host_does_not_exist(self):
+        self.api.host.exists = Mock(return_value=False)
+
+        self.zabbix_client.update_host_visible_name(self.instance)
+
+        expected_host_name = self.zabbix_client.get_host_name(self.instance)
+        self.api.host.exists.assert_called_once_with(host=expected_host_name)
+        self.assertFalse(self.api.host.update.called, 'Host visible name should not have been updated')
+
+    def test_visible_name_is_updated_if_host_exists(self):
+        self.zabbix_client.update_host_visible_name(self.instance)
+
+        expected_host_name = self.zabbix_client.get_host_name(self.instance)
+        expected_visible_name = self.zabbix_client.get_host_visible_name(self.instance)
+        self.api.host.exists.assert_called_once_with(host=expected_host_name)
+        self.api.host.update.assert_called_once_with({
+            "host": expected_host_name,
+            "name": expected_visible_name,
+        })
+
+    def test_update_host_visible_name_raises_zabbix_error_on_api_exception(self):
+        self.api.host.exists.side_effect = ZabbixAPIException
+
+        self.assertRaises(ZabbixError, lambda: self.zabbix_client.update_host_visible_name(self.instance))
 
     # Host deletion
     def test_delete_host_deletes_host_if_it_exists(self):
