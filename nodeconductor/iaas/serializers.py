@@ -545,7 +545,7 @@ class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 
-    template_licenses = TemplateLicenseSerializer()
+    template_licenses = TemplateLicenseSerializer(many=True)
 
     class Meta(object):
         view_name = 'iaastemplate-detail'
@@ -562,6 +562,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
+            'template_licenses': {'lookup_field': 'uuid'},
         }
 
     def get_fields(self):
