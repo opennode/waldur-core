@@ -596,11 +596,8 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
+            'template_licenses': {'lookup_field': 'uuid'},
         }
-
-    # TODO: cleanup after migration to drf 3
-    def validate(self, attrs):
-        return fix_non_nullable_attrs(attrs)
 
 
 class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
