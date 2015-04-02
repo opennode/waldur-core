@@ -781,7 +781,7 @@ class StatsAggregateSerializer(serializers.Serializer):
     }
 
     model_name = serializers.ChoiceField(choices=MODEL_NAME_CHOICES)
-    uuid = serializers.CharField(required=False)
+    uuid = serializers.CharField(allow_null=True)
 
     def get_projects(self, user):
         model = self.MODEL_CLASSES[self.data['model_name']]
