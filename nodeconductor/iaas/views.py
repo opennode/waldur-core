@@ -322,57 +322,6 @@ class InstanceViewSet(mixins.CreateModelMixin,
         from nodeconductor.iaas.tasks import push_instance_security_groups
         push_instance_security_groups.delay(instance.uuid.hex)
 
-
-    # def pre_save(self, obj):
-    #     super(InstanceViewSet, self).pre_save(obj)
-
-    #     if obj.pk is None:
-    #         # Create flow
-    #         obj.agreed_sla = obj.template.sla_level
-    #     else:
-    #         # Update flow
-    #         related_data = getattr(self.object, '_related_data', {})
-
-    #         self.new_security_group_ids = set(
-    #             isg.security_group_id
-    #             for isg in related_data.get('security_groups', [])
-    #         )
-
-    #         # Prevent DRF from trashing m2m security_group relation
-    #         try:
-    #             del related_data['security_groups']
-    #         except KeyError:
-    #             pass
-
-
-
-    # def post_save(self, obj, created=False):
-    #     super(InstanceViewSet, self).post_save(obj, created)
-
-    #     event_logger.info('Virtual machine %s has been updated.', obj.hostname,
-    #                       extra={'instance': obj, 'event_type': 'iaas_instance_update_succeeded'})
-
-    #     # We care only about update flow
-    #     old_security_groups = dict(
-    #         (isg.security_group_id, isg)
-    #         for isg in self.object.security_groups.all()
-    #     )
-
-    #     # Remove stale security groups
-    #     for security_group_id, isg in old_security_groups.items():
-    #         if security_group_id not in self.new_security_group_ids:
-    #             isg.delete()
-
-    #     # Add missing ones
-    #     for security_group_id in self.new_security_group_ids - set(old_security_groups.keys()):
-    #         models.InstanceSecurityGroup.objects.create(
-    #             instance=self.object,
-    #             security_group_id=security_group_id,
-    #         )
-
-    #     from nodeconductor.iaas.tasks import push_instance_security_groups
-    #     push_instance_security_groups.delay(self.object.uuid.hex)
-
     @detail_route(methods=['post'])
     @schedule_transition()
     def stop(self, request, instance, uuid=None):
@@ -572,9 +521,6 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
     lookup_field = 'uuid'
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = SshKeyFilter
-
-    def pre_save(self, key):
-        key.user = self.request.user
 
     def get_queryset(self):
         queryset = super(SshKeyViewSet, self).get_queryset()

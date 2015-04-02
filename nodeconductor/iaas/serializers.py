@@ -615,7 +615,7 @@ class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class SshKeySerializer(serializers.HyperlinkedModelSerializer):
-    user_uuid = serializers.Field(source='user.uuid')
+    user_uuid = serializers.ReadOnlyField(source='user.uuid')
 
     class Meta(object):
         model = core_models.SshPublicKey
@@ -630,7 +630,7 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         Check that the start is before the stop.
         """
         try:
-            request = self.context['view'].request
+            request = self.context['request']
             user = request.user
         except (KeyError, AttributeError):
             return attrs
@@ -638,6 +638,7 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         name = attrs['name']
         if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
             raise serializers.ValidationError('SSH key name is not unique for a user')
+        attrs['user'] = user
         return attrs
 
     def get_fields(self):
