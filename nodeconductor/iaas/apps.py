@@ -62,6 +62,13 @@ class IaasConfig(AppConfig):
             dispatch_uid='nodeconductor.iaas.handlers.prevent_deletion_of_instances_with_connected_backups',
         )
 
+        # if instance name is updated, zabbix host visible name should be also updated
+        signals.pre_save.connect(
+            handlers.check_instance_name_update,
+            sender=Instance,
+            dispatch_uid='nodeconductor.iaas.handlers.check_instance_name_update',
+        )
+
         signals.post_save.connect(
             quotas_handlers.add_quotas_to_scope,
             sender=CloudProjectMembership,

@@ -222,3 +222,15 @@ def set_cpm_default_availability_zone(sender, instance=None, **kwargs):
             pass
         else:
             instance.availability_zone = options.availability_zone
+
+
+def check_instance_name_update(sender, instance=None, **kwargs):
+    from nodeconductor.iaas.models import Instance
+    try:
+        old_instance = Instance.objects.get(uuid=instance.uuid)
+    except Instance.DoesNotExist:
+        pass
+    else:
+        from nodeconductor.iaas.tasks import update_zabbix_host_visible_name
+        if old_instance.name != instance.name:
+            update_zabbix_host_visible_name(instance)
