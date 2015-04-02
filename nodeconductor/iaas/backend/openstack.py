@@ -1,13 +1,15 @@
 from __future__ import unicode_literals
 
-from collections import OrderedDict
-from itertools import groupby
-import logging
-from operator import itemgetter
-import uuid
-import pkg_resources
 import re
 import time
+import uuid
+import weakref
+import logging
+import datetime
+import pkg_resources
+import dateutil.parser
+
+from itertools import groupby
 
 from cinderclient import exceptions as cinder_exceptions
 from cinderclient.v1 import client as cinder_client
@@ -32,8 +34,8 @@ from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
 from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.iaas.backend import dummy, CloudBackendError, CloudBackendInternalError
 from nodeconductor.iaas import models
-from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 
 logger = logging.getLogger(__name__)
 event_logger = EventLoggerAdapter(logger)
@@ -61,6 +63,203 @@ def _get_nova_version():
         return pkg_resources.get_distribution('python-novaclient').parsed_version
     except ValueError:
         return '00000002', '00000017', '00000000', '*final'
+
+
+class OpenStackClient(object):
+    """ Generic OpenStack client with dummy mode support """
+
+    REAL_DUMMY_CLASSES = {
+        'KeystoneSession': (keystone_session.Session, dummy.KeystoneClient.Session),
+        'KeystoneClient': (keystone_client.Client, dummy.KeystoneClient),
+        'NovaClient': (nova_client.Client, dummy.NovaClient),
+        'NeutronClient': (neutron_client.Client, dummy.NeutronClient),
+        'CinderClient': (cinder_client.Client, dummy.CinderClient),
+        'GlanceClient': (glance_client.Client, dummy.GlanceClient),
+    }
+
+    def __init__(self, dummy=False):
+        self.dummy = dummy
+
+    @classmethod
+    def get_openstack_class(cls, class_name, is_dummy):
+        return cls.REAL_DUMMY_CLASSES[class_name][1 if is_dummy else 0]
+
+    class Session(dict):
+        """ Serializable session """
+
+        # There's a temporary need to pass plain text credentials
+        # Currently packaged libraries novaclient==2.17.0, neutronclient==2.3.4
+        # and cinderclient==1.0.9 don't support token auth.
+        # TODO: Switch to token auth on libraries upgrade.
+        OPTIONS = ('auth_ref', 'auth_url', 'username', 'password', 'tenant_id', 'tenant_name')
+
+        def __init__(self, backend, ks_session=None, **credentials):
+            self.dummy = self['dummy'] = backend.dummy
+            self.backend = backend.__class__(dummy=backend.dummy)
+            self.keystone_session = ks_session
+
+            if not self.keystone_session:
+                auth_plugin = v2.Password(**credentials)
+                self.keystone_session = self.backend.get_openstack_class(
+                    'KeystoneSession', self.dummy)(auth=auth_plugin)
+
+            for opt in self.OPTIONS:
+                self[opt] = getattr(self.auth, opt)
+
+            # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+            self.keystone_session.get_token()
+            self.backend.session = weakref.proxy(self)
+
+        def __getattr__(self, name):
+            return getattr(self.keystone_session, name)
+
+        @classmethod
+        def factory(cls, backend, session):
+            auth_plugin = v2.Token(
+                auth_url=session['auth_url'],
+                token=session['auth_ref']['token']['id'])
+            ks_session = backend.get_openstack_class(
+                'KeystoneSession', backend.dummy)(auth=auth_plugin)
+            return cls(backend, ks_session=ks_session)
+
+        def validate(self):
+            expiresat = dateutil.parser.parse(self.auth.auth_ref['token']['expires'])
+            if expiresat > timezone.now() + datetime.timedelta(minutes=10):
+                return True
+
+            raise CloudBackendError('Invalid OpenStack session')
+
+    def create_admin_session(self, keystone_url):
+        try:
+            credentials = models.OpenStackSettings.objects.get(
+                auth_url=keystone_url).get_credentials()
+        except models.OpenStackSettings.DoesNotExist as e:
+            logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
+            six.reraise(CloudBackendError, e)
+
+        self.session = self.Session(self, **credentials)
+        return self.session
+
+    def create_tenant_session(self, credentials):
+        self.session = self.Session(self, **credentials)
+        return self.session
+
+    def create_keystone_client(self, session=None):
+        if not session:
+            session = self.session
+        return self.get_openstack_class(
+            'KeystoneClient', session.dummy)(auth_ref=session.auth.auth_ref)
+
+    def create_nova_client(self, session=None):
+        if not session:
+            session = self.session
+
+        if _get_nova_version() >= pkg_resources.parse_version('2.18.0'):
+            kwargs = {'session': session.keystone_session}
+        else:
+            kwargs = {
+                'auth_url': session['auth_url'],
+                'username': session['username'],
+                'api_key': session['password'],
+                'tenant_id': session['tenant_id'],
+                # project_id is tenant_name, id doesn't make sense,
+                # pretty usual for OpenStack
+                'project_id': session['tenant_name'],
+            }
+
+        return self.get_openstack_class('NovaClient', session.dummy)(**kwargs)
+
+    def create_neutron_client(self, session=None):
+        if not session:
+            session = self.session
+
+        if _get_neutron_version() >= pkg_resources.parse_version('2.3.6'):
+            kwargs = {'session': session.keystone_session}
+        else:
+            kwargs = {
+                'auth_url': session['auth_url'],
+                'username': session['username'],
+                'password': session['password'],
+                'tenant_id': session['tenant_id'],
+                # neutron is different in a sense it is more reasonable to call
+                # tenant_name a tenant_name, rather then project_id
+                'tenant_name': session['tenant_name'],
+            }
+
+        return self.get_openstack_class('NeutronClient', session.dummy)(**kwargs)
+
+    def create_cinder_client(self, session=None):
+        if not session:
+            session = self.session
+
+        if _get_cinder_version() >= pkg_resources.parse_version('1.1.0'):
+            kwargs = {'session': session.keystone_session}
+        else:
+            kwargs = {
+                'auth_url': session['auth_url'],
+                'username': session['username'],
+                'api_key': session['password'],
+                'tenant_id': session['tenant_id'],
+                # project_id is tenant_name, id doesn't make sense,
+                # pretty usual for OpenStack
+                'project_id': session['tenant_name'],
+            }
+
+        return self.get_openstack_class('CinderClient', session.dummy)(**kwargs)
+
+    def create_glance_client(self, session=None):
+        if not session:
+            session = self.session
+
+        ks_session = session.keystone_session
+        catalog = ServiceCatalog.factory(ks_session.auth.auth_ref)
+        endpoint = catalog.url_for(service_type='image')
+
+        kwargs = {
+            'token': ks_session.get_token(),
+            'insecure': False,
+            'timeout': 600,
+            'ssl_compression': True,
+        }
+
+        return self.get_openstack_class('GlanceClient', session.dummy)(endpoint, **kwargs)
+
+
+class OpenStackCoreBackend(OpenStackClient):
+    """ NodeConductor interface to openstack """
+
+    @classmethod
+    def create_session(cls, keystone_url=None, instance_uuid=None, check_tenant=True, **kwargs):
+        """ Create OpenStack session using NodeConductor credentials """
+
+        backend = cls(dummy=kwargs.get('dummy', False))
+        if keystone_url:
+            return backend.create_admin_session(keystone_url)
+
+        elif instance_uuid:
+            instance = models.Instance.objects.get(uuid=instance_uuid)
+            membership = instance.cloud_project_membership
+            credentials = {
+                'auth_url': membership.cloud.auth_url,
+                'username': membership.username,
+                'password': membership.password,
+            }
+            if check_tenant:
+                credentials['tenant_id'] = membership.tenant_id
+
+            return backend.create_tenant_session(credentials)
+
+        raise CloudBackendError('Missing OpenStack credentials')
+
+    @classmethod
+    def recover_session(cls, session):
+        """ Recover OpenStack session from serialized object """
+
+        if not session or not session.get('auth_ref'):
+            raise CloudBackendError('Invalid OpenStack session')
+
+        backend = cls(dummy=session.get('dummy', False))
+        return backend.Session.factory(backend, session)
 
 
 # noinspection PyMethodMayBeStatic
