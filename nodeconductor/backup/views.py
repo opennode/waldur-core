@@ -54,7 +54,8 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         super(BackupScheduleViewSet, self).perform_create(serializer)
 
     def perform_update(self, serializer):
-        if not has_user_permission_for_instance(self.request.user, serializer.validated_data['backup_source']):
+        backup_source = self.get_object().backup_source
+        if not has_user_permission_for_instance(self.request.user, backup_source):
             raise PermissionDenied('You do not have permission to perform this action.')
         super(BackupScheduleViewSet, self).perform_update(serializer)
 
@@ -116,7 +117,7 @@ class BackupViewSet(mixins.CreateModelMixin,
 
     def _get_backup(self, user, uuid):
         backup = self.get_object()
-        if not has_user_permission_for_instance(user, backup):
+        if not has_user_permission_for_instance(user, backup.backup_source):
             raise PermissionDenied('You do not have permission to perform this action.')
         return backup
 
