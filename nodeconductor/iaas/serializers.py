@@ -46,7 +46,7 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
             'url',
             'name',
             'customer', 'customer_name', 'customer_native_name',
-            'flavors', 'projects', 'auth_url',
+            'flavors', 'projects', 'auth_url', 'dummy'
         )
         lookup_field = 'uuid'
 
