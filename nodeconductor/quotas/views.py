@@ -4,12 +4,7 @@ from rest_framework import permissions as rf_permissions, exceptions as rf_excep
 from rest_framework import mixins
 from rest_framework import viewsets
 
-from nodeconductor.core.pagination import LinkHeaderPagination
 from nodeconductor.quotas import models, serializers
-
-
-class UnlimitedLinkHeaderPagination(LinkHeaderPagination):
-    page_size = None
 
 
 class QuotaViewSet(mixins.UpdateModelMixin,
@@ -19,7 +14,7 @@ class QuotaViewSet(mixins.UpdateModelMixin,
     serializer_class = serializers.QuotaSerializer
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated,)
-    pagination_class = UnlimitedLinkHeaderPagination
+    pagination_class = None
 
     def get_queryset(self):
         return models.Quota.objects.filtered_for_user(self.request.user)

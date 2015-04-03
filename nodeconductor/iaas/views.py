@@ -931,20 +931,21 @@ class CloudViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
     filter_class = CloudFilter
 
-    def _check_permission(self, serializer):
+    def _can_create_or_update_cloud(self, serializer):
         if self.request.user.is_staff:
-            return
+            return True
         if serializer.validated_data['customer'].has_user(self.request.user, CustomerRole.OWNER):
-            return
-        raise exceptions.PermissionDenied()
+            return True
 
     def perform_create(self, serializer):
-        self._check_permission(serializer)
+        if not self._can_create_or_update_cloud(serializer):
+            raise exceptions.PermissionDenied()
         cloud = serializer.save()
         tasks.sync_cloud_account.delay(cloud.uuid.hex)
 
     def perform_update(self, serializer):
-        self._check_permission(serializer)
+        if not self._can_create_or_update_cloud(serializer):
+            raise exceptions.PermissionDenied()
         super(CloudViewSet, self).perform_update(serializer)
 
 

@@ -688,7 +688,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         response = self.client.post(self.instance_list_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'non_field_errors': ["Flavor is not within project's clouds."]}, response.data)
+        self.assertDictContainsSubset({'flavor': "Flavor is not within project's clouds."}, response.data)
 
     def test_cannot_create_instance_with_flavor_not_from_clouds_allowed_for_users_projects(self):
         data = self.get_valid_data()
@@ -789,7 +789,10 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         response = self.client.post(self.instance_list_url, data)
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(
+            response.status_code, status.HTTP_201_CREATED,
+            'Actual response status: %s and data: %s' % (response.status_code, response.data)
+        )
 
     def test_can_create_instance_with_external_ips_set_to_null(self):
         data = self.get_valid_data()

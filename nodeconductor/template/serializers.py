@@ -23,7 +23,7 @@ class TemplateServiceSerializer(serializers.ModelSerializer):
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     services = TemplateServiceSerializer(
-        many=True, required=True, read_only=False)  # DRF: allow_add_remove was here
+        many=True, required=True, read_only=False)
 
     class Meta(object):
         model = Template

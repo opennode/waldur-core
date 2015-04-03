@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
-# from django.core.exceptions import ValidationError
 from django.test import TestCase, RequestFactory
+from django.utils import unittest
 from rest_framework.serializers import ValidationError
 
 from nodeconductor.iaas import serializers
@@ -186,28 +186,30 @@ class CloudProjectMembershipQuotaSerializerTest(TestCase):
         self.assertTrue(serializer.is_valid())
         self.assertTrue('some_strange_quota_name' not in serializer.data)
 
-# TODO: uncomment this after template migrations to drf3
 
-# class IaasTemplateServiceTest(TestCase):
+# XXX: This tests should be moved to template application
+class IaasTemplateServiceTest(TestCase):
 
-#     def setUp(self):
-#         self.cloud = factories.CloudFactory()
-#         self.flavor = factories.FlavorFactory(cloud=self.cloud)
-#         self.image = factories.ImageFactory(cloud=self.cloud)
-#         self.template = template_factories.TemplateFactory()
-#         self.iaas_template_service = factories.IaasTemplateServiceFactory(
-#             template=self.template,
-#             service=self.cloud,
-#             flavor=self.flavor,
-#             image=self.image)
+    def setUp(self):
+        self.cloud = factories.CloudFactory()
+        self.flavor = factories.FlavorFactory(cloud=self.cloud)
+        self.image = factories.ImageFactory(cloud=self.cloud)
+        self.template = template_factories.TemplateFactory()
+        self.iaas_template_service = factories.IaasTemplateServiceFactory(
+            template=self.template,
+            service=self.cloud,
+            flavor=self.flavor,
+            image=self.image)
 
-#     def test_create_template_service(self):
-#         iaas_template_service = self.template.services.first()
-#         self.assertIsNotNone(iaas_template_service)
-#         self.assertIsInstance(iaas_template_service, factories.IaasTemplateServiceFactory._meta.model)
-#         self.assertEqual(iaas_template_service.service, self.cloud)
+    @unittest.skip('This test should pass after "template" app migration to drf3')
+    def test_create_template_service(self):
+        iaas_template_service = self.template.services.first()
+        self.assertIsNotNone(iaas_template_service)
+        self.assertIsInstance(iaas_template_service, factories.IaasTemplateServiceFactory._meta.model)
+        self.assertEqual(iaas_template_service.service, self.cloud)
 
-#     def test_template_serializer_returns_proper_service_type(self):
-#         serializer = template_serializers.TemplateSerializer(instance=self.template)
-#         service_type = serializer.data['services'][0].get('service_type')
-#         self.assertEqual(service_type, 'IaaS')
+    @unittest.skip('This test should pass after "template" app migration to drf3')
+    def test_template_serializer_returns_proper_service_type(self):
+        serializer = template_serializers.TemplateSerializer(instance=self.template)
+        service_type = serializer.data['services'][0].get('service_type')
+        self.assertEqual(service_type, 'IaaS')

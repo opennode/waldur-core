@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.core.validators import MaxLengthValidator
 from django.db import IntegrityError
+from django.db.models import Max
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
@@ -256,9 +257,6 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         flavor = attrs['flavor']
         membership = attrs.get('cloud_project_membership')
 
-        if membership is None:
-            raise ValidationError("Flavor is not within project's clouds.")
-
         external_ips = attrs.get('external_ips')
         if external_ips:
             ip_exists = models.FloatingIP.objects.filter(
@@ -270,15 +268,18 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
                 raise ValidationError("External IP is not from the list of available floating IPs.")
 
         template = attrs['template']
-        images = list(models.Image.objects.filter(template=template, cloud=flavor.cloud))
 
-        if not images:
+        max_min_disk = (
+            models.Image.objects
+            .filter(template=template, cloud=flavor.cloud)
+            .aggregate(Max('min_disk'))
+        )['min_disk__max']
+
+        if max_min_disk is None:
             raise serializers.ValidationError("Template %s is not available on cloud %s"
                                               % (template, flavor.cloud))
 
         system_volume_size = attrs['system_volume_size'] if 'system_volume_size' in attrs else flavor.disk
-
-        max_min_disk = max(image.min_disk for image in images)
         if max_min_disk > system_volume_size:
             raise serializers.ValidationError("System volume size has to be greater than %s" % max_min_disk)
 
@@ -315,7 +316,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         security_groups = [data['security_group'] for data in validated_data.pop('security_groups', [])]
         instance = super(InstanceCreateSerializer, self).create(validated_data)
         for security_group in security_groups:
-            models.InstanceSecurityGroup(instance=instance, security_group=security_group)
+            models.InstanceSecurityGroup.objects.create(instance=instance, security_group=security_group)
 
         # XXX: dirty fix - we need it because first provisioning looks for key and flavor as instance attributes
         instance.flavor = flavor
@@ -340,7 +341,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
                 cloud=internal_value['flavor'].cloud,
             )
         except models.CloudProjectMembership.DoesNotExist:
-            pass
+            raise serializers.ValidationError({"flavor": "Flavor is not within project's clouds."})
 
         return internal_value
 
