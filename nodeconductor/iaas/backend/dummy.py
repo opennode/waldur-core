@@ -7,7 +7,6 @@ from keystoneclient.auth.identity import v2
 from nodeconductor.iaas.backend import CloudBackendError
 
 
-AssertionError = CloudBackendError
 OPENSTACK = threading.local().openstack_instance = {}
 
 
@@ -16,7 +15,7 @@ class OpenStackResource(object):
         self.__dict__.update(kwargs)
 
     def __repr__(self):
-        reprkeys = sorted(k for k in self.__dict__.keys() if not k.startswith('_'))
+        reprkeys = sorted(k for k in self.__dict__.keys())
         info = ", ".join("%s=%s" % (k, getattr(self, k)) for k in reprkeys)
         return "<%s %s>" % (self.__class__.__name__, info)
 
@@ -59,7 +58,8 @@ class OpenStackResourceList(object):
         return type(self.resource_class.__name__, (OpenStackResource,), {})(**kwargs)
 
     def _get_by_attr(self, attr_name, attr_val):
-        assert isinstance(attr_name, basestring), "Invalid {}".format(attr_name)
+        if not isinstance(attr_name, basestring):
+            raise CloudBackendError("Invalid {}".format(attr_name))
         for obj in self.list():
             if getattr(obj, attr_name) == attr_val:
                 return obj
@@ -193,10 +193,12 @@ class KeystoneClient(OpenStackClient):
         def __init__(self, **credentials):
             error_msg = "Authentication failure"
             if credentials.get('token'):
-                assert credentials['token']['id'] == self.auth_token, error_msg
+                if credentials['token']['id'] != self.auth_token:
+                    raise CloudBackendError(error_msg)
             else:
-                assert credentials['passwordCredentials']['username'] == self.username, error_msg
-                assert credentials['passwordCredentials']['password'] == self.password, error_msg
+                data = credentials['passwordCredentials']
+                if data['username'] != self.username or data['password'] != self.password:
+                    raise CloudBackendError(error_msg)
 
     class Session(object):
         def __init__(self, auth=None):
@@ -206,8 +208,8 @@ class KeystoneClient(OpenStackClient):
             credentials = auth.get_auth_data()
             self.auth = KeystoneClient.Auth(**credentials)
 
-            assert auth.auth_url == self.auth.auth_url, \
-                "Unable to establish connection to %s" % auth.auth_url
+            if auth.auth_url != self.auth.auth_url:
+                raise CloudBackendError("Unable to establish connection to %s" % auth.auth_url)
 
             if not auth.tenant_id:
                 self.auth.tenant_id = None

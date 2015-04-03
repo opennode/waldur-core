@@ -267,24 +267,6 @@ class OpenStackBackend(OpenStackClient):
     def get_core_ram_size(self, backend_ram_size):
         return backend_ram_size
 
-    def get_key_name(self, public_key):
-        # We want names to be human readable in backend.
-        # OpenStack only allows latin letters, digits, dashes, underscores and spaces
-        # as key names, thus we mangle the original name.
-
-        safe_name = self.sanitize_key_name(public_key.name)
-        key_name = '{0}-{1}'.format(public_key.uuid.hex, safe_name)
-        return key_name
-
-    def sanitize_key_name(self, key_name):
-        return re.sub(r'[^-a-zA-Z0-9 _]+', '_', key_name)
-
-    def get_tenant_name(self, membership):
-        return 'nc-{0}'.format(membership.project.uuid.hex)
-
-    def create_backend_name(self):
-        return 'nc-{0}'.format(uuid.uuid4().hex)
-
     # CloudAccount related methods
     def push_cloud_account(self, cloud_account):
         # There's nothing to push for OpenStack
@@ -1885,6 +1867,24 @@ class OpenStackBackend(OpenStackClient):
 
     def get_hypervisors_statistics(self, nova):
         return nova.hypervisors.statistics()._info
+
+    def get_key_name(self, public_key):
+        # We want names to be human readable in backend.
+        # OpenStack only allows latin letters, digits, dashes, underscores and spaces
+        # as key names, thus we mangle the original name.
+
+        safe_name = self.sanitize_key_name(public_key.name)
+        key_name = '{0}-{1}'.format(public_key.uuid.hex, safe_name)
+        return key_name
+
+    def sanitize_key_name(self, key_name):
+        return re.sub(r'[^-a-zA-Z0-9 _]+', '_', key_name)
+
+    def get_tenant_name(self, membership):
+        return 'nc-{0}'.format(membership.project.uuid.hex)
+
+    def create_backend_name(self):
+        return 'nc-{0}'.format(uuid.uuid4().hex)
 
     def _wait_for_instance_status(self, server_id, nova, complete_status,
                                   error_status=None, retries=300, poll_interval=3):

@@ -61,9 +61,6 @@ class OpenStackClientTest(TestCase):
         user = keystone.users.create(name='joe_doe')
         role = keystone.roles.find(name='admin')
         tenant = keystone.tenants.find(name='test_tenant')
-        self.assertIsNotNone(user)
-        self.assertIsNotNone(role)
-        self.assertIsNotNone(tenant)
 
         user_role = keystone.roles.add_user_role(user=user.id, role=role.id, tenant=tenant.id)
         self.assertIs(user_role, role)
