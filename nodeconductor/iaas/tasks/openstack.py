@@ -28,20 +28,20 @@ def openstack_create_session(**kwargs):
 @shared_task
 @track_openstack_session
 def nova_server_resize(session, server_id, flavor_id):
-    session.backend.create_nova_client().servers.resize(server_id, flavor_id, 'MANUAL')
+    OpenStackBackend.create_nova_client(session).servers.resize(server_id, flavor_id, 'MANUAL')
 
 
 @shared_task
 @track_openstack_session
 def nova_server_resize_confirm(session, server_id):
-    session.backend.create_nova_client().servers.confirm_resize(server_id)
+    OpenStackBackend.create_nova_client(session).servers.confirm_resize(server_id)
 
 
 @shared_task(max_retries=300, default_retry_delay=3)
 @track_openstack_session
 @retry_if_false
 def nova_wait_for_server_status(session, server_id, status):
-    server = session.backend.create_nova_client().servers.get(server_id)
+    server = OpenStackBackend.create_nova_client(session).servers.get(server_id)
     return server.status == status
 
 
