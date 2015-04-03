@@ -211,7 +211,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
     )
 
     external_ips = core_serializers.FakeListField(
-        child=core_serializers.IPField(),
+        child=core_serializers.IPAddressField(),
         allow_null=True,
         required=False,
     )
@@ -329,7 +329,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
 class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
 
     security_groups = InstanceSecurityGroupSerializer(
-        many=True, required=False, read_only=False)  # DRF: allow_add_remove was here
+        many=True, required=False, read_only=False)
 
     class Meta(object):
         model = models.Instance
@@ -455,10 +455,10 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='cloud_project_membership.project.project_groups', many=True, read_only=True)
     external_ips = external_ips = core_serializers.FakeListField(
-        child=core_serializers.IPField()
+        child=core_serializers.IPAddressField()
     )
     internal_ips = core_serializers.FakeListField(
-        child=core_serializers.IPField(),
+        child=core_serializers.IPAddressField(),
         read_only=True,
     )
     backups = backup_serializers.BackupSerializer(many=True)
@@ -688,7 +688,7 @@ class ServiceSerializer(serializers.Serializer):
     project_groups = serializers.SerializerMethodField()
     access_information = core_serializers.FakeListField(
         source='external_ips',
-        child=core_serializers.IPField(),
+        child=core_serializers.IPAddressField(),
         read_only=True,
     )
 

@@ -39,10 +39,10 @@ class Base64Field(serializers.CharField):
 # XXX: this field has to be replaced with default drf IPAddressField after it implementation:
 # https://github.com/tomchristie/django-rest-framework/issues/1853
 
-class IPField(serializers.CharField):
+class IPAddressField(serializers.CharField):
 
     def run_validation(self, data=empty):
-        value = super(IPField, self).run_validation(data)
+        value = super(IPAddressField, self).run_validation(data)
         validate_ipv4_address_within_list(value)
         return value
 
