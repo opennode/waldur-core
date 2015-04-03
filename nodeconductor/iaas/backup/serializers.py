@@ -2,7 +2,6 @@ from django.core.exceptions import ValidationError
 from rest_framework import serializers
 from nodeconductor.iaas import models
 from nodeconductor.structure import filters as structure_filters
-from nodeconductor.structure.serializers import fix_non_nullable_attrs
 
 
 class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
@@ -81,8 +80,7 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
 
-        # TODO: cleanup after migration to drf 3
-        return fix_non_nullable_attrs(attrs)
+        return attrs
 
     def create(self, validated_data):
         flavor = validated_data.pop('flavor')
