@@ -138,17 +138,13 @@ class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class IpMappingSerializer(serializers.HyperlinkedModelSerializer):
-    project = serializers.HyperlinkedRelatedField(
-        lookup_field='uuid',
-        view_name='project-detail',
-        queryset=structure_models.Project.objects.all()
-    )
 
     class Meta:
         model = models.IpMapping
         fields = ('url', 'uuid', 'public_ip', 'private_ip', 'project')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
+            'project': {'lookup_field': 'uuid', 'view_name': 'project-detail'}
         }
         view_name = 'ip_mapping-detail'
 
@@ -159,13 +155,13 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
     rules = BasicSecurityGroupRuleSerializer(
         source='security_group.rules',
         many=True,
-        read_only=True
+        read_only=True,
     )
     url = serializers.HyperlinkedRelatedField(
         source='security_group',
         lookup_field='uuid',
         view_name='security_group-detail',
-        queryset=models.SecurityGroup.objects.all()
+        queryset=models.SecurityGroup.objects.all(),
     )
     description = serializers.ReadOnlyField(source='security_group.description')
 
@@ -258,14 +254,9 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
 
     def validate(self, attrs):
         flavor = attrs['flavor']
-        project = attrs.pop('project')
-        try:
-            membership = models.CloudProjectMembership.objects.get(
-                project=project,
-                cloud=flavor.cloud,
-            )
-            attrs['cloud_project_membership'] = membership
-        except models.CloudProjectMembership.DoesNotExist:
+        membership = attrs.get('cloud_project_membership')
+
+        if membership is None:
             raise ValidationError("Flavor is not within project's clouds.")
 
         external_ips = attrs.get('external_ips')
@@ -307,6 +298,8 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         return attrs
 
     def create(self, validated_data):
+        del validated_data['project']
+
         key = validated_data.pop('ssh_public_key')
         if key:
             validated_data['key_name'] = key.name
@@ -340,6 +333,15 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
                 internal_value['external_ips'] = None
             else:
                 internal_value['external_ips'] = internal_value['external_ips'][0]
+
+        try:
+            internal_value['cloud_project_membership'] = models.CloudProjectMembership.objects.get(
+                project=internal_value['project'],
+                cloud=internal_value['flavor'].cloud,
+            )
+        except models.CloudProjectMembership.DoesNotExist:
+            pass
+
         return internal_value
 
 

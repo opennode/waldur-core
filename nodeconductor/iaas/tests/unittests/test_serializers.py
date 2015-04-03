@@ -21,9 +21,9 @@ class InstanceCreateSerializerTest(TestCase):
                  'project': structure_factories.ProjectFactory(),
                  'flavor': factories.FlavorFactory()}
 
-        factories.CloudProjectMembershipFactory(
+        attrs['cloud_project_membership'] = factories.CloudProjectMembershipFactory(
             cloud=attrs['flavor'].cloud,
-            project=attrs['project']
+            project=attrs['project'],
         )
 
         with self.assertRaises(ValidationError) as er:
@@ -37,9 +37,9 @@ class InstanceCreateSerializerTest(TestCase):
                  'flavor': factories.FlavorFactory()}
 
         factories.ImageFactory(template=attrs['template'])
-        factories.CloudProjectMembershipFactory(
+        attrs['cloud_project_membership'] = factories.CloudProjectMembershipFactory(
             cloud=attrs['flavor'].cloud,
-            project=attrs['project']
+            project=attrs['project'],
         )
 
         with self.assertRaises(ValidationError) as er:
