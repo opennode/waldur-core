@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
+from django.core.validators import MaxLengthValidator
 from django.db import IntegrityError
 from rest_framework import serializers, status, exceptions
 
@@ -177,6 +178,10 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
         view_name = 'security_group-detail'
 
 
+class IpCountValidator(MaxLengthValidator):
+    message = 'Only %(limit_value)s ip address is supported.'
+
+
 class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMixin,
                                serializers.HyperlinkedModelSerializer):
 
@@ -210,10 +215,11 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         required=True,
     )
 
-    external_ips = core_serializers.FakeListField(
+    external_ips = serializers.ListField(
         child=core_serializers.IPAddressField(),
         allow_null=True,
         required=False,
+        validators=[IpCountValidator(1)],
     )
 
     class Meta(object):
@@ -324,6 +330,17 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         instance.cloud = flavor.cloud
 
         return instance
+
+    def to_internal_value(self, data):
+        if 'external_ips' in data and not data['external_ips']:
+            data['external_ips'] = []
+        internal_value = super(InstanceCreateSerializer, self).to_internal_value(data)
+        if 'external_ips' in internal_value:
+            if not internal_value['external_ips']:
+                internal_value['external_ips'] = None
+            else:
+                internal_value['external_ips'] = internal_value['external_ips'][0]
+        return internal_value
 
 
 class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
@@ -454,10 +471,10 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
     state = serializers.ReadOnlyField(source='get_state_display')
     project_groups = structure_serializers.BasicProjectGroupSerializer(
         source='cloud_project_membership.project.project_groups', many=True, read_only=True)
-    external_ips = external_ips = core_serializers.FakeListField(
-        child=core_serializers.IPAddressField()
+    external_ips = serializers.ListField(
+        child=core_serializers.IPAddressField(),
     )
-    internal_ips = core_serializers.FakeListField(
+    internal_ips = serializers.ListField(
         child=core_serializers.IPAddressField(),
         read_only=True,
     )
@@ -471,7 +488,8 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
         source='cloud_project_membership.project',
         view_name='project-detail',
         read_only=True,
-        lookup_field='uuid')
+        lookup_field='uuid',
+    )
     project_name = serializers.ReadOnlyField(source='cloud_project_membership.project.name')
     project_uuid = serializers.ReadOnlyField(source='cloud_project_membership.project.uuid')
     # cloud
@@ -479,7 +497,8 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
         source='cloud_project_membership.cloud',
         view_name='cloud-detail',
         read_only=True,
-        lookup_field='uuid')
+        lookup_field='uuid',
+    )
     cloud_name = serializers.ReadOnlyField(source='cloud_project_membership.cloud.name')
     cloud_uuid = serializers.ReadOnlyField(source='cloud_project_membership.cloud.uuid')
     # customer
@@ -487,7 +506,8 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
         source='cloud_project_membership.project.customer',
         view_name='customer-detail',
         read_only=True,
-        lookup_field='uuid')
+        lookup_field='uuid',
+    )
     customer_name = serializers.ReadOnlyField(source='cloud_project_membership.project.customer.name')
     customer_abbreviation = serializers.ReadOnlyField(source='cloud_project_membership.project.customer.abbreviation')
     customer_native_name = serializers.ReadOnlyField(source='cloud_project_membership.project.customer.native_name')
@@ -495,7 +515,8 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
     template = serializers.HyperlinkedRelatedField(
         view_name='iaastemplate-detail',
         read_only=True,
-        lookup_field='uuid')
+        lookup_field='uuid',
+    )
     template_name = serializers.ReadOnlyField(source='template.name')
     template_os = serializers.ReadOnlyField(source='template.os')
 
@@ -532,13 +553,10 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
         }
 
     def to_representation(self, instance):
-        representation = super(InstanceSerializer, self).to_representation(instance)
-        # We need this hook, because basic serializer does not call field to_representation method
-        if representation['external_ips'] is None:
-            representation['external_ips'] = []
-        if representation['internal_ips'] is None:
-            representation['internal_ips'] = []
-        return representation
+        # We need this hook, because ips have to be represented as list
+        instance.external_ips = [instance.external_ips] if instance.external_ips else []
+        instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
+        return super(InstanceSerializer, self).to_representation(instance)
 
 
 class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
@@ -686,7 +704,7 @@ class ServiceSerializer(serializers.Serializer):
     project_uuid = serializers.ReadOnlyField(source='cloud_project_membership.project.uuid')
     project_url = serializers.SerializerMethodField()
     project_groups = serializers.SerializerMethodField()
-    access_information = core_serializers.FakeListField(
+    access_information = serializers.ListField(
         source='external_ips',
         child=core_serializers.IPAddressField(),
         read_only=True,
@@ -766,11 +784,10 @@ class ServiceSerializer(serializers.Serializer):
         return groups.data
 
     def to_representation(self, instance):
-        representation = super(ServiceSerializer, self).to_representation(instance)
-        # We need this hook, because basic serializer does not call field to_representation method
-        if representation['access_information'] is None:
-            representation['access_information'] = []
-        return representation
+        # We need this hook, because ips have to be represented as list
+        instance.external_ips = [instance.external_ips] if instance.external_ips else []
+        instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
+        return super(ServiceSerializer, self).to_representation(instance)
 
 
 class UsageStatsSerializer(serializers.Serializer):

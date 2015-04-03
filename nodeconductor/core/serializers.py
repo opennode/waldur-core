@@ -42,29 +42,6 @@ class IPAddressField(serializers.CharField):
         self.validators += ip_validators
 
 
-class FakeListField(serializers.ListField):
-    """
-    This field imitates list field, but stores only one value into database
-    """
-
-    def to_internal_value(self, data):
-        if not data:
-            return None
-        value = super(FakeListField, self).to_internal_value(data)
-        if len(value) > 1:
-            raise validators.ValidationError('Only one ip address is supported.')
-        if value:
-            return value[0]
-        else:
-            return None
-
-    def to_representation(self, data):
-        """
-        List of object instances -> List of dicts of primitive datatypes.
-        """
-        return [self.child.to_representation(data)]
-
-
 class Saml2ResponseSerializer(serializers.Serializer):
     saml2response = Base64Field(required=True)
 

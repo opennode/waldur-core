@@ -74,7 +74,7 @@ class InstanceCreateSerializer2Test(TestCase):
 
     def test_external_ips_must_contain_less_then_two_items(self):
         errors = self.get_deserialization_errors(external_ips=['127.0.0.1', '10.10.10.10'])
-        self.assertDictContainsSubset({'external_ips': ['Only one ip address is supported.']}, errors)
+        self.assertDictContainsSubset({'external_ips': ['Only 1 ip address is supported.']}, errors)
 
     def test_external_ips_must_contain_valid_ip_address(self):
         errors = self.get_deserialization_errors(external_ips=['foobar'])
