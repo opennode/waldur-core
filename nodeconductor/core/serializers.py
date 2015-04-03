@@ -262,34 +262,6 @@ class AugmentedSerializerMixin(object):
             return super(AugmentedSerializerMixin, self).build_unknown_field(field_name, model_class)
 
 
-class CollectedFieldsMixin(AugmentedSerializerMixin):
-    def __init__(self, *args, **kwargs):
-        import warnings
-
-        warnings.warn(
-            "CollectedFieldsMixin is deprecated. "
-            "Use AugmentedSerializerMixin instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        super(CollectedFieldsMixin, self).__init__(*args, **kwargs)
-
-
-class RelatedResourcesFieldMixin(AugmentedSerializerMixin):
-    def __init__(self, *args, **kwargs):
-        import warnings
-
-        warnings.warn(
-            "RelatedResourcesFieldMixin is deprecated. "
-            "Use AugmentedSerializerMixin instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        super(RelatedResourcesFieldMixin, self).__init__(*args, **kwargs)
-
-
 class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):
     def __init__(self, **kwargs):
         self.queryset = kwargs.pop('queryset', None)
