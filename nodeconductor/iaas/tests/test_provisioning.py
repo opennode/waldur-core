@@ -9,7 +9,6 @@ from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
 from nodeconductor.iaas.models import Instance, CloudProjectMembership, FloatingIP
-from nodeconductor.iaas.tasks import iaas
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
@@ -904,24 +903,25 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
         instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-        ZabbixApiClient = Mock()
-        ZabbixApiClient.update_host_visible_name = Mock()
-        data = {'name': 'host2'}
-        response = self.client.put(factories.InstanceFactory.get_url(instance), data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(ZabbixApiClient.update_host_visible_name.called, 'Host visible name should have been updated')
+        with patch('nodeconductor.iaas.tasks.update_zabbix_host_visible_name') as patched:
+            patched.zabbix_client.update_host_visible_name = Mock()
+            data = {'name': 'host2'}
+            response = self.client.put(factories.InstanceFactory.get_url(instance), data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertFalse(patched.zabbix_client.update_host_visible_name.called,
+                             'Host visible name should have been updated')
 
     def test_zabbix_host_visible_name_is_not_updated_when_instance_is_not_renamed(self):
         instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
         instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-        ZabbixApiClient = Mock()
-        ZabbixApiClient.update_host_visible_name = Mock()
-        data = {'description': 'test'}
-        response = self.client.put(factories.InstanceFactory.get_url(instance), data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(ZabbixApiClient.update_host_visible_name.called,
-                         'Host visible name should not have been updated')
+        with patch('nodeconductor.iaas.tasks.update_zabbix_host_visible_name') as patched:
+            patched.zabbix_client.update_host_visible_name = Mock()
+            data = {'name': 'host1'}
+            response = self.client.put(factories.InstanceFactory.get_url(instance), data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertFalse(patched.zabbix_client.update_host_visible_name.called,
+                             'Host visible name should not have been updated')
     # Helper methods
     # TODO: Move to serializer tests
     def get_valid_data(self):
