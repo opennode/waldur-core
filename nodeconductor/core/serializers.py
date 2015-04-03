@@ -4,13 +4,9 @@ from django.core import validators
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.urlresolvers import reverse, resolve, Resolver404
 from rest_framework import serializers
-from rest_framework.fields import Field, ReadOnlyField, empty
+from rest_framework.fields import Field, ReadOnlyField
 
 from nodeconductor.core.signals import pre_serializer_fields
-
-validate_ipv4_address_within_list = validators.RegexValidator(
-    validators.ipv4_re, 'Enter a list of valid IPv4 addresses.',
-    'invalid')
 
 
 class AuthTokenSerializer(serializers.Serializer):
@@ -40,11 +36,10 @@ class Base64Field(serializers.CharField):
 # https://github.com/tomchristie/django-rest-framework/issues/1853
 
 class IPAddressField(serializers.CharField):
-
-    def run_validation(self, data=empty):
-        value = super(IPAddressField, self).run_validation(data)
-        validate_ipv4_address_within_list(value)
-        return value
+    def __init__(self, **kwargs):
+        super(IPAddressField, self).__init__(**kwargs)
+        ip_validators, _ = validators.ip_address_validators(protocol='ipv4', unpack_ipv4=False)
+        self.validators += ip_validators
 
 
 class FakeListField(serializers.ListField):

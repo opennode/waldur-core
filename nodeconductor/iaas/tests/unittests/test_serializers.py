@@ -78,7 +78,7 @@ class InstanceCreateSerializer2Test(TestCase):
 
     def test_external_ips_must_contain_valid_ip_address(self):
         errors = self.get_deserialization_errors(external_ips=['foobar'])
-        self.assertDictContainsSubset({'external_ips': ['Enter a list of valid IPv4 addresses.']}, errors)
+        self.assertDictContainsSubset({'external_ips': ['Enter a valid IPv4 address.']}, errors)
 
     def test_external_ips_set_to_empty_list_deserializes_to_none(self):
         instance = self.deserialize_instance(external_ips=[])
