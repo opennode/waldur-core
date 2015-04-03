@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
+from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
 
@@ -28,36 +29,39 @@ def _backup_schedule_list_url():
 class BackupScheduleUsageTest(test.APISimpleTestCase):
 
     def setUp(self):
-        self.user = structure_factories.UserFactory.create(is_staff=True, is_superuser=True)
+        self.user = structure_factories.UserFactory.create(is_staff=True)
         self.client.force_authenticate(user=self.user)
-
-    def test_backup_schedule_creation(self):
         backupable = iaas_factories.InstanceFactory()
-        backup_schedule_data = {
+        self.backup_schedule_data = {
             'retention_time': 3,
             'backup_source': iaas_factories.InstanceFactory.get_url(backupable),
             'schedule': '*/5 * * * *',
             'maximal_number_of_backups': 3,
         }
-        response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
+
+    def test_staff_can_create_backup_schedule(self):
+        response = self.client.post(_backup_schedule_list_url(), self.backup_schedule_data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['retention_time'], backup_schedule_data['retention_time'])
-        self.assertEqual(response.data['maximal_number_of_backups'], backup_schedule_data['maximal_number_of_backups'])
-        self.assertEqual(response.data['schedule'], backup_schedule_data['schedule'])
+        self.assertEqual(response.data['retention_time'], self.backup_schedule_data['retention_time'])
+        self.assertEqual(
+            response.data['maximal_number_of_backups'], self.backup_schedule_data['maximal_number_of_backups'])
+        self.assertEqual(response.data['schedule'], self.backup_schedule_data['schedule'])
 
-        # XXX: this test should be uncommented after CronField refactoring (NC-443)
-        # # wrong schedule:
-        # backup_schedule_data['schedule'] = 'wrong schedule'
-        # response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
-        # self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        # self.assertIn('schedule', response.content)
+    @unittest.skip('This test should pass after CronField refactoring (NC-443).')
+    def test_backup_schedule_can_not_be_created_with_wrong_schedule(self):
+        # wrong schedule:
+        self.backup_schedule_data['schedule'] = 'wrong schedule'
+        response = self.client.post(_backup_schedule_list_url(), self.backup_schedule_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('schedule', response.content)
 
+    def test_backup_schedule_can_not_be_created_with_wrong_source(self):
         # wrong backup source:
-        backup_schedule_data['schedule'] = '*/5 * * * *'
+        self.backup_schedule_data['schedule'] = '*/5 * * * *'
         backup = factories.BackupFactory()
         unbackupable_url = 'http://testserver' + reverse('backup-detail', args=(backup.uuid, ))
-        backup_schedule_data['backup_source'] = unbackupable_url
-        response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
+        self.backup_schedule_data['backup_source'] = unbackupable_url
+        response = self.client.post(_backup_schedule_list_url(), self.backup_schedule_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('backup_source', response.content)
 
