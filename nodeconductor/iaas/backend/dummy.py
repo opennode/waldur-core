@@ -11,16 +11,31 @@ from nodeconductor.iaas.backend import CloudBackendError
 AssertionError = CloudBackendError
 
 
+class Resource(object):
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+    def __repr__(self):
+        reprkeys = sorted(self.__dict__.keys())
+        info = ", ".join("%s=%s" % (k, getattr(self, k)) for k in reprkeys)
+        return "<%s %s>" % (self.__class__.__name__, info)
+
+
+gen_id = lambda: uuid.uuid4().hex
+gen_resource = lambda cls_name, **kwargs: type(cls_name, (Resource,), {})(**kwargs)
+
+
 class KeystoneClient(object):
     """ Dummy OpenStack identity service """
     VERSION = '0.9.0'
 
     class Auth(object):
-        auth_url = 'http://aio.openstack.lab:5000/v2.0'
-        username = 'admin'
-        password = 'adminpass'
+        # Alice data set
+        auth_url = 'http://keystone.example.com:5000/v2.0'
+        username = 'test_user'
+        password = 'test_password'
         tenant_id = '593af1f7b67b4d63b691fcabd2dad126'
-        tenant_name = 'admin'
+        tenant_name = 'test_tenant'
         auth_ref = dict(
             version='v2.0',
             metadata={
@@ -28,12 +43,12 @@ class KeystoneClient(object):
                 'roles': '4811ade6c9e2484baec5fc504d826143',
             },
             token={
-                'id': uuid.uuid4().get_hex(),
+                'id': gen_id(),
                 'issued_at': datetime.now().strftime('%Y-%m-%dT%T'),
                 'expires': (datetime.now() + timedelta(hours=1)).strftime('%Y-%m-%dT%TZ%z'),
                 'tenant': {
                     'id': '593af1f7b67b4d63b691fcabd2dad126',
-                    'name': 'admin',
+                    'name': 'test_tenant',
                     'enabled': True,
                     'description': None,
                 }
@@ -41,10 +56,10 @@ class KeystoneClient(object):
             serviceCatalog=[
                 {
                     'endpoints': [{
-                        'adminURL': 'http://aio.openstack.lab:8776/v1/593af1f7b67b4d63b691fcabd2dad126',
+                        'adminURL': 'http://keystone.example.com:8776/v1/593af1f7b67b4d63b691fcabd2dad126',
                         'id': '18e175c6b9c3461b85ed0d1d7112f126',
-                        'internalURL': 'http://aio.openstack.lab:8776/v1/593af1f7b67b4d63b691fcabd2dad126',
-                        'publicURL': 'http://aio.openstack.lab:8776/v1/593af1f7b67b4d63b691fcabd2dad126',
+                        'internalURL': 'http://keystone.example.com:8776/v1/593af1f7b67b4d63b691fcabd2dad126',
+                        'publicURL': 'http://keystone.example.com:8776/v1/593af1f7b67b4d63b691fcabd2dad126',
                         'region': 'openstack.lab'}],
                     'endpoints_links': [],
                     'name': 'cinder',
@@ -52,10 +67,10 @@ class KeystoneClient(object):
                 },
                 {
                     'endpoints': [{
-                        'adminURL': 'http://aio.openstack.lab:9292',
+                        'adminURL': 'http://keystone.example.com:9292',
                         'id': '2fe99365c3d3497e9397f0780a79fef2',
-                        'internalURL': 'http://aio.openstack.lab:9292',
-                        'publicURL': 'http://aio.openstack.lab:9292',
+                        'internalURL': 'http://keystone.example.com:9292',
+                        'publicURL': 'http://keystone.example.com:9292',
                         'region': 'openstack.lab'}],
                     'endpoints_links': [],
                     'name': 'glance',
@@ -63,10 +78,10 @@ class KeystoneClient(object):
                 },
                 {
                     'endpoints': [{
-                        'adminURL': 'http://aio.openstack.lab:8774/v2/593af1f7b67b4d63b691fcabd2dad126',
+                        'adminURL': 'http://keystone.example.com:8774/v2/593af1f7b67b4d63b691fcabd2dad126',
                         'id': '43d0b7b6e0a64fa8a87fb5a9a791ba20',
-                        'internalURL': 'http://aio.openstack.lab:8774/v2/593af1f7b67b4d63b691fcabd2dad126',
-                        'publicURL': 'http://aio.openstack.lab:8774/v2/593af1f7b67b4d63b691fcabd2dad126',
+                        'internalURL': 'http://keystone.example.com:8774/v2/593af1f7b67b4d63b691fcabd2dad126',
+                        'publicURL': 'http://keystone.example.com:8774/v2/593af1f7b67b4d63b691fcabd2dad126',
                         'region': 'openstack.lab'}],
                     'endpoints_links': [],
                     'name': 'nova',
@@ -74,10 +89,10 @@ class KeystoneClient(object):
                 },
                 {
                     'endpoints': [{
-                        'adminURL': 'http://aio.openstack.lab:9696',
+                        'adminURL': 'http://keystone.example.com:9696',
                         'id': '80383258a8f54f808518fa181c408722',
-                        'internalURL': 'http://aio.openstack.lab:9696',
-                        'publicURL': 'http://aio.openstack.lab:9696',
+                        'internalURL': 'http://keystone.example.com:9696',
+                        'publicURL': 'http://keystone.example.com:9696',
                         'region': 'openstack.lab'}],
                     'endpoints_links': [],
                     'name': 'neutron',
@@ -85,10 +100,10 @@ class KeystoneClient(object):
                 },
                 {
                     'endpoints': [{
-                        'adminURL': 'http://aio.openstack.lab:35357/v2.0',
+                        'adminURL': 'http://keystone.example.com:35357/v2.0',
                         'id': '80637393e901499fac781232394ad67b',
-                        'internalURL': 'http://aio.openstack.lab:5000/v2.0',
-                        'publicURL': 'http://aio.openstack.lab:5000/v2.0',
+                        'internalURL': 'http://keystone.example.com:5000/v2.0',
+                        'publicURL': 'http://keystone.example.com:5000/v2.0',
                         'region': 'openstack.lab'}],
                     'endpoints_links': [],
                     'name': 'keystone',
@@ -121,25 +136,48 @@ class KeystoneClient(object):
             self.auth = KeystoneClient.Auth(**credentials)
 
             assert auth.auth_url == self.auth.auth_url, \
-                "Unable to establish connection to %s" % self.auth_url
+                "Unable to establish connection to %s" % auth.auth_url
 
         def get_token(self):
             return self.auth.auth_token
 
-    class Tenant(object):
+    class Tenant(Resource):
         TENANTS = [
-            {'name': 'admin', 'id': '593af1f7b67b4d63b691fcabd2dad126', 'enabled': True, 'description': None},
+            {'name': 'test_tenant', 'id': '593af1f7b67b4d63b691fcabd2dad126', 'enabled': True, 'description': None},
             {'name': 'service', 'id': '934aecea696f402b9e98f624184130c8', 'enabled': True, 'description': None},
         ]
 
+        def __init__(self, **kwargs):
+            super(KeystoneClient.Tenant, self).__init__(**kwargs)
+            self.tenants = [gen_resource('Tenant', **t) for t in self.TENANTS]
+
         def list(self):
-            return self.TENANTS
+            return self.tenants
 
-        def find(**kwargs):
-            raise NotImplementedError()
+        def find(self, name=None):
+            if not isinstance(name, basestring):
+                raise CloudBackendError("Invalid name")
 
-        def create(**kwargs):
-            raise NotImplementedError()
+            for t in self.list():
+                if t.name == name:
+                    return t
+            raise CloudBackendError("Tenant not found")
+
+        def create(self, tenant_name=None, description=None):
+            try:
+                self.find(name=tenant_name)
+            except:
+                tenant = gen_resource(
+                    'Tenant',
+                    id=gen_id(),
+                    name=tenant_name,
+                    description=description,
+                    enabled=True)
+
+                self.tenants.append(tenant)
+                return tenant
+
+            raise CloudBackendError("Conflict occurred attempting to create tenant")
 
     def __init__(self, auth_ref=None):
         self.auth_ref = access.AccessInfo.factory(**auth_ref)

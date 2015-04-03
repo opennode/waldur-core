@@ -6,14 +6,14 @@ import functools
 from celery import shared_task
 
 from nodeconductor.iaas.models import Instance
-from nodeconductor.iaas.backend.openstack import OpenStackCoreBackend
+from nodeconductor.iaas.backend.openstack import OpenStackBackend
 from nodeconductor.core.tasks import throttle, retry_if_false
 
 
 def track_openstack_session(task_fn):
     @functools.wraps(task_fn)
     def wrapped(tracked_session, *args, **kwargs):
-        session = OpenStackCoreBackend.recover_session(tracked_session)
+        session = OpenStackBackend.recover_session(tracked_session)
         session.validate()
         task_fn(session, *args, **kwargs)
         return session
@@ -22,7 +22,7 @@ def track_openstack_session(task_fn):
 
 @shared_task
 def openstack_create_session(**kwargs):
-    return OpenStackCoreBackend.create_session(**kwargs)
+    return OpenStackBackend.create_session(**kwargs)
 
 
 @shared_task
