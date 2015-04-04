@@ -60,7 +60,7 @@ should link instance to user's SSH public key. Example of valid request:
     Host: example.com
 
     {
-        "hostname": "test VM",
+        "name": "test VM",
         "template": "http://example.com/api/iaas-templates/1ee385bc043249498cfeb8c7e3e079f0/",
         "flavor": "http://example.com/api/flavors/c3c546b92845431188636d8f97df223c/",
         "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
@@ -91,7 +91,7 @@ Example of a valid response:
     {
         "url": "http://example.com/api/instances/2751a59a41834b079936bc2142ddb22f/",
         "uuid": "2751a59a41834b079936bc2142ddb22f",
-        "hostname": "test VM",
+        "name": "test VM",
         "description": "description1",
         "start_time": "2014-10-22T08:12:55.028Z",
         "template": "http://example.com/api/iaas-templates/7826f6ab0e32490b9f408de41bab2458/",

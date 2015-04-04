@@ -125,9 +125,9 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
         if obj:
             return ['template']
         return []
-    ordering = ('hostname',)
-    list_display = ['hostname', 'uuid', 'backend_id', 'state', 'get_project_name', 'template']
-    search_fields = ['hostname', 'uuid']
+    ordering = ('name',)
+    list_display = ['name', 'uuid', 'backend_id', 'state', 'get_project_name', 'template']
+    search_fields = ['name', 'uuid']
     list_filter = ['state', 'cloud_project_membership__project', 'template']
 
     def get_project_name(self, obj):

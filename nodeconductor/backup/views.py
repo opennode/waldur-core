@@ -71,9 +71,8 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
             return Response({'status': 'BackupSchedule is already activated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = True
         schedule.save()
-        # TODO: Instance's hostname should be converted to the name field (NC-367)
         event_logger.info(
-            'Backup schedule for %s has been activated.', schedule.backup_source.hostname,
+            'Backup schedule for %s has been activated.', schedule.backup_source.name,
             extra={'backup_schedule': schedule, 'event_type': 'iaas_backup_schedule_activated'}
         )
         return Response({'status': 'BackupSchedule was activated'})
@@ -85,9 +84,8 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
             return Response({'status': 'BackupSchedule is already deactivated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = False
         schedule.save()
-        # TODO: Instance's hostname should be converted to the name field (NC-367)
         event_logger.info(
-            'Backup schedule for %s has been deactivated.', schedule.backup_source.hostname,
+            'Backup schedule for %s has been deactivated.', schedule.backup_source.name,
             extra={'backup_schedule': schedule, 'event_type': 'iaas_backup_schedule_deactivated'}
         )
         return Response({'status': 'BackupSchedule was deactivated'})
