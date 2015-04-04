@@ -10,6 +10,7 @@ Release 0.43.0
 --------------
 - Extended IaaS template filtering.
 - Extended IaaS template with os_type and icon_name fields.
+- Renamed 'hostname' field to 'name' in Instance and Resources.
 
 Release 0.42.0
 --------------
