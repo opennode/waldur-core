@@ -227,7 +227,7 @@ class InstanceFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.Instance
 
-    hostname = factory.Sequence(lambda n: 'host%s' % n)
+    name = factory.Sequence(lambda n: 'host%s' % n)
     template = factory.SubFactory(TemplateFactory)
 
     start_time = factory.LazyAttribute(lambda o: timezone.now())

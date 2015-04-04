@@ -69,7 +69,7 @@ operations:
   Supported inputs for VM Instance:
 
   - flavor - url to a flavor used for restoration. Mandatory.
-  - hostname - Hostname of the restored VM. Optional (equals to the hostname of the original VM by default).
+  - hostname **deprecated**, use name instead; - Name of the restored VM. Optional (equals to the name of the original VM by default).
 
 - **/api/backup/<backup_uuid>/delete/** - delete a specified backup
 

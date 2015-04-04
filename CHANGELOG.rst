@@ -6,6 +6,11 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.43.0
+--------------
+- Extended IaaS template filtering.
+- Extended IaaS template with os_type and icon_name fields.
+
 Release 0.42.0
 --------------
 - Refactored OpenStack backups to use snapshots instead of full volume backups.

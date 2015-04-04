@@ -159,7 +159,7 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
-    hostname = django_filters.CharFilter(lookup_type='icontains')
+    name = django_filters.CharFilter(lookup_type='icontains')
     state = django_filters.CharFilter()
     description = django_filters.CharFilter(
         lookup_type='icontains',
@@ -171,7 +171,7 @@ class InstanceFilter(django_filters.FilterSet):
     class Meta(object):
         model = models.Instance
         fields = [
-            'hostname',
+            'name',
             'customer_name',
             'customer_native_name',
             'customer_abbreviation',
@@ -190,8 +190,8 @@ class InstanceFilter(django_filters.FilterSet):
             'created',
         ]
         order_by = [
-            'hostname',
-            '-hostname',
+            'name',
+            '-name',
             'state',
             '-state',
             'cloud_project_membership__project__customer__name',
@@ -325,12 +325,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def post_save(self, obj, created=False):
         super(InstanceViewSet, self).post_save(obj, created)
         if created:
-            event_logger.info('Virtual machine %s creation has been scheduled.', obj.hostname,
+            event_logger.info('Virtual machine %s creation has been scheduled.', obj.name,
                               extra={'instance': obj, 'event_type': 'iaas_instance_creation_scheduled'})
             tasks.provision_instance.delay(obj.uuid.hex, backend_flavor_id=obj.flavor.backend_id)
             return
 
-        event_logger.info('Virtual machine %s has been updated.', obj.hostname,
+        event_logger.info('Virtual machine %s has been updated.', obj.name,
                           extra={'instance': obj, 'event_type': 'iaas_instance_update_succeeded'})
 
         # We care only about update flow
@@ -359,7 +359,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def stop(self, request, instance, uuid=None):
         logger_info = dict(
             message='Virtual machine %s has been scheduled to stop.',
-            context=instance.hostname,
+            context=instance.name,
             extra={'instance': instance, 'event_type': 'iaas_instance_stop_scheduled'}
         )
         return 'stop', logger_info
@@ -369,7 +369,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def start(self, request, instance, uuid=None):
         logger_info = dict(
             message='Virtual machine %s has been scheduled to start.',
-            context=instance.hostname,
+            context=instance.name,
             extra={'instance': instance, 'event_type': 'iaas_instance_start_scheduled'}
         )
         return 'start', logger_info
@@ -379,7 +379,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def restart(self, request, instance, uuid=None):
         logger_info = dict(
             message='Virtual machine %s has been scheduled to restart.',
-            context=instance.hostname,
+            context=instance.name,
             extra={'instance': instance, 'event_type': 'iaas_instance_restart_scheduled'}
         )
         return 'restart', logger_info
@@ -399,7 +399,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         logger_info = dict(
             message='Virtual machine %s has been scheduled to deletion.',
-            context=instance.hostname,
+            context=instance.name,
             extra={'instance': instance, 'event_type': 'iaas_instance_deletion_scheduled'}
         )
         return 'destroy', logger_info
@@ -434,7 +434,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
             logger_info = dict(
                 message='Virtual machine %s has been scheduled to change flavor.',
-                context=instance.hostname,
+                context=instance.name,
                 extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_scheduled'}
             )
             return 'flavor change', logger_info, dict(flavor_uuid=flavor.uuid.hex)
@@ -450,7 +450,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
             logger_info = dict(
                 message='Virtual machine %s has been scheduled to extend disk.',
-                context=instance.hostname,
+                context=instance.name,
                 extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_scheduled'}
             )
             return 'disk extension', logger_info
@@ -479,6 +479,20 @@ class InstanceViewSet(mixins.CreateModelMixin,
         return Response(stats, status=status.HTTP_200_OK)
 
 
+class TemplateFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
+
+    class Meta(object):
+        model = models.Template
+        fields = [
+            'os',
+            'os_type',
+            'name',
+        ]
+
+
 class TemplateViewSet(core_viewsets.ModelViewSet):
     """
     List of VM templates that are accessible by this user.
@@ -490,6 +504,8 @@ class TemplateViewSet(core_viewsets.ModelViewSet):
     serializer_class = serializers.TemplateSerializer
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     lookup_field = 'uuid'
+    filter_backends = (DjangoMappingFilterBackend,)
+    filter_class = TemplateFilter
 
     def get_serializer_class(self):
         if self.request.method in ('POST', 'PUT', 'PATCH'):
@@ -662,7 +678,7 @@ class ServiceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
-    hostname = django_filters.CharFilter(lookup_type='icontains')
+    name = django_filters.CharFilter(lookup_type='icontains')
     customer_name = django_filters.CharFilter(
         name='cloud_project_membership__project__customer__name',
         lookup_type='icontains',
@@ -690,7 +706,7 @@ class ServiceFilter(django_filters.FilterSet):
     class Meta(object):
         model = models.Instance
         fields = [
-            'hostname',
+            'name',
             'template_name',
             'customer_name',
             'customer_native_name',
@@ -701,7 +717,7 @@ class ServiceFilter(django_filters.FilterSet):
             'actual_sla',
         ]
         order_by = [
-            'hostname',
+            'name',
             'template__name',
             'cloud_project_membership__project__customer__name',
             'cloud_project_membership__project__customer__abbreviation',
@@ -711,7 +727,7 @@ class ServiceFilter(django_filters.FilterSet):
             'agreed_sla',
             'slas__value',
             # desc
-            '-hostname',
+            '-name',
             '-template__name',
             '-cloud_project_membership__project__customer__name',
             '-cloud_project_membership__project__customer__abbreviation',

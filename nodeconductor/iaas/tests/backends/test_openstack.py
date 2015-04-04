@@ -725,7 +725,7 @@ class OpenStackBackendInstanceApiTest(TransactionTestCase):
         # server = mock.Mock(spec_set=NovaServer)
         server = mock.Mock()
         server.id = 'server-uuid-1'
-        server.name = 'hostname-1'
+        server.name = 'name-1'
         server.flavor = {
             'id': flavor.id,
             'links': [

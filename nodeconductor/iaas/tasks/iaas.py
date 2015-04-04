@@ -356,5 +356,5 @@ def sync_instances_with_zabbix():
 @shared_task
 def sync_instance_with_zabbix(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
-    logger.info('Synchronizing instance %s with zabbix', instance.uuid, exc_info=1)
+    logger.debug('Synchronizing instance %s with zabbix', instance.uuid, exc_info=1)
     create_zabbix_host_and_service(instance, warn_if_exists=False)
