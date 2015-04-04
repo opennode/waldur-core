@@ -201,8 +201,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'nodeconductor.tex', u'nodeconductor Documentation',
-   u'OpenNode', 'manual'),
+  ('index', 'nodeconductor.tex', u'NodeConductor Documentation',
+   u'Guide and API Reference', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
