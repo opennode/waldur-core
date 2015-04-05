@@ -165,7 +165,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         # the new cloud should not be visible to the user
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset(
-            {'cloud': ['Invalid hyperlink - object does not exist.']}, response.data)
+            {'cloud': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     def test_user_cannot_revoke_cloud_and_project_permission_if_he_is_project_manager(self):
         user = self.users['manager']

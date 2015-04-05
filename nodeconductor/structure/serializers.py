@@ -15,14 +15,6 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 User = auth.get_user_model()
 
 
-# TODO: cleanup after migration to drf 3. Assures that non-nullable fields get empty value
-def fix_non_nullable_attrs(attrs):
-    import warnings
-    warnings.warn('fix_non_nullable_attrs is deprecated. '
-                  'Remove it as it is no-op now.', DeprecationWarning)
-    return attrs
-
-
 class PermissionFieldFilteringMixin(object):
     """
     Mixin allowing to filter related fields.

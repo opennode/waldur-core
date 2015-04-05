@@ -14,6 +14,7 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
         read_only_fields = ('is_active', 'backups')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
+            'backups': {'lookup_field': 'uuid'},
         }
 
 
@@ -27,4 +28,5 @@ class BackupSerializer(serializers.HyperlinkedModelSerializer):
         read_only_fields = ('created_at', 'kept_until', 'backup_schedule')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
+            'backup_schedule': {'lookup_field': 'uuid'},
         }

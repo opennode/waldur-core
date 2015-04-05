@@ -14,7 +14,7 @@ class QuotaViewSet(mixins.UpdateModelMixin,
     serializer_class = serializers.QuotaSerializer
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated,)
-    paginate_by = None
+    pagination_class = None
 
     def get_queryset(self):
         return models.Quota.objects.filtered_for_user(self.request.user)

@@ -4,13 +4,9 @@ from django.core import validators
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.urlresolvers import reverse, resolve, Resolver404
 from rest_framework import serializers
-from rest_framework.fields import Field
+from rest_framework.fields import Field, ReadOnlyField
 
 from nodeconductor.core.signals import pre_serializer_fields
-
-validate_ipv4_address_within_list = validators.RegexValidator(
-    validators.ipv4_re, 'Enter a list of valid IPv4 addresses.',
-    'invalid')
 
 
 class AuthTokenSerializer(serializers.Serializer):
@@ -36,31 +32,14 @@ class Base64Field(serializers.CharField):
         return base64.b64encode(value)
 
 
-class IPsField(serializers.CharField):
-    def to_native(self, value):
-        value = super(IPsField, self).to_native(value)
-        if value is None:
-            return []
-        else:
-            return [value]
+# XXX: this field has to be replaced with default drf IPAddressField after it implementation:
+# https://github.com/tomchristie/django-rest-framework/issues/1853
 
-    def from_native(self, value):
-        if value in validators.EMPTY_VALUES:
-            return None
-
-        if not isinstance(value, (list, tuple)):
-            raise validators.ValidationError('Enter a list of valid IPv4 addresses.')
-
-        value_count = len(value)
-        if value_count > 1:
-            raise validators.ValidationError('Only one ip address is supported.')
-        elif value_count == 1:
-            value = value[0]
-            validate_ipv4_address_within_list(value)
-        else:
-            value = None
-
-        return value
+class IPAddressField(serializers.CharField):
+    def __init__(self, **kwargs):
+        super(IPAddressField, self).__init__(**kwargs)
+        ip_validators, _ = validators.ip_address_validators(protocol='ipv4', unpack_ipv4=False)
+        self.validators += ip_validators
 
 
 class Saml2ResponseSerializer(serializers.Serializer):
@@ -75,7 +54,7 @@ class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
         }
 
 
-class UnboundSerializerMethodField(Field):
+class UnboundSerializerMethodField(ReadOnlyField):
     """
     A field that gets its value by calling a provided filter callback.
     """
@@ -84,14 +63,9 @@ class UnboundSerializerMethodField(Field):
         self.filter_function = filter_function
         super(UnboundSerializerMethodField, self).__init__(*args, **kwargs)
 
-    def field_to_native(self, obj, field_name):
-        try:
-            request = self.context['request']
-        except KeyError:
-            return self.to_native(obj)
-
-        value = self.filter_function(obj, request)
-        return self.to_native(value)
+    def to_representation(self, value):
+        request = self.context.get('request')
+        return self.filter_function(value, request)
 
 
 class GenericRelatedField(Field):
@@ -286,34 +260,6 @@ class AugmentedSerializerMixin(object):
             return serializers.ReadOnlyField, {'source': related_field_source_map[field_name]}
         except KeyError:
             return super(AugmentedSerializerMixin, self).build_unknown_field(field_name, model_class)
-
-
-class CollectedFieldsMixin(AugmentedSerializerMixin):
-    def __init__(self, *args, **kwargs):
-        import warnings
-
-        warnings.warn(
-            "CollectedFieldsMixin is deprecated. "
-            "Use AugmentedSerializerMixin instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        super(CollectedFieldsMixin, self).__init__(*args, **kwargs)
-
-
-class RelatedResourcesFieldMixin(AugmentedSerializerMixin):
-    def __init__(self, *args, **kwargs):
-        import warnings
-
-        warnings.warn(
-            "RelatedResourcesFieldMixin is deprecated. "
-            "Use AugmentedSerializerMixin instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        super(RelatedResourcesFieldMixin, self).__init__(*args, **kwargs)
 
 
 class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):

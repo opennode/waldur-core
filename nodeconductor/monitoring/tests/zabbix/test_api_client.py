@@ -1,5 +1,8 @@
+from __future__ import unicode_literals
+
+import unittest
+
 from django.conf import settings
-from django.utils import unittest
 from mock import Mock
 from pyzabbix import ZabbixAPIException
 

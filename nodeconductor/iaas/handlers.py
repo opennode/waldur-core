@@ -15,8 +15,8 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 logger = logging.getLogger('nodeconductor.iaas')
 
 
-def get_related_clouds(obj, request):
-    related_clouds = obj.clouds.all()
+def filter_clouds(clouds, request):
+    related_clouds = clouds.all()
 
     try:
         user = request.user
@@ -32,7 +32,7 @@ def get_related_clouds(obj, request):
 
 
 def add_clouds_to_related_model(sender, fields, **kwargs):
-    fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
+    fields['clouds'] = UnboundSerializerMethodField(filter_clouds)
 
 
 def propagate_new_users_key_to_his_projects_clouds(sender, instance=None, created=False, **kwargs):
