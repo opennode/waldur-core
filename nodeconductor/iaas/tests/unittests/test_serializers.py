@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 
-import unittest
-
 from django.test import TestCase, RequestFactory
 from rest_framework.serializers import ValidationError
+from rest_framework.test import APIRequestFactory
 
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas.tests import factories
@@ -188,9 +187,7 @@ class CloudProjectMembershipQuotaSerializerTest(TestCase):
         self.assertTrue('some_strange_quota_name' not in serializer.data)
 
 
-# XXX: This tests should be moved to template application
 class IaasTemplateServiceTest(TestCase):
-
     def setUp(self):
         self.cloud = factories.CloudFactory()
         self.flavor = factories.FlavorFactory(cloud=self.cloud)
@@ -202,15 +199,17 @@ class IaasTemplateServiceTest(TestCase):
             flavor=self.flavor,
             image=self.image)
 
-    @unittest.skip('This test should pass after "template" app migration to drf3')
     def test_create_template_service(self):
         iaas_template_service = self.template.services.first()
         self.assertIsNotNone(iaas_template_service)
         self.assertIsInstance(iaas_template_service, factories.IaasTemplateServiceFactory._meta.model)
         self.assertEqual(iaas_template_service.service, self.cloud)
 
-    @unittest.skip('This test should pass after "template" app migration to drf3')
     def test_template_serializer_returns_proper_service_type(self):
-        serializer = template_serializers.TemplateSerializer(instance=self.template)
+        factory = APIRequestFactory()
+        request = factory.get('/')
+        context = {'request': request}
+
+        serializer = template_serializers.TemplateSerializer(instance=self.template, context=context)
         service_type = serializer.data['services'][0].get('service_type')
         self.assertEqual(service_type, 'IaaS')
