@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.core.validators import MaxLengthValidator
 from django.db import IntegrityError
@@ -265,7 +264,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
                 cloud_project_membership=membership,
             ).exists()
             if not ip_exists:
-                raise ValidationError("External IP is not from the list of available floating IPs.")
+                raise serializers.ValidationError("External IP is not from the list of available floating IPs.")
 
         template = attrs['template']
 
@@ -660,22 +659,6 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
-
-    def validate(self, attrs):
-        """
-        Check that the start is before the stop.
-        """
-        try:
-            request = self.context['request']
-            user = request.user
-        except (KeyError, AttributeError):
-            return attrs
-
-        name = attrs['name']
-        if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
-            raise serializers.ValidationError('SSH key name is not unique for a user')
-        attrs['user'] = user
-        return attrs
 
     def get_fields(self):
         fields = super(SshKeySerializer, self).get_fields()

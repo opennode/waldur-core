@@ -36,6 +36,8 @@ class SshKeyCreateDeleteTest(test.APITransactionTestCase):
 
         response = self.client.post(factories.SshPublicKeyFactory.get_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'name': ['This field must be unique.']}, response.data)
 
     def test_valid_key_creation(self):
         self.client.force_authenticate(self.user)

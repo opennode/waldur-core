@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from collections import defaultdict
 import functools
 import datetime
 import logging
@@ -17,6 +16,7 @@ from rest_framework import exceptions
 from rest_framework import filters
 from rest_framework import mixins
 from rest_framework import permissions, status
+from rest_framework import serializers as rf_serializers
 from rest_framework import viewsets, views
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route, list_route
@@ -519,6 +519,15 @@ class SshKeyViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = SshKeyFilter
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        name = serializer.validated_data['name']
+
+        if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
+            raise rf_serializers.ValidationError({'name': ['This field must be unique.']})
+
+        serializer.save(user=user)
 
     def get_queryset(self):
         queryset = super(SshKeyViewSet, self).get_queryset()
