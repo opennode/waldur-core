@@ -9,7 +9,7 @@ only see connected instances:
 
 Filtering of instance list is supported through HTTP query parameters, the following fields are supported:
 
-- ?hostname=<hostname>
+- ?hostname=<hostname> **deprecated**, use ?name=<name> instead
 - ?customer_name=<customer name>
 - ?customer_native_name=<customer native name>
 - ?customer_abbreviation=<customer abbreviation>
@@ -28,7 +28,7 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 
 Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
 
-- ?o=hostname - sort by hostname
+- ?o=hostname **deprecated**, use ?o=name instead - sort by name (deprecated: ?o=hostname)
 - ?o=state - sort by state
 - ?o=customer_name - sort by customer name
 - ?o=customer_native_name - sort by customer native name
@@ -99,7 +99,7 @@ Create a new instance
 A new instance can be created by users with project administrator role or with staff privilege (is_staff=True).
 To create a instance, client must define:
 
-- hostname;
+- hostname **deprecated**, use name instead;
 - description (optional);
 - link to the template object (it *must* be connected to a cloud, which is authorized for usage in the project);
 - link to the flavor (it *must* belong to a cloud, which is authorized for usage in the project);
@@ -122,7 +122,7 @@ Example of a valid request:
     Host: example.com
 
     {
-        "hostname": "test VM",
+        "name": "test VM",
         "description": "sample description",
         "template": "http://example.com/api/iaas-templates/1ee385bc043249498cfeb8c7e3e079f0/",
         "flavor": "http://example.com/api/flavors/c3c546b92845431188636d8f97df223c/",
@@ -150,7 +150,7 @@ Example rendering of the Instance object:
         {
             "url": "http://example.com/api/instances/20602b6283c446ad9420b3230bb83dc5/",
             "uuid": "20602b6283c446ad9420b3230bb83dc5",
-            "hostname": "host 123",
+            "name": "host 123",
             "description": "My instance",
             "start_time": "2014-12-15T05:54:38.605Z",
             "template": "http://localhost:8000/api/iaas-templates/0e2d11a10e3441c79152d77ba023c144/",

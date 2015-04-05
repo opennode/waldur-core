@@ -45,12 +45,12 @@ class BackupFactory(factory.DjangoModelFactory):
         self.metadata.update(
             {
                 'cloud_project_membership': self.backup_source.cloud_project_membership.pk,
-                'hostname': 'original.vm.hostname',
+                'name': 'original.vm.name',
                 'template': template.pk,
-                'system_volume_id': self.backup_source.system_volume_id,
-                'system_volume_size': self.backup_source.system_volume_size,
-                'data_volume_id': self.backup_source.data_volume_id,
-                'data_volume_size': self.backup_source.data_volume_size,
+                'system_snapshot_id': self.backup_source.system_volume_id,
+                'system_snapshot_size': self.backup_source.system_volume_size,
+                'data_snapshot_id': self.backup_source.data_volume_id,
+                'data_snapshot_size': self.backup_source.data_volume_size,
                 'key_name': self.backup_source.key_name,
                 'key_fingerprint': self.backup_source.key_name,
                 'agreed_sla': self.backup_source.agreed_sla,

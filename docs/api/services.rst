@@ -6,7 +6,7 @@ and actual SLA values are shown.
 
 Supported filters are:
 
-- ?hostname - case insensitive matching of a hostname
+- ?hostname **deprecated**, use ?name instead; - case insensitive matching of a name
 - ?service_name - case insensitive matching of a service name
 - ?customer_name - case insensitive matching of a customer name
 - ?customer_native_name - case insensitive matching of a customer native name
@@ -19,7 +19,7 @@ Supported filters are:
 
 Ordering can be done by the following fields (prefix with **-** for descending order):
 
-- ?o=hostname
+- ?o=hostname **deprecated**, use ?o=name instead;
 - ?o=template_name
 - ?o=customer_name
 - ?o=customer_abbreviation
@@ -51,7 +51,7 @@ Response example:
             "url": "http://127.0.0.1:8000/api/services/0356addb8e9742e7b984ebcaf5912c6b/",
             "uuid": "0356addb8e9742e7b984ebcaf5912c6b",
             "state": "Offline",
-            "hostname": "FromBackup777",
+            "name": "FromBackup777",
             "template_name": "cirros-0.3.1-x86_64",
             "customer_name": "The Ministry of Civil Service",
             "customer_native_name": "The Ministry of Civil Service",

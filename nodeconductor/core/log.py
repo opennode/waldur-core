@@ -117,7 +117,11 @@ class EventFormatter(logging.Formatter):
             lambda _: extract_instance('backup'),
             lambda _: extract_instance('backup_schedule'),
         )
-        self.add_related_details(message, instance, 'iaas_instance', 'hostname')
+        self.add_related_details(message, instance, 'iaas_instance', 'name')
+
+        # flavor
+        flavor = self.get_related('flavor', instance)
+        self.add_related_details(message, flavor, 'iaas_instance_flavor', 'name', 'cores', 'ram', 'disk')
 
         # cloud project membership
         membership = self.get_related('cloud_project_membership', instance)

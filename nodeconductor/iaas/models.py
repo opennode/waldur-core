@@ -14,7 +14,6 @@ from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleBaseField
-from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.template.models import TemplateService
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure import models as structure_models
@@ -23,13 +22,30 @@ from nodeconductor.structure import models as structure_models
 logger = logging.getLogger(__name__)
 
 
-def validate_known_keystone_urls(value):
-    from nodeconductor.iaas.backend.openstack import OpenStackBackend
+@python_2_unicode_compatible
+class OpenStackSettings(models.Model):
+    """ OpenStack deployment admin credentials and settings """
 
-    backend = OpenStackBackend()
-    try:
-        backend.get_credentials(value)
-    except CloudBackendError:
+    auth_url = models.URLField(max_length=200, unique=True, help_text='Keystone endpoint url')
+    username = models.CharField(max_length=100)
+    password = models.CharField(max_length=100)
+    tenant_name = models.CharField(max_length=100)
+    availability_zone = models.CharField(max_length=100, blank=True)
+
+    def get_credentials(self):
+        options = ('auth_url', 'username', 'password', 'tenant_name')
+        return {opt: getattr(self, opt) for opt in options}
+
+    def __str__(self):
+        return self.auth_url
+
+    class Meta:
+        verbose_name = "OpenStack settings"
+        verbose_name_plural = "OpenStack settings"
+
+
+def validate_known_keystone_urls(value):
+    if not OpenStackSettings.objects.filter(auth_url=value).exists():
         raise ValidationError('%s is not a known OpenStack deployment.' % value)
 
 
@@ -58,6 +74,7 @@ class Cloud(core_models.UuidMixin, core_models.SynchronizableMixin, models.Model
         structure_models.Project, related_name='clouds', through='CloudProjectMembership')
 
     # OpenStack backend specific fields
+    # Consider replacing it with credentials FK
     auth_url = models.CharField(max_length=200, help_text='Keystone endpoint url',
                                 validators=[URLValidator(), validate_known_keystone_urls])
 
@@ -69,7 +86,7 @@ class Cloud(core_models.UuidMixin, core_models.SynchronizableMixin, models.Model
         return OpenStackBackend()
 
     def get_statistics(self):
-        return dict((s.key, s.value) for s in self.stats.all())
+        return {s.key: s.value for s in self.stats.all()}
 
     def __str__(self):
         return self.name
@@ -204,8 +221,18 @@ class Template(core_models.UuidMixin,
     """
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
     """
+    class OsTypes(object):
+        LINUX = 'Linux'
+        WINDOWS = 'Windows'
+        UNIX = 'Unix'
+        OTHER = 'Other'
+
+    SERVICE_TYPES = (
+        (OsTypes.LINUX, 'Linux'), (OsTypes.WINDOWS, 'Windows'), (OsTypes.UNIX, 'Unix'), (OsTypes.OTHER, 'Other'))
+
     name = models.CharField(max_length=100, unique=True)
     os = models.CharField(max_length=100, blank=True)
+    os_type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=OsTypes.LINUX)
     is_active = models.BooleanField(default=False)
     sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
@@ -214,6 +241,7 @@ class Template(core_models.UuidMixin,
     monthly_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
                                       validators=[MinValueValidator(Decimal('0.1')),
                                                   MaxValueValidator(Decimal('100000.0'))])
+    icon_name = models.CharField(max_length=100, blank=True)
 
     def __str__(self):
         return self.name
@@ -326,7 +354,7 @@ class Instance(core_models.UuidMixin,
     backups = ct_generic.GenericRelation('backup.Backup')
     backup_schedules = ct_generic.GenericRelation('backup.BackupSchedule')
 
-    hostname = models.CharField(max_length=80)
+    name = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
     external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
@@ -420,7 +448,7 @@ class Instance(core_models.UuidMixin,
         pass
 
     def __str__(self):
-        return self.hostname
+        return self.name
 
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)

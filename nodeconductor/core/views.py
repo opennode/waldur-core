@@ -64,7 +64,7 @@ class ObtainAuthToken(APIView):
 
         token, _ = Token.objects.get_or_create(user=user)
         event_logger.info(
-            "User '%s' with full name '%s' authenticated successfully with username and password",
+            "User %s with full name %s authenticated successfully with username and password",
             user.username, user.full_name,
             extra={'user': user, 'event_type': 'auth_logged_in_with_username'})
         logger.debug('Returning token for successful login of user %s', user)
@@ -148,7 +148,7 @@ class Saml2AuthView(APIView):
 
         token, _ = Token.objects.get_or_create(user=user)
         event_logger.info(
-            "User '%s' with full name '%s' authenticated successfully with Omani PKI",
+            "User %s with full name %s authenticated successfully with Omani PKI.",
             user.username, user.full_name,
             extra={'user': user, 'event_type': 'auth_logged_in_with_pki'})
         logger.info('Authenticated with SAML token. Returning token for successful login of user %s', user)

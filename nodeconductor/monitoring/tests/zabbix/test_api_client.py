@@ -46,7 +46,7 @@ class ZabbixPublicApiTest(unittest.TestCase):
 
         self.instance = Mock()
         self.instance.uuid = 'qwedaqwedawqwqrt123sdasd123123'
-        self.instance.hostname = 'test_instance'
+        self.instance.name = 'test_instance'
         self.instance.cloud_project_membership.project = self.project
 
     # Host creation

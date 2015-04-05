@@ -4,10 +4,31 @@ CHANGELOG
 Coming in the next release
 --------------------------
 
-(Fixes/changes that are in develop branch.)
+- <none yet>
 
+Release 0.43.0
+--------------
+- Extended IaaS template filtering.
+- Extended IaaS template with os_type and icon_name fields.
+- Renamed 'hostname' field to 'name' in Instance and Resources.
+
+Release 0.42.0
+--------------
+- Refactored OpenStack backups to use snapshots instead of full volume backups.
+- Moved OpenStack credentials to DB from configuration. Old credential format is still supported.
+- Added support for TZ in backup schedule definition.
+- Introduced throttling for background tasks.
+
+Release 0.41.0
+--------------
+- Introducing new quotas module prototype. Support for backend and frontend quotas.
+- Introducing new template module prototype. Support for multi-service templates.
+- Support for default availability zone of OpenStack deployment in configuration.
+- Support for setting cpu overcommit ratio for OpenStack versions prior to Kilo.
 - Change OpenStack tenant name generation schema. Now it uses only project UUID, name is removed.
-
+- More resilient start/stop operations for OpenStack.
+- Extended event log information for instance creation.
+- Bugfixes.
 
 Release 0.40.0
 --------------

@@ -77,9 +77,8 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
             return Response({'status': 'BackupSchedule is already activated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = True
         schedule.save()
-        # TODO: Instance's hostname should be converted to the name field (NC-367)
         event_logger.info(
-            'Backup schedule for %s has been activated.', schedule.backup_source.hostname,
+            'Backup schedule for %s has been activated.', schedule.backup_source.name,
             extra={'backup_schedule': schedule, 'event_type': 'iaas_backup_schedule_activated'}
         )
         return Response({'status': 'BackupSchedule was activated'})
@@ -91,9 +90,8 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
             return Response({'status': 'BackupSchedule is already deactivated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = False
         schedule.save()
-        # TODO: Instance's hostname should be converted to the name field (NC-367)
         event_logger.info(
-            'Backup schedule for %s has been deactivated.', schedule.backup_source.hostname,
+            'Backup schedule for %s has been deactivated.', schedule.backup_source.name,
             extra={'backup_schedule': schedule, 'event_type': 'iaas_backup_schedule_deactivated'}
         )
         return Response({'status': 'BackupSchedule was deactivated'})
@@ -128,10 +126,11 @@ class BackupViewSet(mixins.CreateModelMixin,
             return Response('Cannot restore a backup in state \'%s\'' % backup.get_state_display(),
                             status=status.HTTP_409_CONFLICT)
         # fail early if inputs are incorrect during the call time
-        instance, user_input, errors = backup.get_strategy().deserialize_instance(backup.metadata, request.DATA)
+        instance, user_input, snapshot_ids, errors = backup.get_strategy().\
+            deserialize_instance(backup.metadata, request.DATA)
         if not errors:
             try:
-                backup.start_restoration(instance.uuid, user_input=user_input)
+                backup.start_restoration(instance.uuid, user_input=user_input, snapshot_ids=snapshot_ids)
             except TransitionNotAllowed:
                 # this should never be hit as the check is done on function entry
                 return Response('Cannot restore a backup in state \'%s\'' % backup.get_state_display(),

@@ -20,7 +20,7 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
 
 
     class Instance(models.Model):
-        hostname = models.CharField(max_length=10)
+        name = models.CharField(max_length=10)
         instance = models.ForeignKey(Project)
 
     # filters.py
@@ -31,8 +31,8 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
 
             # Filter fields go here
             order_by = [
-                'hostname',
-                '-hostname',
+                'name',
+                '-name',
                 'project__name',
                 '-project__name',
             ]

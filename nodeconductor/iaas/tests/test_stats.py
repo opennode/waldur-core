@@ -368,3 +368,10 @@ class QuotaStatsTest(test.APITransactionTestCase):
         # then
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, self.expected_quotas_for_project1)
+
+    def test_customer_with_no_projects_receives_empty_dict(self):
+        customer = structure_factories.CustomerFactory()
+        # when
+        response = self.execute_request_with_data(self.staff, {'aggregate': 'customer', 'uuid': customer.uuid.hex})
+        # then
+        self.assertEqual(response.data, {})

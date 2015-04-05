@@ -120,6 +120,13 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_RESULT_SERIALIZER = 'json'
 
+CELERY_QUEUES = {
+    'tasks': {'exchange': 'tasks'},
+    'heavy': {'exchange': 'heavy'},
+}
+CELERY_DEFAULT_QUEUE = 'tasks'
+CELERY_ROUTES = ('nodeconductor.server.celery.PriorityRouter',)
+
 # Regular tasks
 CELERYBEAT_SCHEDULE = {
     'update-instance-monthly-slas': {
@@ -133,30 +140,30 @@ CELERYBEAT_SCHEDULE = {
         'args': ('yearly',),
     },
 
-    'pull-cloud-accounts': {
-        'task': 'nodeconductor.iaas.tasks.pull_cloud_accounts',
+    'sync-services': {
+        'task': 'nodeconductor.iaas.sync_services',
         'schedule': timedelta(minutes=60),
         'args': (),
     },
     'pull-service-statistics': {
-        'task': 'nodeconductor.iaas.tasks.pull_service_statistics',
+        'task': 'nodeconductor.iaas.tasks.iaas.pull_service_statistics',
         'schedule': timedelta(minutes=15),
         'args': (),
     },
     'pull-cloud-project-memberships': {
-        'task': 'nodeconductor.iaas.tasks.pull_cloud_memberships',
+        'task': 'nodeconductor.iaas.tasks.iaas.pull_cloud_memberships',
         'schedule': timedelta(minutes=30),
         'args': (),
     },
 
     'check-cloud-project-memberships-quotas': {
-        'task': 'nodeconductor.iaas.tasks.check_cloud_memberships_quotas',
+        'task': 'nodeconductor.iaas.tasks.iaas.check_cloud_memberships_quotas',
         'schedule': timedelta(minutes=1440),
         'args': (),
     },
 
     'sync-instances-with-zabbix': {
-        'task': 'nodeconductor.iaas.tasks.sync_instances_with_zabbix',
+        'task': 'nodeconductor.iaas.tasks.iaas.sync_instances_with_zabbix',
         'schedule': timedelta(minutes=30),
         'args': (),
     },
@@ -172,6 +179,13 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=10),
         'args': (),
     }
+}
+
+CELERY_TASK_THROTTLING = {
+    'nodeconductor.iaas.tasks.openstack.openstack_provision_instance': {
+        'concurrency': 1,
+        'retry_delay': 30,
+    },
 }
 
 NODECONDUCTOR = {

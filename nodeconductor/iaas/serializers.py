@@ -222,7 +222,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         model = models.Instance
         fields = (
             'url', 'uuid',
-            'hostname', 'description',
+            'name', 'description',
             'template',
             'project',
             'security_groups', 'flavor', 'ssh_public_key', 'external_ips',
@@ -352,13 +352,14 @@ class InstanceUpdateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Instance
-        fields = ('url', 'hostname', 'description', 'security_groups')
+        fields = ('url', 'name', 'description', 'security_groups')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
 
     def update(self, instance, validated_data):
-        security_groups = [data['security_group'] for data in validated_data.pop('security_groups', [])]
+        security_groups = validated_data.pop('security_groups', [])
+        security_groups = [data['security_group'] for data in security_groups]
         instance = super(InstanceUpdateSerializer, self).update(instance, validated_data)
         models.InstanceSecurityGroup.objects.filter(instance=instance).delete()
         for security_group in security_groups:
@@ -527,7 +528,7 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
     class Meta(object):
         model = models.Instance
         fields = (
-            'url', 'uuid', 'hostname', 'description', 'start_time',
+            'url', 'uuid', 'name', 'description', 'start_time',
             'template', 'template_name', 'template_os',
             'cloud', 'cloud_name', 'cloud_uuid',
             'project', 'project_name', 'project_uuid',
@@ -589,8 +590,8 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
         model = models.Template
         fields = (
             'url', 'uuid',
-            'name', 'description', 'icon_url',
-            'os',
+            'name', 'description', 'icon_url', 'icon_name',
+            'os', 'os_type',
             'is_active',
             'sla_level',
             'setup_fee',
@@ -678,7 +679,7 @@ class ServiceSerializer(serializers.Serializer):
     url = serializers.SerializerMethodField('get_service_url')
     service_type = serializers.SerializerMethodField()
     state = serializers.ReadOnlyField(source='get_state_display')
-    hostname = serializers.ReadOnlyField()
+    name = serializers.ReadOnlyField()
     uuid = serializers.ReadOnlyField()
     agreed_sla = serializers.ReadOnlyField()
     actual_sla = serializers.SerializerMethodField()
@@ -701,7 +702,7 @@ class ServiceSerializer(serializers.Serializer):
             'url',
             'uuid',
             'state',
-            'hostname', 'template_name',
+            'name', 'template_name',
             'customer_name',
             'customer_native_name',
             'customer_abbreviation',

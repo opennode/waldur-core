@@ -49,4 +49,5 @@ PERMISSION_LOGICS = (
     ('iaas.IpMapping',  StaffPermissionLogic(any_permission=True)),
     ('iaas.FloatingIP',  StaffPermissionLogic(any_permission=True)),
     ('iaas.InstanceSlaHistoryEvents', StaffPermissionLogic(any_permission=True)),
+    ('iaas.OpenStackSettings', StaffPermissionLogic(any_permission=True)),
 )

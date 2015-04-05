@@ -4,7 +4,6 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from celery import shared_task
-from django.core.exceptions import ObjectDoesNotExist
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import SynchronizationStates
@@ -50,19 +49,6 @@ def delete_zabbix_host_and_service(instance):
             'Zabbix host deletion flow has broken %s', e,
             extra={'instance': instance, 'event_type': 'zabbix_host_deletion'}
         )
-
-
-@shared_task
-@tracked_processing(models.Instance, processing_state='begin_provisioning', desired_state='set_online')
-def schedule_provisioning(instance_uuid, backend_flavor_id, system_volume_id=None, data_volume_id=None):
-    instance = models.Instance.objects.get(uuid=instance_uuid)
-
-    backend = instance.cloud_project_membership.cloud.get_backend()
-    try:
-        backend.provision_instance(instance, backend_flavor_id, system_volume_id, data_volume_id)
-    finally:
-        # the function below should never fail
-        create_zabbix_host_and_service(instance)
 
 
 @shared_task
@@ -119,21 +105,12 @@ def schedule_deleting(instance_uuid):
 
 @shared_task
 @tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
-def update_flavor(instance_uuid, flavor_uuid):
-    instance = models.Instance.objects.get(uuid=instance_uuid)
-    flavor = models.Flavor.objects.get(uuid=flavor_uuid)
-
-    backend = instance.cloud_project_membership.cloud.get_backend()
-    backend.update_flavor(instance, flavor)
-
-
-@shared_task
-@tracked_processing(models.Instance, processing_state='begin_resizing', desired_state='set_offline')
 def extend_disk(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
 
     backend = instance.cloud_project_membership.cloud.get_backend()
     backend.extend_disk(instance)
+
 
 @shared_task
 def import_instance(membership_pk, instance_id, template_id=None):
@@ -155,19 +132,6 @@ def push_instance_security_groups(instance_uuid):
 
     backend = instance.cloud_project_membership.cloud.get_backend()
     backend.push_instance_security_groups(instance)
-
-
-@shared_task
-@tracked_processing(
-    models.Cloud,
-    processing_state='begin_syncing',
-    desired_state='set_in_sync',
-)
-def pull_cloud_account(cloud_account_uuid):
-    cloud_account = models.Cloud.objects.get(uuid=cloud_account_uuid)
-
-    backend = cloud_account.get_backend()
-    backend.pull_cloud_account(cloud_account)
 
 
 @shared_task
@@ -195,18 +159,6 @@ def push_cloud_membership_quotas(membership_pk, quotas):
 
 
 @shared_task
-def pull_cloud_accounts():
-    # TODO: Extract to a service
-    queryset = models.Cloud.objects.filter(state=SynchronizationStates.IN_SYNC)
-
-    for cloud_account in queryset.iterator():
-        cloud_account.schedule_syncing()
-        cloud_account.save()
-
-        pull_cloud_account.delay(cloud_account.uuid.hex)
-
-
-@shared_task
 def pull_service_statistics():
     # TODO: Extract to a service
     queryset = models.Cloud.objects.filter(state=SynchronizationStates.IN_SYNC)
@@ -225,20 +177,6 @@ def pull_service_statistics():
                 backend.pull_service_statistics(cloud, service_stats=stats)
             else:
                 stats = backend.pull_service_statistics(cloud)
-
-
-@shared_task
-@tracked_processing(
-    models.Cloud,
-    processing_state='begin_syncing',
-    desired_state='set_in_sync',
-)
-def sync_cloud_account(cloud_account_uuid):
-    cloud = models.Cloud.objects.get(uuid=cloud_account_uuid)
-
-    backend = cloud.get_backend()
-    backend.push_cloud_account(cloud)
-    backend.pull_cloud_account(cloud)
 
 
 @shared_task
@@ -296,7 +234,7 @@ def sync_cloud_membership(membership_pk):
                 exc_info=1,
             )
             event_logger.warning(
-                'Failed to push public key %s to cloud membership %s',
+                'Failed to push public key %s to cloud membership %s.',
                 public_key.uuid, membership.pk,
                 extra={'project': membership.project, 'cloud': membership.cloud, 'event_type': 'sync_cloud_membership'}
             )
@@ -311,7 +249,7 @@ def sync_cloud_membership(membership_pk):
             exc_info=1,
         )
         event_logger.warning(
-            'Failed to push security groups to cloud membership %s',
+            'Failed to push security groups to cloud membership %s.',
             public_key.uuid, membership.pk,
             extra={'project': membership.project, 'cloud': membership.cloud, 'event_type': 'sync_cloud_membership'}
         )
@@ -326,17 +264,6 @@ def sync_cloud_membership(membership_pk):
             membership.pk,
             exc_info=1,
         )
-
-
-@shared_task
-@tracked_processing(
-    models.Cloud,
-    processing_state='begin_syncing',
-    desired_state='set_in_sync',
-)
-def pull_images(cloud_account_uuid):
-    cloud = models.Cloud.objects.get(uuid=cloud_account_uuid)
-    cloud.get_backend().pull_images(cloud)
 
 
 @shared_task
@@ -429,5 +356,5 @@ def sync_instances_with_zabbix():
 @shared_task
 def sync_instance_with_zabbix(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
-    logger.info('Synchronizing instance %s with zabbix', instance.uuid, exc_info=1)
+    logger.debug('Synchronizing instance %s with zabbix', instance.uuid, exc_info=1)
     create_zabbix_host_and_service(instance, warn_if_exists=False)

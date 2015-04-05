@@ -25,7 +25,7 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
     class Meta(object):
         model = models.Instance
         fields = (
-            'hostname', 'description',
+            'name', 'description',
             #'project',
             'cloud_project_membership',
             'template',

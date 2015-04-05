@@ -33,7 +33,7 @@ def _service_to_dict(service):
         'project_name': service.cloud_project_membership.project.name,
         'project_uuid': str(service.cloud_project_membership.project.uuid),
         'project_url': structure_factories.ProjectFactory.get_url(service.cloud_project_membership.project),
-        'hostname': service.hostname,
+        'name': service.name,
         'template_name': service.template.name,
         'customer_name': service.cloud_project_membership.project.customer.name,
         'customer_native_name': service.cloud_project_membership.project.customer.native_name,

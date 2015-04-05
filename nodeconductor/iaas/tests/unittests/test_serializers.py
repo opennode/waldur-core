@@ -106,7 +106,7 @@ class InstanceCreateSerializer2Test(TestCase):
 
     def get_valid_data(self):
         return {
-            'hostname': 'host1',
+            'name': 'host1',
             'description': 'description1',
 
             'project': structure_factories.ProjectFactory.get_url(self.project),

@@ -2,7 +2,8 @@ from django.contrib import admin
 from django.utils.translation import ungettext
 
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.quotas import models as quotas_models
+from nodeconductor.quotas.admin import QuotaInline
+from nodeconductor.structure.admin import ProtectedModelMixin
 from nodeconductor.iaas import models
 from nodeconductor.iaas import tasks
 
@@ -29,21 +30,14 @@ class CloudAdmin(admin.ModelAdmin):
     list_display = ('name', 'customer', 'state')
     ordering = ('name', 'customer')
 
-    actions = ['pull_clouds']
+    actions = ['sync_services']
 
-    def pull_clouds(self, request, queryset):
-        # TODO: Extract to a service
-
+    def sync_services(self, request, queryset):
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
+        service_uuids = list(queryset.values_list('uuid', flat=True))
+        tasks_scheduled = queryset.count()
 
-        tasks_scheduled = 0
-
-        for cloud_account in queryset.iterator():
-            cloud_account.schedule_syncing()
-            cloud_account.save()
-
-            tasks.pull_cloud_account.delay(cloud_account.uuid.hex)
-            tasks_scheduled += 1
+        tasks.sync_services.delay(service_uuids)
 
         message = ungettext(
             'One cloud account scheduled for update',
@@ -56,7 +50,7 @@ class CloudAdmin(admin.ModelAdmin):
 
         self.message_user(request, message)
 
-    pull_clouds.short_description = "Update selected cloud accounts from backend"
+    sync_services.short_description = "Update selected cloud accounts from backend"
 
 
 # noinspection PyMethodMayBeStatic
@@ -66,6 +60,7 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     ordering = ('cloud__customer__name', 'project__name', 'cloud__name')
     list_display_links = ('get_cloud_name',)
     search_fields = ('cloud__customer__name', 'project__name', 'cloud__name')
+    inlines = [QuotaInline]
 
     actions = ['pull_cloud_memberships']
 
@@ -121,7 +116,7 @@ class InstanceLicenseInline(admin.TabularInline):
     extra = 1
 
 
-class InstanceAdmin(admin.ModelAdmin):
+class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
     inlines = (
         InstanceLicenseInline,
     )
@@ -130,9 +125,9 @@ class InstanceAdmin(admin.ModelAdmin):
         if obj:
             return ['template']
         return []
-    ordering = ('hostname',)
-    list_display = ['hostname', 'uuid', 'backend_id', 'state', 'get_project_name', 'template']
-    search_fields = ['hostname', 'uuid']
+    ordering = ('name',)
+    list_display = ['name', 'uuid', 'backend_id', 'state', 'get_project_name', 'template']
+    search_fields = ['name', 'uuid']
     list_filter = ['state', 'cloud_project_membership__project', 'template']
 
     def get_project_name(self, obj):
@@ -224,3 +219,4 @@ admin.site.register(models.TemplateLicense)
 admin.site.register(models.InstanceSlaHistory, InstanceSlaHistoryAdmin)
 admin.site.register(models.FloatingIP, FloatingIPAdmin)
 admin.site.register(models.IpMapping)
+admin.site.register(models.OpenStackSettings)
