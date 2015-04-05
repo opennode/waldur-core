@@ -117,7 +117,7 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         data = _instance_data(self.user, self.instance)
         data['security_groups'] = [self._get_valid_security_group_payload()
                                    for g in self.instance_security_groups]
-        with patch('nodeconductor.iaas.tasks.update_zabbix_host_visible_name') as patched:
+        with patch('nodeconductor.iaas.tasks.zabbix.zabbix_update_host_visible_name.delay'):
             response = self.client.put(_instance_url(self.instance), data=data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 

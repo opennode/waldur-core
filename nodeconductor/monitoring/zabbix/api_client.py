@@ -54,7 +54,7 @@ class ZabbixApiClient(object):
             if api.host.exists(host=name):
                 api.host.update({"host": name,
                                  "name": visible_name})
-                logger.info('Zabbix host visible name has been updated for instance %s.')
+                logger.debug('Zabbix host visible name has been updated for instance %s.', instance)
             else:
                 logger.warn('Can not update Zabbix host visible name for instance %s. Host does not exist.', instance)
 

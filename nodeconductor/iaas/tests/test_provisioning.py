@@ -903,25 +903,22 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
         instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-        with patch('nodeconductor.iaas.tasks.update_zabbix_host_visible_name') as patched:
-            patched.zabbix_client.update_host_visible_name = Mock()
+        with patch('nodeconductor.iaas.tasks.zabbix.zabbix_update_host_visible_name.delay') as mocked_task:
             data = {'name': 'host2'}
             response = self.client.put(factories.InstanceFactory.get_url(instance), data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertFalse(patched.zabbix_client.update_host_visible_name.called,
-                             'Host visible name should have been updated')
+            mocked_task.assert_called_with(instance.uuid)
 
     def test_zabbix_host_visible_name_is_not_updated_when_instance_is_not_renamed(self):
         instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
         instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
-        with patch('nodeconductor.iaas.tasks.update_zabbix_host_visible_name') as patched:
-            patched.zabbix_client.update_host_visible_name = Mock()
-            data = {'name': 'host1'}
+        with patch('nodeconductor.iaas.tasks.zabbix.zabbix_update_host_visible_name.delay') as mocked_task:
+            data = {'name': instance.name}
             response = self.client.put(factories.InstanceFactory.get_url(instance), data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertFalse(patched.zabbix_client.update_host_visible_name.called,
-                             'Host visible name should not have been updated')
+            self.assertFalse(mocked_task.called)
+
     # Helper methods
     # TODO: Move to serializer tests
     def get_valid_data(self):
