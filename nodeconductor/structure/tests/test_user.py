@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from django.utils import unittest
+import unittest
 
 from rest_framework import status
 from rest_framework import test

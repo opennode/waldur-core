@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 
+import unittest
+
 from django.test import TestCase, RequestFactory
-from django.utils import unittest
 from rest_framework.serializers import ValidationError
 
 from nodeconductor.iaas import serializers
