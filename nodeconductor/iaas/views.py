@@ -507,7 +507,11 @@ class SshKeyFilter(django_filters.FilterSet):
         ]
 
 
-class SshKeyViewSet(viewsets.ModelViewSet):
+class SshKeyViewSet(mixins.CreateModelMixin,
+                    mixins.RetrieveModelMixin,
+                    mixins.DestroyModelMixin,
+                    mixins.ListModelMixin,
+                    viewsets.GenericViewSet):
     """
     List of SSH public keys that are accessible by this user.
 
