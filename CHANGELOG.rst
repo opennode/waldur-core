@@ -6,6 +6,10 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.44.0
+--------------
+- Bugfixes
+
 Release 0.43.0
 --------------
 - Extended IaaS template filtering.
