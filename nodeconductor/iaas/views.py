@@ -28,6 +28,7 @@ from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
@@ -1001,7 +1002,11 @@ class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet
 
     def post_save(self, obj, created=False):
         if created:
-            tasks.sync_service.delay(obj.uuid.hex)
+            # XXX This is a hack as sync_services expects only IN_SYNC objects and newly created cloud is created
+            # with SYNCING_SCHEDULED
+            obj.state = SynchronizationStates.IN_SYNC
+            obj.save()
+            tasks.sync_services.delay([obj.uuid.hex])
 
 
 class CloudProjectMembershipFilter(django_filters.FilterSet):
