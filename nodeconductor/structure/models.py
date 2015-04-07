@@ -21,7 +21,7 @@ event_logger = EventLoggerAdapter(logger)
 
 
 @python_2_unicode_compatible
-class Customer(UuidMixin, TimeStampedModel):
+class Customer(UuidMixin, quotas_models.QuotaModelMixin, TimeStampedModel):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
@@ -31,6 +31,8 @@ class Customer(UuidMixin, TimeStampedModel):
     native_name = models.CharField(max_length=160, default='', blank=True)
     abbreviation = models.CharField(max_length=8, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
+
+    QUOTAS_NAMES = ['nc-projects', 'nc-instances', 'nc-users']
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
@@ -112,6 +114,9 @@ class Customer(UuidMixin, TimeStampedModel):
 
     def get_owners(self):
         return self.roles.get(role_type=CustomerRole.OWNER).permission_group.user_set
+
+    def can_user_update_quotas(self, user):
+        return user.is_staff or user in self.get_owners()
 
     def __str__(self):
         return '%(name)s (%(abbreviation)s)' % {
