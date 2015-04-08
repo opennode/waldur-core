@@ -125,7 +125,7 @@ class BasicSecurityGroupRuleSerializer(serializers.ModelSerializer):
 
 class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
 
-    rules = BasicSecurityGroupRuleSerializer(read_only=True)
+    rules = BasicSecurityGroupRuleSerializer(many=True, read_only=True)
     cloud_project_membership = CloudProjectMembershipSerializer()
 
     class Meta(object):
