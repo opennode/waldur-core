@@ -377,8 +377,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
                             status=status.HTTP_409_CONFLICT)
 
         serializer = serializers.InstanceResizeSerializer(instance, data=request.DATA)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         flavor = serializer.validated_data.get('flavor')
 
@@ -436,8 +435,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         }
 
         serializer = serializers.UsageStatsSerializer(data=data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         stats = serializer.get_stats([instance])
         return Response(stats, status=status.HTTP_200_OK)
@@ -764,8 +762,7 @@ class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
 
         serializer = serializers.SlaHistoryEventSerializer(data=history_events,
                                                            many=True)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -886,8 +883,7 @@ class UsageStatsView(views.APIView):
                 }
 
                 serializer = serializers.UsageStatsSerializer(data=data)
-                if not serializer.is_valid():
-                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                serializer.is_valid(raise_exception=True)
 
                 stats = serializer.get_stats(instances)
                 usage_stats.append({'name': aggregate_object.name, 'datapoints': stats})
@@ -1025,8 +1021,7 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
                             status=status.HTTP_409_CONFLICT)
 
         serializer = serializers.CloudProjectMembershipQuotaSerializer(data=request.DATA)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         instance.schedule_syncing()
         instance.save()
@@ -1050,8 +1045,7 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
 
         serializer = serializers.CloudProjectMembershipLinkSerializer(data=request.DATA,
                                                                       context={'membership': membership})
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         instance_id = serializer.object['id']
         template = serializer.object.get('template')
@@ -1171,8 +1165,7 @@ class QuotaStatsView(views.APIView):
             'model_name': request.QUERY_PARAMS.get('aggregate', 'customer'),
             'uuid': request.QUERY_PARAMS.get('uuid'),
         })
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         memberships = serializer.get_memberships(request.user)
         sum_of_quotas = models.CloudProjectMembership.get_sum_of_quotas_as_dict(
