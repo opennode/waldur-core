@@ -15,7 +15,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.44.0
+Version: 0.45.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -32,8 +32,7 @@ Requires: python-django-model-utils = 2.2
 Requires: python-django-filter = 0.7
 Requires: python-django-fsm = 2.2.0
 Requires: python-django-permission = 0.8.2
-Requires: python-django-rest-framework >= 2.3.12, python-django-rest-framework < 2.4.0
-Requires: python-django-rest-framework-extensions = 0.2.6
+Requires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
 Requires: python-django-saml2 = 0.11.0.post0
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-jsonfield = 1.0.0
@@ -190,6 +189,11 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Wed Apr 8 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.45.0-1.el7
+- New upstream release
+- Dropped dependency on python-django-rest-framework-extensions
+- Bumped minimal version of python-django-rest-framework
+
 * Tue Apr 7 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.44.0-1.el7
 - New upstream release
 
