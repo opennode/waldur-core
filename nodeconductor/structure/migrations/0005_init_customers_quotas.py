@@ -11,7 +11,6 @@ from django.db.models import Q
 
 def init_customers_quotas(apps, schema_editor):
     Customer = apps.get_model('structure', 'Customer')
-    Instance = apps.get_model('iaas', 'Instance')
     Quota = apps.get_model("quotas", 'Quota')
     User = get_user_model()
 
@@ -23,12 +22,6 @@ def init_customers_quotas(apps, schema_editor):
         if not Quota.objects.filter(name='nc-projects', **customer_kwargs).exists():
             Quota.objects.create(
                 uuid=uuid4().hex, name='nc-projects', usage=customer.projects.count(), **customer_kwargs)
-
-        # instances
-        if not Quota.objects.filter(name='nc-instances', **customer_kwargs).exists():
-            instances_count = Instance.objects.filter(cloud_project_membership__project__customer=customer).count()
-            Quota.objects.create(
-                uuid=uuid4().hex, name='nc-instances', usage=instances_count, **customer_kwargs)
 
         # users
         if not Quota.objects.filter(name='nc-users', **customer_kwargs).exists():
@@ -47,7 +40,7 @@ def init_customers_quotas(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('iaas', '0022_extend_iaas_template_with_type_icon_name'),
+        ('structure', '0004_init_new_quotas'),
     ]
 
     operations = [
