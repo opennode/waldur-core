@@ -22,7 +22,7 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - ?description=<description>
 - ?cores=<number of cores>
 - ?ram=<size of ram in MiB>
-- ?created=<time of creation in iso-8601 format>
+- ?created=<time of creation>
 - ?system_volume_size=<size of system disk in MiB>
 - ?data_volume_size=<size of data disk in MiB>
 

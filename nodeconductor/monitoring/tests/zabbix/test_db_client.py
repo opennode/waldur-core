@@ -1,5 +1,8 @@
+from __future__ import unicode_literals
+
+import unittest
+
 from django.db import DatabaseError
-from django.utils import unittest
 from mock import Mock
 
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
