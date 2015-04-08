@@ -72,7 +72,9 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
         system_volume_size = attrs['system_volume_size']
         data_volume_size = attrs.get('data_volume_size', models.Instance.DEFAULT_DATA_VOLUME_SIZE)
         quota_usage = {
-            'storage': system_volume_size + data_volume_size
+            'storage': system_volume_size + data_volume_size,
+            'vcpu': flavor.cores,
+            'ram': flavor.ram,
         }
 
         quota_errors = membership.validate_quota_change(quota_usage)

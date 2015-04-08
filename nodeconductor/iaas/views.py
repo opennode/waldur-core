@@ -25,6 +25,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
@@ -964,8 +965,10 @@ class CloudViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if not self._can_create_or_update_cloud(serializer):
             raise exceptions.PermissionDenied()
-        cloud = serializer.save()
-        tasks.sync_service.delay(cloud.uuid.hex)
+        # XXX This is a hack as sync_services expects only IN_SYNC objects and newly created cloud is created
+        # with SYNCING_SCHEDULED
+        cloud = serializer.save(state=SynchronizationStates.IN_SYNC)
+        tasks.sync_services.delay([cloud.uuid.hex])
 
     def perform_update(self, serializer):
         if not self._can_create_or_update_cloud(serializer):

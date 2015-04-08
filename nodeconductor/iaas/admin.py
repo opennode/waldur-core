@@ -204,6 +204,8 @@ class InstanceSlaHistoryAdmin(admin.ModelAdmin):
     inlines = (
         InstanceSlaHistoryEventsInline,
     )
+    list_display = ('instance', 'period',  'value')
+    list_filter = ('instance', 'period')
 
 
 class FloatingIPAdmin(admin.ModelAdmin):

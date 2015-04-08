@@ -101,6 +101,22 @@ class InstanceBackupStrategyTestCase(TransactionTestCase):
         self.instance.cloud_project_membership.set_quota_limit('storage', self.instance.system_volume_size)
         self.assertRaises(BackupStrategyExecutionError, lambda: InstanceBackupStrategy.backup(self.instance))
 
+    def test_strategy_deserialize_instance_method_return_errors_if_ram_quota_exceeded(self):
+        self.instance.cloud_project_membership.set_quota_limit('ram', self.instance.ram)
+        _, _, _, errors = InstanceBackupStrategy.deserialize_instance(self.backup.metadata, self.user_input)
+        self.assertTrue(errors)
+
+    def test_strategy_deserialize_instance_method_return_errors_if_vcpu_quota_exceeded(self):
+        self.instance.cloud_project_membership.set_quota_limit(
+            'vcpu', self.instance.cloud_project_membership.quotas.get(name='vcpu').usage)
+        _, _, _, errors = InstanceBackupStrategy.deserialize_instance(self.backup.metadata, self.user_input)
+        self.assertTrue(errors)
+
+    def test_strategy_deserialize_instance_method_return_errors_if_storage_quota_exceeded(self):
+        self.instance.cloud_project_membership.set_quota_limit('storage', self.instance.data_volume_size)
+        _, _, _, errors = InstanceBackupStrategy.deserialize_instance(self.backup.metadata, self.user_input)
+        self.assertTrue(errors)
+
 
 class InstanceDeletionTestCase(APITransactionTestCase):
 
