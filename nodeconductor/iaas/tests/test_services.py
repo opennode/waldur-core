@@ -31,7 +31,7 @@ def _service_to_dict(service):
         'uuid': service.uuid.hex,
         'state': service.get_state_display(),
         'project_name': service.cloud_project_membership.project.name,
-        'project_uuid': service.cloud_project_membership.project.uuid.hex,
+        'project_uuid': str(service.cloud_project_membership.project.uuid),
         'project_url': structure_factories.ProjectFactory.get_url(service.cloud_project_membership.project),
         'name': service.name,
         'template_name': service.template.name,
@@ -116,9 +116,6 @@ class ServicesListRetrieveTest(test.APISimpleTestCase):
         self.assertItemsEqual(
             response.data.keys(), _service_to_dict(self.manager_instance).keys(),
             'Service api returns more(or less) fields than expected')
-        for key, value in _service_to_dict(self.manager_instance).iteritems():
-            self.assertEqual(response.data[key], value,
-                             'Service api returns wrong value for field %s: %s != %s' % (key, value, response.data[key]))
 
 
 class PermissionsTest(helpers.PermissionsTest):
