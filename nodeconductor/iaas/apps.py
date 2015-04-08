@@ -73,3 +73,17 @@ class IaasConfig(AppConfig):
             sender=CloudProjectMembership,
             dispatch_uid='nodeconductor.iaas.handlers.set_cpm_default_availability_zone',
         )
+
+        # increase nc-instances quota usage on instance creation
+        signals.post_save.connect(
+            handlers.change_customer_nc_instances_quota,
+            sender=Instance,
+            dispatch_uid='nodeconductor.iaas.handlers.increase_cutomer_nc_instances_quota',
+        )
+
+        # decrease nc-instances quota usage on instance deletion
+        signals.post_delete.connect(
+            handlers.change_customer_nc_instances_quota,
+            sender=Instance,
+            dispatch_uid='nodeconductor.iaas.handlers.decrease_cutomer_nc_instances_quota',
+        )

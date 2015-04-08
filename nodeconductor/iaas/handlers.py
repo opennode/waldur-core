@@ -10,6 +10,7 @@ from django.db import models, router, DEFAULT_DB_ALIAS
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import UnboundSerializerMethodField
+from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 
@@ -222,3 +223,9 @@ def set_cpm_default_availability_zone(sender, instance=None, **kwargs):
             pass
         else:
             instance.availability_zone = options.availability_zone
+
+
+change_customer_nc_instances_quota = quotas_handlers.quantity_quota_handler_fabric(
+    path_to_quota_scope='cloud_project_membership.project.customer',
+    quota_name='nc-instances',
+)
