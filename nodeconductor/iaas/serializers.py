@@ -523,7 +523,7 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
     template_name = serializers.ReadOnlyField(source='template.name')
     template_os = serializers.ReadOnlyField(source='template.os')
 
-    created = serializers.DateTimeField(format='iso-8601')
+    created = serializers.DateTimeField()
 
     class Meta(object):
         model = models.Instance

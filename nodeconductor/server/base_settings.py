@@ -72,6 +72,11 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'nodeconductor.core.pagination.LinkHeaderPagination',
     'PAGE_SIZE': 10,
     'EXCEPTION_HANDLER': 'nodeconductor.core.views.exception_handler',
+
+    # Return native `Date` and `Time` objects in `serializer.data`
+    'DATETIME_FORMAT': None,
+    'DATE_FORMAT': None,
+    'TIME_FORMAT': None,
 }
 
 AUTHENTICATION_BACKENDS = (
