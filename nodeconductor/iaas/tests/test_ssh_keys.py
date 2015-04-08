@@ -1,11 +1,32 @@
+from __future__ import unicode_literals
+
+import unittest
+
 from rest_framework import test, status
 
 from nodeconductor.core import models as core_models
+from nodeconductor.iaas import serializers
+from nodeconductor.iaas import views
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
 
 
-class SshKeyRetreiveListTest(test.APITransactionTestCase):
+class SshKeyViewSetTest(unittest.TestCase):
+    def setUp(self):
+        self.view_set = views.SshKeyViewSet()
+
+    def test_cannot_modify_public_key_in_place(self):
+        self.assertNotIn('PUT', self.view_set.allowed_methods)
+        self.assertNotIn('PATCH', self.view_set.allowed_methods)
+
+    def test_ssh_key_serializer_serializer_is_used(self):
+        self.assertIs(
+            serializers.SshKeySerializer,
+            self.view_set.get_serializer_class(),
+        )
+
+
+class SshKeyRetrieveListTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
@@ -36,6 +57,8 @@ class SshKeyCreateDeleteTest(test.APITransactionTestCase):
 
         response = self.client.post(factories.SshPublicKeyFactory.get_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'name': ['This field must be unique.']}, response.data)
 
     def test_valid_key_creation(self):
         self.client.force_authenticate(self.user)

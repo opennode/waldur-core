@@ -76,13 +76,14 @@ class InstanceBackupStrategy(BackupStrategy):
                 data_volume_snapshot_id = metadata['data_snapshot_id']
             except (KeyError, IndexError):
                 return None, None, None, {'detail': 'Missing system_snapshot_id or data_snapshot_id in metadata'}
-            serializer.object.save()
+            flavor = serializer.validated_data['flavor']
+            obj = serializer.save()
             # all user_input should be json serializable
             user_input = {
-                'flavor_uuid': serializer.object.flavor.uuid.hex,
+                'flavor_uuid': flavor.uuid.hex,
             }
             # note that root/system volumes of a backup will be linked to the volumes belonging to a backup
-            return serializer.object, user_input, [system_volume_snapshot_id, data_volume_snapshot_id], None
+            return obj, user_input, [system_volume_snapshot_id, data_volume_snapshot_id], None
 
         # if there were errors in input parameters
         errors = dict(serializer.errors)

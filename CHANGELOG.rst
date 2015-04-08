@@ -6,6 +6,10 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.45.0
+--------------
+- Migration to DRF 3.1 framework for REST, more consistent API.
+
 Release 0.44.0
 --------------
 - Bugfixes

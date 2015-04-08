@@ -3,13 +3,13 @@ from operator import itemgetter
 from django.core.urlresolvers import NoReverseMatch
 from django.utils.datastructures import SortedDict
 
-from rest_framework_extensions.routers import ExtendedDefaultRouter
 from rest_framework import views
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
+from rest_framework.routers import DefaultRouter
 
 
-class SortedDefaultRouter(ExtendedDefaultRouter):
+class SortedDefaultRouter(DefaultRouter):
 
     def get_api_root_view(self):
         """
