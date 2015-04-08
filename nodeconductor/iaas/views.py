@@ -248,7 +248,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def get_queryset(self):
         queryset = super(InstanceViewSet, self).get_queryset()
 
-        order = self.request.QUERY_PARAMS.get('o', None)
+        order = self.request.query_params.get('o', None)
         if order == 'start_time':
             queryset = queryset.extra(select={
                 'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
@@ -376,7 +376,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return Response({'detail': 'Instance must be offline'},
                             status=status.HTTP_409_CONFLICT)
 
-        serializer = serializers.InstanceResizeSerializer(instance, data=request.DATA)
+        serializer = serializers.InstanceResizeSerializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
 
         flavor = serializer.validated_data.get('flavor')
@@ -428,10 +428,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         hour = 60 * 60
         data = {
-            'start_timestamp': request.QUERY_PARAMS.get('from', int(time.time() - hour)),
-            'end_timestamp': request.QUERY_PARAMS.get('to', int(time.time())),
-            'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
-            'item': request.QUERY_PARAMS.get('item'),
+            'start_timestamp': request.query_params.get('from', int(time.time() - hour)),
+            'end_timestamp': request.query_params.get('to', int(time.time())),
+            'segments_count': request.query_params.get('datapoints', 6),
+            'item': request.query_params.get('item'),
         }
 
         serializer = serializers.UsageStatsSerializer(data=data)
@@ -484,7 +484,7 @@ class TemplateViewSet(viewsets.ModelViewSet):
             queryset = queryset.exclude(is_active=False)
 
         if self.request.method == 'GET':
-            cloud_uuid = self.request.QUERY_PARAMS.get('cloud')
+            cloud_uuid = self.request.query_params.get('cloud')
             if cloud_uuid is not None:
                 cloud_queryset = structure_filters.filter_queryset_for_user(
                     models.Cloud.objects.all(), user)
@@ -570,19 +570,19 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
         if not self.request.user.is_staff:
             raise Http404()
         queryset = super(TemplateLicenseViewSet, self).get_queryset()
-        if 'customer' in self.request.QUERY_PARAMS:
-            customer_uuid = self.request.QUERY_PARAMS['customer']
+        if 'customer' in self.request.query_params:
+            customer_uuid = self.request.query_params['customer']
             queryset = queryset.filter(templates__images__cloud__customer__uuid=customer_uuid)
         return queryset
 
     def _filter_queryset(self, queryset):
-        if 'customer' in self.request.QUERY_PARAMS:
-            customer_uuid = self.request.QUERY_PARAMS['customer']
+        if 'customer' in self.request.query_params:
+            customer_uuid = self.request.query_params['customer']
             queryset = queryset.filter(instance__cloud_project_membership__project__customer__uuid=customer_uuid)
-        if 'name' in self.request.QUERY_PARAMS:
-            queryset = queryset.filter(template_license__name=self.request.QUERY_PARAMS['name'])
-        if 'type' in self.request.QUERY_PARAMS:
-            queryset = queryset.filter(template_license__license_type=self.request.QUERY_PARAMS['type'])
+        if 'name' in self.request.query_params:
+            queryset = queryset.filter(template_license__name=self.request.query_params['name'])
+        if 'type' in self.request.query_params:
+            queryset = queryset.filter(template_license__license_type=self.request.query_params['type'])
         return queryset
 
     @list_route()
@@ -590,7 +590,7 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
         queryset = structure_filters.filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
         queryset = self._filter_queryset(queryset)
 
-        aggregate_parameters = self.request.QUERY_PARAMS.getlist('aggregate', [])
+        aggregate_parameters = self.request.query_params.getlist('aggregate', [])
         aggregate_parameter_to_field_map = {
             'project': [
                 'instance__cloud_project_membership__project__uuid',
@@ -737,7 +737,7 @@ class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = ServiceFilter
 
     def _get_period(self):
-        period = self.request.QUERY_PARAMS.get('period')
+        period = self.request.query_params.get('period')
         if period is None:
             today = datetime.date.today()
             period = '%s-%s' % (today.year, today.month)
@@ -776,7 +776,7 @@ class ResourceStatsView(views.APIView):
     def get(self, request, format=None):
         self._check_user(request)
 
-        auth_url = request.QUERY_PARAMS.get('auth_url')
+        auth_url = request.query_params.get('auth_url')
         # TODO: auth_url should be coming as a reference to NodeConductor object. Consider introducing this concept.
         if auth_url is None:
             return Response(
@@ -851,7 +851,7 @@ class UsageStatsView(views.APIView):
     def get(self, request, format=None):
         usage_stats = []
 
-        aggregate_model_name = request.QUERY_PARAMS.get('aggregate', 'customer')
+        aggregate_model_name = request.query_params.get('aggregate', 'customer')
         if aggregate_model_name not in self.aggregate_models.keys():
             return Response(
                 'Get parameter "aggregate" can take only this values: ' % ', '.join(self.aggregate_models.keys()),
@@ -861,8 +861,8 @@ class UsageStatsView(views.APIView):
         # by currently logged in user.
         aggregate_queryset = self._get_aggregate_queryset(request, aggregate_model_name)
 
-        if 'uuid' in request.QUERY_PARAMS:
-            aggregate_queryset = aggregate_queryset.filter(uuid=request.QUERY_PARAMS['uuid'])
+        if 'uuid' in request.query_params:
+            aggregate_queryset = aggregate_queryset.filter(uuid=request.query_params['uuid'])
 
         # This filters out the vm Instances to those that can be seen
         # by currently logged in user. This is done within each aggregate root separately.
@@ -876,10 +876,10 @@ class UsageStatsView(views.APIView):
             if instances:
                 hour = 60 * 60
                 data = {
-                    'start_timestamp': request.QUERY_PARAMS.get('from', int(time.time() - hour)),
-                    'end_timestamp': request.QUERY_PARAMS.get('to', int(time.time())),
-                    'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
-                    'item': request.QUERY_PARAMS.get('item'),
+                    'start_timestamp': request.query_params.get('from', int(time.time() - hour)),
+                    'end_timestamp': request.query_params.get('to', int(time.time())),
+                    'segments_count': request.query_params.get('datapoints', 6),
+                    'item': request.query_params.get('item'),
                 }
 
                 serializer = serializers.UsageStatsSerializer(data=data)
@@ -1020,7 +1020,7 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
             return Response({'detail': 'Cloud project membership must be in sync state for setting quotas'},
                             status=status.HTTP_409_CONFLICT)
 
-        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=request.DATA)
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         instance.schedule_syncing()
@@ -1043,7 +1043,7 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
             return Response({'detail': 'Cloud project membership must be in non-erred state for instance import to work'},
                             status=status.HTTP_409_CONFLICT)
 
-        serializer = serializers.CloudProjectMembershipLinkSerializer(data=request.DATA,
+        serializer = serializers.CloudProjectMembershipLinkSerializer(data=request.data,
                                                                       context={'membership': membership})
         serializer.is_valid(raise_exception=True)
 
@@ -1162,8 +1162,8 @@ class QuotaStatsView(views.APIView):
 
     def get(self, request, format=None):
         serializer = serializers.StatsAggregateSerializer(data={
-            'model_name': request.QUERY_PARAMS.get('aggregate', 'customer'),
-            'uuid': request.QUERY_PARAMS.get('uuid'),
+            'model_name': request.query_params.get('aggregate', 'customer'),
+            'uuid': request.query_params.get('uuid'),
         })
         serializer.is_valid(raise_exception=True)
 

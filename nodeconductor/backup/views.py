@@ -127,7 +127,7 @@ class BackupViewSet(mixins.CreateModelMixin,
                             status=status.HTTP_409_CONFLICT)
         # fail early if inputs are incorrect during the call time
         instance, user_input, snapshot_ids, errors = backup.get_strategy().\
-            deserialize_instance(backup.metadata, request.DATA)
+            deserialize_instance(backup.metadata, request.data)
         if not errors:
             try:
                 backup.start_restoration(instance.uuid, user_input=user_input, snapshot_ids=snapshot_ids)
