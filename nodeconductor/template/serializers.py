@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 
 from rest_framework import serializers
 
@@ -6,15 +7,14 @@ from nodeconductor.template.models import Template, TemplateService
 
 
 class TemplateServiceSerializer(serializers.ModelSerializer):
-
-    def to_native(self, obj):
+    def to_representation(self, instance):
         for service in get_template_services():
-            if isinstance(obj, service):
-                data = service._serializer(obj, context=self.context).to_native(obj)
-                data['service_type'] = obj.service_type
+            if isinstance(instance, service):
+                data = service._serializer(instance, context=self.context).to_representation(instance)
+                data['service_type'] = instance.service_type
                 return data
 
-        return super(TemplateServiceSerializer, self).to_native(obj)
+        return super(TemplateServiceSerializer, self).to_representation(instance)
 
     class Meta(object):
         model = TemplateService
@@ -23,7 +23,7 @@ class TemplateServiceSerializer(serializers.ModelSerializer):
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
     services = TemplateServiceSerializer(
-        many=True, required=True, allow_add_remove=True, read_only=False)
+        many=True, read_only=True)
 
     class Meta(object):
         model = Template

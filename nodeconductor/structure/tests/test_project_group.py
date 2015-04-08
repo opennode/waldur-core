@@ -152,7 +152,7 @@ class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
 
         response = self.client.post(reverse('projectgroup-list'), payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'customer': ['Invalid hyperlink - object does not exist.']}, response.data)
+        self.assertDictContainsSubset({'customer': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     # Deletion tests
     def test_anonymous_user_cannot_delete_project_groups(self):
@@ -418,7 +418,7 @@ class ProjectGroupMembershipApiPermissionTest(UrlResolverMixin, test.APISimpleTe
                                     self._get_valid_payload(membership))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset(
-            {'project_group': ['Invalid hyperlink - object does not exist.']}, response.data)
+            {'project_group': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     def test_user_cannot_create_project_group_membership_within_project_he_doesnt_own(self):
         self.client.force_authenticate(user=self.users['owner'])
@@ -432,7 +432,7 @@ class ProjectGroupMembershipApiPermissionTest(UrlResolverMixin, test.APISimpleTe
                                     self._get_valid_payload(membership))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset(
-            {'project': ['Invalid hyperlink - object does not exist.']}, response.data)
+            {'project': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     # TODO: return 409 CONFLICT or 304 NOT MODIFIED instead of 400 BAD REQUEST for already existing links
 

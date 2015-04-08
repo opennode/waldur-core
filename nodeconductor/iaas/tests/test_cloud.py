@@ -215,7 +215,7 @@ class CloudPermissionTest(test.APITransactionTestCase):
         for user_role, customer_type in {
                 'project_admin': 'has_admined_project',
                 'project_manager': 'has_managed_project',
-            }.iteritems():
+                }.items():
             self.client.force_authenticate(user=self.users[user_role])
 
             new_cloud = factories.CloudFactory.build(customer=self.customers[customer_type])
