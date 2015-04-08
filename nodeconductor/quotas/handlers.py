@@ -23,7 +23,7 @@ def quantity_quota_handler_fabric(path_to_quota_scope, quota_name, count=1):
 
         # handlers.py:
 
-        increase_customer_nc_instances_quota = quotas_handlers.quantity_quota_handler_fabric(
+        change_customer_nc_instances_quota = quotas_handlers.quantity_quota_handler_fabric(
             path_to_quota_scope='cloud_project_membership.project.customer',
             quota_name='nc-instances',
             count=1,
@@ -32,9 +32,15 @@ def quantity_quota_handler_fabric(path_to_quota_scope, quota_name, count=1):
         # apps.py
 
         signals.post_save.connect(
-            handlers.increase_customer_nc_instances_quota,
+            handlers.change_customer_nc_instances_quota,
             sender=Instance,
             dispatch_uid='nodeconductor.iaas.handlers.increase_customer_nc_instances_quota',
+        )
+
+        signals.post_delete.connect(
+            handlers.change_customer_nc_instances_quota,
+            sender=Instance,
+            dispatch_uid='nodeconductor.iaas.handlers.decrease_customer_nc_instances_quota',
         )
 
     """
