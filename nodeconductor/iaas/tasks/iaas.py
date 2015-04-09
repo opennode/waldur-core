@@ -51,6 +51,15 @@ def delete_zabbix_host_and_service(instance):
         )
 
 
+def update_zabbix_host_visible_name(instance):
+    try:
+        zabbix_client = ZabbixApiClient()
+        zabbix_client.update_host_visible_name(instance)
+    except ZabbixError as e:
+        # task does not have to fail if something is wrong with zabbix
+        logger.error('Zabbix host visible name update has failed %s' % e, exc_info=1)
+
+
 @shared_task
 @tracked_processing(models.Instance, processing_state='begin_stopping', desired_state='set_offline')
 def schedule_stopping(instance_uuid):

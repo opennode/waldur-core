@@ -903,6 +903,27 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertDictContainsSubset(
             {'non_field_errors': ['External IP is not from the list of available floating IPs.']}, response.data)
 
+    # Zabbix host visible name tests
+    def test_zabbix_host_visible_name_is_updated_when_instance_is_renamed(self):
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        with patch('nodeconductor.iaas.tasks.zabbix.zabbix_update_host_visible_name.delay') as mocked_task:
+            data = {'name': 'host2'}
+            response = self.client.put(factories.InstanceFactory.get_url(instance), data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            mocked_task.assert_called_with(instance.uuid)
+
+    def test_zabbix_host_visible_name_is_not_updated_when_instance_is_not_renamed(self):
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        with patch('nodeconductor.iaas.tasks.zabbix.zabbix_update_host_visible_name.delay') as mocked_task:
+            data = {'name': instance.name}
+            response = self.client.put(factories.InstanceFactory.get_url(instance), data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertFalse(mocked_task.called)
+
     # Helper methods
     # TODO: Move to serializer tests
     def get_valid_data(self):
