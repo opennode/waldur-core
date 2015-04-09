@@ -20,15 +20,15 @@ class AuthTokenSerializer(serializers.Serializer):
 
 
 class Base64Field(serializers.CharField):
-    def to_representation(self, value):
-        value = super(Base64Field, self).to_representation(value)
+    def to_internal_value(self, data):
+        value = super(Base64Field, self).to_internal_value(data)
         try:
             return base64.b64decode(value)
         except TypeError:
-            raise serializers.ValidationError("Enter valid Base64 encoded string.")
+            raise serializers.ValidationError('This field should a be valid Base64 encoded string.')
 
-    def to_internal_value(self, data):
-        value = super(Base64Field, self).to_internal_value(data)
+    def to_representation(self, value):
+        value = super(Base64Field, self).to_representation(value)
         return base64.b64encode(value)
 
 
