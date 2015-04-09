@@ -18,11 +18,6 @@ logger = logging.getLogger(__name__)
 event_logger = EventLoggerAdapter(logger)
 
 
-# XXX: There are no usages of this error.
-class ResizingError(KeyError, models.Instance.DoesNotExist):
-    pass
-
-
 def create_zabbix_host_and_service(instance, warn_if_exists=True):
     try:
         zabbix_client = ZabbixApiClient()
@@ -49,15 +44,6 @@ def delete_zabbix_host_and_service(instance):
             'Zabbix host deletion flow has broken %s', e,
             extra={'instance': instance, 'event_type': 'zabbix_host_deletion'}
         )
-
-
-def update_zabbix_host_visible_name(instance):
-    try:
-        zabbix_client = ZabbixApiClient()
-        zabbix_client.update_host_visible_name(instance)
-    except ZabbixError as e:
-        # task does not have to fail if something is wrong with zabbix
-        logger.error('Zabbix host visible name update has failed %s' % e, exc_info=1)
 
 
 @shared_task
