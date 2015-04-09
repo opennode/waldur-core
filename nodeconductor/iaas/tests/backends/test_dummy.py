@@ -1,7 +1,9 @@
 from django.test import TestCase
 
+from novaclient import exceptions as nova_exceptions
+from keystoneclient import exceptions as keystone_exceptions
+
 from nodeconductor.iaas.backend.openstack import OpenStackBackend
-from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.models import OpenStackSettings
 
 
@@ -31,12 +33,12 @@ class OpenStackClientTest(TestCase):
         session = self.backend.create_admin_session(self.credentials['auth_url'])
         self.assertIsNone(session.auth.tenant_id)
 
-        with self.assertRaisesRegexp(CloudBackendError, "Authentication failure"):
+        with self.assertRaisesRegexp(keystone_exceptions.AuthorizationFailure, "Authentication failure"):
             crdts = self.credentials.copy()
             crdts['password'] = 'noclue'
             self.backend.create_tenant_session(crdts)
 
-        with self.assertRaises(CloudBackendError):
+        with self.assertRaises(keystone_exceptions.ConnectionRefused):
             crdts = self.credentials.copy()
             crdts['auth_url'] = 'another.example.com'
             self.backend.create_tenant_session(crdts)
@@ -50,12 +52,12 @@ class OpenStackClientTest(TestCase):
         keystone = self.backend.create_keystone_client(session)
 
         self.assertIsNotNone(keystone.tenants.get(self.credentials['tenant_id']))
-        with self.assertRaises(CloudBackendError):
+        with self.assertRaises(keystone_exceptions.NotFound):
             keystone.tenants.find(name='some_tenant')
 
         self.assertIsNotNone(keystone.tenants.create(tenant_name='some_tenant'))
         self.assertIsNotNone(keystone.tenants.find(name='some_tenant'))
-        with self.assertRaises(CloudBackendError):
+        with self.assertRaises(keystone_exceptions.Conflict):
             keystone.tenants.create(tenant_name='test_tenant')
 
         user = keystone.users.create(name='joe_doe')
@@ -65,8 +67,67 @@ class OpenStackClientTest(TestCase):
         user_role = keystone.roles.add_user_role(user=user.id, role=role.id, tenant=tenant.id)
         self.assertIs(user_role, role)
 
-        with self.assertRaises(CloudBackendError):
+        with self.assertRaises(keystone_exceptions.ClientException):
             keystone.roles.add_user_role(user=user.id, role=role.id, tenant='xyz')
 
-        with self.assertRaises(CloudBackendError):
+        with self.assertRaises(keystone_exceptions.NotFound):
             keystone.roles.add_user_role(user=user.id, role='xyz', tenant=tenant.id)
+
+    def test_nova_quotas(self):
+        session = self.backend.create_tenant_session(self.credentials)
+        nova = self.backend.create_nova_client(session)
+
+        nova.quotas.update(self.credentials['tenant_id'], ram=6789, cores=34)
+        quota = nova.quotas.get(tenant_id=self.credentials['tenant_id'])
+
+        self.assertEqual(quota.ram, 6789)
+        self.assertEqual(quota.cores, 34)
+
+    def test_nova_keypairs(self):
+        session = self.backend.create_tenant_session(self.credentials)
+        nova = self.backend.create_nova_client(session)
+
+        test_key = {
+            'name': 'some_key',
+            'public_key': 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCw2MaqOkQi4LUJXVnIgmgWKCUnVdDF3IFngm+YS4cTT+6Wvc6C0g3QZYnSCiQd3lJLWsizYUlCILVQRAH9JUAt+iyrcxrY68boc0aejuMGpPXXaZ0+RTC6gKw7IzNbvkgpbY7DzB0dNuMYERLVM83SPABudGELk/kxEPvDO1J0RY5Is5QziebU18gWWwK87jmjRQfphM6lcS08Bd17U+4MAe/vCJbIJnI9ctoHLRczrGN0w/DtNJDAfao4yLa+PdStPNAxkBTHY/OWycbdEJRL+Ile73FkpcoVfWbbJcdrvvVSKWIZATyHmlnUSBLQe5WQg8F3ZF17G5bDFMnSueoH joe@example.com',
+            'fingerprint': '1b:a8:73:34:57:80:5e:c8:e0:36:6a:b1:a8:62:ad:a3',
+        }
+
+        key = nova.keypairs.create(name=test_key['name'], public_key=test_key['public_key'])
+
+        self.assertEqual(key.fingerprint, test_key['fingerprint'])
+        self.assertIsNotNone(nova.keypairs.findall(fingerprint=test_key['fingerprint']))
+
+        nova.keypairs.delete(test_key['name'])
+        with self.assertRaises(nova_exceptions.NotFound):
+            nova.keypairs.get(test_key['name'])
+        with self.assertRaises(nova_exceptions.NotFound):
+            nova.keypairs.delete('another_key')
+        with self.assertRaises(nova_exceptions.BadRequest):
+            nova.keypairs.create(name=test_key['name'], public_key='My Secret Key')
+        with self.assertRaises(nova_exceptions.BadRequest):
+            nova.keypairs.create(name='joe@example', public_key=test_key['public_key'])
+
+    def test_nova_security_groups(self):
+        session = self.backend.create_tenant_session(self.credentials)
+        nova = self.backend.create_nova_client(session)
+
+        sg = nova.security_groups.create(name='jedis', description='')
+        nova.security_groups.update(sg, name='siths', description='')
+        nova.security_groups.get(group_id=sg.id)
+
+        sg = nova.security_groups.find(id=sg.id)
+        self.assertEqual(sg.name, 'siths')
+
+        nova.security_groups.delete(sg.id)
+
+    def test_nova_flavors(self):
+        session = self.backend.create_tenant_session(self.credentials)
+        nova = self.backend.create_nova_client(session)
+
+        flavors = nova.flavors.findall(is_public=True)
+        self.assertEqual(len(flavors), 5)
+        self.assertIsNotNone(nova.flavors.get('3'))
+
+    def test_nova_servers(self):
+        pass
