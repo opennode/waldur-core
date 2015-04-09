@@ -5,6 +5,7 @@ from rest_framework import mixins
 from rest_framework import viewsets
 
 from nodeconductor.quotas import models, serializers
+from nodeconductor.quotas.pagination import QuotaPagination
 
 
 class QuotaViewSet(mixins.UpdateModelMixin,
@@ -14,7 +15,7 @@ class QuotaViewSet(mixins.UpdateModelMixin,
     serializer_class = serializers.QuotaSerializer
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated,)
-    pagination_class = None
+    pagination_class = QuotaPagination
 
     def get_queryset(self):
         return models.Quota.objects.filtered_for_user(self.request.user)
