@@ -109,7 +109,7 @@ class Saml2AuthView(APIView):
         conf = get_config(request=request)
         client = Saml2Client(conf, logger=logger)
 
-        post = {'SAMLResponse': serializer.object['saml2response']}
+        post = {'SAMLResponse': serializer.validated_data['saml2response']}
 
         # process the authentication response
         # noinspection PyBroadException
