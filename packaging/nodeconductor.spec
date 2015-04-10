@@ -191,6 +191,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Fri Apr 10 2015 Dmitri Chumak <dmitri@opennodecloud.com> - 0.45.2-2.el7
+- Fixed celery.conf and settings.ini twice listed warning
+
 * Thu Apr 9 2015 Ihor Kaharlichenko <ihor@opennodecloud.com> - 0.45.2-1.el7
 - New upstream release
 
