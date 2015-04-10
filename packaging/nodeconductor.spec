@@ -15,7 +15,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.46.0
+Version: 0.45.2
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -191,8 +191,11 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
-* Thu Apr 9 2015 Apr 8 2015 Dmitri Chumak <dmitri@opennodecloud.com> - 0.46.0-1.el7
-- Fixed celery.conf and settings.ini twice listed warning
+* Thu Apr 9 2015 Ihor Kaharlichenko <ihor@opennodecloud.com> - 0.45.2-1.el7
+- New upstream release
+
+* Thu Apr 9 2015 Ihor Kaharlichenko <ihor@opennodecloud.com> - 0.45.1-1.el7
+- New upstream release
 
 * Wed Apr 8 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.45.0-1.el7
 - New upstream release
