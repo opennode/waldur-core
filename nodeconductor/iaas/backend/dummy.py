@@ -17,6 +17,7 @@ import threading
 from datetime import datetime, timedelta
 
 from keystoneclient.auth.identity import v2
+from keystoneclient.service_catalog import ServiceCatalog
 from keystoneclient import exceptions as keystone_exceptions
 from neutronclient.client import exceptions as neutron_exceptions
 from cinderclient import exceptions as cinder_exceptions
@@ -91,7 +92,7 @@ class OpenStackResourceList(object):
 
     def __init__(self, client):
         self.client = client
-        dummy_objects = getattr(DummyDataSet, '%sS' % self.resource_class.__name__.upper())
+        dummy_objects = getattr(DummyDataSet, '%sS' % self.resource_class.__name__.upper(), [])
         for obj in dummy_objects:
             self._objects.add(self._create(**obj))
 
@@ -231,7 +232,10 @@ class KeystoneClient(OpenStackClient):
             credentials = auth.get_auth_data()
             self.auth = KeystoneClient.Auth(**credentials)
 
-            if auth.auth_url != self.auth.auth_url:
+            catalog = ServiceCatalog.factory(self.auth.auth_ref)
+            endpoints = [e[0]['publicURL'] for e in catalog.get_endpoints().values()]
+
+            if auth.auth_url not in endpoints:
                 raise KeystoneClient.Exceptions.ConnectionRefused(
                     "Unable to establish connection to %s" % auth.auth_url)
 
@@ -389,8 +393,14 @@ class GlanceClient(OpenStackClient):
     VERSION = '0.12.0'
     Exceptions = glance_exceptions
 
-    def __init__(self, endpoint, **kwargs):
-        raise NotImplementedError()
+    class Image(OpenStackResourceList):
+        def list(self):
+            return (i for i in super(GlanceClient.Image, self).list())
+
+    def __init__(self, endpoint, token, **kwargs):
+        self.client = KeystoneClient(
+            session=KeystoneClient.Session(auth=v2.Token(auth_url=endpoint, token=token)))
+        self.images = self._get_resources('Image')
 
 
 class NeutronClient(OpenStackClient):
@@ -399,8 +409,60 @@ class NeutronClient(OpenStackClient):
     VERSION = '2.3.4'
     Exceptions = neutron_exceptions
 
-    def __init__(self, **kwargs):
-        raise NotImplementedError()
+    class Network(OpenStackResourceList):
+        def create(self, name, tenant_id):
+            args = {
+                'provider:network_type': 'vlan',
+                'provider:physical_network': 'physnet1',
+                'provider:segmentation_id': 1000,
+                'admin_state_up': True,
+                'shared': False,
+                'status': 'ACTIVE',
+                'subnets': [],
+            }
+            return super(NeutronClient.Network, self).create(name, dict(
+                name=name,
+                tenant_id=tenant_id,
+                **args))
+
+    class Subnet(OpenStackResourceList):
+        def create(self, **kwargs):
+            kwargs.update({
+                'gateway_ip': '0.0.0.0',
+                'host_routes': [],
+            })
+            return super(NeutronClient.Subnet, self).create(kwargs['name'], kwargs)
+
+    def __init__(self, auth_url, username, password, tenant_id=None, **kwargs):
+        self.client = KeystoneClient(
+            session=KeystoneClient.Session(auth=v2.Password(auth_url, username, password)))
+
+    def show_network(self, network_id):
+        networks = self._get_resources('Network')
+        return {'network': networks.get(network_id).to_dict()}
+
+    def create_network(self, body=None):
+        networks = self._get_resources('Network')
+        response = []
+        for args in body.get('networks'):
+            response.append(networks.create(args['name'], args['tenant_id']).to_dict())
+
+        return {'networks': response}
+
+    def create_subnet(self, body=None):
+        networks = self._get_resources('Network')
+        subnets = self._get_resources('Subnet')
+        response = []
+        for args in body.get('subnets'):
+            subnet = subnets.create(**args)
+            network = networks.get(args['network_id'])
+            network.subnets.append(subnet.id)
+            response.append(subnet.to_dict())
+
+        return {'subnets': response}
+
+    def list_floatingips(self, retrieve_all=True, **kwargs):
+        return {'floatingips': []}
 
 
 class CinderClient(OpenStackClient):
@@ -507,7 +569,7 @@ class DummyDataSet(object):
         {'id': '4811ade6c9e2484baec5fc504d826143', 'name': 'admin'},
         {'id': '78119dea93164da2914c4d5853eb8cf2', 'name': 'Member'},
         {'id': '9fe2ff9ee4384b1894a90878d3e92bab', 'enabled': 'True',
-            'description': 'Default role for project membership', 'name': '_member_'}
+            'description': 'Default role for project membership', 'name': '_member_'},
     )
 
     FLAVORS = (
@@ -620,7 +682,27 @@ class DummyDataSet(object):
             'swap': '',
             'vcpus': 8,
             'ram': 16384,
-        }
+        },
+    )
+
+    IMAGES = (
+        {
+            'id': 'd15dc2c4-25d6-4150-93fe-a412499298d8',
+            'name': 'centos65-image',
+            'created_at': '2015-02-15T18:35:09',
+            'updated_at': '2015-02-15T18:35:10',
+            'status': 'active',
+            'deleted': False,
+            'protected': False,
+            'is_public': True,
+            'properties': {},
+            'size': 197120,
+            'min_ram': 0,
+            'min_disk': 0,
+            'disk_format': 'qcow2',
+            'container_format': 'bare',
+            'checksum': '986007d27066f22a666c9676c3fbf616',
+        },
     )
 
     SERVERS = (

@@ -212,12 +212,11 @@ class OpenStackClient(object):
 
     @classmethod
     def create_glance_client(cls, session):
-        ks_session = session.keystone_session
-        catalog = ServiceCatalog.factory(ks_session.auth.auth_ref)
+        catalog = ServiceCatalog.factory(session.auth.auth_ref)
         endpoint = catalog.url_for(service_type='image')
 
         kwargs = {
-            'token': ks_session.get_token(),
+            'token': session.get_token(),
             'insecure': False,
             'timeout': 600,
             'ssl_compression': True,

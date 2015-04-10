@@ -1,3 +1,5 @@
+import types
+
 from django.test import TestCase
 
 from novaclient import exceptions as nova_exceptions
@@ -131,3 +133,36 @@ class OpenStackClientTest(TestCase):
 
     def test_nova_servers(self):
         pass
+
+    def test_glance(self):
+        session = self.backend.create_tenant_session(self.credentials)
+        glance = self.backend.create_glance_client(session)
+        images = glance.images.list()
+        self.assertIsInstance(images, types.GeneratorType)
+
+    def test_neutron(self):
+        session = self.backend.create_tenant_session(self.credentials)
+        neutron = self.backend.create_neutron_client(session)
+
+        response = neutron.create_network({'networks': [
+            {'name': 'nc-f38a1bee66a5494c99bd123525b8ceb8', 'tenant_id': '1'}]})
+
+        self.assertEqual(response['networks'][0]['status'], 'ACTIVE')
+
+        network_id = response['networks'][0]['id']
+        response = neutron.create_subnet({'subnets': [
+            {
+                'network_id': network_id,
+                'tenant_id': '2',
+                'name': '{0}-sn01'.format(network_id),
+                'cidr': '192.168.42.0/24',
+                'allocation_pools': [{'start': '192.168.42.10', 'end': '192.168.42.250'}],
+                'ip_version': 4,
+                'enable_dhcp': True
+            }
+        ]})
+        subnet_id = response['subnets'][0]['id']
+        self.assertEqual(response['subnets'][0]['gateway_ip'], '0.0.0.0')
+
+        network = neutron.show_network(network_id)
+        self.assertEqual(subnet_id, network['network']['subnets'][0])
