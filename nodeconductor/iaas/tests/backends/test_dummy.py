@@ -4,6 +4,7 @@ from django.test import TestCase
 
 from novaclient import exceptions as nova_exceptions
 from keystoneclient import exceptions as keystone_exceptions
+from cinderclient import exceptions as cinder_exceptions
 
 from nodeconductor.iaas.backend.openstack import OpenStackBackend
 from nodeconductor.iaas.models import OpenStackSettings
@@ -166,3 +167,41 @@ class OpenStackClientTest(TestCase):
 
         network = neutron.show_network(network_id)
         self.assertEqual(subnet_id, network['network']['subnets'][0])
+
+    def test_cinder(self):
+        session = self.backend.create_tenant_session(self.credentials)
+        cinder = self.backend.create_cinder_client(session)
+        glance = self.backend.create_glance_client(session)
+
+        image = next(glance.images.list())
+        with self.assertRaises(cinder_exceptions.OverLimit):
+            cinder.volumes.create(size=1024, display_name='test', imageRef=image.id)
+
+        with self.assertRaises(cinder_exceptions.BadRequest):
+            cinder.volumes.create(size=1000, display_name='test', imageRef='NULL')
+
+        cinder.quotas.update(self.credentials['tenant_id'], gigabytes=2048)
+        quota = cinder.quotas.get(tenant_id=self.credentials['tenant_id'])
+
+        self.assertEqual(quota.gigabytes, 2048)
+
+        volume = cinder.volumes.create(
+            size=1024, display_name='test-system', display_description='', imageRef=image.id)
+        self.assertEqual(volume.status, 'available')
+
+        cinder.volumes.extend(volume, 512)
+        self.assertEqual(cinder.volumes.get(volume.id).size, 512)
+
+        snapshot = cinder.volume_snapshots.create(
+            volume.id, force=True, display_name='snapshot_from_volume_%s' % volume.id)
+        self.assertEqual(snapshot.status, 'available')
+
+        volume2 = cinder.volumes.create(768, snapshot_id=snapshot.id, display_name='test-two')
+
+        self.assertEqual(volume2.snapshot_id, snapshot.id)
+        self.assertEqual(volume2.size, 768)
+
+        cinder.volumes.delete(volume.id)
+
+        with self.assertRaises(cinder_exceptions.NotFound):
+            cinder.volume_snapshots.get(snapshot.id)

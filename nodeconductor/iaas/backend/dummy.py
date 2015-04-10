@@ -44,7 +44,7 @@ class OpenStackResource(object):
         return self.id == other.id
 
     def to_dict(self):
-        return self.__dict__
+        return self.__dict__.copy()
 
 
 class OpenStackCustomResources(object):
@@ -67,12 +67,46 @@ class OpenStackCustomResources(object):
         def __repr__(self):
             return "<%s %s>" % (self.__class__.__name__, self.name)
 
+    class Quota(OpenStackResource):
+        def __hash__(self):
+            return 1
+
+        def __eq__(self, other):
+            return 1
+
     class QuotaSet(OpenStackResource):
         def __hash__(self):
             return 1
 
         def __eq__(self, other):
             return 1
+
+    class Image(OpenStackResource):
+        def __init__(self, **kwargs):
+            super(OpenStackCustomResources.Image, self).__init__(**kwargs)
+            self.id = str(uuid.UUID(self.id))
+
+        def __repr__(self):
+            return "<%s: %s>" % (self.__class__.__name__, str(self.to_dict()))
+
+    class Volume(OpenStackResource):
+        def __init__(self, **kwargs):
+            super(OpenStackCustomResources.Volume, self).__init__(**kwargs)
+            self.id = str(uuid.UUID(self.id))
+
+        def __repr__(self):
+            return "<%s: %s>" % (self.__class__.__name__, self.id)
+
+        def is_loaded(self):
+            return True
+
+    class VolumeSnapshot(OpenStackResource):
+        def __init__(self, **kwargs):
+            super(OpenStackCustomResources.VolumeSnapshot, self).__init__(**kwargs)
+            self.id = str(uuid.UUID(self.id))
+
+        def __repr__(self):
+            return "<Snapshot: %s>" % self.id
 
     class SecurityGroup(OpenStackResource):
         def __init__(self, **kwargs):
@@ -299,7 +333,7 @@ class NovaClient(OpenStackClient):
 
     class Server(OpenStackResourceList):
         def create(self, name=None, image=None, flavor=None, key_name=None, security_groups=None,
-                   block_device_mapping=(), block_device_mapping_v2=(), nics=()):
+                   availability_zone=None, block_device_mapping=(), block_device_mapping_v2=(), nics=()):
             raise NotImplementedError()
 
         def resize(self, server_id, flavor_id, disk_config='AUTO'):
@@ -328,6 +362,9 @@ class NovaClient(OpenStackClient):
 
         def delete(self, server_id):
             raise NotImplementedError()
+
+    class Volume(OpenStackResourceList):
+        pass
 
     class QuotaSet(OpenStackResourceList):
         def get(self, tenant_id):
@@ -382,6 +419,7 @@ class NovaClient(OpenStackClient):
             session=KeystoneClient.Session(auth=v2.Password(auth_url, username, api_key)))
         self.flavors = self._get_resources('Flavor')
         self.servers = self._get_resources('Server')
+        self.volumes = self._get_resources('Volume')
         self.quotas = self._get_resources('QuotaSet')
         self.keypairs = self._get_resources('KeyPair')
         self.security_groups = self._get_resources('SecurityGroup')
@@ -446,7 +484,6 @@ class NeutronClient(OpenStackClient):
         response = []
         for args in body.get('networks'):
             response.append(networks.create(args['name'], args['tenant_id']).to_dict())
-
         return {'networks': response}
 
     def create_subnet(self, body=None):
@@ -458,7 +495,6 @@ class NeutronClient(OpenStackClient):
             network = networks.get(args['network_id'])
             network.subnets.append(subnet.id)
             response.append(subnet.to_dict())
-
         return {'subnets': response}
 
     def list_floatingips(self, retrieve_all=True, **kwargs):
@@ -471,8 +507,127 @@ class CinderClient(OpenStackClient):
     VERSION = '1.0.9'
     Exceptions = cinder_exceptions
 
-    def __init__(self, **kwargs):
-        raise NotImplementedError()
+    class Backup(OpenStackResourceList):
+        pass
+
+    class Restore(OpenStackResourceList):
+        pass
+
+    class Quota(OpenStackResourceList):
+        def get(self, tenant_id=None):
+            return super(CinderClient.Quota, self).list()[0]
+
+        def list(self):
+            raise AttributeError("'Quota' object has no attribute 'list'")
+
+        def update(self, tenant_id, **kwargs):
+            return super(CinderClient.Quota, self)._update(self.get(tenant_id), **kwargs)
+
+    class Volume(OpenStackResourceList):
+        def create(self, size=0, display_name=None, display_description=None,
+                   snapshot_id=None, imageRef=None):
+
+            self.client._check_quotas(size)
+
+            if snapshot_id:
+                try:
+                    snapshot = self.client.volume_snapshots.get(snapshot_id)
+                except:
+                    self.client._raise('NotFound', "snapshot id:%s not found" % snapshot_id)
+
+                if snapshot.status != 'available':
+                    self.client._raise(
+                        'BadRequest',
+                        "Invalid snapshot: Originating snapshot status must be one of available values")
+
+            if imageRef:
+                session = self.client.client.session
+                glance = GlanceClient(session.auth.auth_url, session.get_token())
+                try:
+                    glance.images.get(imageRef)
+                except:
+                    self.client._raise('BadRequest', "Invalid imageRef provided.")
+
+            args = {
+                'bootable': False,
+                'encrypted': False,
+                'availability_zone': 'nova',
+                'os-vol-host-attr:host': None,
+                'os-vol-mig-status-attr:migstat': None,
+                'os-vol-mig-status-attr:name_id': None,
+                'os-vol-tenant-attr:tenant_id': None,
+                'source_volid': None,
+                'volume_type': 'lvm',
+                'metadata': {},
+                'attachments': [],
+            }
+
+            return super(CinderClient.Volume, self).create(display_name, dict(
+                size=size,
+                snapshot_id=snapshot_id,
+                display_name=display_name,
+                display_description=display_description,
+                created_at=datetime.now().strftime('%Y-%m-%dT%T'),
+                status='available',
+                **args))
+
+        def extend(self, volume, new_size):
+            if volume.status != 'available':
+                self.client._raise(
+                    'BadRequest', "Invalid volume: Volume status must be available to extend.")
+
+            if self.client._check_quotas(new_size - volume.size, raises=False):
+                self._update(volume, size=new_size)
+            else:
+                self._update(volume, status='error_extending')
+
+            return (None, None)
+
+        def delete(self, volume_id):
+            for snapshot in self.client.volume_snapshots.findall(volume_id=volume_id):
+                self.client.volume_snapshots.delete(snapshot.id)
+            super(CinderClient.Volume, self).delete(volume_id)
+
+    class VolumeSnapshot(OpenStackResourceList):
+        def create(self, volume_id, force=False, display_name=''):
+            volume = self.client.volumes.get(volume_id)
+            self.client._check_quotas(volume.size)
+
+            args = volume.to_dict()
+            for opt in 'id', 'display_name', 'created_at', 'status':
+                del args[opt]
+
+            return super(CinderClient.VolumeSnapshot, self).create(display_name, dict(
+                display_name=display_name,
+                created_at=datetime.now().strftime('%Y-%m-%dT%T'),
+                volume_id=volume_id,
+                status='available',
+                **args))
+
+    def __init__(self, auth_url, username, api_key, tenant_id=None, **kwargs):
+        self.tenant_id = tenant_id
+        self.client = KeystoneClient(
+            session=KeystoneClient.Session(auth=v2.Password(auth_url, username, api_key)))
+        self.backups = self._get_resources('Backup')
+        self.restores = self._get_resources('Restore')
+        self.volumes = self._get_resources('Volume')
+        self.volume_snapshots = self._get_resources('VolumeSnapshot')
+        self.quotas = self._get_resources('Quota')
+
+    def _check_quotas(self, size, raises=True):
+        quota = self.quotas.get(self.tenant_id)
+        consumed = sum(volume.size for volume in self.volumes.list()) + \
+            sum(snapshot.size for snapshot in self.volume_snapshots.list())
+
+        if size > quota.gigabytes - consumed:
+            if raises:
+                self._raise(
+                    'OverLimit',
+                    "VolumeSizeExceedsAvailableQuota: Requested volume or snapshot exceeds "
+                    "allowed Gigabytes quota. Requested %dG, quota is %dG and %dG "
+                    "has been consumed." % (size, quota.gigabytes, consumed))
+            return False
+        return True
 
 
 class DummyDataSet(object):
@@ -706,6 +861,14 @@ class DummyDataSet(object):
     )
 
     SERVERS = (
+    )
+
+    QUOTAS = (
+        {
+            'gigabytes': 1000,
+            'snapshots': 10,
+            'volumes': 10,
+        },
     )
 
     QUOTASETS = (
