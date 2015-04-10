@@ -714,6 +714,20 @@ class OpenStackBackendInstanceApiTest(TransactionTestCase):
         self.assertEqual(expected_instance_count, actual_instance_count,
                          'No instances should have been deleted from the database')
 
+    def test_floating_ip_is_released_after_instance_deletion(self):
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+        factories.FloatingIPFactory(
+            cloud_project_membership=instance.cloud_project_membership,
+            address=instance.external_ips,
+            status='ACTIVE'
+        )
+        self.backend._wait_for_instance_deletion = mock.Mock(return_value=True)
+        self.backend.delete_instance(instance)
+
+        floating_ip = FloatingIP.objects.get(cloud_project_membership=instance.cloud_project_membership,
+                                             address=instance.external_ips)
+        self.assertEqual(floating_ip.status, 'DOWN')
+
     # Helper methods
     def given_minimal_importable_instance(self):
         # Create a flavor
