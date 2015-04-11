@@ -1956,7 +1956,7 @@ class OpenStackBackend(object):
                         instance.external_ips, instance.uuid)
 
     def release_floating_ip_from_instance(self, instance):
-        if instance.external_ips is None:
+        if not instance.external_ips:
             return
 
         try:
