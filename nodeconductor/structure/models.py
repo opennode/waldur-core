@@ -32,7 +32,7 @@ class Customer(UuidMixin, quotas_models.QuotaModelMixin, TimeStampedModel):
     abbreviation = models.CharField(max_length=8, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
 
-    QUOTAS_NAMES = ['nc-projects', 'nc-instances', 'nc-users']
+    QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count']
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through

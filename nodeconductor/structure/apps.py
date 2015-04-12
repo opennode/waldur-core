@@ -101,21 +101,21 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.add_quotas_to_customer',
         )
 
-        # increase nc-projects quota usage on project creation
+        # increase nc_project_count quota usage on project creation
         signals.post_save.connect(
             handlers.change_customer_nc_projects_quota,
             sender=Project,
             dispatch_uid='nodeconductor.structure.handlers.increase_customer_nc_projects_quota',
         )
 
-        # decrease nc-projects quota usage on project deletion
+        # decrease nc_project_count quota usage on project deletion
         signals.post_delete.connect(
             handlers.change_customer_nc_projects_quota,
             sender=Project,
             dispatch_uid='nodeconductor.structure.handlers.decrease_customer_nc_projects_quota',
         )
 
-        # increase nc-users quota usage on adding user to customer
+        # increase nc_user_count quota usage on adding user to customer
         structure_models_with_roles = (Customer, Project, ProjectGroup)
         for model in structure_models_with_roles:
             name = 'increase_customer_nc_users_quota_on_adding_user_to_%s' % model.__name__
@@ -125,7 +125,7 @@ class StructureConfig(AppConfig):
                 dispatch_uid='nodeconductor.iaas.handlers.%s' % name,
             )
 
-        # decrease nc-users quota usage on removing user from customer
+        # decrease nc_user_count quota usage on removing user from customer
         for model in structure_models_with_roles:
             name = 'decrease_customer_nc_users_quota_on_adding_user_to_%s' % model.__name__
             structure_signals.structure_role_revoked.connect(

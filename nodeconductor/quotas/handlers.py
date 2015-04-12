@@ -17,7 +17,7 @@ def quantity_quota_handler_fabric(path_to_quota_scope, quota_name, count=1):
     :param count: value, that will be added to quota usage
 
     Example.
-    This code will add 1 to customer "nc-instances" quotas on instance creation and remove 1 on instance deletion:
+    This code will add 1 to customer "nc_resource_count" quotas on instance creation and remove 1 on instance deletion:
 
     .. code-block:: python
 
@@ -25,7 +25,7 @@ def quantity_quota_handler_fabric(path_to_quota_scope, quota_name, count=1):
 
         change_customer_nc_instances_quota = quotas_handlers.quantity_quota_handler_fabric(
             path_to_quota_scope='cloud_project_membership.project.customer',
-            quota_name='nc-instances',
+            quota_name='nc_resource_count',
             count=1,
         )
 

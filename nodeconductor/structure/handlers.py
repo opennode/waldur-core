@@ -115,7 +115,7 @@ def log_project_delete(sender, instance, **kwargs):
 
 change_customer_nc_projects_quota = quotas_handlers.quantity_quota_handler_fabric(
     path_to_quota_scope='customer',
-    quota_name='nc-projects',
+    quota_name='nc_project_count',
 )
 
 
@@ -127,7 +127,7 @@ def _get_customer_users(customer):
 
 
 def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwargs):
-    """ Modify nc-users quota usage on structure role grant or revoke """
+    """ Modify nc_user_count quota usage on structure role grant or revoke """
     assert signal in (signals.structure_role_granted, signals.structure_role_revoked), \
         'Handler "change_customer_nc_users_quota" has to be used only with structure_role signals'
     assert sender in (Customer, Project, ProjectGroup), \
@@ -145,6 +145,6 @@ def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwar
 
     if user not in customer_users:
         if signal == signals.structure_role_granted:
-            customer.add_quota_usage('nc-users', 1)
+            customer.add_quota_usage('nc_user_count', 1)
         else:
-            customer.add_quota_usage('nc-users', -1)
+            customer.add_quota_usage('nc_user_count', -1)
