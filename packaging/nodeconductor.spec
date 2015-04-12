@@ -16,7 +16,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.45.3
-Release: 1.el7
+Release: 2.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # openssl package is needed to generate SAML2 keys during NodeConductor install
@@ -114,8 +114,6 @@ rm -rf %{buildroot}
 
 %files -f INSTALLED_FILES_CLEAN
 %defattr(-,root,root,-)
-%exclude %{__celery_conf_file}
-%exclude %{__conf_file}
 %config(noreplace) %{__celery_conf_file}
 %config(noreplace) %{__conf_file}
 
@@ -191,6 +189,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Sun Apr 12 2015 Juri Hudolejev <juri@opennodecloud.com> - 0.45.3-2.el7
+- Fixed missing configs in RPM
+
 * Sun Apr 12 2015 Pavel Marchuk <pavel@opennodecloud.com> - 0.45.3-1.el7
 - New upstream release
 
