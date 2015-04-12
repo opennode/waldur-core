@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models
 from django.db import transaction
+from django.db.models import Q
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
 
@@ -114,6 +115,13 @@ class Customer(UuidMixin, quotas_models.QuotaModelMixin, TimeStampedModel):
 
     def get_owners(self):
         return self.roles.get(role_type=CustomerRole.OWNER).permission_group.user_set
+
+    def get_users(self):
+        """ Return all connected to customer users """
+        return get_user_model().objects.filter(
+            Q(groups__customerrole__customer=self) |
+            Q(groups__projectrole__project__customer=self) |
+            Q(groups__projectgrouprole__project_group__customer=self))
 
     def can_user_update_quotas(self, user):
         return user.is_staff or user in self.get_owners()

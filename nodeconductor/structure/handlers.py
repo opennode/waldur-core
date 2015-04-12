@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import logging
 
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models, transaction
 from django.db.models import Q
@@ -119,13 +118,6 @@ change_customer_nc_projects_quota = quotas_handlers.quantity_quota_handler_facto
 )
 
 
-def _get_customer_users(customer):
-    return get_user_model().objects.filter(
-        Q(groups__customerrole__customer=customer) |
-        Q(groups__projectrole__project__customer=customer) |
-        Q(groups__projectgrouprole__project_group__customer=customer))
-
-
 def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwargs):
     """ Modify nc_user_count quota usage on structure role grant or revoke """
     assert signal in (signals.structure_role_granted, signals.structure_role_revoked), \
@@ -135,13 +127,13 @@ def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwar
 
     if sender == Customer:
         customer = structure
-        customer_users = _get_customer_users(customer).exclude(groups__customerrole__role_type=role)
+        customer_users = customer.get_users().exclude(groups__customerrole__role_type=role)
     elif sender == Project:
         customer = structure.customer
-        customer_users = _get_customer_users(customer).exclude(groups__projectrole__role_type=role)
+        customer_users = customer.get_users().exclude(groups__projectrole__role_type=role)
     elif sender == ProjectGroup:
         customer = structure.customer
-        customer_users = _get_customer_users(customer).exclude(groups__projectgrouprole__role_type=role)
+        customer_users = customer.get_users().exclude(groups__projectgrouprole__role_type=role)
 
     if user not in customer_users:
         if signal == signals.structure_role_granted:
