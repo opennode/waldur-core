@@ -258,6 +258,20 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.assertIn('New project name', response.data['name'])
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
 
+    def test_customer_owner_can_update_project(self):
+        self.client.force_authenticate(self.owner)
+        url = factories.ProjectFactory.get_url(self.project)
+        project_group = factories.ProjectGroupFactory(customer=self.customer)
+        data = {
+            'project_groups': [{"url": factories.ProjectGroupFactory.get_url(project_group)}]
+        }
+
+        response = self.client.patch(url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        reread_project = Project.objects.get(pk=self.project.pk)
+        self.assertItemsEqual(reread_project.project_groups.all(), [project_group])
+
     # Delete tests:
     def test_user_can_delete_project_belonging_to_the_customer_he_owns(self):
         self.client.force_authenticate(self.staff)
