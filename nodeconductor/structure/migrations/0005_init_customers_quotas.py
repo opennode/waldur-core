@@ -19,12 +19,12 @@ def init_customers_quotas(apps, schema_editor):
     for customer in Customer.objects.all():
         # projects
         customer_kwargs = {'content_type_id': customer_ct.id, 'object_id': customer.id}
-        if not Quota.objects.filter(name='nc-projects', **customer_kwargs).exists():
+        if not Quota.objects.filter(name='nc_project_count', **customer_kwargs).exists():
             Quota.objects.create(
-                uuid=uuid4().hex, name='nc-projects', usage=customer.projects.count(), **customer_kwargs)
+                uuid=uuid4().hex, name='nc_project_count', usage=customer.projects.count(), **customer_kwargs)
 
         # users
-        if not Quota.objects.filter(name='nc-users', **customer_kwargs).exists():
+        if not Quota.objects.filter(name='nc_user_count', **customer_kwargs).exists():
             users_count = (
                 User.objects.filter(
                     Q(groups__projectrole__project__customer=customer) |
@@ -34,7 +34,7 @@ def init_customers_quotas(apps, schema_editor):
                 .count()
             )
             Quota.objects.create(
-                uuid=uuid4().hex, name='nc-users', usage=users_count, **customer_kwargs)
+                uuid=uuid4().hex, name='nc_user_count', usage=users_count, **customer_kwargs)
 
 
 class Migration(migrations.Migration):
