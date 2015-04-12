@@ -9,6 +9,10 @@ from django.db import migrations
 from django.db.models import Q
 
 
+USER_COUNT_QUOTA = 'nc_user_count'
+PROJECT_COUNT_QUOTA = 'nc_project_count'
+
+
 def init_customers_quotas(apps, schema_editor):
     Customer = apps.get_model('structure', 'Customer')
     Quota = apps.get_model("quotas", 'Quota')
@@ -19,12 +23,12 @@ def init_customers_quotas(apps, schema_editor):
     for customer in Customer.objects.all():
         # projects
         customer_kwargs = {'content_type_id': customer_ct.id, 'object_id': customer.id}
-        if not Quota.objects.filter(name='nc_project_count', **customer_kwargs).exists():
+        if not Quota.objects.filter(name=PROJECT_COUNT_QUOTA, **customer_kwargs).exists():
             Quota.objects.create(
-                uuid=uuid4().hex, name='nc_project_count', usage=customer.projects.count(), **customer_kwargs)
+                uuid=uuid4().hex, name=PROJECT_COUNT_QUOTA, usage=customer.projects.count(), **customer_kwargs)
 
         # users
-        if not Quota.objects.filter(name='nc_user_count', **customer_kwargs).exists():
+        if not Quota.objects.filter(name=USER_COUNT_QUOTA, **customer_kwargs).exists():
             users_count = (
                 User.objects.filter(
                     Q(groups__projectrole__project__customer=customer) |
@@ -34,7 +38,7 @@ def init_customers_quotas(apps, schema_editor):
                 .count()
             )
             Quota.objects.create(
-                uuid=uuid4().hex, name='nc_user_count', usage=users_count, **customer_kwargs)
+                uuid=uuid4().hex, name=USER_COUNT_QUOTA, usage=users_count, **customer_kwargs)
 
 
 class Migration(migrations.Migration):

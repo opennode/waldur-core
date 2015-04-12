@@ -4,7 +4,6 @@ import logging
 
 from django.contrib.auth.models import Group
 from django.db import models, transaction
-from django.db.models import Q
 
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.quotas import handlers as quotas_handlers
