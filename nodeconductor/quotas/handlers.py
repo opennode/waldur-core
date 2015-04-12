@@ -8,7 +8,7 @@ def add_quotas_to_scope(sender, instance, created=False, **kwargs):
             models.Quota.objects.create(name=quota_name, scope=instance)
 
 
-def quantity_quota_handler_fabric(path_to_quota_scope, quota_name, count=1):
+def quantity_quota_handler_factory(path_to_quota_scope, quota_name, count=1):
     """
     Return signal handler that increases or decreases quota usage by <count> on object creation or deletion
 
@@ -23,7 +23,7 @@ def quantity_quota_handler_fabric(path_to_quota_scope, quota_name, count=1):
 
         # handlers.py:
 
-        change_customer_nc_instances_quota = quotas_handlers.quantity_quota_handler_fabric(
+        change_customer_nc_instances_quota = quotas_handlers.quantity_quota_handler_factory(
             path_to_quota_scope='cloud_project_membership.project.customer',
             quota_name='nc_resource_count',
             count=1,

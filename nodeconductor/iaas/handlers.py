@@ -225,7 +225,7 @@ def set_cpm_default_availability_zone(sender, instance=None, **kwargs):
             instance.availability_zone = options.availability_zone
 
 
-change_customer_nc_instances_quota = quotas_handlers.quantity_quota_handler_fabric(
+change_customer_nc_instances_quota = quotas_handlers.quantity_quota_handler_factory(
     path_to_quota_scope='cloud_project_membership.project.customer',
     quota_name='nc_resource_count',
 )

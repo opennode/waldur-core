@@ -113,7 +113,7 @@ def log_project_delete(sender, instance, **kwargs):
     )
 
 
-change_customer_nc_projects_quota = quotas_handlers.quantity_quota_handler_fabric(
+change_customer_nc_projects_quota = quotas_handlers.quantity_quota_handler_factory(
     path_to_quota_scope='customer',
     quota_name='nc_project_count',
 )
