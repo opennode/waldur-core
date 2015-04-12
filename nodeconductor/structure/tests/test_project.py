@@ -258,7 +258,7 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.assertIn('New project name', response.data['name'])
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
 
-    def test_customer_owner_can_update_project(self):
+    def test_customer_owner_can_update_project_groups_of_project_from_his_customer(self):
         self.client.force_authenticate(self.owner)
         url = factories.ProjectFactory.get_url(self.project)
         project_group = factories.ProjectGroupFactory(customer=self.customer)

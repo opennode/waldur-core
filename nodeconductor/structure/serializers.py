@@ -138,13 +138,11 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         return 'customer',
 
     def update(self, instance, validated_data):
-        project_groups = validated_data.pop('project_groups') if 'project_groups' in validated_data else None
-        project = super(ProjectSerializer, self).update(instance, validated_data)
-        if project_groups is not None:
-            project.project_groups.clear()
-            project.project_groups.add(*project_groups)
-
-        return project
+        if 'project_groups' in validated_data:
+            project_groups = validated_data.pop('project_groups')
+            instance.project_groups.clear()
+            instance.project_groups.add(*project_groups)
+        return super(ProjectSerializer, self).update(instance, validated_data)
 
 
 class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
