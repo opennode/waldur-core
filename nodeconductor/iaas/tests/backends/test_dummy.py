@@ -199,6 +199,9 @@ class OpenStackClientTest(TestCase):
 
         nova.servers.delete(server.id)
 
+        stats = nova.hypervisors.statistics()._info
+        self.assertEqual(stats['free_ram_mb'], 477)
+
     def test_glance(self):
         session = self.backend.create_tenant_session(self.credentials)
         glance = self.backend.create_glance_client(session)

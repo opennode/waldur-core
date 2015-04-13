@@ -145,7 +145,10 @@ class OpenStackResourceList(object):
 
     def __init__(self, client):
         self.client = client
-        dummy_objects = getattr(DummyDataSet, '%sS' % self.resource_class.__name__.upper(), [])
+        dataset_name = self.resource_class.__name__.upper()
+        if not dataset_name.endswith('S'):
+            dataset_name += 'S'
+        dummy_objects = getattr(DummyDataSet, dataset_name, [])
         for obj in dummy_objects:
             self._objects.add(self._create(**obj))
 
@@ -1000,7 +1003,7 @@ class DummyDataSet(object):
         },
     )
 
-    STATISTICSS = (
+    STATISTICS = (
         {
             'count': 1,
             'current_workload': 0,
