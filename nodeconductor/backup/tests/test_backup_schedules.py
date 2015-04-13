@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
 
 import unittest
+import datetime
+
 from croniter import croniter
-from datetime import datetime
 from pytz import timezone
 
 from django.conf import settings
@@ -111,16 +112,28 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
     def test_weekly_backup_schedule_next_trigger_at_is_correct(self):
         schedule = factories.BackupScheduleFactory(schedule='0 2 * * 4')
 
-        cron = croniter('0 2 * * 4', datetime.now(tz=timezone(settings.TIME_ZONE)))
-        schedule = models.BackupSchedule.objects.get(pk=schedule.pk)
-        self.assertEqual(schedule.next_trigger_at, cron.get_next(datetime))
+        cron = croniter('0 2 * * 4', datetime.datetime.now(tz=timezone(settings.TIME_ZONE)))
+        next_backup = schedule.next_trigger_at
+        self.assertEqual(next_backup, cron.get_next(datetime.datetime))
+        self.assertEqual(next_backup.weekday(), 3, 'Must be Thursday')
+
+        for k, v in {'hour': 2, 'minute': 0, 'second': 0}.items():
+            self.assertEqual(getattr(next_backup, k), v, 'Must be 2:00am')
 
     def test_daily_backup_schedule_next_trigger_at_is_correct(self):
         schedule = factories.BackupScheduleFactory(schedule='0 2 * * *')
 
-        cron = croniter('0 2 * * *', datetime.now(tz=timezone(settings.TIME_ZONE)))
+        cron = croniter('0 2 * * *', datetime.datetime.now(tz=timezone(settings.TIME_ZONE)))
         schedule = models.BackupSchedule.objects.get(pk=schedule.pk)
-        self.assertEqual(schedule.next_trigger_at, cron.get_next(datetime))
+        next_backup = schedule.next_trigger_at
+        self.assertEqual(next_backup, cron.get_next(datetime.datetime))
+
+        time = datetime.time(2, 0, 0, tzinfo=timezone(settings.TIME_ZONE))
+        date = datetime.date.today()
+        if datetime.datetime.now(tz=timezone(settings.TIME_ZONE)).time().hour > 2:
+            date += datetime.timedelta(days=1)
+
+        self.assertEqual(datetime.datetime.combine(date, time), next_backup, "Must be 2:00am every day")
 
     def test_schedule_activation_and_deactivation(self):
         schedule = factories.BackupScheduleFactory(is_active=False)
