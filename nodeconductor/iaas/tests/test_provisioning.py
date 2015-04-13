@@ -16,6 +16,7 @@ from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
+# TODO: Replace this mixin methods with Factory.get_url() methods
 class UrlResolverMixin(object):
     def _get_flavor_url(self, flavor):
         return 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': flavor.uuid})
@@ -902,6 +903,14 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset(
             {'non_field_errors': ['External IP is not from the list of available floating IPs.']}, response.data)
+
+    def test_instance_can_not_be_created_if_customer_resource_quota_exceeded(self):
+        self.project.customer.set_quota_limit('nc_resource_count', 0)
+        data = self.get_valid_data()
+
+        response = self.client.post(factories.InstanceFactory.get_list_url(), data)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     # Helper methods
     # TODO: Move to serializer tests

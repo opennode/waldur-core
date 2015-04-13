@@ -103,17 +103,20 @@ class QuotaModelMixin(models.Model):
                 # we do not do anything if ancestor does not have such quota
                 pass
 
-    def validate_quota_change(self, quota_deltas):
+    def validate_quota_change(self, quota_deltas, raise_exception=False):
         """
-        Get error messages about object and his ancestor quotas that will be exceeded if quota_delta will be added
+        Get error messages about object and his ancestor quotas that will be exceeded if quota_delta will be added.
 
+        raise_exception - if True QuotaExceededException will be raised if validation fails
         quota_deltas - dictionary of quotas deltas, example:
         {
             'ram': 1024,
             'storage': 2048,
             ...
         }
-        Example of error message:
+        Example of output:
+            ['ram quota limit: 1024, requires: 2048(instance#1)', ...]
+
         """
         errors = []
         for name, delta in quota_deltas.iteritems():
@@ -123,7 +126,11 @@ class QuotaModelMixin(models.Model):
                     quota.name, quota.limit, quota.usage + delta, quota.scope))
         for parent in self.get_quota_parents():
             errors += parent.validate_quota_change(quota_deltas)
-        return errors
+        if not raise_exception:
+            return errors
+        else:
+            if errors:
+                raise exceptions.QuotaExceededException('One or more quotas were exceeded: %s' % ';'.join(errors))
 
     def _get_quota_ancestors(self):
         """

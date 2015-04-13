@@ -296,10 +296,13 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def perform_create(self, serializer):
         serializer.validated_data['agreed_sla'] = serializer.validated_data['template'].sla_level
         # check if connected cloud_project_membership is in a sane state - fail modification operation otherwise
-        if serializer.validated_data['cloud_project_membership'].state == core_models.SynchronizationStates.ERRED:
+        membership = serializer.validated_data['cloud_project_membership']
+        if membership.state == core_models.SynchronizationStates.ERRED:
             raise core_exceptions.IncorrectStateException(
                 detail='Cannot modify an instance if it is connected to a cloud project membership in erred state.'
             )
+
+        membership.project.customer.validate_quota_change({'nc_resource_count': 1}, raise_exception=True)
 
         instance = serializer.save()
         event_logger.info('Virtual machine %s creation has been scheduled.', instance.name,
