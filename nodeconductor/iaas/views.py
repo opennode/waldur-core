@@ -1053,8 +1053,8 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
                                                                       context={'membership': membership})
         serializer.is_valid(raise_exception=True)
 
-        instance_id = serializer.object['id']
-        template = serializer.object.get('template')
+        instance_id = serializer.validated_data['id']
+        template = serializer.validated_data.get('template')
         template_id = template.uuid.hex if template else None
         tasks.import_instance.delay(membership.pk, instance_id=instance_id, template_id=template_id)
 

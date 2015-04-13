@@ -18,11 +18,6 @@ logger = logging.getLogger(__name__)
 event_logger = EventLoggerAdapter(logger)
 
 
-# XXX: There are no usages of this error.
-class ResizingError(KeyError, models.Instance.DoesNotExist):
-    pass
-
-
 def create_zabbix_host_and_service(instance, warn_if_exists=True):
     try:
         zabbix_client = ZabbixApiClient()
