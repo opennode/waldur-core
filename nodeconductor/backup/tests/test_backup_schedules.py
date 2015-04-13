@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
 
 import unittest
+from croniter import croniter
+from datetime import datetime
+from pytz import timezone
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -104,6 +107,20 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['timezone'], settings.TIME_ZONE)
+
+    def test_weekly_backup_schedule_next_trigger_at_is_correct(self):
+        schedule = factories.BackupScheduleFactory(schedule='0 2 * * 4')
+
+        cron = croniter('0 2 * * 4', datetime.now(tz=timezone(settings.TIME_ZONE)))
+        schedule = models.BackupSchedule.objects.get(pk=schedule.pk)
+        self.assertEqual(schedule.next_trigger_at, cron.get_next(datetime))
+
+    def test_daily_backup_schedule_next_trigger_at_is_correct(self):
+        schedule = factories.BackupScheduleFactory(schedule='0 2 * * *')
+
+        cron = croniter('0 2 * * *', datetime.now(tz=timezone(settings.TIME_ZONE)))
+        schedule = models.BackupSchedule.objects.get(pk=schedule.pk)
+        self.assertEqual(schedule.next_trigger_at, cron.get_next(datetime))
 
     def test_schedule_activation_and_deactivation(self):
         schedule = factories.BackupScheduleFactory(is_active=False)
