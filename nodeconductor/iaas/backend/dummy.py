@@ -43,6 +43,10 @@ class OpenStackResource(object):
     def __eq__(self, other):
         return self.id == other.id
 
+    @property
+    def _info(self):
+        return self.__dict__
+
     def to_dict(self):
         return self.__dict__.copy()
 
@@ -75,6 +79,13 @@ class OpenStackCustomResources(object):
             return 1
 
     class QuotaSet(OpenStackResource):
+        def __hash__(self):
+            return 1
+
+        def __eq__(self, other):
+            return 1
+
+    class Statistics(OpenStackResource):
         def __hash__(self):
             return 1
 
@@ -415,6 +426,10 @@ class NovaClient(OpenStackClient):
     class Volume(OpenStackResourceList):
         pass
 
+    class Statistics(OpenStackResourceList):
+        def statistics(self):
+            return super(NovaClient.Statistics, self).list()[0]
+
     class QuotaSet(OpenStackResourceList):
         def get(self, tenant_id):
             # Disclaimer: the devil only knows how it works but tenant ain't honored here
@@ -472,6 +487,7 @@ class NovaClient(OpenStackClient):
         self.quotas = self._get_resources('QuotaSet')
         self.keypairs = self._get_resources('KeyPair')
         self.security_groups = self._get_resources('SecurityGroup')
+        self.hypervisors = self._get_resources('Statistics')
 
 
 class GlanceClient(OpenStackClient):
@@ -981,5 +997,22 @@ class DummyDataSet(object):
                     'ip_range': {},
                 }
             ],
+        },
+    )
+
+    STATISTICSS = (
+        {
+            'count': 1,
+            'current_workload': 0,
+            'disk_available_least': 11,
+            'free_disk_gb': 19,
+            'free_ram_mb': 477,
+            'local_gb': 19,
+            'local_gb_used': 0,
+            'memory_mb': 989,
+            'memory_mb_used': 512,
+            'running_vms': 0,
+            'vcpus': 1,
+            'vcpus_used': 0
         },
     )
