@@ -81,6 +81,14 @@ class OpenStackCustomResources(object):
         def __eq__(self, other):
             return 1
 
+    class Server(OpenStackResource):
+        def __init__(self, **kwargs):
+            super(OpenStackCustomResources.Server, self).__init__(**kwargs)
+            self.id = str(uuid.UUID(self.id))
+
+        def __repr__(self):
+            return "<%s: %s>" % (self.__class__.__name__, self.name)
+
     class Image(OpenStackResource):
         def __init__(self, **kwargs):
             super(OpenStackCustomResources.Image, self).__init__(**kwargs)
@@ -334,34 +342,75 @@ class NovaClient(OpenStackClient):
     class Server(OpenStackResourceList):
         def create(self, name=None, image=None, flavor=None, key_name=None, security_groups=None,
                    availability_zone=None, block_device_mapping=(), block_device_mapping_v2=(), nics=()):
-            raise NotImplementedError()
+
+            if not block_device_mapping and not block_device_mapping_v2:
+                if not image:
+                    self.client._raise('BadRequest', "Invalid imageRef provided.")
+            else:
+                block_devices = block_device_mapping or block_device_mapping_v2
+                for device in block_devices:
+                    self.client.volumes.get(device['uuid'])
+
+            if security_groups:
+                sgroups = [self.client.security_groups.get(group_id) for group_id in security_groups]
+            else:
+                sgroups = [{'name': 'default'}]
+
+            networks = []
+            if nics:
+                session = self.client.client.session
+                neutron = NeutronClient(
+                    session.auth.auth_url, session.auth.username, session.auth.password)
+
+                for net in nics:
+                    networks.append(neutron.show_network(net['net-id'])['network'])
+
+            if key_name:
+                self.client.keypairs.find(name=key_name)
+
+            return super(NovaClient.Server, self).create(name, dict(
+                name=name,
+                flavor=flavor.to_dict(),
+                networks=networks,
+                key_name=key_name,
+                security_groups=sgroups,
+                status='ACTIVE'))
 
         def resize(self, server_id, flavor_id, disk_config='AUTO'):
-            raise NotImplementedError()
+            server = self.client.servers.get(server_id)
+            self._update(server, status='VERIFY_RESIZE')
 
         def confirm_resize(self, server_id):
-            raise NotImplementedError()
+            server = self.client.servers.get(server_id)
+            self._update(server, status='RESIZED')
 
         def list_security_group(self, server_id):
-            raise NotImplementedError()
+            server = self.client.servers.get(server_id)
+            return server.security_groups
 
         def add_security_group(self, server_id, group_id):
-            raise NotImplementedError()
+            server = self.client.servers.get(server_id)
+            group = self.client.security_groups.get(group_id)
+            try:
+                server.security_groups.index(group)
+            except ValueError:
+                server.security_groups.append(group)
 
         def remove_security_group(self, server_id, group_id):
-            raise NotImplementedError()
+            server = self.client.servers.get(server_id)
+            group = self.client.security_groups.get(group_id)
+            server.security_groups.remove(group)
 
         def stop(self, server_id):
-            raise NotImplementedError()
+            server = self.client.servers.get(server_id)
+            self._update(server, status='STOPPED')
 
         def start(self, server_id):
-            raise NotImplementedError()
+            server = self.client.servers.get(server_id)
+            self._update(server, status='ACTIVE')
 
         def reboot(self, server_id):
-            raise NotImplementedError()
-
-        def delete(self, server_id):
-            raise NotImplementedError()
+            pass
 
     class Volume(OpenStackResourceList):
         pass
@@ -507,11 +556,21 @@ class CinderClient(OpenStackClient):
     VERSION = '1.0.9'
     Exceptions = cinder_exceptions
 
-    class Backup(OpenStackResourceList):
-        pass
+    class VolumeBackup(OpenStackResourceList):
+        def create(self, volume_id, name=None, description=None):
+            volume = self.client.volumes.get(volume_id)
+            return super(CinderClient.VolumeBackup, self).create(name, dict(
+                name=name,
+                size=volume.size,
+                volume_id=volume.id,
+                description=description,
+                created_at=datetime.now().strftime('%Y-%m-%dT%T'),
+                status='available'))
 
-    class Restore(OpenStackResourceList):
-        pass
+    class VolumeRestore(OpenStackResourceList):
+        def restore(self, backup_id):
+            backup = self.client.backups.get(backup_id)
+            return backup
 
     class Quota(OpenStackResourceList):
         def get(self, tenant_id=None):
@@ -608,8 +667,8 @@ class CinderClient(OpenStackClient):
         self.tenant_id = tenant_id
         self.client = KeystoneClient(
             session=KeystoneClient.Session(auth=v2.Password(auth_url, username, api_key)))
-        self.backups = self._get_resources('Backup')
-        self.restores = self._get_resources('Restore')
+        self.backups = self._get_resources('VolumeBackup')
+        self.restores = self._get_resources('VolumeRestore')
         self.volumes = self._get_resources('Volume')
         self.volume_snapshots = self._get_resources('VolumeSnapshot')
         self.quotas = self._get_resources('Quota')

@@ -133,7 +133,71 @@ class OpenStackClientTest(TestCase):
         self.assertIsNotNone(nova.flavors.get('3'))
 
     def test_nova_servers(self):
-        pass
+        session = self.backend.create_tenant_session(self.credentials)
+        neutron = self.backend.create_neutron_client(session)
+        cinder = self.backend.create_cinder_client(session)
+        glance = self.backend.create_glance_client(session)
+        nova = self.backend.create_nova_client(session)
+
+        create_response = neutron.create_network({'networks': [{
+            'name': 'test-net', 'tenant_id': self.credentials['tenant_id']}]})
+        network_id = create_response['networks'][0]['id']
+
+        image = next(glance.images.list())
+
+        system_volume = cinder.volumes.create(
+            size=100,
+            display_name='test-system',
+            display_description='',
+            imageRef=image.id,
+        )
+
+        data_volume = cinder.volumes.create(
+            size=1000,
+            display_name='test-data',
+            display_description='',
+        )
+
+        group = nova.security_groups.create(name='test-group', description='')
+        flavor = nova.flavors.get('3')
+        server = nova.servers.create(
+            name='test-instance',
+            image=None,
+            flavor=flavor,
+            block_device_mapping_v2=[
+                {
+                    'boot_index': 0,
+                    'destination_type': 'volume',
+                    'device_type': 'disk',
+                    'source_type': 'volume',
+                    'uuid': system_volume.id,
+                    'delete_on_termination': True,
+                },
+                {
+                    'destination_type': 'volume',
+                    'device_type': 'disk',
+                    'source_type': 'volume',
+                    'uuid': data_volume.id,
+                    'delete_on_termination': True,
+                },
+            ],
+            nics=[{'net-id': network_id}],
+            key_name='example_key',
+            security_groups=[group.id],
+        )
+
+        self.assertEqual(server.status, 'ACTIVE')
+
+        sg = nova.servers.list_security_group(server.id)[0]
+        self.assertEqual(sg, group)
+
+        nova.servers.stop(server.id)
+        self.assertEqual(server.status, 'STOPPED')
+
+        nova.servers.start(server.id)
+        self.assertEqual(server.status, 'ACTIVE')
+
+        nova.servers.delete(server.id)
 
     def test_glance(self):
         session = self.backend.create_tenant_session(self.credentials)
@@ -189,8 +253,13 @@ class OpenStackClientTest(TestCase):
             size=1024, display_name='test-system', display_description='', imageRef=image.id)
         self.assertEqual(volume.status, 'available')
 
+        backup = cinder.backups.create(volume.id, name='test-backup', description='')
+        self.assertEqual(backup.status, 'available')
+
         cinder.volumes.extend(volume, 512)
         self.assertEqual(cinder.volumes.get(volume.id).size, 512)
+
+        cinder.restores.restore(backup.id)
 
         snapshot = cinder.volume_snapshots.create(
             volume.id, force=True, display_name='snapshot_from_volume_%s' % volume.id)
