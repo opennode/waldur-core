@@ -272,6 +272,16 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
                 }
             )
 
+    def test_staff_cannot_grant_permission_if_quota_were_exceeded(self):
+        group_name = 'group11'
+        self.project_groups[group_name].customer.set_quota_limit('nc_user_count', 0)
+        self.assert_user_access_to_permission_granting(
+            login_user='staff',
+            affected_user='no_role',
+            affected_project_group='group11',
+            expected_status=status.HTTP_409_CONFLICT,
+        )
+
     def assert_user_access_to_permission_granting(self, login_user, affected_user, affected_project_group,
                                                   expected_status, expected_payload=None):
         self.client.force_authenticate(user=self.users[login_user])
@@ -283,7 +293,7 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
         }
 
         response = self.client.post(reverse('projectgroup_permission-list'), data)
-        self.assertEqual(response.status_code, expected_status)
+        self.assertEqual(response.status_code, expected_status, response.data)
         if expected_payload is not None:
             self.assertDictContainsSubset(expected_payload, response.data)
 

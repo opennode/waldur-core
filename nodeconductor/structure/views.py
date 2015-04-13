@@ -233,6 +233,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if not self.can_create_project_with(customer, project_groups):
             raise PermissionDenied('You do not have permission to perform this action.')
 
+        customer.validate_quota_change({'nc_project_count': 1}, raise_exception=True)
+
         super(ProjectViewSet, self).perform_create(serializer)
 
 
@@ -699,6 +701,8 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         if not self.can_manage_roles_for(affected_project):
             raise PermissionDenied('You do not have permission to perform this action.')
 
+        affected_project.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
+
         super(ProjectPermissionViewSet, self).perform_create(serializer)
 
     def perform_destroy(self, instance):
@@ -801,6 +805,8 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
 
         if not self.can_manage_roles_for(affected_project_group):
             raise PermissionDenied('You do not have permission to perform this action.')
+
+        affected_project_group.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
 
         super(ProjectGroupPermissionViewSet, self).perform_create(serializer)
 
@@ -905,6 +911,8 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
 
         if not self.can_manage_roles_for(affected_customer):
             raise PermissionDenied('You do not have permission to perform this action.')
+
+        affected_customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
 
         # It would be nice to put customer.add_user() logic here as well.
         # But it is pushed down to serializer.create() because otherwise
