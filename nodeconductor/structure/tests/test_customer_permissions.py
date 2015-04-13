@@ -1,16 +1,16 @@
 from __future__ import unicode_literals
 
 import collections
-from mock import Mock
+import unittest
 
 from django.contrib.auth import get_user_model
-from django.utils import unittest
 from rest_framework import status
 from rest_framework import test
 from rest_framework.reverse import reverse
 
-from nodeconductor.structure.models import CustomerRole, ProjectRole
-from nodeconductor.structure.views import CustomerPermissionViewSet
+from nodeconductor.structure import serializers
+from nodeconductor.structure import views
+from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories
 
 User = get_user_model()
@@ -20,48 +20,37 @@ TestRole = collections.namedtuple('TestRole', ['user', 'customer', 'role'])
 
 class CustomerPermissionViewSetTest(unittest.TestCase):
     def setUp(self):
-        self.view_set = CustomerPermissionViewSet()
-        self.request = Mock()
-        self.user_group = Mock()
+        self.view_set = views.CustomerPermissionViewSet()
 
-    def test_create_adds_user_role_to_customer(self):
-        customer = self.user_group.group.customerrole.customer
-        customer.add_user.return_value = self.user_group, True
+    def test_cannot_modify_permission_in_place(self):
+        self.assertNotIn('PUT', self.view_set.allowed_methods)
+        self.assertNotIn('PATCH', self.view_set.allowed_methods)
 
-        serializer = Mock()
-        serializer.is_valid.return_value = True
-        serializer.object = self.user_group
-
-        self.view_set.request = self.request
-        self.view_set.can_save = Mock(return_value=True)
-        self.view_set.get_serializer = Mock(return_value=serializer)
-        self.view_set.create(self.request)
-
-        customer.add_user.assert_called_once_with(
-            self.user_group.user,
-            self.user_group.group.customerrole.role_type,
+    def test_project_group_permission_serializer_is_used(self):
+        self.assertIs(
+            serializers.CustomerPermissionSerializer,
+            self.view_set.get_serializer_class(),
         )
 
-    def test_destroy_removes_user_role_from_customer(self):
-        customer = self.user_group.group.customerrole.customer
 
-        self.view_set.get_object = Mock(return_value=self.user_group)
+class CustomerPermissionSerializerTest(unittest.TestCase):
+    def setUp(self):
+        self.serializer = serializers.CustomerPermissionSerializer()
 
-        self.view_set.destroy(self.request)
-
-        customer.remove_user.assert_called_once_with(
-            self.user_group.user,
-            self.user_group.group.customerrole.role_type,
-        )
+    def test_payload_has_required_fields(self):
+        expected_fields = [
+            'url', 'role',
+            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
+            'user', 'user_full_name', 'user_native_name', 'user_username'
+        ]
+        self.assertItemsEqual(expected_fields, self.serializer.fields.keys())
 
 
 class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
     all_roles = (
         # user customer role
         TestRole('first', 'first', 'owner'),
-
-        TestRole('both', 'first', 'owner'),
-        TestRole('both', 'second', 'owner'),
+        TestRole('second', 'second', 'owner'),
     )
 
     role_map = {
@@ -70,9 +59,11 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.users = {
-            # 'staff': factories.UserFactory(is_staff=True),
+            'staff': factories.UserFactory(is_staff=True),
             'first': factories.UserFactory(),
-            'both': factories.UserFactory(),
+            'first_manager': factories.UserFactory(),
+            'first_admin': factories.UserFactory(),
+            'second': factories.UserFactory(),
             'no_role': factories.UserFactory(),
         }
 
@@ -81,123 +72,252 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             'second': factories.CustomerFactory(),
         }
 
+        customer = self.customers['first']
+        project = factories.ProjectFactory(customer=customer)
+        project_group = factories.ProjectGroupFactory(customer=customer)
+        project_group.projects.add(project)
+
         for user, customer, role in self.all_roles:
             self.customers[customer].add_user(self.users[user], self.role_map[role])
 
-    # No role tests
-    def test_user_cannot_list_roles_within_customers_he_has_no_role_in(self):
-        for login_user in self.users:
-            self.client.force_authenticate(user=self.users[login_user])
+        project_group.add_user(self.users['first_manager'], ProjectGroupRole.MANAGER)
+        project.add_user(self.users['first_admin'], ProjectRole.ADMINISTRATOR)
 
-            response = self.client.get(reverse('customer_permission-list'))
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
+    # List filtration tests
+    def test_anonymous_user_cannot_list_customer_permissions(self):
+        response = self.client.get(reverse('customer_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-            users_customers = set(r.customer for r in self.all_roles if r.user == login_user)
-            unseen_roles = (r for r in self.all_roles if r.customer not in users_customers)
+    def test_user_cannot_list_roles_of_customer_he_is_not_affiliated(self):
+        self.assert_user_access_to_permission_list(user='no_role', customer='first', should_see=False)
+        self.assert_user_access_to_permission_list(user='no_role', customer='second', should_see=False)
 
-            for role in unseen_roles:
-                role_url = self._get_permission_url(*role)
+    def test_customer_owner_can_list_roles_of_his_customer(self):
+        self.assert_user_access_to_permission_list(user='first', customer='first', should_see=True)
 
-                urls = set([role['url'] for role in response.data])
+    def test_project_group_manager_can_list_roles_of_his_customer(self):
+        self.assert_user_access_to_permission_list(user='first_manager', customer='first', should_see=True)
 
-                self.assertNotIn(
-                    role_url, urls,
-                    '{0} user sees privilege he is not supposed to see: {1}'.format(login_user, role),
-                )
+    def test_project_admin_can_list_roles_of_his_customer(self):
+        self.assert_user_access_to_permission_list(user='first_admin', customer='first', should_see=True)
 
-    # Customer owner tests
-    def test_user_can_list_roles_within_customers_he_owns(self):
-        for login_user in self.users:
-            self.client.force_authenticate(user=self.users[login_user])
+    def test_staff_can_list_roles_of_any_customer(self):
+        self.assert_user_access_to_permission_list(user='staff', customer='first', should_see=True)
+        self.assert_user_access_to_permission_list(user='staff', customer='second', should_see=True)
 
-            response = self.client.get(reverse('customer_permission-list'))
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def test_customer_owner_cannot_list_roles_of_another_customer(self):
+        self.assert_user_access_to_permission_list(user='first', customer='second', should_see=False)
 
-            users_customers = set(r.customer for r in self.all_roles if r.user == login_user)
-            seen_roles = (r for r in self.all_roles if r.customer in users_customers)
+    def test_project_group_manager_cannot_list_roles_of_another_customer(self):
+        self.assert_user_access_to_permission_list(user='first_manager', customer='second', should_see=False)
 
-            for role in seen_roles:
-                role_url = self._get_permission_url(*role)
+    def test_project_admin_cannot_list_roles_of_another_customer(self):
+        self.assert_user_access_to_permission_list(user='first_admin', customer='second', should_see=False)
 
-                urls = set([role['url'] for role in response.data])
-
-                self.assertIn(
-                    role_url, urls,
-                    '{0} user does not see privilege he is supposed to see: {1}'.format(login_user, role),
-                )
-
-    def test_user_can_assign_roles_within_customers_he_owns(self):
-        self.client.force_authenticate(user=self.users['first'])
-
-        data = {
-            'customer': factories.CustomerFactory.get_url(self.customers['first']),
-            'user': factories.UserFactory.get_url(self.users['no_role']),
-            'role': 'owner',
-        }
-
-        response = self.client.post(reverse('customer_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        response = self.client.post(reverse('customer_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
-
-    def test_user_cannot_assign_roles_within_customers_he_doesnt_owns(self):
-        self.client.force_authenticate(user=self.users['no_role'])
-
-        data = {
-            'customer': factories.CustomerFactory.get_url(self.customers['first']),
-            'user': factories.UserFactory.get_url(self.users['no_role']),
-            'role': 'owner'
-        }
-
-        response = self.client.post(reverse('customer_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_user_with_customer_owner_role_cannot_assign_roles_within_customers_he_doesnt_own(self):
-        self.client.force_authenticate(user=self.users['no_role'])
-
-        data = {
-            'customer': factories.CustomerFactory.get_url(self.customers['first']),
-            'user': factories.UserFactory.get_url(self.users['no_role']),
-            'role': 'owner'
-        }
-
-        response = self.client.post(reverse('customer_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_user_cannot_assign_roles_within_customers_he_doesnt_own_but_has_project_admin_role(self):
-        admin_user = factories.UserFactory()
-        project = factories.ProjectFactory(customer=self.customers['first'])
-        project.add_user(admin_user, ProjectRole.ADMINISTRATOR)
-
-        self.client.force_authenticate(user=admin_user)
-
-        data = {
-            'customer': factories.CustomerFactory.get_url(self.customers['first']),
-            'user': factories.UserFactory.get_url(self.users['no_role']),
-            'role': 'owner'
-        }
-
-        response = self.client.post(reverse('customer_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_user_can_list_roles_within_customer_if_he_has_admin_role_in_a_project_owned_by_that_customer(self):
-        admin_user = factories.UserFactory()
-        project = factories.ProjectFactory(customer=self.customers['first'])
-        project.add_user(admin_user, ProjectRole.ADMINISTRATOR)
-
-        self.client.force_authenticate(user=admin_user)
+    def assert_user_access_to_permission_list(self, user, customer, should_see):
+        self.client.force_authenticate(user=self.users[user])
 
         response = self.client.get(reverse('customer_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        role_url = self._get_permission_url('first', 'first', 'owner')
+        expected_urls = {
+            r: self._get_permission_url(*r)
+            for r in self.all_roles
+            if r.customer == customer
+        }
 
-        urls = set([role['url'] for role in response.data])
+        actual_urls = set([role['url'] for role in response.data])
 
-        self.assertIn(
-            role_url, urls,
-            '{0} user does not see privilege he is supposed to see: {1}'.format(admin_user, role_url),
+        for role, role_url in expected_urls.items():
+            if should_see:
+                self.assertIn(
+                    role_url, actual_urls,
+                    '{0} user does not see privilege '
+                    'he is supposed to see: {1}'.format(user, role),
+                )
+            else:
+                self.assertNotIn(
+                    role_url, actual_urls,
+                    '{0} user sees privilege '
+                    'he is not supposed to see: {1}'.format(user, role),
+                )
+
+    # Granting tests
+    def test_customer_owner_can_grant_new_role_within_his_customer(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='first',
+            affected_user='no_role',
+            affected_customer='first',
+            expected_status=status.HTTP_201_CREATED,
         )
+
+    def test_customer_owner_cannot_grant_existing_role_within_his_customer(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='first',
+            affected_user='first',
+            affected_customer='first',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'non_field_errors': ['The fields customer, user, role must make a unique set.'],
+            }
+        )
+
+    def test_customer_owner_cannot_grant_role_within_another_customer(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='first',
+            affected_user='no_role',
+            affected_customer='second',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'customer': ['Invalid hyperlink - Object does not exist.'],
+            }
+        )
+
+    def test_project_group_manager_cannot_grant_role_within_his_customer(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='first_manager',
+            affected_user='no_role',
+            affected_customer='first',
+            expected_status=status.HTTP_403_FORBIDDEN,
+            expected_payload={
+                'detail': 'You do not have permission to perform this action.',
+            }
+        )
+
+    def test_project_admin_cannot_grant_role_within_his_customer(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='first_admin',
+            affected_user='no_role',
+            affected_customer='first',
+            expected_status=status.HTTP_403_FORBIDDEN,
+            expected_payload={
+                'detail': 'You do not have permission to perform this action.',
+            }
+        )
+
+    def test_staff_can_grant_new_role_within_any_customer(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='staff',
+            affected_user='no_role',
+            affected_customer='first',
+            expected_status=status.HTTP_201_CREATED,
+        )
+        self.assert_user_access_to_permission_granting(
+            login_user='staff',
+            affected_user='no_role',
+            affected_customer='second',
+            expected_status=status.HTTP_201_CREATED,
+        )
+
+    def test_staff_cannot_grant_permission_if_customer_quota_exceeded(self):
+        affected_customer = 'first'
+        self.customers[affected_customer].set_quota_limit('nc_user_count', 0)
+
+        self.assert_user_access_to_permission_granting(
+            login_user='staff',
+            affected_user='no_role',
+            affected_customer=affected_customer,
+            expected_status=status.HTTP_409_CONFLICT,
+        )
+
+    def test_staff_cannot_grant_existing_role_within_any_customer(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='staff',
+            affected_user='first',
+            affected_customer='first',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'non_field_errors': ['The fields customer, user, role must make a unique set.'],
+            }
+        )
+        self.assert_user_access_to_permission_granting(
+            login_user='staff',
+            affected_user='second',
+            affected_customer='second',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'non_field_errors': ['The fields customer, user, role must make a unique set.'],
+            }
+        )
+
+    def assert_user_access_to_permission_granting(self, login_user, affected_user, affected_customer,
+                                                  expected_status, expected_payload=None):
+        self.client.force_authenticate(user=self.users[login_user])
+
+        data = {
+            'customer': factories.CustomerFactory.get_url(self.customers[affected_customer]),
+            'user': factories.UserFactory.get_url(self.users[affected_user]),
+            'role': 'owner',
+        }
+
+        response = self.client.post(reverse('customer_permission-list'), data)
+        self.assertEqual(response.status_code, expected_status)
+        if expected_payload is not None:
+            self.assertDictContainsSubset(expected_payload, response.data)
+
+    # Revocation tests
+    def test_customer_owner_can_revoke_role_within_his_customer(self):
+        self.assert_user_access_to_permission_revocation(
+            login_user='first',
+            affected_user='first',
+            affected_customer='first',
+            expected_status=status.HTTP_204_NO_CONTENT,
+        )
+
+    def test_customer_owner_cannot_revoke_role_within_another_customer(self):
+        self.assert_user_access_to_permission_revocation(
+            login_user='first',
+            affected_user='second',
+            affected_customer='second',
+            expected_status=status.HTTP_404_NOT_FOUND,
+        )
+
+    def test_project_group_manager_cannot_revoke_role_within_his_customer(self):
+        self.assert_user_access_to_permission_revocation(
+            login_user='first_manager',
+            affected_user='first',
+            affected_customer='first',
+            expected_status=status.HTTP_403_FORBIDDEN,
+            expected_payload={
+                'detail': 'You do not have permission to perform this action.',
+            }
+        )
+
+    def test_project_admin_cannot_revoke_role_within_his_customer(self):
+        self.assert_user_access_to_permission_revocation(
+            login_user='first_admin',
+            affected_user='first',
+            affected_customer='first',
+            expected_status=status.HTTP_403_FORBIDDEN,
+            expected_payload={
+                'detail': 'You do not have permission to perform this action.',
+            }
+        )
+
+    def test_staff_can_revoke_role_within_any_customer(self):
+        self.assert_user_access_to_permission_revocation(
+            login_user='staff',
+            affected_user='first',
+            affected_customer='first',
+            expected_status=status.HTTP_204_NO_CONTENT,
+        )
+        self.assert_user_access_to_permission_revocation(
+            login_user='staff',
+            affected_user='second',
+            affected_customer='second',
+            expected_status=status.HTTP_204_NO_CONTENT,
+        )
+
+    def assert_user_access_to_permission_revocation(self, login_user, affected_user, affected_customer,
+                                                    expected_status, expected_payload=None):
+        self.client.force_authenticate(user=self.users[login_user])
+
+        url = self._get_permission_url(affected_user, affected_customer, 'owner')
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, expected_status)
+        if expected_payload is not None:
+            self.assertDictContainsSubset(expected_payload, response.data)
 
     # Helper methods
     def _get_permission_url(self, user, customer, role):

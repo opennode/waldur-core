@@ -6,6 +6,20 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.45.0
+--------------
+- Migration to DRF 3.1 framework for REST, more consistent API.
+
+Release 0.44.0
+--------------
+- Bugfixes
+
+Release 0.43.0
+--------------
+- Extended IaaS template filtering.
+- Extended IaaS template with os_type and icon_name fields.
+- Renamed 'hostname' field to 'name' in Instance and Resources.
+
 Release 0.42.0
 --------------
 - Refactored OpenStack backups to use snapshots instead of full volume backups.

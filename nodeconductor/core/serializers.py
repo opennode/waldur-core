@@ -1,146 +1,60 @@
 import base64
 
-from django.contrib.auth import authenticate
 from django.core import validators
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.urlresolvers import reverse, resolve, Resolver404
 from rest_framework import serializers
-from rest_framework.fields import Field
-from rest_framework.relations import RelatedField
+from rest_framework.fields import Field, ReadOnlyField
 
 from nodeconductor.core.signals import pre_serializer_fields
 
 
-validate_ipv4_address_within_list = validators.RegexValidator(
-    validators.ipv4_re, 'Enter a list of valid IPv4 addresses.',
-    'invalid')
-
-
 class AuthTokenSerializer(serializers.Serializer):
     """
-    Api token serializer loosely based on DRF's default AuthTokenSerializer,
-    but with the response text and aligned with BasicAuthentication behavior.
+    Api token serializer loosely based on DRF's default AuthTokenSerializer.
+    but with the logic of authorization is extracted to view.
     """
-    username = serializers.CharField(required=True)
-    password = serializers.CharField(required=True)
-
-    def validate(self, attrs):
-        # Since the fields are both required and non-blank
-        # and field-validation is performed before object-level validation
-        # it is safe to assume these dict keys present.
-        username = attrs['username']
-        password = attrs['password']
-
-        user = authenticate(username=username, password=password)
-
-        if not user:
-            raise serializers.ValidationError('Invalid username/password')
-
-        if not user.is_active:
-            raise serializers.ValidationError('User account is disabled')
-        attrs['user'] = user
-
-        return attrs
+    # Fields are both required, non-blank and don't allow nulls by default
+    username = serializers.CharField()
+    password = serializers.CharField()
 
 
 class Base64Field(serializers.CharField):
-    def from_native(self, value):
-        value = super(Base64Field, self).from_native(value)
+    def to_internal_value(self, data):
+        value = super(Base64Field, self).to_internal_value(data)
         try:
             return base64.b64decode(value)
         except TypeError:
-            raise serializers.ValidationError("Enter valid Base64 encoded string.")
+            raise serializers.ValidationError('This field should a be valid Base64 encoded string.')
 
-    def to_native(self, value):
-        value = super(Base64Field, self).to_native(value)
+    def to_representation(self, value):
+        value = super(Base64Field, self).to_representation(value)
         return base64.b64encode(value)
 
 
-class IPsField(serializers.CharField):
-    def to_native(self, value):
-        value = super(IPsField, self).to_native(value)
-        if value is None:
-            return []
-        else:
-            return [value]
+# XXX: this field has to be replaced with default drf IPAddressField after it implementation:
+# https://github.com/tomchristie/django-rest-framework/issues/1853
 
-    def from_native(self, value):
-        if value in validators.EMPTY_VALUES:
-            return None
-
-        if not isinstance(value, (list, tuple)):
-            raise validators.ValidationError('Enter a list of valid IPv4 addresses.')
-
-        value_count = len(value)
-        if value_count > 1:
-            raise validators.ValidationError('Only one ip address is supported.')
-        elif value_count == 1:
-            value = value[0]
-            validate_ipv4_address_within_list(value)
-        else:
-            value = None
-
-        return value
+class IPAddressField(serializers.CharField):
+    def __init__(self, **kwargs):
+        super(IPAddressField, self).__init__(**kwargs)
+        ip_validators, _ = validators.ip_address_validators(protocol='ipv4', unpack_ipv4=False)
+        self.validators += ip_validators
 
 
 class Saml2ResponseSerializer(serializers.Serializer):
     saml2response = Base64Field(required=True)
 
 
-class RelatedResourcesFieldMixin(object):
-    """
-    Mixin that adds fields describing related resources.
-
-    For related resource Foo two fields are added:
-
-    1. `foo` containing a URL to the Foo resource
-    2. `foo_name` containing the name of the Foo resource
-    3. `foo_uuid` containing the uuid of the Foo resource
-
-    In order to add related resource fields:
-
-    1. Inherit from `RelatedResourcesFieldMixin`.
-
-    2. Implement `get_related_paths()` method
-       and return paths to related resources
-       from the current resource.
-    """
-    def get_default_fields(self):
-        fields = super(RelatedResourcesFieldMixin, self).get_default_fields()
-
-        try:
-            defaults = getattr(self, 'RELATED_FIELD_VIEW_NAMES')
-        except AttributeError:
-            defaults = {}
-
-        for path in self.get_related_paths():
-            path_components = path.split('.')
-            entity_name = path_components[-1]
-
-            fields[entity_name] = serializers.HyperlinkedRelatedField(
-                source=path,
-                view_name=defaults.get(entity_name) or '{0}-detail'.format(entity_name),
-                lookup_field='uuid',
-                read_only=len(path_components) > 1,
-            )
-
-            fields['{0}_name'.format(entity_name)] = serializers.Field(source='{0}.name'.format(path))
-            fields['{0}_uuid'.format(entity_name)] = serializers.Field(source='{0}.uuid'.format(path))
-
-        return fields
-
-    def get_related_paths(self):
-        raise NotImplementedError(
-            'Implement get_paths() to return list of filtered fields')
-
-
 class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         fields = ('url', 'name')
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
 
-class UnboundSerializerMethodField(Field):
+class UnboundSerializerMethodField(ReadOnlyField):
     """
     A field that gets its value by calling a provided filter callback.
     """
@@ -149,58 +63,12 @@ class UnboundSerializerMethodField(Field):
         self.filter_function = filter_function
         super(UnboundSerializerMethodField, self).__init__(*args, **kwargs)
 
-    def field_to_native(self, obj, field_name):
-        try:
-            request = self.context['request']
-        except KeyError:
-            return self.to_native(obj)
-
-        value = self.filter_function(obj, request)
-        return self.to_native(value)
+    def to_representation(self, value):
+        request = self.context.get('request')
+        return self.filter_function(value, request)
 
 
-class CollectedFieldsMixin(object):
-    """
-    A mixin that allows serializer to send a signal for modifying (e.g. adding) fields into the rendering.
-    Useful when you want to enrich output with fields coming from modules that are imported later
-    or from plugins.
-
-    Handler should bind to 'pre_serializer_fields' signal.
-
-    Example of signal handler implementation:
-
-        def get_customer_clouds(obj, request):
-            customer_clouds = obj.clouds.all()
-            try:
-                user = request.user
-                customer_clouds = filter_queryset_for_user(customer_clouds, user)
-            except AttributeError:
-                pass
-
-            from nodeconductor.iaas.serializers import BasicCloudSerializer
-            serializer_instance = BasicCloudSerializer(customer_clouds, context={'request': request})
-
-            return serializer_instance.data
-
-        # @receiver(pre_serializer_fields, sender=CustomerSerializer)  # Django 1.7
-        @receiver(pre_serializer_fields)
-        def add_clouds_to_customer(sender, fields, **kwargs):
-            # Note: importing here to avoid circular import hell
-            from nodeconductor.structure.serializers import CustomerSerializer
-            if sender is not CustomerSerializer:
-                return
-
-            fields['clouds'] = UnboundSerializerMethodField(get_customer_clouds)
-
-    """
-
-    def get_fields(self):
-        fields = super(CollectedFieldsMixin, self).get_fields()
-        pre_serializer_fields.send(sender=self.__class__, fields=fields)
-        return fields
-
-
-class GenericRelatedField(RelatedField):
+class GenericRelatedField(Field):
     """
     A custom field to use for the `tagged_object` generic relationship.
     """
@@ -208,7 +76,7 @@ class GenericRelatedField(RelatedField):
     _default_view_name = '%(model_name)s-detail'
     lookup_fields = ['uuid', 'pk']
 
-    def __init__(self, related_models=[], **kwargs):
+    def __init__(self, related_models=(), **kwargs):
         super(GenericRelatedField, self).__init__(**kwargs)
         self.related_models = related_models
 
@@ -225,7 +93,7 @@ class GenericRelatedField(RelatedField):
             format_kwargs['model_name'] = obj._meta.object_name.lower()
         return self._default_view_name % format_kwargs
 
-    def to_native(self, obj):
+    def to_representation(self, obj):
         """
         Serializes any object to his url representation
         """
@@ -257,7 +125,7 @@ class GenericRelatedField(RelatedField):
         else:
             return match.func.cls.model
 
-    def from_native(self, data):
+    def to_internal_value(self, data):
         """
         Restores model instance from its url
         """
@@ -272,16 +140,155 @@ class GenericRelatedField(RelatedField):
             raise ValidationError('%s object does not support such relationship' % str(obj))
         return obj
 
-    # this method tries to initialize queryset based on field.rel.to._default_manager
-    # but generic field does not have default manager
-    def initialize(self, parent, field_name):
-        super(RelatedField, self).initialize(parent, field_name)
 
-        if len(self.related_models) < 1:
-            self.queryset = set()
-            return
+class AugmentedSerializerMixin(object):
+    """
+    This mixing provides several extensions to stock Serializer class:
 
-        # XXX ideally this queryset has to return all available for generic key instances
-        # Now we just take first backupable model and return all its instances
-        model = self.related_models[0]
-        self.queryset = model.objects.all()
+    1.  Adding extra fields to serializer from dependent applications in a way
+        that doesn't introduce circular dependencies.
+
+        To achieve this, dependent application should subscribe
+        to pre_serializer_fields signal and inject additional fields.
+
+        Example of signal handler implementation:
+            # handlers.py
+            def add_customer_name(sender, fields, **kwargs):
+                fields['customer_name'] = ReadOnlyField(source='customer.name')
+
+            # apps.py
+            class DependentAppConfig(AppConfig):
+                name = 'nodeconductor.structure_dependent'
+                verbose_name = "NodeConductor Structure Enhancements"
+
+                def ready(self):
+                    from nodeconductor.structure.serializers import CustomerSerializer
+
+                    pre_serializer_fields.connect(
+                        handlers.add_customer_name,
+                        sender=CustomerSerializer,
+                    )
+
+    2.  Declaratively add attributes fields of related entities for ModelSerializers.
+
+        To achieve list related fields whose attributes you want to include.
+
+        Example:
+            class ProjectSerializer(AugmentedSerializerMixin,
+                                    serializers.HyperlinkedModelSerializer):
+                class Meta(object):
+                    model = models.Project
+                    fields = (
+                        'url', 'uuid', 'name',
+                        'customer', 'customer_uuid', 'customer_name',
+                    )
+                    related_paths = ('customer',)
+
+            # This is equivalent to listing the fields explicitly,
+            # by default "uuid" and "name" fields of related object are added:
+
+            class ProjectSerializer(AugmentedSerializerMixin,
+                                    serializers.HyperlinkedModelSerializer):
+                customer_uuid = serializers.ReadOnlyField(source='customer.uuid')
+                customer_name = serializers.ReadOnlyField(source='customer.name')
+                class Meta(object):
+                    model = models.Project
+                    fields = (
+                        'url', 'uuid', 'name',
+                        'customer', 'customer_uuid', 'customer_name',
+                    )
+                    lookup_field = 'uuid'
+
+            # The fields of related object can be customized:
+
+            class ProjectSerializer(AugmentedSerializerMixin,
+                                    serializers.HyperlinkedModelSerializer):
+                class Meta(object):
+                    model = models.Project
+                    fields = (
+                        'url', 'uuid', 'name',
+                        'customer', 'customer_uuid',
+                        'customer_name', 'customer_native_name',
+                    )
+                    related_paths = {
+                        'customer': ('uuid', 'name', 'native_name')
+                    }
+
+    """
+
+    def get_fields(self):
+        fields = super(AugmentedSerializerMixin, self).get_fields()
+        pre_serializer_fields.send(sender=self.__class__, fields=fields)
+        return fields
+
+    def _get_related_paths(self):
+        try:
+            related_paths = self.Meta.related_paths
+        except AttributeError:
+            if callable(getattr(self, 'get_related_paths', None)):
+                import warnings
+
+                warnings.warn(
+                    "get_related_paths() is deprecated. "
+                    "Inherit from AugmentedSerializerMixin and set Meta.related_paths instead.",
+                    DeprecationWarning,
+                )
+                related_paths = self.get_related_paths()
+            else:
+                return {}
+
+        if not isinstance(self, serializers.ModelSerializer):
+            raise ImproperlyConfigured(
+                'related_paths can be defined only for ModelSerializer.'
+            )
+
+        if isinstance(related_paths, (list, tuple)):
+            related_paths = {path: ('name', 'uuid') for path in related_paths}
+
+        return related_paths
+
+    def build_unknown_field(self, field_name, model_class):
+        related_paths = self._get_related_paths()
+
+        related_field_source_map = {
+            '{0}_{1}'.format(path.split('.')[-1], attribute): '{0}.{1}'.format(path, attribute)
+            for path, attributes in related_paths.items()
+            for attribute in attributes
+        }
+
+        try:
+            return serializers.ReadOnlyField, {'source': related_field_source_map[field_name]}
+        except KeyError:
+            return super(AugmentedSerializerMixin, self).build_unknown_field(field_name, model_class)
+
+
+class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):
+    def __init__(self, **kwargs):
+        self.queryset = kwargs.pop('queryset', None)
+        assert self.queryset is not None or kwargs.get('read_only', None), (
+            'Relational field must provide a `queryset` argument, '
+            'or set read_only=`True`.'
+        )
+        assert not (self.queryset is not None and kwargs.get('read_only', None)), (
+            'Relational fields should not provide a `queryset` argument, '
+            'when setting read_only=`True`.'
+        )
+        super(HyperlinkedRelatedModelSerializer, self).__init__(**kwargs)
+
+    def to_internal_value(self, data):
+        url_field = self.fields['url']
+
+        # This is tricky: self.fields['url'] is the one generated
+        # based on Meta.fields.
+        # By default ModelSerializer generates it as HyperlinkedIdentityField,
+        # which is read-only, thus it doesn't get deserialized from POST body.
+        # So, we "borrow" its view_name and lookup_field to create
+        # a HyperlinkedRelatedField which can turn url into a proper model
+        # instance.
+        url = serializers.HyperlinkedRelatedField(
+            queryset=self.queryset.all(),
+            view_name=url_field.view_name,
+            lookup_field=url_field.lookup_field,
+        )
+
+        return url.to_internal_value(data['url'])

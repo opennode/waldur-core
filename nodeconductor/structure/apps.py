@@ -7,6 +7,7 @@ from django.db.models import signals
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure import filters
 from nodeconductor.structure import handlers
+from nodeconductor.structure import signals as structure_signals
 
 
 class StructureConfig(AppConfig):
@@ -87,8 +88,48 @@ class StructureConfig(AppConfig):
             project_path='group__projectrole__project',
         )
 
+        # quotas creation
         signals.post_save.connect(
             quotas_handlers.add_quotas_to_scope,
             sender=Project,
             dispatch_uid='nodeconductor.structure.handlers.add_quotas_to_project',
         )
+
+        signals.post_save.connect(
+            quotas_handlers.add_quotas_to_scope,
+            sender=Customer,
+            dispatch_uid='nodeconductor.structure.handlers.add_quotas_to_customer',
+        )
+
+        # increase nc_project_count quota usage on project creation
+        signals.post_save.connect(
+            handlers.change_customer_nc_projects_quota,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.increase_customer_nc_projects_quota',
+        )
+
+        # decrease nc_project_count quota usage on project deletion
+        signals.post_delete.connect(
+            handlers.change_customer_nc_projects_quota,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.decrease_customer_nc_projects_quota',
+        )
+
+        # increase nc_user_count quota usage on adding user to customer
+        structure_models_with_roles = (Customer, Project, ProjectGroup)
+        for model in structure_models_with_roles:
+            name = 'increase_customer_nc_users_quota_on_adding_user_to_%s' % model.__name__
+            structure_signals.structure_role_granted.connect(
+                handlers.change_customer_nc_users_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.iaas.handlers.%s' % name,
+            )
+
+        # decrease nc_user_count quota usage on removing user from customer
+        for model in structure_models_with_roles:
+            name = 'decrease_customer_nc_users_quota_on_adding_user_to_%s' % model.__name__
+            structure_signals.structure_role_revoked.connect(
+                handlers.change_customer_nc_users_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.iaas.handlers.decrease_customer_nc_users_quota_on_customer_user_deletion',
+            )

@@ -1,17 +1,17 @@
 from __future__ import unicode_literals
 
 import collections
+import unittest
 
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
-from django.utils import unittest
-from mock import Mock
 from rest_framework import status
 from rest_framework import test
 
+from nodeconductor.structure import serializers
+from nodeconductor.structure import views
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories
-from nodeconductor.structure.views import ProjectPermissionViewSet
 
 User = get_user_model()
 
@@ -20,54 +20,39 @@ TestRole = collections.namedtuple('TestRole', ['user', 'project', 'role'])
 
 class ProjectPermissionViewSetTest(unittest.TestCase):
     def setUp(self):
-        self.view_set = ProjectPermissionViewSet()
-        self.request = Mock()
-        self.user_group = Mock()
+        self.view_set = views.ProjectPermissionViewSet()
 
-    def test_create_adds_user_role_to_project(self):
-        project = self.user_group.group.projectrole.project
-        project.add_user.return_value = self.user_group, True
+    def test_cannot_modify_permission_in_place(self):
+        self.assertNotIn('PUT', self.view_set.allowed_methods)
+        self.assertNotIn('PATCH', self.view_set.allowed_methods)
 
-        serializer = Mock()
-        serializer.is_valid.return_value = True
-        serializer.object = self.user_group
-
-        self.view_set.request = self.request
-        self.view_set.can_save = Mock(return_value=True)
-        self.view_set.get_serializer = Mock(return_value=serializer)
-        self.view_set.create(self.request)
-
-        project.add_user.assert_called_once_with(
-            self.user_group.user,
-            self.user_group.group.projectrole.role_type,
-        )
-
-    def test_destroy_removes_user_role_from_project(self):
-        project = self.user_group.group.projectrole.project
-
-        self.view_set.get_object = Mock(return_value=self.user_group)
-
-        self.view_set.destroy(self.request)
-
-        project.remove_user.assert_called_once_with(
-            self.user_group.user,
-            self.user_group.group.projectrole.role_type,
+    def test_project_group_permission_serializer_is_used(self):
+        self.assertIs(
+            serializers.ProjectPermissionSerializer,
+            self.view_set.get_serializer_class(),
         )
 
 
-class UserProjectPermissionTest(test.APITransactionTestCase):
+class ProjectPermissionSerializerTest(unittest.TestCase):
+    def setUp(self):
+        self.serializer = serializers.ProjectPermissionSerializer()
+
+    def test_payload_has_required_fields(self):
+        expected_fields = [
+            'url', 'role', 'project', 'project_name',
+            'user', 'user_full_name', 'user_native_name', 'user_username'
+        ]
+        self.assertItemsEqual(expected_fields, self.serializer.fields.keys())
+
+
+class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
     all_roles = (
-        # user        project       role
-        TestRole('admin', 'admin', 'admin'),
-        TestRole('manager', 'manager', 'manager'),
-
-        TestRole('admin2', 'admin', 'admin'),
-        TestRole('admin2', 'manager', 'admin'),
-        TestRole('admin2', 'standalone', 'admin'),
-
-        TestRole('manager2', 'admin', 'manager'),
-        TestRole('manager2', 'manager', 'manager'),
-        TestRole('manager2', 'standalone', 'manager'),
+        #           user      project     role
+        TestRole('admin1', 'project11', 'admin'),
+        TestRole('admin2', 'project11', 'admin'),
+        TestRole('admin3', 'project12', 'admin'),
+        TestRole('admin4', 'project13', 'admin'),
+        TestRole('admin5', 'project21', 'admin'),
     )
 
     role_map = {
@@ -76,321 +61,333 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
     }
 
     def setUp(self):
-        self.users = {
-            'admin': factories.UserFactory(),
-            'manager': factories.UserFactory(),
-            'group_manager': factories.UserFactory(),
-            'admin2': factories.UserFactory(),
-            'manager2': factories.UserFactory(),
-            'no_role': factories.UserFactory(),
+        customers = {
+            'customer1': factories.CustomerFactory(),
+            'customer2': factories.CustomerFactory(),
         }
 
-        self.customer_owner = factories.UserFactory()
-        self.customer = factories.CustomerFactory()
-        self.customer.add_user(self.customer_owner, CustomerRole.OWNER)
+        project_groups = {
+            'group11': factories.ProjectGroupFactory(customer=customers['customer1']),
+            'group12': factories.ProjectGroupFactory(customer=customers['customer1']),
+            'group21': factories.ProjectGroupFactory(customer=customers['customer2']),
+        }
 
         self.projects = {
-            'admin': factories.ProjectFactory(customer=self.customer),
-            'manager': factories.ProjectFactory(customer=self.customer),
-            'group_manager': factories.ProjectFactory(),
-            'standalone': factories.ProjectFactory(),
+            'project11': factories.ProjectFactory(customer=customers['customer1']),
+            'project12': factories.ProjectFactory(customer=customers['customer1']),
+            'project13': factories.ProjectFactory(customer=customers['customer1']),
+            'project21': factories.ProjectFactory(customer=customers['customer2']),
         }
+
+        project_groups['group11'].projects.add(self.projects['project11'], self.projects['project12'])
+        project_groups['group12'].projects.add(self.projects['project13'], self.projects['project12'])
+        project_groups['group21'].projects.add(self.projects['project21'])
+
+        self.users = {
+            'owner1': factories.UserFactory(),
+            'owner2': factories.UserFactory(),
+            'manager1': factories.UserFactory(),
+            'manager2': factories.UserFactory(),
+            'manager3': factories.UserFactory(),
+            'admin1': factories.UserFactory(),
+            'admin2': factories.UserFactory(),
+            'admin3': factories.UserFactory(),
+            'admin4': factories.UserFactory(),
+            'admin5': factories.UserFactory(),
+            'no_role': factories.UserFactory(),
+            'staff': factories.UserFactory(is_staff=True),
+        }
+
+        customers['customer1'].add_user(self.users['owner1'], CustomerRole.OWNER)
+        customers['customer2'].add_user(self.users['owner2'], CustomerRole.OWNER)
+
+        project_groups['group11'].add_user(self.users['manager1'], ProjectGroupRole.MANAGER)
+        project_groups['group12'].add_user(self.users['manager2'], ProjectGroupRole.MANAGER)
+        project_groups['group21'].add_user(self.users['manager3'], ProjectGroupRole.MANAGER)
 
         for user, project, role in self.all_roles:
-            self.projects[project].add_user(self.users[user], self.role_map[role])
+            self.projects[project].add_user(self.users[user], ProjectRole.ADMINISTRATOR)
 
-        self.groups_manager_project_admin = factories.UserFactory()
-        self.projects['group_manager'].add_user(self.groups_manager_project_admin, ProjectRole.ADMINISTRATOR)
-        self.project_group = factories.ProjectGroupFactory()
-        self.project_group.projects.add(self.projects['group_manager'])
-        self.project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
+    # List filtration tests
+    def test_anonymous_user_cannot_list_project_permissions(self):
+        response = self.client.get(reverse('project_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    # No role tests
-    def test_user_cannot_list_roles_in_projects_he_has_no_role_in(self):
-        for login_user in self.users:
-            self.client.force_authenticate(user=self.users[login_user])
+    def test_user_cannot_list_roles_of_project_he_is_not_affiliated(self):
+        for project in self.projects.keys():
+            self.assert_user_access_to_permission_list(user='no_role', project=project, should_see=False)
 
-            response = self.client.get(reverse('project_permission-list'))
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def test_customer_owner_can_list_roles_of_his_customers_project(self):
+        self.assert_user_access_to_permission_list(user='owner1', project='project11', should_see=True)
+        self.assert_user_access_to_permission_list(user='owner1', project='project12', should_see=True)
+        self.assert_user_access_to_permission_list(user='owner1', project='project13', should_see=True)
 
-            users_projects = set(r.project for r in self.all_roles if r.user == login_user)
-            unseen_roles = (r for r in self.all_roles if r.project not in users_projects)
+    def test_customer_owner_cannot_list_roles_of_another_customers_project(self):
+        self.assert_user_access_to_permission_list(user='owner1', project='project21', should_see=False)
 
-            for role in unseen_roles:
-                role_seen = self._check_if_present(
-                    self.projects[role.project],
-                    self.users[role.user],
-                    role.role,
-                    permissions=response.data,
+    def test_project_group_manager_can_list_roles_of_his_project_groups_project(self):
+        self.assert_user_access_to_permission_list(user='manager2', project='project12', should_see=True)
+        self.assert_user_access_to_permission_list(user='manager2', project='project13', should_see=True)
+
+    def test_project_group_manager_cannot_list_roles_of_another_project_groups_project(self):
+        self.assert_user_access_to_permission_list(user='manager1', project='project13', should_see=False)
+        self.assert_user_access_to_permission_list(user='manager1', project='project21', should_see=False)
+
+    def test_project_admin_can_list_roles_of_his_project(self):
+        self.assert_user_access_to_permission_list(user='admin1', project='project11', should_see=True)
+
+    def test_project_admin_cannot_list_roles_of_another_project(self):
+        self.assert_user_access_to_permission_list(user='admin2', project='project12', should_see=False)
+        self.assert_user_access_to_permission_list(user='admin2', project='project13', should_see=False)
+        self.assert_user_access_to_permission_list(user='admin2', project='project21', should_see=False)
+
+    def test_staff_can_list_roles_of_any_project(self):
+        for project in self.projects.keys():
+            self.assert_user_access_to_permission_list(user='staff', project=project, should_see=True)
+
+    def assert_user_access_to_permission_list(self, user, project, should_see):
+        self.client.force_authenticate(user=self.users[user])
+
+        response = self.client.get(reverse('project_permission-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        expected_urls = {
+            r: self._get_permission_url(*r)
+            for r in self.all_roles
+            if r.project == project
+        }
+
+        actual_urls = set([role['url'] for role in response.data])
+
+        for role, role_url in expected_urls.items():
+            if should_see:
+                self.assertIn(
+                    role_url, actual_urls,
+                    '{0} user does not see privilege '
+                    'he is supposed to see: {1}'.format(user, role),
+                )
+            else:
+                self.assertNotIn(
+                    role_url, actual_urls,
+                    '{0} user sees privilege '
+                    'he is not supposed to see: {1}'.format(user, role),
                 )
 
-                self.assertFalse(
-                    role_seen,
-                    '{0} user sees privilege he is not supposed to see: {1}'.format(login_user, role),
-                )
+    # Granting tests
+    def test_customer_owner_can_grant_new_role_within_his_customers_project(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='owner1',
+            affected_user='no_role',
+            affected_project='project11',
+            expected_status=status.HTTP_201_CREATED,
+        )
 
-    def test_user_cannot_assign_roles_in_projects_he_has_no_role_in(self):
-        user_url = self._get_user_url(self.users['no_role'])
+    def test_customer_owner_cannot_grant_existing_role_within_his_project(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='owner1',
+            affected_user='admin1',
+            affected_project='project11',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'non_field_errors': ['The fields project, user, role must make a unique set.'],
+            }
+        )
 
-        for login_user in self.users:
-            self.client.force_authenticate(user=self.users[login_user])
+    def test_customer_owner_cannot_grant_role_within_another_customers_project(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='owner1',
+            affected_user='no_role',
+            affected_project='project21',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'project': ['Invalid hyperlink - Object does not exist.'],
+            }
+        )
 
-            users_projects = set(r.project for r in self.all_roles if r.user == login_user)
-            unseen_projects = set(r.project for r in self.all_roles if r.project not in users_projects)
+    def test_project_group_manager_can_grant_new_role_within_his_project_groups_project(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='manager1',
+            affected_user='no_role',
+            affected_project='project11',
+            expected_status=status.HTTP_201_CREATED,
+        )
 
-            for project in unseen_projects:
-                project_url = self._get_project_url(self.projects[project])
+    def test_project_group_manager_cannot_grant_existing_role_within_his_project_groups_project(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='manager1',
+            affected_user='admin1',
+            affected_project='project11',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'non_field_errors': ['The fields project, user, role must make a unique set.'],
+            }
+        )
 
-                data = {
-                    'project': project_url,
-                    'user': user_url,
-                    'role': 'manager'
+    def test_project_group_manager_cannot_grant_role_within_another_project_groups_project(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='manager1',
+            affected_user='no_role',
+            affected_project='project13',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'project': ['Invalid hyperlink - Object does not exist.'],
+            }
+        )
+
+    def test_project_admin_cannot_grant_new_role_within_his_project(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='admin1',
+            affected_user='no_role',
+            affected_project='project11',
+            expected_status=status.HTTP_403_FORBIDDEN,
+            expected_payload={
+                'detail': 'You do not have permission to perform this action.',
+            }
+        )
+
+    def test_project_admin_cannot_grant_existing_role_within_his_project(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='admin1',
+            affected_user='admin1',
+            affected_project='project11',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'non_field_errors': ['The fields project, user, role must make a unique set.'],
+            }
+        )
+
+    def test_project_admin_cannot_grant_role_within_another_project(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='admin1',
+            affected_user='no_role',
+            affected_project='project13',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'project': ['Invalid hyperlink - Object does not exist.'],
+            }
+        )
+
+    def test_staff_can_grant_new_role_within_any_project(self):
+        for project in self.projects.keys():
+            self.assert_user_access_to_permission_granting(
+                login_user='staff',
+                affected_user='no_role',
+                affected_project=project,
+                expected_status=status.HTTP_201_CREATED,
+            )
+
+    def test_staff_cannot_grant_new_role_if_customer_quota_were_exceeded(self):
+        project = 'project11'
+        self.projects[project].customer.set_quota_limit('nc_user_count', 0)
+        self.assert_user_access_to_permission_granting(
+            login_user='staff',
+            affected_user='no_role',
+            affected_project=project,
+            expected_status=status.HTTP_409_CONFLICT,
+        )
+
+    def test_staff_cannot_grant_existing_role_within_any_project(self):
+        for user, project, _ in self.all_roles:
+            self.assert_user_access_to_permission_granting(
+                login_user='staff',
+                affected_user=user,
+                affected_project=project,
+                expected_status=status.HTTP_400_BAD_REQUEST,
+                expected_payload={
+                    'non_field_errors': ['The fields project, user, role must make a unique set.'],
                 }
-
-                response = self.client.post(reverse('project_permission-list'), data)
-
-                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
-                                 '{0} user sees privilege he is not supposed to see: {1}. '
-                                 'Status code: {2}'.format(login_user, project, response.status_code))
-                self.assertDictContainsSubset(
-                    {'project': ['Invalid hyperlink - object does not exist.']}, response.data)
-
-    # Manager tests
-    def test_user_can_list_roles_of_projects_he_is_manager_of(self):
-        self.client.force_authenticate(user=self.users['manager'])
-
-        response = self.client.get(reverse('project_permission-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        manager_roles = (role for role in self.all_roles if role.project == 'manager')
-
-        for role in manager_roles:
-            role_seen = self._check_if_present(
-                self.projects[role.project],
-                self.users[role.user],
-                role.role,
-                permissions=response.data,
             )
 
-            self.assertTrue(
-                role_seen,
-                'Manager user does not see a role he is supposed to see: {0}'.format(role),
-            )
-
-    def test_user_can_assign_project_roles_in_projects_he_is_manager_of(self):
-        self.client.force_authenticate(user=self.users['manager'])
-
-        user_url = self._get_user_url(self.users['no_role'])
-        project_url = self._get_project_url(self.projects['manager'])
+    def assert_user_access_to_permission_granting(self, login_user, affected_user, affected_project,
+                                                  expected_status, expected_payload=None):
+        self.client.force_authenticate(user=self.users[login_user])
 
         data = {
-            'project': project_url,
-            'user': user_url,
-            'role': 'manager'
+            'project': factories.ProjectFactory.get_url(self.projects[affected_project]),
+            'user': factories.UserFactory.get_url(self.users[affected_user]),
+            'role': 'admin',
         }
 
         response = self.client.post(reverse('project_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, expected_status)
+        if expected_payload is not None:
+            self.assertDictContainsSubset(expected_payload, response.data)
 
-        # modification of an existing permission has a different status code
-        response = self.client.post(reverse('project_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
-        self.assertEqual(
-            {'detail': 'Permissions were not modified'}, response.data)
-
-        existing_permission_url = self._get_permission_url('no_role', 'manager', 'manager')
-        self.assertEqual(response['Location'], existing_permission_url)
-
-    def test_user_can_assign_project_roles_in_projects_he_is_group_manager_of(self):
-        self.client.force_authenticate(user=self.users['group_manager'])
-
-        user_url = self._get_user_url(self.users['no_role'])
-        project_url = self._get_project_url(self.projects['group_manager'])
-
-        data = {
-            'project': project_url,
-            'user': user_url,
-            'role': 'manager'
-        }
-
-        response = self.client.post(reverse('project_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        # modification of an existing permission has a different status code
-        response = self.client.post(reverse('project_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
-        # TODO: Test for Location header pointing to an existing permission
-
-    def test_user_can_assign_project_roles_in_projects_he_is_owner_of(self):
-        self.client.force_authenticate(user=self.customer_owner)
-
-        user_url = self._get_user_url(self.users['no_role'])
-        project_url = self._get_project_url(self.projects['admin'])
-
-        data = {
-            'project': project_url,
-            'user': user_url,
-            'role': 'manager'
-        }
-
-        response = self.client.post(reverse('project_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        # modification of an existing permission has a different status code
-        response = self.client.post(reverse('project_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_304_NOT_MODIFIED)
-        # TODO: Test for Location header pointing to an existing permission
-
-    def test_user_cannot_directly_modify_role_of_project_he_is_manager_of(self):
-        self.client.force_authenticate(user=self.users['manager'])
-
-        managed_roles = (
-            role
-            for role in self.all_roles
-            if role.project == 'manager'
+    # Revocation tests
+    def test_customer_owner_can_revoke_role_within_his_customers_project(self):
+        self.assert_user_access_to_permission_revocation(
+            login_user='owner1',
+            affected_user='admin1',
+            affected_project='project11',
+            expected_status=status.HTTP_204_NO_CONTENT,
         )
 
-        for role in managed_roles:
-            permission_url = self._get_permission_url(*role)
+    def test_customer_owner_cannot_revoke_role_within_another_customers_project(self):
+        self.assert_user_access_to_permission_revocation(
+            login_user='owner1',
+            affected_user='admin5',
+            affected_project='project21',
+            expected_status=status.HTTP_404_NOT_FOUND,
+        )
 
-            user_url = self._get_user_url(self.users[role.user])
-            project_url = self._get_project_url(self.projects[role.project])
+    def test_project_group_manager_can_revoke_role_within_his_project_groups_project(self):
+        self.assert_user_access_to_permission_revocation(
+            login_user='manager1',
+            affected_user='admin1',
+            affected_project='project11',
+            expected_status=status.HTTP_204_NO_CONTENT,
+        )
 
-            data = {
-                'project': project_url,
-                'user': user_url,
-                'role': role.role,
+    def test_project_group_manager_cannot_revoke_role_within_another_project_groups_project(self):
+        self.assert_user_access_to_permission_revocation(
+            login_user='manager1',
+            affected_user='admin5',
+            affected_project='project21',
+            expected_status=status.HTTP_404_NOT_FOUND,
+        )
+
+    def test_project_admin_cannot_revoke_role_within_his_project(self):
+        self.assert_user_access_to_permission_revocation(
+            login_user='admin1',
+            affected_user='admin2',
+            affected_project='project11',
+            expected_status=status.HTTP_403_FORBIDDEN,
+            expected_payload={
+                'detail': 'You do not have permission to perform this action.',
             }
+        )
 
-            response = self.client.put(permission_url, data)
-            self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+    def test_project_admin_cannot_revoke_role_within_within_another_project(self):
+        for user, project, _ in self.all_roles:
+            if project == 'project11':
+                continue
 
-    def test_user_can_list_roles_of_projects_he_is_owner_of(self):
-        self.client.force_authenticate(user=self.customer_owner)
-
-        response = self.client.get(reverse('project_permission-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        manager_roles = (role for role in self.all_roles if role.project == 'admin')
-
-        for role in manager_roles:
-            self.assertTrue(
-                self._check_if_present(
-                    self.projects[role.project],
-                    self.users[role.user], role.role, permissions=response.data),
-                'Owner user does not see an existing privilege: {0}'.format(role),
+            self.assert_user_access_to_permission_revocation(
+                login_user='admin1',
+                affected_user='admin5',
+                affected_project='project21',
+                expected_status=status.HTTP_404_NOT_FOUND,
             )
 
-    def test_user_can_list_roles_of_projects_he_is_group_manager_of(self):
-        self.client.force_authenticate(user=self.users['group_manager'])
-
-        response = self.client.get(reverse('project_permission-list'))
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(
-            self._check_if_present(
-                self.projects['group_manager'],
-                self.groups_manager_project_admin, 'admin', permissions=response.data),
-            'Group manager user does not see an administrator of his project',
-        )
-
-    # Administrator tests
-    def test_user_can_list_roles_of_projects_he_is_administrator_of(self):
-        self.client.force_authenticate(user=self.users['admin'])
-
-        response = self.client.get(reverse('project_permission-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        admin_roles = (role for role in self.all_roles if role.project == 'admin')
-
-        for role in admin_roles:
-            self.assertTrue(
-                self._check_if_present(
-                    self.projects[role.project],
-                    self.users[role.user], role.role, permissions=response.data),
-                'Admin user does not see an existing privilege: {0}'.format(role),
+    def test_staff_can_revoke_role_within_any_project(self):
+        for user, project, _ in self.all_roles:
+            self.assert_user_access_to_permission_revocation(
+                login_user='staff',
+                affected_user=user,
+                affected_project=project,
+                expected_status=status.HTTP_204_NO_CONTENT,
             )
 
-    def test_user_cannot_assign_roles_in_projects_he_is_administrator_of_but_not_manager_of(self):
-        self.client.force_authenticate(user=self.users['admin'])
+    def assert_user_access_to_permission_revocation(self, login_user, affected_user, affected_project,
+                                                    expected_status, expected_payload=None):
+        self.client.force_authenticate(user=self.users[login_user])
 
-        user_url = self._get_user_url(self.users['no_role'])
-        project_url = self._get_project_url(self.projects['admin'])
+        url = self._get_permission_url(affected_user, affected_project, 'admin')
 
-        data = {
-            'project': project_url,
-            'user': user_url,
-            'role': 'manager'
-        }
-
-        response = self.client.post(reverse('project_permission-list'), data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_user_cannot_directly_modify_role_of_project_he_is_administrator_of(self):
-        self.client.force_authenticate(user=self.users['admin'])
-
-        non_managed_roles = (
-            role
-            for role in self.all_roles
-            if role.project == 'admin'
-        )
-
-        for role in non_managed_roles:
-            permission_url = self._get_permission_url(*role)
-
-            user_url = self._get_user_url(self.users[role.user])
-            project_url = self._get_project_url(self.projects[role.project])
-
-            data = {
-                'project': project_url,
-                'user': user_url,
-                'role': role.role,
-            }
-
-            response = self.client.put(permission_url, data)
-            self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    # Deletion tests
-    def test_user_can_delete_role_of_project_he_is_manager_of(self):
-        self.client.force_authenticate(user=self.users['manager'])
-        # We skip deleting manager's permission now
-        # otherwise he won't be able to manage roles anymore
-        managed_roles = [
-            role
-            for role in self.all_roles
-            if (role.project == 'manager') and (role.user != 'manager')
-        ]
-
-        for role in managed_roles:
-            permission_url = self._get_permission_url(*role)
-            response = self.client.delete(permission_url)
-            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-        # Now test ability to revoke own manager's role
-        permission_url = self._get_permission_url('manager', 'manager', 'manager')
-        response = self.client.delete(permission_url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-    def test_user_cannot_delete_role_of_project_he_is_administrator_of_but_not_manager_of(self):
-        self.client.force_authenticate(user=self.users['admin'])
-
-        not_managed_roles = (
-            role
-            for role in self.all_roles
-            if role.project == 'admin'
-        )
-
-        for role in not_managed_roles:
-            permission_url = self._get_permission_url(*role)
-            response = self.client.delete(permission_url)
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_user_can_delete_role_of_projects_he_is_owner_of(self):
-        self.client.force_authenticate(user=self.customer_owner)
-
-        permission_url = self._get_permission_url('manager', 'manager', 'manager')
-        response = self.client.delete(permission_url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, expected_status)
+        if expected_payload is not None:
+            self.assertDictContainsSubset(expected_payload, response.data)
 
     # Helper methods
     def _get_permission_url(self, user, project, role):
@@ -400,27 +397,3 @@ class UserProjectPermissionTest(test.APITransactionTestCase):
             group__projectrole__project=self.projects[project],
         )
         return 'http://testserver' + reverse('project_permission-detail', kwargs={'pk': permission.pk})
-
-    def _get_project_url(self, project):
-        return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
-
-    def _get_user_url(self, user):
-        return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})
-
-    def _check_if_present(self, project, user, role, permissions):
-        project_url = self._get_project_url(project)
-        user_url = self._get_user_url(user)
-        for permission in permissions:
-            if 'url' in permission:
-                del permission['url']
-
-        role = {
-            'user': user_url,
-            'user_full_name': user.full_name,
-            'user_native_name': user.native_name,
-            'user_username': user.username,
-            'project': project_url,
-            'project_name': project.name,
-            'role': role,
-        }
-        return role in permissions

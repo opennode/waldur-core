@@ -2,14 +2,13 @@ from django.core.exceptions import ValidationError
 from rest_framework import serializers
 from nodeconductor.iaas import models
 from nodeconductor.structure import filters as structure_filters
-from nodeconductor.structure.serializers import fix_non_nullable_attrs
 
 
 class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
 
-    cloud_project_membership = serializers.PrimaryKeyRelatedField()
+    cloud_project_membership = serializers.PrimaryKeyRelatedField(queryset=models.CloudProjectMembership.objects.all())
     # TODO: consider unbinding template and persisting its data into backup metadata
-    template = serializers.PrimaryKeyRelatedField()
+    template = serializers.PrimaryKeyRelatedField(queryset=models.Template.objects.all())
     flavor = serializers.HyperlinkedRelatedField(
         view_name='flavor-detail',
         lookup_field='uuid',
@@ -73,7 +72,9 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
         system_volume_size = attrs['system_volume_size']
         data_volume_size = attrs.get('data_volume_size', models.Instance.DEFAULT_DATA_VOLUME_SIZE)
         quota_usage = {
-            'storage': system_volume_size + data_volume_size
+            'storage': system_volume_size + data_volume_size,
+            'vcpu': flavor.cores,
+            'ram': flavor.ram,
         }
 
         quota_errors = membership.validate_quota_change(quota_usage)
@@ -81,13 +82,11 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
 
-        # TODO: cleanup after migration to drf 3
-        return fix_non_nullable_attrs(attrs)
+        return attrs
 
-    def restore_object(self, attrs, instance=None):
-        flavor = attrs['flavor']
-        attrs['cores'] = flavor.cores
-        attrs['ram'] = flavor.ram
-        attrs['cloud'] = flavor.cloud
+    def create(self, validated_data):
+        flavor = validated_data.pop('flavor')
+        validated_data['cores'] = flavor.cores
+        validated_data['ram'] = flavor.ram
 
-        return super(InstanceBackupRestorationSerializer, self).restore_object(attrs, instance)
+        return super(InstanceBackupRestorationSerializer, self).create(validated_data)

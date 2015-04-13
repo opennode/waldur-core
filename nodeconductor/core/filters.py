@@ -55,11 +55,11 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
             if mapping:
                 transform = lambda o: self._transform_ordering(mapping, o)
 
-                params = request.QUERY_PARAMS.copy()
+                params = request.query_params.copy()
                 ordering = map(transform, params.getlist(order_by_field))
                 params.setlist(order_by_field, ordering)
             else:
-                params = request.QUERY_PARAMS
+                params = request.query_params
 
             return filter_class(params, queryset=queryset).qs
 

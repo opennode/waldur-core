@@ -46,7 +46,7 @@ def _template_license_list_url():
 
 
 def _template_license_stats_url():
-    return 'http://testserver' + reverse('templatelicense-list') + 'stats/'
+    return 'http://testserver' + reverse('templatelicense-stats')
 
 
 class LicenseApiManipulationTest(test.APISimpleTestCase):

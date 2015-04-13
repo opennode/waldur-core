@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+from decimal import Decimal
+
 from django.core.urlresolvers import reverse
 from mock import patch, Mock
 from rest_framework import status
@@ -14,6 +16,7 @@ from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
+# TODO: Replace this mixin methods with Factory.get_url() methods
 class UrlResolverMixin(object):
     def _get_flavor_url(self, flavor):
         return 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': flavor.uuid})
@@ -645,7 +648,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         data[field_name] = empty_value
         response = self.client.post(self.instance_list_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({field_name: ['This field is required.']}, response.data)
+        self.assertIn(field_name, response.data)
 
     # Positive tests
     def test_can_create_instance_without_description(self):
@@ -662,7 +665,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         sla_level = self.template.sla_level
         created_instance = self.client.get(factories.InstanceFactory.get_list_url() + response.data['uuid'] + '/')
-        self.assertEqual(sla_level, created_instance.data['agreed_sla'])
+        self.assertEqual(sla_level, Decimal(created_instance.data['agreed_sla']))
 
     def test_can_create_instance_with_empty_description(self):
         data = self.get_valid_data()
@@ -686,7 +689,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         response = self.client.post(self.instance_list_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'non_field_errors': ["Flavor is not within project's clouds."]}, response.data)
+        self.assertDictContainsSubset({'flavor': "Flavor is not within project's clouds."}, response.data)
 
     def test_cannot_create_instance_with_flavor_not_from_clouds_allowed_for_users_projects(self):
         data = self.get_valid_data()
@@ -695,7 +698,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         response = self.client.post(self.instance_list_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'flavor': ['Invalid hyperlink - object does not exist.']}, response.data)
+        self.assertDictContainsSubset({'flavor': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     def test_cannot_create_instance_with_project_not_from_users_projects(self):
         data = self.get_valid_data()
@@ -704,7 +707,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         response = self.client.post(self.instance_list_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'project': ['Invalid hyperlink - object does not exist.']}, response.data)
+        self.assertDictContainsSubset({'project': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     def test_cannot_create_instance_with_empty_name(self):
         self.assert_field_non_empty('name')
@@ -787,7 +790,10 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         response = self.client.post(self.instance_list_url, data)
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            response.status_code, status.HTTP_201_CREATED,
+            'Actual response status: %s and data: %s' % (response.status_code, response.data)
+        )
 
     def test_can_create_instance_with_external_ips_set_to_null(self):
         data = self.get_valid_data()
@@ -885,7 +891,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
             response = self.client.post(self.instance_list_url, data)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-            self.assertDictContainsSubset({'template': ['Invalid hyperlink - object does not exist.']}, response.data)
+            self.assertDictContainsSubset({'template': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     def test_external_ips_have_to_from_membership_floating_ips(self):
         random_address = '127.0.0.1'
@@ -897,6 +903,35 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset(
             {'non_field_errors': ['External IP is not from the list of available floating IPs.']}, response.data)
+
+    def test_instance_can_not_be_created_if_customer_resource_quota_exceeded(self):
+        self.project.customer.set_quota_limit('nc_resource_count', 0)
+        data = self.get_valid_data()
+
+        response = self.client.post(factories.InstanceFactory.get_list_url(), data)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    # Zabbix host visible name tests
+    def test_zabbix_host_visible_name_is_updated_when_instance_is_renamed(self):
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        with patch('nodeconductor.iaas.tasks.zabbix.zabbix_update_host_visible_name.delay') as mocked_task:
+            data = {'name': 'host2'}
+            response = self.client.put(factories.InstanceFactory.get_url(instance), data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            mocked_task.assert_called_with(instance.uuid)
+
+    def test_zabbix_host_visible_name_is_not_updated_when_instance_is_not_renamed(self):
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        with patch('nodeconductor.iaas.tasks.zabbix.zabbix_update_host_visible_name.delay') as mocked_task:
+            data = {'name': instance.name}
+            response = self.client.put(factories.InstanceFactory.get_url(instance), data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertFalse(mocked_task.called)
 
     # Helper methods
     # TODO: Move to serializer tests
@@ -929,8 +964,7 @@ class InstanceListRetrieveTest(test.APITransactionTestCase):
     def test_user_does_not_receive_deleted_instances_backups(self):
         self.client.force_authenticate(self.staff)
 
-        backup_factories.BackupFactory(
-            state=backup_models.Backup.States.DELETED, backup_source=self.instance)
+        backup_factories.BackupFactory(state=backup_models.Backup.States.DELETED, backup_source=self.instance)
         backup = backup_factories.BackupFactory(backup_source=self.instance)
 
         url = factories.InstanceFactory.get_url(self.instance)

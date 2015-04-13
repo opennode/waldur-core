@@ -1,15 +1,12 @@
 from __future__ import unicode_literals
 
-from collections import defaultdict
 import functools
 import datetime
 import logging
 import time
 
-
 from django.db import models as django_models
 from django.db import transaction, IntegrityError
-from django.db.models import Sum
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django_fsm import TransitionNotAllowed
@@ -18,16 +15,17 @@ from rest_framework import exceptions
 from rest_framework import filters
 from rest_framework import mixins
 from rest_framework import permissions, status
+from rest_framework import serializers as rf_serializers
 from rest_framework import viewsets, views
 from rest_framework.response import Response
-from rest_framework_extensions.decorators import action, link
+from rest_framework.decorators import detail_route, list_route
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
-from nodeconductor.core import viewsets as core_viewsets
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
@@ -234,8 +232,8 @@ class InstanceFilter(django_filters.FilterSet):
 
 class InstanceViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
-                      core_mixins.ListModelMixin,
-                      core_mixins.UpdateOnlyModelMixin,
+                      mixins.UpdateModelMixin,
+                      mixins.ListModelMixin,
                       viewsets.GenericViewSet):
     """List of VM instances that are accessible by this user.
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#vm-instance-management
@@ -251,7 +249,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
     def get_queryset(self):
         queryset = super(InstanceViewSet, self).get_queryset()
 
-        order = self.request.QUERY_PARAMS.get('o', None)
+        order = self.request.query_params.get('o', None)
         if order == 'start_time':
             queryset = queryset.extra(select={
                 'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
@@ -295,66 +293,37 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         return super(InstanceViewSet, self).initial(request, *args, **kwargs)
 
-    def pre_save(self, obj):
-        super(InstanceViewSet, self).pre_save(obj)
-
-        if obj.pk is None:
-            # Create flow
-            obj.agreed_sla = obj.template.sla_level
-        else:
-            # Update flow
-            related_data = getattr(self.object, '_related_data', {})
-
-            self.new_security_group_ids = set(
-                isg.security_group_id
-                for isg in related_data.get('security_groups', [])
-            )
-
-            # Prevent DRF from trashing m2m security_group relation
-            try:
-                del related_data['security_groups']
-            except KeyError:
-                pass
-
+    def perform_create(self, serializer):
+        serializer.validated_data['agreed_sla'] = serializer.validated_data['template'].sla_level
         # check if connected cloud_project_membership is in a sane state - fail modification operation otherwise
-        if obj.cloud_project_membership.state == core_models.SynchronizationStates.ERRED:
+        membership = serializer.validated_data['cloud_project_membership']
+        if membership.state == core_models.SynchronizationStates.ERRED:
             raise core_exceptions.IncorrectStateException(
                 detail='Cannot modify an instance if it is connected to a cloud project membership in erred state.'
             )
 
-    def post_save(self, obj, created=False):
-        super(InstanceViewSet, self).post_save(obj, created)
-        if created:
-            event_logger.info('Virtual machine %s creation has been scheduled.', obj.name,
-                              extra={'instance': obj, 'event_type': 'iaas_instance_creation_scheduled'})
-            tasks.provision_instance.delay(obj.uuid.hex, backend_flavor_id=obj.flavor.backend_id)
-            return
+        membership.project.customer.validate_quota_change({'nc_resource_count': 1}, raise_exception=True)
 
-        event_logger.info('Virtual machine %s has been updated.', obj.name,
-                          extra={'instance': obj, 'event_type': 'iaas_instance_update_succeeded'})
+        instance = serializer.save()
+        event_logger.info('Virtual machine %s creation has been scheduled.', instance.name,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_creation_scheduled'})
+        tasks.provision_instance.delay(instance.uuid.hex, backend_flavor_id=instance.flavor.backend_id)
 
-        # We care only about update flow
-        old_security_groups = dict(
-            (isg.security_group_id, isg)
-            for isg in self.object.security_groups.all()
-        )
-
-        # Remove stale security groups
-        for security_group_id, isg in old_security_groups.items():
-            if security_group_id not in self.new_security_group_ids:
-                isg.delete()
-
-        # Add missing ones
-        for security_group_id in self.new_security_group_ids - set(old_security_groups.keys()):
-            models.InstanceSecurityGroup.objects.create(
-                instance=self.object,
-                security_group_id=security_group_id,
+    def perform_update(self, serializer):
+        membership = self.get_object().cloud_project_membership
+        if membership.state == core_models.SynchronizationStates.ERRED:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot modify an instance if it is connected to a cloud project membership in erred state.'
             )
+        instance = serializer.save()
+
+        event_logger.info('Virtual machine %s has been updated.', instance.name,
+                          extra={'instance': instance, 'event_type': 'iaas_instance_update_succeeded'})
 
         from nodeconductor.iaas.tasks import push_instance_security_groups
-        push_instance_security_groups.delay(self.object.uuid.hex)
+        push_instance_security_groups.delay(instance.uuid.hex)
 
-    @action()
+    @detail_route(methods=['post'])
     @schedule_transition()
     def stop(self, request, instance, uuid=None):
         logger_info = dict(
@@ -364,7 +333,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         )
         return 'stop', logger_info
 
-    @action()
+    @detail_route(methods=['post'])
     @schedule_transition()
     def start(self, request, instance, uuid=None):
         logger_info = dict(
@@ -374,7 +343,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
         )
         return 'start', logger_info
 
-    @action()
+    @detail_route(methods=['post'])
     @schedule_transition()
     def restart(self, request, instance, uuid=None):
         logger_info = dict(
@@ -404,19 +373,17 @@ class InstanceViewSet(mixins.CreateModelMixin,
         )
         return 'destroy', logger_info
 
-    @action()
+    @detail_route(methods=['post'])
     @schedule_transition()
     def resize(self, request, instance, uuid=None):
         if instance.state != models.Instance.States.OFFLINE:
             return Response({'detail': 'Instance must be offline'},
                             status=status.HTTP_409_CONFLICT)
 
-        serializer = serializers.InstanceResizeSerializer(instance, data=request.DATA)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = serializers.InstanceResizeSerializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        obj = serializer.object
-        flavor = obj['flavor']
+        flavor = serializer.validated_data.get('flavor')
 
         # Serializer makes sure that exactly one of the branches will match
         if flavor is not None:
@@ -440,7 +407,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return 'flavor change', logger_info, dict(flavor_uuid=flavor.uuid.hex)
 
         else:
-            new_size = obj['disk_size']
+            new_size = serializer.validated_data['disk_size']
             if new_size <= instance.data_volume_size:
                 return Response({'disk_size': "Disk size must be strictly greater than the current one"},
                                 status=status.HTTP_400_BAD_REQUEST)
@@ -455,7 +422,7 @@ class InstanceViewSet(mixins.CreateModelMixin,
             )
             return 'disk extension', logger_info
 
-    @link()
+    @detail_route()
     def usage(self, request, uuid):
         instance = self.get_object()
 
@@ -465,15 +432,14 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         hour = 60 * 60
         data = {
-            'start_timestamp': request.QUERY_PARAMS.get('from', int(time.time() - hour)),
-            'end_timestamp': request.QUERY_PARAMS.get('to', int(time.time())),
-            'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
-            'item': request.QUERY_PARAMS.get('item'),
+            'start_timestamp': request.query_params.get('from', int(time.time() - hour)),
+            'end_timestamp': request.query_params.get('to', int(time.time())),
+            'segments_count': request.query_params.get('datapoints', 6),
+            'item': request.query_params.get('item'),
         }
 
         serializer = serializers.UsageStatsSerializer(data=data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         stats = serializer.get_stats([instance])
         return Response(stats, status=status.HTTP_200_OK)
@@ -486,14 +452,14 @@ class TemplateFilter(django_filters.FilterSet):
 
     class Meta(object):
         model = models.Template
-        fields = [
+        fields = (
             'os',
             'os_type',
             'name',
-        ]
+        )
 
 
-class TemplateViewSet(core_viewsets.ModelViewSet):
+class TemplateViewSet(viewsets.ModelViewSet):
     """
     List of VM templates that are accessible by this user.
 
@@ -522,7 +488,7 @@ class TemplateViewSet(core_viewsets.ModelViewSet):
             queryset = queryset.exclude(is_active=False)
 
         if self.request.method == 'GET':
-            cloud_uuid = self.request.QUERY_PARAMS.get('cloud')
+            cloud_uuid = self.request.query_params.get('cloud')
             if cloud_uuid is not None:
                 cloud_queryset = structure_filters.filter_queryset_for_user(
                     models.Cloud.objects.all(), user)
@@ -558,7 +524,11 @@ class SshKeyFilter(django_filters.FilterSet):
         ]
 
 
-class SshKeyViewSet(core_viewsets.ModelViewSet):
+class SshKeyViewSet(mixins.CreateModelMixin,
+                    mixins.RetrieveModelMixin,
+                    mixins.DestroyModelMixin,
+                    mixins.ListModelMixin,
+                    viewsets.GenericViewSet):
     """
     List of SSH public keys that are accessible by this user.
 
@@ -571,8 +541,14 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = SshKeyFilter
 
-    def pre_save(self, key):
-        key.user = self.request.user
+    def perform_create(self, serializer):
+        user = self.request.user
+        name = serializer.validated_data['name']
+
+        if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
+            raise rf_serializers.ValidationError({'name': ['This field must be unique.']})
+
+        serializer.save(user=user)
 
     def get_queryset(self):
         queryset = super(SshKeyViewSet, self).get_queryset()
@@ -584,7 +560,7 @@ class SshKeyViewSet(core_viewsets.ModelViewSet):
         return queryset.filter(user=user)
 
 
-class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
+class TemplateLicenseViewSet(viewsets.ModelViewSet):
     """List of template licenses that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#template-licenses
@@ -598,27 +574,27 @@ class TemplateLicenseViewSet(core_viewsets.ModelViewSet):
         if not self.request.user.is_staff:
             raise Http404()
         queryset = super(TemplateLicenseViewSet, self).get_queryset()
-        if 'customer' in self.request.QUERY_PARAMS:
-            customer_uuid = self.request.QUERY_PARAMS['customer']
+        if 'customer' in self.request.query_params:
+            customer_uuid = self.request.query_params['customer']
             queryset = queryset.filter(templates__images__cloud__customer__uuid=customer_uuid)
         return queryset
 
     def _filter_queryset(self, queryset):
-        if 'customer' in self.request.QUERY_PARAMS:
-            customer_uuid = self.request.QUERY_PARAMS['customer']
+        if 'customer' in self.request.query_params:
+            customer_uuid = self.request.query_params['customer']
             queryset = queryset.filter(instance__cloud_project_membership__project__customer__uuid=customer_uuid)
-        if 'name' in self.request.QUERY_PARAMS:
-            queryset = queryset.filter(template_license__name=self.request.QUERY_PARAMS['name'])
-        if 'type' in self.request.QUERY_PARAMS:
-            queryset = queryset.filter(template_license__license_type=self.request.QUERY_PARAMS['type'])
+        if 'name' in self.request.query_params:
+            queryset = queryset.filter(template_license__name=self.request.query_params['name'])
+        if 'type' in self.request.query_params:
+            queryset = queryset.filter(template_license__license_type=self.request.query_params['type'])
         return queryset
 
-    @link(is_for_list=True)
+    @list_route()
     def stats(self, request):
         queryset = structure_filters.filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
         queryset = self._filter_queryset(queryset)
 
-        aggregate_parameters = self.request.QUERY_PARAMS.getlist('aggregate', [])
+        aggregate_parameters = self.request.query_params.getlist('aggregate', [])
         aggregate_parameter_to_field_map = {
             'project': [
                 'instance__cloud_project_membership__project__uuid',
@@ -755,7 +731,7 @@ class ServiceFilter(django_filters.FilterSet):
 
 
 # XXX: This view has to be rewritten or removed after haystack implementation
-class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
+class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.Instance.objects.exclude(
         state=models.Instance.States.DELETING,
     )
@@ -765,7 +741,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
     filter_class = ServiceFilter
 
     def _get_period(self):
-        period = self.request.QUERY_PARAMS.get('period')
+        period = self.request.query_params.get('period')
         if period is None:
             today = datetime.date.today()
             period = '%s-%s' % (today.year, today.month)
@@ -779,7 +755,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
         context['period'] = self._get_period()
         return context
 
-    @link()
+    @detail_route()
     def events(self, request, uuid):
         service = self.get_object()
         period = self._get_period()
@@ -790,8 +766,7 @@ class ServiceViewSet(core_viewsets.ReadOnlyModelViewSet):
 
         serializer = serializers.SlaHistoryEventSerializer(data=history_events,
                                                            many=True)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -805,7 +780,7 @@ class ResourceStatsView(views.APIView):
     def get(self, request, format=None):
         self._check_user(request)
 
-        auth_url = request.QUERY_PARAMS.get('auth_url')
+        auth_url = request.query_params.get('auth_url')
         # TODO: auth_url should be coming as a reference to NodeConductor object. Consider introducing this concept.
         if auth_url is None:
             return Response(
@@ -880,7 +855,7 @@ class UsageStatsView(views.APIView):
     def get(self, request, format=None):
         usage_stats = []
 
-        aggregate_model_name = request.QUERY_PARAMS.get('aggregate', 'customer')
+        aggregate_model_name = request.query_params.get('aggregate', 'customer')
         if aggregate_model_name not in self.aggregate_models.keys():
             return Response(
                 'Get parameter "aggregate" can take only this values: ' % ', '.join(self.aggregate_models.keys()),
@@ -890,8 +865,8 @@ class UsageStatsView(views.APIView):
         # by currently logged in user.
         aggregate_queryset = self._get_aggregate_queryset(request, aggregate_model_name)
 
-        if 'uuid' in request.QUERY_PARAMS:
-            aggregate_queryset = aggregate_queryset.filter(uuid=request.QUERY_PARAMS['uuid'])
+        if 'uuid' in request.query_params:
+            aggregate_queryset = aggregate_queryset.filter(uuid=request.query_params['uuid'])
 
         # This filters out the vm Instances to those that can be seen
         # by currently logged in user. This is done within each aggregate root separately.
@@ -905,15 +880,14 @@ class UsageStatsView(views.APIView):
             if instances:
                 hour = 60 * 60
                 data = {
-                    'start_timestamp': request.QUERY_PARAMS.get('from', int(time.time() - hour)),
-                    'end_timestamp': request.QUERY_PARAMS.get('to', int(time.time())),
-                    'segments_count': request.QUERY_PARAMS.get('datapoints', 6),
-                    'item': request.QUERY_PARAMS.get('item'),
+                    'start_timestamp': request.query_params.get('from', int(time.time() - hour)),
+                    'end_timestamp': request.query_params.get('to', int(time.time())),
+                    'segments_count': request.query_params.get('datapoints', 6),
+                    'item': request.query_params.get('item'),
                 }
 
                 serializer = serializers.UsageStatsSerializer(data=data)
-                if not serializer.is_valid():
-                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                serializer.is_valid(raise_exception=True)
 
                 stats = serializer.get_stats(instances)
                 usage_stats.append({'name': aggregate_object.name, 'datapoints': stats})
@@ -922,7 +896,7 @@ class UsageStatsView(views.APIView):
         return Response(usage_stats, status=status.HTTP_200_OK)
 
 
-class FlavorViewSet(core_viewsets.ReadOnlyModelViewSet):
+class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
     """List of VM instance flavors that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#flavor-management
@@ -969,7 +943,7 @@ class CloudFilter(django_filters.FilterSet):
         ]
 
 
-class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet):
+class CloudViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#cloud-model
@@ -985,23 +959,24 @@ class CloudViewSet(core_mixins.UpdateOnlyStableMixin, core_viewsets.ModelViewSet
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
     filter_class = CloudFilter
 
-    def pre_save(self, cloud):
-        super(CloudViewSet, self).pre_save(cloud)
-
-        if cloud.pk is not None:
-            return
-
+    def _can_create_or_update_cloud(self, serializer):
         if self.request.user.is_staff:
-            return
+            return True
+        if serializer.validated_data['customer'].has_user(self.request.user, CustomerRole.OWNER):
+            return True
 
-        if cloud.customer.has_user(self.request.user, CustomerRole.OWNER):
-            return
+    def perform_create(self, serializer):
+        if not self._can_create_or_update_cloud(serializer):
+            raise exceptions.PermissionDenied()
+        # XXX This is a hack as sync_services expects only IN_SYNC objects and newly created cloud is created
+        # with SYNCING_SCHEDULED
+        cloud = serializer.save(state=SynchronizationStates.IN_SYNC)
+        tasks.sync_services.delay([cloud.uuid.hex])
 
-        raise exceptions.PermissionDenied()
-
-    def post_save(self, obj, created=False):
-        if created:
-            tasks.sync_service.delay(obj.uuid.hex)
+    def perform_update(self, serializer):
+        if not self._can_create_or_update_cloud(serializer):
+            raise exceptions.PermissionDenied()
+        super(CloudViewSet, self).perform_update(serializer)
 
 
 class CloudProjectMembershipFilter(django_filters.FilterSet):
@@ -1023,7 +998,7 @@ class CloudProjectMembershipFilter(django_filters.FilterSet):
 class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
-                                    core_mixins.ListModelMixin,
+                                    mixins.ListModelMixin,
                                     core_mixins.UpdateOnlyStableMixin,
                                     viewsets.GenericViewSet):
     """
@@ -1037,11 +1012,11 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = CloudProjectMembershipFilter
 
-    def post_save(self, obj, created=False):
-        if created:
-            tasks.sync_cloud_membership.delay(obj.pk)
+    def perform_create(self, serializer):
+        membership = serializer.save()
+        tasks.sync_cloud_membership.delay(membership.pk)
 
-    @action()
+    @detail_route(methods=['post'])
     def set_quotas(self, request, **kwargs):
         if not request.user.is_staff:
             raise exceptions.PermissionDenied()
@@ -1051,9 +1026,8 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
             return Response({'detail': 'Cloud project membership must be in sync state for setting quotas'},
                             status=status.HTTP_409_CONFLICT)
 
-        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=request.DATA)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = serializers.CloudProjectMembershipQuotaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
         instance.schedule_syncing()
         instance.save()
@@ -1063,7 +1037,7 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         return Response({'status': 'Quota update was scheduled'},
                         status=status.HTTP_202_ACCEPTED)
 
-    @action()
+    @detail_route(methods=['post'])
     def import_instance(self, request, **kwargs):
         membership = self.get_object()
         is_admin = membership.project.has_user(request.user, ProjectRole.ADMINISTRATOR)
@@ -1075,13 +1049,12 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
             return Response({'detail': 'Cloud project membership must be in non-erred state for instance import to work'},
                             status=status.HTTP_409_CONFLICT)
 
-        serializer = serializers.CloudProjectMembershipLinkSerializer(data=request.DATA,
+        serializer = serializers.CloudProjectMembershipLinkSerializer(data=request.data,
                                                                       context={'membership': membership})
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
-        instance_id = serializer.object['id']
-        template = serializer.object.get('template')
+        instance_id = serializer.validated_data['id']
+        template = serializer.validated_data.get('template')
         template_id = template.uuid.hex if template else None
         tasks.import_instance.delay(membership.pk, instance_id=instance_id, template_id=template_id)
 
@@ -1118,7 +1091,7 @@ class SecurityGroupFilter(django_filters.FilterSet):
         ]
 
 
-class SecurityGroupViewSet(core_viewsets.ReadOnlyModelViewSet):
+class SecurityGroupViewSet(viewsets.ReadOnlyModelViewSet):
     """
     List of security groups
 
@@ -1147,7 +1120,7 @@ class IpMappingFilter(django_filters.FilterSet):
         ]
 
 
-class IpMappingViewSet(core_viewsets.ModelViewSet):
+class IpMappingViewSet(viewsets.ModelViewSet):
     """
     List of mappings between public IPs and private IPs
 
@@ -1179,7 +1152,7 @@ class FloatingIPFilter(django_filters.FilterSet):
         ]
 
 
-class FloatingIPViewSet(core_viewsets.ReadOnlyModelViewSet):
+class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
     """
     List of floating ips
     """
@@ -1195,11 +1168,10 @@ class QuotaStatsView(views.APIView):
 
     def get(self, request, format=None):
         serializer = serializers.StatsAggregateSerializer(data={
-            'model_name': request.QUERY_PARAMS.get('aggregate', 'customer'),
-            'uuid': request.QUERY_PARAMS.get('uuid'),
+            'model_name': request.query_params.get('aggregate', 'customer'),
+            'uuid': request.query_params.get('uuid'),
         })
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
         memberships = serializer.get_memberships(request.user)
         sum_of_quotas = models.CloudProjectMembership.get_sum_of_quotas_as_dict(

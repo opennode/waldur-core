@@ -353,7 +353,8 @@ class Instance(core_models.UuidMixin,
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
     # This needs to be inlined in order to set on_delete
-    cloud_project_membership = models.ForeignKey(CloudProjectMembership, related_name='+', on_delete=models.PROTECT)
+    cloud_project_membership = models.ForeignKey(
+        CloudProjectMembership, related_name='instances', on_delete=models.PROTECT)
     # XXX: ideally these fields have to be added somewhere in iaas.backup module
     backups = ct_generic.GenericRelation('backup.Backup')
     backup_schedules = ct_generic.GenericRelation('backup.BackupSchedule')

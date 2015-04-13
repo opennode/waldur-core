@@ -767,7 +767,7 @@ class OpenStackBackend(OpenStackClient):
             backend_floating_ips = {
                 ip['id']: ip
                 for ip in self.get_floating_ips(membership.tenant_id, neutron)
-                if ip.get('port_id')
+                if ip.get('floating_ip_address')
             }
         except neutron_exceptions.ClientException as e:
             logger.exception('Failed to get a list of floating IPs')
@@ -1178,6 +1178,8 @@ class OpenStackBackend(OpenStackClient):
                 membership.add_quota_usage('ram', -instance.ram)
                 membership.add_quota_usage(
                     'storage', -(instance.system_volume_size + instance.data_volume_size))
+
+                self.release_floating_ip_from_instance(instance)
 
         except nova_exceptions.ClientException as e:
             logger.info('Failed to delete instance %s', instance.uuid)
@@ -2018,6 +2020,28 @@ class OpenStackBackend(OpenStackClient):
             floating_ip.status = 'UP'
             floating_ip.save()
             logger.info('Successfully added external ip %s to instance %s',
+                        instance.external_ips, instance.uuid)
+
+    def release_floating_ip_from_instance(self, instance):
+        if not instance.external_ips:
+            return
+
+        try:
+            floating_ip = models.FloatingIP.objects.get(
+                cloud_project_membership=instance.cloud_project_membership,
+                status='ACTIVE',
+                address=instance.external_ips,
+            )
+        except (
+                models.FloatingIP.DoesNotExist,
+                models.FloatingIP.MultipleObjectsReturned
+        ):
+            logger.warning('Failed to release floating ip %s from instance %s',
+                           instance.external_ips, instance.uuid)
+        else:
+            floating_ip.status = 'DOWN'
+            floating_ip.save()
+            logger.info('Successfully released floating ip %s from instance %s',
                         instance.external_ips, instance.uuid)
 
     def get_attached_volumes(self, server_id, nova):

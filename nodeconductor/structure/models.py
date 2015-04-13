@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models
 from django.db import transaction
+from django.db.models import Q
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
 
@@ -21,7 +22,7 @@ event_logger = EventLoggerAdapter(logger)
 
 
 @python_2_unicode_compatible
-class Customer(UuidMixin, TimeStampedModel):
+class Customer(UuidMixin, quotas_models.QuotaModelMixin, TimeStampedModel):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
@@ -31,6 +32,8 @@ class Customer(UuidMixin, TimeStampedModel):
     native_name = models.CharField(max_length=160, default='', blank=True)
     abbreviation = models.CharField(max_length=8, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
+
+    QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count']
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
@@ -113,6 +116,16 @@ class Customer(UuidMixin, TimeStampedModel):
     def get_owners(self):
         return self.roles.get(role_type=CustomerRole.OWNER).permission_group.user_set
 
+    def get_users(self):
+        """ Return all connected to customer users """
+        return get_user_model().objects.filter(
+            Q(groups__customerrole__customer=self) |
+            Q(groups__projectrole__project__customer=self) |
+            Q(groups__projectgrouprole__project_group__customer=self))
+
+    def can_user_update_quotas(self, user):
+        return user.is_staff
+
     def __str__(self):
         return '%(name)s (%(abbreviation)s)' % {
             'name': self.name,
@@ -157,13 +170,6 @@ class ProjectRole(UuidMixin, models.Model):
         (ADMINISTRATOR, 'Administrator'),
         (MANAGER, 'Manager'),
     )
-
-    ROLE_TO_NAME = {
-        ADMINISTRATOR: 'admin',
-        MANAGER: 'manager'
-    }
-
-    NAME_TO_ROLE = dict((v, k) for k, v in ROLE_TO_NAME.items())
 
     project = models.ForeignKey('structure.Project', related_name='roles')
     role_type = models.SmallIntegerField(choices=TYPE_CHOICES)
@@ -283,9 +289,6 @@ class ProjectGroupRole(UuidMixin, models.Model):
     TYPE_CHOICES = (
         (MANAGER, 'Group Manager'),
     )
-
-    ROLE_TO_NAME = {MANAGER: 'manager'}
-    NAME_TO_ROLE = dict((v, k) for k, v in ROLE_TO_NAME.items())
 
     project_group = models.ForeignKey('structure.ProjectGroup', related_name='roles')
     role_type = models.SmallIntegerField(choices=TYPE_CHOICES)

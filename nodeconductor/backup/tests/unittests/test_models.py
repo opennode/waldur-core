@@ -5,7 +5,7 @@ from mock import patch
 
 from django.conf import settings
 from django.test import TestCase
-from django.utils import timezone, unittest
+from django.utils import timezone
 
 from nodeconductor.backup.tests import factories
 from nodeconductor.backup import models

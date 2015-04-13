@@ -26,9 +26,8 @@ install_requires = [
     'django-permission==0.8.2',
     'django-uuidfield==0.5.0',
     'django-polymorphic>=0.6.0',
-    'djangorestframework>=2.3.12,<2.4.0',
+    'djangorestframework>=3.1.0,<3.2.0',
     'djangosaml2==0.12.0.dev0',
-    'drf-extensions==0.2.6',
     'jsonfield==1.0.0',
     'python-cinderclient==1.0.9',
     'python-glanceclient==0.12.0',
@@ -43,7 +42,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.43.0.dev0',
+    version='0.46.0.dev0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

@@ -1,5 +1,8 @@
+from __future__ import unicode_literals
+
+import unittest
+
 from django.core.exceptions import ValidationError
-from django.utils import unittest
 
 from nodeconductor.core.models import validate_ssh_public_key
 

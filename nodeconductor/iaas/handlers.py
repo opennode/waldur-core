@@ -4,12 +4,13 @@ import logging
 
 from django.apps import apps
 from django.conf import settings
-from django.utils.lru_cache import lru_cache
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, router, DEFAULT_DB_ALIAS
+from django.utils.lru_cache import lru_cache
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.serializers import UnboundSerializerMethodField
+from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 
@@ -41,8 +42,8 @@ def sync_openstack_settings(app_config, using=DEFAULT_DB_ALIAS, **kwargs):
             queryset.create(**opts)
 
 
-def get_related_clouds(obj, request):
-    related_clouds = obj.clouds.all()
+def filter_clouds(clouds, request):
+    related_clouds = clouds.all()
 
     try:
         user = request.user
@@ -58,7 +59,7 @@ def get_related_clouds(obj, request):
 
 
 def add_clouds_to_related_model(sender, fields, **kwargs):
-    fields['clouds'] = UnboundSerializerMethodField(get_related_clouds)
+    fields['clouds'] = UnboundSerializerMethodField(filter_clouds)
 
 
 def propagate_new_users_key_to_his_projects_clouds(sender, instance=None, created=False, **kwargs):
@@ -215,10 +216,26 @@ def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwa
 
 def set_cpm_default_availability_zone(sender, instance=None, **kwargs):
     if not instance.availability_zone:
+        OpenStackSettings = apps.get_model('iaas', 'OpenStackSettings')
         try:
-            OpenStackSettings = apps.get_model('iaas', 'OpenStackSettings')
             options = OpenStackSettings.objects.get(auth_url=instance.cloud.auth_url)
         except OpenStackSettings.DoesNotExist:
             pass
         else:
             instance.availability_zone = options.availability_zone
+
+
+change_customer_nc_instances_quota = quotas_handlers.quantity_quota_handler_factory(
+    path_to_quota_scope='cloud_project_membership.project.customer',
+    quota_name='nc_resource_count',
+)
+
+
+def check_instance_name_update(sender, instance=None, created=False, **kwargs):
+    if created:
+        return
+
+    old_name = instance._old_values['name']
+    if old_name != instance.name:
+        from nodeconductor.iaas.tasks.zabbix import zabbix_update_host_visible_name
+        zabbix_update_host_visible_name.delay(instance.uuid)

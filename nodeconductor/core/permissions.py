@@ -1,7 +1,16 @@
+from django.contrib.contenttypes.models import ContentType
 from permission.conf import settings
 from permission.logics.base import PermissionLogic
 
 from rest_framework.permissions import BasePermission, SAFE_METHODS
+
+
+def has_user_permission_for_instance(user, instance, permission='add'):
+    if user.is_staff:
+        return True
+    content_type = ContentType.objects.get_for_model(instance)
+    permission_name = '%s.%s_%s' % (content_type.app_label, permission, content_type.model)
+    return user.has_perm(permission_name, instance)
 
 
 class IsAdminOrReadOnly(BasePermission):

@@ -1,7 +1,10 @@
 import logging
 
 from django.contrib import auth
+from django.db.models import ProtectedError
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.encoding import force_text
+
 from djangosaml2.conf import get_config
 from djangosaml2.signals import post_authenticated
 from djangosaml2.utils import get_custom_setting
@@ -10,9 +13,11 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.views import exception_handler as rf_exception_handler
 from saml2.client import Saml2Client
 
 from nodeconductor import __version__
+from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.serializers import AuthTokenSerializer, Saml2ResponseSerializer
 
@@ -28,31 +33,42 @@ class ObtainAuthToken(APIView):
     """
     throttle_classes = ()
     permission_classes = ()
-    queryset = Token.objects.all()
     serializer_class = AuthTokenSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.DATA)
-        if serializer.is_valid():
-            user = serializer.object['user']
-            token, created = Token.objects.get_or_create(user=user)
-            event_logger.info(
-                "User %s with full name %s authenticated successfully with username and password.",
-                user.username, user.full_name,
-                extra={'user': user, 'event_type': 'auth_logged_in_with_username'})
-            logger.debug('Returning token for successful login of user %s', user)
-            return Response({'token': token.key})
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        errors = dict(serializer.errors)
+        username = serializer.validated_data['username']
 
-        try:
-            non_field_errors = errors.pop('non_field_errors')
-            errors['detail'] = non_field_errors[0]
-        except (KeyError, IndexError):
-            pass
+        user = auth.authenticate(
+            username=username,
+            password=serializer.validated_data['password'],
+        )
 
-        logger.debug('Failed session token retrieval due to %s', errors)
-        return Response(errors, status=status.HTTP_401_UNAUTHORIZED)
+        if not user:
+            logger.debug('Not returning auth token: '
+                         'user %s does not exist', username)
+            return Response(
+                data={'detail': 'Invalid username/password'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if not user.is_active:
+            logger.debug('Not returning auth token: '
+                         'user %s is disabled', username)
+            return Response(
+                data={'detail': 'User account is disabled'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        token, _ = Token.objects.get_or_create(user=user)
+        event_logger.info(
+            "User %s with full name %s authenticated successfully with username and password",
+            user.username, user.full_name,
+            extra={'user': user, 'event_type': 'auth_logged_in_with_username'})
+        logger.debug('Returning token for successful login of user %s', user)
+        return Response({'token': token.key})
 
 
 obtain_auth_token = ObtainAuthToken.as_view()
@@ -73,7 +89,7 @@ class Saml2AuthView(APIView):
         djangosaml2.backends.Saml2Backend that should be
         enabled in the settings.py
         """
-        serializer = self.serializer_class(data=request.DATA)
+        serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             errors = dict(serializer.errors)
 
@@ -93,7 +109,7 @@ class Saml2AuthView(APIView):
         conf = get_config(request=request)
         client = Saml2Client(conf, logger=logger)
 
-        post = {'SAMLResponse': serializer.object['saml2response']}
+        post = {'SAMLResponse': serializer.validated_data['saml2response']}
 
         # process the authentication response
         # noinspection PyBroadException
@@ -146,3 +162,29 @@ def version_detail(request):
     """Retrieve version of the application"""
 
     return Response({'version': __version__})
+
+
+# noinspection PyProtectedMember
+def exception_handler(exc, context):
+    if isinstance(exc, ProtectedError):
+        dependent_meta = exc.protected_objects.model._meta
+
+        try:
+            # This exception should be raised from a viewset
+            instance_meta = context['view'].get_queryset().model._meta
+        except (AttributeError, KeyError):
+            # Fallback, when instance being deleted cannot be inferred
+            instance_name = 'object'
+        else:
+            instance_name = force_text(instance_meta.verbose_name)
+
+        detail = 'Cannot delete {instance_name} with existing {dependant_objects}'.format(
+            instance_name=instance_name,
+            dependant_objects=force_text(dependent_meta.verbose_name_plural),
+        )
+
+        # We substitute exception here to get consistent representation
+        # for both ProtectError and manually raised IncorrectStateException
+        exc = IncorrectStateException(detail=detail)
+
+    return rf_exception_handler(exc, context)

@@ -1,4 +1,6 @@
-from django.utils import unittest
+from __future__ import unicode_literals
+
+import unittest
 
 from nodeconductor.core import utils
 

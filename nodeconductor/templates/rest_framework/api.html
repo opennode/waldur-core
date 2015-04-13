@@ -2,14 +2,16 @@
 {% load i18n %}
 
 {% block title %}
-{% trans 'NodeConductor REST API' %}
+    {% trans 'NodeConductor REST API' %}
 {% endblock %}
 
 {% block branding %}
-<div class='brand'>{% trans 'NodeConductor REST API' %} v{{ version }}</div>
+    <a class='navbar-brand' rel="nofollow" href='#'>
+        {% trans 'NodeConductor REST API' %} <span class="version">{{ version }}</span>
+    </a>
 {% endblock %}
 
 
 {% block footer %}
-© 2014 OpenNode
+    © 2014 OpenNode
 {% endblock %}

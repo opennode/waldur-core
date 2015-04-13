@@ -6,7 +6,9 @@ from django.contrib.auth.models import Group
 from django.db import models, transaction
 
 from nodeconductor.core.log import EventLoggerAdapter
-from nodeconductor.structure.models import CustomerRole, Project, ProjectRole, ProjectGroupRole
+from nodeconductor.quotas import handlers as quotas_handlers
+from nodeconductor.structure import signals
+from nodeconductor.structure.models import CustomerRole, Project, ProjectRole, ProjectGroupRole, Customer, ProjectGroup
 
 
 logger = logging.getLogger(__name__)
@@ -107,3 +109,33 @@ def log_project_delete(sender, instance, **kwargs):
         'Project %s has been deleted.', instance.name,
         extra={'project': instance, 'event_type': 'project_deletion_succeeded'}
     )
+
+
+change_customer_nc_projects_quota = quotas_handlers.quantity_quota_handler_factory(
+    path_to_quota_scope='customer',
+    quota_name='nc_project_count',
+)
+
+
+def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwargs):
+    """ Modify nc_user_count quota usage on structure role grant or revoke """
+    assert signal in (signals.structure_role_granted, signals.structure_role_revoked), \
+        'Handler "change_customer_nc_users_quota" has to be used only with structure_role signals'
+    assert sender in (Customer, Project, ProjectGroup), \
+        'Handler "change_customer_nc_users_quota" works only with Project, Customer and ProjectGroup models'
+
+    if sender == Customer:
+        customer = structure
+        customer_users = customer.get_users().exclude(groups__customerrole__role_type=role)
+    elif sender == Project:
+        customer = structure.customer
+        customer_users = customer.get_users().exclude(groups__projectrole__role_type=role)
+    elif sender == ProjectGroup:
+        customer = structure.customer
+        customer_users = customer.get_users().exclude(groups__projectgrouprole__role_type=role)
+
+    if user not in customer_users:
+        if signal == signals.structure_role_granted:
+            customer.add_quota_usage('nc_user_count', 1)
+        else:
+            customer.add_quota_usage('nc_user_count', -1)

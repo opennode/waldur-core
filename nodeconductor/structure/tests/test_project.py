@@ -194,21 +194,6 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
     def test_project_can_be_created_with_null_description(self):
         self.client.force_authenticate(self.staff)
 
-        data = _get_valid_project_payload()
-        data['description'] = None
-        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(Project.objects.filter(name=data['name']).exists())
-
-    def test_project_can_be_created_with_null_project_group(self):
-        self.client.force_authenticate(self.staff)
-
-        data = _get_valid_project_payload()
-        data['project_groups'] = None
-        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(Project.objects.filter(name=data['name']).exists())
-
     def test_owner_can_create_project_belonging_to_the_customer_he_owns(self):
         self.client.force_authenticate(self.owner)
 
@@ -258,8 +243,19 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
             {"url": factories.ProjectGroupFactory.get_url(accessible_project_group)}
         ]
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertDictContainsSubset(
+            {'detail': 'You do not have permission to perform this action.'}, response.data)
         self.assertFalse(Project.objects.filter(name=data['name']).exists())
+
+    def test_owner_cannot_create_project_if_customer_quota_were_exceeded(self):
+        self.customer.set_quota_limit('nc_project_count', 0)
+        data = _get_valid_project_payload(factories.ProjectFactory.build(customer=self.customer))
+
+        self.client.force_authenticate(self.owner)
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     # Update tests:
     def test_user_can_change_single_project_field(self):
@@ -337,7 +333,9 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
         project = factories.ProjectFactory(customer=customer)
         response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertDictContainsSubset(
+            {'detail': 'You do not have permission to perform this action.'}, response.data)
 
     def test_user_cannot_create_project_within_customer_he_doesnt_own_but_manages_its_project(self):
         self.client.force_authenticate(user=self.users['manager'])
@@ -346,7 +344,18 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
         project = factories.ProjectFactory(customer=customer)
         response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertDictContainsSubset(
+            {'detail': 'You do not have permission to perform this action.'}, response.data)
+
+    def test_user_cannot_create_project_within_customer_he_is_not_affiliated_with(self):
+        self.client.force_authenticate(user=self.users['admin'])
+
+        project = factories.ProjectFactory()
+        response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertDictContainsSubset(
+            {'customer': ['Invalid hyperlink - Object does not exist.']}, response.data)
 
     def test_user_can_create_project_within_customer_he_owns(self):
         self.client.force_authenticate(user=self.users['owner'])
@@ -355,6 +364,19 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
         project = factories.ProjectFactory(customer=customer)
         response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_user_can_create_project_within_project_group_he_is_manager_of(self):
+        self.client.force_authenticate(user=self.users['group_manager'])
+
+        customer = self.project_group.customer
+
+        project = factories.ProjectFactory(customer=customer)
+        payload = self._get_valid_payload(project)
+        payload['project_groups'] = [
+            {'url': factories.ProjectGroupFactory.get_url(self.project_group)},
+        ]
+        response = self.client.post(reverse('project-list'), payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_staff_user_can_create_project(self):
@@ -423,13 +445,13 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
     # Helper methods
     def _get_project_url(self, project):
-        return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
+        return factories.ProjectFactory.get_url(project)
 
     def _get_valid_payload(self, resource=None):
         resource = resource or factories.ProjectFactory()
         return {
             'name': resource.name,
-            'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
+            'customer': factories.CustomerFactory.get_url(resource.customer),
         }
 
     def _ensure_list_access_allowed(self, user_role):
