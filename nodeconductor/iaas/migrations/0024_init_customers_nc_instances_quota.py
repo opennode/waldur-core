@@ -3,14 +3,13 @@ from __future__ import unicode_literals
 
 from uuid import uuid4
 
+from django.contrib.contenttypes.management import update_all_contenttypes
 from django.db import migrations
 from django.db.models import Count
 
 # Migration cannot rely on constants from the application
 # being migrated since at migration time the code potentially
 # lack the constant.
-
-# from nodeconductor.structure.quota import RESOURCE_COUNT_QUOTA
 RESOURCE_COUNT_QUOTA = 'nc_resource_count'
 
 
@@ -19,6 +18,8 @@ def init_customers_nc_instances_quota(apps, schema_editor):
     Quota = apps.get_model('quotas', 'Quota')
     ContentType = apps.get_model('contenttypes', 'ContentType')
 
+    # sometimes django does not initiate customer content type, so we need update content types manually
+    update_all_contenttypes()
     customer_ct = ContentType.objects.get(app_label='structure', model='customer')
     customer_qs = Customer.objects.all()
     customer_qs = customer_qs.annotate(

@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.management import update_all_contenttypes
 from django.contrib.contenttypes.models import ContentType
 from django.db import migrations
 from django.db.models import Q
@@ -18,6 +19,8 @@ def init_customers_quotas(apps, schema_editor):
     Quota = apps.get_model("quotas", 'Quota')
     User = get_user_model()
 
+    # sometimes django does not initiate customer content type, so we need update content types manually
+    update_all_contenttypes()
     customer_ct = ContentType.objects.get_for_model(Customer)
 
     for customer in Customer.objects.all():
