@@ -277,7 +277,7 @@ class OpenStackBackend(OpenStackClient):
         self.pull_service_statistics(cloud_account)
 
     def pull_flavors(self, cloud_account):
-        session = self.create_session(keystone_url=cloud_account.auth_url)
+        session = self.create_session(keystone_url=cloud_account.auth_url, dummy=self.dummy)
         nova = self.create_nova_client(session)
 
         backend_flavors = nova.flavors.findall(is_public=True)
@@ -329,7 +329,7 @@ class OpenStackBackend(OpenStackClient):
                 logger.info('Updated existing flavor %s in database', nc_flavor.uuid)
 
     def pull_images(self, cloud_account):
-        session = self.create_session(keystone_url=cloud_account.auth_url)
+        session = self.create_session(keystone_url=cloud_account.auth_url, dummy=self.dummy)
         glance = self.create_glance_client(session)
 
         backend_images = dict(
@@ -404,7 +404,7 @@ class OpenStackBackend(OpenStackClient):
     # CloudProjectMembership related methods
     def push_membership(self, membership):
         try:
-            session = self.create_session(keystone_url=membership.cloud.auth_url)
+            session = self.create_session(keystone_url=membership.cloud.auth_url, dummy=self.dummy)
 
             keystone = self.create_keystone_client(session)
             neutron = self.create_neutron_client(session)
@@ -432,7 +432,7 @@ class OpenStackBackend(OpenStackClient):
         key_name = self.get_key_name(public_key)
 
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
 
             try:
@@ -477,7 +477,7 @@ class OpenStackBackend(OpenStackClient):
             return
 
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             try:
                 if cinder_quotas:
                     cinder = self.create_cinder_client(session)
@@ -498,7 +498,7 @@ class OpenStackBackend(OpenStackClient):
 
     def push_security_groups(self, membership):
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client')
@@ -566,7 +566,7 @@ class OpenStackBackend(OpenStackClient):
 
     def pull_security_groups(self, membership):
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client')
@@ -632,7 +632,7 @@ class OpenStackBackend(OpenStackClient):
 
     def pull_instances(self, membership):
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
         except keystone_exceptions.ClientException as e:
@@ -683,7 +683,7 @@ class OpenStackBackend(OpenStackClient):
 
     def pull_resource_quota(self, membership):
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
         except keystone_exceptions.ClientException as e:
@@ -713,7 +713,7 @@ class OpenStackBackend(OpenStackClient):
 
     def pull_resource_quota_usage(self, membership):
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
         except keystone_exceptions.ClientException as e:
@@ -757,7 +757,7 @@ class OpenStackBackend(OpenStackClient):
     def pull_floating_ips(self, membership):
         logger.debug('Pulling floating ips for membership %s', membership.id)
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             neutron = self.create_neutron_client(session)
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create neutron client')
@@ -809,7 +809,7 @@ class OpenStackBackend(OpenStackClient):
     def get_resource_stats(self, auth_url):
         logger.debug('About to get statistics from for auth_url: %s', auth_url)
         try:
-            session = self.create_session(keystone_url=auth_url)
+            session = self.create_session(keystone_url=auth_url, dummy=self.dummy)
             nova = self.create_nova_client(session)
             stats = self.get_hypervisors_statistics(nova)
 
@@ -860,7 +860,7 @@ class OpenStackBackend(OpenStackClient):
                 template=instance.template,
             )
 
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
@@ -1054,7 +1054,7 @@ class OpenStackBackend(OpenStackClient):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
 
@@ -1097,7 +1097,7 @@ class OpenStackBackend(OpenStackClient):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
 
@@ -1137,7 +1137,7 @@ class OpenStackBackend(OpenStackClient):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             nova.servers.reboot(instance.backend_id)
@@ -1162,7 +1162,7 @@ class OpenStackBackend(OpenStackClient):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             nova.servers.delete(instance.backend_id)
@@ -1191,7 +1191,7 @@ class OpenStackBackend(OpenStackClient):
 
     def import_instance(self, membership, instance_id, template_id=None):
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
         except keystone_exceptions.ClientException as e:
@@ -1288,7 +1288,7 @@ class OpenStackBackend(OpenStackClient):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
@@ -1315,7 +1315,7 @@ class OpenStackBackend(OpenStackClient):
     def clone_volumes(self, membership, volume_ids, prefix='Cloned volume'):
         logger.debug('About to copy volumes %s', ', '.join(volume_ids))
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             cinder = self.create_cinder_client(session)
 
             cloned_volume_ids = []
@@ -1349,7 +1349,7 @@ class OpenStackBackend(OpenStackClient):
     def create_snapshots(self, membership, volume_ids, prefix='Cloned volume'):
         logger.debug('About to snapshot volumes %s', ', '.join(volume_ids))
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             cinder = self.create_cinder_client(session)
 
             snapshot_ids = []
@@ -1370,7 +1370,7 @@ class OpenStackBackend(OpenStackClient):
     def promote_snapshots_to_volumes(self, membership, snapshot_ids, prefix='Promoted volume'):
         logger.debug('About to promote snapshots %s', ', '.join(snapshot_ids))
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             cinder = self.create_cinder_client(session)
 
             promoted_volume_ids = []
@@ -1393,7 +1393,7 @@ class OpenStackBackend(OpenStackClient):
     def delete_volumes(self, membership, volume_ids):
         logger.debug('About to delete volumes %s ', ', '.join(volume_ids))
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             cinder = self.create_cinder_client(session)
 
             for volume_id in volume_ids:
@@ -1418,7 +1418,7 @@ class OpenStackBackend(OpenStackClient):
     def delete_snapshots(self, membership, snapshot_ids):
         logger.debug('About to delete volumes %s ', ', '.join(snapshot_ids))
         try:
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             cinder = self.create_cinder_client(session)
 
             for snapshot_id in snapshot_ids:
@@ -1446,7 +1446,7 @@ class OpenStackBackend(OpenStackClient):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
 
             server_id = instance.backend_id
@@ -1491,7 +1491,7 @@ class OpenStackBackend(OpenStackClient):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
@@ -1563,7 +1563,7 @@ class OpenStackBackend(OpenStackClient):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_session(membership=membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             server_id = instance.backend_id
@@ -1754,7 +1754,7 @@ class OpenStackBackend(OpenStackClient):
         if membership.username:
             try:
                 logger.info('Signing in using stored membership credentials')
-                self.create_session(membership=membership, check_tenant=False)
+                self.create_session(membership=membership, check_tenant=False, dummy=self.dummy)
                 logger.info('Successfully signed in, using existing user %s', membership.username)
                 return membership.username, membership.password
             except keystone_exceptions.AuthorizationFailure:

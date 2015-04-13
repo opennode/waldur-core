@@ -174,7 +174,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
     def test_get_resource_stats_gets_credentials_with_given_auth_url(self):
         auth_url = 'http://example.com/'
         self.backend.get_resource_stats(auth_url)
-        self.backend.create_session.assert_called_once_with(keystone_url=auth_url)
+        self.backend.create_session.assert_called_once_with(keystone_url=auth_url, dummy=False)
 
     def test_get_resource_stats_raises_openstack_api_error(self):
         self.backend.create_nova_client.side_effect = keystone_exceptions.AuthorizationFailure
