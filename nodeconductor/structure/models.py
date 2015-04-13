@@ -124,7 +124,7 @@ class Customer(UuidMixin, quotas_models.QuotaModelMixin, TimeStampedModel):
             Q(groups__projectgrouprole__project_group__customer=self))
 
     def can_user_update_quotas(self, user):
-        return user.is_staff or user in self.get_owners()
+        return user.is_staff
 
     def __str__(self):
         return '%(name)s (%(abbreviation)s)' % {
