@@ -72,4 +72,18 @@ class SshKeyCreateDeleteTest(test.APITransactionTestCase):
         self.assertTrue(core_models.SshPublicKey.objects.filter(name=data['name']).exists(),
                         'New key should have been created in the database')
 
-    # TODO: add tests for key deletion
+    def test_staff_user_can_delete_any_key(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.delete(factories.SshPublicKeyFactory.get_url(self.user_key))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_can_delete_his_key(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.delete(factories.SshPublicKeyFactory.get_url(self.user_key))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_cannot_delete_other_users_key(self):
+        other_key = factories.SshPublicKeyFactory()
+        self.client.force_authenticate(self.user)
+        response = self.client.delete(factories.SshPublicKeyFactory.get_url(other_key))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
