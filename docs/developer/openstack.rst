@@ -96,3 +96,21 @@ An extensive example provided below.
 
     # Instance is ready to be provisioned now
     backend.provision_instance(instance, flavor.backend_id)
+
+It's possible to emulate interaction with openstack by creating dummy clouds as follows:
+
+.. code-block:: python
+
+    cloud = Cloud.objects.create(
+        customer=customer,
+        name='Dummy Cloud',
+        dummy=True,
+        auth_url='http://keystone.example.com:5000/v2.0',
+    )
+
+    # Valid credentials for dummy openstack are:
+    #    auth_url = 'http://keystone.example.com:5000/v2.0'
+    #    username = 'test_user'
+    #    password = 'test_password'
+    #    tenant_name = 'test_tenant'
+    #    tenant_id = '593af1f7b67b4d63b691fcabd2dad126'
