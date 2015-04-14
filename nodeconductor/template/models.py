@@ -23,8 +23,7 @@ class Template(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class TemplateService(PolymorphicModel):
-    name = models.CharField(max_length=100)
+class TemplateService(PolymorphicModel, core_models.NamedModelMixin):
     template = models.ForeignKey(Template, related_name='services')
 
     def provision(self):

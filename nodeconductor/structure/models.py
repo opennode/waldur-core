@@ -12,7 +12,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
 
 from nodeconductor.core.log import EventLoggerAdapter
-from nodeconductor.core.models import UuidMixin, DescribableMixin
+from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
@@ -22,13 +22,15 @@ event_logger = EventLoggerAdapter(logger)
 
 
 @python_2_unicode_compatible
-class Customer(UuidMixin, quotas_models.QuotaModelMixin, TimeStampedModel):
+class Customer(core_models.UuidMixin,
+               core_models.NamedModelMixin,
+               quotas_models.QuotaModelMixin,
+               TimeStampedModel):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
         project_group_path = 'project_groups'
 
-    name = models.CharField(max_length=160)
     native_name = models.CharField(max_length=160, default='', blank=True)
     abbreviation = models.CharField(max_length=8, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
@@ -159,7 +161,7 @@ class CustomerRole(models.Model):
 
 
 @python_2_unicode_compatible
-class ProjectRole(UuidMixin, models.Model):
+class ProjectRole(core_models.UuidMixin, models.Model):
     class Meta(object):
         unique_together = ('project', 'role_type')
 
@@ -180,7 +182,11 @@ class ProjectRole(UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class Project(DescribableMixin, UuidMixin, quotas_models.QuotaModelMixin, TimeStampedModel):
+class Project(core_models.DescribableMixin,
+              core_models.UuidMixin,
+              core_models.NamedModelMixin,
+              quotas_models.QuotaModelMixin,
+              TimeStampedModel):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
@@ -188,7 +194,6 @@ class Project(DescribableMixin, UuidMixin, quotas_models.QuotaModelMixin, TimeSt
 
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
 
-    name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
 
     def add_user(self, user, role_type):
@@ -280,7 +285,7 @@ class Project(DescribableMixin, UuidMixin, quotas_models.QuotaModelMixin, TimeSt
 
 
 @python_2_unicode_compatible
-class ProjectGroupRole(UuidMixin, models.Model):
+class ProjectGroupRole(core_models.UuidMixin, models.Model):
     class Meta(object):
         unique_together = ('project_group', 'role_type')
 
@@ -299,7 +304,10 @@ class ProjectGroupRole(UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
+class ProjectGroup(core_models.UuidMixin,
+                   core_models.DescribableMixin,
+                   core_models.NamedModelMixin,
+                   TimeStampedModel):
     """
     Project groups are means to organize customer's projects into arbitrary sets.
     """
@@ -308,7 +316,6 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
         project_path = 'projects'
         project_group_path = 'self'
 
-    name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='project_groups', on_delete=models.PROTECT)
     projects = models.ManyToManyField(Project,
                                       related_name='project_groups')

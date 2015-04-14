@@ -29,6 +29,17 @@ class DescribableMixin(models.Model):
     description = models.CharField(_('description'), max_length=500, blank=True)
 
 
+class NamedModelMixin(models.Model):
+    """
+    Mixin to add a standardized "name" field.
+    """
+
+    class Meta(object):
+        abstract = True
+
+    name = models.CharField(_('name'), max_length=150)
+
+
 class UiDescribableMixin(DescribableMixin):
     """
     Mixin to add a standardized "description" and "icon url" fields.

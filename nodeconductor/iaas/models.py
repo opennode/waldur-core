@@ -50,7 +50,8 @@ def validate_known_keystone_urls(value):
 
 
 @python_2_unicode_compatible
-class Cloud(core_models.UuidMixin, core_models.SynchronizableMixin, models.Model):
+class Cloud(core_models.UuidMixin, core_models.NamedModelMixin,
+            core_models.SynchronizableMixin, models.Model):
     """
     A cloud instance information.
 
@@ -68,7 +69,6 @@ class Cloud(core_models.UuidMixin, core_models.SynchronizableMixin, models.Model
         project_path = 'projects'
         project_group_path = 'customer__projects__project_groups'
 
-    name = models.CharField(max_length=100)
     customer = models.ForeignKey(structure_models.Customer, related_name='clouds')
     projects = models.ManyToManyField(
         structure_models.Project, related_name='clouds', through='CloudProjectMembership')
@@ -146,7 +146,7 @@ class CloudProjectMember(models.Model):
 
 
 @python_2_unicode_compatible
-class Flavor(core_models.UuidMixin, models.Model):
+class Flavor(core_models.UuidMixin, core_models.NamedModelMixin, models.Model):
     """
     A preset of computing resources.
     """
@@ -162,7 +162,6 @@ class Flavor(core_models.UuidMixin, models.Model):
             ('cloud', 'backend_id'),
         )
 
-    name = models.CharField(max_length=100)
     cloud = models.ForeignKey(Cloud, related_name='flavors')
 
     cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
@@ -273,6 +272,7 @@ class FloatingIP(core_models.UuidMixin, CloudProjectMember):
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
+               core_models.NamedModelMixin,
                # This needs to be inlined in order to set on_delete
                # CloudProjectMember,
                TimeStampedModel):
@@ -355,7 +355,6 @@ class Instance(core_models.UuidMixin,
     backups = ct_generic.GenericRelation('backup.Backup')
     backup_schedules = ct_generic.GenericRelation('backup.BackupSchedule')
 
-    name = models.CharField(max_length=80)
     template = models.ForeignKey(Template, related_name='+')
     external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
@@ -499,7 +498,9 @@ class InstanceSlaHistoryEvents(models.Model):
 
 
 @python_2_unicode_compatible
-class TemplateLicense(core_models.UuidMixin, models.Model):
+class TemplateLicense(core_models.UuidMixin,
+                      core_models.NamedModelMixin,
+                      models.Model):
     class Services(object):
         IAAS = 'IaaS'
         PAAS = 'PaaS'
@@ -509,7 +510,6 @@ class TemplateLicense(core_models.UuidMixin, models.Model):
     SERVICE_TYPES = (
         (Services.IAAS, 'IaaS'), (Services.PAAS, 'PaaS'), (Services.SAAS, 'SaaS'), (Services.BPAAS, 'BPaaS'))
 
-    name = models.CharField(max_length=255)
     license_type = models.CharField(max_length=127)
     templates = models.ManyToManyField(Template, related_name='template_licenses')
     service_type = models.CharField(max_length=10, choices=SERVICE_TYPES)
@@ -555,6 +555,7 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
 @python_2_unicode_compatible
 class SecurityGroup(core_models.UuidMixin,
                     core_models.DescribableMixin,
+                    core_models.NamedModelMixin,
                     CloudProjectMember,
                     models.Model):
 
@@ -566,7 +567,6 @@ class SecurityGroup(core_models.UuidMixin,
     """
     This class contains OpenStack security groups.
     """
-    name = models.CharField(max_length=127)
 
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=128, blank=True,

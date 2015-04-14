@@ -5,11 +5,11 @@ from django.db.models import Sum
 from django.utils.encoding import python_2_unicode_compatible
 
 from nodeconductor.quotas import exceptions, managers
-from nodeconductor.core.models import UuidMixin
+from nodeconductor.core.models import UuidMixin, NamedModelMixin
 
 
 @python_2_unicode_compatible
-class Quota(UuidMixin, models.Model):
+class Quota(UuidMixin, NamedModelMixin, models.Model):
     """
     Abstract quota for any resource
 
@@ -18,7 +18,6 @@ class Quota(UuidMixin, models.Model):
     class Meta:
         unique_together = (('name', 'content_type', 'object_id'),)
 
-    name = models.CharField(max_length=31)
     limit = models.FloatField(default=-1)
     usage = models.FloatField(default=0)
 
