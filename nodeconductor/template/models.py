@@ -11,6 +11,7 @@ from nodeconductor.core import models as core_models
 class Template(core_models.UuidMixin,
                core_models.UiDescribableMixin,
                models.Model):
+    # Model doesn't inherit NamedModelMixin, because name field must be unique.
     name = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=False)
 

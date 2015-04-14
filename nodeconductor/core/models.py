@@ -141,6 +141,7 @@ class SshPublicKey(UuidMixin, models.Model):
     Used for injection into VMs for remote access.
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_index=True)
+    # Model doesn't inherit NamedModelMixin, because name field can be blank.
     name = models.CharField(max_length=50, blank=True)
     fingerprint = models.CharField(max_length=47)  # In ideal world should be unique
     public_key = models.TextField(

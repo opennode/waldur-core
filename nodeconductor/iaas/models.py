@@ -229,6 +229,7 @@ class Template(core_models.UuidMixin,
     SERVICE_TYPES = (
         (OsTypes.LINUX, 'Linux'), (OsTypes.WINDOWS, 'Windows'), (OsTypes.UNIX, 'Unix'), (OsTypes.OTHER, 'Other'))
 
+    # Model doesn't inherit NamedModelMixin, because name field must be unique.
     name = models.CharField(max_length=100, unique=True)
     os = models.CharField(max_length=100, blank=True)
     os_type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=OsTypes.LINUX)
