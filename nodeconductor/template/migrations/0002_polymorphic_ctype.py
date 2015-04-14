@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='templateservice',
             name='polymorphic_ctype',
-            field=models.ForeignKey(related_name='polymorphic_template.templateservice_set+', editable=False, to='contenttypes.ContentType', null=True),
+            field=models.ForeignKey(related_name='polymorphic_template.templateservice_set', editable=False, to='contenttypes.ContentType', null=True),
             preserve_default=True,
         ),
     ]
