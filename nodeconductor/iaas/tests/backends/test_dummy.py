@@ -1,4 +1,5 @@
 import types
+import uuid
 
 from django.test import TestCase
 
@@ -21,25 +22,23 @@ class OpenStackClientTest(TestCase):
                 'tenant_name': 'test_tenant',
             }
         )
+        self.auth_url = settings.auth_url
+        self.tenant_id = '593af1f7b67b4d63b691fcabd2dad126'
         self.credentials = {
-            'auth_url': settings.auth_url,
-            'username': settings.username,
-            'password': settings.password,
-            'tenant_id': '593af1f7b67b4d63b691fcabd2dad126',
+            'auth_url': self.auth_url,
+            'username': 'another_user',
+            'password': 'his_undercover_secret',
+            'tenant_id': uuid.uuid4().hex,
         }
         self.backend = OpenStackBackend(dummy=True)
 
     def test_session(self):
+        session = self.backend.create_admin_session(self.auth_url)
+        self.assertEqual(session.auth.tenant_id, self.tenant_id)
+
         session = self.backend.create_tenant_session(self.credentials)
-        self.assertEqual(session.auth.tenant_id, '593af1f7b67b4d63b691fcabd2dad126')
-
-        session = self.backend.create_admin_session(self.credentials['auth_url'])
-        self.assertIsNone(session.auth.tenant_id)
-
-        with self.assertRaisesRegexp(keystone_exceptions.AuthorizationFailure, "Authentication failure"):
-            crdts = self.credentials.copy()
-            crdts['password'] = 'noclue'
-            self.backend.create_tenant_session(crdts)
+        self.assertEqual(session.auth.tenant_id, self.credentials['tenant_id'])
+        self.assertEqual(session.auth.username, self.credentials['username'])
 
         with self.assertRaises(keystone_exceptions.ConnectionRefused):
             crdts = self.credentials.copy()
@@ -54,7 +53,7 @@ class OpenStackClientTest(TestCase):
         session = self.backend.create_tenant_session(self.credentials)
         keystone = self.backend.create_keystone_client(session)
 
-        self.assertIsNotNone(keystone.tenants.get(self.credentials['tenant_id']))
+        self.assertIsNotNone(keystone.tenants.get(self.tenant_id))
         with self.assertRaises(keystone_exceptions.NotFound):
             keystone.tenants.find(name='some_tenant')
 
@@ -65,7 +64,7 @@ class OpenStackClientTest(TestCase):
 
         user = keystone.users.create(name='joe_doe')
         role = keystone.roles.find(name='admin')
-        tenant = keystone.tenants.find(name='test_tenant')
+        tenant = keystone.tenants.get(self.tenant_id)
 
         user_role = keystone.roles.add_user_role(user=user.id, role=role.id, tenant=tenant.id)
         self.assertIs(user_role, role)

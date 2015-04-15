@@ -101,16 +101,18 @@ It's possible to emulate interaction with OpenStack by creating dummy clouds as 
 
 .. code-block:: python
 
+    OpenStackSettings.objects.update_or_create(
+        auth_url='http://keystone.example.com:5000/v2.0',
+        defaults={
+            'username': 'test_user',
+            'password': 'test_password',
+            'tenant_name': 'test_tenant',
+        }
+    )
+
     cloud = Cloud.objects.create(
         customer=customer,
         name='Dummy Cloud',
         dummy=True,
         auth_url='http://keystone.example.com:5000/v2.0',
     )
-
-    # Valid credentials for dummy OpenStack are:
-    #    auth_url = 'http://keystone.example.com:5000/v2.0'
-    #    username = 'test_user'
-    #    password = 'test_password'
-    #    tenant_name = 'test_tenant'
-    #    tenant_id = '593af1f7b67b4d63b691fcabd2dad126'

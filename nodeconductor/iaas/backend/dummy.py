@@ -6,7 +6,6 @@ from __future__ import unicode_literals
 #    username = 'test_user'
 #    password = 'test_password'
 #    tenant_name = 'test_tenant'
-#    tenant_id = '593af1f7b67b4d63b691fcabd2dad126'
 
 import re
 import uuid
@@ -29,6 +28,8 @@ OPENSTACK = threading.local().openstack_instance = {}
 
 
 class OpenStackResource(object):
+    """ Generic OpenStack resource """
+
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
@@ -51,7 +52,28 @@ class OpenStackResource(object):
         return self.__dict__.copy()
 
 
+class OpenStackSingleResource(OpenStackResource):
+    """ Resource with single object """
+
+    def __hash__(self):
+        return 1
+
+    def __eq__(self, other):
+        return 1
+
+
+class OpenStackModernResource(OpenStackResource):
+    """ Resource with better formating of ID """
+
+    def __init__(self, **kwargs):
+        super(OpenStackModernResource, self).__init__(**kwargs)
+        self.id = str(uuid.UUID(self.id))
+
+
 class OpenStackCustomResources(object):
+    """ A set OpenStack resource with custom properties and/or behavior.
+        Class name must much the corresponding class name of particular OpenStack client.
+    """
 
     class Flavor(OpenStackResource):
         def __hash__(self):
@@ -71,69 +93,44 @@ class OpenStackCustomResources(object):
         def __repr__(self):
             return "<%s %s>" % (self.__class__.__name__, self.name)
 
-    class Quota(OpenStackResource):
-        def __hash__(self):
-            return 1
+    class Quota(OpenStackSingleResource):
+        pass
 
-        def __eq__(self, other):
-            return 1
+    class QuotaSet(OpenStackSingleResource):
+        pass
 
-    class QuotaSet(OpenStackResource):
-        def __hash__(self):
-            return 1
+    class Statistics(OpenStackSingleResource):
+        pass
 
-        def __eq__(self, other):
-            return 1
+    class SecurityGroup(OpenStackModernResource):
+        pass
 
-    class Statistics(OpenStackResource):
-        def __hash__(self):
-            return 1
-
-        def __eq__(self, other):
-            return 1
-
-    class Server(OpenStackResource):
-        def __init__(self, **kwargs):
-            super(OpenStackCustomResources.Server, self).__init__(**kwargs)
-            self.id = str(uuid.UUID(self.id))
-
+    class Server(OpenStackModernResource):
         def __repr__(self):
             return "<%s: %s>" % (self.__class__.__name__, self.name)
 
-    class Image(OpenStackResource):
-        def __init__(self, **kwargs):
-            super(OpenStackCustomResources.Image, self).__init__(**kwargs)
-            self.id = str(uuid.UUID(self.id))
-
+    class Image(OpenStackModernResource):
         def __repr__(self):
             return "<%s: %s>" % (self.__class__.__name__, str(self.to_dict()))
 
-    class Volume(OpenStackResource):
-        def __init__(self, **kwargs):
-            super(OpenStackCustomResources.Volume, self).__init__(**kwargs)
-            self.id = str(uuid.UUID(self.id))
-
+    class Volume(OpenStackModernResource):
         def __repr__(self):
             return "<%s: %s>" % (self.__class__.__name__, self.id)
 
         def is_loaded(self):
             return True
 
-    class VolumeSnapshot(OpenStackResource):
-        def __init__(self, **kwargs):
-            super(OpenStackCustomResources.VolumeSnapshot, self).__init__(**kwargs)
-            self.id = str(uuid.UUID(self.id))
-
+    class VolumeSnapshot(OpenStackModernResource):
         def __repr__(self):
             return "<Snapshot: %s>" % self.id
 
-    class SecurityGroup(OpenStackResource):
-        def __init__(self, **kwargs):
-            super(OpenStackCustomResources.SecurityGroup, self).__init__(**kwargs)
-            self.id = str(uuid.UUID(self.id))
-
 
 class OpenStackResourceList(object):
+    """ Generic class to work with OpenStack resources.
+        Initialized from DummyDataSet during first access and stays in
+        local thread for future use.
+    """
+
     def __new__(cls, *args, **kwargs):
         key = '%ss' % cls.__name__.lower()
         instance = OPENSTACK.get(key)
@@ -221,7 +218,9 @@ class OpenStackResourceList(object):
         self._objects.remove(self.get(obj_id))
 
 
-class OpenStackClient(object):
+class OpenStackBaseClient(object):
+    """ Base class for OpenStack client """
+
     def _get_resources(self, cls_name):
         return getattr(self.__class__, cls_name)(self)
 
@@ -247,18 +246,117 @@ class OpenStackClient(object):
         return "<%s resources=(%s)>" % (self.__class__.__name__, resources)
 
 
-class KeystoneClient(OpenStackClient):
+class KeystoneClient(OpenStackBaseClient):
     """ Dummy OpenStack identity service """
 
     VERSION = '0.9.0'
     Exceptions = keystone_exceptions
 
     class Auth(object):
-        auth_url = 'http://keystone.example.com:5000/v2.0'
-        username = 'test_user'
-        password = 'test_password'
-        tenant_name = 'test_tenant'
-        tenant_id = '593af1f7b67b4d63b691fcabd2dad126'
+        # Make session id persistent in a thread
+        SESSION_ID = uuid.uuid4().hex
+
+        def __init__(self, **credentials):
+            keystone = KeystoneClient()
+            admin_role = keystone.roles.find(name="admin")
+            self.auth_ref = dict(
+                version='v2.0',
+                metadata={'is_admin': 0, 'roles': admin_role.id},
+                token={
+                    'id': self.SESSION_ID,
+                    'issued_at': datetime.now().strftime('%Y-%m-%dT%T'),
+                    'expires': (datetime.now() + timedelta(hours=1)).strftime('%Y-%m-%dT%TZ%z'),
+                    'tenant': {},
+                },
+                serviceCatalog=[],
+            )
+
+            if credentials.get('token'):
+                if credentials['token']['id'] != self.auth_token:
+                    raise KeystoneClient.Exceptions.AuthorizationFailure("Authorization failure")
+                user = keystone.users.find(username='test_user')
+            else:
+                data = credentials['passwordCredentials']
+                try:
+                    user = keystone.users.find(username=data['username'])
+                except:
+                    raise KeystoneClient.Exceptions.AuthorizationFailure(
+                        "Unknown user %s" % data['username'])
+
+                if data['password'] != user.password:
+                    raise KeystoneClient.Exceptions.AuthorizationFailure("Authorization failure")
+
+            self.username = user.username
+            self.password = user.password
+
+        def _build_service_catalog(self, auth_url, tenant):
+            self.auth_url = auth_url
+            self.auth_ref['token']['tenant'] = tenant.to_dict() if tenant else {}
+            self.auth_ref['serviceCatalog'] = [
+                {
+                    'endpoints': [{
+                        'id': uuid.uuid4().hex,
+                        'adminURL': 'http://cinder.example.com:8776/v1/%s' % self.tenant_id,
+                        'internalURL': 'http://cinder.example.com:8776/v1/%s' % self.tenant_id,
+                        'publicURL': 'http://cinder.example.com:8776/v1/%s' % self.tenant_id,
+                        'region': 'example.com'}],
+                    'endpoints_links': [],
+                    'name': 'cinder',
+                    'type': 'volume'
+                },
+                {
+                    'endpoints': [{
+                        'id': uuid.uuid4().hex,
+                        'adminURL': 'http://glance.example.com:9292',
+                        'internalURL': 'http://glance.example.com:9292',
+                        'publicURL': 'http://glance.example.com:9292',
+                        'region': 'example.com'}],
+                    'endpoints_links': [],
+                    'name': 'glance',
+                    'type': 'image'
+                },
+                {
+                    'endpoints': [{
+                        'id': uuid.uuid4().hex,
+                        'adminURL': 'http://nova.example.com:8774/v2/%s' % self.tenant_id,
+                        'internalURL': 'http://nova.example.com:8774/v2/%s' % self.tenant_id,
+                        'publicURL': 'http://nova.example.com:8774/v2/%s' % self.tenant_id,
+                        'region': 'example.com'}],
+                    'endpoints_links': [],
+                    'name': 'nova',
+                    'type': 'compute'
+                },
+                {
+                    'endpoints': [{
+                        'id': uuid.uuid4().hex,
+                        'adminURL': 'http://neutron.example.com:9696',
+                        'internalURL': 'http://neutron.example.com:9696',
+                        'publicURL': 'http://neutron.example.com:9696',
+                        'region': 'example.com'}],
+                    'endpoints_links': [],
+                    'name': 'neutron',
+                    'type': 'network'
+                },
+                {
+                    'endpoints': [{
+                        'id': uuid.uuid4().hex,
+                        'adminURL': 'http://keystone.example.com:35357/v2.0',
+                        'internalURL': 'http://keystone.example.com:5000/v2.0',
+                        'publicURL': 'http://keystone.example.com:5000/v2.0',
+                        'region': 'example.com'}],
+                    'endpoints_links': [],
+                    'name': 'keystone',
+                    'type': 'identity'
+                }
+            ]
+
+        @property
+        def tenant_id(self):
+            return self.auth_ref['token']['tenant'].get('id', None)
+
+        @property
+        def tenant_name(self):
+            return self.auth_ref['token']['tenant'].get('name', None)
 
         @property
         def auth_token(self):
@@ -267,26 +365,39 @@ class KeystoneClient(OpenStackClient):
         def get_auth_ref(session):
             return session.auth.auth_ref
 
-        def __init__(self, **credentials):
-            self.auth_ref = DummyDataSet.AUTH_REF
-
-            error_msg = "Authentication failure"
-            if credentials.get('token'):
-                if credentials['token']['id'] != self.auth_token:
-                    raise KeystoneClient.Exceptions.AuthorizationFailure(error_msg)
-            else:
-                data = credentials['passwordCredentials']
-                if data['username'] != self.username or data['password'] != self.password:
-                    raise KeystoneClient.Exceptions.AuthorizationFailure(error_msg)
-
     class Session(object):
         def __init__(self, auth=None):
             if not isinstance(auth, (v2.Password, v2.Token)):
                 raise KeystoneClient.Exceptions.AuthorizationFailure(
                     "Unknown authentication identity class")
 
+            keystone = KeystoneClient()
             credentials = auth.get_auth_data()
+
+            # Create passed tenant and user in case of tenant session so auth will work
+            tenant = None
+            if auth.tenant_id:
+                data = credentials['passwordCredentials']
+                try:
+                    keystone.users.create(name=data['username'], password=data['password'])
+                except KeystoneClient.Exceptions.Conflict:
+                    pass
+
+                try:
+                    tenant = keystone.tenants.create(tenant_name='test-%s' % auth.tenant_id)
+                except KeystoneClient.Exceptions.Conflict:
+                    tenant = keystone.tenants.get(auth.tenant_id)
+
+                tenant.id = auth.tenant_id
+            elif auth.tenant_name:
+                try:
+                    tenant = keystone.tenants.find(name=auth.tenant_name)
+                except:
+                    raise KeystoneClient.Exceptions.AuthorizationFailure(
+                        "Unknown tenant %s" % auth.tenant_name)
+
             self.auth = KeystoneClient.Auth(**credentials)
+            self.auth._build_service_catalog(auth.auth_url, tenant)
 
             catalog = ServiceCatalog.factory(self.auth.auth_ref)
             endpoints = [e[0]['publicURL'] for e in catalog.get_endpoints().values()]
@@ -294,11 +405,6 @@ class KeystoneClient(OpenStackClient):
             if auth.auth_url not in endpoints:
                 raise KeystoneClient.Exceptions.ConnectionRefused(
                     "Unable to establish connection to %s" % auth.auth_url)
-
-            if not auth.tenant_id:
-                self.auth.tenant_id = None
-            if not auth.tenant_name:
-                self.auth.tenant_name = None
 
         def get_token(self):
             return self.auth.auth_token
@@ -342,7 +448,7 @@ class KeystoneClient(OpenStackClient):
         self.roles = self._get_resources('Role')
 
 
-class NovaClient(OpenStackClient):
+class NovaClient(OpenStackBaseClient):
     """ Dummy OpenStack computing service """
 
     VERSION = '2.17.0'
@@ -493,7 +599,7 @@ class NovaClient(OpenStackClient):
         self.hypervisors = self._get_resources('Statistics')
 
 
-class GlanceClient(OpenStackClient):
+class GlanceClient(OpenStackBaseClient):
     """ Dummy OpenStack image service """
 
     VERSION = '0.12.0'
@@ -509,7 +615,7 @@ class GlanceClient(OpenStackClient):
         self.images = self._get_resources('Image')
 
 
-class NeutronClient(OpenStackClient):
+class NeutronClient(OpenStackBaseClient):
     """ Dummy OpenStack networking service """
 
     VERSION = '2.3.4'
@@ -569,7 +675,7 @@ class NeutronClient(OpenStackClient):
         return {'floatingips': []}
 
 
-class CinderClient(OpenStackClient):
+class CinderClient(OpenStackBaseClient):
     """ Dummy OpenStack volume service """
 
     VERSION = '1.0.9'
@@ -709,81 +815,11 @@ class CinderClient(OpenStackClient):
 
 
 class DummyDataSet(object):
-    AUTH_REF = dict(
-        version='v2.0',
-        metadata={
-            'is_admin': 0,
-            'roles': '4811ade6c9e2484baec5fc504d826143',
-        },
-        token={
-            'id': uuid.uuid4().hex,
-            'issued_at': datetime.now().strftime('%Y-%m-%dT%T'),
-            'expires': (datetime.now() + timedelta(hours=1)).strftime('%Y-%m-%dT%TZ%z'),
-            'tenant': {
-                'id': '593af1f7b67b4d63b691fcabd2dad126',
-                'name': 'test_tenant',
-                'enabled': True,
-                'description': None,
-            }
-        },
-        serviceCatalog=[
-            {
-                'endpoints': [{
-                    'adminURL': 'http://cinder.example.com:8776/v1/593af1f7b67b4d63b691fcabd2dad126',
-                    'id': '18e175c6b9c3461b85ed0d1d7112f126',
-                    'internalURL': 'http://cinder.example.com:8776/v1/593af1f7b67b4d63b691fcabd2dad126',
-                    'publicURL': 'http://cinder.example.com:8776/v1/593af1f7b67b4d63b691fcabd2dad126',
-                    'region': 'example.com'}],
-                'endpoints_links': [],
-                'name': 'cinder',
-                'type': 'volume'
-            },
-            {
-                'endpoints': [{
-                    'adminURL': 'http://glance.example.com:9292',
-                    'id': '2fe99365c3d3497e9397f0780a79fef2',
-                    'internalURL': 'http://glance.example.com:9292',
-                    'publicURL': 'http://glance.example.com:9292',
-                    'region': 'example.com'}],
-                'endpoints_links': [],
-                'name': 'glance',
-                'type': 'image'
-            },
-            {
-                'endpoints': [{
-                    'adminURL': 'http://nova.example.com:8774/v2/593af1f7b67b4d63b691fcabd2dad126',
-                    'id': '43d0b7b6e0a64fa8a87fb5a9a791ba20',
-                    'internalURL': 'http://nova.example.com:8774/v2/593af1f7b67b4d63b691fcabd2dad126',
-                    'publicURL': 'http://nova.example.com:8774/v2/593af1f7b67b4d63b691fcabd2dad126',
-                    'region': 'example.com'}],
-                'endpoints_links': [],
-                'name': 'nova',
-                'type': 'compute'
-            },
-            {
-                'endpoints': [{
-                    'adminURL': 'http://neutron.example.com:9696',
-                    'id': '80383258a8f54f808518fa181c408722',
-                    'internalURL': 'http://neutron.example.com:9696',
-                    'publicURL': 'http://neutron.example.com:9696',
-                    'region': 'example.com'}],
-                'endpoints_links': [],
-                'name': 'neutron',
-                'type': 'network'
-            },
-            {
-                'endpoints': [{
-                    'adminURL': 'http://keystone.example.com:35357/v2.0',
-                    'id': '80637393e901499fac781232394ad67b',
-                    'internalURL': 'http://keystone.example.com:5000/v2.0',
-                    'publicURL': 'http://keystone.example.com:5000/v2.0',
-                    'region': 'example.com'}],
-                'endpoints_links': [],
-                'name': 'keystone',
-                'type': 'identity'
-            }
-        ],
-    )
+    """ A data set for dummy OpenStack deployment.
+        All its properties named in accordance to corresponding resource class, which is used
+        by auto-discovery routines. Please refer to OpenStackResourceList for more details.
+    """
+    # TODO: Use tenant from session instead of static "test_tenant"
 
     TENANTS = (
         {'name': 'test_tenant', 'id': '593af1f7b67b4d63b691fcabd2dad126', 'enabled': True, 'description': None},
@@ -791,11 +827,11 @@ class DummyDataSet(object):
     )
 
     USERS = (
-        {'name': 'neutron', 'username': 'neutron', 'id': '28d761c21a824f1f8cf11c3284b30fbb', 'enabled': True, 'email': ''},
-        {'name': 'novakey', 'username': 'novakey', 'id': '4dccd5f9b78747aaab0e5365293e7b4a', 'enabled': True, 'email': ''},
-        {'name': 'cinder', 'username': 'cinder', 'id': '5ac5eca1c6c549c2bc0943954a78129e', 'enabled': True, 'email': ''},
-        {'name': 'glance', 'username': 'glance', 'id': '78f4dd85b33e4cba911fdc2b4be07030', 'enabled': True, 'email': ''},
-        {'name': 'test_user', 'username': 'test_user', 'id': '97a6e00b2c624af488bfe724a1c0ebf8', 'enabled': True, 'email': 'alice@example.com'},
+        {'name': 'neutron', 'username': 'neutron', 'password': 'null', 'id': '28d761c21a824f1f8cf11c3284b30fbb', 'enabled': True, 'email': ''},
+        {'name': 'novakey', 'username': 'novakey', 'password': 'null', 'id': '4dccd5f9b78747aaab0e5365293e7b4a', 'enabled': True, 'email': ''},
+        {'name': 'cinder', 'username': 'cinder', 'password': 'null', 'id': '5ac5eca1c6c549c2bc0943954a78129e', 'enabled': True, 'email': ''},
+        {'name': 'glance', 'username': 'glance', 'password': 'null', 'id': '78f4dd85b33e4cba911fdc2b4be07030', 'enabled': True, 'email': ''},
+        {'name': 'test_user', 'username': 'test_user', 'password': 'test_password', 'id': '97a6e00b2c624af488bfe724a1c0ebf8', 'enabled': True, 'email': 'alice@example.com'},
     )
 
     ROLES = (
@@ -936,9 +972,6 @@ class DummyDataSet(object):
             'container_format': 'bare',
             'checksum': '986007d27066f22a666c9676c3fbf616',
         },
-    )
-
-    SERVERS = (
     )
 
     QUOTAS = (
