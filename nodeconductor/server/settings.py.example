@@ -137,9 +137,9 @@ LOGGING = {
 
 # Settings, that are related to NodeCondoctor applications
 NODECONDUCTOR['ELASTICSEARCH'] = {
-    'username': 'isdaccount',
-    'password': 'isdpassword',
-    'host': '10.7.30.8',
-    'port': '443',
+    'username': 'username',
+    'password': 'password',
+    'host': 'example.com',
+    'port': '9999',
     'protocol': 'https',
 }
