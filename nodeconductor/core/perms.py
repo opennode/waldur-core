@@ -10,4 +10,5 @@ User = get_user_model()
 PERMISSION_LOGICS = (
     (get_user_model(),  StaffPermissionLogic(any_permission=True)),
     (Token, StaffPermissionLogic(any_permission=True)),
+    ('core.SshPublicKey', StaffPermissionLogic(any_permission=True)),
 )
