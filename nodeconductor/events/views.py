@@ -6,7 +6,8 @@ from nodeconductor.events import elasticsearch_client
 class EventListView(generics.GenericAPIView):
 
     def list(self, request, *args, **kwargs):
-        elasticsearch_list = elasticsearch_client.ElasticsearchResultList(user=request.user)
+        order_by = request.GET.get('o', '-@timestamp')
+        elasticsearch_list = elasticsearch_client.ElasticsearchResultList(user=request.user, sort=order_by)
 
         page = self.paginate_queryset(elasticsearch_list)
         if page is not None:

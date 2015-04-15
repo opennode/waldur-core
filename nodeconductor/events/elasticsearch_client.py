@@ -18,13 +18,14 @@ class ElasticsearchResultListError(ElasticsearchError):
 
 class ElasticsearchResultList(object):
 
-    def __init__(self, user, event_types=None):
+    def __init__(self, user, event_types=None, sort='-@timestamp'):
         self.client = ElasticsearchClient()
         self.user = user
         self.event_types = event_types
+        self.sort = sort
 
     def _get_events(self, from_, size):
-        return self.client.get_user_events(self.user, self.event_types, from_=from_, size=size)
+        return self.client.get_user_events(self.user, self.event_types, from_=from_, size=size, sort=self.sort)
 
     def __len__(self):
         if not hasattr(self, 'total'):
@@ -47,12 +48,13 @@ class ElasticsearchClient(object):
     def __init__(self):
         self.client = self._get_client()
 
-    def get_user_events(self, user, event_types=None, index='_all', from_=0, size=10):
+    def get_user_events(self, user, event_types=None, sort='-@timestamp', index='_all', from_=0, size=10):
         """
         Return events filtered for given user and total count of available for user events
         """
+        sort = sort[1:] + ':desc' if sort.startswith('-') else sort + ':asc'
         body = self._get_search_body(user, event_types)
-        search_results = self.client.search(index=index, body=body, from_=from_, size=size)
+        search_results = self.client.search(index=index, body=body, from_=from_, size=size, sort=sort)
         return {
             'events': [r['_source'] for r in search_results['hits']['hits']],
             'total': search_results['hits']['total'],
