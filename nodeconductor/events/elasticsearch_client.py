@@ -4,8 +4,42 @@ from django.conf import settings
 from elasticsearch import Elasticsearch
 
 
-class ElasticsearchClientError(Exception):
+class ElasticsearchError(Exception):
     pass
+
+
+class ElasticsearchClientError(ElasticsearchError):
+    pass
+
+
+class ElasticsearchResultListError(ElasticsearchError):
+    pass
+
+
+class ElasticsearchResultList(object):
+
+    def __init__(self, user, event_types=None):
+        self.client = ElasticsearchClient()
+        self.user = user
+        self.event_types = event_types
+
+    def _get_events(self, from_, size):
+        return self.client.get_user_events(self.user, self.event_types, from_=from_, size=size)
+
+    def __len__(self):
+        if not hasattr(self, 'total'):
+            self.total = self._get_events(0, 1)['total']
+        return self.total
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            if key.step is not None and key.step != 1:
+                raise ElasticsearchResultListError('ElasticsearchResultList can be iterated only with step 1')
+            events_and_total = self._get_events(key.start, key.stop - key.start)
+        else:
+            events_and_total = self._get_events(key, 1)
+        self.total = events_and_total['total']
+        return events_and_total['events']
 
 
 class ElasticsearchClient(object):
@@ -13,7 +47,7 @@ class ElasticsearchClient(object):
     def __init__(self):
         self.client = self._get_client()
 
-    def get_events_for_user(self, user, event_types=None, index='_all', from_=0, size=10):
+    def get_user_events(self, user, event_types=None, index='_all', from_=0, size=10):
         """
         Return events filtered for given user and total count of available for user events
         """
