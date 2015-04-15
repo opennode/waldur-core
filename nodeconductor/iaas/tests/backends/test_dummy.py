@@ -118,9 +118,17 @@ class OpenStackClientTest(TestCase):
         nova.security_groups.update(sg, name='siths', description='')
         nova.security_groups.get(group_id=sg.id)
 
+        sgr = nova.security_group_rules.create(
+            parent_group_id=sg.id, ip_protocol='tcp', from_port=81, to_port=82)
+        self.assertEqual(sgr.to_port, 82)
+
+        with self.assertRaises(nova_exceptions.Conflict):
+            nova.security_group_rules.create(parent_group_id=sg.id, ip_protocol='udp')
+
         sg = nova.security_groups.find(id=sg.id)
         self.assertEqual(sg.name, 'siths')
 
+        nova.security_group_rules.delete(sgr.id)
         nova.security_groups.delete(sg.id)
 
     def test_nova_flavors(self):

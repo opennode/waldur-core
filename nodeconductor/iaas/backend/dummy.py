@@ -28,7 +28,7 @@ OPENSTACK = threading.local().openstack_instance = {}
 
 
 class OpenStackResource(object):
-    """ Generic OpenStack resource """
+    """ Generic OpenStack resource like flavor, image, server, user, role, etc. """
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -52,8 +52,8 @@ class OpenStackResource(object):
         return self.__dict__.copy()
 
 
-class OpenStackSingleResource(OpenStackResource):
-    """ Resource with single object """
+class OpenStackSingleObjectResource(OpenStackResource):
+    """ Generic OpenStack resource represented by single object like quotas or statistics """
 
     def __hash__(self):
         return 1
@@ -62,11 +62,9 @@ class OpenStackSingleResource(OpenStackResource):
         return 1
 
 
-class OpenStackModernResource(OpenStackResource):
-    """ Resource with better formating of ID """
-
+class OpenStackUuidRepresentationResource(OpenStackResource):
     def __init__(self, **kwargs):
-        super(OpenStackModernResource, self).__init__(**kwargs)
+        super(OpenStackUuidRepresentationResource, self).__init__(**kwargs)
         self.id = str(uuid.UUID(self.id))
 
 
@@ -93,34 +91,34 @@ class OpenStackCustomResources(object):
         def __repr__(self):
             return "<%s %s>" % (self.__class__.__name__, self.name)
 
-    class Quota(OpenStackSingleResource):
+    class Quota(OpenStackSingleObjectResource):
         pass
 
-    class QuotaSet(OpenStackSingleResource):
+    class QuotaSet(OpenStackSingleObjectResource):
         pass
 
-    class Statistics(OpenStackSingleResource):
+    class Statistics(OpenStackSingleObjectResource):
         pass
 
-    class SecurityGroup(OpenStackModernResource):
+    class SecurityGroup(OpenStackUuidRepresentationResource):
         pass
 
-    class Server(OpenStackModernResource):
+    class Server(OpenStackUuidRepresentationResource):
         def __repr__(self):
             return "<%s: %s>" % (self.__class__.__name__, self.name)
 
-    class Image(OpenStackModernResource):
+    class Image(OpenStackUuidRepresentationResource):
         def __repr__(self):
             return "<%s: %s>" % (self.__class__.__name__, str(self.to_dict()))
 
-    class Volume(OpenStackModernResource):
+    class Volume(OpenStackUuidRepresentationResource):
         def __repr__(self):
             return "<%s: %s>" % (self.__class__.__name__, self.id)
 
         def is_loaded(self):
             return True
 
-    class VolumeSnapshot(OpenStackModernResource):
+    class VolumeSnapshot(OpenStackUuidRepresentationResource):
         def __repr__(self):
             return "<Snapshot: %s>" % self.id
 
@@ -586,6 +584,33 @@ class NovaClient(OpenStackBaseClient):
                 tenant_id=self.client.tenant_id,
                 description=description))
 
+    class SecurityGroupRule(OpenStackResourceList):
+        def create(self, parent_group_id=None, ip_protocol=None,
+                   from_port=None, to_port=None, cidr=None):
+
+            if not ip_protocol or ip_protocol.upper() not in ('TCP', 'UDP', 'ICMP'):
+                self.client._raise(
+                    'CommandError', "Ip protocol must be 'tcp', 'udp' or 'icmp'.")
+
+            group = self.client.security_groups.get(group_id=parent_group_id)
+            try:
+                grouprole = self.find(parent_group_id=group.id)
+            except:
+                obj = self._create(
+                    id=uuid.uuid4().hex,
+                    parent_group_id=group.id,
+                    ip_protocol=ip_protocol,
+                    from_port=from_port,
+                    to_port=to_port,
+                    ip_range={'cidr': cidr},
+                    group={})
+                self._objects.add(obj)
+                return obj
+            else:
+                self.client._raise(
+                    'Conflict',
+                    "Security group rule already exists. Group id is %s." % grouprole.id)
+
     def __init__(self, auth_url, username, api_key, tenant_id=None, **kwargs):
         self.tenant_id = tenant_id
         self.client = KeystoneClient(
@@ -596,6 +621,7 @@ class NovaClient(OpenStackBaseClient):
         self.quotas = self._get_resources('QuotaSet')
         self.keypairs = self._get_resources('KeyPair')
         self.security_groups = self._get_resources('SecurityGroup')
+        self.security_group_rules = self._get_resources('SecurityGroupRule')
         self.hypervisors = self._get_resources('Statistics')
 
 
