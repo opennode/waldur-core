@@ -23,7 +23,7 @@ event_logger = EventLoggerAdapter(logger)
 
 @python_2_unicode_compatible
 class Customer(core_models.UuidMixin,
-               core_models.NamedModelMixin,
+               core_models.NameMixin,
                quotas_models.QuotaModelMixin,
                TimeStampedModel):
     class Permissions(object):
@@ -184,7 +184,7 @@ class ProjectRole(core_models.UuidMixin, models.Model):
 @python_2_unicode_compatible
 class Project(core_models.DescribableMixin,
               core_models.UuidMixin,
-              core_models.NamedModelMixin,
+              core_models.NameMixin,
               quotas_models.QuotaModelMixin,
               TimeStampedModel):
     class Permissions(object):
@@ -306,7 +306,7 @@ class ProjectGroupRole(core_models.UuidMixin, models.Model):
 @python_2_unicode_compatible
 class ProjectGroup(core_models.UuidMixin,
                    core_models.DescribableMixin,
-                   core_models.NamedModelMixin,
+                   core_models.NameMixin,
                    TimeStampedModel):
     """
     Project groups are means to organize customer's projects into arbitrary sets.

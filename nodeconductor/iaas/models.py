@@ -50,7 +50,7 @@ def validate_known_keystone_urls(value):
 
 
 @python_2_unicode_compatible
-class Cloud(core_models.UuidMixin, core_models.NamedModelMixin,
+class Cloud(core_models.UuidMixin, core_models.NameMixin,
             core_models.SynchronizableMixin, models.Model):
     """
     A cloud instance information.
@@ -146,7 +146,7 @@ class CloudProjectMember(models.Model):
 
 
 @python_2_unicode_compatible
-class Flavor(core_models.UuidMixin, core_models.NamedModelMixin, models.Model):
+class Flavor(core_models.UuidMixin, core_models.NameMixin, models.Model):
     """
     A preset of computing resources.
     """
@@ -230,7 +230,7 @@ class Template(core_models.UuidMixin,
         (OsTypes.LINUX, 'Linux'), (OsTypes.WINDOWS, 'Windows'), (OsTypes.UNIX, 'Unix'), (OsTypes.OTHER, 'Other'))
 
     # Model doesn't inherit NamedModelMixin, because name field must be unique.
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=150, unique=True)
     os = models.CharField(max_length=100, blank=True)
     os_type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=OsTypes.LINUX)
     is_active = models.BooleanField(default=False)
@@ -273,7 +273,7 @@ class FloatingIP(core_models.UuidMixin, CloudProjectMember):
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
-               core_models.NamedModelMixin,
+               core_models.NameMixin,
                # This needs to be inlined in order to set on_delete
                # CloudProjectMember,
                TimeStampedModel):
@@ -500,7 +500,7 @@ class InstanceSlaHistoryEvents(models.Model):
 
 @python_2_unicode_compatible
 class TemplateLicense(core_models.UuidMixin,
-                      core_models.NamedModelMixin,
+                      core_models.NameMixin,
                       models.Model):
     class Services(object):
         IAAS = 'IaaS'
@@ -556,7 +556,7 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
 @python_2_unicode_compatible
 class SecurityGroup(core_models.UuidMixin,
                     core_models.DescribableMixin,
-                    core_models.NamedModelMixin,
+                    core_models.NameMixin,
                     CloudProjectMember,
                     models.Model):
 

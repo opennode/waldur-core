@@ -12,7 +12,7 @@ class Template(core_models.UuidMixin,
                core_models.UiDescribableMixin,
                models.Model):
     # Model doesn't inherit NamedModelMixin, because name field must be unique.
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=150, unique=True)
     is_active = models.BooleanField(default=False)
 
     def provision(self):
@@ -24,7 +24,7 @@ class Template(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class TemplateService(PolymorphicModel, core_models.NamedModelMixin):
+class TemplateService(PolymorphicModel, core_models.NameMixin):
     template = models.ForeignKey(Template, related_name='services')
 
     def provision(self):

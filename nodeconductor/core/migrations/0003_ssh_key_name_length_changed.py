@@ -7,14 +7,14 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('template', '0001_initial'),
+        ('core', '0002_user_organization_approved'),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='templateservice',
+            model_name='sshpublickey',
             name='name',
-            field=models.CharField(max_length=150, verbose_name='name'),
+            field=models.CharField(max_length=150, blank=True),
             preserve_default=True,
         ),
     ]

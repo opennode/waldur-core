@@ -36,6 +36,12 @@ class Migration(migrations.Migration):
             preserve_default=True,
         ),
         migrations.AlterField(
+            model_name='template',
+            name='name',
+            field=models.CharField(unique=True, max_length=150),
+            preserve_default=True,
+        ),
+        migrations.AlterField(
             model_name='templatelicense',
             name='name',
             field=models.CharField(max_length=150, verbose_name='name'),
