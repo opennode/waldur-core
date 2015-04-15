@@ -107,6 +107,9 @@ class OpenStackCustomResources(object):
         def __repr__(self):
             return "<%s: %s>" % (self.__class__.__name__, self.name)
 
+        def add_floating_ip(self, address=None, fixed_address=None):
+            pass
+
     class Image(OpenStackUuidRepresentationResource):
         def __repr__(self):
             return "<%s: %s>" % (self.__class__.__name__, str(self.to_dict()))
@@ -187,9 +190,6 @@ class OpenStackResourceList(object):
         for obj in self.list():
             found = True
             for attr_name, attr_val in kwargs.items():
-                if not isinstance(attr_val, (basestring, bool)):
-                    self.client._raise('ClientException', "Invalid {}".format(attr_name))
-
                 if attr_name == 'is_public':
                     attr_name = 'os-flavor-access:is_public'
 
@@ -461,13 +461,17 @@ class NovaClient(OpenStackBaseClient):
         def create(self, name=None, image=None, flavor=None, key_name=None, security_groups=None,
                    availability_zone=None, block_device_mapping=(), block_device_mapping_v2=(), nics=()):
 
+            auth = self.client.client.session.auth
+            cinder = CinderClient(auth.auth_url, auth.username, auth.password)
+            neutron = NeutronClient(auth.auth_url, auth.username, auth.password)
+
             if not block_device_mapping and not block_device_mapping_v2:
                 if not image:
                     self.client._raise('BadRequest', "Invalid imageRef provided.")
             else:
                 block_devices = block_device_mapping or block_device_mapping_v2
                 for device in block_devices:
-                    self.client.volumes.get(device['uuid'])
+                    cinder.volumes.get(device['uuid'])
 
             if security_groups:
                 sgroups = [self.client.security_groups.get(group_id) for group_id in security_groups]
@@ -476,23 +480,25 @@ class NovaClient(OpenStackBaseClient):
 
             networks = []
             if nics:
-                session = self.client.client.session
-                neutron = NeutronClient(
-                    session.auth.auth_url, session.auth.username, session.auth.password)
-
                 for net in nics:
                     networks.append(neutron.show_network(net['net-id'])['network'])
 
             if key_name:
                 self.client.keypairs.find(name=key_name)
 
-            return super(NovaClient.Server, self).create(name, dict(
+            # Update dummy server instead of creating new one
+            # required to keep it available over the threads/sessions
+            server = self.client.servers.list()[0]
+            self._update(
+                server,
                 name=name,
                 flavor=flavor.to_dict(),
                 networks=networks,
                 key_name=key_name,
                 security_groups=sgroups,
-                status='ACTIVE'))
+                status='ACTIVE')
+
+            return server
 
         def resize(self, server_id, flavor_id, disk_config='AUTO'):
             server = self.client.servers.get(server_id)
@@ -521,7 +527,7 @@ class NovaClient(OpenStackBaseClient):
 
         def stop(self, server_id):
             server = self.client.servers.get(server_id)
-            self._update(server, status='STOPPED')
+            self._update(server, status='SHUTOFF')
 
         def start(self, server_id):
             server = self.client.servers.get(server_id)
@@ -530,7 +536,7 @@ class NovaClient(OpenStackBaseClient):
         def reboot(self, server_id):
             pass
 
-    class Volume(OpenStackResourceList):
+    class ServerVolume(OpenStackResourceList):
         pass
 
     class Statistics(OpenStackResourceList):
@@ -593,8 +599,9 @@ class NovaClient(OpenStackBaseClient):
                     'CommandError', "Ip protocol must be 'tcp', 'udp' or 'icmp'.")
 
             group = self.client.security_groups.get(group_id=parent_group_id)
+            ip_protocol = ip_protocol.upper()
             try:
-                grouprole = self.find(parent_group_id=group.id)
+                grouprole = self.find(ip_protocol=ip_protocol, from_port=from_port, to_port=to_port)
             except:
                 obj = self._create(
                     id=uuid.uuid4().hex,
@@ -617,7 +624,7 @@ class NovaClient(OpenStackBaseClient):
             session=KeystoneClient.Session(auth=v2.Password(auth_url, username, api_key)))
         self.flavors = self._get_resources('Flavor')
         self.servers = self._get_resources('Server')
-        self.volumes = self._get_resources('Volume')
+        self.volumes = self._get_resources('ServerVolume')
         self.quotas = self._get_resources('QuotaSet')
         self.keypairs = self._get_resources('KeyPair')
         self.security_groups = self._get_resources('SecurityGroup')
@@ -649,19 +656,12 @@ class NeutronClient(OpenStackBaseClient):
 
     class Network(OpenStackResourceList):
         def create(self, name, tenant_id):
-            args = {
-                'provider:network_type': 'vlan',
-                'provider:physical_network': 'physnet1',
-                'provider:segmentation_id': 1000,
-                'admin_state_up': True,
-                'shared': False,
-                'status': 'ACTIVE',
-                'subnets': [],
-            }
-            return super(NeutronClient.Network, self).create(name, dict(
-                name=name,
-                tenant_id=tenant_id,
-                **args))
+            # Update dummy network instead of creating new one
+            # required to keep network available over the threads/sessions
+            networks = self.client._get_resources('Network')
+            network = networks.list()[0]
+            networks._update(network, name=name, tenant_id=tenant_id)
+            return network
 
     class Subnet(OpenStackResourceList):
         def create(self, **kwargs):
@@ -737,8 +737,6 @@ class CinderClient(OpenStackBaseClient):
         def create(self, size=0, display_name=None, display_description=None,
                    snapshot_id=None, imageRef=None):
 
-            self.client._check_quotas(size)
-
             if snapshot_id:
                 try:
                     snapshot = self.client.volume_snapshots.get(snapshot_id)
@@ -771,6 +769,8 @@ class CinderClient(OpenStackBaseClient):
                 'metadata': {},
                 'attachments': [],
             }
+
+            self.client._check_quotas(size)
 
             return super(CinderClient.Volume, self).create(display_name, dict(
                 size=size,
@@ -1000,9 +1000,71 @@ class DummyDataSet(object):
         },
     )
 
+    VOLUMES = (
+        {
+            'id': 'f6d76187-2cb2-4100-a18c-fe45ebaa1794',
+            'bootable': False,
+            'encrypted': False,
+            'availability_zone': 'nova',
+            'os-vol-host-attr:host': None,
+            'os-vol-mig-status-attr:migstat': None,
+            'os-vol-mig-status-attr:name_id': None,
+            'os-vol-tenant-attr:tenant_id': None,
+            'source_volid': None,
+            'volume_type': 'lvm',
+            'metadata': {},
+            'attachments': [],
+            'size': 1024,
+            'display_name': 'test_volume',
+            'display_description': '',
+            'snapshot_id': None,
+            'created': '2015-04-12T12:22:15Z',
+            'status': 'available',
+        },
+    )
+
+    SERVERS = (
+        {
+            'OS-DCF:diskConfig': 'MANUAL',
+            'OS-EXT-AZ:availability_zone': 'nova',
+            'OS-EXT-SRV-ATTR:host': None,
+            'OS-EXT-SRV-ATTR:hypervisor_hostname': None,
+            'OS-EXT-SRV-ATTR:instance_name': 'instance-00000002',
+            'OS-EXT-STS:power_state': 0,
+            'OS-EXT-STS:task_state': None,
+            'OS-EXT-STS:vm_state': 'error',
+            'OS-SRV-USG:launched_at': None,
+            'OS-SRV-USG:terminated_at': None,
+            'os-extended-volumes:volumes_attached': [{'id': 'f6d76187-2cb2-4100-a18c-fe45ebaa1794'}],
+            'accessIPv4': '',
+            'accessIPv6': '',
+            'addresses': {},
+            'config_drive': '',
+            'flavor': {
+                'id': '3',
+                'links': [{'href': 'http://nova.example.com:8774/593af1f7b67b4d63b691fcabd2dad126/flavors/3', 'rel': 'bookmark'}]
+            },
+            'id': '909b379f-35ff-4169-a911-78a78afbecb6',
+            'hostId': '',
+            'image': 'd15dc2c4-25d6-4150-93fe-a412499298d8',
+            'key_name': None,
+            'links': [
+                {'href': 'http://nova.example.com:8774/v2/593af1f7b67b4d63b691fcabd2dad126/servers/909b379f-35ff-4169-a911-78a78afbecb6', 'rel': 'self'},
+                {'href': 'http://nova.example.com:8774/593af1f7b67b4d63b691fcabd2dad126/servers/909b379f-35ff-4169-a911-78a78afbecb6', 'rel': 'bookmark'}
+            ],
+            'metadata': {},
+            'name': 'test_server',
+            'status': 'ACTIVE',
+            'tenant_id': '593af1f7b67b4d63b691fcabd2dad126',
+            'user_id': '97a6e00b2c624af488bfe724a1c0ebf8',
+            'created': '2015-04-13T10:52:03Z',
+            'updated': '2015-04-13T10:52:04Z',
+        },
+    )
+
     QUOTAS = (
         {
-            'gigabytes': 1000,
+            'gigabytes': 1024,
             'snapshots': 10,
             'volumes': 10,
         },
@@ -1030,6 +1092,22 @@ class DummyDataSet(object):
             'name': 'example_key',
             'public_key': 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDkR+P6H/0LUAjJVzpswAYuW1LT1iRG8pWEbw+7uxer9VkINrAQmAJD2mPH5DIr9Xj7FqziEpwxg5HqkIaG8xkfrJiSv/VfTCVRA6KzA7l2RH3N5JIJ51enBgseHnNKh5EsmtQpL+PU+lcQ0yFnZRhXfDaPQRnM3ppRboTxVJ/Lzwhp6Waw18+yEtTiNzm9AaoBVladkzARw7tv1+QhKmBVvLDNHWOMmbHqZ74kL234UkMTwl2Pvh2n+aVUYa7YyYb5VK7oq9f6w/oBvxYRPfgnw1l+/DyrggvmhhUkct2RvIUFIFx4//+PhKiqaCjFXd6d5Sbxtl4Moihz6014w3dd alice@example.com',
             'fingerprint': 'f6:2a:54:40:4e:3b:67:72:59:49:d5:c8:ad:dc:77:ed',
+        },
+    )
+
+    NETWORKS = (
+        {
+            'admin_state_up': True,
+            'id': 'a0bd2a72-2e17-4596-a275-0e1e1d9396ac',
+            'name': 'test_network',
+            'provider:network_type': 'vlan',
+            'provider:physical_network': 'physnet1',
+            'provider:segmentation_id': 1000,
+            'router:external': False,
+            'shared': False,
+            'status': 'ACTIVE',
+            'subnets': [],
+            'tenant_id': '593af1f7b67b4d63b691fcabd2dad126'
         },
     )
 

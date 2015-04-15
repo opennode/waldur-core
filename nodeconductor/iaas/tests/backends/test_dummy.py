@@ -123,7 +123,8 @@ class OpenStackClientTest(TestCase):
         self.assertEqual(sgr.to_port, 82)
 
         with self.assertRaises(nova_exceptions.Conflict):
-            nova.security_group_rules.create(parent_group_id=sg.id, ip_protocol='udp')
+            nova.security_group_rules.create(
+                parent_group_id=sg.id, ip_protocol='TCP', from_port=81, to_port=82)
 
         sg = nova.security_groups.find(id=sg.id)
         self.assertEqual(sg.name, 'siths')
@@ -160,7 +161,7 @@ class OpenStackClientTest(TestCase):
         )
 
         data_volume = cinder.volumes.create(
-            size=1000,
+            size=200,
             display_name='test-data',
             display_description='',
         )
@@ -199,7 +200,7 @@ class OpenStackClientTest(TestCase):
         self.assertEqual(sg, group)
 
         nova.servers.stop(server.id)
-        self.assertEqual(server.status, 'STOPPED')
+        self.assertEqual(server.status, 'SHUTOFF')
 
         nova.servers.start(server.id)
         self.assertEqual(server.status, 'ACTIVE')
@@ -254,10 +255,10 @@ class OpenStackClientTest(TestCase):
         with self.assertRaises(cinder_exceptions.BadRequest):
             cinder.volumes.create(size=1000, display_name='test', imageRef='NULL')
 
-        cinder.quotas.update(self.credentials['tenant_id'], gigabytes=2048)
+        cinder.quotas.update(self.credentials['tenant_id'], gigabytes=3072)
         quota = cinder.quotas.get(tenant_id=self.credentials['tenant_id'])
 
-        self.assertEqual(quota.gigabytes, 2048)
+        self.assertEqual(quota.gigabytes, 3072)
 
         volume = cinder.volumes.create(
             size=1024, display_name='test-system', display_description='', imageRef=image.id)

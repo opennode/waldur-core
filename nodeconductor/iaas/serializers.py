@@ -300,8 +300,8 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
     def create(self, validated_data):
         del validated_data['project']
 
-        if 'ssh_public_key' in validated_data:
-            key = validated_data.pop('ssh_public_key')
+        key = validated_data.pop('ssh_public_key', None)
+        if key:
             validated_data['key_name'] = key.name
             validated_data['key_fingerprint'] = key.fingerprint
 
