@@ -1,4 +1,8 @@
 
+import base64
+import hashlib
+
+
 class CloudBackendError(Exception):
     """
     Base exception for errors occurring during backend communication.
@@ -16,20 +20,12 @@ class CloudBackendInternalError(Exception):
     pass
 
 
-class AbstractCloudBackend(object):
-    """
-    TODO: Document me
-    """
-    # CloudAccount related methods
-    def push_cloud_account(self, cloud_account):
-        raise NotImplementedError()
+def get_ssh_key_fingerprint(public_key):
+    """ Validate SSH public key and return fingerprint """
+    try:
+        key = base64.b64decode(public_key.strip().split()[1].encode('ascii'))
+        fp_plain = hashlib.md5(key).hexdigest()
+    except:
+        raise CloudBackendInternalError("SSH key is invalid: failed to generate fingerprint")
 
-    # CloudProjectMembership related methods
-    def push_membership(self, membership):
-        raise NotImplementedError()
-
-    def push_ssh_public_key(self, membership, public_key):
-        raise NotImplementedError()
-
-    def pull_flavors(self, membership):
-        raise NotImplementedError()
+    return ':'.join(a + b for a, b in zip(fp_plain[::2], fp_plain[1::2]))

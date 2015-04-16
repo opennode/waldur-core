@@ -23,6 +23,8 @@ from cinderclient import exceptions as cinder_exceptions
 from glanceclient import exc as glance_exceptions
 from novaclient import exceptions as nova_exceptions
 
+from nodeconductor.iaas.backend import get_ssh_key_fingerprint
+
 
 OPENSTACK = threading.local().openstack_instance = {}
 
@@ -562,14 +564,11 @@ class NovaClient(OpenStackBaseClient):
                     "Keypair data is invalid: Keypair name contains unsafe characters (400)")
 
             try:
-                key = base64.b64decode(public_key.strip().split()[1].encode('ascii'))
-                fp_plain = hashlib.md5(key).hexdigest()
+                fingerprint = get_ssh_key_fingerprint(public_key)
             except:
                 self.client._raise(
                     'BadRequest',
                     "Keypair data is invalid: failed to generate fingerprint (400)")
-            else:
-                fingerprint = ':'.join(a + b for a, b in zip(fp_plain[::2], fp_plain[1::2]))
 
             return super(NovaClient.KeyPair, self).create(name, dict(
                 name=name,
