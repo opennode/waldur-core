@@ -1038,7 +1038,16 @@ class DummyDataSet(object):
             'os-extended-volumes:volumes_attached': [{'id': 'f6d76187-2cb2-4100-a18c-fe45ebaa1794'}],
             'accessIPv4': '',
             'accessIPv6': '',
-            'addresses': {},
+            'addresses': {
+                '90803aa24ac24d3d9caac8218b194ee0-test': [
+                    {
+                        'OS-EXT-IPS-MAC:mac_addr': 'fa:16:3e:92:81:44',
+                        'OS-EXT-IPS:type': 'fixed',
+                        'addr': '192.168.10.10',
+                        'version': 4
+                    },
+                ]
+            },
             'config_drive': '',
             'flavor': {
                 'id': '3',
