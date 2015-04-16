@@ -1,4 +1,6 @@
+import django_filters
 from rest_framework import filters
+import six
 
 
 class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
@@ -82,3 +84,26 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
             return '-' + ordering
 
         return ordering
+
+
+class MappedChoiceFilter(django_filters.ChoiceFilter):
+    """
+    A choice field that maps enum values from representation to model ones and back.
+
+    Filter analog for MappedChoiceField
+    """
+
+    def __init__(self, choice_mappings, **kwargs):
+        super(MappedChoiceFilter, self).__init__(**kwargs)
+
+        # TODO: enable this assert then filtering by numbers will be disabled
+        # assert set(k for k, _ in self.field.choices) == set(choice_mappings.keys()), 'Choices do not match mappings'
+        assert len(set(choice_mappings.values())) == len(choice_mappings), 'Mappings are not unique'
+
+        self.mapped_to_model = choice_mappings
+        self.model_to_mapped = {v: k for k, v in six.iteritems(choice_mappings)}
+
+    def filter(self, qs, value):
+        if value in self.mapped_to_model:
+            value = self.mapped_to_model[value]
+        return super(MappedChoiceFilter, self).filter(qs, value)
