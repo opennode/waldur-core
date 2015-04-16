@@ -1014,7 +1014,7 @@ class DummyDataSet(object):
             'volume_type': 'lvm',
             'metadata': {},
             'attachments': [],
-            'size': 1024,
+            'size': 20,
             'display_name': 'test_volume',
             'display_description': '',
             'snapshot_id': None,
