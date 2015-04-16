@@ -1,7 +1,12 @@
 from __future__ import unicode_literals
 
+import logging
+
 from django.conf import settings
 from elasticsearch import Elasticsearch
+
+
+logger = logging.getLogger(__name__)
 
 
 class ElasticsearchError(Exception):
@@ -36,7 +41,8 @@ class ElasticsearchResultList(object):
         if isinstance(key, slice):
             if key.step is not None and key.step != 1:
                 raise ElasticsearchResultListError('ElasticsearchResultList can be iterated only with step 1')
-            events_and_total = self._get_events(key.start, key.stop - key.start)
+            start = key.start if key.start is not None else 0
+            events_and_total = self._get_events(start, key.stop - start)
         else:
             events_and_total = self._get_events(key, 1)
         self.total = events_and_total['total']
@@ -87,6 +93,7 @@ class ElasticsearchClient(object):
         from nodeconductor.structure.filters import filter_queryset_for_user
 
         return {
+            'user_uuid': [user.uuid.hex],
             'project_uuid': filter_queryset_for_user(
                 structure_models.Project.objects.all(), user).values_list('uuid', flat=True),
             'project_group_uuid': filter_queryset_for_user(
@@ -110,5 +117,6 @@ class ElasticsearchClient(object):
         ])
         if event_types:
             query = '(' + query + ') AND ' + self._format_to_elasticsearch_field_filter('event_type', event_types)
+        logger.debug('Getting elasticsearch results for user: "%s" with query: %s', user, query)
 
         return {"query": {"query_string": {"query": query}}}
