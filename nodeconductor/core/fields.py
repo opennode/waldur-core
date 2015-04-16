@@ -4,6 +4,7 @@ import re
 
 from django.db import models
 from django.core import validators
+import django_filters
 from rest_framework import serializers
 import six
 

@@ -23,6 +23,10 @@ Cloud-project link management
 
 .. include:: cloud_project_membership.rst
 
+Events
+======
+
+.. include:: events.rst
 
 Flavor management
 =================

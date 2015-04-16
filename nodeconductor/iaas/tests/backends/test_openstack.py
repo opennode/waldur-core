@@ -121,8 +121,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
 
         # Mock low level non-AbstractCloudBackend api methods
         self.backend = OpenStackBackend()
-        self.backend.create_admin_session = mock.Mock()
-        self.backend.create_user_session = mock.Mock()
+        self.backend.create_session = mock.Mock()
         self.backend.create_keystone_client = mock.Mock(return_value=self.keystone_client)
         self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
         self.backend.create_neutron_client = mock.Mock(return_value=self.neutron_client)
@@ -132,7 +131,6 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.backend.get_or_create_network = mock.Mock()
         self.backend.ensure_user_is_tenant_admin = mock.Mock()
         self.backend.push_security_group = mock.Mock()
-        self.backend.create_tenant_session = mock.Mock()
         self.backend.create_security_group = mock.Mock()
         self.backend.update_security_group = mock.Mock()
         self.backend.delete_security_group = mock.Mock()
@@ -169,14 +167,14 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.membership.save.assert_called_once_with()
 
     def test_push_membership_raises_on_openstack_api_error(self):
-        self.backend.create_admin_session.side_effect = keystone_exceptions.AuthorizationFailure
+        self.backend.create_session.side_effect = keystone_exceptions.AuthorizationFailure
         with self.assertRaises(CloudBackendError):
             self.backend.push_membership(self.membership)
 
     def test_get_resource_stats_gets_credentials_with_given_auth_url(self):
         auth_url = 'http://example.com/'
         self.backend.get_resource_stats(auth_url)
-        self.backend.create_admin_session.assert_called_once_with(auth_url)
+        self.backend.create_session.assert_called_once_with(keystone_url=auth_url, dummy=False)
 
     def test_get_resource_stats_raises_openstack_api_error(self):
         self.backend.create_nova_client.side_effect = keystone_exceptions.AuthorizationFailure
@@ -243,8 +241,7 @@ class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
 
         # Mock low level non-AbstractCloudBackend api methods
         self.backend = OpenStackBackend()
-        self.backend.create_admin_session = mock.Mock()
-        self.backend.create_user_session = mock.Mock()
+        self.backend.create_session = mock.Mock()
         self.backend.create_keystone_client = mock.Mock(return_value=self.keystone_client)
         self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
         self.backend.create_neutron_client = mock.Mock(return_value=self.neutron_client)
@@ -253,7 +250,6 @@ class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
         self.backend.get_or_create_network = mock.Mock()
         self.backend.ensure_user_is_tenant_admin = mock.Mock()
         self.backend.push_security_group = mock.Mock()
-        self.backend.create_tenant_session = mock.Mock()
         self.backend.create_security_group = mock.Mock()
         self.backend.update_security_group = mock.Mock()
         self.backend.delete_security_group = mock.Mock()
@@ -291,7 +287,7 @@ class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
         self.backend.delete_security_group.assert_any_call(str(group1.id), self.nova_client)
 
     def test_push_membership_security_groups_raises_cloud_backed_error_on_keystone_error(self):
-        self.backend.create_tenant_session.side_effect = keystone_exceptions.AuthorizationFailure()
+        self.backend.create_session.side_effect = keystone_exceptions.AuthorizationFailure()
         with self.assertRaises(CloudBackendError):
             self.backend.push_security_groups(self.membership)
 
@@ -306,7 +302,7 @@ class OpenStackBackendFlavorApiTest(TransactionTestCase):
 
         # Mock low level non-AbstractCloudBackend api methods
         self.backend = OpenStackBackend()
-        self.backend.create_admin_session = mock.Mock()
+        self.backend.create_session = mock.Mock()
         self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
 
     # TODO: Test pull_flavors uses proper credentials for nova
@@ -398,8 +394,7 @@ class OpenStackBackendFloatingIPTest(TransactionTestCase):
 
         # Mock low level non-AbstractCloudBackend api methods
         self.backend = OpenStackBackend()
-        self.backend.create_admin_session = mock.Mock()
-        self.backend.create_user_session = mock.Mock()
+        self.backend.create_session = mock.Mock()
         self.backend.create_keystone_client = mock.Mock(return_value=self.keystone_client)
         self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
         self.backend.create_neutron_client = mock.Mock(return_value=self.neutron_client)
@@ -407,7 +402,6 @@ class OpenStackBackendFloatingIPTest(TransactionTestCase):
         self.backend.get_or_create_user = mock.Mock(return_value=('john', 'doe'))
         self.backend.get_or_create_network = mock.Mock()
         self.backend.ensure_user_is_tenant_admin = mock.Mock()
-        self.backend.create_tenant_session = mock.Mock()
         self.floating_ips = [
             {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.163', 'id': '063795b7-23ac-4a0d-82f0-4326e73ee1bc', 'port_id': 'fakeport'},
             {'status': 'DOWN', 'floating_ip_address': '10.7.201.114', 'id': '063795b7-23ac-4a0d-82f0-432as73asdas', 'port_id': 'fakeport'},
@@ -481,7 +475,7 @@ class OpenStackBackendImageApiTest(TransactionTestCase):
 
         # Mock low level non-AbstractCloudBackend api methods
         self.backend = OpenStackBackend()
-        self.backend.create_admin_session = mock.Mock()
+        self.backend.create_session = mock.Mock()
         self.backend.create_glance_client = mock.Mock(return_value=self.glance_client)
 
     def test_pulling_creates_images_for_all_matching_template_mappings(self):
@@ -668,7 +662,7 @@ class OpenStackBackendInstanceApiTest(TransactionTestCase):
 
         # Mock low level non-AbstractCloudBackend api methods
         self.backend = OpenStackBackend()
-        self.backend.create_tenant_session = mock.Mock()
+        self.backend.create_session = mock.Mock(return_value=mock.Mock(dummy=False))
         self.backend.create_nova_client = mock.Mock(return_value=self.nova_client)
 
     # XXX: import only the 1st data volume, sort by device name
@@ -846,7 +840,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
         self.membership.password = 'my_pass'
 
         # Pretend we can log in using existing credentials
-        self.backend.create_user_session = mock.Mock()
+        self.backend.create_session = mock.Mock()
 
         username, password = self.backend.get_or_create_user(self.membership, self.keystone_client)
 
@@ -863,7 +857,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
         self.membership.password = 'my_pass'
 
         # ... but they became stale
-        self.backend.create_user_session = mock.Mock(side_effect=keystone_exceptions.AuthorizationFailure)
+        self.backend.create_session = mock.Mock(side_effect=keystone_exceptions.AuthorizationFailure)
 
         username, password = self.backend.get_or_create_user(self.membership, self.keystone_client)
 

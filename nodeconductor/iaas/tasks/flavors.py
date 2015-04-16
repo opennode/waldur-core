@@ -21,12 +21,13 @@ event_logger = EventLoggerAdapter(logger)
 @transition(Instance, 'begin_resizing')
 def resize_flavor(instance_uuid, flavor_uuid, transition_entity=None):
     instance = transition_entity
-    flavor = instance.cloud_project_membership.cloud.flavors.get(uuid=flavor_uuid)
+    cloud = instance.cloud_project_membership.cloud
+    flavor = cloud.flavors.get(uuid=flavor_uuid)
     server_id = instance.backend_id
     flavor_id = flavor.backend_id
 
     chain(
-        openstack_create_session.s(instance_uuid=instance_uuid),
+        openstack_create_session.s(instance_uuid=instance_uuid, dummy=cloud.dummy),
         nova_server_resize.s(server_id, flavor_id),
         nova_wait_for_server_status.s(server_id, 'VERIFY_RESIZE'),
         nova_server_resize_confirm.s(server_id),
