@@ -33,8 +33,9 @@ from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
 from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.core.models import get_ssh_key_fingerprint
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
-from nodeconductor.iaas.backend import dummy as dummy_clients, get_ssh_key_fingerprint
+from nodeconductor.iaas.backend import dummy as dummy_clients
 from nodeconductor.iaas import models
 
 logger = logging.getLogger(__name__)
@@ -446,7 +447,7 @@ class OpenStackBackend(OpenStackClient):
                 pass
 
             try:
-                nova.keypairs.find(fingerprint=get_ssh_key_fingerprint(public_key))
+                nova.keypairs.find(fingerprint=get_ssh_key_fingerprint(public_key.public_key))
             except nova_exceptions.NotFound:
                 # Fine, it's a new key, let's add it
                 pass

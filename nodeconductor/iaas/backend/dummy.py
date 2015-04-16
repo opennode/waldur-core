@@ -9,8 +9,6 @@ from __future__ import unicode_literals
 
 import re
 import uuid
-import base64
-import hashlib
 import threading
 
 from datetime import datetime, timedelta
@@ -23,7 +21,7 @@ from cinderclient import exceptions as cinder_exceptions
 from glanceclient import exc as glance_exceptions
 from novaclient import exceptions as nova_exceptions
 
-from nodeconductor.iaas.backend import get_ssh_key_fingerprint
+from nodeconductor.core.models import get_ssh_key_fingerprint
 
 
 OPENSTACK = threading.local().openstack_instance = {}

@@ -122,6 +122,18 @@ def validate_ssh_public_key(ssh_key):
         raise ValidationError('Invalid SSH public key body')
 
 
+def get_ssh_key_fingerprint(ssh_key):
+    # How to get fingerprint from ssh key:
+    # http://stackoverflow.com/a/6682934/175349
+    # http://www.ietf.org/rfc/rfc4716.txt Section 4.
+    import base64
+    import hashlib
+
+    key_body = base64.b64decode(ssh_key.strip().split()[1].encode('ascii'))
+    fp_plain = hashlib.md5(key_body).hexdigest()
+    return ':'.join(a + b for a, b in zip(fp_plain[::2], fp_plain[1::2]))
+
+
 @python_2_unicode_compatible
 class SshPublicKey(UuidMixin, models.Model):
     """
@@ -140,20 +152,9 @@ class SshPublicKey(UuidMixin, models.Model):
         unique_together = ('user', 'name')
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        def get_fingerprint(public_key):
-            # How to get fingerprint from ssh key:
-            # http://stackoverflow.com/a/6682934/175349
-            # http://www.ietf.org/rfc/rfc4716.txt Section 4.
-            import base64
-            import hashlib
-
-            key_body = base64.b64decode(public_key.strip().split()[1].encode('ascii'))
-            fp_plain = hashlib.md5(key_body).hexdigest()
-            return ':'.join(a + b for a, b in zip(fp_plain[::2], fp_plain[1::2]))
-
         # Fingerprint is always set based on public_key
         try:
-            self.fingerprint = get_fingerprint(self.public_key)
+            self.fingerprint = get_ssh_key_fingerprint(self.public_key)
         except (IndexError, TypeError):
             logger.exception('Fingerprint calculation has failed')
             raise ValueError('Public key format is incorrect. Fingerprint calculation has failed.')
