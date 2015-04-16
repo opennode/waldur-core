@@ -639,7 +639,7 @@ class ProjectPermissionFilter(django_filters.FilterSet):
         choices=(
             ('admin', 'Administrator'),
             ('manager', 'Manager'),
-            # TODO: Remove this than filtering by number will be not supported
+            # TODO: Removing this drops support of filtering by numeric codes
             (models.ProjectRole.ADMINISTRATOR, 'Administrator'),
             (models.ProjectRole.MANAGER, 'Manager'),
         ),
@@ -747,7 +747,7 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
         name='group__projectgrouprole__role_type',
         choices=(
             ('manager', 'Manager'),
-            # TODO: Remove this than filtering by number will be not supported
+            # TODO: Removing this drops support of filtering by numeric codes
             (models.ProjectGroupRole.MANAGER, 'Manager'),
         ),
         choice_mappings={
@@ -860,7 +860,8 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         name='group__customerrole__role_type',
         choices=(
             ('owner', 'Owner'),
-            (models.CustomerRole.OWNER, 'Owner'),  # TODO: Remove this than filtering by number will be not supported
+            # TODO: Removing this drops support of filtering by numeric codes
+            (models.CustomerRole.OWNER, 'Owner'),
         ),
         choice_mappings={
             'owner': models.CustomerRole.OWNER,
