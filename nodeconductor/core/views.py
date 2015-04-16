@@ -10,7 +10,8 @@ from djangosaml2.signals import post_authenticated
 from djangosaml2.utils import get_custom_setting
 from rest_framework import status
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.views import exception_handler as rf_exception_handler
@@ -158,6 +159,7 @@ assertion_consumer_service = Saml2AuthView.as_view()
 
 
 @api_view(['GET'])
+@permission_classes((AllowAny, ))
 def version_detail(request):
     """Retrieve version of the application"""
 
