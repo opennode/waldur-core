@@ -213,7 +213,8 @@ class OpenStackResourceList(object):
                 'Conflict', "Conflict occurred attempting to create OpenStack resource")
 
     def delete(self, obj_id):
-        self._objects.remove(self.get(obj_id))
+        obj = obj_id if isinstance(obj_id, OpenStackResource) else self.get(obj_id)
+        self._objects.remove(obj)
 
 
 class OpenStackBaseClient(object):

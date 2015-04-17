@@ -64,6 +64,9 @@ def add_clouds_to_related_model(sender, fields, **kwargs):
 
 
 def sync_ssh_public_keys(task_name, public_key=None, project=None, user=None):
+    """ Call supplied background task to push or remove SSH key(s).
+        Use supplied public_key or lookup it by project & user.
+    """
     CloudProjectMembership = apps.get_model('iaas', 'CloudProjectMembership')
 
     if public_key:
