@@ -2,32 +2,27 @@ from __future__ import unicode_literals
 
 import re
 
-from croniter import croniter
-from django.utils import timezone
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.core import validators
 import django_filters
 from rest_framework import serializers
 import six
 
+from nodeconductor.core.validators import validate_cron_schedule
 
+
+# XXX: This field is left only for migrations compatibility.
+# It has to be removed after migrations compression
 class CronScheduleBaseField(models.CharField):
+    pass
+
+
+class CronScheduleField(models.CharField):
     description = "A cron schedule in textual form"
 
-    def validate(self, value, model_instance):
-        super(CronScheduleBaseField, self).validate(value, model_instance)
-        try:
-            base_time = timezone.now()
-            croniter(value, base_time)
-        except (KeyError, ValueError) as e:
-            raise ValidationError(e.message)
-
-
-class CronScheduleField(CronScheduleBaseField):
     def __init__(self, *args, **kwargs):
-        kwargs['null'] = False
-        kwargs['blank'] = False
+        kwargs['validators'] = [validate_cron_schedule]
+        kwargs['max_length'] = kwargs.get('max_length', 15)
         super(CronScheduleField, self).__init__(*args, **kwargs)
 
 
