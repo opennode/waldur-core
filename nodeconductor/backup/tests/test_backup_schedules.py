@@ -53,7 +53,6 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
             response.data['maximal_number_of_backups'], self.backup_schedule_data['maximal_number_of_backups'])
         self.assertEqual(response.data['schedule'], self.backup_schedule_data['schedule'])
 
-    @unittest.skip('This test should pass after CronField refactoring (NC-443).')
     def test_backup_schedule_can_not_be_created_with_wrong_schedule(self):
         # wrong schedule:
         self.backup_schedule_data['schedule'] = 'wrong schedule'

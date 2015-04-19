@@ -634,8 +634,19 @@ class ProjectPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
-    role = django_filters.NumberFilter(
+    role = core_filters.MappedChoiceFilter(
         name='group__projectrole__role_type',
+        choices=(
+            ('admin', 'Administrator'),
+            ('manager', 'Manager'),
+            # TODO: Removing this drops support of filtering by numeric codes
+            (models.ProjectRole.ADMINISTRATOR, 'Administrator'),
+            (models.ProjectRole.MANAGER, 'Manager'),
+        ),
+        choice_mappings={
+            'admin': models.ProjectRole.ADMINISTRATOR,
+            'manager': models.ProjectRole.MANAGER,
+        },
     )
 
     class Meta(object):
@@ -732,8 +743,16 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
-    role = django_filters.NumberFilter(
+    role = core_filters.MappedChoiceFilter(
         name='group__projectgrouprole__role_type',
+        choices=(
+            ('manager', 'Manager'),
+            # TODO: Removing this drops support of filtering by numeric codes
+            (models.ProjectGroupRole.MANAGER, 'Manager'),
+        ),
+        choice_mappings={
+            'manager': models.ProjectGroupRole.MANAGER,
+        },
     )
 
     class Meta(object):
@@ -837,8 +856,16 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
-    role = filters.CustomerRoleFilter(
+    role = core_filters.MappedChoiceFilter(
         name='group__customerrole__role_type',
+        choices=(
+            ('owner', 'Owner'),
+            # TODO: Removing this drops support of filtering by numeric codes
+            (models.CustomerRole.OWNER, 'Owner'),
+        ),
+        choice_mappings={
+            'owner': models.CustomerRole.OWNER,
+        },
     )
 
     class Meta(object):

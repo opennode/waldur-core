@@ -29,6 +29,17 @@ class DescribableMixin(models.Model):
     description = models.CharField(_('description'), max_length=500, blank=True)
 
 
+class NameMixin(models.Model):
+    """
+    Mixin to add a standardized "name" field.
+    """
+
+    class Meta(object):
+        abstract = True
+
+    name = models.CharField(_('name'), max_length=150)
+
+
 class UiDescribableMixin(DescribableMixin):
     """
     Mixin to add a standardized "description" and "icon url" fields.
@@ -130,7 +141,8 @@ class SshPublicKey(UuidMixin, models.Model):
     Used for injection into VMs for remote access.
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_index=True)
-    name = models.CharField(max_length=50, blank=True)
+    # Model doesn't inherit NameMixin, because name field can be blank.
+    name = models.CharField(max_length=150, blank=True)
     fingerprint = models.CharField(max_length=47)  # In ideal world should be unique
     public_key = models.TextField(
         validators=[validators.MaxLengthValidator(2000), validate_ssh_public_key]

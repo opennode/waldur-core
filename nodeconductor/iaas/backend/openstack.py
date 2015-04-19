@@ -1,13 +1,14 @@
 from __future__ import unicode_literals
 
-from collections import OrderedDict
-from itertools import groupby
-import logging
-from operator import itemgetter
-import uuid
-import pkg_resources
 import re
 import time
+import uuid
+import logging
+import datetime
+import pkg_resources
+import dateutil.parser
+
+from itertools import groupby
 
 from cinderclient import exceptions as cinder_exceptions
 from cinderclient.v1 import client as cinder_client
@@ -32,8 +33,8 @@ from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
 from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.iaas.backend import dummy, CloudBackendError, CloudBackendInternalError
 from nodeconductor.iaas import models
-from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 
 logger = logging.getLogger(__name__)
 event_logger = EventLoggerAdapter(logger)
@@ -63,8 +64,208 @@ def _get_nova_version():
         return '00000002', '00000017', '00000000', '*final'
 
 
-# noinspection PyMethodMayBeStatic
-class OpenStackBackend(object):
+class OpenStackClient(object):
+    """ Generic OpenStack client with dummy mode support """
+
+    REAL_DUMMY_CLASSES = {
+        'KeystoneSession': (keystone_session.Session, dummy.KeystoneClient.Session),
+        'KeystoneClient': (keystone_client.Client, dummy.KeystoneClient),
+        'NovaClient': (nova_client.Client, dummy.NovaClient),
+        'NeutronClient': (neutron_client.Client, dummy.NeutronClient),
+        'CinderClient': (cinder_client.Client, dummy.CinderClient),
+        'GlanceClient': (glance_client.Client, dummy.GlanceClient),
+    }
+
+    def __init__(self, dummy=False):
+        self.dummy = dummy
+
+    @classmethod
+    def get_openstack_class(cls, class_name, is_dummy):
+        return cls.REAL_DUMMY_CLASSES[class_name][1 if is_dummy else 0]
+
+    class Session(dict):
+        """ Serializable session """
+
+        # There's a temporary need to pass plain text credentials
+        # Currently packaged libraries novaclient==2.17.0, neutronclient==2.3.4
+        # and cinderclient==1.0.9 don't support token auth.
+        # TODO: Switch to token auth on libraries upgrade.
+        OPTIONS = ('auth_ref', 'auth_url', 'username', 'password', 'tenant_id', 'tenant_name')
+
+        def __init__(self, backend, ks_session=None, **credentials):
+            self.dummy = self['dummy'] = backend.dummy
+            self.backend = backend.__class__(dummy=backend.dummy)
+            self.keystone_session = ks_session
+
+            if not self.keystone_session:
+                auth_plugin = v2.Password(**credentials)
+                self.keystone_session = self.backend.get_openstack_class(
+                    'KeystoneSession', self.dummy)(auth=auth_plugin)
+
+            for opt in self.OPTIONS:
+                self[opt] = getattr(self.auth, opt)
+
+            # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+            self.keystone_session.get_token()
+
+        def __getattr__(self, name):
+            return getattr(self.keystone_session, name)
+
+        @classmethod
+        def factory(cls, backend, session):
+            auth_plugin = v2.Token(
+                auth_url=session['auth_url'],
+                token=session['auth_ref']['token']['id'])
+            ks_session = backend.get_openstack_class(
+                'KeystoneSession', backend.dummy)(auth=auth_plugin)
+            return cls(backend, ks_session=ks_session)
+
+        def validate(self):
+            expiresat = dateutil.parser.parse(self.auth.auth_ref['token']['expires'])
+            if expiresat > timezone.now() + datetime.timedelta(minutes=10):
+                return True
+
+            raise CloudBackendError('Invalid OpenStack session')
+
+    def create_admin_session(self, keystone_url):
+        try:
+            credentials = models.OpenStackSettings.objects.get(
+                auth_url=keystone_url).get_credentials()
+        except models.OpenStackSettings.DoesNotExist as e:
+            logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
+            six.reraise(CloudBackendError, e)
+
+        self.session = self.Session(self, **credentials)
+        return self.session
+
+    def create_tenant_session(self, credentials):
+        self.session = self.Session(self, **credentials)
+        return self.session
+
+    @classmethod
+    def recover_session(cls, session):
+        """ Recover OpenStack session from serialized object """
+        if not session or not session.get('auth_ref'):
+            raise CloudBackendError('Invalid OpenStack session')
+
+        backend = cls(dummy=session.get('dummy', False))
+        return backend.Session.factory(backend, session)
+
+    @classmethod
+    def create_keystone_client(cls, session):
+        return cls.get_openstack_class(
+            'KeystoneClient', session.dummy)(session=session)
+
+    @classmethod
+    def create_nova_client(cls, session):
+        if _get_nova_version() >= pkg_resources.parse_version('2.18.0'):
+            kwargs = {'session': session.keystone_session}
+        else:
+            auth_plugin = session.auth
+            kwargs = {
+                'auth_url': auth_plugin.auth_url,
+                'username': auth_plugin.username,
+                'api_key': auth_plugin.password,
+                'tenant_id': auth_plugin.tenant_id,
+                # project_id is tenant_name, id doesn't make sense,
+                # pretty usual for OpenStack
+                'project_id': auth_plugin.tenant_name,
+            }
+
+        return cls.get_openstack_class('NovaClient', session.dummy)(**kwargs)
+
+    @classmethod
+    def create_neutron_client(cls, session):
+        if _get_neutron_version() >= pkg_resources.parse_version('2.3.6'):
+            kwargs = {'session': session.keystone_session}
+        else:
+            auth_plugin = session.auth
+            kwargs = {
+                'auth_url': auth_plugin.auth_url,
+                'username': auth_plugin.username,
+                'password': auth_plugin.password,
+                'tenant_id': auth_plugin.tenant_id,
+                # neutron is different in a sense it is more reasonable to call
+                # tenant_name a tenant_name, rather then project_id
+                'tenant_name': auth_plugin.tenant_name,
+            }
+
+        return cls.get_openstack_class('NeutronClient', session.dummy)(**kwargs)
+
+    @classmethod
+    def create_cinder_client(cls, session):
+        if _get_cinder_version() >= pkg_resources.parse_version('1.1.0'):
+            kwargs = {'session': session.keystone_session}
+        else:
+            auth_plugin = session.auth
+            kwargs = {
+                'auth_url': auth_plugin.auth_url,
+                'username': auth_plugin.username,
+                'api_key': auth_plugin.password,
+                'tenant_id': auth_plugin.tenant_id,
+                # project_id is tenant_name, id doesn't make sense,
+                # pretty usual for OpenStack
+                'project_id': auth_plugin.tenant_name,
+            }
+
+        return cls.get_openstack_class('CinderClient', session.dummy)(**kwargs)
+
+    @classmethod
+    def create_glance_client(cls, session):
+        catalog = ServiceCatalog.factory(session.auth.auth_ref)
+        endpoint = catalog.url_for(service_type='image')
+
+        kwargs = {
+            'token': session.get_token(),
+            'insecure': False,
+            'timeout': 600,
+            'ssl_compression': True,
+        }
+
+        return cls.get_openstack_class('GlanceClient', session.dummy)(endpoint, **kwargs)
+
+
+class OpenStackBackend(OpenStackClient):
+    """ NodeConductor interface to OpenStack.
+        Test mode implies by creating an instance as OpenStackBackend(dummy=True)
+    """
+
+    @classmethod
+    def create_session(cls, keystone_url=None, instance_uuid=None, check_tenant=True, membership=None, **kwargs):
+        """ Create OpenStack session using NodeConductor credentials """
+
+        backend = cls(dummy=kwargs.get('dummy', False))
+        if keystone_url:
+            return backend.create_admin_session(keystone_url)
+
+        elif instance_uuid or membership:
+            if instance_uuid:
+                instance = models.Instance.objects.get(uuid=instance_uuid)
+                membership = instance.cloud_project_membership
+            credentials = {
+                'auth_url': membership.cloud.auth_url,
+                'username': membership.username,
+                'password': membership.password,
+            }
+            if check_tenant:
+                credentials['tenant_id'] = membership.tenant_id
+
+            return backend.create_tenant_session(credentials)
+
+        raise CloudBackendError('Missing OpenStack credentials')
+
+    def get_backend_disk_size(self, core_disk_size):
+        return core_disk_size / 1024
+
+    def get_backend_ram_size(self, core_ram_size):
+        return core_ram_size
+
+    def get_core_disk_size(self, backend_disk_size):
+        return backend_disk_size * 1024
+
+    def get_core_ram_size(self, backend_ram_size):
+        return backend_ram_size
+
     # CloudAccount related methods
     def push_cloud_account(self, cloud_account):
         # There's nothing to push for OpenStack
@@ -76,7 +277,7 @@ class OpenStackBackend(object):
         self.pull_service_statistics(cloud_account)
 
     def pull_flavors(self, cloud_account):
-        session = self.create_admin_session(cloud_account.auth_url)
+        session = self.create_session(keystone_url=cloud_account.auth_url, dummy=self.dummy)
         nova = self.create_nova_client(session)
 
         backend_flavors = nova.flavors.findall(is_public=True)
@@ -128,7 +329,7 @@ class OpenStackBackend(object):
                 logger.info('Updated existing flavor %s in database', nc_flavor.uuid)
 
     def pull_images(self, cloud_account):
-        session = self.create_admin_session(cloud_account.auth_url)
+        session = self.create_session(keystone_url=cloud_account.auth_url, dummy=self.dummy)
         glance = self.create_glance_client(session)
 
         backend_images = dict(
@@ -203,7 +404,7 @@ class OpenStackBackend(object):
     # CloudProjectMembership related methods
     def push_membership(self, membership):
         try:
-            session = self.create_admin_session(membership.cloud.auth_url)
+            session = self.create_session(keystone_url=membership.cloud.auth_url, dummy=self.dummy)
 
             keystone = self.create_keystone_client(session)
             neutron = self.create_neutron_client(session)
@@ -231,7 +432,7 @@ class OpenStackBackend(object):
         key_name = self.get_key_name(public_key)
 
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
 
             try:
@@ -276,7 +477,7 @@ class OpenStackBackend(object):
             return
 
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             try:
                 if cinder_quotas:
                     cinder = self.create_cinder_client(session)
@@ -297,7 +498,7 @@ class OpenStackBackend(object):
 
     def push_security_groups(self, membership):
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client')
@@ -365,7 +566,7 @@ class OpenStackBackend(object):
 
     def pull_security_groups(self, membership):
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client')
@@ -431,7 +632,7 @@ class OpenStackBackend(object):
 
     def pull_instances(self, membership):
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
         except keystone_exceptions.ClientException as e:
@@ -482,7 +683,7 @@ class OpenStackBackend(object):
 
     def pull_resource_quota(self, membership):
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
         except keystone_exceptions.ClientException as e:
@@ -510,10 +711,9 @@ class OpenStackBackend(object):
         membership.project.set_quota_limit('max_instances', nova_quotas.instances)
         membership.project.set_quota_limit('storage', self.get_core_disk_size(cinder_quotas.gigabytes))
 
-
     def pull_resource_quota_usage(self, membership):
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
         except keystone_exceptions.ClientException as e:
@@ -557,7 +757,7 @@ class OpenStackBackend(object):
     def pull_floating_ips(self, membership):
         logger.debug('Pulling floating ips for membership %s', membership.id)
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             neutron = self.create_neutron_client(session)
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create neutron client')
@@ -609,7 +809,7 @@ class OpenStackBackend(object):
     def get_resource_stats(self, auth_url):
         logger.debug('About to get statistics from for auth_url: %s', auth_url)
         try:
-            session = self.create_admin_session(auth_url)
+            session = self.create_session(keystone_url=auth_url, dummy=self.dummy)
             nova = self.create_nova_client(session)
             stats = self.get_hypervisors_statistics(nova)
 
@@ -660,7 +860,7 @@ class OpenStackBackend(object):
                 template=instance.template,
             )
 
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
@@ -854,7 +1054,7 @@ class OpenStackBackend(object):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
 
@@ -897,7 +1097,7 @@ class OpenStackBackend(object):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
 
@@ -937,7 +1137,7 @@ class OpenStackBackend(object):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             nova.servers.reboot(instance.backend_id)
@@ -962,7 +1162,7 @@ class OpenStackBackend(object):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             nova.servers.delete(instance.backend_id)
@@ -993,7 +1193,7 @@ class OpenStackBackend(object):
 
     def import_instance(self, membership, instance_id, template_id=None):
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
         except keystone_exceptions.ClientException as e:
@@ -1090,7 +1290,7 @@ class OpenStackBackend(object):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
@@ -1117,7 +1317,7 @@ class OpenStackBackend(object):
     def clone_volumes(self, membership, volume_ids, prefix='Cloned volume'):
         logger.debug('About to copy volumes %s', ', '.join(volume_ids))
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             cinder = self.create_cinder_client(session)
 
             cloned_volume_ids = []
@@ -1151,7 +1351,7 @@ class OpenStackBackend(object):
     def create_snapshots(self, membership, volume_ids, prefix='Cloned volume'):
         logger.debug('About to snapshot volumes %s', ', '.join(volume_ids))
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             cinder = self.create_cinder_client(session)
 
             snapshot_ids = []
@@ -1172,7 +1372,7 @@ class OpenStackBackend(object):
     def promote_snapshots_to_volumes(self, membership, snapshot_ids, prefix='Promoted volume'):
         logger.debug('About to promote snapshots %s', ', '.join(snapshot_ids))
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             cinder = self.create_cinder_client(session)
 
             promoted_volume_ids = []
@@ -1195,7 +1395,7 @@ class OpenStackBackend(object):
     def delete_volumes(self, membership, volume_ids):
         logger.debug('About to delete volumes %s ', ', '.join(volume_ids))
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             cinder = self.create_cinder_client(session)
 
             for volume_id in volume_ids:
@@ -1220,7 +1420,7 @@ class OpenStackBackend(object):
     def delete_snapshots(self, membership, snapshot_ids):
         logger.debug('About to delete volumes %s ', ', '.join(snapshot_ids))
         try:
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             cinder = self.create_cinder_client(session)
 
             for snapshot_id in snapshot_ids:
@@ -1248,7 +1448,7 @@ class OpenStackBackend(object):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
 
             server_id = instance.backend_id
@@ -1293,7 +1493,7 @@ class OpenStackBackend(object):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
@@ -1365,7 +1565,7 @@ class OpenStackBackend(object):
         try:
             membership = instance.cloud_project_membership
 
-            session = self.create_tenant_session(membership)
+            session = self.create_session(membership=membership, dummy=self.dummy)
 
             nova = self.create_nova_client(session)
             server_id = instance.backend_id
@@ -1549,139 +1749,6 @@ class OpenStackBackend(object):
                 )
                 logger.info('Created new security group rule %s in database', rule.id)
 
-    def create_admin_session(self, keystone_url):
-        try:
-            credentials = models.OpenStackSettings.objects.get(auth_url=keystone_url).get_credentials()
-        except models.OpenStackSettings.DoesNotExist as e:
-            logger.exception('Failed to find OpenStack credentials for Keystone URL %s', keystone_url)
-            six.reraise(CloudBackendError, e)
-
-        auth_plugin = v2.Password(**credentials)
-        session = keystone_session.Session(auth=auth_plugin)
-        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
-        session.get_token()
-        return session
-
-    def create_tenant_session(self, membership):
-        credentials = {
-            'auth_url': membership.cloud.auth_url,
-            'username': membership.username,
-            'password': membership.password,
-            'tenant_id': membership.tenant_id,
-        }
-
-        auth_plugin = v2.Password(**credentials)
-        session = keystone_session.Session(auth=auth_plugin)
-
-        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
-        session.get_token()
-        return session
-
-    def create_user_session(self, membership):
-        credentials = {
-            'auth_url': membership.cloud.auth_url,
-            'username': membership.username,
-            'password': membership.password,
-            # Tenant is not set here since we don't want to check for tenant membership here
-        }
-
-        auth_plugin = v2.Password(**credentials)
-        session = keystone_session.Session(auth=auth_plugin)
-
-        # This will eagerly sign in throwing AuthorizationFailure on bad credentials
-        session.get_token()
-        return session
-
-    def get_backend_disk_size(self, core_disk_size):
-        return core_disk_size / 1024
-
-    def get_backend_ram_size(self, core_ram_size):
-        return core_ram_size
-
-    def get_core_disk_size(self, backend_disk_size):
-        return backend_disk_size * 1024
-
-    def get_core_ram_size(self, backend_ram_size):
-        return backend_ram_size
-
-    def create_cinder_client(self, session):
-        if _get_cinder_version() >= pkg_resources.parse_version('1.1.0'):
-            return cinder_client.Client(session=session)
-        else:
-            # Since we know that Password auth plugin is used
-            # it is safe to extract username/password from there
-            auth_plugin = session.auth
-
-            kwargs = {
-                'auth_url': auth_plugin.auth_url,
-                'username': auth_plugin.username,
-                'api_key': auth_plugin.password,
-                'tenant_id': auth_plugin.tenant_id,
-                # project_id is tenant_name, id doesn't make sense,
-                # pretty usual for OpenStack
-                'project_id': auth_plugin.tenant_name,
-            }
-
-            return cinder_client.Client(**kwargs)
-
-    def create_glance_client(self, session):
-        auth_plugin = session.auth
-
-        catalog = ServiceCatalog.factory(auth_plugin.get_auth_ref(session))
-        endpoint = catalog.url_for(service_type='image')
-
-        kwargs = {
-            'token': session.get_token(),
-            'insecure': False,
-            'timeout': 600,
-            'ssl_compression': True,
-        }
-
-        return glance_client.Client(endpoint, **kwargs)
-
-    def create_keystone_client(self, session):
-        return keystone_client.Client(session=session)
-
-    def create_neutron_client(self, session):
-        if _get_neutron_version() >= pkg_resources.parse_version('2.3.6'):
-            return neutron_client.Client(session=session)
-        else:
-            # Since we know that Password auth plugin is used
-            # it is safe to extract username/password from there
-            auth_plugin = session.auth
-
-            kwargs = {
-                'auth_url': auth_plugin.auth_url,
-                'username': auth_plugin.username,
-                'password': auth_plugin.password,
-                'tenant_id': auth_plugin.tenant_id,
-                # neutron is different in a sense it is more reasonable to call
-                # tenant_name a tenant_name, rather then project_id
-                'tenant_name': auth_plugin.tenant_name,
-            }
-
-            return neutron_client.Client(**kwargs)
-
-    def create_nova_client(self, session):
-        if _get_nova_version() >= pkg_resources.parse_version('2.18.0'):
-            return nova_client.Client(session=session)
-        else:
-            # Since we know that Password auth plugin is used
-            # it is safe to extract username/password from there
-            auth_plugin = session.auth
-
-            kwargs = {
-                'auth_url': auth_plugin.auth_url,
-                'username': auth_plugin.username,
-                'api_key': auth_plugin.password,
-                'tenant_id': auth_plugin.tenant_id,
-                # project_id is tenant_name, id doesn't make sense,
-                # pretty usual for OpenStack
-                'project_id': auth_plugin.tenant_name,
-            }
-
-            return nova_client.Client(**kwargs)
-
     def get_or_create_user(self, membership, keystone):
         # Try to sign in if credentials are already stored in membership
         User = get_user_model()
@@ -1689,7 +1756,7 @@ class OpenStackBackend(object):
         if membership.username:
             try:
                 logger.info('Signing in using stored membership credentials')
-                self.create_user_session(membership)
+                self.create_session(membership=membership, check_tenant=False, dummy=self.dummy)
                 logger.info('Successfully signed in, using existing user %s', membership.username)
                 return membership.username, membership.password
             except keystone_exceptions.AuthorizationFailure:

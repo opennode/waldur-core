@@ -11,7 +11,8 @@ from nodeconductor.core import models as core_models
 class Template(core_models.UuidMixin,
                core_models.UiDescribableMixin,
                models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    # Model doesn't inherit NameMixin, because name field must be unique.
+    name = models.CharField(max_length=150, unique=True)
     is_active = models.BooleanField(default=False)
 
     def provision(self):
@@ -23,8 +24,7 @@ class Template(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class TemplateService(PolymorphicModel):
-    name = models.CharField(max_length=100)
+class TemplateService(PolymorphicModel, core_models.NameMixin):
     template = models.ForeignKey(Template, related_name='services')
 
     def provision(self):
