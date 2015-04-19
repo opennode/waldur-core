@@ -23,14 +23,22 @@ class ElasticsearchResultListError(ElasticsearchError):
 
 class ElasticsearchResultList(object):
 
-    def __init__(self, user, event_types=None, sort='-@timestamp'):
+    def __init__(self, user, event_types=None, search_text=None, sort='-@timestamp'):
         self.client = ElasticsearchClient()
         self.user = user
         self.event_types = event_types
         self.sort = sort
+        self.search_text = search_text
 
     def _get_events(self, from_, size):
-        return self.client.get_user_events(self.user, self.event_types, from_=from_, size=size, sort=self.sort)
+        return self.client.get_user_events(
+            user=self.user,
+            event_types=self.event_types,
+            search_text=self.search_text,
+            from_=from_,
+            size=size,
+            sort=self.sort
+        )
 
     def __len__(self):
         if not hasattr(self, 'total'):
@@ -51,15 +59,18 @@ class ElasticsearchResultList(object):
 
 class ElasticsearchClient(object):
 
+    FTS_FIELDS = ('message', )
+
     def __init__(self):
         self.client = self._get_client()
 
-    def get_user_events(self, user, event_types=None, sort='-@timestamp', index='_all', from_=0, size=10):
+    def get_user_events(
+            self, user, event_types=None, search_text=None, sort='-@timestamp', index='_all', from_=0, size=10):
         """
         Return events filtered for given user and total count of available for user events
         """
         sort = sort[1:] + ':desc' if sort.startswith('-') else sort + ':asc'
-        body = self._get_search_body(user, event_types)
+        body = self._get_search_body(user, event_types, search_text)
         search_results = self.client.search(index=index, body=body, from_=from_, size=size, sort=sort)
         return {
             'events': [r['_source'] for r in search_results['hits']['hits']],
@@ -108,15 +119,20 @@ class ElasticsearchClient(object):
         """
         return '%s:("%s")' % (field_name, '", "'.join(field_values))
 
-    def _get_search_body(self, user, event_types=None):
+    def _get_search_body(self, user, event_types=None, search_text=None):
         permitted_objects_uuids = self._get_permitted_objects_uuids(user)
-
+        # Create query for user-related events
         query = ' OR '.join([
             self._format_to_elasticsearch_field_filter(item, uuids)
             for item, uuids in permitted_objects_uuids.items()
         ])
+        query = '(' + query + ')'
+        # Filter it by event types
         if event_types:
-            query = '(' + query + ') AND ' + self._format_to_elasticsearch_field_filter('event_type', event_types)
+            query += ' AND ' + self._format_to_elasticsearch_field_filter('event_type', event_types)
+        # Add FTS to query
+        if search_text:
+            for field in self.FTS_FIELDS:
+                query += ' AND ' + self._format_to_elasticsearch_field_filter(field, [search_text])
         logger.debug('Getting elasticsearch results for user: "%s" with query: %s', user, query)
-
         return {"query": {"query_string": {"query": query}}}
