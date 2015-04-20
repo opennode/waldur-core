@@ -7,6 +7,10 @@ class ElasticsearchDummyClient(elasticsearch_client.ElasticsearchClient):
 
     DUMMY_EVENTS = []
 
+    # We do not need connection with real elasticsearch
+    def __init__(self):
+        pass
+
     def _get_dummy_events(self):
         return self.__class__.DUMMY_EVENTS
 
@@ -29,11 +33,14 @@ class ElasticsearchDummyClient(elasticsearch_client.ElasticsearchClient):
                 search_text_condition = True
             # define permitted objects filter condition
             permitted_objects_condition = any(
-                [event[key] in uuids for key, uuids in self._get_permitted_objects_uuids(user)])
+                [event[key] in uuids for key, uuids in self._get_permitted_objects_uuids(user).items()])
             # filter out needed events
             if event_type_condition and search_text_condition and permitted_objects_condition:
                 filtered_events.append(event)
 
         reverse = sort.startswith('-')
         sort = sort[1:] if reverse else sort
-        return sorted(filtered_events, key=itemgetter(sort), reverse=reverse)
+        return {
+            'events': sorted(filtered_events, key=itemgetter(sort), reverse=reverse),
+            'total': len(filtered_events),
+        }
