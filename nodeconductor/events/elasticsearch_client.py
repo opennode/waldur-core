@@ -59,7 +59,8 @@ class ElasticsearchResultList(object):
 
 class ElasticsearchClient(object):
 
-    FTS_FIELDS = ('message', )
+    FTS_FIELDS = (
+        'message', 'customer_abbreviation', 'importance', 'project_group_name', 'cloud_account_name', 'project_name')
 
     def __init__(self):
         self.client = self._get_client()
@@ -113,11 +114,16 @@ class ElasticsearchClient(object):
                 structure_models.Customer.objects.all(), user).values_list('uuid', flat=True),
         }
 
+    def _escape_elasticsearch_field_value(self, field_value):
+        # Currently we just remove " from field value
+        return field_value.replace('\"', '')
+
     def _format_to_elasticsearch_field_filter(self, field_name, field_values):
         """
         Return string '<field_name>:("<field_value1>", "<field_value2>"...)'
         """
-        return '%s:("%s")' % (field_name, '", "'.join(field_values))
+        excaped_field_values = [self._escape_elasticsearch_field_value(value) for value in field_values]
+        return '%s:("%s")' % (field_name, '", "'.join(excaped_field_values))
 
     def _get_search_body(self, user, event_types=None, search_text=None):
         permitted_objects_uuids = self._get_permitted_objects_uuids(user)
@@ -132,7 +138,8 @@ class ElasticsearchClient(object):
             query += ' AND ' + self._format_to_elasticsearch_field_filter('event_type', event_types)
         # Add FTS to query
         if search_text:
-            for field in self.FTS_FIELDS:
-                query += ' AND ' + self._format_to_elasticsearch_field_filter(field, [search_text])
+            search_query = ' OR '.join(
+                [self._format_to_elasticsearch_field_filter(field, [search_text]) for field in self.FTS_FIELDS])
+            query += ' AND (' + search_query + ')'
         logger.debug('Getting elasticsearch results for user: "%s" with query: %s', user, query)
         return {"query": {"query_string": {"query": query}}}
