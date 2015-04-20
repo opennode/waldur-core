@@ -143,3 +143,9 @@ NODECONDUCTOR['ELASTICSEARCH'] = {
     'port': '9999',
     'protocol': 'https',
 }
+
+# Jira admin account credentials
+NODECONDUCTOR['JIRA'] = {
+    'server': 'https://jira.example.com',
+    'auth': ('username', 'password'),
+}

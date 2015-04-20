@@ -29,6 +29,7 @@ install_requires = [
     'djangorestframework>=3.1.0,<3.2.0',
     'djangosaml2==0.12.0.dev0',
     'elasticsearch>=1.0.0,<2.0.0',
+    'jira==0.43',
     'jsonfield==1.0.0',
     'python-cinderclient==1.0.9',
     'python-glanceclient==0.12.0',
