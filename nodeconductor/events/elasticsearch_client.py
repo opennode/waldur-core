@@ -91,7 +91,7 @@ class ElasticsearchClient(object):
             return settings.NODECONDUCTOR['ELASTICSEARCH']
         except (KeyError, AttributeError):
             raise ElasticsearchClientError(
-                'Can not get elasticsearch settings. ELASTICSEARCH item in settings.NODECONDUCTOR has'
+                'Can not get elasticsearch settings. ELASTICSEARCH item in settings.NODECONDUCTOR has '
                 'to be defined. Or enable dummy elasticsearch mode.')
 
     def _get_client(self):
@@ -112,6 +112,11 @@ class ElasticsearchClient(object):
         from nodeconductor.structure import models as structure_models
         from nodeconductor.structure.filters import filter_queryset_for_user
 
+        if user.is_staff:
+            cusomter_queryset = structure_models.Customer.objects.all()
+        else:
+            cusomter_queryset = structure_models.Customer.objects.filter(
+                roles__permission_group__user=user, roles__role_type=structure_models.CustomerRole.OWNER)
         return {
             'user_uuid': [user.uuid.hex],
             'project_uuid': filter_queryset_for_user(
@@ -119,7 +124,7 @@ class ElasticsearchClient(object):
             'project_group_uuid': filter_queryset_for_user(
                 structure_models.ProjectGroup.objects.all(), user).values_list('uuid', flat=True),
             'customer_uuid': filter_queryset_for_user(
-                structure_models.Customer.objects.all(), user).values_list('uuid', flat=True),
+                cusomter_queryset, user).values_list('uuid', flat=True),
         }
 
     def _escape_elasticsearch_field_value(self, field_value):
