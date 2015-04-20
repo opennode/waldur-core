@@ -24,11 +24,19 @@ class ElasticsearchResultListError(ElasticsearchError):
 class ElasticsearchResultList(object):
 
     def __init__(self, user, event_types=None, search_text=None, sort='-@timestamp'):
-        self.client = ElasticsearchClient()
+        self.client = self._get_client()
         self.user = user
         self.event_types = event_types
         self.sort = sort
         self.search_text = search_text
+
+    def _get_client(self):
+        if settings.NODECONDUCTOR.get('ELASTICSEARCH_DUMMY', False):
+            # to avoid circular dependencies
+            from nodeconductor.events.elasticsearch_dummy_client import ElasticsearchDummyClient
+            return ElasticsearchDummyClient()
+        else:
+            return ElasticsearchClient()
 
     def _get_events(self, from_, size):
         return self.client.get_user_events(
