@@ -115,7 +115,13 @@ class ElasticsearchClient(object):
         }
 
     def _escape_elasticsearch_field_value(self, field_value):
-        # Currently we just remove " from field value
+        """
+        Remove double quotes from field value
+
+        Elasticsearch receives string query where all user input is strings in double quotes.
+        But if input itself contains double quotes - elastic treat them as end of string, so we have to remove double
+        quotes from search string.
+        """
         return field_value.replace('\"', '')
 
     def _format_to_elasticsearch_field_filter(self, field_name, field_values):
