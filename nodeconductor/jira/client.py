@@ -15,7 +15,7 @@ class JiraClient(object):
             try:
                 base_config = settings.NODECONDUCTOR['JIRA']
                 server = base_config['server']
-            except:
+            except (KeyError, AttributeError):
                 raise JiraClientError(
                     "Missed jira server. It must be supplied explicitly or defined "
                     "within settings.NODECONDUCTOR.JIRA")

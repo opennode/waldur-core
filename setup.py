@@ -29,7 +29,7 @@ install_requires = [
     'djangorestframework>=3.1.0,<3.2.0',
     'djangosaml2==0.12.0.dev0',
     'elasticsearch>=1.0.0,<2.0.0',
-    'jira==0.43',
+    'jira',
     'jsonfield==1.0.0',
     'python-cinderclient==1.0.9',
     'python-glanceclient==0.12.0',
@@ -38,7 +38,7 @@ install_requires = [
     'python-novaclient==2.17.0',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
-    'requests<=2.5.1',
+    'requests',
 ]
 
 
