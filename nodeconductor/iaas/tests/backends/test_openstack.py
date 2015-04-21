@@ -7,7 +7,7 @@ from django.test import TransactionTestCase
 from keystoneclient import exceptions as keystone_exceptions
 import mock
 
-from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.iaas.backend import dummy, CloudBackendError
 from nodeconductor.iaas.backend.openstack import OpenStackBackend
 from nodeconductor.iaas.models import Flavor, Instance, Image, FloatingIP
 from nodeconductor.iaas.tests import factories
@@ -882,3 +882,66 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
             'Username should contain project name'
         )
         self.assertTrue(password, 'Password should not be empty')
+
+
+class OpenStackBackendSSHKeysTest(unittest.TestCase):
+    def setUp(self):
+        self.membership = mock.Mock()
+        self.session = mock.Mock()
+        self.session.auth.auth_url = 'http://keystone.example.com:5000/v2.0'
+        self.session.auth.username = 'test_user'
+        self.session.auth.password = 'test_password'
+
+        self.backend = OpenStackBackend(dummy=True)
+        self.backend.create_session = mock.Mock(return_value=self.session)
+
+    def _get_dummy_ssh_key(self, **kwargs):
+        data = dummy.DummyDataSet.KEYPAIRS[0]
+
+        public_key = mock.Mock()
+        public_key.uuid.hex = '97a6e00b2c624af488bfe724a1c0ebf8'
+        for key, val in data.iteritems():
+            setattr(public_key, key, kwargs.get(key) or val)
+
+        return public_key
+
+    def test_push_ssh_public_key_with_very_long_name(self):
+        public_key = self._get_dummy_ssh_key(name='veery_looo@ng_key_blah_blah_blah')
+        key_name = self.backend.get_key_name(public_key)
+
+        self.assertEqual(key_name, '97a6e00b2c624af488bfe724a1c0ebf8-veery_looo_ng_key')
+
+    def test_push_and_remove_ssh_public_key(self):
+        nova = self.backend.create_nova_client(self.session)
+
+        public_key = mock.Mock()
+        public_key.uuid.hex = '90803aa24ac24d3d9caac8218b194ee0'
+        public_key.name = 'my_key'
+        public_key.fingerprint = '1b:a8:73:34:57:80:5e:c8:e0:36:6a:b1:a8:62:ad:a3'
+        public_key.public_key = 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCw2MaqOkQi4LUJXVnIgmgWKCUnVdDF3IFngm+YS4cTT+6Wvc6C0g3QZYnSCiQd3lJLWsizYUlCILVQRAH9JUAt+iyrcxrY68boc0aejuMGpPXXaZ0+RTC6gKw7IzNbvkgpbY7DzB0dNuMYERLVM83SPABudGELk/kxEPvDO1J0RY5Is5QziebU18gWWwK87jmjRQfphM6lcS08Bd17U+4MAe/vCJbIJnI9ctoHLRczrGN0w/DtNJDAfao4yLa+PdStPNAxkBTHY/OWycbdEJRL+Ile73FkpcoVfWbbJcdrvvVSKWIZATyHmlnUSBLQe5WQg8F3ZF17G5bDFMnSueoH joe@example.com'
+
+        key_name = self.backend.get_key_name(public_key)
+
+        self.backend.push_ssh_public_key(self.membership, public_key)
+        self.assertIsNotNone(nova.keypairs.find(name=key_name))
+
+        self.backend.remove_ssh_public_key(self.membership, public_key)
+        self.assertEqual(nova.keypairs.findall(name=key_name), [])
+
+    def test_do_not_push_ssh_public_key_dublicate(self):
+        public_key = self._get_dummy_ssh_key()
+        nova_client = mock.Mock()
+        backend = OpenStackBackend(dummy=True)
+        backend.create_session = mock.Mock(return_value=self.session)
+        backend.create_nova_client = mock.Mock(return_value=nova_client)
+
+        backend.push_ssh_public_key(self.membership, public_key)
+        nova_client.keypairs.find.assert_called_once_with(fingerprint=public_key.fingerprint)
+        assert not nova_client.keypairs.create.called
+
+    def test_do_not_remove_ssh_public_key_created_directly_with_openstack(self):
+        public_key = self._get_dummy_ssh_key()
+        nova = self.backend.create_nova_client(self.session)
+
+        self.backend.remove_ssh_public_key(self.membership, public_key)
+        self.assertIsNotNone(nova.keypairs.find(fingerprint=public_key.fingerprint))

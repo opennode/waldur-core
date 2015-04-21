@@ -458,10 +458,10 @@ class OpenStackBackend(OpenStackClient):
 
             # There could be leftovers of key duplicates: remove them all
             keys = nova.keypairs.findall(fingerprint=public_key.fingerprint)
-            safe_key_name = self.sanitize_key_name(public_key.name)
+            key_name = self.get_key_name(public_key)
             for key in keys:
                 # Remove only keys created with NC
-                if key.name.endswith(safe_key_name):
+                if key.name == key_name:
                     nova.keypairs.delete(key)
 
             logger.info('Deleted ssh public key %s from backend', public_key.name)
