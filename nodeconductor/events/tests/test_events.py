@@ -39,7 +39,7 @@ class EventsListTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn(event.fields, response.data)
 
-    def test_customer_owner_see_all_related_to_his_cutomer_events(self):
+    def test_customer_owner_see_all_related_to_his_customer_events(self):
         self.client.force_authenticate(user=self.owner)
         response = self.client.get(factories.EventFactory.get_list_url())
 
@@ -47,14 +47,14 @@ class EventsListTest(test.APITransactionTestCase):
         for event in self.events.values():
             self.assertIn(event.fields, response.data)
 
-    def test_project_admin_see_related_to_his_project_events(self):
+    def test_project_admin_can_see_events_related_to_his_project(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.get(factories.EventFactory.get_list_url())
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn(self.events['project_event'].fields, response.data)
 
-    def test_project_admin_cannot_see_not_related_to_his_project_events(self):
+    def test_project_admin_cannot_see_events_unrelated_to_his_project(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.get(factories.EventFactory.get_list_url())
 

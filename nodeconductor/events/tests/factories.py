@@ -6,12 +6,23 @@ from nodeconductor.events import elasticsearch_dummy_client
 
 
 class EventFactory(object):
+    """
+    Event factory that provides default data for events and add created events to elasticsearch dummy client.
+
+    Created event fields can be accessible via .fields attribute of created event.
+    """
 
     def __init__(self, **kwargs):
         self.create(**kwargs)
         self.save()
 
     def create(self, **kwargs):
+        """
+        Creates event fields values.
+
+        If field is in kwargs - value from kwargs will be used for this field,
+        otherwise - default value will be used for field.
+        """
         self.fields = {
             '@timestamp': '2015-04-19T16:25:45.376+04:00',
             '@version': 1,
@@ -36,11 +47,11 @@ class EventFactory(object):
             'type': 'gcloud-event',
             'user_uuid': 'test_user_uuid',
         }
-        for key, value in self.fields.items():
-            if key in kwargs:
-                self.fields[key] = kwargs[key]
+        for key, value in kwargs.items():
+            self.fields[key] = value
 
     def save(self):
+        """ Add event to elasticsearch dummy client events """
         elasticsearch_dummy_client.ElasticsearchDummyClient.DUMMY_EVENTS.append(self.fields)
 
     @classmethod
