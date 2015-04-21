@@ -148,5 +148,3 @@ NODECONDUCTOR['ELASTICSEARCH'] = {
     'port': '9999',
     'protocol': 'https',
 }
-
-settings.example
