@@ -34,6 +34,8 @@ class ElasticsearchResultList(object):
         if settings.NODECONDUCTOR.get('ELASTICSEARCH_DUMMY', False):
             # to avoid circular dependencies
             from nodeconductor.events.elasticsearch_dummy_client import ElasticsearchDummyClient
+            logger.warn(
+                'Dummy client for elasticsearch is used, set ELASTICSEARCH_DUMMY to False to disable dummy client')
             return ElasticsearchDummyClient()
         else:
             return ElasticsearchClient()
@@ -95,7 +97,6 @@ class ElasticsearchClient(object):
                 'to be defined. Or enable dummy elasticsearch mode.')
 
     def _get_client(self):
-        # TODO return dummy client here
         elasticsearch_settings = self._get_elastisearch_settings()
         path = '%(protocol)s://%(username)s:%(password)s@%(host)s:%(port)s' % elasticsearch_settings
         return Elasticsearch(
