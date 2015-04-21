@@ -4,5 +4,5 @@ from nodeconductor.events import views
 
 
 urlpatterns = [
-    url(r'^events/$', views.EventListView.as_view()),
+    url(r'^events/$', views.EventListView.as_view(), name='event-list'),
 ]

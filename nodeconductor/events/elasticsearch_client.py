@@ -24,11 +24,21 @@ class ElasticsearchResultListError(ElasticsearchError):
 class ElasticsearchResultList(object):
 
     def __init__(self, user, event_types=None, search_text=None, sort='-@timestamp'):
-        self.client = ElasticsearchClient()
+        self.client = self._get_client()
         self.user = user
         self.event_types = event_types
         self.sort = sort
         self.search_text = search_text
+
+    def _get_client(self):
+        if settings.NODECONDUCTOR.get('ELASTICSEARCH_DUMMY', False):
+            # to avoid circular dependencies
+            from nodeconductor.events.elasticsearch_dummy_client import ElasticsearchDummyClient
+            logger.warn(
+                'Dummy client for elasticsearch is used, set ELASTICSEARCH_DUMMY to False to disable dummy client')
+            return ElasticsearchDummyClient()
+        else:
+            return ElasticsearchClient()
 
     def _get_events(self, from_, size):
         return self.client.get_user_events(
@@ -83,11 +93,10 @@ class ElasticsearchClient(object):
             return settings.NODECONDUCTOR['ELASTICSEARCH']
         except (KeyError, AttributeError):
             raise ElasticsearchClientError(
-                'Can not get elasticsearch settings. ELASTICSEARCH item in settings.NODECONDUCTOR has'
+                'Can not get elasticsearch settings. ELASTICSEARCH item in settings.NODECONDUCTOR has '
                 'to be defined. Or enable dummy elasticsearch mode.')
 
     def _get_client(self):
-        # TODO return dummy client here
         elasticsearch_settings = self._get_elastisearch_settings()
         path = '%(protocol)s://%(username)s:%(password)s@%(host)s:%(port)s' % elasticsearch_settings
         return Elasticsearch(
@@ -104,6 +113,11 @@ class ElasticsearchClient(object):
         from nodeconductor.structure import models as structure_models
         from nodeconductor.structure.filters import filter_queryset_for_user
 
+        if user.is_staff:
+            cusomter_queryset = structure_models.Customer.objects.all()
+        else:
+            cusomter_queryset = structure_models.Customer.objects.filter(
+                roles__permission_group__user=user, roles__role_type=structure_models.CustomerRole.OWNER)
         return {
             'user_uuid': [user.uuid.hex],
             'project_uuid': filter_queryset_for_user(
@@ -111,7 +125,7 @@ class ElasticsearchClient(object):
             'project_group_uuid': filter_queryset_for_user(
                 structure_models.ProjectGroup.objects.all(), user).values_list('uuid', flat=True),
             'customer_uuid': filter_queryset_for_user(
-                structure_models.Customer.objects.all(), user).values_list('uuid', flat=True),
+                cusomter_queryset, user).values_list('uuid', flat=True),
         }
 
     def _escape_elasticsearch_field_value(self, field_value):
