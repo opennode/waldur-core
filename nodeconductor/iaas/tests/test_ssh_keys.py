@@ -96,14 +96,6 @@ class SshKeyPropagationTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.owner = structure_factories.UserFactory(is_staff=True, is_superuser=True)
-        # self.user = structure_factories.UserFactory()
-        # self.user_key = factories.SshPublicKeyFactory(user=self.user)
-
-    def _get_project_url(self, project):
-        return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
-
-    def _get_cloud_url(self, cloud):
-        return 'http://testserver' + reverse('cloud-detail', kwargs={'uuid': cloud.uuid})
 
     def _get_ssh_key_url(self, ssh_key):
         return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': ssh_key.uuid})
