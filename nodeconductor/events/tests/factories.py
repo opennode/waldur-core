@@ -7,7 +7,7 @@ from nodeconductor.events import elasticsearch_dummy_client
 
 class EventFactory(object):
     """
-    Event factory that provides default data for events and add created events to elasticsearch dummy client.
+    Event factory that provides default data for events and adds created events to elasticsearch dummy client.
 
     Created event fields can be accessible via .fields attribute of created event.
     """
