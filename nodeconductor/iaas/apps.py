@@ -9,7 +9,7 @@ from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.iaas import handlers
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.models import Project
-from nodeconductor.structure.signals import structure_role_granted
+from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
 
 class IaasConfig(AppConfig):
@@ -43,10 +43,22 @@ class IaasConfig(AppConfig):
             dispatch_uid='nodeconductor.iaas.handlers.propagate_new_users_key_to_his_projects_clouds',
         )
 
+        signals.post_delete.connect(
+            handlers.remove_stale_users_key_from_his_projects_clouds,
+            sender=SshPublicKey,
+            dispatch_uid='nodeconductor.iaas.handlers.remove_stale_key_from_his_projects_clouds',
+        )
+
         structure_role_granted.connect(
             handlers.propagate_users_keys_to_clouds_of_newly_granted_project,
             sender=Project,
             dispatch_uid='nodeconductor.iaas.handlers.propagate_users_keys_to_clouds_of_newly_granted_project',
+        )
+
+        structure_role_revoked.connect(
+            handlers.remove_stale_users_keys_from_clouds_of_revoked_project,
+            sender=Project,
+            dispatch_uid='nodeconductor.iaas.handlers.remove_stale_users_keys_from_clouds_of_revoked_project',
         )
 
         signals.post_save.connect(

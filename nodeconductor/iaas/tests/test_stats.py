@@ -31,13 +31,11 @@ class CustomerStatsTest(test.APITransactionTestCase):
         self.project_group.add_user(self.group_manager, structure_models.ProjectGroupRole.MANAGER)
         self.admin_project.add_user(self.admin, structure_models.ProjectRole.ADMINISTRATOR)
 
-        self.manager_instances = factories.InstanceFactory.create_batch(
-            2,
+        self.manager_instances = factories.InstanceFactory.create(
             cloud_project_membership__project=self.manager_project,
             cloud_project_membership__cloud=cloud,
         )
-        self.admins_instances = factories.InstanceFactory.create_batch(
-            2,
+        self.admins_instances = factories.InstanceFactory.create(
             cloud_project_membership__project=self.admin_project,
             cloud_project_membership__cloud=cloud,
         )
@@ -55,7 +53,7 @@ class CustomerStatsTest(test.APITransactionTestCase):
                 'abbreviation': self.customer.abbreviation,
                 'projects': 2,
                 'project_groups': 1,
-                'instances': 4,
+                'instances': 2,
             },
             {
                 'name': self.other_customer.name,
@@ -78,7 +76,7 @@ class CustomerStatsTest(test.APITransactionTestCase):
                 'abbreviation': self.customer.abbreviation,
                 'projects': 2,
                 'project_groups': 1,
-                'instances': 4,
+                'instances': 2,
             },
         ]
         self.assertItemsEqual(response.data, expected_result)
@@ -94,7 +92,7 @@ class CustomerStatsTest(test.APITransactionTestCase):
                 'abbreviation': self.customer.abbreviation,
                 'projects': 1,
                 'project_groups': 1,
-                'instances': 2,
+                'instances': 1,
             },
         ]
         self.assertItemsEqual(response.data, expected_result)
@@ -110,7 +108,7 @@ class CustomerStatsTest(test.APITransactionTestCase):
                 'abbreviation': self.customer.abbreviation,
                 'projects': 1,
                 'project_groups': 0,
-                'instances': 2,
+                'instances': 1,
             },
         ]
         self.assertItemsEqual(response.data, expected_result)

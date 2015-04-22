@@ -9,8 +9,6 @@ from __future__ import unicode_literals
 
 import re
 import uuid
-import base64
-import hashlib
 import threading
 
 from datetime import datetime, timedelta
@@ -22,6 +20,8 @@ from neutronclient.client import exceptions as neutron_exceptions
 from cinderclient import exceptions as cinder_exceptions
 from glanceclient import exc as glance_exceptions
 from novaclient import exceptions as nova_exceptions
+
+from nodeconductor.core.models import get_ssh_key_fingerprint
 
 
 OPENSTACK = threading.local().openstack_instance = {}
@@ -213,7 +213,8 @@ class OpenStackResourceList(object):
                 'Conflict', "Conflict occurred attempting to create OpenStack resource")
 
     def delete(self, obj_id):
-        self._objects.remove(self.get(obj_id))
+        obj = obj_id if isinstance(obj_id, OpenStackResource) else self.get(obj_id)
+        self._objects.remove(obj)
 
 
 class OpenStackBaseClient(object):
@@ -562,14 +563,11 @@ class NovaClient(OpenStackBaseClient):
                     "Keypair data is invalid: Keypair name contains unsafe characters (400)")
 
             try:
-                key = base64.b64decode(public_key.strip().split()[1].encode('ascii'))
-                fp_plain = hashlib.md5(key).hexdigest()
+                fingerprint = get_ssh_key_fingerprint(public_key)
             except:
                 self.client._raise(
                     'BadRequest',
                     "Keypair data is invalid: failed to generate fingerprint (400)")
-            else:
-                fingerprint = ':'.join(a + b for a, b in zip(fp_plain[::2], fp_plain[1::2]))
 
             return super(NovaClient.KeyPair, self).create(name, dict(
                 name=name,
