@@ -127,7 +127,6 @@ class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.Quot
     )
 
     class Meta(object):
-        # TODO: why not unique by cloud and project?
         unique_together = ('cloud', 'project')
 
     class Permissions(object):
