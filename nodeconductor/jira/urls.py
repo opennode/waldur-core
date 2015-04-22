@@ -4,7 +4,7 @@ from nodeconductor.jira import views
 
 
 def register_in(router):
-    router.register(r'tickets', views.TicketViewSet, base_name='ticket')
+    router.register(r'issues', views.IssueViewSet, base_name='issue')
 
 
 urlpatterns = patterns(

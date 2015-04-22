@@ -25,19 +25,24 @@ class JiraResource(object):
 class JiraClient(object):
     """ NodeConductor interface to JIRA """
 
-    class Ticket(JiraResource):
+    class Issue(JiraResource):
         """ JIRA issues resource """
 
         class IssueQuerySet(object):
             """ Issues queryset acceptable by django paginator """
 
             def fetch_items(self, offset=0, limit=50):
-                result = self.query_func(
-                    self.query_string,
-                    fields=self.fields,
-                    startAt=offset,
-                    maxResults=limit,
-                    json_result=True)
+                try:
+                    result = self.query_func(
+                        self.query_string,
+                        fields=self.fields,
+                        startAt=offset,
+                        maxResults=limit,
+                        json_result=True)
+                except JIRAError as e:
+                    logger.exception(
+                        'Failed to perform issues search with query "%s"', self.query_string)
+                    six.reraise(JiraClientError, e)
 
                 self.total = result['total']
                 self.limit = result['maxResults']
@@ -72,33 +77,29 @@ class JiraClient(object):
                 assignee = self.client.users.get(assignee)
 
             try:
-                ticket = self.client.jira.create_issue(
+                issue = self.client.jira.create_issue(
                     summary=summary,
                     description=description,
                     project={'key': self.client.core_project},
                     issuetype={'name': 'Task'})
 
                 if reporter:
-                    ticket.update(reporter={'name': reporter.name})
+                    issue.update(reporter={'name': reporter.name})
                 if assignee:
-                    self.client.jira.assign_issue(ticket, assignee.key)
+                    self.client.jira.assign_issue(issue, assignee.key)
 
             except JIRAError as e:
-                logger.exception('Failed to create ticket with summary "%s"', summary)
+                logger.exception('Failed to create issue with summary "%s"', summary)
                 six.reraise(JiraClientError, e)
 
-            return ticket
+            return issue
 
         def list_by_user(self, username):
             query_string = "project = {} AND reporter = {}".format(
                 self.client.core_project, username)
 
-            try:
-                return JiraClient.Ticket.IssueQuerySet(
-                    self.client.jira, query_string, fields='summary,description')
-            except JIRAError as e:
-                logger.exception('Failed to perform tickets search for user %s', username)
-                six.reraise(JiraClientError, e)
+            return JiraClient.Issue.IssueQuerySet(
+                self.client.jira, query_string, fields='summary,description')
 
     class User(JiraResource):
         """ JIRA users resource """
@@ -139,6 +140,6 @@ class JiraClient(object):
 
         # Init JIRA resources as instances of inner classes
         for attr in self.__class__.__dict__.values():
-            if isinstance(attr, type) and JiraResource in attr.__mro__:
+            if isinstance(attr, type) and issubclass(attr, JiraResource):
                 resources_name = '{}s'.format(attr.__name__.lower())
                 setattr(self, resources_name, attr(self))

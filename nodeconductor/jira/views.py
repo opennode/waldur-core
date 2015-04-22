@@ -1,37 +1,37 @@
 from rest_framework import viewsets, status, response
 
 from nodeconductor.jira.client import JiraClient, JiraClientError
-from nodeconductor.jira.serializers import TicketSerializer
+from nodeconductor.jira.serializers import IssueSerializer
 
 
-class TicketViewSet(viewsets.GenericViewSet):
-    serializer_class = TicketSerializer
+class IssueViewSet(viewsets.GenericViewSet):
+    serializer_class = IssueSerializer
 
     def get_queryset(self, request):
-        return JiraClient().tickets.list_by_user(request.user.username)
+        return JiraClient().issues.list_by_user(request.user.username)
 
     def list(self, request):
-        tickets_list = self.get_queryset(request)
-        page = self.paginate_queryset(tickets_list)
+        issues_list = self.get_queryset(request)
+        page = self.paginate_queryset(issues_list)
         if page is not None:
             return self.get_paginated_response(page)
-        return response.Response(tickets_list)
+        return response.Response(issues_list)
 
     def post(self, request):
-        ticket = self.serializer_class(data=request.data)
+        issue = self.serializer_class(data=request.data)
 
-        if ticket.is_valid():
+        if issue.is_valid():
             try:
-                ticket.save(owner=request.user)
+                issue.save(owner=request.user)
             except JiraClientError as e:
                 return response.Response(
-                    {'detail': "Failed to create ticket", 'error': str(e)},
+                    {'detail': "Failed to create issue", 'error': str(e)},
                     status=status.HTTP_406_NOT_ACCEPTABLE)
             else:
                 return response.Response(
-                    {'detail': "Ticked has beed created"},
-                    status=status.HTTP_200_OK)
+                    {'detail': "Issue has beed created"},
+                    status=status.HTTP_201_CREATED)
 
         return response.Response(
-            {'detail': "Invalid input data", 'errors': ticket.errors},
+            {'detail': "Invalid input data", 'errors': issue.errors},
             status=status.HTTP_400_BAD_REQUEST)
