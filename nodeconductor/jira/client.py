@@ -137,9 +137,5 @@ class JiraClient(object):
                 verify_ssl = base_config['verify']
 
         self.jira = JIRA({'server': server, 'verify': verify_ssl}, basic_auth=auth, validate=False)
-
-        # Init JIRA resources as instances of inner classes
-        for attr in self.__class__.__dict__.values():
-            if isinstance(attr, type) and issubclass(attr, JiraResource):
-                resources_name = '{}s'.format(attr.__name__.lower())
-                setattr(self, resources_name, attr(self))
+        self.users = self.User(self)
+        self.issues = self.Issue(self)

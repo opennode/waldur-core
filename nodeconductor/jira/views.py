@@ -30,7 +30,7 @@ class IssueViewSet(viewsets.GenericViewSet):
             else:
                 return response.Response(
                     {'detail': "Issue has beed created"},
-                    status=status.HTTP_201_CREATED)
+                    status=status.HTTP_409_CONFLICT)
 
         return response.Response(
             {'detail': "Invalid input data", 'errors': issue.errors},
