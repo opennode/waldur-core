@@ -136,6 +136,11 @@ LOGGING = {
 }
 
 # Settings, that are related to NodeCondoctor applications
+
+# For tests and local development elasticsearch can be replaced with dummy elasticsearch
+NODECONDUCTOR['ELASTICSEARCH_DUMMY'] = True
+
+# Example of settings for real elasticsearch (dummy mode have to enabled)
 NODECONDUCTOR['ELASTICSEARCH'] = {
     'username': 'username',
     'password': 'password',

@@ -33,7 +33,8 @@ from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
 from nodeconductor.core.log import EventLoggerAdapter
-from nodeconductor.iaas.backend import dummy, CloudBackendError, CloudBackendInternalError
+from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
+from nodeconductor.iaas.backend import dummy as dummy_clients
 from nodeconductor.iaas import models
 
 logger = logging.getLogger(__name__)
@@ -68,12 +69,12 @@ class OpenStackClient(object):
     """ Generic OpenStack client with dummy mode support """
 
     REAL_DUMMY_CLASSES = {
-        'KeystoneSession': (keystone_session.Session, dummy.KeystoneClient.Session),
-        'KeystoneClient': (keystone_client.Client, dummy.KeystoneClient),
-        'NovaClient': (nova_client.Client, dummy.NovaClient),
-        'NeutronClient': (neutron_client.Client, dummy.NeutronClient),
-        'CinderClient': (cinder_client.Client, dummy.CinderClient),
-        'GlanceClient': (glance_client.Client, dummy.GlanceClient),
+        'KeystoneSession': (keystone_session.Session, dummy_clients.KeystoneClient.Session),
+        'KeystoneClient': (keystone_client.Client, dummy_clients.KeystoneClient),
+        'NovaClient': (nova_client.Client, dummy_clients.NovaClient),
+        'NeutronClient': (neutron_client.Client, dummy_clients.NeutronClient),
+        'CinderClient': (cinder_client.Client, dummy_clients.CinderClient),
+        'GlanceClient': (glance_client.Client, dummy_clients.GlanceClient),
     }
 
     def __init__(self, dummy=False):
@@ -436,19 +437,36 @@ class OpenStackBackend(OpenStackClient):
             nova = self.create_nova_client(session)
 
             try:
-                # There's no way to edit existing key inplace,
-                # so try to delete existing key with the same name first.
-                nova.keypairs.delete(key_name)
-                logger.info('Deleted stale ssh public key %s from backend', key_name)
+                nova.keypairs.find(fingerprint=public_key.fingerprint)
             except nova_exceptions.NotFound:
-                # There was no stale key, it's ok
-                pass
+                # Fine, it's a new key, let's add it
+                logger.info('Propagating ssh public key %s to backend', key_name)
+                nova.keypairs.create(name=key_name, public_key=public_key.public_key)
+                logger.info('Successfully propagated ssh public key %s to backend', key_name)
+            else:
+                # Found a key with the same fingerprint, skip adding
+                logger.info('Skiped propagating ssh public key %s to backend', key_name)
 
-            logger.info('Propagating ssh public key %s to backend', key_name)
-            nova.keypairs.create(name=key_name, public_key=public_key.public_key)
-            logger.info('Successfully propagated ssh public key %s to backend', key_name)
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
+            six.reraise(CloudBackendError, e)
+
+    def remove_ssh_public_key(self, membership, public_key):
+        try:
+            session = self.create_session(membership=membership, dummy=self.dummy)
+            nova = self.create_nova_client(session)
+
+            # There could be leftovers of key duplicates: remove them all
+            keys = nova.keypairs.findall(fingerprint=public_key.fingerprint)
+            key_name = self.get_key_name(public_key)
+            for key in keys:
+                # Remove only keys created with NC
+                if key.name == key_name:
+                    nova.keypairs.delete(key)
+
+            logger.info('Deleted ssh public key %s from backend', public_key.name)
+        except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
+            logger.exception('Failed to delete ssh public key %s from backend', public_key.name)
             six.reraise(CloudBackendError, e)
 
     def push_membership_quotas(self, membership, quotas):
@@ -1879,7 +1897,8 @@ class OpenStackBackend(OpenStackClient):
         return key_name
 
     def sanitize_key_name(self, key_name):
-        return re.sub(r'[^-a-zA-Z0-9 _]+', '_', key_name)
+        # Safe key name length must be less than 17 chars due to limit of full key name to 50 chars.
+        return re.sub(r'[^-a-zA-Z0-9 _]+', '_', key_name)[:17]
 
     def get_tenant_name(self, membership):
         return 'nc-{0}'.format(membership.project.uuid.hex)

@@ -43,5 +43,6 @@ NODECONDUCTOR = {
             'groupid': '8',
             'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
         }
-    }
+    },
+    'ELASTICSEARCH_DUMMY': True,
 }

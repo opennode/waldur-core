@@ -261,7 +261,7 @@ def sync_cloud_membership(membership_pk):
         )
 
 
-@shared_task
+@shared_task(name='nodeconductor.iaas.push_ssh_public_keys')
 def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
     public_keys = core_models.SshPublicKey.objects.filter(uuid__in=ssh_public_keys_uuids)
 
@@ -305,6 +305,23 @@ def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
     # reschedule sync to membership that were blocked
     if potential_rerunnable:
         push_ssh_public_keys.delay(ssh_public_keys_uuids, potential_rerunnable)
+
+
+@shared_task(name='nodeconductor.iaas.remove_ssh_public_keys')
+def remove_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
+    public_keys = core_models.SshPublicKey.objects.filter(uuid__in=ssh_public_keys_uuids)
+    membership_queryset = models.CloudProjectMembership.objects.filter(pk__in=membership_pks)
+
+    for membership in membership_queryset.iterator():
+        backend = membership.cloud.get_backend()
+        for public_key in public_keys:
+            try:
+                backend.remove_ssh_public_key(membership, public_key)
+            except CloudBackendError:
+                logger.warn(
+                    'Failed to remove public key %s from cloud membership %s',
+                    public_key.uuid, membership.pk,
+                    exc_info=1)
 
 
 @shared_task
