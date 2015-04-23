@@ -7,7 +7,7 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('iaas', '0025_cloud_dummy'),
+        ('iaas', '0027_refactor_cron_schedule_field'),
     ]
 
     operations = [
