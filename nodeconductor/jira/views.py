@@ -26,11 +26,11 @@ class IssueViewSet(viewsets.GenericViewSet):
             except JiraClientError as e:
                 return response.Response(
                     {'detail': "Failed to create issue", 'error': str(e)},
-                    status=status.HTTP_406_NOT_ACCEPTABLE)
+                    status=status.HTTP_409_CONFLICT)
             else:
                 return response.Response(
                     {'detail': "Issue has beed created"},
-                    status=status.HTTP_409_CONFLICT)
+                    status=status.HTTP_201_CREATED)
 
         return response.Response(
             {'detail': "Invalid input data", 'errors': issue.errors},
