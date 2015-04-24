@@ -1,37 +1,42 @@
-from rest_framework import viewsets, status, response
+from rest_framework import viewsets, mixins, status, response, exceptions
 
 from nodeconductor.jira.client import JiraClient, JiraClientError
-from nodeconductor.jira.serializers import IssueSerializer
+from nodeconductor.jira.serializers import IssueSerializer, CommentSerializer
 
 
-class IssueViewSet(viewsets.GenericViewSet):
+class IssueViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin,
+                   mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = IssueSerializer
 
-    def get_queryset(self, request):
-        return JiraClient().issues.list_by_user(request.user.username)
+    def get_queryset(self):
+        return JiraClient().issues.list_by_user(self.request.user.username)
 
-    def list(self, request):
-        issues_list = self.get_queryset(request)
-        page = self.paginate_queryset(issues_list)
-        if page is not None:
-            return self.get_paginated_response(page)
-        return response.Response(issues_list)
+    def get_object(self):
+        try:
+            return JiraClient().issues.get_by_user(
+                self.request.user.username, self.kwargs['pk'])
+        except JiraClientError as e:
+            raise exceptions.NotFound(e)
 
-    def post(self, request):
-        issue = self.serializer_class(data=request.data)
+    def perform_create(self, serializer):
+        try:
+            serializer.save(reporter=self.request.user.username)
+        except JiraClientError as e:
+            return response.Response(
+                {'detail': "Failed to create issue", 'error': str(e)},
+                status=status.HTTP_409_CONFLICT)
 
-        if issue.is_valid():
-            try:
-                issue.save(owner=request.user)
-            except JiraClientError as e:
-                return response.Response(
-                    {'detail': "Failed to create issue", 'error': str(e)},
-                    status=status.HTTP_409_CONFLICT)
-            else:
-                return response.Response(
-                    {'detail': "Issue has beed created"},
-                    status=status.HTTP_201_CREATED)
 
-        return response.Response(
-            {'detail': "Invalid input data", 'errors': issue.errors},
-            status=status.HTTP_400_BAD_REQUEST)
+class CommentViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
+    serializer_class = CommentSerializer
+
+    def get_queryset(self):
+        return JiraClient().comments.list(self.kwargs['pk'])
+
+    def perform_create(self, serializer):
+        try:
+            serializer.save(issue=self.kwargs['pk'])
+        except JiraClientError as e:
+            return response.Response(
+                {'detail': "Failed to create comment", 'error': str(e)},
+                status=status.HTTP_409_CONFLICT)
