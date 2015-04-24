@@ -33,26 +33,15 @@ class JiraClient(object):
 
             def fetch_items(self, offset=0, limit=50):
                 try:
-                    result = self.query_func(
+                    self.items = self.query_func(
                         self.query_string,
                         fields=self.fields,
                         startAt=offset,
-                        maxResults=limit,
-                        json_result=True)
+                        maxResults=limit)
                 except JIRAError as e:
                     logger.exception(
                         'Failed to perform issues search with query "%s"', self.query_string)
                     six.reraise(JiraClientError, e)
-
-                self.total = result['total']
-                self.limit = result['maxResults']
-                self.offset = result['startAt']
-
-                self.items = []
-                for issue in result['issues']:
-                    data = {'id': issue['key']}
-                    data.update(issue['fields'])
-                    self.items.append(data)
 
             def __init__(self, jira, query_string, fields=None):
                 self.fields = fields
@@ -61,7 +50,7 @@ class JiraClient(object):
                 self.fetch_items()
 
             def __len__(self):
-                return self.total
+                return self.items.total
 
             def __iter__(self):
                 return self.items
@@ -71,6 +60,7 @@ class JiraClient(object):
                 return self.items
 
         def create(self, summary, description='', reporter=None, assignee=None):
+            # Validate reporter & assignee before actual issue creation
             if reporter:
                 reporter = self.client.users.get(reporter)
             if assignee:
@@ -94,12 +84,33 @@ class JiraClient(object):
 
             return issue
 
+        def get_by_user(self, username, user_key):
+            reporter = self.client.users.get(username)
+
+            try:
+                issue = self.client.jira.issue(user_key)
+            except JIRAError:
+                raise JiraClientError("Can't find issue %s" % user_key)
+
+            if issue.fields.reporter.key != reporter.key:
+                raise JiraClientError("Access denied to issue %s for user %s" % (user_key, username))
+
+            return issue
+
         def list_by_user(self, username):
             query_string = "project = {} AND reporter = {}".format(
                 self.client.core_project, username)
 
-            return JiraClient.Issue.IssueQuerySet(
-                self.client.jira, query_string, fields='summary,description')
+            return self.IssueQuerySet(self.client.jira, query_string)
+
+    class Comment(JiraResource):
+        """ JIRA issue comments resource """
+
+        def list(self, issue_key):
+            return self.client.jira.comments(issue_key)
+
+        def create(self, issue_key, comment):
+            return self.client.jira.add_comment(issue_key, comment)
 
     class User(JiraResource):
         """ JIRA users resource """
@@ -139,3 +150,8 @@ class JiraClient(object):
         self.jira = JIRA({'server': server, 'verify': verify_ssl}, basic_auth=auth, validate=False)
         self.users = self.User(self)
         self.issues = self.Issue(self)
+        self.comments = self.Comment(self)
+
+
+# Create JIRA client here since we have common credentials defined in settings
+jira = JiraClient()
