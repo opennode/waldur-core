@@ -73,7 +73,7 @@ Optional filters are:
 - ?native_name - matching of a project group manager native name
 - ?project_group - matching of a project group uuid
 - ?role - matching of a user role type in a project group:
-    * 0 - manager
+    * 0 **deprecated**, use *manager* instead
 
 To list all visible links, run a GET query against a list.
 

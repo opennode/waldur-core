@@ -233,6 +233,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if not self.can_create_project_with(customer, project_groups):
             raise PermissionDenied('You do not have permission to perform this action.')
 
+        customer.validate_quota_change({'nc_project_count': 1}, raise_exception=True)
+
         super(ProjectViewSet, self).perform_create(serializer)
 
 
@@ -632,8 +634,19 @@ class ProjectPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
-    role = django_filters.NumberFilter(
+    role = core_filters.MappedChoiceFilter(
         name='group__projectrole__role_type',
+        choices=(
+            ('admin', 'Administrator'),
+            ('manager', 'Manager'),
+            # TODO: Removing this drops support of filtering by numeric codes
+            (models.ProjectRole.ADMINISTRATOR, 'Administrator'),
+            (models.ProjectRole.MANAGER, 'Manager'),
+        ),
+        choice_mappings={
+            'admin': models.ProjectRole.ADMINISTRATOR,
+            'manager': models.ProjectRole.MANAGER,
+        },
     )
 
     class Meta(object):
@@ -699,6 +712,8 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         if not self.can_manage_roles_for(affected_project):
             raise PermissionDenied('You do not have permission to perform this action.')
 
+        affected_project.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
+
         super(ProjectPermissionViewSet, self).perform_create(serializer)
 
     def perform_destroy(self, instance):
@@ -728,8 +743,16 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
-    role = django_filters.NumberFilter(
+    role = core_filters.MappedChoiceFilter(
         name='group__projectgrouprole__role_type',
+        choices=(
+            ('manager', 'Manager'),
+            # TODO: Removing this drops support of filtering by numeric codes
+            (models.ProjectGroupRole.MANAGER, 'Manager'),
+        ),
+        choice_mappings={
+            'manager': models.ProjectGroupRole.MANAGER,
+        },
     )
 
     class Meta(object):
@@ -802,6 +825,8 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
         if not self.can_manage_roles_for(affected_project_group):
             raise PermissionDenied('You do not have permission to perform this action.')
 
+        affected_project_group.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
+
         super(ProjectGroupPermissionViewSet, self).perform_create(serializer)
 
     def perform_destroy(self, instance):
@@ -831,8 +856,16 @@ class CustomerPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
-    role = filters.CustomerRoleFilter(
+    role = core_filters.MappedChoiceFilter(
         name='group__customerrole__role_type',
+        choices=(
+            ('owner', 'Owner'),
+            # TODO: Removing this drops support of filtering by numeric codes
+            (models.CustomerRole.OWNER, 'Owner'),
+        ),
+        choice_mappings={
+            'owner': models.CustomerRole.OWNER,
+        },
     )
 
     class Meta(object):
@@ -905,6 +938,8 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
 
         if not self.can_manage_roles_for(affected_customer):
             raise PermissionDenied('You do not have permission to perform this action.')
+
+        affected_customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
 
         # It would be nice to put customer.add_user() logic here as well.
         # But it is pushed down to serializer.create() because otherwise

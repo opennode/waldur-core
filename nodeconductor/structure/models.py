@@ -7,11 +7,12 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models
 from django.db import transaction
+from django.db.models import Q
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
 
 from nodeconductor.core.log import EventLoggerAdapter
-from nodeconductor.core.models import UuidMixin, DescribableMixin
+from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
@@ -21,16 +22,20 @@ event_logger = EventLoggerAdapter(logger)
 
 
 @python_2_unicode_compatible
-class Customer(UuidMixin, TimeStampedModel):
+class Customer(core_models.UuidMixin,
+               core_models.NameMixin,
+               quotas_models.QuotaModelMixin,
+               TimeStampedModel):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
         project_group_path = 'project_groups'
 
-    name = models.CharField(max_length=160)
     native_name = models.CharField(max_length=160, default='', blank=True)
     abbreviation = models.CharField(max_length=8, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
+
+    QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count']
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
@@ -113,6 +118,16 @@ class Customer(UuidMixin, TimeStampedModel):
     def get_owners(self):
         return self.roles.get(role_type=CustomerRole.OWNER).permission_group.user_set
 
+    def get_users(self):
+        """ Return all connected to customer users """
+        return get_user_model().objects.filter(
+            Q(groups__customerrole__customer=self) |
+            Q(groups__projectrole__project__customer=self) |
+            Q(groups__projectgrouprole__project_group__customer=self))
+
+    def can_user_update_quotas(self, user):
+        return user.is_staff
+
     def __str__(self):
         return '%(name)s (%(abbreviation)s)' % {
             'name': self.name,
@@ -146,7 +161,7 @@ class CustomerRole(models.Model):
 
 
 @python_2_unicode_compatible
-class ProjectRole(UuidMixin, models.Model):
+class ProjectRole(core_models.UuidMixin, models.Model):
     class Meta(object):
         unique_together = ('project', 'role_type')
 
@@ -167,7 +182,11 @@ class ProjectRole(UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class Project(DescribableMixin, UuidMixin, quotas_models.QuotaModelMixin, TimeStampedModel):
+class Project(core_models.DescribableMixin,
+              core_models.UuidMixin,
+              core_models.NameMixin,
+              quotas_models.QuotaModelMixin,
+              TimeStampedModel):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
@@ -175,7 +194,6 @@ class Project(DescribableMixin, UuidMixin, quotas_models.QuotaModelMixin, TimeSt
 
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
 
-    name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
 
     def add_user(self, user, role_type):
@@ -267,7 +285,7 @@ class Project(DescribableMixin, UuidMixin, quotas_models.QuotaModelMixin, TimeSt
 
 
 @python_2_unicode_compatible
-class ProjectGroupRole(UuidMixin, models.Model):
+class ProjectGroupRole(core_models.UuidMixin, models.Model):
     class Meta(object):
         unique_together = ('project_group', 'role_type')
 
@@ -286,7 +304,10 @@ class ProjectGroupRole(UuidMixin, models.Model):
 
 
 @python_2_unicode_compatible
-class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
+class ProjectGroup(core_models.UuidMixin,
+                   core_models.DescribableMixin,
+                   core_models.NameMixin,
+                   TimeStampedModel):
     """
     Project groups are means to organize customer's projects into arbitrary sets.
     """
@@ -295,7 +316,6 @@ class ProjectGroup(DescribableMixin, UuidMixin, TimeStampedModel):
         project_path = 'projects'
         project_group_path = 'self'
 
-    name = models.CharField(max_length=80)
     customer = models.ForeignKey(Customer, related_name='project_groups', on_delete=models.PROTECT)
     projects = models.ManyToManyField(Project,
                                       related_name='project_groups')

@@ -45,6 +45,24 @@ class ZabbixApiClient(object):
             logger.exception(message)
             six.reraise(ZabbixError, e)
 
+    def update_host_visible_name(self, instance):
+        name = self.get_host_name(instance)
+        visible_name = self.get_host_visible_name(instance)
+        try:
+            api = self.get_zabbix_api()
+
+            if api.host.exists(host=name):
+                api.host.update({"host": name,
+                                 "name": visible_name})
+                logger.debug('Zabbix host visible name has been updated for instance %s.', instance)
+            else:
+                logger.warn('Can not update Zabbix host visible name for instance %s. Host does not exist.', instance)
+
+        except ZabbixAPIException as e:
+            logger.exception('Can not update Zabbix host visible name for instance %s. %s: %s'
+                             % (instance, e.__class__.__name__, e))
+            six.reraise(ZabbixError, e)
+
     def delete_host(self, instance):
         try:
             api = self.get_zabbix_api()
@@ -190,6 +208,9 @@ class ZabbixApiClient(object):
     def get_host_name(self, instance):
         return '%s' % instance.backend_id
 
+    def get_host_visible_name(self, instance):
+        return '%s' % instance.name
+
     def get_hostgroup_name(self, project):
         return '%s_%s' % (project.name, project.uuid)
 
@@ -221,9 +242,12 @@ class ZabbixApiClient(object):
 
     def get_or_create_host(self, api, instance, groupid, templateid, interface_parameters):
         name = self.get_host_name(instance)
+        visible_name = self.get_host_visible_name(instance)
+
         if not api.host.exists(host=name):
             host = api.host.create({
                 "host": name,
+                "name": visible_name,
                 "interfaces": [interface_parameters],
                 "groups": [{"groupid": groupid}],
                 "templates": [{"templateid": templateid}],

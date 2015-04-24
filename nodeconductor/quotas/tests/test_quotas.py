@@ -20,7 +20,6 @@ class QuotaListTest(test.APITransactionTestCase):
         self.owners_memberships = [
             iaas_factories.CloudProjectMembershipFactory(cloud=self.owners_cloud) for _ in range(3)]
         self.other_memberships = [iaas_factories.CloudProjectMembershipFactory() for _ in range(3)]
-        self.maxDiff = 1000
 
     def test_owner_can_see_quotas_only_from_his_customer_memberships(self):
         self.client.force_authenticate(self.owner)
@@ -29,11 +28,18 @@ class QuotaListTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         response_quotas_urls = [quota['url'] for quota in response.data]
+
         expected_quotas_urls = []
         for membership in self.owners_memberships:
             expected_quotas_urls += [factories.QuotaFactory.get_url(quota) for quota in membership.quotas.all()]
+        not_expected_quotas_urls = []
+        for membership in self.other_memberships:
+            not_expected_quotas_urls += [factories.QuotaFactory.get_url(quota) for quota in membership.quotas.all()]
 
-        self.assertItemsEqual(expected_quotas_urls, response_quotas_urls)
+        for url in expected_quotas_urls:
+            self.assertIn(url, response_quotas_urls)
+        for url in not_expected_quotas_urls:
+            self.assertNotIn(url, response_quotas_urls)
 
 # XXX: This tests will be used with frontend quotas
 # class QuotaUpdateTest(test.APITransactionTestCase):

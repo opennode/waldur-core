@@ -24,6 +24,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
 
     'nodeconductor.landing',
+    'nodeconductor.events',
     'nodeconductor.core',
     'nodeconductor.backup',
     'nodeconductor.template',
@@ -214,4 +215,5 @@ NODECONDUCTOR = {
             ),
         },
     ),
+    'ELASTICSEARCH_DUMMY': True,
 }

@@ -67,8 +67,8 @@ Optional filters are:
 - ?native_name - matching of a related to the project user native name
 - ?project_group - matching of a project uuid
 - ?role - matching of a user role type in a project:
-    * 0 - admin
-    * 1 - manager
+    * 0 **deprecated**, use *admin* instead
+    * 1 **deprecated**, use *manager* instead
 
 Create a new project
 --------------------
