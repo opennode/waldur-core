@@ -6,6 +6,14 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.46.0
+--------------
+- Implemented foreground quotas for customers - support for limiting basic resources.
+- Added dummy client for OpenStack backend. Allows to emulate actions of a backend for demo/development deployments.
+- Added support for displaying, filtering and searching of events stored in ElasticSearch.
+- Initial support of integration with Jira for customer support.
+  Bugfixes.
+
 Release 0.45.0
 --------------
 - Migration to DRF 3.1 framework for REST, more consistent API.

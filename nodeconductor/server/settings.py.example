@@ -135,3 +135,23 @@ LOGGING = {
     },
 }
 
+# Settings, that are related to NodeCondoctor applications
+
+# For tests and local development elasticsearch can be replaced with dummy elasticsearch
+NODECONDUCTOR['ELASTICSEARCH_DUMMY'] = True
+
+# Example of settings for real elasticsearch (dummy mode have to enabled)
+NODECONDUCTOR['ELASTICSEARCH'] = {
+    'username': 'username',
+    'password': 'password',
+    'host': 'example.com',
+    'port': '9999',
+    'protocol': 'https',
+}
+
+# Jira admin account credentials
+NODECONDUCTOR['JIRA'] = {
+    'server': 'https://jira.example.com',
+    'auth': ('username', 'password'),
+    'project': 'NC',
+}

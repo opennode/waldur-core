@@ -1,4 +1,5 @@
 from django.core.urlresolvers import reverse
+from mock import patch
 from rest_framework import test, status
 
 from nodeconductor.iaas import models
@@ -116,9 +117,9 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         data = _instance_data(self.user, self.instance)
         data['security_groups'] = [self._get_valid_security_group_payload()
                                    for g in self.instance_security_groups]
-
-        response = self.client.put(_instance_url(self.instance), data=data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        with patch('nodeconductor.iaas.tasks.zabbix.zabbix_update_host_visible_name.delay'):
+            response = self.client.put(_instance_url(self.instance), data=data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_security_groups_is_not_required(self):
         data = _instance_data(self.user, self.instance)

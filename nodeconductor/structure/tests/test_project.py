@@ -248,6 +248,15 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
             {'detail': 'You do not have permission to perform this action.'}, response.data)
         self.assertFalse(Project.objects.filter(name=data['name']).exists())
 
+    def test_owner_cannot_create_project_if_customer_quota_were_exceeded(self):
+        self.customer.set_quota_limit('nc_project_count', 0)
+        data = _get_valid_project_payload(factories.ProjectFactory.build(customer=self.customer))
+
+        self.client.force_authenticate(self.owner)
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
     # Update tests:
     def test_user_can_change_single_project_field(self):
         self.client.force_authenticate(self.staff)

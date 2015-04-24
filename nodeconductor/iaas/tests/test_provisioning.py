@@ -16,6 +16,7 @@ from nodeconductor.structure.models import ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
 
+# TODO: Replace this mixin methods with Factory.get_url() methods
 class UrlResolverMixin(object):
     def _get_flavor_url(self, flavor):
         return 'http://testserver' + reverse('flavor-detail', kwargs={'uuid': flavor.uuid})
@@ -902,6 +903,35 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertDictContainsSubset(
             {'non_field_errors': ['External IP is not from the list of available floating IPs.']}, response.data)
+
+    def test_instance_can_not_be_created_if_customer_resource_quota_exceeded(self):
+        self.project.customer.set_quota_limit('nc_resource_count', 0)
+        data = self.get_valid_data()
+
+        response = self.client.post(factories.InstanceFactory.get_list_url(), data)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    # Zabbix host visible name tests
+    def test_zabbix_host_visible_name_is_updated_when_instance_is_renamed(self):
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        with patch('nodeconductor.iaas.tasks.zabbix.zabbix_update_host_visible_name.delay') as mocked_task:
+            data = {'name': 'host2'}
+            response = self.client.put(factories.InstanceFactory.get_url(instance), data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            mocked_task.assert_called_with(instance.uuid)
+
+    def test_zabbix_host_visible_name_is_not_updated_when_instance_is_not_renamed(self):
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE)
+        instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
+
+        with patch('nodeconductor.iaas.tasks.zabbix.zabbix_update_host_visible_name.delay') as mocked_task:
+            data = {'name': instance.name}
+            response = self.client.put(factories.InstanceFactory.get_url(instance), data)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertFalse(mocked_task.called)
 
     # Helper methods
     # TODO: Move to serializer tests

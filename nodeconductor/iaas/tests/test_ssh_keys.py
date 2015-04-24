@@ -2,13 +2,16 @@ from __future__ import unicode_literals
 
 import unittest
 
+from mock import patch
 from rest_framework import test, status
+from django.core.urlresolvers import reverse
 
 from nodeconductor.core import models as core_models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import views
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.structure.models import CustomerRole, ProjectRole
 
 
 class SshKeyViewSetTest(unittest.TestCase):
@@ -72,4 +75,59 @@ class SshKeyCreateDeleteTest(test.APITransactionTestCase):
         self.assertTrue(core_models.SshPublicKey.objects.filter(name=data['name']).exists(),
                         'New key should have been created in the database')
 
-    # TODO: add tests for key deletion
+    def test_staff_user_can_delete_any_key(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.delete(factories.SshPublicKeyFactory.get_url(self.user_key))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_can_delete_his_key(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.delete(factories.SshPublicKeyFactory.get_url(self.user_key))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_user_cannot_delete_other_users_key(self):
+        other_key = factories.SshPublicKeyFactory()
+        self.client.force_authenticate(self.user)
+        response = self.client.delete(factories.SshPublicKeyFactory.get_url(other_key))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class SshKeyPropagationTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.owner = structure_factories.UserFactory(is_staff=True, is_superuser=True)
+
+    def _get_ssh_key_url(self, ssh_key):
+        return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': ssh_key.uuid})
+
+    def test_user_key_synced_on_creation_and_deletion(self):
+        customer = structure_factories.CustomerFactory()
+        customer.add_user(self.owner, CustomerRole.OWNER)
+
+        project = structure_factories.ProjectFactory(customer=customer)
+        cloud = factories.CloudFactory(auth_url='http://example.com:5000/v2', customer=customer)
+
+        self.client.force_authenticate(self.owner)
+
+        membership = factories.CloudProjectMembershipFactory(cloud=cloud, project=project)
+
+        # Test user add/remove key
+        with patch('nodeconductor.iaas.tasks.iaas.push_ssh_public_keys.delay') as mocked_task:
+            ssh_key = factories.SshPublicKeyFactory(user=self.owner)
+            mocked_task.assert_called_with([ssh_key.uuid.hex], [membership.pk])
+
+            with patch('nodeconductor.iaas.tasks.iaas.remove_ssh_public_keys.delay') as mocked_task:
+                self.client.delete(self._get_ssh_key_url(ssh_key))
+                mocked_task.assert_called_with([ssh_key.uuid.hex], [membership.pk])
+
+        user = structure_factories.UserFactory()
+        user_key = factories.SshPublicKeyFactory(user=user)
+
+        # Test user add/remove from project
+        with patch('nodeconductor.iaas.tasks.iaas.push_ssh_public_keys.delay') as mocked_task:
+            project.add_user(user, ProjectRole.ADMINISTRATOR)
+            mocked_task.assert_called_with([user_key.uuid.hex], [membership.pk])
+
+            with patch('nodeconductor.iaas.tasks.iaas.remove_ssh_public_keys.delay') as mocked_task:
+                project.remove_user(user)
+                mocked_task.assert_called_with([user_key.uuid.hex], [membership.pk])

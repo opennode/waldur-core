@@ -31,6 +31,9 @@ administrative user in NodeConductor settings.
         password = nodeconductor
         tenant_name = admin
 
+Create OpenStack Instance
+-------------------------
+
 Follow NodeConductor's structure and create an Instance representing your OpenStack configuration.
 An extensive example provided below.
 
@@ -96,3 +99,34 @@ An extensive example provided below.
 
     # Instance is ready to be provisioned now
     backend.provision_instance(instance, flavor.backend_id)
+
+It's possible to emulate interaction with OpenStack by creating dummy clouds as follows:
+
+.. code-block:: python
+
+    OpenStackSettings.objects.update_or_create(
+        auth_url='http://keystone.example.com:5000/v2.0',
+        defaults={
+            'username': 'test_user',
+            'password': 'test_password',
+            'tenant_name': 'test_tenant',
+        }
+    )
+
+    cloud = Cloud.objects.create(
+        customer=customer,
+        name='Dummy Cloud',
+        dummy=True,
+        auth_url='http://keystone.example.com:5000/v2.0',
+    )
+
+Propagate SSH keys
+------------------
+
+Users' SSH public keys are automatically synced with OpenStack backend when required:
+
+* After an Instance creation: propagate SSH keys of all users from cloud membership project to backend
+* On adding/removing user's SSH key: add or remove it from related backend respectively
+* On adding/removing user to a Project: ditto
+
+All SSH keys are identified by fingerprint in order to avoid duplicates.

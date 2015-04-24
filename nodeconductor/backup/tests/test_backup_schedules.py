@@ -1,6 +1,10 @@
 from __future__ import unicode_literals
 
 import unittest
+import datetime
+
+from croniter import croniter
+from pytz import timezone
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -49,7 +53,6 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
             response.data['maximal_number_of_backups'], self.backup_schedule_data['maximal_number_of_backups'])
         self.assertEqual(response.data['schedule'], self.backup_schedule_data['schedule'])
 
-    @unittest.skip('This test should pass after CronField refactoring (NC-443).')
     def test_backup_schedule_can_not_be_created_with_wrong_schedule(self):
         # wrong schedule:
         self.backup_schedule_data['schedule'] = 'wrong schedule'
@@ -104,6 +107,32 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         response = self.client.post(_backup_schedule_list_url(), backup_schedule_data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['timezone'], settings.TIME_ZONE)
+
+    def test_weekly_backup_schedule_next_trigger_at_is_correct(self):
+        schedule = factories.BackupScheduleFactory(schedule='0 2 * * 4')
+
+        cron = croniter('0 2 * * 4', datetime.datetime.now(tz=timezone(settings.TIME_ZONE)))
+        next_backup = schedule.next_trigger_at
+        self.assertEqual(next_backup, cron.get_next(datetime.datetime))
+        self.assertEqual(next_backup.weekday(), 3, 'Must be Thursday')
+
+        for k, v in {'hour': 2, 'minute': 0, 'second': 0}.items():
+            self.assertEqual(getattr(next_backup, k), v, 'Must be 2:00am')
+
+    def test_daily_backup_schedule_next_trigger_at_is_correct(self):
+        schedule = factories.BackupScheduleFactory(schedule='0 2 * * *')
+
+        cron = croniter('0 2 * * *', datetime.datetime.now(tz=timezone(settings.TIME_ZONE)))
+        schedule = models.BackupSchedule.objects.get(pk=schedule.pk)
+        next_backup = schedule.next_trigger_at
+        self.assertEqual(next_backup, cron.get_next(datetime.datetime))
+
+        time = datetime.time(2, 0, 0, tzinfo=timezone(settings.TIME_ZONE))
+        date = datetime.date.today()
+        if datetime.datetime.now(tz=timezone(settings.TIME_ZONE)).time().hour > 2:
+            date += datetime.timedelta(days=1)
+
+        self.assertEqual(datetime.datetime.combine(date, time), next_backup, "Must be 2:00am every day")
 
     def test_schedule_activation_and_deactivation(self):
         schedule = factories.BackupScheduleFactory(is_active=False)

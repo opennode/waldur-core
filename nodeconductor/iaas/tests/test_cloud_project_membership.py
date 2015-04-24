@@ -34,7 +34,7 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
         self.cloud = factories.CloudFactory(
             auth_url='http://some-unique-example.com:5000/v231', customer=self.customer)
 
-    def test_memebership_creation(self):
+    def test_membership_creation(self):
         self.client.force_authenticate(self.owner)
         url = factories.CloudProjectMembershipFactory.get_list_url()
         data = {
@@ -47,9 +47,9 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             membership = models.CloudProjectMembership.objects.get(project=self.project, cloud=self.cloud)
             mocked_task.assert_called_with(membership.pk)
-            # duplicate call should result in 302 code
+            # duplicate call should result in 400 code
             response = self.client.post(url, data)
-            self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_sync_openstack_settings(self):
         nc_settings = {'OPENSTACK_CREDENTIALS': ({'auth_url': self.cloud.auth_url,
@@ -124,7 +124,9 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
 
         # has defined a cloud and connected cloud to a project
         self.cloud = factories.CloudFactory(customer=self.customer)
-        factories.CloudProjectMembershipFactory(project=self.connected_project, cloud=self.cloud)
+        self.membership = factories.CloudProjectMembershipFactory(project=self.connected_project,
+                                                                  cloud=self.cloud,
+                                                                  state=SynchronizationStates.IN_SYNC)
 
         # the customer also has another project with users but without a permission link
         self.not_connected_project = structure_factories.ProjectFactory(customer=self.customer)
@@ -177,11 +179,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         user = self.users['manager']
         self.client.force_authenticate(user=user)
 
-        project = self.connected_project
-        cloud = self.cloud
-        membership = factories.CloudProjectMembershipFactory(project=project, cloud=cloud)
-
-        url = factories.CloudProjectMembershipFactory.get_url(membership)
+        url = factories.CloudProjectMembershipFactory.get_url(self.membership)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -189,25 +187,14 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         user = self.users['group_manager']
         self.client.force_authenticate(user=user)
 
-        project = self.connected_project
-        cloud = self.cloud
-        membership = factories.CloudProjectMembershipFactory(
-            state=SynchronizationStates.IN_SYNC, project=project, cloud=cloud)
-
-        url = factories.CloudProjectMembershipFactory.get_url(membership)
+        url = factories.CloudProjectMembershipFactory.get_url(self.membership)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_non_staff_user_cannot_request_cloud_project_link_quota_update(self):
         for user in self.users.values():
             self.client.force_authenticate(user=user)
-
-            project = self.connected_project
-            cloud = self.cloud
-            membership = factories.CloudProjectMembershipFactory(
-                state=SynchronizationStates.IN_SYNC, project=project, cloud=cloud)
-
-            url = factories.CloudProjectMembershipFactory.get_url(membership, action='set_quotas')
+            url = factories.CloudProjectMembershipFactory.get_url(self.membership, action='set_quotas')
             response = self.client.post(url)
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -215,12 +202,7 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         user = structure_factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=user)
 
-        project = self.connected_project
-        cloud = self.cloud
-        membership = factories.CloudProjectMembershipFactory(
-            state=SynchronizationStates.IN_SYNC, project=project, cloud=cloud)
-
-        url = factories.CloudProjectMembershipFactory.get_url(membership, action='set_quotas')
+        url = factories.CloudProjectMembershipFactory.get_url(self.membership, action='set_quotas')
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
 
@@ -228,14 +210,11 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         user = self.users['group_manager']
         self.client.force_authenticate(user=user)
 
-        project = self.connected_project
-        cloud = self.cloud
-
         for state in SynchronizationStates.UNSTABLE_STATES:
-            membership = factories.CloudProjectMembershipFactory(
-                state=state, project=project, cloud=cloud)
+            self.membership.state = state
+            self.membership.save()
 
-            url = factories.CloudProjectMembershipFactory.get_url(membership)
+            url = factories.CloudProjectMembershipFactory.get_url(self.membership)
             response = self.client.delete(url)
             self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
