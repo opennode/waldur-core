@@ -153,4 +153,5 @@ NODECONDUCTOR['ELASTICSEARCH'] = {
 NODECONDUCTOR['JIRA'] = {
     'server': 'https://jira.example.com',
     'auth': ('username', 'password'),
+    'project': 'NC',
 }
