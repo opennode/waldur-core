@@ -1,6 +1,6 @@
 from rest_framework import viewsets, mixins, status, response
 
-from nodeconductor.jira.client import jira, JiraClientError
+from nodeconductor.jira.client import JiraClient, JiraClientError
 from nodeconductor.jira.serializers import IssueSerializer, CommentSerializer
 
 
@@ -9,10 +9,10 @@ class IssueViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin,
     serializer_class = IssueSerializer
 
     def get_queryset(self):
-        return jira.issues.list_by_user(self.request.user.username)
+        return JiraClient().issues.list_by_user(self.request.user.username)
 
     def get_object(self):
-        return jira.issues.get_by_user(self.request.user.username, self.kwargs['pk'])
+        return JiraClient().issues.get_by_user(self.request.user.username, self.kwargs['pk'])
 
     def perform_create(self, serializer):
         try:
@@ -27,7 +27,7 @@ class CommentViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.Ge
     serializer_class = CommentSerializer
 
     def get_queryset(self):
-        return jira.comments.list(self.kwargs['pk'])
+        return JiraClient().comments.list(self.kwargs['pk'])
 
     def perform_create(self, serializer):
         try:

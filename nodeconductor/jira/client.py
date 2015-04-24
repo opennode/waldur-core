@@ -151,7 +151,3 @@ class JiraClient(object):
         self.users = self.User(self)
         self.issues = self.Issue(self)
         self.comments = self.Comment(self)
-
-
-# Create JIRA client here since we have common credentials defined in settings
-jira = JiraClient()

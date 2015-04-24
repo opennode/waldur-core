@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from nodeconductor.jira.client import jira
+from nodeconductor.jira.client import JiraClient
 
 
 class UserSerializer(serializers.Serializer):
@@ -22,7 +22,7 @@ class IssueSerializer(serializers.Serializer):
         return super(IssueSerializer, self).save()
 
     def create(self, validated_data):
-        return jira.issues.create(
+        return JiraClient().issues.create(
             validated_data['summary'],
             validated_data['description'],
             reporter=self.reporter)
@@ -46,4 +46,4 @@ class CommentSerializer(serializers.Serializer):
         return super(CommentSerializer, self).save()
 
     def create(self, validated_data):
-        return jira.comments.create(self.issue, validated_data['body'])
+        return JiraClient().comments.create(self.issue, validated_data['body'])
