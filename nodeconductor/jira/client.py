@@ -1,7 +1,9 @@
 from __future__ import unicode_literals
 
 import re
+import random
 import logging
+import datetime
 
 from jira import JIRA, JIRAError
 
@@ -9,6 +11,7 @@ from django.conf import settings
 from django.utils import six
 
 
+now = lambda: datetime.datetime.now() - datetime.timedelta(minutes=random.randint(0, 60))
 logger = logging.getLogger(__name__)
 
 
@@ -159,7 +162,154 @@ class JiraClient(object):
             if 'verify' in base_config:
                 verify_ssl = base_config['verify']
 
-        self.jira = JIRA({'server': server, 'verify': verify_ssl}, basic_auth=auth, validate=False)
+        if settings.NODECONDUCTOR.get('JIRA_DUMMY'):
+            logger.warn(
+                "Dummy client for JIRA is used, "
+                "set JIRA_DUMMY to False to disable dummy client")
+            self.jira = JiraDummyClient()
+        else:
+            self.jira = JIRA(
+                {'server': server, 'verify': verify_ssl},
+                basic_auth=auth, validate=False)
+
         self.users = self.User(self)
         self.issues = self.Issue(self)
         self.comments = self.Comment(self)
+
+
+class JiraDummyClient(object):
+    """ Dummy JIRA client """
+
+    class DataSet(object):
+        USERS = (
+            {'key': 'alice', 'displayName': 'Alice', 'emailAddress': 'alice@example.com'},
+            {'key': 'bob', 'displayName': 'Bob', 'emailAddress': 'bob@example.com'},
+        )
+
+        ISSUES = (
+            {
+                'key': 'TST-1',
+                'fields': {'summary': 'Bake a cake', 'description': 'Angel food please'},
+                'created': now(),
+            },
+            {
+                'key': 'TST-2',
+                'fields': {'summary': 'Pet a cat', 'assignee': 'bob'},
+                'created': now(),
+            },
+            {
+                'key': 'TST-3',
+                'fields': {
+                    'summary': 'Take a nap',
+                    'comments': [
+                        {'author': 'bob', 'body': 'Just a reminder -- this is a high priority task.', 'created': now()},
+                        {'author': 'alice', 'body': 'sweet dreams ^_^', 'created': now()},
+                    ],
+                },
+                'created': now(),
+            },
+        )
+
+    class Resource(object):
+        def __init__(self, client, **kwargs):
+            self._client = client
+            self.__dict__.update(kwargs)
+
+        def __repr__(self):
+            reprkeys = sorted(k for k in self.__dict__.keys())
+            info = ", ".join("%s='%s'" % (k, getattr(self, k)) for k in reprkeys if not k.startswith('_'))
+            return "<JIRA {}: {}>".format(self.__class__.__name__, info)
+
+    class ResultSet(list):
+        total = 0
+
+        def __getslice__(self, start, stop):
+            data = self.__class__(list.__getslice__(self, start, stop))
+            data.total = len(self)
+            return data
+
+    class Issue(Resource):
+        def update(self, reporter=()):
+            self.fields.reporter = self._client.user(reporter['name'])
+
+    class Comment(Resource):
+        pass
+
+    class User(Resource):
+        pass
+
+    def __init__(self):
+        users = {data['key']: self.User(self, **data) for data in self.DataSet.USERS}
+        self._current_user = users.get('alice')
+        self._users = users.values()
+        self._issues = []
+        for data in self.DataSet.ISSUES:
+            issue = self.Issue(self, **data)
+
+            comments = []
+            comments_data = data['fields'].get('comments', [])
+            for data in comments_data:
+                comment = self.Comment(self, **data)
+                comment.author = users[data.get('author')]
+                comments.append(comment)
+
+            issue.fields = self.Resource(self, **issue.fields)
+            issue.fields.comments = comments
+            issue.fields.reporter = self._current_user
+            if hasattr(issue.fields, 'assignee'):
+                issue.fields.assignee = users.get(issue.fields.assignee)
+
+            self._issues.append(issue)
+
+    def current_user(self):
+        return self.current_user.emailAddress
+
+    def user(self, user_key):
+        return self._current_user
+
+    def issue(self, issue_key):
+        for issue in self._issues:
+            if issue.key == issue_key:
+                return issue
+        raise JIRAError("Issue %s not found" % issue_key)
+
+    def assign_issue(self, issue, user_key):
+        issue.assignee = self.user(user_key)
+
+    def create_issue(self, **kwargs):
+        issue = self.Issue(
+            self,
+            key='TST_{}'.format(len(self._issues) + 1),
+            created=now(),
+            fields=kwargs)
+
+        self._issues.append(issue)
+        return issue
+
+    def search_issues(self, query, startAt=0, maxResults=50, **kwargs):
+        term = None
+        for param in query.split(' AND '):
+            if param.startswith('text'):
+                term = param.replace('text ~ ', '').strip('"')
+        if term:
+            results = []
+            for issue in self._issues:
+                if term in getattr(issue.fields, 'summary', '') + getattr(issue.fields, 'description', ''):
+                    results.append(issue)
+                    continue
+                for comment in issue.fields.comments:
+                    if term in comment.body:
+                        results.append(issue)
+                        break
+        else:
+            results = self._issues
+
+        return self.ResultSet(results)[startAt:startAt + maxResults]
+
+    def comments(self, issue_key):
+        return self.issue(issue_key).fields.comments
+
+    def add_comment(self, issue_key, body):
+        comment = self.Comment(self, author=self._current_user, created=now, body=body)
+        self.issue(issue_key).fields.comments.append(comment)
+        return comment

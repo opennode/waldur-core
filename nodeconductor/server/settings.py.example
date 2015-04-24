@@ -155,3 +155,4 @@ NODECONDUCTOR['JIRA'] = {
     'auth': ('username', 'password'),
     'project': 'NC',
 }
+NODECONDUCTOR['JIRA_DUMMY'] = True
