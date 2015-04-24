@@ -2,11 +2,13 @@ from rest_framework import viewsets, mixins, status, response, exceptions
 
 from nodeconductor.jira.client import JiraClient, JiraClientError
 from nodeconductor.jira.serializers import IssueSerializer, CommentSerializer
+from nodeconductor.jira.filters import JiraSearchFilter
 
 
 class IssueViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin,
                    mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = IssueSerializer
+    filter_backends = (JiraSearchFilter,)
 
     def get_queryset(self):
         return JiraClient().issues.list_by_user(self.request.user.username)

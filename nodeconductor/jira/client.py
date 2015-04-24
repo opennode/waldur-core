@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import re
 import logging
 
 from jira import JIRA, JIRAError
@@ -31,7 +32,15 @@ class JiraClient(object):
         class IssueQuerySet(object):
             """ Issues queryset acceptable by django paginator """
 
-            def fetch_items(self, offset=0, limit=50):
+            def filter(self, term):
+                if term:
+                    escaped_term = re.sub(r'([\^~*?\\:\(\)\[\]\{\}|!#&"+-])', r'\\\\\1', term)
+                    self.query_string = self.base_query_string + ' AND text ~ "%s"' % escaped_term
+                return self
+
+            def _fetch_items(self, offset=0, limit=1):
+                # Default limit is 1 because this extra query required
+                # only to determine the total number of items
                 try:
                     self.items = self.query_func(
                         self.query_string,
@@ -46,17 +55,20 @@ class JiraClient(object):
             def __init__(self, jira, query_string, fields=None):
                 self.fields = fields
                 self.query_func = jira.search_issues
-                self.query_string = query_string
-                self.fetch_items()
+                self.query_string = self.base_query_string = query_string
 
             def __len__(self):
+                if not hasattr(self, 'items'):
+                    self._fetch_items()
                 return self.items.total
 
             def __iter__(self):
+                if not hasattr(self, 'items'):
+                    self._fetch_items()
                 return self.items
 
             def __getitem__(self, val):
-                self.fetch_items(offset=val.start, limit=val.stop - val.start)
+                self._fetch_items(offset=val.start, limit=val.stop - val.start)
                 return self.items
 
         def create(self, summary, description='', reporter=None, assignee=None):
