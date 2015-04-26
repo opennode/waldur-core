@@ -1,4 +1,4 @@
-from rest_framework import status, test
+from rest_framework import status, test, settings
 
 from nodeconductor.events.tests import factories
 # XXX: this dependency exists because this is not real unit-test.
@@ -78,7 +78,8 @@ class EventsListTest(test.APITransactionTestCase):
         event2 = factories.EventFactory(user_uuid=self.user.uuid.hex, message='xxx_message2_xxx')
 
         self.client.force_authenticate(user=self.user)
-        response = self.client.get(factories.EventFactory.get_list_url(), data={'search_text': 'message1'})
+        response = self.client.get(
+            factories.EventFactory.get_list_url(), data={settings.api_settings.SEARCH_PARAM: 'message1'})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn(event1.fields, response.data)
