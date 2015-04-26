@@ -785,7 +785,7 @@ class OpenStackBackend(OpenStackClient):
             backend_floating_ips = {
                 ip['id']: ip
                 for ip in self.get_floating_ips(membership.tenant_id, neutron)
-                if ip.get('floating_ip_address')
+                if ip.get('floating_ip_address') and ip.get('status')
             }
         except neutron_exceptions.ClientException as e:
             logger.exception('Failed to get a list of floating IPs')
