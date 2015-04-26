@@ -10,7 +10,7 @@ from django.core.management.base import BaseCommand
 
 from django.utils import timezone
 
-from nodeconductor.core.models import User, SshPublicKey
+from nodeconductor.core.models import User, SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.models import (
     CloudProjectMembership, Template, Instance, OpenStackSettings)
 from nodeconductor.structure.models import *
@@ -116,7 +116,7 @@ Arguments:
                     'clouds': {
                         'Stratus': {
                             'flavors': {
-                                'm1.tiny': {'cores': 1, 'ram': 512, 'disk': 1024},
+                                'm1.tiny': {'cores': 1, 'ram': 512, 'disk': 1024, 'backend_id': 1},
                             },
                             'templates': {
                                 'CentOS 7 64-bit': {'os': 'CentOS 7'},
@@ -148,7 +148,7 @@ Arguments:
                     'clouds': {
                         'Cumulus': {
                             'flavors': {
-                                'm1.medium': {'cores': 2, 'ram': 4096, 'disk': 10 * 1024},
+                                'm1.medium': {'cores': 2, 'ram': 4096, 'disk': 10 * 1024, 'backend_id': 2},
                             },
                             'templates': {
                                 'Windows 3.11 jWxL': {'os': 'Windows 3.11'},
@@ -236,8 +236,13 @@ Arguments:
 
             for cloud_name, cloud_params in customer_params['clouds'].items():
                 self.stdout.write('Creating cloud account "%s Cloud" for customer "%s"...' % (cloud_name, customer_name))
-                customer_params['clouds'][cloud_name], was_created = customer.clouds.get_or_create(customer=customer,
-                                                                                                   name=cloud_name)
+                customer_params['clouds'][cloud_name], was_created = customer.clouds.get_or_create(
+                    customer=customer,
+                    name=cloud_name,
+                    auth_url="http://keystone.example.com:5000/v2.0",
+                    dummy=True,
+                    state=SynchronizationStates.IN_SYNC
+                )
                 cloud = customer_params['clouds'][cloud_name]
                 self.stdout.write('"%s Cloud" account %s.' % (cloud_name, "created" if was_created else "already exists"))
 
