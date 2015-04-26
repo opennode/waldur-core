@@ -1,4 +1,4 @@
-from rest_framework import generics, response
+from rest_framework import generics, response, settings
 
 from nodeconductor.events import elasticsearch_client
 
@@ -6,9 +6,10 @@ from nodeconductor.events import elasticsearch_client
 class EventListView(generics.GenericAPIView):
 
     def list(self, request, *args, **kwargs):
-        order_by = request.GET.get('o', '-@timestamp')
-        event_types = request.GET.getlist('event_type')
-        search_text = request.GET.get('search_text')
+        order_by = request.query_params.get('o', '-@timestamp')
+        event_types = request.query_params.getlist('event_type')
+        search_param = settings.api_settings.SEARCH_PARAM
+        search_text = request.query_params.get(search_param)
         elasticsearch_list = elasticsearch_client.ElasticsearchResultList(
             user=request.user, sort=order_by, event_types=event_types, search_text=search_text)
 
