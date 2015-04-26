@@ -31,6 +31,7 @@ Field filters:
 Sorting can be done by the following fields, specifying field name as a parameter to **?o=<field_name>**. To get a
 descending sorting prefix field name with a **-**.
 
+- ?o=created - sort by project creation date
 - ?o=name - sort by project name
 - ?o=customer_name - sort by customer name
 - ?o=customer_abbreviation - sort by customer abbreviation
