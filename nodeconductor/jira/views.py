@@ -33,7 +33,10 @@ class CommentViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.Ge
     serializer_class = CommentSerializer
 
     def get_queryset(self):
-        return JiraClient().comments.list(self.kwargs['pk'])
+        try:
+            return JiraClient().comments.list(self.kwargs['pk'])
+        except JiraClientError as e:
+            raise exceptions.NotFound(e)
 
     def perform_create(self, serializer):
         try:

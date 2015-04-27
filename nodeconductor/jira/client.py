@@ -41,9 +41,12 @@ class JiraClient(object):
                     self.query_string = self.base_query_string + ' AND text ~ "%s"' % escaped_term
                 return self
 
-            def _fetch_items(self, offset=0, limit=1):
+            def _fetch_items(self, offset=0, limit=1, force=False):
                 # Default limit is 1 because this extra query required
                 # only to determine the total number of items
+                if hasattr(self, 'items') and not force:
+                    return self.items
+
                 try:
                     self.items = self.query_func(
                         self.query_string,
@@ -55,24 +58,21 @@ class JiraClient(object):
                         'Failed to perform issues search with query "%s"', self.query_string)
                     six.reraise(JiraClientError, e)
 
+                return self.items
+
             def __init__(self, jira, query_string, fields=None):
                 self.fields = fields
                 self.query_func = jira.search_issues
                 self.query_string = self.base_query_string = query_string
 
             def __len__(self):
-                if not hasattr(self, 'items'):
-                    self._fetch_items()
-                return self.items.total
+                return self._fetch_items().total
 
             def __iter__(self):
-                if not hasattr(self, 'items'):
-                    self._fetch_items()
-                return self.items
+                return self._fetch_items()
 
             def __getitem__(self, val):
-                self._fetch_items(offset=val.start, limit=val.stop - val.start)
-                return self.items
+                return self._fetch_items(offset=val.start, limit=val.stop - val.start, force=True)
 
         def create(self, summary, description='', reporter=None, assignee=None):
             # Validate reporter & assignee before actual issue creation
@@ -122,7 +122,12 @@ class JiraClient(object):
         """ JIRA issue comments resource """
 
         def list(self, issue_key):
-            return self.client.jira.comments(issue_key)
+            try:
+                return self.client.jira.comments(issue_key)
+            except JIRAError as e:
+                logger.exception(
+                    'Failed to perform comments search for issue %s', issue_key)
+                six.reraise(JiraClientError, e)
 
         def create(self, issue_key, comment):
             return self.client.jira.add_comment(issue_key, comment)
@@ -136,14 +141,20 @@ class JiraClient(object):
             except JIRAError:
                 raise JiraClientError("Unknown JIRA user %s" % username)
 
-    def __init__(self, server=None, auth=None):
+    def __init__(self):
         self.core_project = None
-        verify_ssl = True
 
-        if not server:
+        if settings.NODECONDUCTOR.get('JIRA_DUMMY'):
+            logger.warn(
+                "Dummy client for JIRA is used, "
+                "set JIRA_DUMMY to False to disable dummy client")
+            self.jira = JiraDummyBackend()
+
+        else:
             try:
                 base_config = settings.NODECONDUCTOR['JIRA']
                 server = base_config['server']
+                auth = base_config['auth']
             except (KeyError, AttributeError):
                 raise JiraClientError(
                     "Missed JIRA server. It must be supplied explicitly or defined "
@@ -156,18 +167,7 @@ class JiraClient(object):
                     "Missed JIRA project key. Please define it as "
                     "settings.NODECONDUCTOR.JIRA['project']")
 
-            if not auth:
-                auth = base_config.get('auth')
-
-            if 'verify' in base_config:
-                verify_ssl = base_config['verify']
-
-        if settings.NODECONDUCTOR.get('JIRA_DUMMY'):
-            logger.warn(
-                "Dummy client for JIRA is used, "
-                "set JIRA_DUMMY to False to disable dummy client")
-            self.jira = JiraDummyClient()
-        else:
+            verify_ssl = base_config['verify'] if 'verify' in base_config else True
             self.jira = JIRA(
                 {'server': server, 'verify': verify_ssl},
                 basic_auth=auth, validate=False)
@@ -177,8 +177,8 @@ class JiraClient(object):
         self.comments = self.Comment(self)
 
 
-class JiraDummyClient(object):
-    """ Dummy JIRA client """
+class JiraDummyBackend(object):
+    """ Dummy JIRA API client """
 
     class DataSet(object):
         USERS = (
@@ -194,13 +194,14 @@ class JiraDummyClient(object):
             },
             {
                 'key': 'TST-2',
-                'fields': {'summary': 'Pet a cat', 'assignee': 'bob'},
+                'fields': {'summary': 'Pet a cat', 'description': None, 'assignee': 'bob'},
                 'created': now(),
             },
             {
                 'key': 'TST-3',
                 'fields': {
                     'summary': 'Take a nap',
+                    'description': None,
                     'comments': [
                         {'author': 'bob', 'body': 'Just a reminder -- this is a high priority task.', 'created': now()},
                         {'author': 'alice', 'body': 'sweet dreams ^_^', 'created': now()},
@@ -209,6 +210,14 @@ class JiraDummyClient(object):
                 'created': now(),
             },
         )
+
+    class ResultSet(list):
+        total = 0
+
+        def __getslice__(self, start, stop):
+            data = self.__class__(list.__getslice__(self, start, stop))
+            data.total = len(self)
+            return data
 
     class Resource(object):
         def __init__(self, client, **kwargs):
@@ -219,14 +228,6 @@ class JiraDummyClient(object):
             reprkeys = sorted(k for k in self.__dict__.keys())
             info = ", ".join("%s='%s'" % (k, getattr(self, k)) for k in reprkeys if not k.startswith('_'))
             return "<JIRA {}: {}>".format(self.__class__.__name__, info)
-
-    class ResultSet(list):
-        total = 0
-
-        def __getslice__(self, start, stop):
-            data = self.__class__(list.__getslice__(self, start, stop))
-            data.total = len(self)
-            return data
 
     class Issue(Resource):
         def update(self, reporter=()):
@@ -239,7 +240,7 @@ class JiraDummyClient(object):
         pass
 
     def __init__(self):
-        users = {data['key']: self.User(self, **data) for data in self.DataSet.USERS}
+        users = {data['key']: self.User(self, name=data['key'], **data) for data in self.DataSet.USERS}
         self._current_user = users.get('alice')
         self._users = users.values()
         self._issues = []
@@ -262,26 +263,30 @@ class JiraDummyClient(object):
             self._issues.append(issue)
 
     def current_user(self):
-        return self.current_user.emailAddress
+        return self._current_user.emailAddress
 
     def user(self, user_key):
-        return self._current_user
+        try:
+            return next(u for u in self._users if u.key == user_key)
+        except StopIteration:
+            return self._current_user
 
     def issue(self, issue_key):
-        for issue in self._issues:
-            if issue.key == issue_key:
-                return issue
-        raise JIRAError("Issue %s not found" % issue_key)
+        try:
+            return next(i for i in self._issues if i.key == issue_key)
+        except StopIteration:
+            raise JIRAError("Issue %s not found" % issue_key)
 
     def assign_issue(self, issue, user_key):
         issue.assignee = self.user(user_key)
 
     def create_issue(self, **kwargs):
+        kwargs['reporter'] = 'admin'
         issue = self.Issue(
             self,
-            key='TST_{}'.format(len(self._issues) + 1),
-            created=now(),
-            fields=kwargs)
+            key='TST-{}'.format(len(self._issues) + 1),
+            created=datetime.datetime.now(),
+            fields=self.Resource(self, **kwargs))
 
         self._issues.append(issue)
         return issue
@@ -290,15 +295,18 @@ class JiraDummyClient(object):
         term = None
         for param in query.split(' AND '):
             if param.startswith('text'):
-                term = param.replace('text ~ ', '').strip('"')
+                term = param.replace('text ~ ', '').replace(r'\\', '').strip('"').lower()
         if term:
             results = []
             for issue in self._issues:
-                if term in getattr(issue.fields, 'summary', '') + getattr(issue.fields, 'description', ''):
+                text = ' '.join([
+                    getattr(issue.fields, field) or ''
+                    for field in ('summary', 'description')])
+                if term in text.lower():
                     results.append(issue)
                     continue
                 for comment in issue.fields.comments:
-                    if term in comment.body:
+                    if term in comment.body.lower():
                         results.append(issue)
                         break
         else:
@@ -310,6 +318,7 @@ class JiraDummyClient(object):
         return self.issue(issue_key).fields.comments
 
     def add_comment(self, issue_key, body):
-        comment = self.Comment(self, author=self._current_user, created=now, body=body)
+        comment = self.Comment(
+            self, author=self._current_user, created=datetime.datetime.now(), body=body)
         self.issue(issue_key).fields.comments.append(comment)
         return comment
