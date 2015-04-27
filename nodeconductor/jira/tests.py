@@ -13,8 +13,11 @@ class JiraTest(test.APITransactionTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory()
 
-    def get_issues_url(cls):
-        return 'http://testserver' + reverse('issue-list')
+    def get_issues_url(cls, key=None):
+        if key:
+            return 'http://testserver' + reverse('issue-detail', kwargs={'pk': key})
+        else:
+            return 'http://testserver' + reverse('issue-list')
 
     def get_comments_url(cls, key):
         return 'http://testserver' + reverse('issue-comments-list', kwargs={'pk': key})
@@ -24,7 +27,7 @@ class JiraTest(test.APITransactionTestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(self.get_issues_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertItemsEqual(['TST-1', 'TST-2', 'TST-3'], [issue.get('key') for issue in response.data])
+        self.assertGreaterEqual(len(response.data), 3)
 
     @override_settings(NODECONDUCTOR={'JIRA_DUMMY': True})
     def test_search_issues(self):
@@ -43,18 +46,28 @@ class JiraTest(test.APITransactionTestCase):
 
         response = self.client.post(self.get_issues_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual('TST-4', response.data['key'])
+        key = response.data['key']
+
+        response = self.client.get(self.get_issues_url(key), data=data)
+        self.assertEqual(response.data['summary'], data['summary'])
 
     @override_settings(NODECONDUCTOR={'JIRA_DUMMY': True})
     def test_list_comments(self):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(self.get_comments_url('TST-3'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        self.assertGreaterEqual(len(response.data), 2)
 
     @override_settings(NODECONDUCTOR={'JIRA_DUMMY': True})
     def test_create_comments(self):
         self.client.force_authenticate(user=self.user)
-        response = self.client.post(self.get_comments_url('TST-1'), data={'body': 'hi there'})
+
+        comment = 'hi there'
+        url = self.get_comments_url('TST-1')
+
+        response = self.client.post(url, data={'body': comment})
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('Alice', response.data['author']['displayName'])
+
+        response = self.client.get(url)
+        self.assertEqual(response.data[-1]['body'], comment)

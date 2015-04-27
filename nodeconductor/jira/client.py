@@ -4,6 +4,7 @@ import re
 import random
 import logging
 import datetime
+import threading
 
 from jira import JIRA, JIRAError
 
@@ -12,6 +13,7 @@ from django.utils import six
 
 
 now = lambda: datetime.datetime.now() - datetime.timedelta(minutes=random.randint(0, 60))
+DATA = threading.local().jira_data = {}
 logger = logging.getLogger(__name__)
 
 
@@ -220,8 +222,7 @@ class JiraDummyBackend(object):
             return data
 
     class Resource(object):
-        def __init__(self, client, **kwargs):
-            self._client = client
+        def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
 
         def __repr__(self):
@@ -229,38 +230,50 @@ class JiraDummyBackend(object):
             info = ", ".join("%s='%s'" % (k, getattr(self, k)) for k in reprkeys if not k.startswith('_'))
             return "<JIRA {}: {}>".format(self.__class__.__name__, info)
 
-    class Issue(Resource):
+    class PersistentResource(Resource):
+        def __init__(self, **kwargs):
+            super(JiraDummyBackend.PersistentResource, self).__init__(**kwargs)
+            key = "%ss" % self.__class__.__name__.lower()
+            DATA.setdefault(key, set())
+            DATA[key].add(self)
+
+        def __hash__(self):
+            return abs(hash(self.key)) % (10 ** 8)
+
+        def __eq__(self, other):
+            return self.key == other.key
+
+    class Issue(PersistentResource):
         def update(self, reporter=()):
-            self.fields.reporter = self._client.user(reporter['name'])
+            self.fields.reporter = JiraDummyBackend().user(reporter['name'])
 
     class Comment(Resource):
         pass
 
-    class User(Resource):
+    class User(PersistentResource):
         pass
 
     def __init__(self):
-        users = {data['key']: self.User(self, name=data['key'], **data) for data in self.DataSet.USERS}
+        users = {data['key']: self.User(name=data['key'], **data) for data in self.DataSet.USERS}
         self._current_user = users.get('alice')
-        self._users = users.values()
-        self._issues = []
         for data in self.DataSet.ISSUES:
-            issue = self.Issue(self, **data)
+            issue = self.Issue(**data)
 
             comments = []
             comments_data = data['fields'].get('comments', [])
             for data in comments_data:
-                comment = self.Comment(self, **data)
+                comment = self.Comment(**data)
                 comment.author = users[data.get('author')]
                 comments.append(comment)
 
-            issue.fields = self.Resource(self, **issue.fields)
+            issue.fields = self.Resource(**issue.fields)
             issue.fields.comments = comments
             issue.fields.reporter = self._current_user
             if hasattr(issue.fields, 'assignee'):
                 issue.fields.assignee = users.get(issue.fields.assignee)
 
-            self._issues.append(issue)
+        self._users = DATA.get('users', [])
+        self._issues = DATA.get('issues', [])
 
     def current_user(self):
         return self._current_user.emailAddress
@@ -282,13 +295,11 @@ class JiraDummyBackend(object):
 
     def create_issue(self, **kwargs):
         kwargs['reporter'] = 'admin'
+        kwargs['comments'] = []
         issue = self.Issue(
-            self,
             key='TST-{}'.format(len(self._issues) + 1),
             created=datetime.datetime.now(),
-            fields=self.Resource(self, **kwargs))
-
-        self._issues.append(issue)
+            fields=self.Resource(**kwargs))
         return issue
 
     def search_issues(self, query, startAt=0, maxResults=50, **kwargs):
@@ -319,6 +330,6 @@ class JiraDummyBackend(object):
 
     def add_comment(self, issue_key, body):
         comment = self.Comment(
-            self, author=self._current_user, created=datetime.datetime.now(), body=body)
+            author=self._current_user, created=datetime.datetime.now(), body=body)
         self.issue(issue_key).fields.comments.append(comment)
         return comment
