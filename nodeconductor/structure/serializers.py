@@ -106,6 +106,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'description',
             'quotas',
             'resource_quota', 'resource_quota_usage',
+            'created',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
