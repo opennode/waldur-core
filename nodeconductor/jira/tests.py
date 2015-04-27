@@ -20,20 +20,22 @@ class JiraTest(test.APITransactionTestCase):
         return 'http://testserver' + reverse('issue-comments-list', kwargs={'pk': key})
 
     @override_settings(NODECONDUCTOR={'JIRA_DUMMY': True})
-    def test_issues(self):
+    def test_list_issues(self):
         self.client.force_authenticate(user=self.user)
-
-        # List
         response = self.client.get(self.get_issues_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertItemsEqual(['TST-1', 'TST-2', 'TST-3'], [issue.get('key') for issue in response.data])
 
-        # Search
+    @override_settings(NODECONDUCTOR={'JIRA_DUMMY': True})
+    def test_search_issues(self):
+        self.client.force_authenticate(user=self.user)
         response = self.client.get(self.get_issues_url(), data={settings.api_settings.SEARCH_PARAM: '^_^'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual('TST-3', response.data[0]['key'])
 
-        # Create
+    @override_settings(NODECONDUCTOR={'JIRA_DUMMY': True})
+    def test_create_issues(self):
+        self.client.force_authenticate(user=self.user)
         data = {
             'summary': 'Just a test',
             'description': 'nothing more',
@@ -44,16 +46,15 @@ class JiraTest(test.APITransactionTestCase):
         self.assertEqual('TST-4', response.data['key'])
 
     @override_settings(NODECONDUCTOR={'JIRA_DUMMY': True})
-    def test_comments(self):
+    def test_list_comments(self):
         self.client.force_authenticate(user=self.user)
-        comments_url = self.get_comments_url('TST-3')
-
-        # List
-        response = self.client.get(comments_url)
+        response = self.client.get(self.get_comments_url('TST-3'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
 
-        # Create
-        response = self.client.post(comments_url, data={'body': 'hi there'})
+    @override_settings(NODECONDUCTOR={'JIRA_DUMMY': True})
+    def test_create_comments(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.get_comments_url('TST-1'), data={'body': 'hi there'})
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('Alice', response.data['author']['displayName'])
