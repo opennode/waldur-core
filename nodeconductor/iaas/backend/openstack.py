@@ -2232,7 +2232,7 @@ class OpenStackBackend(OpenStackClient):
         logger.debug('About to delete backup %s', backup_id)
 
         if not self._wait_for_backup_status(backup_id, cinder, 'available', 'error'):
-            logger.exception('Timed out waiting backup %s availability. Status:', backup_id, backup.status)
+            logger.exception('Timed out waiting backup %s availability. Status: %s', backup_id, backup.status)
             raise CloudBackendInternalError()
         else:
             cinder.backups.delete(backup_id)
