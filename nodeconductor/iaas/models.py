@@ -176,8 +176,6 @@ class Flavor(core_models.UuidMixin, core_models.NameMixin, models.Model):
 
     def __str__(self):
         return '%s (%s)' % (self.name, self.cloud)
-# Backend image id in Template
-# cf11a09e-7603-4fbd-bdac-03291f21c859
 
 
 @python_2_unicode_compatible
