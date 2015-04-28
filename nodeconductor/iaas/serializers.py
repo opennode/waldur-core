@@ -226,7 +226,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
             'template',
             'project',
             'security_groups', 'flavor', 'ssh_public_key', 'external_ips',
-            'system_volume_size', 'data_volume_size',
+            'system_volume_size', 'data_volume_size', 'user_data',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},

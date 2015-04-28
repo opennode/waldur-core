@@ -175,7 +175,9 @@ class Flavor(core_models.UuidMixin, core_models.NameMixin, models.Model):
     backend_id = models.CharField(max_length=255)
 
     def __str__(self):
-        return self.name
+        return '%s (%s)' % (self.name, self.cloud)
+# Backend image id in Template
+# cf11a09e-7603-4fbd-bdac-03291f21c859
 
 
 @python_2_unicode_compatible
@@ -383,6 +385,8 @@ class Instance(core_models.UuidMixin,
     data_volume_id = models.CharField(max_length=255, blank=True)
     data_volume_size = models.PositiveIntegerField(
         default=DEFAULT_DATA_VOLUME_SIZE, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
+    user_data = models.TextField(
+        blank=True, help_text='Additional data that will be added to instance on provisioning')
 
     # Services specific fields
     agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)

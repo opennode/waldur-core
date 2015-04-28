@@ -1014,6 +1014,8 @@ class OpenStackBackend(OpenStackClient):
             )
             if membership.availability_zone:
                 server_create_parameters['availability_zone'] = membership.availability_zone
+            if instance.user_data:
+                server_create_parameters['userdata'] = instance.user_data
 
             server = nova.servers.create(**server_create_parameters)
 
