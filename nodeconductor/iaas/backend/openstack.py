@@ -1845,13 +1845,17 @@ class OpenStackBackend(OpenStackClient):
         if membership.internal_network_id:
             try:
                 # check if the network actually exists
-                neutron.show_network(membership.internal_network_id)
+                network = neutron.show_network(membership.internal_network_id)
             except neutron_exceptions.NeutronClientException as e:
                 logger.exception('Network with id %s does not exist. Stale data in database?',
                                  membership.internal_network_id)
                 six.reraise(CloudBackendError, e)
             else:
                 logger.info('Network with id %s exists', membership.internal_network_id)
+
+                subnet = network['network']['subnets'][0]
+                self.get_or_create_router(neutron, subnet)
+
             return membership.internal_network_id
 
         network_name = self.create_backend_name()
@@ -1866,7 +1870,6 @@ class OpenStackBackend(OpenStackClient):
         membership.internal_network_id = network_id
         membership.save()
 
-        router_name = 'nc-router'
         subnet_name = '{0}-sn01'.format(network_name)
 
         logger.info('Creating subnet %s', subnet_name)
@@ -1884,8 +1887,13 @@ class OpenStackBackend(OpenStackClient):
             'ip_version': 4,
             'enable_dhcp': True,
         }
-        subnet = neutron.create_subnet({'subnets': [subnet_data]})
+        subnet = neutron.create_subnet({'subnets': [subnet_data]})['subnets'][0]
+        router = self.get_or_create_router(neutron, subnet['id'])
 
+        return membership.internal_network_id
+
+    def get_or_create_router(self, neutron, subnet_id):
+        router_name = 'nc-router'
         logger.info('Find or create router %s', router_name)
         try:
             router = next(r for r in neutron.list_routers()['routers'] if r['name'] == router_name)
@@ -1893,11 +1901,11 @@ class OpenStackBackend(OpenStackClient):
             router = neutron.create_router({'router': {'name': router_name}})['router']
 
         try:
-            neutron.add_interface_router(router['id'], {'subnet_id': subnet['id']})
+            neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
         except neutron_exceptions.NeutronClientException:
             pass
 
-        return membership.internal_network_id
+        return router
 
     def get_hypervisors_statistics(self, nova):
         return nova.hypervisors.statistics()._info
