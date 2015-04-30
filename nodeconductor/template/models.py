@@ -5,6 +5,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from polymorphic import PolymorphicModel
 
 from nodeconductor.core import models as core_models
+from nodeconductor.template import get_template_services
 
 
 @python_2_unicode_compatible
@@ -15,9 +16,17 @@ class Template(core_models.UuidMixin,
     name = models.CharField(max_length=150, unique=True)
     is_active = models.BooleanField(default=False)
 
-    def provision(self):
-        for service in self.services.all():
-            service.provision()
+    def provision(self, options, **kwargs):
+        for service in get_template_services():
+            try:
+                service_options = next(
+                    o for o in options
+                    if o.pop('service_type') == service.service_type)
+            except StopIteration:
+                continue
+            else:
+                service_instance = service.objects.get(template=self)
+                service_instance.provision(service_options, **kwargs)
 
     def __str__(self):
         return self.name
@@ -27,7 +36,7 @@ class Template(core_models.UuidMixin,
 class TemplateService(PolymorphicModel, core_models.NameMixin):
     template = models.ForeignKey(Template, related_name='services')
 
-    def provision(self):
+    def provision(self, options, **kwargs):
         raise NotImplementedError(
             'Implement provision() that would perform provision of a service.')
 
@@ -35,4 +44,4 @@ class TemplateService(PolymorphicModel, core_models.NameMixin):
         return self.name
 
     class Meta(object):
-        unique_together = ('template', 'name')
+        unique_together = ('template', 'name', 'polymorphic_ctype')

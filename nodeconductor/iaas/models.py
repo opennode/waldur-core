@@ -6,7 +6,9 @@ from decimal import Decimal
 from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
+from django.core.urlresolvers import reverse
 from django.db import models
+from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
@@ -14,7 +16,9 @@ from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
+from nodeconductor.core.utils import request_api
 from nodeconductor.template.models import TemplateService
+from nodeconductor.template import TemplateError
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure import models as structure_models
 
@@ -206,14 +210,49 @@ class Image(models.Model):
 
 class IaasTemplateService(TemplateService):
     service = models.ForeignKey(Cloud, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
+    project = models.ForeignKey(structure_models.Project, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
     flavor = models.ForeignKey(Flavor, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
     image = models.ForeignKey(Image, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
-    sla = models.BooleanField(default=False)
-    sla_level = models.DecimalField(max_digits=6, decimal_places=4, default=0, blank=True)
-    backup_schedule = CronScheduleField(max_length=15, null=True, blank=True)
+    sla = models.NullBooleanField(default=False)
+    sla_level = models.DecimalField(max_digits=6, decimal_places=4, default=0, null=True)
+    backup_schedule = CronScheduleField(max_length=15, null=True)
 
-    def provision(self):
-        pass
+    def provision(self, options, request=None):
+        get_uuid_by_url = lambda url: url.split('/')[-2]
+        template_name = "tmpl:{}:{}".format(
+            get_uuid_by_url(options['service']), get_uuid_by_url(options['project']))
+
+        template, _ = Template.objects.update_or_create(
+            name=template_name, defaults=dict(
+                os_type=Template.OsTypes.OTHER,
+                sla_level=options.get('sla_level'),
+                is_active=True))
+        TemplateMapping.objects.update_or_create(
+            template=template, defaults={'backend_image_id': options['image']})
+
+        cloud = Cloud.objects.get(uuid=get_uuid_by_url(options['service']))
+        image, _ = Image.objects.update_or_create(
+            template=template, cloud=cloud, defaults={'backend_id': options['image']})
+
+        options['template'] = request.build_absolute_uri(
+            reverse('iaastemplate-detail', kwargs={'uuid': template.uuid.hex}))
+
+        try:
+            response = request_api(request, 'instance-list', method='POST', data=options)
+        except RuntimeError as e:
+            six.reraise(TemplateError, e)
+
+        if 'backup_schedule' in options:
+            options = dict(
+                schedule=options['backup_schedule'],
+                backup_source=response['url'],
+                retention_time=1,
+                maximal_number_of_backups=2,
+            )
+            try:
+                response = request_api(request, 'backupschedule-list', method='POST', data=options)
+            except RuntimeError as e:
+                six.reraise(TemplateError, e)
 
 
 @python_2_unicode_compatible
