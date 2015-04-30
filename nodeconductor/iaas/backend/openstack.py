@@ -1866,10 +1866,11 @@ class OpenStackBackend(OpenStackClient):
         membership.internal_network_id = network_id
         membership.save()
 
+        router_name = 'nc-router'
         subnet_name = '{0}-sn01'.format(network_name)
 
         logger.info('Creating subnet %s', subnet_name)
-        subnet = {
+        subnet_data = {
             'network_id': membership.internal_network_id,
             'tenant_id': membership.tenant_id,
             'cidr': '192.168.42.0/24',
@@ -1883,7 +1884,19 @@ class OpenStackBackend(OpenStackClient):
             'ip_version': 4,
             'enable_dhcp': True,
         }
-        neutron.create_subnet({'subnets': [subnet]})
+        subnet = neutron.create_subnet({'subnets': [subnet_data]})
+
+        logger.info('Find or create router %s', router_name)
+        try:
+            router = next(r for r in neutron.list_routers()['routers'] if r['name'] == router_name)
+        except StopIteration:
+            router = neutron.create_router({'router': {'name': router_name}})['router']
+
+        try:
+            neutron.add_interface_router(router['id'], {'subnet_id': subnet['id']})
+        except neutron_exceptions.NeutronClientException:
+            pass
+
         return membership.internal_network_id
 
     def get_hypervisors_statistics(self, nova):
