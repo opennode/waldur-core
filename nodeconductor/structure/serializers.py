@@ -277,10 +277,10 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
         fields = (
             'url', 'role',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-            'user', 'user_full_name', 'user_native_name', 'user_username',
+            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
         )
         related_paths = {
-            'user': ('username', 'full_name', 'native_name'),
+            'user': ('username', 'full_name', 'native_name', 'uuid'),
             'group.customerrole.customer': ('name', 'native_name', 'abbreviation')
         }
         extra_kwargs = {
@@ -351,10 +351,10 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
             'url',
             'role',
             'project', 'project_name',
-            'user', 'user_full_name', 'user_native_name', 'user_username',
+            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
         )
         related_paths = {
-            'user': ('username', 'full_name', 'native_name'),
+            'user': ('username', 'full_name', 'native_name', 'uuid'),
             'group.projectrole.project': ('name',)
         }
         extra_kwargs = {
@@ -423,10 +423,10 @@ class ProjectGroupPermissionSerializer(PermissionFieldFilteringMixin,
             'url',
             'role',
             'project_group', 'project_group_name',
-            'user', 'user_full_name', 'user_native_name', 'user_username',
+            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
         )
         related_paths = {
-            'user': ('username', 'full_name', 'native_name'),
+            'user': ('username', 'full_name', 'native_name', 'uuid'),
             'group.projectgrouprole.project_group': ('name',)
         }
         extra_kwargs = {
