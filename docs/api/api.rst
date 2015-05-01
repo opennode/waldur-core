@@ -43,6 +43,11 @@ IP mappings
 
 .. include:: ip_mapping.rst
 
+Jira management
+===============
+
+.. include:: jira.rst
+
 Key management
 ==============
 
