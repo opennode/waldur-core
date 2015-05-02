@@ -1889,17 +1889,17 @@ class OpenStackBackend(OpenStackClient):
             'enable_dhcp': True,
         }
         create_response = neutron.create_subnet({'subnets': [subnet_data]})
-        self.get_or_create_router(neutron, network_name, create_response['subnets'][0]['id'])
+        self.get_or_create_router(neutron, network_name, create_response['subnets'][0]['id'], membership.tenant_id)
 
         return membership.internal_network_id
 
-    def get_or_create_router(self, neutron, network_name, subnet_id):
+    def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id):
         router_name = '{0}-router'.format(network_name)
         logger.info('Find or create router %s', router_name)
         try:
             router = next(r for r in neutron.list_routers()['routers'] if r['name'] == router_name)
         except StopIteration:
-            router = neutron.create_router({'router': {'name': router_name}})['router']
+            router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
 
         try:
             neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
