@@ -315,11 +315,9 @@ class IaasTemplateServiceFactory(factory.DjangoModelFactory):
         model = models.IaasTemplateService
 
     name = factory.Sequence(lambda n: 'My VM %s' % n)
-    template = factory.SubFactory(template_factories.TemplateFactory)
+    base_template = factory.SubFactory(template_factories.TemplateFactory)
 
-    service = factory.SubFactory(CloudFactory)
+    project = factory.SubFactory(structure_factories.ProjectFactory)
     flavor = factory.SubFactory(FlavorFactory)
-    image = factory.SubFactory(ImageFactory)
-    sla = True
-    sla_level = factory.LazyAttribute(lambda o: Decimal('99.9'))
+    template = factory.SubFactory(TemplateFactory)
     backup_schedule = '*/5 * * * *'
