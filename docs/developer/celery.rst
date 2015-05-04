@@ -4,13 +4,14 @@ Celery workflow
 Introduction
 ------------
 
-There are few simple rules in order to use all power of celery and not get lost in dozen of tasks.
-Hence we have two kinds of background tasks within Nodeconductor with slightly different meaning and notation.
+There are few simple rules harnessing the power of celery and not getting lost
+in dozens of tasks. We have two kinds of background tasks within NodeConductor
+with slightly different meaning and notation: high-level and low-level.
 
 High-level tasks
 ^^^^^^^^^^^^^^^^
 
-They are usually represent the main workflow defining a set of subtasks (group or chain)
+They usually represent the main workflow defining a set of subtasks (group or chain)
 and error handling tasks (low-level tasks).
 Must be defined with explicit name as follows:
 
@@ -42,7 +43,7 @@ Low-level tasks
 ^^^^^^^^^^^^^^^
 
 These are ordinary celery tasks which are supposed to be called internally via high-level tasks.
-Huge and long running tasks are meant to be splitted into a few smaller ones according to
+Huge and long running tasks are meant to be split into a few smaller ones according to
 `celery design paterns <http://celery.readthedocs.org/en/latest/userguide/canvas.html>`_
 and this is what low-level tasks for.
 
