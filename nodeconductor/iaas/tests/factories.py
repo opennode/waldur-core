@@ -273,6 +273,15 @@ class InstanceSlaHistoryFactory(factory.DjangoModelFactory):
     value = factory.LazyAttribute(lambda o: Decimal('99.9'))
 
 
+class InstanceSlaHistoryEventsFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.InstanceSlaHistoryEvents
+
+    timestamp = factory.fuzzy.FuzzyInteger(1417928490, 1418043540)
+    instance = factory.SubFactory(InstanceSlaHistoryFactory)
+    state = factory.Iterator(['UP', 'DOWN'])
+
+
 class InstanceLicenseFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.InstanceLicense

@@ -158,3 +158,27 @@ class PermissionsTest(helpers.PermissionsTest):
         if url == _get_service_url(self.other_instance):
             return [self.manager, self.group_manager, self.admin]
         return []
+
+
+class ServiceEventsTest(test.APISimpleTestCase):
+
+    def setUp(self):
+        self.user = structure_factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=self.user)
+        self.instance = factories.InstanceFactory()
+        self.sla_history = factories.InstanceSlaHistoryFactory(instance=self.instance, period='2015-5')
+
+    def test_service_without_events_returns_empty_list(self):
+        response = self.client.get(self._get_service_events_url(self.instance), data={'period': '2015-5'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+
+    def test_service_with_events_returns_events_list(self):
+        event = factories.InstanceSlaHistoryEventsFactory(instance=self.sla_history)
+        response = self.client.get(self._get_service_events_url(self.instance), data={'period': '2015-5'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertItemsEqual([{'timestamp': event.timestamp, 'state': event.state}], response.data)
+
+    # Helper methods
+    def _get_service_events_url(self, service):
+        return 'http://testserver' + reverse('service-detail', kwargs={'uuid': service.uuid}) + 'events/'
