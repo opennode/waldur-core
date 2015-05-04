@@ -2,7 +2,7 @@
 from nodeconductor.template import TemplateServiceStrategy
 from nodeconductor.iaas.models import IaasTemplateService
 from nodeconductor.iaas.template.forms import IaasTemplateServiceAdminForm
-from nodeconductor.iaas.template.serializers import IaasTemplateServiceSerializer, IaasTemplateServiceCreateSerializer
+from nodeconductor.iaas.template.serializers import IaasTemplateServiceSerializer
 
 
 class IaasTemplateServiceStrategy(TemplateServiceStrategy):
@@ -18,7 +18,3 @@ class IaasTemplateServiceStrategy(TemplateServiceStrategy):
     @classmethod
     def get_serializer(cls):
         return IaasTemplateServiceSerializer
-
-    @classmethod
-    def get_create_serializer(cls):
-        return IaasTemplateServiceCreateSerializer

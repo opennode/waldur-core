@@ -25,7 +25,7 @@ class Template(core_models.UuidMixin,
             except StopIteration:
                 continue
             else:
-                service_instance = service.objects.get(template=self)
+                service_instance = service.objects.get(base_template=self)
                 service_instance.provision(service_options, **kwargs)
 
     def __str__(self):
@@ -34,7 +34,7 @@ class Template(core_models.UuidMixin,
 
 @python_2_unicode_compatible
 class TemplateService(PolymorphicModel, core_models.NameMixin):
-    template = models.ForeignKey(Template, related_name='services')
+    base_template = models.ForeignKey(Template, related_name='services')
 
     def provision(self, options, **kwargs):
         raise NotImplementedError(
@@ -44,4 +44,4 @@ class TemplateService(PolymorphicModel, core_models.NameMixin):
         return self.name
 
     class Meta(object):
-        unique_together = ('template', 'name', 'polymorphic_ctype')
+        unique_together = ('base_template', 'name', 'polymorphic_ctype')

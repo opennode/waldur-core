@@ -11,8 +11,13 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RenameField(
+            model_name='templateservice',
+            old_name='template',
+            new_name='base_template',
+        ),
         migrations.AlterUniqueTogether(
             name='templateservice',
-            unique_together=set([('template', 'name', 'polymorphic_ctype')]),
+            unique_together=set([('base_template', 'name', 'polymorphic_ctype')]),
         ),
     ]

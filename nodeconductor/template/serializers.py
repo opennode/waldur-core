@@ -17,6 +17,8 @@ class TemplateServiceSerializer(serializers.ModelSerializer):
         return super(TemplateServiceSerializer, self).to_representation(instance)
 
     def run_validation(self, data):
+        validated_data = super(TemplateServiceSerializer, self).run_validation(data)
+
         services = {service.service_type: service for service in get_template_services()}
         try:
             service_type = data['service_type']
@@ -25,8 +27,8 @@ class TemplateServiceSerializer(serializers.ModelSerializer):
             raise exceptions.ValidationError(
                 {'service_type': "Unsupported service type %s" % data.get('service_type')})
 
-        cur_service = service.objects.get(template=self.context.get('template'))
-        cur_serializer = service._create_serializer(cur_service, context=self._context)
+        cur_service = service.objects.get(base_template=self.context.get('template'))
+        cur_serializer = service._serializer(cur_service, context=self._context)
 
         for field in cur_serializer.fields:
             if hasattr(cur_service, field) and field not in data:
@@ -34,13 +36,11 @@ class TemplateServiceSerializer(serializers.ModelSerializer):
                 if value is not None:
                     data[field] = value
 
-        new_serializer = service._create_serializer(data=data)
-        validated_data = new_serializer.run_validation(data)
         return validated_data
 
     class Meta(object):
         model = TemplateService
-        exclude = ('template',)
+        exclude = ('base_template',)
 
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):

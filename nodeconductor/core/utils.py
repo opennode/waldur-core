@@ -82,10 +82,8 @@ def request_api(request, view_name, method='GET', data=None):
         headers={'Authorization': 'Token %s' % token.key},
         data=data)
 
-    info = json.loads(response.text)
-    try:
-        response.raise_for_status()
-    except:
-        raise RuntimeError(info)
+    result = type('Result', (object,), {})
+    result.data = json.loads(response.text)
+    result.success = response.status_code in (200, 201)
 
-    return info
+    return result

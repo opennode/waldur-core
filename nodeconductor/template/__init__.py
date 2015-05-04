@@ -7,13 +7,14 @@ from django.utils.lru_cache import lru_cache
 default_app_config = 'nodeconductor.template.apps.TemplateConfig'
 
 
-class TemplateError(Exception):
-    pass
+class TemplateProvisionError(Exception):
+    def __init__(self, errors=()):
+        self.errors = errors
 
 
 class TemplateServiceStrategy(object):
-    """ A parent class for the model-specific template strategies.
-    """
+    """ A parent class for the model-specific template strategies. """
+
     @classmethod
     def get_model(cls):
         raise NotImplementedError(
@@ -23,10 +24,6 @@ class TemplateServiceStrategy(object):
     def get_serializer(cls):
         raise NotImplementedError(
             'Implement get_serializer() that would return TemplateService model serializer.')
-
-    @classmethod
-    def get_create_serializer(cls):
-        return cls.get_serializer()
 
     @classmethod
     def get_admin_form(cls):
@@ -42,7 +39,6 @@ def get_template_services():
         service_model = service_cls.get_model()
         setattr(service_model, 'service_type', name)
         setattr(service_model, '_serializer', service_cls.get_serializer())
-        setattr(service_model, '_create_serializer', service_cls.get_create_serializer())
         setattr(service_model, '_admin_form', service_cls.get_admin_form())
         services.append(service_model)
     return services
