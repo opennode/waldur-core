@@ -462,6 +462,8 @@ class TemplateFilter(django_filters.FilterSet):
             'os',
             'os_type',
             'name',
+            'type',
+            'application_type',
         )
 
 
