@@ -1855,7 +1855,7 @@ class OpenStackBackend(OpenStackClient):
 
                 network_name = response['network']['name']
                 subnet_id = response['network']['subnets'][0]
-                self.get_or_create_router(neutron, network_name, subnet_id)
+                self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id)
 
             return membership.internal_network_id
 
