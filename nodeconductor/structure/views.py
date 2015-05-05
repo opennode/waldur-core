@@ -128,10 +128,13 @@ class ProjectFilter(quotas_views.QuotaFilterMixin, django_filters.FilterSet):
             'name',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'description',
+            'created',
         ]
         order_by = [
             'name',
             '-name',
+            'created',
+            '-created',
             'project_groups__name',
             '-project_groups__name',
             'customer__native_name',

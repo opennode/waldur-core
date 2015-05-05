@@ -10,6 +10,7 @@ only see connected instances:
 Filtering of instance list is supported through HTTP query parameters, the following fields are supported:
 
 - ?hostname=<hostname> **deprecated**, use ?name=<name> instead
+- ?customer=<customer uuid>
 - ?customer_name=<customer name>
 - ?customer_native_name=<customer native name>
 - ?customer_abbreviation=<customer abbreviation>

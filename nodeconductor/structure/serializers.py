@@ -106,6 +106,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'description',
             'quotas',
             'resource_quota', 'resource_quota_usage',
+            'created',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -274,12 +275,12 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = User.groups.through
         fields = (
-            'url', 'role',
+            'url', 'pk', 'role',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-            'user', 'user_full_name', 'user_native_name', 'user_username',
+            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
         )
         related_paths = {
-            'user': ('username', 'full_name', 'native_name'),
+            'user': ('username', 'full_name', 'native_name', 'uuid'),
             'group.customerrole.customer': ('name', 'native_name', 'abbreviation')
         }
         extra_kwargs = {
@@ -347,13 +348,13 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = User.groups.through
         fields = (
-            'url',
+            'url', 'pk',
             'role',
             'project', 'project_name',
-            'user', 'user_full_name', 'user_native_name', 'user_username',
+            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
         )
         related_paths = {
-            'user': ('username', 'full_name', 'native_name'),
+            'user': ('username', 'full_name', 'native_name', 'uuid'),
             'group.projectrole.project': ('name',)
         }
         extra_kwargs = {
@@ -419,13 +420,13 @@ class ProjectGroupPermissionSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = User.groups.through
         fields = (
-            'url',
+            'url',  'pk',
             'role',
             'project_group', 'project_group_name',
-            'user', 'user_full_name', 'user_native_name', 'user_username',
+            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
         )
         related_paths = {
-            'user': ('username', 'full_name', 'native_name'),
+            'user': ('username', 'full_name', 'native_name', 'uuid'),
             'group.projectgrouprole.project_group': ('name',)
         }
         extra_kwargs = {
