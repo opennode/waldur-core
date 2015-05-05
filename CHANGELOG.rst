@@ -6,6 +6,13 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.47.0
+--------------
+- Added dummy Jira client for faster development.
+- Usability extensions of API: additional exposed fields and filterings.
+- Support for user_data for OpenStack backend.
+- Added dummy billing API.
+
 Release 0.46.0
 --------------
 - Implemented foreground quotas for customers - support for limiting basic resources.
