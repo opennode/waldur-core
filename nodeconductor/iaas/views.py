@@ -462,6 +462,8 @@ class TemplateFilter(django_filters.FilterSet):
             'os',
             'os_type',
             'name',
+            'type',
+            'application_type',
         )
 
 
@@ -768,7 +770,7 @@ class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
         # TODO: this should use a generic resource model
         history = get_object_or_404(models.InstanceSlaHistory, instance__uuid=service.uuid, period=period)
 
-        history_events = history.events.all().order_by('-timestamp').values('timestamp', 'state')
+        history_events = list(history.events.all().order_by('-timestamp').values('timestamp', 'state'))
 
         serializer = serializers.SlaHistoryEventSerializer(data=history_events,
                                                            many=True)

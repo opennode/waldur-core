@@ -8,6 +8,7 @@ from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core import models as core_models, serializers as core_serializers
+from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.quotas import serializers as quotas_serializers
@@ -87,14 +88,20 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
                                        serializers.HyperlinkedModelSerializer):
 
     quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
+    state = MappedChoiceField(
+        choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
+        choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
+        read_only=True,
+    )
 
     class Meta(object):
         model = models.CloudProjectMembership
         fields = (
             'url',
-            'project', 'project_name',
-            'cloud', 'cloud_name',
+            'project', 'project_name', 'project_uuid',
+            'cloud', 'cloud_name', 'cloud_uuid',
             'quotas',
+            'state',
         )
         view_name = 'cloudproject_membership-detail'
         extra_kwargs = {
@@ -598,6 +605,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'setup_fee',
             'monthly_fee',
             'template_licenses',
+            'type', 'application_type',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -627,11 +635,12 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'url', 'uuid',
             'name', 'description', 'icon_url',
             'os',
-            'is_active',
             'sla_level',
             'setup_fee',
             'monthly_fee',
             'template_licenses',
+            'type', 'application_type',
+            'is_active',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},

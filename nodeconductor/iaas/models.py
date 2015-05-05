@@ -238,6 +238,12 @@ class Template(core_models.UuidMixin,
                                                   MaxValueValidator(Decimal('100000.0'))])
     icon_name = models.CharField(max_length=100, blank=True)
 
+    # fields for categorisation
+    # XXX consider changing to tags
+    type = models.CharField(max_length=100, blank=True, help_text='Template type')
+    application_type = models.CharField(max_length=100, blank=True,
+                                        help_text='Type of the application inside the template (optional)')
+
     def __str__(self):
         return self.name
 

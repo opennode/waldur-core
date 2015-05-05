@@ -652,6 +652,10 @@ class NeutronClient(OpenStackBaseClient):
     VERSION = '2.3.4'
     Exceptions = neutron_exceptions
 
+    class Router(OpenStackResourceList):
+        def create(self, body):
+            return super(NeutronClient.Router, self).create(body['name'], body)
+
     class Network(OpenStackResourceList):
         def create(self, name, tenant_id):
             # Update dummy network instead of creating new one
@@ -694,6 +698,17 @@ class NeutronClient(OpenStackBaseClient):
             network.subnets.append(subnet.id)
             response.append(subnet.to_dict())
         return {'subnets': response}
+
+    def list_routers(self):
+        routers = self._get_resources('Router')
+        return {'routers': [r.to_dict() for r in routers.list()]}
+
+    def create_router(self, body=None):
+        routers = self._get_resources('Router')
+        return {'router': routers.create(body['router']).to_dict()}
+
+    def add_interface_router(self, router, body=None):
+        pass
 
     def list_floatingips(self, retrieve_all=True, **kwargs):
         return {'floatingips': []}

@@ -38,13 +38,14 @@ install_requires = [
     'python-novaclient==2.17.0',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
+    'reportlab>=2.5',
     'requests>=2.6.0',
 ]
 
 
 setup(
     name='nodeconductor',
-    version='0.47.0.dev0',
+    version='0.48.0.dev0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
