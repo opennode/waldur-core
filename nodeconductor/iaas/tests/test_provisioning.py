@@ -674,6 +674,13 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    def test_can_create_instance_without_ssh_public_key(self):
+        data = self.get_valid_data()
+        del data['ssh_public_key']
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     # TODO: Ensure that managers cannot provision instances
     # Negative tests
     def test_cannot_create_instance_with_flavor_not_from_supplied_project(self):

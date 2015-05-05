@@ -134,6 +134,11 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
     )
 
+    customer = django_filters.CharFilter(
+        name='cloud_project_membership__project__customer__uuid',
+        distinct=True,
+    )
+
     customer_name = django_filters.CharFilter(
         name='cloud_project_membership__project__customer__name',
         distinct=True,
@@ -170,6 +175,7 @@ class InstanceFilter(django_filters.FilterSet):
         model = models.Instance
         fields = [
             'name',
+            'customer',
             'customer_name',
             'customer_native_name',
             'customer_abbreviation',
@@ -456,6 +462,8 @@ class TemplateFilter(django_filters.FilterSet):
             'os',
             'os_type',
             'name',
+            'type',
+            'application_type',
         )
 
 
@@ -762,7 +770,7 @@ class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
         # TODO: this should use a generic resource model
         history = get_object_or_404(models.InstanceSlaHistory, instance__uuid=service.uuid, period=period)
 
-        history_events = history.events.all().order_by('-timestamp').values('timestamp', 'state')
+        history_events = list(history.events.all().order_by('-timestamp').values('timestamp', 'state'))
 
         serializer = serializers.SlaHistoryEventSerializer(data=history_events,
                                                            many=True)

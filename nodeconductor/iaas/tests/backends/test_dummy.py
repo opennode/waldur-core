@@ -240,6 +240,12 @@ class OpenStackClientTest(TestCase):
         subnet_id = response['subnets'][0]['id']
         self.assertEqual(response['subnets'][0]['gateway_ip'], '0.0.0.0')
 
+        router = neutron.create_router({'router': {'name': 'nc-router'}})
+        self.assertEqual(router['router']['name'], 'nc-router')
+
+        response = neutron.list_routers()
+        self.assertEqual(response['routers'][0]['name'], 'nc-router')
+
         network = neutron.show_network(network_id)
         self.assertEqual(subnet_id, network['network']['subnets'][0])
 

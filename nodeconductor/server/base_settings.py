@@ -216,4 +216,5 @@ NODECONDUCTOR = {
         },
     ),
     'ELASTICSEARCH_DUMMY': True,
+    'JIRA_DUMMY': True,
 }

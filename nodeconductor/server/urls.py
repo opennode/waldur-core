@@ -10,6 +10,7 @@ import permission
 
 from nodeconductor.core.routers import SortedDefaultRouter as DefaultRouter
 from nodeconductor.backup import urls as backup_urls
+from nodeconductor.billing import urls as billing_urls
 from nodeconductor.iaas import urls as iaas_urls
 from nodeconductor.jira import urls as jira_urls
 from nodeconductor.structure import urls as structure_urls
@@ -24,6 +25,7 @@ router = DefaultRouter()
 iaas_urls.register_in(router)
 structure_urls.register_in(router)
 template_urls.register_in(router)
+billing_urls.register_in(router)
 backup_urls.register_in(router)
 quotas_urls.register_in(router)
 jira_urls.register_in(router)

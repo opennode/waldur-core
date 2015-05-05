@@ -785,7 +785,7 @@ class OpenStackBackend(OpenStackClient):
             backend_floating_ips = {
                 ip['id']: ip
                 for ip in self.get_floating_ips(membership.tenant_id, neutron)
-                if ip.get('floating_ip_address')
+                if ip.get('floating_ip_address') and ip.get('status')
             }
         except neutron_exceptions.ClientException as e:
             logger.exception('Failed to get a list of floating IPs')
@@ -1014,6 +1014,8 @@ class OpenStackBackend(OpenStackClient):
             )
             if membership.availability_zone:
                 server_create_parameters['availability_zone'] = membership.availability_zone
+            if instance.user_data:
+                server_create_parameters['userdata'] = instance.user_data
 
             server = nova.servers.create(**server_create_parameters)
 
@@ -1843,13 +1845,18 @@ class OpenStackBackend(OpenStackClient):
         if membership.internal_network_id:
             try:
                 # check if the network actually exists
-                neutron.show_network(membership.internal_network_id)
+                response = neutron.show_network(membership.internal_network_id)
             except neutron_exceptions.NeutronClientException as e:
                 logger.exception('Network with id %s does not exist. Stale data in database?',
                                  membership.internal_network_id)
                 six.reraise(CloudBackendError, e)
             else:
                 logger.info('Network with id %s exists', membership.internal_network_id)
+
+                network_name = response['network']['name']
+                subnet_id = response['network']['subnets'][0]
+                self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id)
+
             return membership.internal_network_id
 
         network_name = self.create_backend_name()
@@ -1867,7 +1874,7 @@ class OpenStackBackend(OpenStackClient):
         subnet_name = '{0}-sn01'.format(network_name)
 
         logger.info('Creating subnet %s', subnet_name)
-        subnet = {
+        subnet_data = {
             'network_id': membership.internal_network_id,
             'tenant_id': membership.tenant_id,
             'cidr': '192.168.42.0/24',
@@ -1881,8 +1888,23 @@ class OpenStackBackend(OpenStackClient):
             'ip_version': 4,
             'enable_dhcp': True,
         }
-        neutron.create_subnet({'subnets': [subnet]})
+        create_response = neutron.create_subnet({'subnets': [subnet_data]})
+        self.get_or_create_router(neutron, network_name, create_response['subnets'][0]['id'], membership.tenant_id)
+
         return membership.internal_network_id
+
+    def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id):
+        router_name = '{0}-router'.format(network_name)
+        logger.info('Find or create router %s', router_name)
+        try:
+            router = next(r for r in neutron.list_routers()['routers'] if r['name'] == router_name)
+        except StopIteration:
+            router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
+
+        try:
+            neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
+        except neutron_exceptions.NeutronClientException:
+            pass
 
     def get_hypervisors_statistics(self, nova):
         return nova.hypervisors.statistics()._info
@@ -2232,7 +2254,7 @@ class OpenStackBackend(OpenStackClient):
         logger.debug('About to delete backup %s', backup_id)
 
         if not self._wait_for_backup_status(backup_id, cinder, 'available', 'error'):
-            logger.exception('Timed out waiting backup %s availability. Status:', backup_id, backup.status)
+            logger.exception('Timed out waiting backup %s availability. Status: %s', backup_id, backup.status)
             raise CloudBackendInternalError()
         else:
             cinder.backups.delete(backup_id)
