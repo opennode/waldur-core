@@ -252,7 +252,6 @@ class Template(core_models.UuidMixin,
     application_type = models.CharField(max_length=100, blank=True,
                                         help_text='Type of the application inside the template (optional)')
 
-
     def __str__(self):
         return self.name
 

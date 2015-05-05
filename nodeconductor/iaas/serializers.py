@@ -628,11 +628,12 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'url', 'uuid',
             'name', 'description', 'icon_url',
             'os',
-            'is_active',
             'sla_level',
             'setup_fee',
             'monthly_fee',
             'template_licenses',
+            'type', 'application_type',
+            'is_active',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
