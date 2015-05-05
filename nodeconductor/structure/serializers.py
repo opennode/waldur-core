@@ -275,7 +275,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = User.groups.through
         fields = (
-            'url', 'role',
+            'url', 'pk', 'role',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
         )
@@ -348,7 +348,7 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = User.groups.through
         fields = (
-            'url',
+            'url', 'pk',
             'role',
             'project', 'project_name',
             'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
@@ -420,7 +420,7 @@ class ProjectGroupPermissionSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = User.groups.through
         fields = (
-            'url',
+            'url',  'pk',
             'role',
             'project_group', 'project_group_name',
             'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
