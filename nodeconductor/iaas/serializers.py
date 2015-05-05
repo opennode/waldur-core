@@ -92,8 +92,8 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
         model = models.CloudProjectMembership
         fields = (
             'url',
-            'project', 'project_name',
-            'cloud', 'cloud_name',
+            'project', 'project_name', 'project_uuid',
+            'cloud', 'cloud_name', 'cloud_uuid',
             'quotas',
         )
         view_name = 'cloudproject_membership-detail'
