@@ -15,7 +15,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.46.0
+Version: 0.47.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -194,7 +194,10 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
-* Fri Apr 24 2015 Ilja Livenson <juri@opennodecloud.com> - 0.46.0-1.el7
+* Tue May 5 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.47.0-1.el7
+- New upstream release
+
+* Fri Apr 24 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.46.0-1.el7
 - New upstream release
 
 * Sun Apr 12 2015 Juri Hudolejev <juri@opennodecloud.com> - 0.45.3-2.el7
