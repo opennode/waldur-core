@@ -45,6 +45,7 @@ Requires: python-neutronclient = 2.3.4
 Requires: python-novaclient = 1:2.17.0
 Requires: python-django-polymorphic >= 0.6.1
 Requires: python-redis = 2.10.3
+Requires: python-reportlab >= 2.5
 Requires: python-requests = 2.6.0
 Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 = 1.10.1
