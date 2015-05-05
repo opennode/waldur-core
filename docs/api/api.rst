@@ -8,6 +8,11 @@ Backup management
 
 .. include:: backup.rst
 
+Billing
+=======
+
+.. include:: billing.rst
+
 Customer management
 ===================
 

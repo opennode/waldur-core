@@ -1,17 +1,19 @@
+from decimal import Decimal
+
 
 class DummyDataSet(object):
     PRICELIST = dict(
-        core=1000,
-        ram_mb=500,
-        storage_mb=300,
-        license_type=700,
+        core=Decimal('1000'),
+        ram_mb=Decimal('500'),
+        storage_mb=Decimal('300'),
+        license_type=Decimal('700'),
     )
 
     INVOICES = (
         {
             'year': 2015,
             'month': 3,
-            'amount': 10.00,
+            'amount': Decimal('10.00'),
             'customer_uuid': '690c89287ad4480fbc82212f307a0d0e',
             'customer_name': 'Alice',
             'customer_native_name': 'Alice C.',
@@ -20,7 +22,7 @@ class DummyDataSet(object):
         {
             'year': 2015,
             'month': 4,
-            'amount': -3.75,
+            'amount': Decimal('-3.75'),
             'customer_uuid': '690c89287ad4480fbc82212f307a0d0e',
             'customer_name': 'Alice',
             'customer_native_name': 'Alice C.',
@@ -29,7 +31,7 @@ class DummyDataSet(object):
         {
             'year': 2015,
             'month': 4,
-            'amount': 15.00,
+            'amount': Decimal('15.00'),
             'customer_uuid': '5bd9f82e0ccf4c1f9ed6c83dd546bf33',
             'customer_name': 'Bob',
             'customer_native_name': 'Bobby Z.',
