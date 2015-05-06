@@ -1,16 +1,10 @@
 from __future__ import unicode_literals
 
-import logging
-
 from django.forms import model_to_dict
 from django.utils import six
 from rest_framework.authtoken.models import Token
 
-from nodeconductor.core.log import EventLoggerAdapter
-
-
-logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
+from nodeconductor.events.log import event_logger
 
 
 def create_auth_token(sender, instance, created=False, **kwargs):
@@ -34,9 +28,10 @@ def preserve_fields_before_update(sender, instance, **kwargs):
 
 def log_user_save(sender, instance, created=False, **kwargs):
     if created:
-        event_logger.info(
-            'User %s has been created.', instance.username,
-            extra={'affected_user': instance, 'event_type': 'user_creation_succeeded'})
+        event_logger.user.info(
+            'User {affected_user_username} has been created.',
+            event_type='user_creation_succeeded',
+            event_context={'affected_user': instance})
     else:
         old_values = instance._old_values
 
@@ -49,40 +44,47 @@ def log_user_save(sender, instance, created=False, **kwargs):
         )
 
         if password_changed:
-            event_logger.info(
-                'Password has been changed for user %s.', instance.username,
-                extra={'affected_user': instance, 'event_type': 'user_password_updated'})
+            event_logger.user.info(
+                'Password has been changed for user {affected_user_username}.',
+                event_type='user_password_updated',
+                event_context={'affected_user': instance})
 
         if activation_changed:
             if instance.is_active:
-                event_logger.info(
-                    'User %s has been activated.', instance.username,
-                    extra={'affected_user': instance, 'event_type': 'user_activated'})
+                event_logger.user.info(
+                    'User {affected_user_username} has been activated.',
+                    event_type='user_activated',
+                    event_context={'affected_user': instance})
             else:
-                event_logger.info(
-                    'User %s has been deactivated.', instance.username,
-                    extra={'affected_user': instance, 'event_type': 'user_deactivated'})
+                event_logger.user.info(
+                    'User {affected_user_username} has been deactivated.',
+                    event_type='user_deactivated',
+                    event_context={'affected_user': instance})
 
         if user_updated:
-            event_logger.info(
-                'User %s has been updated.', instance.username,
-                extra={'affected_user': instance, 'event_type': 'user_update_succeeded'})
+            event_logger.user.info(
+                'User {affected_user_username} has been updated.',
+                event_type='user_update_succeeded',
+                event_context={'affected_user': instance})
 
 
 def log_user_delete(sender, instance, **kwargs):
-    event_logger.info(
-        'User %s has been deleted.', instance.username,
-        extra={'affected_user': instance, 'event_type': 'user_deletion_succeeded'})
+    event_logger.user.info(
+        'User {affected_user_username} has been deleted.',
+        event_type='user_deletion_succeeded',
+        event_context={'affected_user': instance})
 
 
 def log_ssh_key_save(sender, instance, created=False, **kwargs):
     if created:
-        event_logger.info(
-            'SSH key %s has been created.', instance.name,
-            extra={'ssh_key': instance, 'event_type': 'ssh_key_creation_succeeded'})
+        event_logger.sshkey.info(
+            'SSH key {ssh_key_name} has been created.',
+            event_type='ssh_key_creation_succeeded',
+            event_context={'ssh_key': instance})
 
 
 def log_ssh_key_delete(sender, instance, **kwargs):
-    event_logger.info(
-        'SSH key %s has been deleted.', instance.name,
-        extra={'ssh_key': instance, 'event_type': 'ssh_key_deletion_succeeded'})
+    event_logger.sshkey.info(
+        'SSH key {ssh_key_name} has been deleted.',
+        event_type='ssh_key_deletion_succeeded',
+        event_context={'ssh_key': instance})

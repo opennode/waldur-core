@@ -16,6 +16,9 @@ from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from uuidfield import UUIDField
 
+from nodeconductor.events.log import EventLoggableMixin
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -60,7 +63,7 @@ class UuidMixin(models.Model):
     uuid = UUIDField(auto=True, unique=True)
 
 
-class User(UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
+class User(EventLoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
     username = models.CharField(
         _('username'), max_length=30, unique=True,
         help_text=_('Required. 30 characters or fewer. Letters, numbers and '
@@ -96,6 +99,9 @@ class User(UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
     class Meta(object):
         verbose_name = _('user')
         verbose_name_plural = _('users')
+
+    def get_event_log_fields(self):
+        return ('uuid', 'full_name', 'native_name', self.USERNAME_FIELD)
 
     def email_user(self, subject, message, from_email=None):
         """
@@ -146,7 +152,7 @@ def get_ssh_key_fingerprint(ssh_key):
 
 
 @python_2_unicode_compatible
-class SshPublicKey(UuidMixin, models.Model):
+class SshPublicKey(EventLoggableMixin, UuidMixin, models.Model):
     """
     User public key.
 

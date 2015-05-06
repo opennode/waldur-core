@@ -1,47 +1,58 @@
-from __future__ import absolute_import, unicode_literals
+from nodeconductor.events.log import EventLogger, event_logger
+from nodeconductor.core.models import User, SshPublicKey
+
+
+class AuthEventLogger(EventLogger):
+    user = User
+
+    class Meta:
+        event_types = 'auth_logged_in_with_username', 'auth_logged_in_with_pki', 'auth_logged_out'
+
+
+class UserEventLogger(EventLogger):
+    affected_user = User
+
+    class Meta:
+        event_types = 'user_password_updated', 'user_activated', 'user_deactivated', \
+                      'user_creation_succeeded', 'user_update_succeeded', 'user_deletion_succeeded',
+
+
+class SshPublicKeyEventLogger(EventLogger):
+    ssh_key = SshPublicKey
+
+    class Meta:
+        event_types = 'ssh_key_creation_succeeded', 'ssh_key_deletion_succeeded'
+
+
+event_logger.register('auth', AuthEventLogger)
+event_logger.register('user', UserEventLogger)
+event_logger.register('sshkey', SshPublicKeyEventLogger)
+
+
+
+# Backward compatibility imports and code
+# TODO: remove everything below in flavor of events.log
 
 from datetime import datetime
 import logging
-from logging.handlers import SocketHandler
 import json
 
 from nodeconductor.core.middleware import get_current_user
 
+from nodeconductor.events.log import RequireEvent, RequireNotEvent
+from nodeconductor.events.log import TCPEventHandler as NewTCPEventHandler
+from nodeconductor.events.log import EventLoggerAdapter as NewEventLoggerAdapter
+from nodeconductor.events.log import EventFormatter as NewEventFormatter
 
-class EventLoggerAdapter(logging.LoggerAdapter, object):
-    """
-    LoggerAdapter
-    """
 
-    def __init__(self, logger):
-        super(EventLoggerAdapter, self).__init__(logger, {})
+class EventLoggerAdapter(NewEventLoggerAdapter):
 
     def process(self, msg, kwargs):
-        if 'extra' in kwargs:
-            kwargs['extra']['event'] = True
-        else:
-            kwargs['extra'] = {'event': True}
+        msg, kwargs = super(EventLoggerAdapter, self).process(msg, kwargs)
+        kwargs['extra']['_old_type_event'] = True
         return msg, kwargs
 
 
-class RequireEvent(logging.Filter):
-    """
-    A filter that allows only event records.
-    """
-    def filter(self, record):
-        return getattr(record, 'event', False)
-
-
-class RequireNotEvent(logging.Filter):
-    """
-    A filter that allows only non-event records.
-    """
-    def filter(self, record):
-        return not getattr(record, 'event', False)
-
-
-# FIXME: Move out of core since it contains too much downstream specifics
-# noinspection PyMethodMayBeStatic
 class EventFormatter(logging.Formatter):
 
     def format_timestamp(self, time):
@@ -190,10 +201,8 @@ class EventFormatter(logging.Formatter):
             message["{0}_{1}".format(related_name, name_attr)] = getattr(related, name_attr, '')
 
 
-class TCPEventHandler(SocketHandler, object):
-    def __init__(self, host='localhost', port=5959):
-        super(TCPEventHandler, self).__init__(host, port)
-        self.formatter = EventFormatter()
-
+class TCPEventHandler(NewTCPEventHandler):
     def makePickle(self, record):
-        return self.formatter.format(record) + b'\n'
+        old = getattr(record, '_old_type_event', False)
+        cls = EventFormatter() if old else NewEventFormatter()
+        return cls.format(record) + b'\n'

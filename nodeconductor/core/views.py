@@ -19,12 +19,11 @@ from saml2.client import Saml2Client
 
 from nodeconductor import __version__
 from nodeconductor.core.exceptions import IncorrectStateException
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.serializers import AuthTokenSerializer, Saml2ResponseSerializer
+from nodeconductor.events.log import event_logger
 
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 class ObtainAuthToken(APIView):
@@ -64,11 +63,14 @@ class ObtainAuthToken(APIView):
             )
 
         token, _ = Token.objects.get_or_create(user=user)
-        event_logger.info(
-            "User %s with full name %s authenticated successfully with username and password",
-            user.username, user.full_name,
-            extra={'user': user, 'event_type': 'auth_logged_in_with_username'})
+
         logger.debug('Returning token for successful login of user %s', user)
+        event_logger.auth.info(
+            'User {user_username} with full name {user_full_name} '
+            'authenticated successfully with username and password.',
+            event_type='auth_logged_in_with_username',
+            event_context={'user': user})
+
         return Response({'token': token.key})
 
 
@@ -148,11 +150,14 @@ class Saml2AuthView(APIView):
         post_authenticated.send_robust(sender=user, session_info=session_info)
 
         token, _ = Token.objects.get_or_create(user=user)
-        event_logger.info(
-            "User %s with full name %s authenticated successfully with Omani PKI.",
-            user.username, user.full_name,
-            extra={'user': user, 'event_type': 'auth_logged_in_with_pki'})
+
         logger.info('Authenticated with SAML token. Returning token for successful login of user %s', user)
+        event_logger.auth.info(
+            'User {user_username} with full name {user_full_name} '
+            'authenticated successfully with Omani PKI.',
+            event_type='auth_logged_in_with_pki',
+            event_context={'user': user})
+
         return Response({'token': token.key})
 
 assertion_consumer_service = Saml2AuthView.as_view()
