@@ -64,6 +64,10 @@ class EventLogger(object):
     def get_supported_event_types(self):
         return getattr(self._meta, 'event_types', tuple())
 
+    def get_permitted_objects_uuids(self, user):
+        permitted_objects_uuids = getattr(self._meta, 'permitted_objects_uuids', None)
+        return permitted_objects_uuids(user) if permitted_objects_uuids else {}
+
     def info(self, *args, **kwargs):
         self.process('info', *args, **kwargs)
 
@@ -262,6 +266,15 @@ class EventLoggerRegistry(object):
         if name in self.__dict__:
             raise EventLoggerError("Logger '%s' already registered." % name)
         self.__dict__[name] = logger() if isinstance(logger, type) else logger
+
+    def get_loggers(self):
+        return [l for l in self.__dict__.values() if isinstance(l, EventLogger)]
+
+    def get_permitted_objects_uuids(self, user):
+        permitted_objects_uuids = {}
+        for elogger in self.get_loggers():
+            permitted_objects_uuids.update(elogger.get_permitted_objects_uuids(user))
+        return permitted_objects_uuids
 
 
 # This global object represents the default event logger registry

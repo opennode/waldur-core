@@ -13,6 +13,7 @@ class UserEventLogger(EventLogger):
     affected_user = User
 
     class Meta:
+        permitted_objects_uuids = staticmethod(lambda user: {'user_uuid': [user.uuid.hex]})
         event_types = 'user_password_updated', 'user_activated', 'user_deactivated', \
                       'user_creation_succeeded', 'user_update_succeeded', 'user_deletion_succeeded',
 
