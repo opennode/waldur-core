@@ -26,10 +26,6 @@ def create_zabbix_host_and_service(instance, warn_if_exists=True):
     except Exception as e:
         # task does not have to fail if something is wrong with zabbix
         logger.error('Zabbix host creation flow has broken %s' % e, exc_info=1)
-        event_logger.error(
-            'Zabbix host creation flow has broken %s', e,
-            extra={'instance': instance, 'event_type': 'zabbix_host_creation'}
-        )
 
 
 def delete_zabbix_host_and_service(instance):
