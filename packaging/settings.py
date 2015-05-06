@@ -299,7 +299,7 @@ if config.get('events', 'log_file') != '':
 
 if config.get('events', 'logserver_host') != '':
     LOGGING['handlers']['tcp-event']['host'] = config.get('events', 'logserver_host')
-    LOGGING['handlers']['tcp-event']['port'] = config.get('events', 'logserver_port')
+    LOGGING['handlers']['tcp-event']['port'] = config.getint('events', 'logserver_port')
     LOGGING['loggers']['nodeconductor']['handlers'].append('tcp-event')
 
 if config.getboolean('events', 'syslog'):
