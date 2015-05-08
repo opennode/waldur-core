@@ -18,7 +18,8 @@ class ElasticsearchDummyClient(elasticsearch_client.ElasticsearchClient):
                 'user_full_name': user.full_name,
             }
             for data in DUMMY_EVENTS:
-                data.update(user_data)
+                if data['logger'] != 'nodeconductor.test':
+                    data.update(user_data)
 
         return DUMMY_EVENTS
 
@@ -33,7 +34,8 @@ class ElasticsearchDummyClient(elasticsearch_client.ElasticsearchClient):
                 event_type_condition = True
             # define search text filter condition
             if search_text:
-                search_text_condition = any([search_text in event[field] for field in self.FTS_FIELDS])
+                search_text_condition = any(
+                    [search_text in event[field] for field in self.FTS_FIELDS if field in event])
             else:
                 search_text_condition = True
             # define permitted objects filter condition
