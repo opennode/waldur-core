@@ -8,7 +8,7 @@ import logging
 from django.apps import apps
 from django.utils import six
 
-from nodeconductor.core.middleware import get_current_user
+from nodeconductor.events.middleware import get_current_user
 
 
 logger = logging.getLogger(__name__)
@@ -253,7 +253,7 @@ class RequireNotEvent(logging.Filter):
 class TCPEventHandler(logging.handlers.SocketHandler, object):
 
     def __init__(self, host='localhost', port=5959):
-        super(TCPEventHandler, self).__init__(host, port)
+        super(TCPEventHandler, self).__init__(host, int(port))
         self.formatter = EventFormatter()
 
     def makePickle(self, record):

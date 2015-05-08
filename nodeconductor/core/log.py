@@ -38,7 +38,7 @@ from datetime import datetime
 import logging
 import json
 
-from nodeconductor.core.middleware import get_current_user
+from nodeconductor.events.middleware import get_current_user
 
 from nodeconductor.events.log import RequireEvent, RequireNotEvent
 from nodeconductor.events.log import TCPEventHandler as NewTCPEventHandler
