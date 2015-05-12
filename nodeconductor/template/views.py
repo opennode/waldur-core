@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
-from rest_framework import viewsets, decorators, response, status
+from rest_framework import viewsets, decorators, response, status, exceptions
 
-from nodeconductor.template import models, serializers, TemplateProvisionError
+from nodeconductor.template import models, serializers, get_template_services, TemplateProvisionError
 
 
 class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
@@ -34,14 +34,41 @@ class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
             specific template service create serializer.
         """
         template = self.get_object()
+        services = {service.service_type: service for service in get_template_services()}
+        initdata = request.data or []
+
+        def fill_data_from_req_or_db(data, service_cls):
+            cur_service = service_cls.objects.get(base_template=template)
+            cur_serializer = service_cls._serializer(cur_service, context={'request': request})
+
+            for field in cur_serializer.fields:
+                if hasattr(cur_service, field) and field not in data:
+                    value = cur_serializer.data[field]
+                    if value is not None:
+                        data[field] = value
+
+            return data
+
+        # Inspect services from POST request and fill missed fields from DB if required
+        for data in initdata:
+            service_type = data.get('service_type')
+            if service_type not in services.keys():
+                raise exceptions.ParseError(
+                    "Unsupported service type %s" % data.get('service_type'))
+            else:
+                fill_data_from_req_or_db(data, services[service_type])
+                del services[service_type]
+
+        # Use data from DB for missed services in POST
+        for service_type, service in services.items():
+            initdata.append(fill_data_from_req_or_db({'service_type': service_type}, service))
+
         serializer = serializers.TemplateServiceSerializer(
-            data=request.data, many=True, context={'request': request, 'template': template})
+            data=initdata, many=True, context={'request': request, 'template': template})
 
         if serializer.is_valid():
             try:
-                # Use initial_data instead of validated_data in order to be celery friendly
-                # and/or make internal API calls with same data
-                template.provision(serializer.initial_data, request=request)
+                template.provision(initdata, request=request)
             except TemplateProvisionError as e:
                 return response.Response(
                     {'detail': "Failed to provision template", 'errors': e.errors},

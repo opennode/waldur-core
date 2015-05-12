@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from rest_framework import serializers, exceptions
+from rest_framework import serializers
 
 from nodeconductor.template import get_template_services
 from nodeconductor.template.models import Template, TemplateService
@@ -15,28 +15,6 @@ class TemplateServiceSerializer(serializers.ModelSerializer):
                 return data
 
         return super(TemplateServiceSerializer, self).to_representation(instance)
-
-    def run_validation(self, data):
-        validated_data = super(TemplateServiceSerializer, self).run_validation(data)
-
-        services = {service.service_type: service for service in get_template_services()}
-        try:
-            service_type = data['service_type']
-            service = services[service_type]
-        except KeyError:
-            raise exceptions.ValidationError(
-                {'service_type': "Unsupported service type %s" % data.get('service_type')})
-
-        cur_service = service.objects.get(base_template=self.context.get('template'))
-        cur_serializer = service._serializer(cur_service, context=self._context)
-
-        for field in cur_serializer.fields:
-            if hasattr(cur_service, field) and field not in data:
-                value = cur_serializer.data[field]
-                if value is not None:
-                    data[field] = value
-
-        return validated_data
 
     class Meta(object):
         model = TemplateService
