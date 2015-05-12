@@ -8,6 +8,11 @@ Backup management
 
 .. include:: backup.rst
 
+Billing
+=======
+
+.. include:: billing.rst
+
 Customer management
 ===================
 
@@ -42,6 +47,11 @@ IP mappings
 ===========
 
 .. include:: ip_mapping.rst
+
+Jira management
+===============
+
+.. include:: jira.rst
 
 Key management
 ==============

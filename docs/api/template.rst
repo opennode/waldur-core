@@ -18,6 +18,8 @@ In addition, the following filters are supported:
 - ?name - case insensitive matching of a template name
 - ?os_type - enum matching of an OS type (supported options are: Linux, Windows, Unix, Other).
 - ?os - case insensitive matching of a template OS name
+- ?type - exact match of the template type
+- ?application_type - exact match of the application_type (optional)
 
 IaaS Template permissions
 -------------------------
@@ -56,6 +58,8 @@ A new template can only be created by users with staff privilege (is_staff=True)
         "sla_level": 99.9,
         "setup_fee": "10",
         "monthly_fee": "20",
+        "type": "IaaS",
+        "application_type": "OS",
         "template_licenses": [
             "http://example.com:8000/api/template-licenses/5752a31867dc45aebcceafe82c181870/"
         ]

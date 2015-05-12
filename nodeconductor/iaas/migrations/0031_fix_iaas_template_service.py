@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('structure', '0006_inherit_namemixin'),
         ('template', '0003_rename_tamplate_field'),
-        ('iaas', '0029_instance_user_data'),
+        ('iaas', '0030_extend_iaas_template_with_type'),
     ]
 
     operations = [
