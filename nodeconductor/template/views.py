@@ -17,8 +17,8 @@ class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
             [
                 {
                     "name": "Production VM",
-                    "service": "http://example.com/api/clouds/b3870fbd57d94901811bec9bae6a20c2/",
-                    "image": "d15dc2c4-25d6-4150-93fe-a412499298d8",
+                    "flavor": "http://example.com/api/flavors/d760e6a00b5949bdb87e5f0dcfacd804/",
+                    "template": "http://example.com/api/iaas-templates/fffb21de7bfd47de9661e9d9fdd4d619/",
                     "backup_schedule": "0 10 * * *",
                     "data_volume_size": 1024,
                     "service_type": "IaaS",
@@ -30,8 +30,8 @@ class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
             ]
 
             Provision options will be taken from a template instance unless redefined here.
-            Additional options required for provisioning could be passed according to
-            specific template service create serializer.
+            Additional options required for provisioning could be passed and will be
+            forwarded to specific service provisioning with no change.
         """
         template = self.get_object()
         services = {service.service_type: service for service in get_template_services()}
@@ -48,6 +48,9 @@ class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
                         data[field] = value
 
             return data
+
+        if not isinstance(initdata, list):
+            raise exceptions.ParseError("Invalid input data, JSON list expected.")
 
         # Inspect services from POST request and fill missed fields from DB if required
         for data in initdata:
