@@ -589,9 +589,21 @@ class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
         }
 
 
+class TemplateImageSerializer(core_serializers.AugmentedSerializerMixin, serializers.ModelSerializer):
+
+    cloud = serializers.HyperlinkedRelatedField(
+        view_name='cloud-detail', lookup_field='uuid', read_only=True)
+
+    class Meta(object):
+        model = models.Image
+        fields = ('cloud', 'cloud_uuid', 'min_disk', 'min_ram', 'backend_id')
+        related_paths = ('cloud',)
+
+
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 
     template_licenses = TemplateLicenseSerializer(many=True)
+    images = serializers.SerializerMethodField()
 
     class Meta(object):
         view_name = 'iaastemplate-detail'
@@ -604,13 +616,25 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'sla_level',
             'setup_fee',
             'monthly_fee',
-            'template_licenses',
+            'template_licenses', 'images',
             'type', 'application_type',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'template_licenses': {'lookup_field': 'uuid'},
         }
+
+    def get_images(self, obj):
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return None
+
+        queryset = structure_filters.filter_queryset_for_user(obj.images.all(), user)
+        images_serializer = TemplateImageSerializer(
+            queryset, many=True, read_only=True, context=self.context)
+
+        return images_serializer.data
 
     def get_fields(self):
         fields = super(TemplateSerializer, self).get_fields()
