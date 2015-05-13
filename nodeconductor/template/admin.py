@@ -41,7 +41,7 @@ class TemplateAdmin(admin.ModelAdmin):
 
 
 class TemplateServiceAdmin(PolymorphicParentModelAdmin):
-    list_display = ('name', 'template')
+    list_display = ('name', 'base_template')
     list_filter = (PolymorphicChildModelFilter,)
     base_model = TemplateService
     child_models = all_services

@@ -1,9 +1,15 @@
+import time
+import json
+import requests
+
 from collections import OrderedDict
 from datetime import datetime
 from operator import itemgetter
-import time
 
 from django.utils import timezone
+from django.core.urlresolvers import reverse
+
+from rest_framework.authtoken.models import Token
 
 
 def sort_dict(unsorted_dict):
@@ -61,3 +67,23 @@ def datetime_to_timestamp(datetime):
 
 def timestamp_to_datetime(timestamp):
     return datetime.fromtimestamp(int(timestamp)).replace(tzinfo=timezone.get_current_timezone())
+
+
+def request_api(request, view_name, method='GET', data=None):
+    """ Make a request to API internally.
+        Use 'request.user' for authentication.
+        Return a JSON response.
+    """
+
+    token = Token.objects.get(user=request.user)
+    method = getattr(requests, method.lower())
+    response = method(
+        request.build_absolute_uri(reverse(view_name)),
+        headers={'Authorization': 'Token %s' % token.key},
+        data=data)
+
+    result = type('Result', (object,), {})
+    result.data = json.loads(response.text)
+    result.success = response.status_code in (200, 201)
+
+    return result
