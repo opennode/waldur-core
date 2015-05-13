@@ -589,9 +589,17 @@ class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
         }
 
 
+class TemplateImageSerializer(serializers.ModelSerializer):
+
+    class Meta(object):
+        model = models.Image
+        fields = ('backend_id', 'min_disk', 'min_ram')
+
+
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 
     template_licenses = TemplateLicenseSerializer(many=True)
+    images = TemplateImageSerializer(many=True, read_only=True)
 
     class Meta(object):
         view_name = 'iaastemplate-detail'
@@ -604,7 +612,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'sla_level',
             'setup_fee',
             'monthly_fee',
-            'template_licenses',
+            'template_licenses', 'images',
             'type', 'application_type',
         )
         extra_kwargs = {
