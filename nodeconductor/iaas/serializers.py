@@ -591,9 +591,13 @@ class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
 
 class TemplateImageSerializer(serializers.ModelSerializer):
 
+    cloud = serializers.HyperlinkedRelatedField(
+        view_name='cloud-detail', lookup_field='uuid', read_only=True)
+    cloud_uuid = serializers.ReadOnlyField(source='cloud.uuid')
+
     class Meta(object):
         model = models.Image
-        fields = ('backend_id', 'min_disk', 'min_ram')
+        fields = ('cloud', 'cloud_uuid', 'min_disk', 'min_ram', 'backend_id')
 
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):
