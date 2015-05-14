@@ -136,6 +136,48 @@ LOGGING = {
 }
 
 # Settings, that are related to NodeCondoctor applications
+NODECONDUCTOR = {
+    'OPENSTACK_CREDENTIALS': (
+        {
+            'auth_url': 'http://keystone.example.com:5000/v2.0',
+            'username': 'node',
+            'password': 'conductor',
+            'tenant_name': 'admin',
+            'default_availability_zone': 'default-zone',
+        },
+    ),
+    'DEFAULT_SECURITY_GROUPS': (
+        {
+            'name': 'ssh',
+            'description': 'Security group for secure shell access',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 22,
+                    'to_port': 22,
+                },
+                {
+                    'protocol': 'icmp',
+                    'cidr': '0.0.0.0/0',
+                    'icmp_type': -1,
+                    'icmp_code': -1,
+                },
+            ),
+        },
+    ),
+    'MONITORING': {
+        'ZABBIX': {
+            'server': 'http://zabbix.example.com/zabbix',
+            'username': 'admin',
+            'password': 'zabbix',
+            'interface_parameters': {'ip': '0.0.0.0', 'main': 1, 'port': '10050', 'type': 1, 'useip': 1, 'dns': ''},
+            'templateid': '10106',
+            'groupid': '8',
+            'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
+        }
+    }
+}
 
 # For tests and local development elasticsearch can be replaced with dummy elasticsearch
 NODECONDUCTOR['ELASTICSEARCH_DUMMY'] = True
