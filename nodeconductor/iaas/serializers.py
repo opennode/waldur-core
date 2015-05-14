@@ -234,6 +234,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
             'project',
             'security_groups', 'flavor', 'ssh_public_key', 'external_ips',
             'system_volume_size', 'data_volume_size', 'user_data',
+            'type',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -553,6 +554,7 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
             'cores', 'ram',
             'created',
             'user_data',
+            'type',
         )
         read_only_fields = (
             'key_name',

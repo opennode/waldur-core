@@ -192,6 +192,7 @@ class InstanceFilter(django_filters.FilterSet):
             'data_volume_size',
             'description',
             'created',
+            'type',
         ]
         order_by = [
             'name',
@@ -219,6 +220,8 @@ class InstanceFilter(django_filters.FilterSet):
             '-data_volume_size',
             'created',
             '-created',
+            'type',
+            '-type',
         ]
         order_by_mapping = {
             # Proper field naming
