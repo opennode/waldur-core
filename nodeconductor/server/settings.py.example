@@ -140,9 +140,9 @@ NODECONDUCTOR = {
     'OPENSTACK_CREDENTIALS': (
         {
             'auth_url': 'http://keystone.example.com:5000/v2.0',
-            'username': 'node',
-            'password': 'conductor',
-            'tenant_name': 'admin',
+            'username': 'test_user',
+            'password': 'test_password',
+            'tenant_name': 'test_tenant',
             'default_availability_zone': 'default-zone',
         },
     ),
