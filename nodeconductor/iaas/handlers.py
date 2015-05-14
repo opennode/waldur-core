@@ -238,4 +238,4 @@ def check_instance_name_update(sender, instance=None, created=False, **kwargs):
     old_name = instance._old_values['name']
     if old_name != instance.name:
         from nodeconductor.iaas.tasks.zabbix import zabbix_update_host_visible_name
-        zabbix_update_host_visible_name.delay(instance.uuid)
+        zabbix_update_host_visible_name.delay(instance.uuid.hex)
