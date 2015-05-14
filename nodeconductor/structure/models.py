@@ -8,13 +8,16 @@ from django.contrib.auth.models import Group
 from django.db import models
 from django.db import transaction
 from django.db.models import Q
+from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
+from polymorphic import PolymorphicModel
 
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
+from nodeconductor.structure import base
 
 
 logger = logging.getLogger(__name__)
@@ -399,3 +402,108 @@ class ProjectGroup(core_models.UuidMixin,
             queryset = queryset.filter(role_type=role_type)
 
         return queryset.exists()
+
+
+@python_2_unicode_compatible
+class Service(six.with_metaclass(base.ServiceWithProjectsBase, PolymorphicModel,
+              core_models.UuidMixin, core_models.NameMixin, core_models.SynchronizableMixin)):
+
+    """ Base service class. Define specific service model as follows:
+
+        .. code-block:: python
+
+            class JiraService(Service):
+                projects = 'JiraProjectLink'
+                username = models.CharField(max_length=64)
+                password = models.CharField(max_length=16)
+
+            class JiraProjectLink(ServiceProjectLink):
+                service = 'JiraService'
+                backend_id = models.CharField(max_length=255)
+
+
+            class DigitalOceanService(Service):
+                projects = 'DigitalOceanProjectLink'
+                auth_token = models.CharField(max_length=64)
+
+            class DigitalOceanProjectLink(ServiceProjectLink):
+                QUOTAS_NAMES = ['max_droplets']
+                service = 'DigitalOceanService'
+
+        List all services with single query:
+
+        .. code-block:: python
+
+            >>> Service.objects.all()
+                [ <JiraService: id 1, name "Main JIRA">,
+                  <DigitalOceanService: id 1, name "Production DO Cloud">,
+                  <DigitalOceanService: id 2, name "Temp DigitalOcean"> ]
+    """
+
+    class Meta(object):
+        unique_together = ('customer', 'name', 'polymorphic_ctype')
+
+    class Permissions(object):
+        customer_path = 'customer'
+        project_path = 'projects'
+        project_group_path = 'customer__projects__project_groups'
+
+    customer = models.ForeignKey(Customer, related_name='services')
+    projects = NotImplemented
+
+    dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
+
+    def get_backend(self, sp_link=None):
+        raise NotImplementedError
+
+    def __str__(self):
+        return self.name
+
+
+@python_2_unicode_compatible
+class ServiceResource(six.with_metaclass(base.ServiceBackReferenceBase,
+                      core_models.UuidMixin, core_models.NameMixin, models.Model)):
+    """ Base service resource like image, flavor, region. """
+
+    class Meta(object):
+        abstract = True
+
+    class Permissions(object):
+        customer_path = 'service__projects__customer'
+        project_path = 'service__projects'
+        project_group_path = 'service__projects__project_groups'
+
+    service = NotImplemented
+    backend_id = models.CharField(max_length=255)
+
+    def __str__(self):
+        return '{0} | {1}'.format(self.service.name, self.name)
+
+
+@python_2_unicode_compatible
+class ServiceProjectLink(six.with_metaclass(base.ServiceBackReferenceBase,
+                         core_models.SynchronizableMixin, quotas_models.QuotaModelMixin)):
+
+    """ Base service-project link class. See Service class for usage example. """
+
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
+
+    class Meta(object):
+        abstract = True
+
+    class Permissions(object):
+        customer_path = 'service__customer'
+        project_path = 'project'
+        project_group_path = 'project__project_groups'
+
+    service = NotImplemented
+    project = models.ForeignKey(Project)
+
+    def get_quota_parents(self):
+        return [self.project]
+
+    def get_backend(self):
+        return self.service.get_backend(sp_link=self)
+
+    def __str__(self):
+        return '{0} | {1}'.format(self.service.name, self.project.name)

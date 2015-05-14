@@ -214,11 +214,36 @@ class AugmentedSerializerMixin(object):
                         'customer': ('uuid', 'name', 'native_name')
                     }
 
+    3,  Protect some fields from change.
+
+        Example:
+            class ProjectSerializer(AugmentedSerializerMixin,
+                                    serializers.HyperlinkedModelSerializer):
+                class Meta(object):
+                    model = models.Project
+                    fields = ('url', 'uuid', 'name', 'customer')
+                    readonly_fields = ('customer',)
+
     """
 
     def get_fields(self):
         fields = super(AugmentedSerializerMixin, self).get_fields()
         pre_serializer_fields.send(sender=self.__class__, fields=fields)
+
+        try:
+            readonly_fields = self.Meta.readonly_fields
+        except AttributeError:
+            pass
+        else:
+            try:
+                method = self.context['view'].request.method
+            except (KeyError, AttributeError):
+                return fields
+
+            if method in ('PUT', 'PATCH'):
+                for field in readonly_fields:
+                    fields[field].read_only = True
+
         return fields
 
     def _get_related_paths(self):

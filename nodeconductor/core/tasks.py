@@ -380,7 +380,7 @@ def send_task(app_label, task_name):
 
     """
     try:
-        task = current_app.tasks.get('nodeconductor.%s.%s' % (app_label, task_name))
+        task = current_app.tasks['nodeconductor.%s.%s' % (app_label, task_name)]
     except KeyError as e:
         six.reraise(TaskNotFound, e)
     return task.delay
