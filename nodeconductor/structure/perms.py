@@ -17,14 +17,6 @@ PERMISSION_LOGICS = (
         any_permission=True,
     )),
     ('structure.ProjectGroup', StaffPermissionLogic(any_permission=True)),
-    ('structure.Service', FilteredCollaboratorsPermissionLogic(
-        collaborators_query='customer__roles__permission_group__user',
-        collaborators_filter={
-            'customer__roles__role_type': CustomerRole.OWNER,
-        },
-
-        any_permission=True,
-    )),
     (User.groups.through, FilteredCollaboratorsPermissionLogic(
         collaborators_query=[
             # project
