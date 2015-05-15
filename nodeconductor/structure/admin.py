@@ -11,6 +11,7 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models
+from nodeconductor.structure import tasks
 
 
 class ChangeReadonlyMixin(object):
@@ -83,7 +84,7 @@ class ServiceAdmin(PolymorphicParentModelAdmin):
         service_uuids = list(queryset.values_list('uuid', flat=True))
         tasks_scheduled = queryset.count()
 
-        send_task('structure', 'sync_services')(service_uuids)
+        tasks.sync_services.delay(service_uuids)
 
         message = ungettext(
             'One service scheduled for sync',

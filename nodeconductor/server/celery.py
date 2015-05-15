@@ -16,8 +16,7 @@ app = Celery('nodeconductor')
 # Using a string here means the worker will not have to
 # pickle the object when using Windows.
 app.config_from_object('django.conf:settings')
-# Forced autodiscover required for proper work of nodeconductor.core.tasks.send_task
-app.autodiscover_tasks(lambda: settings.INSTALLED_APPS, force=True)
+app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 
 class PriorityRouter(object):
