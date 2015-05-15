@@ -461,8 +461,8 @@ class Service(six.with_metaclass(base.ServiceWithProjectsBase, PolymorphicModel,
 
 
 @python_2_unicode_compatible
-class ServiceResource(six.with_metaclass(base.ServiceBackReferenceBase,
-                      core_models.UuidMixin, core_models.NameMixin, models.Model)):
+class Resource(six.with_metaclass(base.ServiceBackReferenceBase,
+               core_models.UuidMixin, core_models.NameMixin, models.Model)):
     """ Base service resource like image, flavor, region. """
 
     class Meta(object):
@@ -485,8 +485,6 @@ class ServiceProjectLink(six.with_metaclass(base.ServiceBackReferenceBase,
                          core_models.SynchronizableMixin, quotas_models.QuotaModelMixin)):
 
     """ Base service-project link class. See Service class for usage example. """
-
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
 
     class Meta(object):
         abstract = True
