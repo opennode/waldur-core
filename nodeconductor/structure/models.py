@@ -8,7 +8,6 @@ from django.contrib.auth.models import Group
 from django.db import models
 from django.db import transaction
 from django.db.models import Q
-from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
 from polymorphic import PolymorphicModel
@@ -17,7 +16,6 @@ from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
-from nodeconductor.structure import base
 
 
 logger = logging.getLogger(__name__)
@@ -405,8 +403,8 @@ class ProjectGroup(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class Service(six.with_metaclass(base.ServiceWithProjectsBase, PolymorphicModel,
-              core_models.UuidMixin, core_models.NameMixin, core_models.SynchronizableMixin)):
+class Service(PolymorphicModel, core_models.UuidMixin,
+              core_models.NameMixin, core_models.SynchronizableMixin):
 
     """ Base service class. Define specific service model as follows:
 
@@ -461,8 +459,7 @@ class Service(six.with_metaclass(base.ServiceWithProjectsBase, PolymorphicModel,
 
 
 @python_2_unicode_compatible
-class Resource(six.with_metaclass(base.ServiceBackReferenceBase,
-               core_models.UuidMixin, core_models.NameMixin, models.Model)):
+class Resource(core_models.UuidMixin, core_models.NameMixin, models.Model):
     """ Base service resource like image, flavor, region. """
 
     class Meta(object):
@@ -481,8 +478,7 @@ class Resource(six.with_metaclass(base.ServiceBackReferenceBase,
 
 
 @python_2_unicode_compatible
-class ServiceProjectLink(six.with_metaclass(base.ServiceBackReferenceBase,
-                         core_models.SynchronizableMixin, quotas_models.QuotaModelMixin)):
+class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin):
 
     """ Base service-project link class. See Service class for usage example. """
 
