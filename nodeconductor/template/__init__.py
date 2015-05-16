@@ -7,9 +7,14 @@ from django.utils.lru_cache import lru_cache
 default_app_config = 'nodeconductor.template.apps.TemplateConfig'
 
 
+class TemplateProvisionError(Exception):
+    def __init__(self, errors=()):
+        self.errors = errors
+
+
 class TemplateServiceStrategy(object):
-    """ A parent class for the model-specific template strategies.
-    """
+    """ A parent class for the model-specific template strategies. """
+
     @classmethod
     def get_model(cls):
         raise NotImplementedError(

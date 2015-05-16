@@ -52,7 +52,7 @@ class EventFactory(object):
 
     def save(self):
         """ Add event to elasticsearch dummy client events """
-        elasticsearch_dummy_client.ElasticsearchDummyClient.DUMMY_EVENTS.append(self.fields)
+        elasticsearch_dummy_client.DUMMY_EVENTS.append(self.fields)
 
     @classmethod
     def get_list_url(cls):
