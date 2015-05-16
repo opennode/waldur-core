@@ -16,7 +16,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.48.0
-Release: 1.el7
+Release: 2.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # openssl package is needed to generate SAML2 keys during NodeConductor install
@@ -32,6 +32,7 @@ Requires: python-django-model-utils = 2.2
 Requires: python-django-filter = 0.7
 Requires: python-django-fsm = 2.2.0
 Requires: python-django-permission = 0.8.2
+Requires: python-django-polymorphic >= 0.6.1
 Requires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
 Requires: python-django-saml2 = 0.11.0.post0
 Requires: python-django-uuidfield = 0.5.0
@@ -43,7 +44,6 @@ Requires: python-glanceclient = 1:0.12.0
 Requires: python-keystoneclient = 1:0.9.0
 Requires: python-neutronclient = 2.3.4
 Requires: python-novaclient = 1:2.17.0
-Requires: python-django-polymorphic >= 0.6.1
 Requires: python-redis = 2.10.3
 Requires: python-reportlab >= 2.5
 Requires: python-requests = 2.6.0
@@ -195,6 +195,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Sat May 16 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.48.0-2.el7
+- Fix failing dependency version
+
 * Sat May 16 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.48.0-1.el7
 - New upstream release
 
