@@ -189,21 +189,19 @@ class CloudProjectMembershipQuotaSerializerTest(TestCase):
 
 class IaasTemplateServiceTest(TestCase):
     def setUp(self):
-        self.cloud = factories.CloudFactory()
-        self.flavor = factories.FlavorFactory(cloud=self.cloud)
-        self.image = factories.ImageFactory(cloud=self.cloud)
+        self.project = structure_factories.ProjectFactory()
         self.template = template_factories.TemplateFactory()
         self.iaas_template_service = factories.IaasTemplateServiceFactory(
-            template=self.template,
-            service=self.cloud,
-            flavor=self.flavor,
-            image=self.image)
+            base_template=self.template,
+            template=factories.TemplateFactory(),
+            flavor=factories.FlavorFactory(),
+            project=self.project)
 
     def test_create_template_service(self):
         iaas_template_service = self.template.services.first()
         self.assertIsNotNone(iaas_template_service)
         self.assertIsInstance(iaas_template_service, factories.IaasTemplateServiceFactory._meta.model)
-        self.assertEqual(iaas_template_service.service, self.cloud)
+        self.assertEqual(iaas_template_service.project, self.project)
 
     def test_template_serializer_returns_proper_service_type(self):
         factory = APIRequestFactory()

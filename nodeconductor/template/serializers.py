@@ -18,7 +18,7 @@ class TemplateServiceSerializer(serializers.ModelSerializer):
 
     class Meta(object):
         model = TemplateService
-        exclude = ('template',)
+        exclude = ('base_template',)
 
 
 class TemplateSerializer(serializers.HyperlinkedModelSerializer):

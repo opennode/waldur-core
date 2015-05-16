@@ -186,13 +186,13 @@ Arguments:
         users = {}
         for username, user_params in data['users'].items():
             self.stdout.write('Creating user "%s"...' % username)
-            users[username], was_created = User.objects.get_or_create(username=username)
+            users[username], was_created = User.objects.get_or_create(
+                username=username, full_name='%s Lebowski' % username)
 
             if was_created:
                 self.stdout.write('Populating user "%s" fields...' % username)
                 users[username].set_password(username)
                 users[username].email = user_params['email']
-                users[username].full_name = '%s Lebowski' % username
                 users[username].native_name = '%s Leböwski' % username
                 users[username].phone_number = '+1-202-555-0177'
                 self.stdout.write('User "%s" created.' % username)

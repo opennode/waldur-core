@@ -6,7 +6,9 @@ from decimal import Decimal
 from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
+from django.core.urlresolvers import reverse
 from django.db import models
+from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
@@ -14,7 +16,9 @@ from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
+from nodeconductor.core.utils import request_api
 from nodeconductor.template.models import TemplateService
+from nodeconductor.template import TemplateProvisionError
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure import models as structure_models
 
@@ -204,18 +208,6 @@ class Image(models.Model):
         )
 
 
-class IaasTemplateService(TemplateService):
-    service = models.ForeignKey(Cloud, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
-    flavor = models.ForeignKey(Flavor, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
-    image = models.ForeignKey(Image, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
-    sla = models.BooleanField(default=False)
-    sla_level = models.DecimalField(max_digits=6, decimal_places=4, default=0, blank=True)
-    backup_schedule = CronScheduleField(max_length=15, null=True, blank=True)
-
-    def provision(self):
-        pass
-
-
 @python_2_unicode_compatible
 class Template(core_models.UuidMixin,
                core_models.UiDescribableMixin,
@@ -277,6 +269,29 @@ class FloatingIP(core_models.UuidMixin, CloudProjectMember):
     address = models.GenericIPAddressField(protocol='IPv4')
     status = models.CharField(max_length=30)
     backend_id = models.CharField(max_length=255)
+
+
+class IaasTemplateService(TemplateService):
+    project = models.ForeignKey(structure_models.Project, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
+    flavor = models.ForeignKey(Flavor, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
+    template = models.ForeignKey(Template, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
+    backup_schedule = CronScheduleField(max_length=15, null=True)
+
+    def provision(self, options, request=None):
+        response = request_api(request, 'instance-list', method='POST', data=options)
+        if not response.success:
+            raise TemplateProvisionError(response.data)
+
+        if 'backup_schedule' in options:
+            options = dict(
+                schedule=options['backup_schedule'],
+                backup_source=response.data['url'],
+                retention_time=1,
+                maximal_number_of_backups=2,
+            )
+            response = request_api(request, 'backupschedule-list', method='POST', data=options)
+            if not response.success:
+                raise TemplateProvisionError(response.data)
 
 
 @python_2_unicode_compatible
@@ -356,6 +371,13 @@ class Instance(core_models.UuidMixin,
             if s not in STABLE_STATES
         ])
 
+    class Services(object):
+        IAAS = 'IaaS'
+        PAAS = 'PaaS'
+
+    SERVICE_TYPES = (
+        (Services.IAAS, 'IaaS'), (Services.PAAS, 'PaaS'))
+
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
     # This needs to be inlined in order to set on_delete
@@ -394,6 +416,8 @@ class Instance(core_models.UuidMixin,
 
     # Services specific fields
     agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
+    type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=Services.IAAS)
+
 
     @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
     def begin_provisioning(self):

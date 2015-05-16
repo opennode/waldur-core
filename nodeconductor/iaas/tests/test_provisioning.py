@@ -928,7 +928,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
             data = {'name': 'host2'}
             response = self.client.put(factories.InstanceFactory.get_url(instance), data)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            mocked_task.assert_called_with(instance.uuid)
+            mocked_task.assert_called_with(instance.uuid.hex)
 
     def test_zabbix_host_visible_name_is_not_updated_when_instance_is_not_renamed(self):
         instance = factories.InstanceFactory(state=Instance.States.OFFLINE)

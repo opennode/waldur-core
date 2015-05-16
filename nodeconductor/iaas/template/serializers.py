@@ -1,30 +1,29 @@
 
 from rest_framework import serializers
 
-from nodeconductor.iaas.models import Cloud, Image, IaasTemplateService
-from nodeconductor.iaas.serializers import FlavorSerializer
-
-
-class CloudSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta:
-        model = Cloud
-        fields = ('url', 'uuid', 'auth_url', 'name')
-        lookup_field = 'uuid'
-
-
-class ImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Image
-        fields = ('backend_id',)
+from nodeconductor.iaas.models import Flavor, Template, IaasTemplateService
+from nodeconductor.structure.models import Project
 
 
 class IaasTemplateServiceSerializer(serializers.ModelSerializer):
-    service = CloudSerializer(read_only=True)
-    flavor = FlavorSerializer(read_only=True)
-    image = ImageSerializer(read_only=True)
+    project = serializers.HyperlinkedRelatedField(
+        view_name='project-detail',
+        lookup_field='uuid',
+        queryset=Project.objects.all(),
+    )
+    flavor = serializers.HyperlinkedRelatedField(
+        view_name='flavor-detail',
+        lookup_field='uuid',
+        queryset=Flavor.objects.all(),
+    )
+    template = serializers.HyperlinkedRelatedField(
+        view_name='iaastemplate-detail',
+        lookup_field='uuid',
+        queryset=Template.objects.all(),
+    )
 
     class Meta:
         model = IaasTemplateService
         fields = (
-            'name', 'service', 'flavor', 'image', 'sla', 'sla_level', 'backup_schedule'
+            'name', 'project', 'flavor', 'template', 'backup_schedule'
         )
