@@ -1069,7 +1069,7 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         template_id = template.uuid.hex if template else None
         tasks.import_instance.delay(membership.pk, instance_id=instance_id, template_id=template_id)
 
-        event_logger.info('Instance with backend id %s has been scheduled for import.', instance_id,
+        event_logger.info('Virtual machine with backend id %s has been scheduled for import.', instance_id,
                           extra={'event_type': 'iaas_instance_import_scheduled'})
 
         return Response({'status': 'Instance import was scheduled'},
