@@ -6,6 +6,12 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.48.0
+--------------
+- Expose of requirements of mapped images in template list
+- UUID of objects is exposed in multiple endpoints.
+- Bugfixes
+
 Release 0.47.0
 --------------
 - Added dummy Jira client for faster development.
