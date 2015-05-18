@@ -1,4 +1,4 @@
-from rest_framework import generics, response, settings
+from rest_framework import generics, response, settings, mixins
 
 from nodeconductor.events import elasticsearch_client
 
@@ -20,3 +20,27 @@ class EventListView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
+
+
+class IssueViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin,
+                   mixins.CreateModelMixin, viewsets.GenericViewSet):
+    serializer_class = IssueSerializer
+    filter_backends = (JiraSearchFilter,)
+
+    def get_queryset(self):
+        return JiraClient().issues.list_by_user(self.request.user.username)
+
+    def get_object(self):
+        try:
+            return JiraClient().issues.get_by_user(
+                self.request.user.username, self.kwargs['pk'])
+        except JiraClientError as e:
+            raise exceptions.NotFound(e)
+
+    def perform_create(self, serializer):
+        try:
+            serializer.save(reporter=self.request.user.username)
+        except JiraClientError as e:
+            return response.Response(
+                {'detail': "Failed to create issue", 'error': str(e)},
+                status=status.HTTP_409_CONFLICT)

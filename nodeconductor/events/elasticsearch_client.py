@@ -24,13 +24,11 @@ class ElasticsearchResultListError(ElasticsearchError):
 
 
 class ElasticsearchResultList(object):
+    """ List of results acceptable by django pagination """
 
-    def __init__(self, user, event_types=None, search_text=None, sort='-@timestamp'):
+    def __init__(self, user):
         self.client = self._get_client()
         self.user = user
-        self.event_types = event_types
-        self.sort = sort
-        self.search_text = search_text
 
     def _get_client(self):
         if settings.NODECONDUCTOR.get('ELASTICSEARCH_DUMMY', False):
@@ -42,14 +40,23 @@ class ElasticsearchResultList(object):
         else:
             return ElasticsearchClient()
 
+    def filter(self, event_types=(), search_text='', **kwargs):
+        self.search_params = [(k, v) for k, v in kwargs.items()]
+        self.event_types = event_types
+        self.search_text = search_text
+
+    def order_by(self, sort):
+        self.sort = sort
+
     def _get_events(self, from_, size):
         return self.client.get_user_events(
             user=self.user,
-            event_types=self.event_types,
-            search_text=self.search_text,
+            event_types=getattr(self, 'event_types', None),
+            search_text=getattr(self, 'search_text', ''),
+            search_params=getattr(self, 'search_params', ()),
             from_=from_,
             size=size,
-            sort=self.sort
+            sort=getattr(self, 'sort', '-@timestamp')
         )
 
     def __len__(self):
@@ -78,12 +85,22 @@ class ElasticsearchClient(object):
         self.client = self._get_client()
 
     def get_user_events(
-            self, user, event_types=None, search_text=None, sort='-@timestamp', index='_all', from_=0, size=10):
+            self, user, event_types=None, search_text=None, search_params=(),
+            sort='-@timestamp', index='_all', from_=0, size=10):
         """
         Return events filtered for given user and total count of available for user events
+
+        Search parameters
+        ----------
+        event_types : list
+            List of events types
+        search_text : string
+            Text for FTS(full text search)
+        search_params : list of tuples
+            List of (<field_name>, <value>) tuples. Example: [('project_uuid', 'aee3bb9bc20a41449696fcdaccc7856c') ...]
         """
         sort = sort[1:] + ':desc' if sort.startswith('-') else sort + ':asc'
-        body = self._get_search_body(user, event_types, search_text)
+        body = self._get_search_body(user, event_types, search_text, search_params)
         search_results = self.client.search(index=index, body=body, from_=from_, size=size, sort=sort)
         return {
             'events': [r['_source'] for r in search_results['hits']['hits']],
@@ -152,7 +169,7 @@ class ElasticsearchClient(object):
         excaped_field_values = [self._escape_elasticsearch_field_value(value) for value in field_values]
         return '%s:("%s")' % (field_name, '", "'.join(excaped_field_values))
 
-    def _get_search_body(self, user, event_types=None, search_text=None):
+    def _get_search_body(self, user, event_types=None, search_text=None, search_params=[]):
         permitted_objects_uuids = self._get_permitted_objects_uuids(user)
         # Create query for user-related events
         query = ' OR '.join([
@@ -168,5 +185,9 @@ class ElasticsearchClient(object):
             search_query = ' OR '.join(
                 [self._format_to_elasticsearch_field_filter(field, [search_text]) for field in self.FTS_FIELDS])
             query += ' AND (' + search_query + ')'
+        # Add search parameters
+        for field_name, value in search_params:
+            query += ' AND ' + self._format_to_elasticsearch_field_filter(field_name, [value])
+
         logger.debug('Getting elasticsearch results for user: "%s" with query: %s', user, query)
         return {"query": {"query_string": {"query": query}}}
