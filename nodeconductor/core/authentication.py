@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-import nodeconductor.core.middleware
+import nodeconductor.events.middleware
 
 import rest_framework.authentication
 
@@ -11,7 +11,7 @@ def user_capturing_auth(auth):
             result = super(CapturingAuthentication, self).authenticate(request)
             if result is not None:
                 user, _ = result
-                nodeconductor.core.middleware.set_current_user(user)
+                nodeconductor.events.middleware.set_current_user(user)
             return result
 
     return CapturingAuthentication
