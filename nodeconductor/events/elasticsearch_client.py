@@ -44,9 +44,11 @@ class ElasticsearchResultList(object):
         self.search_params = [(k, v) for k, v in kwargs.items()]
         self.event_types = event_types
         self.search_text = search_text
+        return self
 
     def order_by(self, sort):
         self.sort = sort
+        return self
 
     def _get_events(self, from_, size):
         return self.client.get_user_events(
