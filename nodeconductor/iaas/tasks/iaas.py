@@ -341,7 +341,7 @@ def check_cloud_memberships_quotas():
         for quota in membership.quotas.all():
             if quota.is_exceeded(threshold=threshold):
                 event_logger.warning(
-                    '%s quota threshold has been reached for %s.', quota.name, membership.project.name,
+                    '%s quota threshold has been reached for project %s.', quota.name, membership.project.name,
                     extra=dict(
                         event_type='quota_threshold_reached',
                         quota_type=quota.name,
