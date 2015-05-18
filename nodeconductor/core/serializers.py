@@ -222,7 +222,7 @@ class AugmentedSerializerMixin(object):
                 class Meta(object):
                     model = models.Project
                     fields = ('url', 'uuid', 'name', 'customer')
-                    readonly_fields = ('customer',)
+                    protected_fields = ('customer',)
 
     """
 
@@ -231,7 +231,7 @@ class AugmentedSerializerMixin(object):
         pre_serializer_fields.send(sender=self.__class__, fields=fields)
 
         try:
-            readonly_fields = self.Meta.readonly_fields
+            protected_fields = self.Meta.protected_fields
         except AttributeError:
             pass
         else:
@@ -241,7 +241,7 @@ class AugmentedSerializerMixin(object):
                 return fields
 
             if method in ('PUT', 'PATCH'):
-                for field in readonly_fields:
+                for field in protected_fields:
                     fields[field].read_only = True
 
         return fields

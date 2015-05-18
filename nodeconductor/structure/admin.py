@@ -7,7 +7,6 @@ from polymorphic.admin import (
     PolymorphicParentModelAdmin, PolymorphicChildModelAdmin,
     PolymorphicChildModelFilter)
 
-from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models
