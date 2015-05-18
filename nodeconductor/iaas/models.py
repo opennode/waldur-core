@@ -371,6 +371,13 @@ class Instance(core_models.UuidMixin,
             if s not in STABLE_STATES
         ])
 
+    class Services(object):
+        IAAS = 'IaaS'
+        PAAS = 'PaaS'
+
+    SERVICE_TYPES = (
+        (Services.IAAS, 'IaaS'), (Services.PAAS, 'PaaS'))
+
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
     # This needs to be inlined in order to set on_delete
@@ -409,6 +416,8 @@ class Instance(core_models.UuidMixin,
 
     # Services specific fields
     agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
+    type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=Services.IAAS)
+
 
     @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
     def begin_provisioning(self):
