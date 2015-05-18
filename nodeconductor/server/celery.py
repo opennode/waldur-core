@@ -6,7 +6,7 @@ from celery import Celery
 from celery import signals
 from django.conf import settings
 
-from nodeconductor.core.middleware import set_current_user, get_current_user, reset_current_user
+from nodeconductor.events.middleware import set_current_user, get_current_user, reset_current_user
 
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nodeconductor.server.settings')  # XXX:
