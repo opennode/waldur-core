@@ -14,6 +14,7 @@ from model_utils.models import TimeStampedModel
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
+from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
 
@@ -35,7 +36,13 @@ class Customer(core_models.UuidMixin,
     abbreviation = models.CharField(max_length=8, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
 
+    backend_id = models.CharField(max_length=255, blank=True)
+    balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
+
     QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count']
+
+    def get_billing_backend(self):
+        return BillingBackend(self)
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through

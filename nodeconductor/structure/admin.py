@@ -1,9 +1,11 @@
 from django.db import models as django_models
 from django.http import HttpResponseRedirect
 from django.contrib import admin, messages
+from django.utils.translation import ungettext
 
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models
+from nodeconductor.structure import tasks
 
 
 class ChangeReadonlyMixin(object):
@@ -35,7 +37,24 @@ class ProtectedModelMixin(object):
 
 
 class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
-    pass
+    readonly_fields = ['balance']
+    actions = ['sync_with_backend']
+
+    def sync_with_backend(self, request, queryset):
+        customer_uuids = list(queryset.values_list('uuid', flat=True))
+        tasks.sync_billing_customers.delay(customer_uuids)
+
+        tasks_scheduled = queryset.count()
+        message = ungettext(
+            'One customer scheduled for sync with billing backend',
+            '%(tasks_scheduled)d customers scheduled for sync with billing backend',
+            tasks_scheduled
+        )
+        message = message % {'tasks_scheduled': tasks_scheduled}
+
+        self.message_user(request, message)
+
+    sync_with_backend.short_description = "Sync selected customers with billing backend"
 
 
 class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
