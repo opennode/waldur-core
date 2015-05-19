@@ -2,13 +2,10 @@ import logging
 import importlib
 import threading
 
+from django.utils import six
 from django.conf import settings
 
 
-# A list of supported backends in a form of ('<backend_name>': '<backend_module>.<backend_class>')
-BACKENDS = (
-    ('WHMCS', 'whmcs.WHMCSAPI'),
-)
 DATA = threading.local().billing_data = {}
 logger = logging.getLogger(__name__)
 
@@ -18,6 +15,15 @@ class BillingBackendError(Exception):
 
 
 class BillingBackend(object):
+    """ General billing backend. Expects django settings as follow:
+
+            NODECONDUCTOR['BILLING'] = {
+                'backend': 'nodeconductor.billing.backend.whmcs.WHMCSAPI',
+                'api_url': 'http://demo.whmcs.com/includes/api.php',
+                'username': 'Admin',
+                'password': 'demo',
+            }
+    """
 
     def __init__(self, customer=None):
         self.customer = customer
@@ -34,40 +40,34 @@ class BillingBackend(object):
                 "Can't billing settings. "
                 "Please provide settings.NODECONDUCTOR.BILLING dictionary.")
         else:
-            backends = dict(BACKENDS)
-            backend_name = config.get('backend')
-            if not backend_name or backend_name not in backends:
-                raise BillingBackendError(
-                    "Wrong backend name supplied '%s'. "
-                    "Valid choices are: %s" % (backend_name, ', '.join(backends.keys())))
-
+            backend_path = config.get('backend', '')
             try:
-                mod, cls = backends[backend_name].split('.')
-                backend = importlib.import_module('.' + mod, __package__)
-                backend_cls = getattr(backend, cls)
-            except ImportError:
+                path_bits = backend_path.split('.')
+                class_name = path_bits.pop()
+                backend = importlib.import_module('.'.join(path_bits))
+                backend_cls = getattr(backend, class_name)
+            except (AttributeError, IndexError):
                 raise BillingBackendError(
-                    "Can't find %s.%s module" % (__package__, mod))
-            except AttributeError:
-                raise BillingBackendError(
-                    "Can't find %s.%s backend class" % (__package__, backends[backend_name]))
+                    "Invalid backend supplied: %s" % backend_path)
+            except ImportError as e:
+                six.reraise(BillingBackendError, e)
             else:
                 self.api = backend_cls(**config)
 
     def get_or_create_client(self):
-        if self.customer.backend_id:
-            return self.customer.backend_id
+        if self.customer.billing_backend_id:
+            return self.customer.billing_backend_id
 
         owner = self.customer.get_owners().first()
-        backend_id = self.api.add_client(
+        self.customer.billing_backend_id = self.api.add_client(
             name=owner.full_name,
             email=owner.email,
             phone_number=owner.phone_number,
             organization=owner.organization)
 
-        self.customer.save(update_fields=['backend_id'])
+        self.customer.save(update_fields=['billing_backend_id'])
 
-        return backend_id
+        return self.customer.billing_backend_id
 
     def sync_customer(self):
         backend_id = self.get_or_create_client()

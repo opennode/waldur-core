@@ -37,7 +37,7 @@ class Customer(core_models.UuidMixin,
     abbreviation = models.CharField(max_length=8, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
 
-    backend_id = models.CharField(max_length=255, blank=True)
+    billing_backend_id = models.CharField(max_length=255, blank=True)
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
 
     QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count']

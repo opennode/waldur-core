@@ -24,7 +24,7 @@ class WHMCSAPI(object):
         data.update(self.credendials)
         data.update(kwargs)
 
-        headers = {'User-Agent': 'Nodeconductor/%s' % __version__,
+        headers = {'User-Agent': 'NodeConductor/%s' % __version__,
                    'Content-Type': 'application/x-www-form-urlencoded'}
 
         response = requests.post(self.api_url, data=data, headers=headers)
