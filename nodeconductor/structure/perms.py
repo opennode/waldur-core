@@ -7,7 +7,7 @@ User = get_user_model()
 
 
 PERMISSION_LOGICS = (
-    ('structure.Customer',  StaffPermissionLogic(any_permission=True)),
+    ('structure.Customer', StaffPermissionLogic(any_permission=True)),
     ('structure.Project', FilteredCollaboratorsPermissionLogic(
         collaborators_query='customer__roles__permission_group__user',
         collaborators_filter={
@@ -16,7 +16,7 @@ PERMISSION_LOGICS = (
 
         any_permission=True,
     )),
-    ('structure.ProjectGroup',  StaffPermissionLogic(any_permission=True)),
+    ('structure.ProjectGroup', StaffPermissionLogic(any_permission=True)),
     (User.groups.through, FilteredCollaboratorsPermissionLogic(
         collaborators_query=[
             # project

@@ -24,7 +24,7 @@ install_requires = [
     'django-fsm==2.2.0',
     'django-model-utils==2.2',
     'django-permission==0.8.2',
-    'django-polymorphic==0.6.1',
+    'django-polymorphic>=0.7',
     'django-uuidfield==0.5.0',
     'djangorestframework>=3.1.0,<3.1.2',
     'djangosaml2==0.12.0.dev0',
