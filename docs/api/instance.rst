@@ -113,6 +113,7 @@ To create a instance, client must define:
 - system_volume_size in MiB (optional);
 - data_volume_size in MiB (optional, sum of instance's system_volume_size and data_volume_size has to be lower
   than available storage quota);
+- user_data (optional) - YAML field with user commands for created instance;
 
 Example of a valid request:
 
