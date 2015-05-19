@@ -11,17 +11,17 @@ class WHMCSAPI(object):
     def __init__(self, api_url=None, username=None, password=None, **kwargs):
         if not all((api_url, username, password)):
             raise BillingBackendError(
-                "Missed billing credendials. They must be supplied explicitly "
+                "Missed billing credentials. They must be supplied explicitly "
                 "or defined within settings.NODECONDUCTOR.BILLING")
 
         self.api_url = api_url
-        self.credendials = dict(
+        self.credentials = dict(
             username=username,
             password=hashlib.md5(password).hexdigest())
 
     def request(self, action, **kwargs):
         data = {'action': action, 'responsetype': 'json'}
-        data.update(self.credendials)
+        data.update(self.credentials)
         data.update(kwargs)
 
         headers = {'User-Agent': 'NodeConductor/%s' % __version__,
