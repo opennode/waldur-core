@@ -1,6 +1,7 @@
 import logging
 
 import requests
+from requests.exceptions import RequestException
 
 from django.conf import settings
 from django.utils import six
@@ -21,7 +22,7 @@ def _exception_decorator(message, fail_silently=None):
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except ZabbixAPIException as exception:
+            except (ZabbixAPIException, RequestException) as exception:
                 if not fail_silently:
                     exception_name = exception.__class__.__name__
                     message_args = args + tuple(kwargs.values())
