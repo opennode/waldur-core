@@ -1,12 +1,14 @@
 from __future__ import unicode_literals
 
+from mock import patch, Mock
+
 from django.apps import apps
 from django.core.urlresolvers import reverse
-from mock import patch
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.iaas import models, handlers
+from nodeconductor.iaas import models, handlers, tasks
+from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.tests import factories
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
@@ -217,6 +219,27 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
             url = factories.CloudProjectMembershipFactory.get_url(self.membership)
             response = self.client.delete(url)
             self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_cpm_with_successful_login_recovers(self):
+        cpm = factories.CloudProjectMembershipFactory(state=SynchronizationStates.ERRED)
+
+        with patch('nodeconductor.iaas.backend.openstack.OpenStackBackend.create_tenant_session') as mocked:
+            tasks.recover_erred_cloud_membership(cpm.pk)
+
+            self.assertTrue(mocked.called)
+            self.assertEqual(models.CloudProjectMembership.objects.get(pk=cpm.pk).state,
+                             SynchronizationStates.IN_SYNC)
+
+    def test_cpm_with_failed_login_does_not_recover(self):
+        cpm = factories.CloudProjectMembershipFactory(state=SynchronizationStates.ERRED)
+
+        with patch('nodeconductor.iaas.backend.openstack.OpenStackBackend.create_tenant_session') as mocked:
+            mocked.side_effect = CloudBackendError
+            tasks.recover_erred_cloud_membership(cpm.pk)
+
+            self.assertTrue(mocked.called)
+            self.assertEqual(models.CloudProjectMembership.objects.get(pk=cpm.pk).state,
+                             SynchronizationStates.ERRED)
 
     def _get_valid_payload(self, cloud=None, project=None):
         cloud = cloud or factories.CloudFactory()

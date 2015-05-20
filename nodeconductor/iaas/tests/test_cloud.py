@@ -1,9 +1,13 @@
 from __future__ import unicode_literals
 
+from mock import patch
+
 from rest_framework import status
 from rest_framework import test
 
+from nodeconductor.iaas import tasks
 from nodeconductor.iaas.models import Cloud
+from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.tests import factories
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
@@ -304,6 +308,25 @@ class CloudPermissionTest(test.APITransactionTestCase):
                 func = getattr(self.client, method.lower())
                 response = func(url)
                 self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_cloud_with_successful_login_recovers(self):
+        cloud = factories.CloudFactory(state=SynchronizationStates.ERRED)
+
+        with patch('nodeconductor.iaas.tasks.openstack_create_session.delay') as mocked_task:
+            tasks.recover_erred_service(cloud.uuid.hex)
+
+            mocked_task.assert_called_once_with(keystone_url=cloud.auth_url, dummy=cloud.dummy)
+            self.assertEqual(Cloud.objects.get(uuid=cloud.uuid).state, SynchronizationStates.IN_SYNC)
+
+    def test_cloud_with_failed_login_does_not_recover(self):
+        cloud = factories.CloudFactory(state=SynchronizationStates.ERRED)
+
+        with patch('nodeconductor.iaas.tasks.openstack_create_session.delay') as mocked_task:
+            mocked_task.side_effect = CloudBackendError
+            tasks.recover_erred_service(cloud.uuid.hex)
+
+            mocked_task.assert_called_once_with(keystone_url=cloud.auth_url, dummy=cloud.dummy)
+            self.assertEqual(Cloud.objects.get(uuid=cloud.uuid).state, SynchronizationStates.ERRED)
 
     def _get_valid_payload(self, resource):
         return {
