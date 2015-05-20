@@ -9,7 +9,6 @@ from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.tasks import transition
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
-from nodeconductor.iaas.tasks import openstack_create_session
 from nodeconductor.iaas.models import Cloud
 
 logger = logging.getLogger(__name__)

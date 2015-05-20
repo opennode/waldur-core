@@ -11,7 +11,6 @@ from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeE
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError
-from nodeconductor.iaas.tasks import openstack_create_session
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
@@ -377,7 +376,7 @@ def recover_erred_cloud_memberships(membership_pks=None):
         memberships = memberships.filter(pk__in=membership_pks)
 
     for membership in memberships:
-        recover_erred_cloud_membership.delay(membership_pk=membership.pk)
+        recover_erred_cloud_membership.delay(membership.pk)
 
 
 @shared_task
