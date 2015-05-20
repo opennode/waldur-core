@@ -36,7 +36,7 @@ install_requires = [
     'python-keystoneclient==0.9.0',
     'python-neutronclient==2.3.4',
     'python-novaclient==2.17.0',
-    'PyYAML>=3.11',
+    'PyYAML>=3.10',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
     'reportlab>=2.5',
