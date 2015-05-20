@@ -11,6 +11,7 @@ from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeE
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.iaas.tasks import openstack_create_session
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
@@ -366,3 +367,37 @@ def sync_instance_with_zabbix(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
     logger.debug('Synchronizing instance %s with zabbix', instance.uuid, exc_info=1)
     create_zabbix_host_and_service(instance, warn_if_exists=False)
+
+
+@shared_task
+def recover_erred_cloud_memberships(membership_pks=None):
+    memberships = models.CloudProjectMembership.filter(state=SynchronizationStates.ERRED)
+
+    if membership_pks and isinstance(membership_pks, (list, tuple)):
+        memberships = memberships.filter(pk__in=membership_pks)
+
+    for membership in memberships:
+        recover_erred_cloud_membership.delay(membership_pk=membership.pk)
+
+
+@shared_task
+def recover_erred_cloud_membership(membership_pk):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+    backend = membership.cloud.get_backend()
+
+    try:
+        credentials = {
+            'auth_url': membership.cloud.auth_url,
+            'username': membership.username,
+            'password': membership.password,
+        }
+        if membership.tenant_id:
+            credentials['tenant_id'] = membership.tenant_id
+
+        backend.create_tenant_session(credentials)
+
+        membership.state = SynchronizationStates.IN_SYNC
+        membership.save()
+        logger.info('Cloud project membership with id %s has been recovered.' % membership.pk)
+    except CloudBackendError:
+        logger.warning('Failed to recover cloud project membership with id %s.' % membership.pk)
