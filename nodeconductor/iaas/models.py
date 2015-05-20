@@ -297,7 +297,7 @@ def validate_yaml(value):
     try:
         yaml.load(value)
     except yaml.error.YAMLError:
-        raise ValidationError('A valid YAML value required.')
+        raise ValidationError('A valid YAML value is required.')
 
 
 @python_2_unicode_compatible

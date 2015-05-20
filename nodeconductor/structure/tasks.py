@@ -26,6 +26,21 @@ def delete_zabbix_hostgroup(project_uuid):
     zabbix_client.delete_hostgroup(project)
 
 
+@shared_task(name='nodeconductor.structure.sync_billing_customers')
+def sync_billing_customers(customer_uuids=None):
+    if not isinstance(customer_uuids, (list, tuple)):
+        customer_uuids = models.Customer.objects.all().values_list('uuid', flat=True)
+
+    map(sync_billing_customer.delay, customer_uuids)
+
+
+@shared_task
+def sync_billing_customer(customer_uuid):
+    customer = models.Customer.objects.get(uuid=customer_uuid)
+    backend = customer.get_billing_backend()
+    backend.sync_customer()
+
+
 @shared_task(name='nodeconductor.structure.sync_services')
 def sync_services(service_uuids=None):
     services = models.Service.objects.filter(state=SynchronizationStates.IN_SYNC)
