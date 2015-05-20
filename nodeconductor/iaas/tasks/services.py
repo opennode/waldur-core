@@ -86,8 +86,11 @@ def recover_erred_service(service_uuid):
     try:
         backend.create_admin_session(cloud.auth_url)
 
-        cloud.state = SynchronizationStates.IN_SYNC
-        cloud.save()
-        logger.info('Cloud service %s has been recovered.' % cloud.name)
+        if cloud.state == SynchronizationStates.ERRED:
+            cloud.state = SynchronizationStates.IN_SYNC
+            cloud.save()
+            logger.info('Cloud service %s has been recovered.' % cloud.name)
+        else:
+            logger.warning('Cannot recover cloud service %s from state %s.', cloud.name, cloud.state)
     except CloudBackendError:
-        logger.warning('Failed to recover cloud service %s.' % cloud.name)
+        logger.info('Failed to recover cloud service %s.' % cloud.name)

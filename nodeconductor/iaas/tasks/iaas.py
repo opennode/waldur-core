@@ -395,8 +395,12 @@ def recover_erred_cloud_membership(membership_pk):
 
         backend.create_tenant_session(credentials)
 
-        membership.state = SynchronizationStates.IN_SYNC
-        membership.save()
-        logger.info('Cloud project membership with id %s has been recovered.' % membership.pk)
+        if membership.state == SynchronizationStates.ERRED:
+            membership.state = SynchronizationStates.IN_SYNC
+            membership.save()
+            logger.info('Cloud project membership with id %s has been recovered.' % membership.pk)
+        else:
+            logger.warning('Cannot recover cloud project membership with id %s from state %s.',
+                           membership.pk, membership.state)
     except CloudBackendError:
-        logger.warning('Failed to recover cloud project membership with id %s.' % membership.pk)
+        logger.info('Failed to recover cloud project membership with id %s.' % membership.pk)
