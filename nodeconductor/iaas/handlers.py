@@ -247,6 +247,6 @@ def add_instance_uuid_to_user_data(sender, instance=None, created=False, **kwarg
         return
 
     parsed_user_data = yaml.load(instance.user_data) or {}
-    parsed_user_data[str('instance_uuid')] = instance.uuid.hex
+    parsed_user_data[str('nc_instance_uuid')] = instance.uuid.hex
     instance.user_data = yaml.dump(parsed_user_data)
     instance.save()
