@@ -685,7 +685,6 @@ class OpenStackBackend(OpenStackClient):
 
             # update matching instances
             for instance_id in nc_ids & backend_ids:
-                print 'instance_id', instance_id
                 backend_instance = backend_instances[instance_id]
                 nc_instance = nc_instances[instance_id]
                 nc_instance.state = self._get_instance_state(backend_instance)
