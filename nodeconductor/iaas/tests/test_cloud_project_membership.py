@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from mock import patch, Mock
+from mock import patch
 
 from django.apps import apps
 from django.core.urlresolvers import reverse
