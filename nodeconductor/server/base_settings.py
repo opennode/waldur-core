@@ -31,6 +31,7 @@ INSTALLED_APPS = (
     'nodeconductor.monitoring',
     'nodeconductor.quotas',
     'nodeconductor.structure',
+    'nodeconductor.billing',
     'nodeconductor.iaas',
     'nodeconductor.ldapsync',
 
