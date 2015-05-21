@@ -1,12 +1,14 @@
 from __future__ import unicode_literals
 
+from mock import patch
+
 from django.apps import apps
 from django.core.urlresolvers import reverse
-from mock import patch
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.iaas import models, handlers
+from nodeconductor.iaas import models, handlers, tasks
+from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.tests import factories
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole

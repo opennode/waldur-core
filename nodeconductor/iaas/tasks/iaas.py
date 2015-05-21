@@ -7,7 +7,7 @@ from celery import shared_task
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeError
+from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeError, transition
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError
@@ -366,3 +366,27 @@ def sync_instance_with_zabbix(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
     logger.debug('Synchronizing instance %s with zabbix', instance.uuid, exc_info=1)
     create_zabbix_host_and_service(instance, warn_if_exists=False)
+
+
+@shared_task
+def recover_erred_cloud_memberships(membership_pks=None):
+    memberships = models.CloudProjectMembership.filter(state=SynchronizationStates.ERRED)
+
+    if membership_pks and isinstance(membership_pks, (list, tuple)):
+        memberships = memberships.filter(pk__in=membership_pks)
+
+    for membership in memberships:
+        recover_erred_cloud_membership.delay(membership.pk)
+
+
+@shared_task
+@transition(models.CloudProjectMembership, 'set_in_sync_from_erred')
+def recover_erred_cloud_membership(membership_pk, transition_entity=None):
+    membership = transition_entity
+    backend = membership.cloud.get_backend()
+
+    try:
+        backend.create_session(membership=membership, dummy=membership.cloud.dummy)
+        logger.info('Cloud project membership with id %s has been recovered.' % membership.pk)
+    except CloudBackendError:
+        logger.info('Failed to recover cloud project membership with id %s.' % membership.pk)
