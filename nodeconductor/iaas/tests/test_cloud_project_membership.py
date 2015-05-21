@@ -220,27 +220,6 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
             response = self.client.delete(url)
             self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
-    def test_cpm_with_successful_login_recovers(self):
-        cpm = factories.CloudProjectMembershipFactory(state=SynchronizationStates.ERRED)
-
-        with patch('nodeconductor.iaas.backend.openstack.OpenStackBackend.create_tenant_session') as mocked:
-            tasks.recover_erred_cloud_membership(cpm.pk)
-
-            self.assertTrue(mocked.called)
-            self.assertEqual(models.CloudProjectMembership.objects.get(pk=cpm.pk).state,
-                             SynchronizationStates.IN_SYNC)
-
-    def test_cpm_with_failed_login_does_not_recover(self):
-        cpm = factories.CloudProjectMembershipFactory(state=SynchronizationStates.ERRED)
-
-        with patch('nodeconductor.iaas.backend.openstack.OpenStackBackend.create_tenant_session') as mocked:
-            mocked.side_effect = CloudBackendError
-            tasks.recover_erred_cloud_membership(cpm.pk)
-
-            self.assertTrue(mocked.called)
-            self.assertEqual(models.CloudProjectMembership.objects.get(pk=cpm.pk).state,
-                             SynchronizationStates.ERRED)
-
     def _get_valid_payload(self, cloud=None, project=None):
         cloud = cloud or factories.CloudFactory()
         project = project or structure_factories.ProjectFactory()

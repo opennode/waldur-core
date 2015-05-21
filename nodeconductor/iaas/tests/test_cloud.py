@@ -309,25 +309,6 @@ class CloudPermissionTest(test.APITransactionTestCase):
                 response = func(url)
                 self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
-    def test_cloud_with_successful_login_recovers(self):
-        cloud = factories.CloudFactory(state=SynchronizationStates.ERRED)
-
-        with patch('nodeconductor.iaas.backend.openstack.OpenStackBackend.create_admin_session') as mocked:
-            tasks.recover_erred_service(cloud.uuid.hex)
-
-            mocked.assert_called_once_with(cloud.auth_url)
-            self.assertEqual(Cloud.objects.get(uuid=cloud.uuid).state, SynchronizationStates.IN_SYNC)
-
-    def test_cloud_with_failed_login_does_not_recover(self):
-        cloud = factories.CloudFactory(state=SynchronizationStates.ERRED)
-
-        with patch('nodeconductor.iaas.backend.openstack.OpenStackBackend.create_admin_session') as mocked:
-            mocked.side_effect = CloudBackendError
-            tasks.recover_erred_service(cloud.uuid.hex)
-
-            mocked.assert_called_once_with(cloud.auth_url)
-            self.assertEqual(Cloud.objects.get(uuid=cloud.uuid).state, SynchronizationStates.ERRED)
-
     def _get_valid_payload(self, resource):
         return {
             'name': resource.name,
