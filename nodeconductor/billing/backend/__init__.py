@@ -3,6 +3,7 @@ import importlib
 
 from django.utils import six
 from django.conf import settings
+from django.core.files.base import ContentFile
 
 
 logger = logging.getLogger(__name__)
@@ -73,17 +74,22 @@ class BillingBackend(object):
 
         # Update or create invoices from backend
         cur_invoices = {i.backend_id: i for i in self.customer.invoices.all()}
-        for invoice in self.api.get_invoices(backend_id):
+        for invoice in self.api.get_invoices(backend_id, with_pdf=True):
             cur_invoice = cur_invoices.pop(invoice['backend_id'], None)
             if cur_invoice:
                 cur_invoice.date = invoice['date']
                 cur_invoice.amount = invoice['amount']
-                cur_invoice.save()
+                cur_invoice.save(update_fields=['date', 'amount'])
             else:
-                self.customer.invoices.create(
+                cur_invoice = self.customer.invoices.create(
                     backend_id=invoice['backend_id'],
                     date=invoice['date'],
                     amount=invoice['amount'])
+
+            if 'pdf' in invoice:
+                cur_invoice.pdf.delete()
+                cur_invoice.pdf.save('Invoice-%d.pdf' % cur_invoice.uuid, ContentFile(invoice['pdf']))
+                cur_invoice.save(update_fields=['pdf'])
 
         # Remove stale invoices
         map(lambda i: i.delete(), cur_invoices.values())

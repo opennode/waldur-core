@@ -10,11 +10,12 @@ class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
     year = serializers.DateField(format='%Y', source='date')
     month = serializers.DateField(format='%m', source='date')
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
+    pdf = serializers.HyperlinkedIdentityField(view_name='invoice-pdf', lookup_field='uuid')
 
     class Meta(object):
         model = Invoice
         fields = (
-            'url', 'uuid', 'year', 'month', 'amount',
+            'url', 'uuid', 'year', 'month', 'amount', 'pdf',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name'
         )
         related_paths = ('customer',)
