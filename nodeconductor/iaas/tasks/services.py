@@ -79,18 +79,13 @@ def recover_erred_services(service_uuids=None):
 
 
 @shared_task(name='nodeconductor.iaas.recover_erred_service')
-def recover_erred_service(service_uuid):
-    cloud = Cloud.objects.get(uuid=service_uuid)
+@transition(Cloud, 'set_in_sync_from_erred')
+def recover_erred_service(service_uuid, transition_entity=None):
+    cloud = transition_entity
     backend = cloud.get_backend()
 
     try:
-        backend.create_admin_session(cloud.auth_url)
-
-        if cloud.state == SynchronizationStates.ERRED:
-            cloud.state = SynchronizationStates.IN_SYNC
-            cloud.save()
-            logger.info('Cloud service %s has been recovered.' % cloud.name)
-        else:
-            logger.warning('Cannot recover cloud service %s from state %s.', cloud.name, cloud.state)
+        backend.create_session(keystone_url=cloud.auth_url, dummy=cloud.dummy)
+        logger.info('Cloud service %s has been recovered.' % cloud.name)
     except CloudBackendError:
         logger.info('Failed to recover cloud service %s.' % cloud.name)

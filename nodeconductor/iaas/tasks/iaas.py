@@ -7,7 +7,7 @@ from celery import shared_task
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeError
+from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeError, transition
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError
@@ -380,27 +380,13 @@ def recover_erred_cloud_memberships(membership_pks=None):
 
 
 @shared_task
-def recover_erred_cloud_membership(membership_pk):
-    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+@transition(models.CloudProjectMembership, 'set_in_sync_from_erred')
+def recover_erred_cloud_membership(membership_pk, transition_entity=None):
+    membership = transition_entity
     backend = membership.cloud.get_backend()
 
     try:
-        credentials = {
-            'auth_url': membership.cloud.auth_url,
-            'username': membership.username,
-            'password': membership.password,
-        }
-        if membership.tenant_id:
-            credentials['tenant_id'] = membership.tenant_id
-
-        backend.create_tenant_session(credentials)
-
-        if membership.state == SynchronizationStates.ERRED:
-            membership.state = SynchronizationStates.IN_SYNC
-            membership.save()
-            logger.info('Cloud project membership with id %s has been recovered.' % membership.pk)
-        else:
-            logger.warning('Cannot recover cloud project membership with id %s from state %s.',
-                           membership.pk, membership.state)
+        backend.create_session(membership=membership, dummy=membership.cloud.dummy)
+        logger.info('Cloud project membership with id %s has been recovered.' % membership.pk)
     except CloudBackendError:
         logger.info('Failed to recover cloud project membership with id %s.' % membership.pk)
