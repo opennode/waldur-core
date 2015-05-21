@@ -9,6 +9,7 @@ from django.utils import six
 from django_fsm import TransitionNotAllowed
 
 from celery import current_app, current_task
+from celery.execute import send_task as send_celery_task
 from celery.exceptions import MaxRetriesExceededError
 
 
@@ -380,8 +381,9 @@ def send_task(app_label, task_name):
             provision_instance_fn.delay(instance_uuid, backend_flavor_id)
 
     """
-    try:
-        task = current_app.tasks['nodeconductor.%s.%s' % (app_label, task_name)]
-    except KeyError as e:
-        six.reraise(TaskNotFound, e)
-    return task.delay
+
+    def delay(*args, **kwargs):
+        full_task_name = 'nodeconductor.%s.%s' % (app_label, task_name)
+        send_celery_task(full_task_name, args, kwargs)
+
+    return delay
