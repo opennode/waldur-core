@@ -1,10 +1,10 @@
 import django_filters
 
-from rest_framework import viewsets, permissions, response, decorators, filters
+from rest_framework import viewsets, permissions, response, decorators, filters, exceptions
 
 from decimal import Decimal
-from django.http import HttpResponse
-from reportlab.pdfgen import canvas
+from django.conf import settings
+from django.views.static import serve
 
 from nodeconductor.structure.filters import GenericRoleFilter
 from nodeconductor.billing.serializers import InvoiceSerializer, InvoiceDetailedSerializer
@@ -54,12 +54,12 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
     @decorators.detail_route()
     def pdf(self, request, uuid=None):
         invoice = self.get_object()
+        if not invoice.pdf:
+            raise exceptions.NotFound("There's no PDF for this invoice")
 
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="invoice.pdf"'
+        response = serve(request, invoice.pdf.name, document_root=settings.MEDIA_ROOT)
+        if request.query_params.get('download'):
+            response['Content-Type'] = 'application/pdf'
+            response['Content-Disposition'] = 'attachment; filename="invoice.pdf"'
 
-        pdf = canvas.Canvas(response)
-        pdf.drawString(100, 800, str(invoice))
-        pdf.showPage()
-        pdf.save()
         return response

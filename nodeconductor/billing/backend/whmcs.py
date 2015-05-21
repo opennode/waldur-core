@@ -1,5 +1,7 @@
+import urllib
 import hashlib
 import datetime
+import urlparse
 import requests
 
 from nodeconductor.billing.backend import BillingBackendError
@@ -97,9 +99,8 @@ class WHMCSAPI(object):
                 "or defined within settings.NODECONDUCTOR.BILLING")
 
         self.api_url = api_url
-        self.credentials = dict(
-            username=username,
-            password=hashlib.md5(password).hexdigest())
+        self.username = username
+        self.password = password
 
     def _parse_date(self, date):
         try:
@@ -109,8 +110,10 @@ class WHMCSAPI(object):
 
     def request(self, action, resultset_path=None, **kwargs):
         data = {'action': action, 'responsetype': 'json'}
-        data.update(self.credentials)
         data.update(kwargs)
+        data.update({
+            'password': hashlib.md5(self.password).hexdigest(),
+            'username': self.username})
 
         req = self.Request(self.api_url, data, resultset_path=resultset_path)
         return req.data()
@@ -137,7 +140,7 @@ class WHMCSAPI(object):
         data = self.request('getclientsdetails', clientid=client_id)
         return {'balance': data.get('credit')}
 
-    def get_invoices(self, client_id):
+    def get_invoices(self, client_id, with_pdf=False):
         invoices = self.request(
             'getinvoices',
             userid=client_id,
@@ -145,9 +148,15 @@ class WHMCSAPI(object):
             resultset_path='invoices.invoice')
 
         for invoice in invoices:
-            yield {'backend_id': invoice['id'],
-                   'date': self._parse_date(invoice['date']),
-                   'amount': invoice['total']}
+            data = dict(
+                backend_id=invoice['id'],
+                date=self._parse_date(invoice['date']),
+                amount=invoice['total'])
+
+            if with_pdf:
+                data['pdf'] = self.get_invoice_pdf(invoice['id'])
+
+            yield data
 
     def get_invoice_items(self, invoice_id):
         data = self.request('getinvoice', invoiceid=invoice_id)
@@ -156,3 +165,21 @@ class WHMCSAPI(object):
                  'type': item['type'],
                  'amount': item['amount']}
                 for item in data['items']['item']]
+
+    def get_invoice_pdf(self, invoice_id):
+        def get_url(path, args=()):
+            url_parts = list(urlparse.urlparse(self.api_url))
+            url_parts[2] = path
+            url_parts[4] = urllib.urlencode(args)
+            return urlparse.urlunparse(url_parts)
+
+        if not hasattr(self, 'session'):
+            self.session = requests.Session()
+            self.session.get(get_url('/admin/login.php'))
+            self.session.post(
+                get_url('/admin/dologin.php'),
+                data={'username': self.username, 'password': self.password},
+                headers={'Content-Type': 'application/x-www-form-urlencoded'})
+
+        pdf = self.session.get(get_url('/dl.php', {'type': 'i', 'id': invoice_id}))
+        return pdf.content
