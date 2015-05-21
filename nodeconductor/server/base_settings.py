@@ -184,7 +184,13 @@ CELERYBEAT_SCHEDULE = {
         'task': 'nodeconductor.backup.tasks.delete_expired_backups',
         'schedule': timedelta(minutes=10),
         'args': (),
-    }
+    },
+
+    'pull-instance-installation_state': {
+        'task': 'nodeconductor.iaas.zabbix.pull_instance_installation_state',
+        'schedule': timedelta(minutes=5),
+        'args': (),
+    },
 }
 
 CELERY_TASK_THROTTLING = {
