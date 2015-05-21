@@ -45,6 +45,9 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
         permissions.DjangoObjectPermissions,
     )
 
+    # Invoice items are being fetched directly from backend
+    # thus we expose them in detailed view only
+    # TODO: Move invoice items to DB and use single serializer
     def get_serializer_class(self):
         return InvoiceDetailedSerializer if self.action == 'retrieve' else InvoiceSerializer
 

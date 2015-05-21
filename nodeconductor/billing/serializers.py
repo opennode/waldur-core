@@ -1,12 +1,10 @@
 from rest_framework import serializers
 
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.structure import serializers as structure_serializers
 from nodeconductor.billing.models import Invoice
 
 
-class InvoiceSerializer(structure_serializers.PermissionFieldFilteringMixin,
-                        core_serializers.AugmentedSerializerMixin,
+class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
 
     year = serializers.DateField(format='%Y', source='date')
@@ -24,9 +22,6 @@ class InvoiceSerializer(structure_serializers.PermissionFieldFilteringMixin,
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
         }
-
-    def get_filtered_field_names(self):
-        return 'customer',
 
 
 class InvoiceDetailedSerializer(InvoiceSerializer):
