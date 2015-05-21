@@ -20,10 +20,6 @@ class Throttled(RuntimeError):
     pass
 
 
-class TaskNotFound(RuntimeError):
-    pass
-
-
 class StateChangeError(RuntimeError):
     pass
 

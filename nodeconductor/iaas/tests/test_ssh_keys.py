@@ -112,22 +112,30 @@ class SshKeyPropagationTest(test.APITransactionTestCase):
         membership = factories.CloudProjectMembershipFactory(cloud=cloud, project=project)
 
         # Test user add/remove key
-        with patch('nodeconductor.iaas.tasks.iaas.push_ssh_public_keys.delay') as mocked_task:
+        with patch('celery.app.base.Celery.send_task') as mocked_task:
             ssh_key = factories.SshPublicKeyFactory(user=self.owner)
-            mocked_task.assert_called_with([ssh_key.uuid.hex], [membership.pk])
+            mocked_task.assert_called_with(
+                'nodeconductor.iaas.push_ssh_public_keys',
+                ([ssh_key.uuid.hex], [membership.pk]), {})
 
-            with patch('nodeconductor.iaas.tasks.iaas.remove_ssh_public_keys.delay') as mocked_task:
+            with patch('celery.app.base.Celery.send_task') as mocked_task:
                 self.client.delete(self._get_ssh_key_url(ssh_key))
-                mocked_task.assert_called_with([ssh_key.uuid.hex], [membership.pk])
+                mocked_task.assert_called_with(
+                    'nodeconductor.iaas.remove_ssh_public_keys',
+                    ([ssh_key.uuid.hex], [membership.pk]), {})
 
         user = structure_factories.UserFactory()
         user_key = factories.SshPublicKeyFactory(user=user)
 
         # Test user add/remove from project
-        with patch('nodeconductor.iaas.tasks.iaas.push_ssh_public_keys.delay') as mocked_task:
+        with patch('celery.app.base.Celery.send_task') as mocked_task:
             project.add_user(user, ProjectRole.ADMINISTRATOR)
-            mocked_task.assert_called_with([user_key.uuid.hex], [membership.pk])
+            mocked_task.assert_called_with(
+                'nodeconductor.iaas.push_ssh_public_keys',
+                ([user_key.uuid.hex], [membership.pk]), {})
 
-            with patch('nodeconductor.iaas.tasks.iaas.remove_ssh_public_keys.delay') as mocked_task:
+            with patch('celery.app.base.Celery.send_task') as mocked_task:
                 project.remove_user(user)
-                mocked_task.assert_called_with([user_key.uuid.hex], [membership.pk])
+                mocked_task.assert_called_with(
+                    'nodeconductor.iaas.remove_ssh_public_keys',
+                    ([user_key.uuid.hex], [membership.pk]), {})
