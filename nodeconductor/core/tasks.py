@@ -360,7 +360,6 @@ def retry_if_false(func):
 
 
 def send_task(app_label, task_name):
-    # FIXME: Currently it only works with 'iaas' app due to weird celery autodiscover (NC-509)
     """ A helper function to deal with nodeconductor "high-level" tasks.
         Define high-level task with explicit name using a pattern:
         nodeconductor.<app_label>.<task_name>
