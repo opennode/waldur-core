@@ -581,9 +581,12 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     lookup_field = 'uuid'
 
+    def initial(self, request, *args, **kwargs):
+        super(TemplateLicenseViewSet, self).initial(request, *args, **kwargs)
+        if self.action != 'stats' and not self.request.user.is_staff:
+            raise Http404
+
     def get_queryset(self):
-        if not self.request.user.is_staff:
-            raise Http404()
         queryset = super(TemplateLicenseViewSet, self).get_queryset()
         if 'customer' in self.request.query_params:
             customer_uuid = self.request.query_params['customer']
