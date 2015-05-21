@@ -3,7 +3,7 @@ import logging
 import requests
 from requests.exceptions import RequestException
 
-from django.conf import settings
+from django.conf import settings as django_settings
 from django.utils import six
 from pyzabbix import ZabbixAPI, ZabbixAPIException
 
@@ -11,21 +11,18 @@ from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
 
 logger = logging.getLogger(__name__)
-ZABBIX_SETTINGS = getattr(settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {})
 
 
 def _exception_decorator(message, fail_silently=None):
-    if fail_silently is None:
-        fail_silently = ZABBIX_SETTINGS.get('FAIL_SILENTLY', False)
 
     def decorator(func):
-        def wrapper(*args, **kwargs):
+        def wrapper(self, *args, **kwargs):
             try:
-                return func(*args, **kwargs)
+                return func(self, *args, **kwargs)
             except (ZabbixAPIException, RequestException) as exception:
-                if not fail_silently:
+                if not self._settings.get('FAIL_SILENTLY', False):
                     exception_name = exception.__class__.__name__
-                    message_args = args + tuple(kwargs.values())
+                    message_args = (self,) + args + tuple(kwargs.values())
                     logger.exception(message.format(*message_args, exception=exception, exception_name=exception_name))
                     six.reraise(ZabbixError, exception)
 
@@ -36,8 +33,10 @@ def _exception_decorator(message, fail_silently=None):
 
 class ZabbixApiClient(object):
 
-    def __init__(self):
-        self.init_config_parameters()
+    def __init__(self, settings=None):
+        self._settings = settings
+        if settings is None:
+            self._settings = getattr(django_settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {})
 
     @_exception_decorator('Can not get Zabbix host for instance {1}')
     def get_host(self, instance):
@@ -52,7 +51,11 @@ class ZabbixApiClient(object):
     def create_host(self, instance, warn_if_host_exists=True):
         api = self.get_zabbix_api()
         _, created = self.get_or_create_host(
-            api, instance, self.groupid, self.templateid, self.interface_parameters)
+            api, instance,
+            groupid=self._settings['groupid'],
+            templateid=self._settings['templateid'],
+            interface_parameters=self._settings['interface_parameters']
+        )
         if not created and warn_if_host_exists:
             logger.warn('Can not create new Zabbix host for instance %s. It already exists.', instance)
 
@@ -98,7 +101,7 @@ class ZabbixApiClient(object):
     def create_service(self, instance, hostid=None, warn_if_service_exists=True):
         api = self.get_zabbix_api()
 
-        service_parameters = self.default_service_parameters
+        service_parameters = self._settings['default_service_parameters']
         name = self.get_service_name(instance)
         service_parameters['name'] = name
         if hostid is None:
@@ -146,43 +149,18 @@ class ZabbixApiClient(object):
         events = self.get_trigger_events(api, service_trigger_id, start_time, end_time)
         return sla, events
 
-    # Helpers:
-    def init_config_parameters(self):
-        try:
-            self.server = ZABBIX_SETTINGS['server']
-            self.username = ZABBIX_SETTINGS['username']
-            self.password = ZABBIX_SETTINGS['password']
-            self.interface_parameters = ZABBIX_SETTINGS.get(
-                'interface_parameters',
-                {
-                    'ip': '0.0.0.0',
-                    'main': 1,
-                    'port': '10050',
-                    'type': 1,
-                    'useip': 1,
-                    'dns': ''
-                })
-            self.templateid = ZABBIX_SETTINGS['templateid']
-            self.groupid = ZABBIX_SETTINGS['groupid']
-            self.default_service_parameters = ZABBIX_SETTINGS.get(
-                'default_service_parameters',
-                {
-                    'algorithm': 1,
-                    'showsla': 1,
-                    'sortorder': 1,
-                    'goodsla': 95
-                })
-        except KeyError as e:
-            if not ZABBIX_SETTINGS.get('FAIL_SILENTLY', False):
-                logger.exception('Failed to find all necessary Zabbix parameters in settings')
-                six.reraise(ZabbixError, e)
+    @_exception_decorator('Can not get instance {1} installation state from zabbix')
+    def get_service_installation_state(self, instance):
+        # TODO: Get installation state from zabbix
+        return 'synced'
 
+    # Helpers:
     def get_zabbix_api(self):
         unsafe_session = requests.Session()
         unsafe_session.verify = False
 
-        api = ZabbixAPI(server=self.server, session=unsafe_session)
-        api.login(self.username, self.password)
+        api = ZabbixAPI(server=self._settings['server'], session=unsafe_session)
+        api.login(self._settings['username'], self._settings['password'])
         return api
 
     def get_host_name(self, instance):
@@ -228,7 +206,7 @@ class ZabbixApiClient(object):
             host = api.host.create({
                 "host": name,
                 "name": visible_name,
-                "interfaces": [interface_parameters],
+                "interfaces": [self._settings['interface_parameters']],
                 "groups": [{"groupid": groupid}],
                 "templates": [{"templateid": templateid}],
             })
