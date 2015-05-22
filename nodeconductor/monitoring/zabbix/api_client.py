@@ -36,7 +36,10 @@ class ZabbixApiClient(object):
     def __init__(self, settings=None):
         self._settings = settings
         if settings is None:
-            self._settings = getattr(django_settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {})
+            try:
+                self._settings = getattr(django_settings, 'NODECONDUCTOR', {})['MONITORING']['ZABBIX']
+            except KeyError:
+                raise ZabbixError('No settings defined for zabbix API client.')
 
     @_exception_decorator('Can not get Zabbix host for instance {1}')
     def get_host(self, instance):
