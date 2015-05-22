@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.translation import ungettext, gettext
 
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.monitoring.zabbix.error import ZabbixError
+from nodeconductor.monitoring.zabbix.errors import ZabbixError
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure.admin import ProtectedModelMixin
 from nodeconductor.iaas import models
