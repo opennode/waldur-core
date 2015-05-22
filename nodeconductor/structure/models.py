@@ -15,6 +15,7 @@ from polymorphic import PolymorphicModel
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
+from nodeconductor.events.log import EventLoggableMixin
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
@@ -27,6 +28,7 @@ event_logger = EventLoggerAdapter(logger)
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
                quotas_models.QuotaModelMixin,
+               EventLoggableMixin,
                TimeStampedModel):
     class Permissions(object):
         customer_path = 'self'
@@ -44,6 +46,9 @@ class Customer(core_models.UuidMixin,
 
     def get_billing_backend(self):
         return BillingBackend(self)
+
+    def get_event_log_fields(self):
+        return ('uuid', 'name', 'abbreviation', 'contact_details')
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
@@ -194,6 +199,7 @@ class Project(core_models.DescribableMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
               quotas_models.QuotaModelMixin,
+              EventLoggableMixin,
               TimeStampedModel):
     class Permissions(object):
         customer_path = 'customer'

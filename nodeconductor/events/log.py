@@ -20,13 +20,13 @@ class EventLoggerError(AttributeError):
 
 class EventLogger(object):
     """ Base event logger API.
-        Fields which must be passed during event log emitting
+        Fields which must be passed during event log emitting (event context)
         should be defined as attributes for this class in the form of:
 
         field_name = ObjectClass || '<app_label>.<class_name>'
 
-        A list of supported event types can be defined with help of method get_supported_event_types.
-        Event type won't be validated if this list is empty.
+        A list of supported event types can be defined with help of method get_supported_event_types,
+        or 'event_types' property of Meta class. Event type won't be validated if this list is empty.
 
         Example usage:
 
