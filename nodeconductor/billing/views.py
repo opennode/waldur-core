@@ -1,42 +1,65 @@
-from rest_framework import viewsets, mixins, exceptions, response, decorators
+import django_filters
 
-from django.http import HttpResponse
-from reportlab.pdfgen import canvas
+from rest_framework import viewsets, permissions, response, decorators, filters, exceptions
 
-from nodeconductor.billing.dummy import DummyDataSet
-from nodeconductor.billing.serializers import InvoiceSerializer
-from nodeconductor.billing.filters import InvoiceSearchFilter
+from decimal import Decimal
+from django.conf import settings
+from django.views.static import serve
+
+from nodeconductor.structure.filters import GenericRoleFilter
+from nodeconductor.billing.serializers import InvoiceSerializer, InvoiceDetailedSerializer
+from nodeconductor.billing.models import Invoice
 
 
 class BillingViewSet(viewsets.GenericViewSet):
 
     @decorators.list_route()
     def pricelist(self, request):
-        return response.Response(DummyDataSet.PRICELIST)
+        dummy_pricelist = dict(
+            core=Decimal('1000'),
+            ram_mb=Decimal('500'),
+            storage_mb=Decimal('300'),
+            license_type=Decimal('700'),
+        )
+
+        return response.Response(dummy_pricelist)
 
 
-class InvoiceViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
-    serializer_class = InvoiceSerializer
-    filter_backends = (InvoiceSearchFilter,)
+class InvoiceFilter(django_filters.FilterSet):
+    customer = django_filters.CharFilter(name='customer__uuid', distinct=True)
+    month = django_filters.CharFilter(name='date', lookup_type='month')
+    year = django_filters.CharFilter(name='date', lookup_type='year')
 
-    def get_queryset(self):
-        return DummyDataSet.invoices_queryset()
+    class Meta(object):
+        model = Invoice
+        fields = ('customer', 'year', 'month')
 
-    def get_object(self):
-        try:
-            return next(obj for obj in self.get_queryset() if obj.pk == self.kwargs['pk'])
-        except StopIteration as e:
-            raise exceptions.NotFound(e)
+
+class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Invoice.objects.all()
+    filter_class = InvoiceFilter
+    filter_backends = (GenericRoleFilter, filters.DjangoFilterBackend)
+    lookup_field = 'uuid'
+    permission_classes = (
+        permissions.IsAuthenticated,
+        permissions.DjangoObjectPermissions,
+    )
+
+    # Invoice items are being fetched directly from backend
+    # thus we expose them in detailed view only
+    # TODO: Move invoice items to DB and use single serializer
+    def get_serializer_class(self):
+        return InvoiceDetailedSerializer if self.action == 'retrieve' else InvoiceSerializer
 
     @decorators.detail_route()
-    def pdf(self, request, pk=None):
+    def pdf(self, request, uuid=None):
         invoice = self.get_object()
+        if not invoice.pdf:
+            raise exceptions.NotFound("There's no PDF for this invoice")
 
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="invoice.pdf"'
+        response = serve(request, invoice.pdf.name, document_root=settings.MEDIA_ROOT)
+        if request.query_params.get('download'):
+            response['Content-Type'] = 'application/pdf'
+            response['Content-Disposition'] = 'attachment; filename="invoice.pdf"'
 
-        pdf = canvas.Canvas(response)
-        pdf.drawString(100, 800, "{month}/{year} {customer_native_name} {amount}".format(**invoice.__dict__))
-        pdf.showPage()
-        pdf.save()
         return response

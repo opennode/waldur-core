@@ -26,7 +26,7 @@ install_requires = [
     'django-permission==0.8.2',
     'django-polymorphic>=0.7',
     'django-uuidfield==0.5.0',
-    'djangorestframework>=3.1.0,<3.1.2',
+    'djangorestframework>=3.1.0,<3.2.0',
     'djangosaml2==0.12.0.dev0',
     'elasticsearch>=1.0.0,<2.0.0',
     'jira>=0.47',
@@ -36,10 +36,9 @@ install_requires = [
     'python-keystoneclient==0.9.0',
     'python-neutronclient==2.3.4',
     'python-novaclient==2.17.0',
-    'PyYAML>=3.11',
+    'PyYAML>=3.10',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
-    'reportlab>=2.5',
     'requests>=2.6.0',
 ]
 

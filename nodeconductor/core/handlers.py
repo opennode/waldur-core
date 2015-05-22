@@ -4,7 +4,7 @@ from django.forms import model_to_dict
 from django.utils import six
 from rest_framework.authtoken.models import Token
 
-from nodeconductor.events.log import event_logger
+from nodeconductor.core.log import event_logger
 
 
 def create_auth_token(sender, instance, created=False, **kwargs):

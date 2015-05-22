@@ -1,9 +1,13 @@
 from __future__ import unicode_literals
 
+from mock import patch
+
 from rest_framework import status
 from rest_framework import test
 
+from nodeconductor.iaas import tasks
 from nodeconductor.iaas.models import Cloud
+from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.tests import factories
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole

@@ -14,4 +14,5 @@ Filtering of invoices is supported through HTTP query parameters, the following 
 - ?month=<month>
 - ?year=<year>
 
-PDF version of invoice is available with GET against **/api/invoices/{uuid}/pdf/**
+PDF version of invoice is available with GET against **/api/invoices/{uuid}/pdf/**.
+In order to force browser to download and save PDF use **?download=1** parameter.
