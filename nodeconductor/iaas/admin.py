@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.utils.translation import ungettext
+from django.utils.translation import ungettext, gettext
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.quotas.admin import QuotaInline
@@ -177,10 +177,21 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
     search_fields = ['name', 'uuid']
     list_filter = ['state', 'cloud_project_membership__project', 'template']
 
+    actions = ['pull_installation_state']
+
     def get_project_name(self, obj):
         return obj.cloud_project_membership.project.name
 
     get_project_name.short_description = 'Project'
+
+    def pull_installation_state(self, request, queryset):
+        for instance in queryset:
+            tasks.zabbix.pull_instance_installation_state(instance.uuid.hex)
+
+        message = gettext('Installation state of selected instances was pulled')
+        self.message_user(request, message)
+
+    pull_installation_state.short_description = "Pull Installation state"
 
 
 class ImageInline(ReadonlyInlineMixin, admin.TabularInline):
