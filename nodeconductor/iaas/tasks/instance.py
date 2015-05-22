@@ -17,7 +17,7 @@ def provision_instance(instance_uuid, backend_flavor_id,
         openstack_provision_instance.si(
             instance_uuid, backend_flavor_id, system_volume_id, data_volume_id),
         zabbix_create_host_and_service.si(instance_uuid),
-        poll_instance_installation_state(instance_uuid),
+        poll_instance_installation_state.si(instance_uuid),
     ).apply_async(
         link=provision_succeeded.si(instance_uuid),
         link_error=provision_failed.si(instance_uuid),
