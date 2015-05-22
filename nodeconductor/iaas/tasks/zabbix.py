@@ -6,6 +6,7 @@ import logging
 from celery import shared_task
 from django.conf import settings
 
+from nodeconductor.core.tasks import retry_if_false
 from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tasks import iaas
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
@@ -45,14 +46,10 @@ def pull_instance_installation_state(instance_uuid):
     instance.save()
 
 
-@shared_task
-def poll_instance_installation_state(instance_uuid, polling_time=0):
-    poll_interval = 3
-    max_polling_time = 20
-    polling_time += poll_interval
-
+@shared_task(max_retries=60, default_retry_delay=60)
+@retry_if_false
+def poll_instance_installation_state(instance_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)
     instance.installation_state = _get_installation_state(instance)
     instance.save()
-    if instance.installation_state != 'synced' and polling_time < max_polling_time:
-        poll_instance_installation_state.apply_async(args=(instance_uuid, polling_time), countdown=poll_interval)
+    return instance.installation_state != 'synced'
