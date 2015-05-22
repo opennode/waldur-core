@@ -5,12 +5,14 @@ from django.utils.encoding import python_2_unicode_compatible
 from polymorphic import PolymorphicModel
 
 from nodeconductor.core import models as core_models
+from nodeconductor.events.log import EventLoggableMixin
 from nodeconductor.template import get_template_services
 
 
 @python_2_unicode_compatible
 class Template(core_models.UuidMixin,
                core_models.UiDescribableMixin,
+               EventLoggableMixin,
                models.Model):
     # Model doesn't inherit NameMixin, because name field must be unique.
     name = models.CharField(max_length=150, unique=True)
@@ -33,7 +35,7 @@ class Template(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class TemplateService(PolymorphicModel, core_models.NameMixin):
+class TemplateService(PolymorphicModel, EventLoggableMixin, core_models.NameMixin):
     base_template = models.ForeignKey(Template, related_name='services')
 
     def provision(self, options, **kwargs):
