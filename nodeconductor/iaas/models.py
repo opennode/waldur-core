@@ -402,6 +402,9 @@ class Instance(core_models.UuidMixin,
         default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
         help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
+    installation_state = models.CharField(
+        max_length=50, blank=True, help_text='State of post deploy installation process')
+
     # fields, defined by flavor
     cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
     ram = models.PositiveIntegerField(help_text='Memory size in MiB')

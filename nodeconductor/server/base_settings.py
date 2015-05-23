@@ -198,7 +198,7 @@ CELERYBEAT_SCHEDULE = {
         'task': 'nodeconductor.backup.tasks.delete_expired_backups',
         'schedule': timedelta(minutes=10),
         'args': (),
-    }
+    },
 }
 
 CELERY_TASK_THROTTLING = {

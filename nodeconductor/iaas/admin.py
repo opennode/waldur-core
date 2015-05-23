@@ -1,7 +1,8 @@
 from django.contrib import admin
-from django.utils.translation import ungettext
+from django.utils.translation import ungettext, gettext
 
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.monitoring.zabbix.errors import ZabbixError
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure.admin import ProtectedModelMixin
 from nodeconductor.iaas import models
@@ -75,6 +76,7 @@ class CloudAdmin(admin.ModelAdmin):
         self.message_user(request, message)
 
     recover_erred_services.short_description = "Recover selected cloud accounts"
+
 
 # noinspection PyMethodMayBeStatic
 class CloudProjectMembershipAdmin(admin.ModelAdmin):
@@ -177,10 +179,30 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
     search_fields = ['name', 'uuid']
     list_filter = ['state', 'cloud_project_membership__project', 'template']
 
+    actions = ['pull_installation_state']
+
     def get_project_name(self, obj):
         return obj.cloud_project_membership.project.name
 
     get_project_name.short_description = 'Project'
+
+    def pull_installation_state(self, request, queryset):
+        erred_instances = []
+        for instance in queryset:
+            try:
+                tasks.zabbix.pull_instance_installation_state(instance.uuid.hex)
+            except ZabbixError:
+                erred_instances.append(instance)
+
+        if not erred_instances:
+            message = gettext('Installation state of selected instances was pulled successfully')
+        else:
+            message = gettext('Pulling failed for instances: %(erred_instances)s')
+        message = message % {'erred_instances': ', '.join([i.name for i in erred_instances])}
+
+        self.message_user(request, message)
+
+    pull_installation_state.short_description = "Pull Installation state"
 
 
 class ImageInline(ReadonlyInlineMixin, admin.TabularInline):
