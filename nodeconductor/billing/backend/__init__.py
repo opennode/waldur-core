@@ -1,12 +1,11 @@
 import logging
 import importlib
-import threading
 
 from django.utils import six
 from django.conf import settings
+from django.core.files.base import ContentFile
 
 
-DATA = threading.local().billing_data = {}
 logger = logging.getLogger(__name__)
 
 
@@ -15,14 +14,8 @@ class BillingBackendError(Exception):
 
 
 class BillingBackend(object):
-    """ General billing backend. Expects django settings as follow:
-
-            NODECONDUCTOR['BILLING'] = {
-                'backend': 'nodeconductor.billing.backend.whmcs.WHMCSAPI',
-                'api_url': 'http://demo.whmcs.com/includes/api.php',
-                'username': 'Admin',
-                'password': 'demo',
-            }
+    """ General billing backend.
+        Utilizes particular backend API client depending on django settings.
     """
 
     def __init__(self, customer=None):
@@ -76,11 +69,34 @@ class BillingBackend(object):
         self.customer.balance = client_details['balance']
         self.customer.save(update_fields=['balance'])
 
+    def sync_invoices(self):
+        backend_id = self.get_or_create_client()
+
+        # Update or create invoices from backend
+        cur_invoices = {i.backend_id: i for i in self.customer.invoices.all()}
+        for invoice in self.api.get_invoices(backend_id, with_pdf=True):
+            cur_invoice = cur_invoices.pop(invoice['backend_id'], None)
+            if cur_invoice:
+                cur_invoice.date = invoice['date']
+                cur_invoice.amount = invoice['amount']
+                cur_invoice.save(update_fields=['date', 'amount'])
+            else:
+                cur_invoice = self.customer.invoices.create(
+                    backend_id=invoice['backend_id'],
+                    date=invoice['date'],
+                    amount=invoice['amount'])
+
+            if 'pdf' in invoice:
+                cur_invoice.pdf.delete()
+                cur_invoice.pdf.save('Invoice-%d.pdf' % cur_invoice.uuid, ContentFile(invoice['pdf']))
+                cur_invoice.save(update_fields=['pdf'])
+
+        # Remove stale invoices
+        map(lambda i: i.delete(), cur_invoices.values())
+
+    def get_invoice_items(self, invoice_id):
+        return self.api.get_invoice_items(invoice_id)
+
 
 class DummyBillingAPI(object):
-
-    def add_client(self, *args, **kwargs):
-        raise NotImplementedError
-
-    def get_client_details(self, client_id):
-        raise NotImplementedError
+    pass

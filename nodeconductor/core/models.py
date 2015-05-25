@@ -227,3 +227,7 @@ class SynchronizableMixin(models.Model):
     @transition(field=state, source='*', target=SynchronizationStates.ERRED)
     def set_erred(self):
         pass
+
+    @transition(field=state, source=SynchronizationStates.ERRED, target=SynchronizationStates.IN_SYNC)
+    def set_in_sync_from_erred(self):
+        pass

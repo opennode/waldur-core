@@ -39,6 +39,7 @@ def sync_billing_customer(customer_uuid):
     customer = models.Customer.objects.get(uuid=customer_uuid)
     backend = customer.get_billing_backend()
     backend.sync_customer()
+    backend.sync_invoices()
 
 
 @shared_task(name='nodeconductor.structure.sync_services')

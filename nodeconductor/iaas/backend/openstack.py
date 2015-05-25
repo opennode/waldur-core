@@ -445,7 +445,7 @@ class OpenStackBackend(OpenStackClient):
                 logger.info('Successfully propagated ssh public key %s to backend', key_name)
             else:
                 # Found a key with the same fingerprint, skip adding
-                logger.info('Skiped propagating ssh public key %s to backend', key_name)
+                logger.info('Skipped propagating ssh public key %s to backend', key_name)
 
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
