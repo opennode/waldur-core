@@ -6,7 +6,9 @@ class AuthEventLogger(EventLogger):
     user = User
 
     class Meta:
-        event_types = 'auth_logged_in_with_username', 'auth_logged_in_with_pki', 'auth_logged_out'
+        event_types = ('auth_logged_in_with_username',
+                       'auth_logged_in_with_pki',
+                       'auth_logged_out')
 
 
 class UserEventLogger(EventLogger):
@@ -14,15 +16,20 @@ class UserEventLogger(EventLogger):
 
     class Meta:
         permitted_objects_uuids = staticmethod(lambda user: {'user_uuid': [user.uuid.hex]})
-        event_types = 'user_password_updated', 'user_activated', 'user_deactivated', \
-                      'user_creation_succeeded', 'user_update_succeeded', 'user_deletion_succeeded',
+        event_types = ('user_creation_succeeded',
+                       'user_update_succeeded',
+                       'user_deletion_succeeded',
+                       'user_password_updated',
+                       'user_activated',
+                       'user_deactivated')
 
 
 class SshPublicKeyEventLogger(EventLogger):
     ssh_key = SshPublicKey
 
     class Meta:
-        event_types = 'ssh_key_creation_succeeded', 'ssh_key_deletion_succeeded'
+        event_types = ('ssh_key_creation_succeeded',
+                       'ssh_key_deletion_succeeded')
 
 
 event_logger.register('auth', AuthEventLogger)
