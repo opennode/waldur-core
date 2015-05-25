@@ -2,27 +2,19 @@ import django_filters
 
 from rest_framework import viewsets, permissions, response, decorators, filters, exceptions
 
-from decimal import Decimal
 from django.conf import settings
 from django.views.static import serve
 
 from nodeconductor.structure.filters import GenericRoleFilter
 from nodeconductor.billing.serializers import InvoiceSerializer, InvoiceDetailedSerializer
-from nodeconductor.billing.models import Invoice
+from nodeconductor.billing.models import PriceList, Invoice
 
 
 class BillingViewSet(viewsets.GenericViewSet):
 
     @decorators.list_route()
     def pricelist(self, request):
-        dummy_pricelist = dict(
-            core=Decimal('1000'),
-            ram_mb=Decimal('500'),
-            storage_mb=Decimal('300'),
-            license_type=Decimal('700'),
-        )
-
-        return response.Response(dummy_pricelist)
+        return response.Response({pl.name: pl.price for pl in PriceList.objects.all()})
 
 
 class InvoiceFilter(django_filters.FilterSet):

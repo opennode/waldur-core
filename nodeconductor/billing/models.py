@@ -6,6 +6,18 @@ from nodeconductor.core import models as core_models
 
 
 @python_2_unicode_compatible
+class PriceList(core_models.UuidMixin, core_models.DescribableMixin):
+
+    # Model doesn't inherit NameMixin, because name field must be unique.
+    name = models.CharField(max_length=150, unique=True)
+    price = models.DecimalField(max_digits=9, decimal_places=2)
+    backend_id = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return "%s %.2f" % (self.name, self.price)
+
+
+@python_2_unicode_compatible
 class Invoice(core_models.UuidMixin):
 
     class Permissions(object):

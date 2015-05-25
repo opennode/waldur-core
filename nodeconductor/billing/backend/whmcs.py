@@ -1,3 +1,4 @@
+import re
 import urllib
 import hashlib
 import datetime
@@ -108,6 +109,12 @@ class WHMCSAPI(object):
         except ValueError as e:
             raise BillingBackendError("Can't parse date %s: %s" % (date, e))
 
+    def _get_backend_url(self, path, args=()):
+        url_parts = list(urlparse.urlparse(self.api_url))
+        url_parts[2] = path
+        url_parts[4] = urllib.urlencode(args)
+        return urlparse.urlunparse(url_parts)
+
     def request(self, action, resultset_path=None, **kwargs):
         data = {'action': action, 'responsetype': 'json'}
         data.update(kwargs)
@@ -167,19 +174,39 @@ class WHMCSAPI(object):
                 for item in data['items']['item']]
 
     def get_invoice_pdf(self, invoice_id):
-        def get_url(path, args=()):
-            url_parts = list(urlparse.urlparse(self.api_url))
-            url_parts[2] = path
-            url_parts[4] = urllib.urlencode(args)
-            return urlparse.urlunparse(url_parts)
-
         if not hasattr(self, 'session'):
             self.session = requests.Session()
-            self.session.get(get_url('/admin/login.php'))
+            self.session.get(self._get_backend_url('/admin/login.php'))
             self.session.post(
-                get_url('/admin/dologin.php'),
+                self._get_backend_url('/admin/dologin.php'),
                 data={'username': self.username, 'password': self.password},
                 headers={'Content-Type': 'application/x-www-form-urlencoded'})
 
-        pdf = self.session.get(get_url('/dl.php', {'type': 'i', 'id': invoice_id}))
+        pdf = self.session.get(self._get_backend_url('/dl.php', {'type': 'i', 'id': invoice_id}))
         return pdf.content
+
+    def get_products(self):
+        products = self.request('getproducts', resultset_path='products.product')
+        for product in products:
+            yield {'backend_id': product['pid'],
+                   'price': self.get_product_price(product['pid']),
+                   'description': product['description'] or '',
+                   'name': product['name']}
+
+    def get_product_price(self, product_id):
+        price_url = self._get_backend_url(
+            '/feeds/productsinfo.php',
+            {'pid': product_id, 'get': 'price', 'billingcycle': 'monthly'})
+
+        response = requests.get(price_url)
+        if response.status_code != 200:
+            raise BillingBackendError(
+                "%s. Can't retrieve product price from backend: %s" %
+                (response.status_code, response.text))
+
+        match = re.search(r'\$(-?[\d.]+)', response.text)
+        if not match:
+            raise BillingBackendError(
+                "Can't parse product price: %s" % response.text)
+
+        return match.groups()[0]
