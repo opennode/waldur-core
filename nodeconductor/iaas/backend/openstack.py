@@ -831,7 +831,7 @@ class OpenStackBackend(OpenStackClient):
 
     # Statistics methods
     def get_resource_stats(self, auth_url):
-        logger.debug('About to get statistics from for auth_url: %s', auth_url)
+        logger.debug('About to get statistics for auth_url: %s', auth_url)
         try:
             session = self.create_session(keystone_url=auth_url, dummy=self.dummy)
             nova = self.create_nova_client(session)
