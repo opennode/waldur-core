@@ -5,14 +5,13 @@ import logging
 from django.contrib.auth.models import Group
 from django.db import models, transaction
 
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure import signals
+from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.models import CustomerRole, Project, ProjectRole, ProjectGroupRole, Customer, ProjectGroup
 
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 def prevent_non_empty_project_group_deletion(sender, instance, **kwargs):
@@ -59,56 +58,80 @@ def create_project_group_roles(sender, instance, created, **kwargs):
 
 def log_customer_save(sender, instance, created=False, **kwargs):
     if created:
-        event_logger.info(
-            'Customer %s has been created.', instance.name,
-            extra={'customer': instance, 'event_type': 'customer_creation_succeeded'})
+        event_logger.customer.info(
+            'Customer {customer_name} has been created.',
+            event_type='customer_creation_succeeded',
+            event_context={
+                'customer': instance,
+            })
     else:
-        event_logger.info(
-            'Customer %s has been updated.', instance.name,
-            extra={'customer': instance, 'event_type': 'customer_update_succeeded'})
+        event_logger.customer.info(
+            'Customer {customer_name} has been updated.',
+            event_type='customer_update_succeeded',
+            event_context={
+                'customer': instance,
+            })
 
 
 def log_customer_delete(sender, instance, **kwargs):
-    event_logger.info(
-        'Customer %s has been deleted.', instance.name,
-        extra={'customer': instance, 'event_type': 'customer_deletion_succeeded'})
+    event_logger.customer.info(
+        'Customer {customer_name} has been deleted.',
+        event_type='customer_deletion_succeeded',
+        event_context={
+            'customer': instance,
+        })
 
 
 def log_project_group_save(sender, instance, created=False, **kwargs):
     if created:
-        event_logger.info(
-            'Project group %s has been created.', instance.name,
-            extra={'project_group': instance, 'event_type': 'project_group_creation_succeeded'})
+        event_logger.project_group.info(
+            'Project group {project_group_name} has been created.',
+            event_type='project_group_creation_succeeded',
+            event_context={
+                'project_group': instance,
+            })
     else:
-        event_logger.info(
-            'Project group %s has been updated.', instance.name,
-            extra={'project_group': instance, 'event_type': 'project_group_update_succeeded'})
+        event_logger.project_group.info(
+            'Project group {project_group_name} has been updated.',
+            event_type='project_group_update_succeeded',
+            event_context={
+                'project_group': instance,
+            })
 
 
 def log_project_group_delete(sender, instance, **kwargs):
-    event_logger.info(
-        'Project group %s has been deleted.', instance.name,
-        extra={'project_group': instance, 'event_type': 'project_group_deletion_succeeded'})
+    event_logger.project_group.info(
+        'Project group {project_group_name} has been deleted.',
+        event_type='project_group_deletion_succeeded',
+        event_context={
+            'project_group': instance,
+        })
 
 
 def log_project_save(sender, instance, created=False, **kwargs):
     if created:
-        event_logger.info(
-            'Project %s has been created.', instance.name,
-            extra={'project': instance, 'event_type': 'project_creation_succeeded'}
-        )
+        event_logger.project.info(
+            'Project {project_name} has been created.',
+            event_type='project_creation_succeeded',
+            event_context={
+                'project': instance,
+            })
     else:
-        event_logger.info(
-            'Project %s has been updated.', instance.name,
-            extra={'project': instance, 'event_type': 'project_update_succeeded'}
-        )
+        event_logger.project.info(
+            'Project {project_name} has been updated.',
+            event_type='project_update_succeeded',
+            event_context={
+                'project': instance,
+            })
 
 
 def log_project_delete(sender, instance, **kwargs):
-    event_logger.info(
-        'Project %s has been deleted.', instance.name,
-        extra={'project': instance, 'event_type': 'project_deletion_succeeded'}
-    )
+    event_logger.project.info(
+        'Project {project_name} has been deleted.',
+        event_type='project_deletion_succeeded',
+        event_context={
+            'project': instance,
+        })
 
 
 change_customer_nc_projects_quota = quotas_handlers.quantity_quota_handler_factory(

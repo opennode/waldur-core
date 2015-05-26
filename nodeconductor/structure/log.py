@@ -63,8 +63,30 @@ class UserOrganizationEventLogger(EventLogger):
                        'user_organization_rejected', 'user_organization_removed')
 
 
+class CustomerEventLogger(CustomerEventMixin, EventLogger):
+
+    class Meta:
+        event_types = ('customer_deletion_succeeded', 'customer_update_succeeded', 'customer_creation_succeeded')
+
+
+class ProjectEventLogger(ProjectEventMixin, EventLogger):
+
+    class Meta:
+        event_types = ('project_deletion_succeeded', 'project_update_succeeded', 'project_creation_succeeded')
+
+
+class ProjectGroupEventLogger(ProjectGroupEventMixin, EventLogger):
+
+    class Meta:
+        event_types = ('project_group_deletion_succeeded', 'project_group_update_succeeded',
+                       'project_group_creation_succeeded')
+
+
 event_logger.register('customer_role', CustomerRoleEventLogger)
 event_logger.register('project_role', ProjectRoleEventLogger)
 event_logger.register('project_group_role', ProjectGroupRoleEventLogger)
 event_logger.register('project_group_membership', ProjectGroupMembershipEventLogger)
 event_logger.register('user_organization', UserOrganizationEventLogger)
+event_logger.register('customer', CustomerEventLogger)
+event_logger.register('project', ProjectEventLogger)
+event_logger.register('project_group', ProjectGroupEventLogger)
