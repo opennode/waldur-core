@@ -1,6 +1,7 @@
 from operator import itemgetter
 
 from nodeconductor.events import elasticsearch_client
+from nodeconductor.events.log import event_logger
 
 
 class ElasticsearchDummyClient(elasticsearch_client.ElasticsearchClient):
@@ -42,7 +43,7 @@ class ElasticsearchDummyClient(elasticsearch_client.ElasticsearchClient):
             # define permitted objects filter condition
             permitted_objects_condition = any(
                 [event[key] in uuids for key, uuids
-                    in self._get_permitted_objects_uuids(user).items() if key in event])
+                    in event_logger.get_permitted_objects_uuids(user).items() if key in event])
             # define search_param filter condition
             search_params_condition = all(event.get(field_name) == value for field_name, value in search_params)
 
