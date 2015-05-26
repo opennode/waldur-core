@@ -126,12 +126,6 @@ class ElasticsearchClient(object):
             verify_certs=elasticsearch_settings.get('verify_certs', False),
         )
 
-    def _get_permitted_objects_uuids(self, user):
-        """
-        Return list object available UUIDs for user
-        """
-        return event_logger.get_permitted_objects_uuids(user)
-
     def _escape_elasticsearch_field_value(self, field_value):
         """
         Remove double quotes from field value
@@ -150,7 +144,7 @@ class ElasticsearchClient(object):
         return '%s:("%s")' % (field_name, '", "'.join(excaped_field_values))
 
     def _get_search_body(self, user, event_types=None, search_text=None, search_params=[]):
-        permitted_objects_uuids = self._get_permitted_objects_uuids(user)
+        permitted_objects_uuids = event_logger.get_permitted_objects_uuids(user)
         # Create query for user-related events
         query = ' OR '.join([
             self._format_to_elasticsearch_field_filter(item, uuids)
