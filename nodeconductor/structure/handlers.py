@@ -119,6 +119,7 @@ def log_project_save(sender, instance, created=False, **kwargs):
             event_context={
                 'project': instance,
                 'customer': instance.customer,
+                'project_group': instance.project_groups.first(),
             })
     else:
         event_logger.project.info(
@@ -127,6 +128,7 @@ def log_project_save(sender, instance, created=False, **kwargs):
             event_context={
                 'project': instance,
                 'customer': instance.customer,
+                'project_group': instance.project_groups.first(),
             })
 
 
@@ -137,6 +139,7 @@ def log_project_delete(sender, instance, **kwargs):
         event_context={
             'project': instance,
             'customer': instance.customer,
+            'project_group': instance.project_groups.first(),
         })
 
 
@@ -170,6 +173,7 @@ def log_project_role_granted(sender, structure, user, role, **kwargs):
         event_type='role_granted',
         event_context={
             'project': structure,
+            'project_group': structure.project_groups.first(),
             'customer': structure.customer,
             'affected_user': user,
             'structure_type': 'project',
@@ -183,6 +187,7 @@ def log_project_role_revoked(sender, structure, user, role, **kwargs):
         event_type='role_revoked',
         event_context={
             'project': structure,
+            'project_group': structure.project_groups.first(),
             'customer': structure.customer,
             'affected_user': user,
             'structure_type': 'project',

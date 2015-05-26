@@ -68,6 +68,9 @@ class EventLogger(object):
         permitted_objects_uuids = getattr(self._meta, 'permitted_objects_uuids', None)
         return permitted_objects_uuids(user) if permitted_objects_uuids else {}
 
+    def get_nullable_fields(self):
+        return getattr(self._meta, 'nullable_fields', [])
+
     def info(self, *args, **kwargs):
         self.process('info', *args, **kwargs)
 
@@ -103,11 +106,9 @@ class EventLogger(object):
     def compile_context(self, **kwargs):
         # Get a list of fields here in order to be sure all models already loaded.
         if not hasattr(self, 'fields'):
-            class_items = self.__class__.__dict__.items() + sum(
-                [parent.__dict__.items() for parent in self.__class__.__bases__], [])
             self.fields = {
                 k: apps.get_model(v) if isinstance(v, basestring) else v
-                for k, v in class_items
+                for k, v in self.__class__.__dict__.items()
                 if not k.startswith('_') and not isinstance(v, (types.ClassType, types.FunctionType))}
 
         context = {}
@@ -127,6 +128,8 @@ class EventLogger(object):
         for entity_name, entity in six.iteritems(kwargs):
             if entity_name in required_fields:
                 entity_class = required_fields.pop(entity_name)
+                if entity is None and entity_name in self.get_nullable_fields():
+                    continue
                 if not isinstance(entity, entity_class):
                     raise EventLoggerError(
                         "Field '%s' must be an instance of %s but %s received" % (
@@ -141,6 +144,8 @@ class EventLogger(object):
                 context.update(entity._get_event_log_context(entity_name))
             elif isinstance(entity, (int, float, basestring, dict, tuple, list, bool)):
                 context[entity_name] = entity
+            elif entity is None:
+                pass
             else:
                 context[entity_name] = six.text_type(entity)
                 logger.warning(

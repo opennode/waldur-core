@@ -24,8 +24,10 @@ class CustomerEventLogger(EventLogger):
 class ProjectEventLogger(EventLogger):
     project = models.Project
     customer = models.Customer
+    project_group = models.ProjectGroup
 
     class Meta:
+        nullable_fields = ['project_group']
         event_types = ('project_deletion_succeeded',
                        'project_update_succeeded',
                        'project_creation_succeeded')
@@ -60,19 +62,21 @@ class CustomerRoleEventLogger(EventLogger):
 
 
 class ProjectRoleEventLogger(EventLogger):
-    project = 'structure.Project'
-    customer = 'structure.Customer'
+    project = models.Project
+    project_group = models.ProjectGroup
+    customer = models.Customer
     affected_user = User
     structure_type = basestring
     role_name = basestring
 
     class Meta:
+        nullable_fields = ['project_group']
         event_types = 'role_granted', 'role_revoked'
 
 
 class ProjectGroupRoleEventLogger(EventLogger):
-    project_group = 'structure.ProjectGroup'
-    customer = 'structure.Customer'
+    project_group = models.ProjectGroup
+    customer = models.Customer
     affected_user = User
     structure_type = basestring
     role_name = basestring
@@ -82,9 +86,9 @@ class ProjectGroupRoleEventLogger(EventLogger):
 
 
 class ProjectGroupMembershipEventLogger(EventLogger):
-    project = 'structure.Project'
-    project_group = 'structure.ProjectGroup'
-    customer = 'structure.Customer'
+    project = models.Project
+    project_group = models.ProjectGroup
+    customer = models.Customer
 
     class Meta:
         event_types = 'project_added_to_project_group', 'project_removed_from_project_group'

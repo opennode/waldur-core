@@ -354,7 +354,7 @@ class ProjectGroupMembershipViewSet(mixins.CreateModelMixin,
         project_group = serializer.validated_data['projectgroup']
 
         event_logger.project_group_membership.info(
-            'Project {project_name} has been added from project group {project_group_name}.',
+            'Project {project_name} has been added to project group {project_group_name}.',
             event_type='project_added_to_project_group',
             event_context={
                 'project': project,
