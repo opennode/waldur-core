@@ -16,6 +16,7 @@ import yaml
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.utils import request_api
+from nodeconductor.events.log import EventLoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
 from nodeconductor.quotas import models as quotas_models
@@ -53,7 +54,7 @@ def validate_known_keystone_urls(value):
 
 
 @python_2_unicode_compatible
-class Cloud(core_models.UuidMixin, core_models.NameMixin,
+class Cloud(core_models.UuidMixin, core_models.NameMixin, EventLoggableMixin,
             core_models.SynchronizableMixin, models.Model):
     """
     A cloud instance information.
@@ -304,6 +305,7 @@ def validate_yaml(value):
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
                core_models.NameMixin,
+               EventLoggableMixin,
                # This needs to be inlined in order to set on_delete
                # CloudProjectMember,
                TimeStampedModel):
