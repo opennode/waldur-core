@@ -40,7 +40,7 @@ class CustomerPermissionSerializerTest(unittest.TestCase):
     def test_payload_has_required_fields(self):
         expected_fields = [
             'url', 'role', 'pk',
-            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
+            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation', 'customer_uuid',
             'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid'
         ]
         self.assertItemsEqual(expected_fields, self.serializer.fields.keys())

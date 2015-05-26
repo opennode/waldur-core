@@ -1,7 +1,8 @@
 from django.contrib import admin
-from django.utils.translation import ungettext
+from django.utils.translation import ungettext, gettext
 
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.monitoring.zabbix.errors import ZabbixError
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure.admin import ProtectedModelMixin
 from nodeconductor.iaas import models
@@ -30,7 +31,7 @@ class CloudAdmin(admin.ModelAdmin):
     list_display = ('name', 'customer', 'state')
     ordering = ('name', 'customer')
 
-    actions = ['sync_services']
+    actions = ['sync_services', 'recover_erred_services']
 
     def sync_services(self, request, queryset):
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
@@ -52,6 +53,30 @@ class CloudAdmin(admin.ModelAdmin):
 
     sync_services.short_description = "Update selected cloud accounts from backend"
 
+    def recover_erred_services(self, request, queryset):
+        # TODO: Extract to a service
+
+        queryset = queryset.filter(state=SynchronizationStates.ERRED)
+
+        tasks_scheduled = 0
+
+        for service in queryset.iterator():
+            tasks.recover_erred_service.delay(service.uuid.hex)
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'One cloud account scheduled for recovery',
+            '%(tasks_scheduled)d cloud accounts scheduled for recovery',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    recover_erred_services.short_description = "Recover selected cloud accounts"
+
 
 # noinspection PyMethodMayBeStatic
 class CloudProjectMembershipAdmin(admin.ModelAdmin):
@@ -62,7 +87,7 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     search_fields = ('cloud__customer__name', 'project__name', 'cloud__name')
     inlines = [QuotaInline]
 
-    actions = ['pull_cloud_memberships']
+    actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships']
 
     def get_queryset(self, request):
         queryset = super(CloudProjectMembershipAdmin, self).get_queryset(request)
@@ -94,6 +119,30 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
         self.message_user(request, message)
 
     pull_cloud_memberships.short_description = "Update selected cloud project memberships from backend"
+
+    def recover_erred_cloud_memberships(self, request, queryset):
+        # TODO: Extract to a service
+
+        queryset = queryset.filter(state=SynchronizationStates.ERRED)
+
+        tasks_scheduled = 0
+
+        for membership in queryset.iterator():
+            tasks.recover_erred_cloud_membership.delay(membership.pk)
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'One cloud project membership scheduled for recovery',
+            '%(tasks_scheduled)d cloud project memberships scheduled for recovery',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    recover_erred_cloud_memberships.short_description = "Recover selected cloud project memberships"
 
     def get_cloud_name(self, obj):
         return obj.cloud.name
@@ -130,10 +179,30 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
     search_fields = ['name', 'uuid']
     list_filter = ['state', 'cloud_project_membership__project', 'template']
 
+    actions = ['pull_installation_state']
+
     def get_project_name(self, obj):
         return obj.cloud_project_membership.project.name
 
     get_project_name.short_description = 'Project'
+
+    def pull_installation_state(self, request, queryset):
+        erred_instances = []
+        for instance in queryset:
+            try:
+                tasks.zabbix.pull_instance_installation_state(instance.uuid.hex)
+            except ZabbixError:
+                erred_instances.append(instance)
+
+        if not erred_instances:
+            message = gettext('Installation state of selected instances was pulled successfully')
+        else:
+            message = gettext('Pulling failed for instances: %(erred_instances)s')
+        message = message % {'erred_instances': ', '.join([i.name for i in erred_instances])}
+
+        self.message_user(request, message)
+
+    pull_installation_state.short_description = "Pull Installation state"
 
 
 class ImageInline(ReadonlyInlineMixin, admin.TabularInline):

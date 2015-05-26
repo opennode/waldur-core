@@ -6,17 +6,17 @@ from decimal import Decimal
 from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
-from django.core.urlresolvers import reverse
 from django.db import models
-from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 from model_utils.models import TimeStampedModel
+import yaml
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.utils import request_api
+from nodeconductor.events.log import EventLoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
 from nodeconductor.quotas import models as quotas_models
@@ -54,7 +54,7 @@ def validate_known_keystone_urls(value):
 
 
 @python_2_unicode_compatible
-class Cloud(core_models.UuidMixin, core_models.NameMixin,
+class Cloud(core_models.UuidMixin, core_models.NameMixin, EventLoggableMixin,
             core_models.SynchronizableMixin, models.Model):
     """
     A cloud instance information.
@@ -294,10 +294,18 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
+def validate_yaml(value):
+    try:
+        yaml.load(value)
+    except yaml.error.YAMLError:
+        raise ValidationError('A valid YAML value is required.')
+
+
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
                core_models.NameMixin,
+               EventLoggableMixin,
                # This needs to be inlined in order to set on_delete
                # CloudProjectMember,
                TimeStampedModel):
@@ -396,6 +404,9 @@ class Instance(core_models.UuidMixin,
         default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
         help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
+    installation_state = models.CharField(
+        max_length=50, blank=True, help_text='State of post deploy installation process')
+
     # fields, defined by flavor
     cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
     ram = models.PositiveIntegerField(help_text='Memory size in MiB')
@@ -412,12 +423,12 @@ class Instance(core_models.UuidMixin,
     data_volume_size = models.PositiveIntegerField(
         default=DEFAULT_DATA_VOLUME_SIZE, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
     user_data = models.TextField(
-        blank=True, help_text='Additional data that will be added to instance on provisioning')
+        blank=True, validators=[validate_yaml],
+        help_text='Additional data that will be added to instance on provisioning')
 
     # Services specific fields
     agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=Services.IAAS)
-
 
     @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
     def begin_provisioning(self):

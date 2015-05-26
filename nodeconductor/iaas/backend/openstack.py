@@ -445,7 +445,7 @@ class OpenStackBackend(OpenStackClient):
                 logger.info('Successfully propagated ssh public key %s to backend', key_name)
             else:
                 # Found a key with the same fingerprint, skip adding
-                logger.info('Skiped propagating ssh public key %s to backend', key_name)
+                logger.info('Skipped propagating ssh public key %s to backend', key_name)
 
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
@@ -652,7 +652,6 @@ class OpenStackBackend(OpenStackClient):
         try:
             session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
-            cinder = self.create_cinder_client(session)
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client')
             six.reraise(CloudBackendError, e)
@@ -696,6 +695,13 @@ class OpenStackBackend(OpenStackClient):
                         nc_instance.key_name = backend_instance.key_name
                     # note that fingerprint is not present in the request
                     nc_instance.key_fingerprint = ""
+
+                ips = self._get_instance_ips(backend_instance)
+                if 'internal' in ips:
+                    nc_instance.internal_ips = ips['internal']
+                if 'external' in ips:
+                    nc_instance.external_ips = ips['external']
+
                 nc_instance.save()
                 # TODO: synchronize also volume sizes
 
@@ -1280,14 +1286,12 @@ class OpenStackBackend(OpenStackClient):
                 cloud_project_membership=membership,
                 backend_id=backend_instance.id,
             )
-            for net_name, net_conf in backend_instance.addresses.items():
-                for ip in net_conf:
-                    if ip['OS-EXT-IPS:type'] == 'fixed':
-                        nc_instance.internal_ips = ip['addr']
-                        continue
-                    if ip['OS-EXT-IPS:type'] == 'floating':
-                        nc_instance.external_ips = ip['addr']
-                        continue
+
+            ips = self._get_instance_ips(backend_instance)
+            if 'internal' in ips:
+                nc_instance.internal_ips = ips['internal']
+            if 'external' in ips:
+                nc_instance.external_ips = ips['external']
 
             nc_instance.save()
 
@@ -2420,3 +2424,15 @@ class OpenStackBackend(OpenStackClient):
             if timezone.is_naive(d):
                 d = timezone.make_aware(d, timezone.utc)
             return d
+
+    def _get_instance_ips(self, backend_instance):
+        extracted_ips = {}
+        for _, net_conf in backend_instance.addresses.items():
+            for ip in net_conf:
+                if ip['OS-EXT-IPS:type'] == 'fixed':
+                    extracted_ips['internal'] = ip['addr']
+                    continue
+                if ip['OS-EXT-IPS:type'] == 'floating':
+                    extracted_ips['external'] = ip['addr']
+                    continue
+        return extracted_ips
