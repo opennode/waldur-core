@@ -27,8 +27,10 @@ config_defaults = {
         'backup_schedule_execute_period': 600,
         'broker_url': 'redis://localhost',
         'cloud_account_pull_period': 3600,
+        'recover_erred_services_period': 1800,
         'cloud_project_membership_pull_period': 1800,
         'cloud_project_membership_quota_check_period': 86400,
+        'recover_erred_cloud_memberships_period': 1800,
         'expired_backup_delete_period': 600,
         'instance_monthly_sla_update_period': 300,
         'instance_yearly_sla_update_period': 600,
@@ -459,9 +461,19 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(seconds=config.getint('celery', 'cloud_account_pull_period')),
         'args': (),
     },
+    'recover-erred-services': {
+        'task': 'nodeconductor.iaas.recover_erred_services',
+        'schedule': timedelta(seconds=config.getint('celery', 'recover_erred_services_period')),
+        'args': (),
+    },
     'pull-cloud-project-memberships': {
         'task': 'nodeconductor.iaas.tasks.iaas.pull_cloud_memberships',
         'schedule': timedelta(seconds=config.getint('celery', 'cloud_project_membership_pull_period')),
+        'args': (),
+    },
+    'recover-erred-cloud-project-memberships': {
+        'task': 'nodeconductor.iaas.tasks.iaas.recover_erred_cloud_memberships',
+        'schedule': timedelta(seconds=config.getint('celery', 'recover_erred_cloud_memberships_period')),
         'args': (),
     },
     'pull-service-statistics': {
