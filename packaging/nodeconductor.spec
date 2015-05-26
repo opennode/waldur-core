@@ -50,6 +50,7 @@ Requires: python-requests = 2.6.0
 Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 = 1.10.1
 Requires: python-zabbix >= 0.7.2
+Requires: PyYAML
 Requires: xmlsec1-openssl
 
 Source0: %{name}-%{version}.tar.gz
