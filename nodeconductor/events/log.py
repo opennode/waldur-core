@@ -103,9 +103,11 @@ class EventLogger(object):
     def compile_context(self, **kwargs):
         # Get a list of fields here in order to be sure all models already loaded.
         if not hasattr(self, 'fields'):
+            class_items = self.__class__.__dict__.items() + sum(
+                [parent.__dict__.items() for parent in self.__class__.__bases__], [])
             self.fields = {
                 k: apps.get_model(v) if isinstance(v, basestring) else v
-                for k, v in self.__class__.__dict__.items()
+                for k, v in class_items
                 if not k.startswith('_') and not isinstance(v, (types.ClassType, types.FunctionType))}
 
         context = {}
