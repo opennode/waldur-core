@@ -84,3 +84,15 @@ class EventsListTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn(event1.fields, response.data)
         self.assertNotIn(event2.fields, response.data)
+
+    def test_events_can_be_filtered_by_customer_uuid(self):
+        event1 = factories.EventFactory(user_uuid=self.user.uuid.hex, customer_uuid=self.customer.uuid.hex)
+        event2 = factories.EventFactory(user_uuid=self.user.uuid.hex, customer_uuid='53c6e86406e349faa7924f4c865b15ab')
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(
+            factories.EventFactory.get_list_url(), data={'customer_uuid': self.customer.uuid.hex})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(event1.fields, response.data)
+        self.assertNotIn(event2.fields, response.data)

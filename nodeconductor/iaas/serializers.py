@@ -555,6 +555,7 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
             'created',
             'user_data',
             'type',
+            'installation_state',
         )
         read_only_fields = (
             'key_name',

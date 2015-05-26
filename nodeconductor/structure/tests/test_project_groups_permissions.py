@@ -40,7 +40,7 @@ class ProjectGroupPermissionSerializerTest(unittest.TestCase):
     def test_payload_has_required_fields(self):
         expected_fields = [
             'url', 'role', 'project_group', 'project_group_name', 'pk',
-            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid'
+            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid', 'project_group_uuid',
         ]
         self.assertItemsEqual(expected_fields, self.serializer.fields.keys())
 

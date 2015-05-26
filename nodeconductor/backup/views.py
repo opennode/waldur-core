@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-import logging
-
 from django.db.models import Q
 from django.contrib.contenttypes import models as ct_models
 from django_fsm import TransitionNotAllowed
@@ -12,14 +10,10 @@ from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
 from nodeconductor.backup.models import Backup
 
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.permissions import has_user_permission_for_instance
 from nodeconductor.backup import models, serializers, utils
+from nodeconductor.backup.log import event_logger, extract_event_context
 from nodeconductor.structure import filters as structure_filters
-
-
-logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 class BackupPermissionFilter():
@@ -77,10 +71,12 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
             return Response({'status': 'BackupSchedule is already activated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = True
         schedule.save()
-        event_logger.info(
-            'Backup schedule for %s has been activated.', schedule.backup_source.name,
-            extra={'backup_schedule': schedule, 'event_type': 'iaas_backup_schedule_activated'}
-        )
+
+        event_logger.backup_schedule.info(
+            'Backup schedule for {iaas_instance_name} has been activated.',
+            event_type='iaas_backup_schedule_activated',
+            event_context=extract_event_context(schedule))
+
         return Response({'status': 'BackupSchedule was activated'})
 
     @detail_route(methods=['post'])
@@ -90,10 +86,12 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
             return Response({'status': 'BackupSchedule is already deactivated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = False
         schedule.save()
-        event_logger.info(
-            'Backup schedule for %s has been deactivated.', schedule.backup_source.name,
-            extra={'backup_schedule': schedule, 'event_type': 'iaas_backup_schedule_deactivated'}
-        )
+
+        event_logger.backup_schedule.info(
+            'Backup schedule for {iaas_instance_name} has been deactivated.',
+            event_type='iaas_backup_schedule_deactivated',
+            event_context=extract_event_context(schedule))
+
         return Response({'status': 'BackupSchedule was deactivated'})
 
 

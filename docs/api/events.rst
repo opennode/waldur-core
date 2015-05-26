@@ -14,3 +14,7 @@ Filtering of customer list is supported through HTTP query parameters, the follo
 - ?event_type=<event_type> - type of filtered events. Can be list.
 - ?search - text for FTS. FTS fields: 'message', 'customer_abbreviation', 'importance',
   'project_group_name', 'cloud_account_name', 'project_name'
+- ?project_uuid=<project_uuid>
+- ?customer_uuid=<customer_uuid>
+- ?project_group_uuid=<project_group_uuid>
+- ?user_uuid=<user_uuid>

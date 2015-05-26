@@ -218,6 +218,9 @@ Therefore configuration might look like this:
             Default parameters for Zabbix IT services.
             Have to contain keys: 'algorithm', 'showsla', 'sortorder', 'goodsla'.
 
+          FAIL_SILENTLY
+            If True - ignores Zabbix API exceptions and do not add any messages to logger
+
 NodeConductor also needs access to Zabbix database. For that a read-only user needs to be created in Zabbix database.
 
 Zabbix database connection is configured as follows:

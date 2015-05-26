@@ -1,5 +1,6 @@
 import time
-import json
+import string
+import random
 import requests
 
 from collections import OrderedDict
@@ -83,7 +84,19 @@ def request_api(request, view_name, method='GET', data=None):
         data=data)
 
     result = type('Result', (object,), {})
-    result.data = json.loads(response.text)
+    result.data = response.json
     result.success = response.status_code in (200, 201)
 
     return result
+
+
+def pwgen(pw_len=8):
+    pwlist = []
+    for i in range(pw_len // 3):
+        pwlist.append(string.ascii_lowercase[random.randrange(len(string.ascii_lowercase))])
+        pwlist.append(string.ascii_uppercase[random.randrange(len(string.ascii_uppercase))])
+
+    pwlist += [string.ascii_letters[random.randrange(len(string.ascii_letters))]
+               for _ in range(pw_len - len(pwlist))]
+
+    return "".join(pwlist)

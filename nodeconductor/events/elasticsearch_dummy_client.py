@@ -24,7 +24,8 @@ class ElasticsearchDummyClient(elasticsearch_client.ElasticsearchClient):
         return DUMMY_EVENTS
 
     def get_user_events(
-            self, user, event_types=None, search_text=None, sort='-@timestamp', index='_all', from_=0, size=10):
+            self, user, event_types=None, search_text=None, search_params=(),
+            sort='-@timestamp', index='_all', from_=0, size=10):
         filtered_events = []
         for event in self._get_dummy_events(user):
             # define event type filter condition
@@ -42,8 +43,12 @@ class ElasticsearchDummyClient(elasticsearch_client.ElasticsearchClient):
             permitted_objects_condition = any(
                 [event[key] in uuids for key, uuids
                     in self._get_permitted_objects_uuids(user).items() if key in event])
+            # define search_param filter condition
+            search_params_condition = all(event.get(field_name) == value for field_name, value in search_params)
+
             # filter out needed events
-            if event_type_condition and search_text_condition and permitted_objects_condition:
+            if (event_type_condition and search_text_condition and permitted_objects_condition and
+                    search_params_condition):
                 filtered_events.append(event)
 
         reverse = sort.startswith('-')

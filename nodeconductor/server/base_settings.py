@@ -31,6 +31,7 @@ INSTALLED_APPS = (
     'nodeconductor.monitoring',
     'nodeconductor.quotas',
     'nodeconductor.structure',
+    'nodeconductor.billing',
     'nodeconductor.iaas',
     'nodeconductor.ldapsync',
 
@@ -51,7 +52,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'nodeconductor.core.middleware.CaptureUserMiddleware',
+    'nodeconductor.events.middleware.CaptureUserMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
@@ -151,6 +152,13 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=60),
         'args': (),
     },
+
+    'recover-erred-services': {
+        'task': 'nodeconductor.iaas.recover_erred_services',
+        'schedule': timedelta(minutes=5),
+        'args': (),
+    },
+
     'pull-service-statistics': {
         'task': 'nodeconductor.iaas.tasks.iaas.pull_service_statistics',
         'schedule': timedelta(minutes=15),
@@ -165,6 +173,12 @@ CELERYBEAT_SCHEDULE = {
     'check-cloud-project-memberships-quotas': {
         'task': 'nodeconductor.iaas.tasks.iaas.check_cloud_memberships_quotas',
         'schedule': timedelta(minutes=1440),
+        'args': (),
+    },
+
+    'recover-erred-cloud-project-memberships': {
+        'task': 'nodeconductor.iaas.tasks.iaas.recover_erred_cloud_memberships',
+        'schedule': timedelta(minutes=5),
         'args': (),
     },
 
@@ -184,7 +198,7 @@ CELERYBEAT_SCHEDULE = {
         'task': 'nodeconductor.backup.tasks.delete_expired_backups',
         'schedule': timedelta(minutes=10),
         'args': (),
-    }
+    },
 }
 
 CELERY_TASK_THROTTLING = {

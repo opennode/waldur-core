@@ -5,6 +5,7 @@
 *.egg-info
 *.pyc
 db.sqlite3
+celerybeat-schedule
 
 /.idea
 /.project
@@ -13,6 +14,8 @@ db.sqlite3
 /.sublime
 
 nodeconductor/server/settings.py
+nodeconductor_plus
+ncplus
 
 # Editor artifacts
 # vim

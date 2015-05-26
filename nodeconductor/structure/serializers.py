@@ -276,12 +276,12 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
         model = User.groups.through
         fields = (
             'url', 'pk', 'role',
-            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
+            'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
         )
         related_paths = {
             'user': ('username', 'full_name', 'native_name', 'uuid'),
-            'group.customerrole.customer': ('name', 'native_name', 'abbreviation')
+            'group.customerrole.customer': ('name', 'native_name', 'abbreviation', 'uuid')
         }
         extra_kwargs = {
             'user': {
@@ -350,12 +350,12 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
         fields = (
             'url', 'pk',
             'role',
-            'project', 'project_name',
+            'project', 'project_uuid', 'project_name',
             'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
         )
         related_paths = {
             'user': ('username', 'full_name', 'native_name', 'uuid'),
-            'group.projectrole.project': ('name',)
+            'group.projectrole.project': ('name', 'uuid')
         }
         extra_kwargs = {
             'user': {
@@ -422,12 +422,12 @@ class ProjectGroupPermissionSerializer(PermissionFieldFilteringMixin,
         fields = (
             'url',  'pk',
             'role',
-            'project_group', 'project_group_name',
+            'project_group', 'project_group_uuid', 'project_group_name',
             'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
         )
         related_paths = {
             'user': ('username', 'full_name', 'native_name', 'uuid'),
-            'group.projectgrouprole.project_group': ('name',)
+            'group.projectgrouprole.project_group': ('name', 'uuid'),
         }
         extra_kwargs = {
             'user': {

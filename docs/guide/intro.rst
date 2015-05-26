@@ -6,4 +6,5 @@
 .. include:: structure.rst
 .. include:: groups.rst
 .. include:: license.rst
+.. include:: events/intro.rst
 
