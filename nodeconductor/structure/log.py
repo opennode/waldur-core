@@ -54,7 +54,17 @@ class ProjectGroupMembershipEventLogger(ProjectGroupEventMixin, EventLogger):
         event_types = 'project_added_to_project_group', 'project_removed_from_project_group'
 
 
+class UserOrganizationEventLogger(EventLogger):
+    affected_user = User
+    affected_organization = basestring
+
+    class Meta:
+        event_types = ('user_organization_claimed', 'user_organization_approved',
+                       'user_organization_rejected', 'user_organization_removed')
+
+
 event_logger.register('customer_role', CustomerRoleEventLogger)
 event_logger.register('project_role', ProjectRoleEventLogger)
 event_logger.register('project_group_role', ProjectGroupRoleEventLogger)
 event_logger.register('project_group_membership', ProjectGroupMembershipEventLogger)
+event_logger.register('user_organization', UserOrganizationEventLogger)
