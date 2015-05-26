@@ -130,29 +130,7 @@ class ElasticsearchClient(object):
         """
         Return list object available UUIDs for user
         """
-
-        permitted_objects_uuids = event_logger.get_permitted_objects_uuids(user)
-
-        # XXX: this method has to be refactored, because it adds dependencies from iaas and structure apps
-        from nodeconductor.structure import models as structure_models
-        from nodeconductor.structure.filters import filter_queryset_for_user
-
-        if user.is_staff:
-            cusomter_queryset = structure_models.Customer.objects.all()
-        else:
-            cusomter_queryset = structure_models.Customer.objects.filter(
-                roles__permission_group__user=user, roles__role_type=structure_models.CustomerRole.OWNER)
-
-        permitted_objects_uuids.update({
-            'project_uuid': filter_queryset_for_user(
-                structure_models.Project.objects.all(), user).values_list('uuid', flat=True),
-            'project_group_uuid': filter_queryset_for_user(
-                structure_models.ProjectGroup.objects.all(), user).values_list('uuid', flat=True),
-            'customer_uuid': filter_queryset_for_user(
-                cusomter_queryset, user).values_list('uuid', flat=True),
-        })
-
-        return permitted_objects_uuids
+        return event_logger.get_permitted_objects_uuids(user)
 
     def _escape_elasticsearch_field_value(self, field_value):
         """

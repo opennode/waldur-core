@@ -1,32 +1,56 @@
 from nodeconductor.events.log import EventLogger, event_logger
 from nodeconductor.core.models import User
+from nodeconductor.structure import models
+from nodeconductor.structure.filters import filter_queryset_for_user
 
 
-class ProjectEventMixin(object):
-    project = 'structure.Project'
+class CustomerEventLogger(EventLogger):
+    customer = models.Customer
 
-    def compile_context(self, **kwargs):
-        context = super(ProjectEventMixin, self).compile_context(**kwargs)
-        customer = kwargs['project'].customer
-        context.update(customer._get_event_log_context('customer'))
-        return context
+    class Meta:
+        event_types = ('customer_deletion_succeeded',
+                       'customer_update_succeeded',
+                       'customer_creation_succeeded')
 
-
-class ProjectGroupEventMixin(object):
-    project_group = 'structure.ProjectGroup'
-
-    def compile_context(self, **kwargs):
-        context = super(ProjectGroupEventMixin, self).compile_context(**kwargs)
-        customer = kwargs['project_group'].customer
-        context.update(customer._get_event_log_context('customer'))
-        return context
+    def get_permitted_objects_uuids(self, user):
+        if user.is_staff:
+            customer_queryset = models.Customer.objects.all()
+        else:
+            customer_queryset = models.Customer.objects.filter(
+                roles__permission_group__user=user, roles__role_type=models.CustomerRole.OWNER)
+        return {'customer_uuid': filter_queryset_for_user(customer_queryset, user).values_list('uuid', flat=True)}
 
 
-class CustomerEventMixin(object):
-    customer = 'structure.Customer'
+class ProjectEventLogger(EventLogger):
+    project = models.Project
+    customer = models.Customer
+
+    class Meta:
+        event_types = ('project_deletion_succeeded',
+                       'project_update_succeeded',
+                       'project_creation_succeeded')
+
+    def get_permitted_objects_uuids(self, user):
+        return {'project_uuid': filter_queryset_for_user(
+            models.Project.objects.all(), user).values_list('uuid', flat=True)}
 
 
-class RoleEventLogger(EventLogger):
+class ProjectGroupEventLogger(EventLogger):
+    project_group = models.ProjectGroup
+    customer = models.Customer
+
+    class Meta:
+        event_types = ('project_group_deletion_succeeded',
+                       'project_group_update_succeeded',
+                       'project_group_creation_succeeded')
+
+    def get_permitted_objects_uuids(self, user):
+        return {'project_group_uuid': filter_queryset_for_user(
+            models.ProjectGroup.objects.all(), user).values_list('uuid', flat=True)}
+
+
+class CustomerRoleEventLogger(EventLogger):
+    customer = models.Customer
     affected_user = User
     structure_type = basestring
     role_name = basestring
@@ -35,20 +59,32 @@ class RoleEventLogger(EventLogger):
         event_types = 'role_granted', 'role_revoked'
 
 
-class CustomerRoleEventLogger(CustomerEventMixin, RoleEventLogger):
-    pass
-
-
-class ProjectRoleEventLogger(ProjectEventMixin, RoleEventLogger):
-    pass
-
-
-class ProjectGroupRoleEventLogger(ProjectGroupEventMixin, RoleEventLogger):
-    pass
-
-
-class ProjectGroupMembershipEventLogger(ProjectGroupEventMixin, EventLogger):
+class ProjectRoleEventLogger(EventLogger):
     project = 'structure.Project'
+    customer = 'structure.Customer'
+    affected_user = User
+    structure_type = basestring
+    role_name = basestring
+
+    class Meta:
+        event_types = 'role_granted', 'role_revoked'
+
+
+class ProjectGroupRoleEventLogger(EventLogger):
+    project_group = 'structure.ProjectGroup'
+    customer = 'structure.Customer'
+    affected_user = User
+    structure_type = basestring
+    role_name = basestring
+
+    class Meta:
+        event_types = 'role_granted', 'role_revoked'
+
+
+class ProjectGroupMembershipEventLogger(EventLogger):
+    project = 'structure.Project'
+    project_group = 'structure.ProjectGroup'
+    customer = 'structure.Customer'
 
     class Meta:
         event_types = 'project_added_to_project_group', 'project_removed_from_project_group'
@@ -59,27 +95,10 @@ class UserOrganizationEventLogger(EventLogger):
     affected_organization = basestring
 
     class Meta:
-        event_types = ('user_organization_claimed', 'user_organization_approved',
-                       'user_organization_rejected', 'user_organization_removed')
-
-
-class CustomerEventLogger(CustomerEventMixin, EventLogger):
-
-    class Meta:
-        event_types = ('customer_deletion_succeeded', 'customer_update_succeeded', 'customer_creation_succeeded')
-
-
-class ProjectEventLogger(ProjectEventMixin, EventLogger):
-
-    class Meta:
-        event_types = ('project_deletion_succeeded', 'project_update_succeeded', 'project_creation_succeeded')
-
-
-class ProjectGroupEventLogger(ProjectGroupEventMixin, EventLogger):
-
-    class Meta:
-        event_types = ('project_group_deletion_succeeded', 'project_group_update_succeeded',
-                       'project_group_creation_succeeded')
+        event_types = ('user_organization_claimed',
+                       'user_organization_approved',
+                       'user_organization_rejected',
+                       'user_organization_removed')
 
 
 event_logger.register('customer_role', CustomerRoleEventLogger)
