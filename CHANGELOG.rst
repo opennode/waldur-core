@@ -6,9 +6,17 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.49.0
+--------------
+- Draft version of billing integration with WHMCS.
+- Auto-recovery for CPMs if they pass health check.
+- Demo API for the PaaS installation state monitoring.
+- Bugfix: synchronise floating IP of OpenStack on membership synchronisation.
+- Exposure of several background tasks in admin.
+
 Release 0.48.0
 --------------
-- Expose of requirements of mapped images in template list
+- Expose of requirements of mapped images in template list.
 - UUID of objects is exposed in multiple endpoints.
 - Bugfixes
 
