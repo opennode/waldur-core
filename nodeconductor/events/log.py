@@ -68,6 +68,9 @@ class EventLogger(object):
         permitted_objects_uuids = getattr(self._meta, 'permitted_objects_uuids', None)
         return permitted_objects_uuids(user) if permitted_objects_uuids else {}
 
+    def get_nullable_fields(self):
+        return getattr(self._meta, 'nullable_fields', [])
+
     def info(self, *args, **kwargs):
         self.process('info', *args, **kwargs)
 
@@ -125,6 +128,8 @@ class EventLogger(object):
         for entity_name, entity in six.iteritems(kwargs):
             if entity_name in required_fields:
                 entity_class = required_fields.pop(entity_name)
+                if entity is None and entity_name in self.get_nullable_fields():
+                    continue
                 if not isinstance(entity, entity_class):
                     raise EventLoggerError(
                         "Field '%s' must be an instance of %s but %s received" % (
@@ -139,6 +144,8 @@ class EventLogger(object):
                 context.update(entity._get_event_log_context(entity_name))
             elif isinstance(entity, (int, float, basestring, dict, tuple, list, bool)):
                 context[entity_name] = entity
+            elif entity is None:
+                pass
             else:
                 context[entity_name] = six.text_type(entity)
                 logger.warning(

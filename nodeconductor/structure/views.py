@@ -17,16 +17,15 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from nodeconductor.core import filters as core_filters
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
+from nodeconductor.structure.log import event_logger
 
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 User = auth.get_user_model()
 
@@ -354,30 +353,28 @@ class ProjectGroupMembershipViewSet(mixins.CreateModelMixin,
         project = serializer.validated_data['project']
         project_group = serializer.validated_data['projectgroup']
 
-        event_logger.info(
-            'Project %s has been added to project group %s.',
-            project.name, project_group.name,
-            extra={
+        event_logger.project_group_membership.info(
+            'Project {project_name} has been added to project group {project_group_name}.',
+            event_type='project_added_to_project_group',
+            event_context={
                 'project': project,
                 'project_group': project_group,
-                'event_type': 'project_added_to_project_group',
-            }
-        )
+                'customer': project_group.customer,
+            })
 
     def perform_destroy(self, instance):
         super(ProjectGroupMembershipViewSet, self).perform_destroy(instance)
 
         project = instance.project
         project_group = instance.projectgroup
-        event_logger.info(
-            'Project %s has been removed from project group %s.',
-            project.name, project_group.name,
-            extra={
+        event_logger.project_group_membership.info(
+            'Project {project_name} has been removed from project group {project_group_name}.',
+            event_type='project_removed_from_project_group',
+            event_context={
                 'project': project,
                 'project_group': project_group,
-                'event_type': 'project_removed_from_project_group',
-            }
-        )
+                'customer': project_group.customer,
+            })
 
 # XXX: This should be put to models
 filters.set_permissions_for_model(
@@ -567,10 +564,13 @@ class UserViewSet(viewsets.ModelViewSet):
         instance.organization_approved = False
         instance.save()
 
-        event_logger.info(
-            'User %s has claimed organization %s.', instance.username, instance.organization,
-            extra={'affected_user': instance, 'event_type': 'user_organization_claimed',
-                   'affected_organization': instance.organization})
+        event_logger.user_organization.info(
+            'User {affected_user_username} has claimed organization {affected_organization}.',
+            event_type='user_organization_claimed',
+            event_context={
+                'affected_user': instance,
+                'affected_organization': instance.organization,
+            })
 
         return Response({'detail': "User request for joining the organization has been successfully submitted."},
                         status=status.HTTP_200_OK)
@@ -581,10 +581,14 @@ class UserViewSet(viewsets.ModelViewSet):
 
         instance.organization_approved = True
         instance.save()
-        event_logger.info(
-            'User %s has been approved for organization %s.', instance.username, instance.organization,
-            extra={'affected_user': instance, 'event_type': 'user_organization_approved',
-                   'affected_organization': instance.organization})
+
+        event_logger.user_organization.info(
+            'User {affected_user_username} has been approved for organization {affected_organization}.',
+            event_type='user_organization_approved',
+            event_context={
+                'affected_user': instance,
+                'affected_organization': instance.organization,
+            })
 
         return Response({'detail': "User request for joining the organization has been successfully approved"},
                         status=status.HTTP_200_OK)
@@ -596,10 +600,14 @@ class UserViewSet(viewsets.ModelViewSet):
         instance.organization = ""
         instance.organization_approved = False
         instance.save()
-        event_logger.info(
-            'User %s claim for organization %s has been rejected.', instance.username, old_organization,
-            extra={'affected_user': instance, 'event_type': 'user_organization_rejected',
-                   'affected_organization': old_organization})
+
+        event_logger.user_organization.info(
+            'User {affected_user_username} claim for organization {affected_organization} has been rejected.',
+            event_type='user_organization_rejected',
+            event_context={
+                'affected_user': instance,
+                'affected_organization': old_organization,
+            })
 
         return Response({'detail': "User has been successfully rejected from the organization"},
                         status=status.HTTP_200_OK)
@@ -611,10 +619,14 @@ class UserViewSet(viewsets.ModelViewSet):
         instance.organization_approved = False
         instance.organization = ""
         instance.save()
-        event_logger.info(
-            'User %s has been removed from organization %s.', instance.username, old_organization,
-            extra={'affected_user': instance, 'event_type': 'user_organization_removed',
-                   'affected_organization': old_organization})
+
+        event_logger.user_organization.info(
+            'User {affected_user_username} has been removed from organization {affected_organization}.',
+            event_type='user_organization_removed',
+            event_context={
+                'affected_user': instance,
+                'affected_organization': old_organization,
+            })
 
         return Response({'detail': "User has been successfully removed from the organization"},
                         status=status.HTTP_200_OK)

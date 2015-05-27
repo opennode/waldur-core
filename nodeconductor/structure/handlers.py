@@ -5,14 +5,13 @@ import logging
 from django.contrib.auth.models import Group
 from django.db import models, transaction
 
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure import signals
+from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.models import CustomerRole, Project, ProjectRole, ProjectGroupRole, Customer, ProjectGroup
 
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 def prevent_non_empty_project_group_deletion(sender, instance, **kwargs):
@@ -59,56 +58,169 @@ def create_project_group_roles(sender, instance, created, **kwargs):
 
 def log_customer_save(sender, instance, created=False, **kwargs):
     if created:
-        event_logger.info(
-            'Customer %s has been created.', instance.name,
-            extra={'customer': instance, 'event_type': 'customer_creation_succeeded'})
+        event_logger.customer.info(
+            'Customer {customer_name} has been created.',
+            event_type='customer_creation_succeeded',
+            event_context={
+                'customer': instance,
+            })
     else:
-        event_logger.info(
-            'Customer %s has been updated.', instance.name,
-            extra={'customer': instance, 'event_type': 'customer_update_succeeded'})
+        event_logger.customer.info(
+            'Customer {customer_name} has been updated.',
+            event_type='customer_update_succeeded',
+            event_context={
+                'customer': instance,
+            })
 
 
 def log_customer_delete(sender, instance, **kwargs):
-    event_logger.info(
-        'Customer %s has been deleted.', instance.name,
-        extra={'customer': instance, 'event_type': 'customer_deletion_succeeded'})
+    event_logger.customer.info(
+        'Customer {customer_name} has been deleted.',
+        event_type='customer_deletion_succeeded',
+        event_context={
+            'customer': instance,
+        })
 
 
 def log_project_group_save(sender, instance, created=False, **kwargs):
     if created:
-        event_logger.info(
-            'Project group %s has been created.', instance.name,
-            extra={'project_group': instance, 'event_type': 'project_group_creation_succeeded'})
+        event_logger.project_group.info(
+            'Project group {project_group_name} has been created.',
+            event_type='project_group_creation_succeeded',
+            event_context={
+                'project_group': instance,
+                'customer': instance.customer,
+            })
     else:
-        event_logger.info(
-            'Project group %s has been updated.', instance.name,
-            extra={'project_group': instance, 'event_type': 'project_group_update_succeeded'})
+        event_logger.project_group.info(
+            'Project group {project_group_name} has been updated.',
+            event_type='project_group_update_succeeded',
+            event_context={
+                'project_group': instance,
+                'customer': instance.customer,
+            })
 
 
 def log_project_group_delete(sender, instance, **kwargs):
-    event_logger.info(
-        'Project group %s has been deleted.', instance.name,
-        extra={'project_group': instance, 'event_type': 'project_group_deletion_succeeded'})
+    event_logger.project_group.info(
+        'Project group {project_group_name} has been deleted.',
+        event_type='project_group_deletion_succeeded',
+        event_context={
+            'project_group': instance,
+            'customer': instance.customer,
+        })
 
 
 def log_project_save(sender, instance, created=False, **kwargs):
     if created:
-        event_logger.info(
-            'Project %s has been created.', instance.name,
-            extra={'project': instance, 'event_type': 'project_creation_succeeded'}
-        )
+        event_logger.project.info(
+            'Project {project_name} has been created.',
+            event_type='project_creation_succeeded',
+            event_context={
+                'project': instance,
+                'customer': instance.customer,
+                'project_group': instance.project_groups.first(),
+            })
     else:
-        event_logger.info(
-            'Project %s has been updated.', instance.name,
-            extra={'project': instance, 'event_type': 'project_update_succeeded'}
-        )
+        event_logger.project.info(
+            'Project {project_name} has been updated.',
+            event_type='project_update_succeeded',
+            event_context={
+                'project': instance,
+                'customer': instance.customer,
+                'project_group': instance.project_groups.first(),
+            })
 
 
 def log_project_delete(sender, instance, **kwargs):
-    event_logger.info(
-        'Project %s has been deleted.', instance.name,
-        extra={'project': instance, 'event_type': 'project_deletion_succeeded'}
-    )
+    event_logger.project.info(
+        'Project {project_name} has been deleted.',
+        event_type='project_deletion_succeeded',
+        event_context={
+            'project': instance,
+            'customer': instance.customer,
+            'project_group': instance.project_groups.first(),
+        })
+
+
+def log_customer_role_granted(sender, structure, user, role, **kwargs):
+    event_logger.customer_role.info(
+        'User {affected_user_username} has gained role of {role_name} in customer {customer_name}.',
+        event_type='role_granted',
+        event_context={
+            'customer': structure,
+            'affected_user': user,
+            'structure_type': 'customer',
+            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
+        })
+
+
+def log_customer_role_revoked(sender, structure, user, role, **kwargs):
+    event_logger.customer_role.info(
+        'User {affected_user_username} has lost role of {role_name} in customer {customer_name}.',
+        event_type='role_revoked',
+        event_context={
+            'customer': structure,
+            'affected_user': user,
+            'structure_type': 'customer',
+            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
+        })
+
+
+def log_project_role_granted(sender, structure, user, role, **kwargs):
+    event_logger.project_role.info(
+        'User {affected_user_username} has gained role of {role_name} in project {project_name}.',
+        event_type='role_granted',
+        event_context={
+            'project': structure,
+            'project_group': structure.project_groups.first(),
+            'customer': structure.customer,
+            'affected_user': user,
+            'structure_type': 'project',
+            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
+        })
+
+
+def log_project_role_revoked(sender, structure, user, role, **kwargs):
+    event_logger.project_role.info(
+        'User {affected_user_username} has revoked role of {role_name} in project {project_name}.',
+        event_type='role_revoked',
+        event_context={
+            'project': structure,
+            'project_group': structure.project_groups.first(),
+            'customer': structure.customer,
+            'affected_user': user,
+            'structure_type': 'project',
+            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
+        })
+
+
+def log_project_group_role_granted(sender, structure, user, role, **kwargs):
+    event_logger.project_group_role.info(
+        'User {affected_user_username} has gained role of {role_name}'
+        ' in project group {project_group_name}.',
+        event_type='role_granted',
+        event_context={
+            'project_group': structure,
+            'customer': structure.customer,
+            'affected_user': user,
+            'structure_type': 'project_group',
+            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
+        })
+
+
+def log_project_group_role_revoked(sender, structure, user, role, **kwargs):
+    event_logger.project_group_role.info(
+        'User {affected_user_username} has gained role of {role_name}'
+        ' in project group {project_group_name}.',
+        event_type='role_revoked',
+        event_context={
+            'project_group': structure,
+            'customer': structure.customer,
+            'affected_user': user,
+            'structure_type': 'project_group',
+            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
+        })
 
 
 change_customer_nc_projects_quota = quotas_handlers.quantity_quota_handler_factory(

@@ -12,7 +12,6 @@ from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
 from polymorphic import PolymorphicModel
 
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.events.log import EventLoggableMixin
@@ -21,7 +20,6 @@ from nodeconductor.structure.signals import structure_role_granted, structure_ro
 
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 @python_2_unicode_compatible
@@ -68,18 +66,6 @@ class Customer(core_models.UuidMixin,
                     user=user,
                     role=role_type,
                 )
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has gained role of %s in customer %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'customer': self,
-                        'affected_user': user,
-                        'event_type': 'role_granted',
-                        'structure_type': 'customer',
-                        'role_name': role_name,
-                    },
-                )
 
             return membership, created
 
@@ -106,19 +92,6 @@ class Customer(core_models.UuidMixin,
                 )
 
                 membership.delete()
-
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has lost role of %s in customer %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'customer': self,
-                        'affected_user': user,
-                        'event_type': 'role_revoked',
-                        'structure_type': 'customer',
-                        'role_name': role_name,
-                    },
-                )
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
@@ -229,18 +202,6 @@ class Project(core_models.DescribableMixin,
                     user=user,
                     role=role_type,
                 )
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has gained role of %s in project %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'project': self,
-                        'affected_user': user,
-                        'event_type': 'role_granted',
-                        'structure_type': 'project',
-                        'role_name': role_name,
-                    },
-                )
 
             return membership, created
 
@@ -266,19 +227,6 @@ class Project(core_models.DescribableMixin,
                 )
 
                 membership.delete()
-
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has lost role of %s in project %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'project': self,
-                        'affected_user': user,
-                        'event_type': 'role_revoked',
-                        'structure_type': 'project',
-                        'role_name': role_name,
-                    },
-                )
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
@@ -321,6 +269,7 @@ class ProjectGroupRole(core_models.UuidMixin, models.Model):
 class ProjectGroup(core_models.UuidMixin,
                    core_models.DescribableMixin,
                    core_models.NameMixin,
+                   EventLoggableMixin,
                    TimeStampedModel):
     """
     Project groups are means to organize customer's projects into arbitrary sets.
@@ -355,18 +304,6 @@ class ProjectGroup(core_models.UuidMixin,
                     user=user,
                     role=role_type,
                 )
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has gained role of %s in project group %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'project_group': self,
-                        'affected_user': user,
-                        'event_type': 'role_granted',
-                        'structure_type': 'project_group',
-                        'role_name': role_name,
-                    },
-                )
 
             return membership, created
 
@@ -392,19 +329,6 @@ class ProjectGroup(core_models.UuidMixin,
                 )
 
                 membership.delete()
-
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has lost role of %s in project group %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'project_group': self,
-                        'affected_user': user,
-                        'event_type': 'role_revoked',
-                        'structure_type': 'project_group',
-                        'role_name': role_name,
-                    },
-                )
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)

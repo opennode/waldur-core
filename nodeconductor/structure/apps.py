@@ -131,5 +131,41 @@ class StructureConfig(AppConfig):
             structure_signals.structure_role_revoked.connect(
                 handlers.change_customer_nc_users_quota,
                 sender=model,
-                dispatch_uid='nodeconductor.iaas.handlers.decrease_customer_nc_users_quota_on_customer_user_deletion',
+                dispatch_uid='nodeconductor.iaas.handlers.%s' % name,
             )
+
+        structure_signals.structure_role_granted.connect(
+            handlers.log_customer_role_granted,
+            sender=Customer,
+            dispatch_uid='nodeconductor.iaas.handlers.log_customer_role_granted',
+        )
+
+        structure_signals.structure_role_revoked.connect(
+            handlers.log_customer_role_revoked,
+            sender=Customer,
+            dispatch_uid='nodeconductor.iaas.handlers.log_customer_role_revoked',
+        )
+
+        structure_signals.structure_role_granted.connect(
+            handlers.log_project_role_granted,
+            sender=Project,
+            dispatch_uid='nodeconductor.iaas.handlers.log_project_role_granted',
+        )
+
+        structure_signals.structure_role_revoked.connect(
+            handlers.log_project_role_revoked,
+            sender=Project,
+            dispatch_uid='nodeconductor.iaas.handlers.log_project_role_revoked',
+        )
+
+        structure_signals.structure_role_granted.connect(
+            handlers.log_project_group_role_granted,
+            sender=ProjectGroup,
+            dispatch_uid='nodeconductor.iaas.handlers.log_project_group_role_granted',
+        )
+
+        structure_signals.structure_role_revoked.connect(
+            handlers.log_project_group_role_revoked,
+            sender=ProjectGroup,
+            dispatch_uid='nodeconductor.iaas.handlers.log_project_group_role_revoked',
+        )
