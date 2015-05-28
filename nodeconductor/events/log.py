@@ -7,7 +7,9 @@ import logging
 
 from django.apps import apps
 from django.utils import six
+from django.contrib.contenttypes import models as ct_models
 
+from nodeconductor.events import models
 from nodeconductor.events.middleware import get_current_user
 
 
@@ -93,15 +95,55 @@ class EventLogger(object):
             event_context = {}
 
         context = self.compile_context(**event_context)
+        msg = self.compile_message(message_template, context)
+
+        log = getattr(self.logger, level)
+        log(msg, extra={'event_type': event_type, 'event_context': context})
+
+    def info_alert(self, *args, **kwargs):
+        self.process_alert(models.Alert.SeverityChoices.INFO, *args, **kwargs)
+
+    def error_alert(self, *args, **kwargs):
+        self.process_alert(models.Alert.SeverityChoices.ERROR, *args, **kwargs)
+
+    def warning_alert(self, *args, **kwargs):
+        self.process_alert(models.Alert.SeverityChoices.WARNING, *args, **kwargs)
+
+    def debug_alert(self, *args, **kwargs):
+        self.process_alert(models.Alert.SeverityChoices.DEBUG, *args, **kwargs)
+
+    def process_alert(self, severity, message_template, scope, alert_type='undefined', alert_context=None):
+        if not alert_context:
+            alert_context = {}
+
+        context = self.compile_context(**alert_context)
+        msg = self.compile_message(message_template, context)
+        try:
+            content_type = ct_models.ContentType.objects.get_for_model(scope)
+            alert = models.Alert.objects.get(object_id=scope.id, content_type=content_type, alert_type=alert_type)
+            if alert.severity != severity:
+                alert.severity = severity
+                alert.save()
+        except models.Alert.DoesNotExist:
+            models.Alert.objects.create(
+                alert_type=alert_type, message=msg, severity=severity, context=context, scope=scope)
+
+    def close_alert(self, scope, alert_type):
+        try:
+            content_type = ct_models.ContentType.objects.get_for_model(scope)
+            alert = models.Alert.objects.get(object_id=scope.id, content_type=content_type, alert_type=alert_type)
+            alert.close()
+        except models.Alert.DoesNotExist:
+            pass
+
+    def compile_message(self, message_template, context):
         try:
             msg = message_template.format(**context)
         except KeyError as e:
             raise EventLoggerError(
                 "Cannot find %s context field. Choices are: %s" % (
                     str(e), ', '.join(context.keys())))
-
-        log = getattr(self.logger, level)
-        log(msg, extra={'event_type': event_type, 'event_context': context})
+        return msg
 
     def compile_context(self, **kwargs):
         # Get a list of fields here in order to be sure all models already loaded.
