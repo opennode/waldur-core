@@ -5,7 +5,7 @@ from nodeconductor.events import models, log
 
 
 def get_loggable_models():
-    return [m for m in django_models.get_models() if issubclass(m, log.EventLoggableMixin)]
+    return [m for m in django_models.get_models() if issubclass(m, log.LoggableMixin)]
 
 
 def remove_related_alerts(sender, instance, **kwargs):

@@ -1,5 +1,7 @@
 from django.db.models import signals
 
+from nodeconductor.quotas.log import alert_logger
+
 
 def add_quotas_to_scope(sender, instance, created=False, **kwargs):
     if created:
@@ -56,3 +58,19 @@ def quantity_quota_handler_factory(path_to_quota_scope, quota_name, count=1):
             scope.add_quota_usage(quota_name, -count)
 
     return handler
+
+
+def create_alert_if_quota_is_over_threshold(sender, instance, **kwargs):
+    quota = instance
+    alert_threshold = 90
+
+    if quota.is_exceeded(threshold=alert_threshold):
+        alert_logger.warning(
+            'Quota {quota_name} is over threshold. Limit: {quota_limit}, usage: {quota_usage}',
+            scope=quota,
+            alert_type='quota_usage_is_over_threshold',
+            alert_context={
+                'quota': quota
+            })
+    else:
+        alert_logger.close(scope=quota, alert_type='quota_usage_is_over_threshold')

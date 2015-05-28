@@ -14,7 +14,7 @@ from polymorphic import PolymorphicModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
-from nodeconductor.events.log import EventLoggableMixin
+from nodeconductor.events.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
                quotas_models.QuotaModelMixin,
-               EventLoggableMixin,
+               LoggableMixin,
                TimeStampedModel):
     class Permissions(object):
         customer_path = 'self'
@@ -45,7 +45,7 @@ class Customer(core_models.UuidMixin,
     def get_billing_backend(self):
         return BillingBackend(self)
 
-    def get_event_log_fields(self):
+    def get_log_fields(self):
         return ('uuid', 'name', 'abbreviation', 'contact_details')
 
     def add_user(self, user, role_type):
@@ -172,7 +172,7 @@ class Project(core_models.DescribableMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
               quotas_models.QuotaModelMixin,
-              EventLoggableMixin,
+              LoggableMixin,
               TimeStampedModel):
     class Permissions(object):
         customer_path = 'customer'
@@ -245,6 +245,9 @@ class Project(core_models.DescribableMixin,
     def can_user_update_quotas(self, user):
         return user.is_staff
 
+    def get_log_fields(self):
+        return ('uuid', 'customer', 'name')
+
 
 @python_2_unicode_compatible
 class ProjectGroupRole(core_models.UuidMixin, models.Model):
@@ -269,7 +272,7 @@ class ProjectGroupRole(core_models.UuidMixin, models.Model):
 class ProjectGroup(core_models.UuidMixin,
                    core_models.DescribableMixin,
                    core_models.NameMixin,
-                   EventLoggableMixin,
+                   LoggableMixin,
                    TimeStampedModel):
     """
     Project groups are means to organize customer's projects into arbitrary sets.
@@ -337,6 +340,9 @@ class ProjectGroup(core_models.UuidMixin,
             queryset = queryset.filter(role_type=role_type)
 
         return queryset.exists()
+
+    def get_log_fields(self):
+        return ('uuid', 'customer', 'name')
 
 
 @python_2_unicode_compatible
