@@ -988,3 +988,11 @@ class CreationTimeStatsView(views.APIView):
 
         stats = serializer.get_stats(request.user)
         return Response(stats, status=status.HTTP_200_OK)
+
+
+class ServiceSettingsViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.ServiceSettings.objects.filter(shared=True)
+    serializer_class = serializers.ServiceSettingsSerializer
+    permission_classes = (rf_permissions.IsAuthenticated,)
+    filter_backends = (rf_filters.DjangoFilterBackend,)
+    lookup_field = 'uuid'

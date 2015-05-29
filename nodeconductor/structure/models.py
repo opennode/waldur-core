@@ -344,9 +344,46 @@ class ProjectGroup(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class Service(PolymorphicModel, core_models.UuidMixin,
-              core_models.NameMixin, core_models.SynchronizableMixin):
+class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.SynchronizableMixin):
 
+    class Types(object):
+        OpenStack = 1
+        DigitalOcean = 2
+        Amazon = 3
+        Jira = 4
+        Git = 5
+
+        CHOICES = (
+            (OpenStack, 'OpenStack'),
+            (DigitalOcean, 'DigitalOcean'),
+            (Amazon, 'Amazon'),
+            (Jira, 'Jira'),
+            (Git, 'Git'),
+        )
+
+    backend_url = models.URLField(max_length=200, blank=True, null=True)
+    username = models.CharField(max_length=100, blank=True, null=True)
+    password = models.CharField(max_length=100, blank=True, null=True)
+    token = models.CharField(max_length=255, blank=True, null=True)
+    type = models.SmallIntegerField(choices=Types.CHOICES)
+
+    shared = models.BooleanField(default=False, help_text='Anybody can use it')
+    dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
+
+    def get_backend(self):
+        # TODO: Find a way to register backend form the other side, perhaps within NC-519
+        if self.type == self.Types.DigitalOcean:
+            from nodeconductor_plus.digitalocean.backend import DigitalOceanBackend
+            return DigitalOceanBackend(self)
+
+        raise NotImplementedError
+
+    def __str__(self):
+        return '%s (%s)' % (self.name, self.get_type_display())
+
+
+@python_2_unicode_compatible
+class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
     """ Base service class. Define specific service model as follows:
 
         .. code-block:: python
@@ -387,13 +424,12 @@ class Service(PolymorphicModel, core_models.UuidMixin,
         project_path = 'projects'
         project_group_path = 'customer__projects__project_groups'
 
+    settings = models.ForeignKey(ServiceSettings, related_name='+')
     customer = models.ForeignKey(Customer, related_name='services')
     projects = NotImplemented
 
-    dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
-
-    def get_backend(self, sp_link=None):
-        raise NotImplementedError
+    def get_backend(self):
+        return self.settings.get_backend()
 
     def __str__(self):
         return self.name
@@ -408,16 +444,11 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
     class Meta(object):
         abstract = True
 
-    class Permissions(object):
-        customer_path = 'service__customer'
-        project_path = 'service__projects'
-        project_group_path = 'service__projects__project_groups'
-
-    service = NotImplemented
-    backend_id = models.CharField(max_length=255)
+    settings = models.ForeignKey(ServiceSettings, related_name='+')
+    backend_id = models.CharField(max_length=255, db_index=True)
 
     def __str__(self):
-        return '{0} | {1}'.format(self.service.name, self.name)
+        return '{0} | {1}'.format(self.name, self.settings)
 
 
 @python_2_unicode_compatible
@@ -439,7 +470,7 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
         return [self.project]
 
     def get_backend(self):
-        return self.service.get_backend(sp_link=self)
+        return self.service.get_backend()
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
@@ -462,194 +493,10 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
         project_group_path = 'service_project_link__project__project_groups'
 
     service_project_link = NotImplemented
+    backend_id = models.CharField(max_length=255, db_index=True)
 
     def get_backend(self):
         return self.service_project_link.get_backend()
 
     def __str__(self):
         return self.name
-
-
-def validate_yaml(value):
-    try:
-        yaml.load(value)
-    except yaml.error.YAMLError:
-        raise ValidationError('A valid YAML value is required.')
-
-
-class VirtualMachineStates(object):
-    PROVISIONING_SCHEDULED = 1
-    PROVISIONING = 2
-
-    ONLINE = 3
-    OFFLINE = 4
-
-    STARTING_SCHEDULED = 5
-    STARTING = 6
-
-    STOPPING_SCHEDULED = 7
-    STOPPING = 8
-
-    ERRED = 9
-
-    DELETION_SCHEDULED = 10
-    DELETING = 11
-
-    RESIZING_SCHEDULED = 13
-    RESIZING = 14
-
-    RESTARTING_SCHEDULED = 15
-    RESTARTING = 16
-
-    CHOICES = (
-        (PROVISIONING_SCHEDULED, 'Provisioning Scheduled'),
-        (PROVISIONING, 'Provisioning'),
-
-        (ONLINE, 'Online'),
-        (OFFLINE, 'Offline'),
-
-        (STARTING_SCHEDULED, 'Starting Scheduled'),
-        (STARTING, 'Starting'),
-
-        (STOPPING_SCHEDULED, 'Stopping Scheduled'),
-        (STOPPING, 'Stopping'),
-
-        (ERRED, 'Erred'),
-
-        (DELETION_SCHEDULED, 'Deletion Scheduled'),
-        (DELETING, 'Deleting'),
-
-        (RESIZING_SCHEDULED, 'Resizing Scheduled'),
-        (RESIZING, 'Resizing'),
-
-        (RESTARTING_SCHEDULED, 'Restarting Scheduled'),
-        (RESTARTING, 'Restarting'),
-    )
-
-    # Stable instances are the ones for which
-    # no tasks are scheduled or are in progress
-
-    STABLE_STATES = set([ONLINE, OFFLINE])
-    UNSTABLE_STATES = set([
-        s for (s, _) in CHOICES
-        if s not in STABLE_STATES
-    ])
-
-
-class VirtualMachineMixin(models.Model):
-
-    class Meta(object):
-        abstract = True
-
-    cores = models.PositiveSmallIntegerField(blank=True, null=True, help_text='Number of cores in a VM')
-    ram = models.PositiveIntegerField(blank=True, null=True, help_text='Memory size in MiB')
-    disk = models.PositiveIntegerField(blank=True, null=True, help_text='Disk size in MiB')
-    bandwidth = models.PositiveIntegerField(blank=True, null=True, help_text='Bandwidth size in MiB')
-
-    start_time = models.DateTimeField(blank=True, null=True)
-
-    user_data = models.TextField(
-        blank=True, validators=[validate_yaml],
-        help_text='Additional data that will be added to resource on provisioning')
-
-    state = FSMIntegerField(
-        default=VirtualMachineStates.PROVISIONING_SCHEDULED,
-        choices=VirtualMachineStates.CHOICES,
-        help_text="WARNING! Should not be changed manually unless you really know what you are doing.",
-        max_length=1)
-
-    @transition(field=state,
-                source=VirtualMachineStates.PROVISIONING_SCHEDULED,
-                target=VirtualMachineStates.PROVISIONING)
-    def begin_provisioning(self):
-        pass
-
-    @transition(field=state,
-                source=[VirtualMachineStates.PROVISIONING, VirtualMachineStates.STOPPING, VirtualMachineStates.RESIZING],
-                target=VirtualMachineStates.OFFLINE)
-    def set_offline(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.OFFLINE,
-                target=VirtualMachineStates.STARTING_SCHEDULED)
-    def schedule_starting(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.STARTING_SCHEDULED,
-                target=VirtualMachineStates.STARTING)
-    def begin_starting(self):
-        pass
-
-    @transition(field=state,
-                source=[VirtualMachineStates.STARTING, VirtualMachineStates.PROVISIONING, VirtualMachineStates.RESTARTING],
-                target=VirtualMachineStates.ONLINE)
-    def set_online(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.ONLINE,
-                target=VirtualMachineStates.STOPPING_SCHEDULED)
-    def schedule_stopping(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.STOPPING_SCHEDULED,
-                target=VirtualMachineStates.STOPPING)
-    def begin_stopping(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.OFFLINE,
-                target=VirtualMachineStates.DELETION_SCHEDULED)
-    def schedule_deletion(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.DELETION_SCHEDULED,
-                target=VirtualMachineStates.DELETING)
-    def begin_deleting(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.OFFLINE,
-                target=VirtualMachineStates.RESIZING_SCHEDULED)
-    def schedule_resizing(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.RESIZING_SCHEDULED,
-                target=VirtualMachineStates.RESIZING)
-    def begin_resizing(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.RESIZING,
-                target=VirtualMachineStates.OFFLINE)
-    def set_resized(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.ONLINE,
-                target=VirtualMachineStates.RESTARTING_SCHEDULED)
-    def schedule_restarting(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.RESTARTING_SCHEDULED,
-                target=VirtualMachineStates.RESTARTING)
-    def begin_restarting(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.RESTARTING,
-                target=VirtualMachineStates.ONLINE)
-    def set_restarted(self):
-        pass
-
-    @transition(field=state,
-                source='*',
-                target=VirtualMachineStates.ERRED)
-    def set_erred(self):
-        pass

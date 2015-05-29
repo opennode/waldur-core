@@ -301,10 +301,187 @@ def validate_yaml(value):
         raise ValidationError('A valid YAML value is required.')
 
 
+class VirtualMachineStates(object):
+    PROVISIONING_SCHEDULED = 1
+    PROVISIONING = 2
+
+    ONLINE = 3
+    OFFLINE = 4
+
+    STARTING_SCHEDULED = 5
+    STARTING = 6
+
+    STOPPING_SCHEDULED = 7
+    STOPPING = 8
+
+    ERRED = 9
+
+    DELETION_SCHEDULED = 10
+    DELETING = 11
+
+    RESIZING_SCHEDULED = 13
+    RESIZING = 14
+
+    RESTARTING_SCHEDULED = 15
+    RESTARTING = 16
+
+    CHOICES = (
+        (PROVISIONING_SCHEDULED, 'Provisioning Scheduled'),
+        (PROVISIONING, 'Provisioning'),
+
+        (ONLINE, 'Online'),
+        (OFFLINE, 'Offline'),
+
+        (STARTING_SCHEDULED, 'Starting Scheduled'),
+        (STARTING, 'Starting'),
+
+        (STOPPING_SCHEDULED, 'Stopping Scheduled'),
+        (STOPPING, 'Stopping'),
+
+        (ERRED, 'Erred'),
+
+        (DELETION_SCHEDULED, 'Deletion Scheduled'),
+        (DELETING, 'Deleting'),
+
+        (RESIZING_SCHEDULED, 'Resizing Scheduled'),
+        (RESIZING, 'Resizing'),
+
+        (RESTARTING_SCHEDULED, 'Restarting Scheduled'),
+        (RESTARTING, 'Restarting'),
+    )
+
+    # Stable instances are the ones for which
+    # no tasks are scheduled or are in progress
+
+    STABLE_STATES = set([ONLINE, OFFLINE])
+    UNSTABLE_STATES = set([
+        s for (s, _) in CHOICES
+        if s not in STABLE_STATES
+    ])
+
+
+class VirtualMachineMixin(models.Model):
+
+    class Meta(object):
+        abstract = True
+
+    key_name = models.CharField(max_length=50, blank=True)
+    key_fingerprint = models.CharField(max_length=47, blank=True)
+
+    start_time = models.DateTimeField(blank=True, null=True)
+
+    user_data = models.TextField(
+        blank=True, validators=[validate_yaml],
+        help_text='Additional data that will be added to instance on provisioning')
+
+    state = FSMIntegerField(
+        default=VirtualMachineStates.PROVISIONING_SCHEDULED,
+        choices=VirtualMachineStates.CHOICES,
+        help_text="WARNING! Should not be changed manually unless you really know what you are doing.",
+        max_length=1)
+
+    @transition(field=state,
+                source=VirtualMachineStates.PROVISIONING_SCHEDULED,
+                target=VirtualMachineStates.PROVISIONING)
+    def begin_provisioning(self):
+        pass
+
+    @transition(field=state,
+                source=[VirtualMachineStates.PROVISIONING, VirtualMachineStates.STOPPING, VirtualMachineStates.RESIZING],
+                target=VirtualMachineStates.OFFLINE)
+    def set_offline(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.OFFLINE,
+                target=VirtualMachineStates.STARTING_SCHEDULED)
+    def schedule_starting(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.STARTING_SCHEDULED,
+                target=VirtualMachineStates.STARTING)
+    def begin_starting(self):
+        pass
+
+    @transition(field=state,
+                source=[VirtualMachineStates.STARTING, VirtualMachineStates.PROVISIONING, VirtualMachineStates.RESTARTING],
+                target=VirtualMachineStates.ONLINE)
+    def set_online(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.ONLINE,
+                target=VirtualMachineStates.STOPPING_SCHEDULED)
+    def schedule_stopping(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.STOPPING_SCHEDULED,
+                target=VirtualMachineStates.STOPPING)
+    def begin_stopping(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.OFFLINE,
+                target=VirtualMachineStates.DELETION_SCHEDULED)
+    def schedule_deletion(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.DELETION_SCHEDULED,
+                target=VirtualMachineStates.DELETING)
+    def begin_deleting(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.OFFLINE,
+                target=VirtualMachineStates.RESIZING_SCHEDULED)
+    def schedule_resizing(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.RESIZING_SCHEDULED,
+                target=VirtualMachineStates.RESIZING)
+    def begin_resizing(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.RESIZING,
+                target=VirtualMachineStates.OFFLINE)
+    def set_resized(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.ONLINE,
+                target=VirtualMachineStates.RESTARTING_SCHEDULED)
+    def schedule_restarting(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.RESTARTING_SCHEDULED,
+                target=VirtualMachineStates.RESTARTING)
+    def begin_restarting(self):
+        pass
+
+    @transition(field=state,
+                source=VirtualMachineStates.RESTARTING,
+                target=VirtualMachineStates.ONLINE)
+    def set_restarted(self):
+        pass
+
+    @transition(field=state,
+                source='*',
+                target=VirtualMachineStates.ERRED)
+    def set_erred(self):
+        pass
+
+
 @python_2_unicode_compatible
 class Instance(core_models.UuidMixin,
                core_models.DescribableMixin,
                core_models.NameMixin,
+               VirtualMachineMixin,
                EventLoggableMixin,
                # This needs to be inlined in order to set on_delete
                # CloudProjectMember,
@@ -320,68 +497,11 @@ class Instance(core_models.UuidMixin,
         project_path = 'cloud_project_membership__project'
         project_group_path = 'cloud_project_membership__project__project_groups'
 
-    class States(object):
-        PROVISIONING_SCHEDULED = 1
-        PROVISIONING = 2
-
-        ONLINE = 3
-        OFFLINE = 4
-
-        STARTING_SCHEDULED = 5
-        STARTING = 6
-
-        STOPPING_SCHEDULED = 7
-        STOPPING = 8
-
-        ERRED = 9
-
-        DELETION_SCHEDULED = 10
-        DELETING = 11
-
-        RESIZING_SCHEDULED = 13
-        RESIZING = 14
-
-        RESTARTING_SCHEDULED = 15
-        RESTARTING = 16
-
-        CHOICES = (
-            (PROVISIONING_SCHEDULED, 'Provisioning Scheduled'),
-            (PROVISIONING, 'Provisioning'),
-
-            (ONLINE, 'Online'),
-            (OFFLINE, 'Offline'),
-
-            (STARTING_SCHEDULED, 'Starting Scheduled'),
-            (STARTING, 'Starting'),
-
-            (STOPPING_SCHEDULED, 'Stopping Scheduled'),
-            (STOPPING, 'Stopping'),
-
-            (ERRED, 'Erred'),
-
-            (DELETION_SCHEDULED, 'Deletion Scheduled'),
-            (DELETING, 'Deleting'),
-
-            (RESIZING_SCHEDULED, 'Resizing Scheduled'),
-            (RESIZING, 'Resizing'),
-
-            (RESTARTING_SCHEDULED, 'Restarting Scheduled'),
-            (RESTARTING, 'Restarting'),
-
-        )
-
-        # Stable instances are the ones for which
-        # no tasks are scheduled or are in progress
-
-        STABLE_STATES = set([ONLINE, OFFLINE])
-        UNSTABLE_STATES = set([
-            s for (s, _) in CHOICES
-            if s not in STABLE_STATES
-        ])
-
     class Services(object):
         IAAS = 'IaaS'
         PAAS = 'PaaS'
+
+    States = VirtualMachineStates
 
     SERVICE_TYPES = (
         (Services.IAAS, 'IaaS'), (Services.PAAS, 'PaaS'))
@@ -398,11 +518,6 @@ class Instance(core_models.UuidMixin,
     template = models.ForeignKey(Template, related_name='+')
     external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
-    start_time = models.DateTimeField(blank=True, null=True)
-
-    state = FSMIntegerField(
-        default=States.PROVISIONING_SCHEDULED, max_length=1, choices=States.CHOICES,
-        help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
     installation_state = models.CharField(
         max_length=50, blank=True, help_text='State of post deploy installation process')
@@ -411,10 +526,6 @@ class Instance(core_models.UuidMixin,
     cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
     ram = models.PositiveIntegerField(help_text='Memory size in MiB')
 
-    # fields, defined by ssh public key
-    key_name = models.CharField(max_length=50, blank=True)
-    key_fingerprint = models.CharField(max_length=47, blank=True)
-
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=255, blank=True)
     system_volume_id = models.CharField(max_length=255, blank=True)
@@ -422,77 +533,10 @@ class Instance(core_models.UuidMixin,
     data_volume_id = models.CharField(max_length=255, blank=True)
     data_volume_size = models.PositiveIntegerField(
         default=DEFAULT_DATA_VOLUME_SIZE, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
-    user_data = models.TextField(
-        blank=True, validators=[validate_yaml],
-        help_text='Additional data that will be added to instance on provisioning')
 
     # Services specific fields
     agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=Services.IAAS)
-
-    @transition(field=state, source=States.PROVISIONING_SCHEDULED, target=States.PROVISIONING)
-    def begin_provisioning(self):
-        pass
-
-    @transition(field=state, source=[States.PROVISIONING, States.STOPPING, States.RESIZING], target=States.OFFLINE)
-    def set_offline(self):
-        pass
-
-    @transition(field=state, source=States.OFFLINE, target=States.STARTING_SCHEDULED)
-    def schedule_starting(self):
-        pass
-
-    @transition(field=state, source=States.STARTING_SCHEDULED, target=States.STARTING)
-    def begin_starting(self):
-        pass
-
-    @transition(field=state, source=[States.STARTING, States.PROVISIONING, States.RESTARTING], target=States.ONLINE)
-    def set_online(self):
-        pass
-
-    @transition(field=state, source=States.ONLINE, target=States.STOPPING_SCHEDULED)
-    def schedule_stopping(self):
-        pass
-
-    @transition(field=state, source=States.STOPPING_SCHEDULED, target=States.STOPPING)
-    def begin_stopping(self):
-        pass
-
-    @transition(field=state, source=States.OFFLINE, target=States.DELETION_SCHEDULED)
-    def schedule_deletion(self):
-        pass
-
-    @transition(field=state, source=States.DELETION_SCHEDULED, target=States.DELETING)
-    def begin_deleting(self):
-        pass
-
-    @transition(field=state, source=States.OFFLINE, target=States.RESIZING_SCHEDULED)
-    def schedule_resizing(self):
-        pass
-
-    @transition(field=state, source=States.RESIZING_SCHEDULED, target=States.RESIZING)
-    def begin_resizing(self):
-        pass
-
-    @transition(field=state, source=States.RESIZING, target=States.OFFLINE)
-    def set_resized(self):
-        pass
-
-    @transition(field=state, source=States.ONLINE, target=States.RESTARTING_SCHEDULED)
-    def schedule_restarting(self):
-        pass
-
-    @transition(field=state, source=States.RESTARTING_SCHEDULED, target=States.RESTARTING)
-    def begin_restarting(self):
-        pass
-
-    @transition(field=state, source=States.RESTARTING, target=States.ONLINE)
-    def set_restarted(self):
-        pass
-
-    @transition(field=state, source='*', target=States.ERRED)
-    def set_erred(self):
-        pass
 
     def __str__(self):
         return self.name

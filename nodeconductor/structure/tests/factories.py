@@ -106,3 +106,17 @@ class ProjectGroupFactory(factory.DjangoModelFactory):
     @classmethod
     def get_list_url(cls):
         return 'http://testserver' + reverse('projectgroup-list')
+
+
+class ServiceSettingsFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.ServiceSettings
+
+    name = factory.Sequence(lambda n: 'Settings %s' % n)
+    type = 2
+
+    @classmethod
+    def get_url(cls, settings=None):
+        if settings is None:
+            settings = ServiceSettingsFactory()
+        return 'http://testserver' + reverse('servicesettings-detail', kwargs={'uuid': settings.uuid})
