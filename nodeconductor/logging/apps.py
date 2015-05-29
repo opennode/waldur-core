@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.db.models import signals
 
-from nodeconductor.logging import handlers
+from nodeconductor.logging import handlers, utils
 
 
 class EventsConfig(AppConfig):
@@ -11,7 +11,7 @@ class EventsConfig(AppConfig):
     verbose_name = 'NodeConductor Events'
 
     def ready(self):
-        for model in handlers.get_loggable_models():
+        for model in utils.get_loggable_models():
             signals.post_delete.connect(
                 handlers.remove_related_alerts,
                 sender=model,

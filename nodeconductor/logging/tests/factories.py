@@ -1,8 +1,12 @@
 from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
+import factory
 
+from nodeconductor.logging import models
 from nodeconductor.logging import elasticsearch_dummy_client
+# Dependency from `structure` application exists only in tests
+from nodeconductor.structure.tests import factories as structure_factories
 
 
 class EventFactory(object):
@@ -57,3 +61,20 @@ class EventFactory(object):
     @classmethod
     def get_list_url(cls):
         return 'http://testserver' + reverse('event-list')
+
+
+class AlertFactory(factory.DjangoModelFactory):
+    class Meta:
+        model = models.Alert
+
+    message = factory.Sequence(lambda i: 'message#%s' % i)
+    alert_type = factory.Iterator(['first_alert', 'second_alert', 'third_alert', 'fourth_alert'])
+    severity = factory.Iterator([
+        models.Alert.SeverityChoices.DEBUG, models.Alert.SeverityChoices.INFO,
+        models.Alert.SeverityChoices.WARNING, models.Alert.SeverityChoices.ERROR])
+    context = {'test': 'test'}
+    scope = factory.SubFactory(structure_factories.CustomerFactory)
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('alert-list')

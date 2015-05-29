@@ -60,14 +60,14 @@ def quantity_quota_handler_factory(path_to_quota_scope, quota_name, count=1):
     return handler
 
 
-def check_if_quota_is_over_threshold(sender, instance, **kwargs):
+def check_quota_threshold_breach(sender, instance, **kwargs):
     quota = instance
     alert_threshold = 80
 
     if quota.is_exceeded(threshold=alert_threshold):
         alert_logger.quota.warning(
             'Quota {quota_name} is over threshold. Limit: {quota_limit}, usage: {quota_usage}',
-            scope=quota,
+            scope=quota.scope,
             alert_type='quota_usage_is_over_threshold',
             alert_context={
                 'quota': quota

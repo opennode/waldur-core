@@ -122,7 +122,7 @@ class EventLogger(BaseLogger):
 
         field_name = ObjectClass || '<app_label>.<class_name>'
 
-        A list of supported event types can be defined with help of method get_supported_event_types,
+        A list of supported event types can be defined with help of method get_supported_types,
         or 'event_types' property of Meta class. Event type won't be validated if this list is empty.
 
         Example usage:
@@ -186,6 +186,40 @@ class EventLogger(BaseLogger):
 
 
 class AlertLogger(BaseLogger):
+    """ Base event logger API.
+
+        Fields which must be passed during event log emitting (event context)
+        should be defined as attributes for this class in the form of:
+
+        field_name = ObjectClass || '<app_label>.<class_name>'
+
+        A list of supported event types can be defined with help of method get_supported_types,
+        or 'alert_types' property of Meta class. Event type won't be validated if this list is empty.
+
+        Example usage:
+
+        .. code-block:: python
+
+            from nodeconductor.logging.log import AlertLogger, alert_logger
+            from nodeconductor.quotas import models
+
+            class QuotaAlertLogger(AlertLogger):
+                quota = models.Quota
+
+                class Meta:
+                    alert_types = ('quota_usage_is_over_threshold', )
+
+            alert_logger.register('quota', QuotaAlertLogger)
+
+
+            alert_logger.quota.warning(
+                'Quota {quota_name} is over threshold. Limit: {quota_limit}, usage: {quota_usage}',
+                scope=quota,
+                alert_type='quota_usage_is_over_threshold',
+                alert_context={
+                    'quota': quota
+                })
+    """
 
     def get_supported_types(self):
         return getattr(self._meta, 'alert_types', tuple())

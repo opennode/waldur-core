@@ -1,11 +1,6 @@
 from django.contrib.contenttypes import models as ct_models
-from django.db import models as django_models
 
-from nodeconductor.logging import models, log
-
-
-def get_loggable_models():
-    return [m for m in django_models.get_models() if issubclass(m, log.LoggableMixin)]
+from nodeconductor.logging import models
 
 
 def remove_related_alerts(sender, instance, **kwargs):
