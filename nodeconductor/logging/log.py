@@ -9,8 +9,8 @@ from django.apps import apps
 from django.utils import six
 from django.contrib.contenttypes import models as ct_models
 
-from nodeconductor.events import models
-from nodeconductor.events.middleware import get_current_user
+from nodeconductor.logging import models
+from nodeconductor.logging.middleware import get_current_user
 
 
 logger = logging.getLogger(__name__)
@@ -212,7 +212,8 @@ class AlertLogger(BaseLogger):
         msg = self.compile_message(message_template, context)
         try:
             content_type = ct_models.ContentType.objects.get_for_model(scope)
-            alert = models.Alert.objects.get(object_id=scope.id, content_type=content_type, alert_type=alert_type)
+            alert = models.Alert.objects.get(
+                object_id=scope.id, content_type=content_type, alert_type=alert_type, closed__isnull=True)
             if alert.severity != severity:
                 alert.severity = severity
                 alert.save()
@@ -223,7 +224,8 @@ class AlertLogger(BaseLogger):
     def close(self, scope, alert_type):
         try:
             content_type = ct_models.ContentType.objects.get_for_model(scope)
-            alert = models.Alert.objects.get(object_id=scope.id, content_type=content_type, alert_type=alert_type)
+            alert = models.Alert.objects.get(
+                object_id=scope.id, content_type=content_type, alert_type=alert_type, closed__isnull=True)
             alert.close()
         except models.Alert.DoesNotExist:
             pass

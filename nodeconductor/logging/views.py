@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from rest_framework import generics, response, settings
 
-from nodeconductor.events import elasticsearch_client
+from nodeconductor.logging import elasticsearch_client
 
 
 class EventListView(generics.GenericAPIView):

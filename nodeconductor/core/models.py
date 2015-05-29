@@ -16,7 +16,7 @@ from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from uuidfield import UUIDField
 
-from nodeconductor.events.log import LoggableMixin
+from nodeconductor.logging.log import LoggableMixin
 
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
 
-from nodeconductor.events import elasticsearch_dummy_client
+from nodeconductor.logging import elasticsearch_dummy_client
 
 
 class EventFactory(object):

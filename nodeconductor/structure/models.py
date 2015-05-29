@@ -14,7 +14,7 @@ from polymorphic import PolymorphicModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
-from nodeconductor.events.log import LoggableMixin
+from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 

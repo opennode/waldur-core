@@ -5,7 +5,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from polymorphic import PolymorphicModel
 
 from nodeconductor.core import models as core_models
-from nodeconductor.events.log import LoggableMixin
+from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template import get_template_services
 
 

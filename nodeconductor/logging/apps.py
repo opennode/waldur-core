@@ -3,11 +3,11 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.db.models import signals
 
-from nodeconductor.events import handlers
+from nodeconductor.logging import handlers
 
 
 class EventsConfig(AppConfig):
-    name = 'nodeconductor.events'
+    name = 'nodeconductor.logging'
     verbose_name = 'NodeConductor Events'
 
     def ready(self):
@@ -15,5 +15,5 @@ class EventsConfig(AppConfig):
             signals.post_delete.connect(
                 handlers.remove_related_alerts,
                 sender=model,
-                dispatch_uid='nodeconductor.events.handlers.remove_%s_related_alerts' % model.__name__.lower(),
+                dispatch_uid='nodeconductor.logging.handlers.remove_%s_related_alerts' % model.__name__.lower(),
             )

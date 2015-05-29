@@ -1,6 +1,6 @@
 from django.conf.urls import url
 
-from nodeconductor.events import views
+from nodeconductor.logging import views
 
 
 urlpatterns = [

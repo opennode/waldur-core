@@ -14,7 +14,7 @@ class QuotasConfig(AppConfig):
         Quota = self.get_model('Quota')
 
         signals.post_save.connect(
-            handlers.check_alert_if_quota_is_over_threshold,
+            handlers.check_if_quota_is_over_threshold,
             sender=Quota,
             dispatch_uid='nodeconductor.quotas.handlers.check_alert_if_quota_is_over_threshold',
         )

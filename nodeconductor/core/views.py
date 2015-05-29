@@ -20,7 +20,7 @@ from saml2.client import Saml2Client
 from nodeconductor import __version__
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.serializers import AuthTokenSerializer, Saml2ResponseSerializer
-from nodeconductor.events.log import event_logger
+from nodeconductor.logging.log import event_logger
 
 
 logger = logging.getLogger(__name__)
