@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='service',
             name='settings',
-            field=models.ForeignKey(related_name='+', default=0, to='structure.ServiceSettings'),
+            field=models.ForeignKey(related_name='+', to='structure.ServiceSettings'),
             preserve_default=False,
         ),
     ]
