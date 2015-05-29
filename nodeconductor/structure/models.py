@@ -351,14 +351,14 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
         DigitalOcean = 2
         Amazon = 3
         Jira = 4
-        Git = 5
+        GitLab = 5
 
         CHOICES = (
             (OpenStack, 'OpenStack'),
             (DigitalOcean, 'DigitalOcean'),
             (Amazon, 'Amazon'),
             (Jira, 'Jira'),
-            (Git, 'Git'),
+            (GitLab, 'GitLab'),
         )
 
     backend_url = models.URLField(max_length=200, blank=True, null=True)
