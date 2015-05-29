@@ -81,10 +81,37 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
     change_readonly_fields = ['customer']
 
 
+class ServiceSettingsAdmin(admin.ModelAdmin):
+    list_display = ('name', 'type', 'state')
+    list_filter = ('type',)
+    actions = ['sync']
+
+    def save_model(self, request, obj, form, change):
+        super(ServiceSettingsAdmin, self).save_model(request, obj, form, change)
+        if not change:
+            tasks.begin_syncing_service_settings.delay(obj.uuid.hex)
+
+    def sync(self, request, queryset):
+        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
+        service_uuids = list(queryset.values_list('uuid', flat=True))
+        tasks_scheduled = queryset.count()
+
+        tasks.sync_service_settings.delay(service_uuids)
+
+        message = ungettext(
+            'One service settings record scheduled for sync',
+            '%(tasks_scheduled)d service settings records scheduled for sync',
+            tasks_scheduled)
+        message = message % {'tasks_scheduled': tasks_scheduled}
+
+        self.message_user(request, message)
+
+    sync.short_description = "Sync selected service settings with backend"
+
+
 class ServiceAdmin(PolymorphicParentModelAdmin):
-    list_display = ('name', 'customer', 'polymorphic_ctype', 'state')
+    list_display = ('name', 'customer', 'settings', 'polymorphic_ctype')
     ordering = ('name', 'customer')
-    actions = ['sync_services']
     list_filter = (PolymorphicChildModelFilter,)
     base_model = models.Service
 
@@ -94,23 +121,6 @@ class ServiceAdmin(PolymorphicParentModelAdmin):
 
         return [(model, BaseAdminClass) for model in get_models()
                 if model is not models.Service and issubclass(model, models.Service)]
-
-    def sync_services(self, request, queryset):
-        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
-        service_uuids = list(queryset.values_list('uuid', flat=True))
-        tasks_scheduled = queryset.count()
-
-        tasks.sync_services.delay(service_uuids)
-
-        message = ungettext(
-            'One service scheduled for sync',
-            '%(tasks_scheduled)d services scheduled for sync',
-            tasks_scheduled)
-        message = message % {'tasks_scheduled': tasks_scheduled}
-
-        self.message_user(request, message)
-
-    sync_services.short_description = "Sync selected services with backend"
 
 
 class HiddenServiceAdmin(admin.ModelAdmin):
@@ -122,3 +132,4 @@ admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ProjectGroup, ProjectGroupAdmin)
 admin.site.register(models.Service, ServiceAdmin)
+admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)

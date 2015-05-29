@@ -340,9 +340,46 @@ class ProjectGroup(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class Service(PolymorphicModel, core_models.UuidMixin,
-              core_models.NameMixin, core_models.SynchronizableMixin):
+class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.SynchronizableMixin):
 
+    class Types(object):
+        OpenStack = 1
+        DigitalOcean = 2
+        Amazon = 3
+        Jira = 4
+        GitLab = 5
+
+        CHOICES = (
+            (OpenStack, 'OpenStack'),
+            (DigitalOcean, 'DigitalOcean'),
+            (Amazon, 'Amazon'),
+            (Jira, 'Jira'),
+            (GitLab, 'GitLab'),
+        )
+
+    backend_url = models.URLField(max_length=200, blank=True, null=True)
+    username = models.CharField(max_length=100, blank=True, null=True)
+    password = models.CharField(max_length=100, blank=True, null=True)
+    token = models.CharField(max_length=255, blank=True, null=True)
+    type = models.SmallIntegerField(choices=Types.CHOICES)
+
+    shared = models.BooleanField(default=False, help_text='Anybody can use it')
+    dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
+
+    def get_backend(self):
+        # TODO: Find a way to register backend form the other side, perhaps within NC-519
+        if self.type == self.Types.DigitalOcean:
+            from nodeconductor_plus.digitalocean.backend import DigitalOceanBackend
+            return DigitalOceanBackend(self)
+
+        raise NotImplementedError
+
+    def __str__(self):
+        return '%s (%s)' % (self.name, self.get_type_display())
+
+
+@python_2_unicode_compatible
+class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
     """ Base service class. Define specific service model as follows:
 
         .. code-block:: python
@@ -383,40 +420,35 @@ class Service(PolymorphicModel, core_models.UuidMixin,
         project_path = 'projects'
         project_group_path = 'customer__projects__project_groups'
 
+    settings = models.ForeignKey(ServiceSettings, related_name='+')
     customer = models.ForeignKey(Customer, related_name='services')
     projects = NotImplemented
 
-    dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
-
-    def get_backend(self, sp_link=None):
-        raise NotImplementedError
+    def get_backend(self):
+        return self.settings.get_backend()
 
     def __str__(self):
         return self.name
 
 
 @python_2_unicode_compatible
-class Resource(core_models.UuidMixin, core_models.NameMixin, models.Model):
-    """ Base service resource like image, flavor, region. """
+class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
+    """ Base service properties like image, flavor, region,
+        which are usually used for Resource provisioning.
+    """
 
     class Meta(object):
         abstract = True
 
-    class Permissions(object):
-        customer_path = 'service__projects__customer'
-        project_path = 'service__projects'
-        project_group_path = 'service__projects__project_groups'
-
-    service = NotImplemented
-    backend_id = models.CharField(max_length=255)
+    settings = models.ForeignKey(ServiceSettings, related_name='+')
+    backend_id = models.CharField(max_length=255, db_index=True)
 
     def __str__(self):
-        return '{0} | {1}'.format(self.service.name, self.name)
+        return '{0} | {1}'.format(self.name, self.settings)
 
 
 @python_2_unicode_compatible
 class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin):
-
     """ Base service-project link class. See Service class for usage example. """
 
     class Meta(object):
@@ -434,7 +466,33 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
         return [self.project]
 
     def get_backend(self):
-        return self.service.get_backend(sp_link=self)
+        return self.service.get_backend()
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
+
+
+@python_2_unicode_compatible
+class Resource(core_models.UuidMixin, core_models.DescribableMixin,
+               core_models.NameMixin, TimeStampedModel):
+
+    """ Base resource class. Resource is a provisioned entity of a service,
+        for example: a VM in OpenStack or AWS, or a repository in Github.
+    """
+
+    class Meta(object):
+        abstract = True
+
+    class Permissions(object):
+        customer_path = 'service_project_link__project__customer'
+        project_path = 'service_project_link__project'
+        project_group_path = 'service_project_link__project__project_groups'
+
+    service_project_link = NotImplemented
+    backend_id = models.CharField(max_length=255, db_index=True)
+
+    def get_backend(self):
+        return self.service_project_link.get_backend()
+
+    def __str__(self):
+        return self.name
