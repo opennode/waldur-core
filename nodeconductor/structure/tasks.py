@@ -42,38 +42,38 @@ def sync_billing_customer(customer_uuid):
     backend.sync_invoices()
 
 
-@shared_task(name='nodeconductor.structure.sync_services')
-def sync_services(service_uuids=None):
-    services = models.Service.objects.filter(state=SynchronizationStates.IN_SYNC)
-    if service_uuids and isinstance(service_uuids, (list, tuple)):
-        services = services.filter(uuid__in=service_uuids)
+@shared_task(name='nodeconductor.structure.sync_service_settings')
+def sync_service_settings(settings_uuids=None):
+    settings = models.ServiceSettings.objects.filter(state=SynchronizationStates.IN_SYNC)
+    if settings_uuids and isinstance(settings_uuids, (list, tuple)):
+        settings = settings.filter(uuid__in=settings_uuids)
 
-    for service in services:
-        service.schedule_syncing()
-        service.save()
+    for obj in settings:
+        obj.schedule_syncing()
+        obj.save()
 
-        service_uuid = service.uuid.hex
-        sync_service.apply_async(
-            args=(service_uuid,),
-            link=sync_service_succeeded.si(service_uuid),
-            link_error=sync_service_failed.si(service_uuid))
+        settings_uuid = obj.uuid.hex
+        begin_syncing_service_settings.apply_async(
+            args=(settings_uuid,),
+            link=sync_service_settings_succeeded.si(settings_uuid),
+            link_error=sync_service_settings_failed.si(settings_uuid))
 
 
 @shared_task
-@transition(models.Service, 'begin_syncing')
-def sync_service(service_uuid, transition_entity=None):
-    service = transition_entity
-    backend = service.get_backend()
+@transition(models.ServiceSettings, 'begin_syncing')
+def begin_syncing_service_settings(settings_uuid, transition_entity=None):
+    settings = transition_entity
+    backend = settings.get_backend()
     backend.sync()
 
 
 @shared_task
-@transition(models.Service, 'set_in_sync')
-def sync_service_succeeded(service_uuid, transition_entity=None):
+@transition(models.ServiceSettings, 'set_in_sync')
+def sync_service_settings_succeeded(settings_uuid, transition_entity=None):
     pass
 
 
 @shared_task
-@transition(models.Service, 'set_erred')
-def sync_service_failed(service_uuid, transition_entity=None):
+@transition(models.ServiceSettings, 'set_erred')
+def sync_service_settings_failed(settings_uuid, transition_entity=None):
     pass

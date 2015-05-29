@@ -5,7 +5,9 @@ from django.contrib import auth
 from django.db import models as django_models
 from rest_framework import serializers
 
-from nodeconductor.core import serializers as core_serializers, utils as core_utils
+from nodeconductor.core import serializers as core_serializers
+from nodeconductor.core import models as core_models
+from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, filters
@@ -558,3 +560,19 @@ class PasswordSerializer(serializers.Serializer):
             message='Ensure this field has at least one latin letter.',
         ),
     ])
+
+
+class ServiceSettingsSerializer(serializers.HyperlinkedModelSerializer):
+
+    type = serializers.ReadOnlyField(source='get_type_display')
+    state = MappedChoiceField(
+        choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
+        choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
+        read_only=True)
+
+    class Meta(object):
+        model = models.ServiceSettings
+        fields = ('url', 'uuid', 'name', 'type', 'state')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
