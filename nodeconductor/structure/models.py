@@ -1,10 +1,8 @@
 from __future__ import unicode_literals
 
-import yaml
 import logging
 
 from django.core.validators import MaxLengthValidator
-from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models
@@ -13,8 +11,6 @@ from django.db.models import Q
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
 from polymorphic import PolymorphicModel
-from django_fsm import FSMIntegerField
-from django_fsm import transition
 
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
