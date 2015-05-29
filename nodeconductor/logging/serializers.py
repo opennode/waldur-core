@@ -8,8 +8,8 @@ from nodeconductor.core.fields import MappedChoiceField
 class AlertSerializer(serializers.HyperlinkedModelSerializer):
     scope = GenericRelatedField(related_models=utils.get_loggable_models(), read_only=True)
     severity = MappedChoiceField(
-        choices=[(k, v) for k, v in models.Alert.SeverityChoices.CHOICES],
-        choice_mappings={k: v for k, v in models.Alert.SeverityChoices.CHOICES},
+        choices=[(v, k) for k, v in models.Alert.SeverityChoices.CHOICES],
+        choice_mappings={v: k for k, v in models.Alert.SeverityChoices.CHOICES},
         read_only=True,
     )
 
