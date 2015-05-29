@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 ('username', models.CharField(max_length=100, null=True, blank=True)),
                 ('password', models.CharField(max_length=100, null=True, blank=True)),
                 ('token', models.CharField(max_length=255, null=True, blank=True)),
-                ('type', models.SmallIntegerField(choices=[(1, 'OpenStack'), (2, 'DigitalOcean'), (3, 'Amazon'), (4, 'Jira'), (5, 'Git')])),
+                ('type', models.SmallIntegerField(choices=[(1, 'OpenStack'), (2, 'DigitalOcean'), (3, 'Amazon'), (4, 'Jira'), (5, 'GitLab')])),
                 ('shared', models.BooleanField(default=False, help_text='Anybody can use it')),
                 ('dummy', models.BooleanField(default=False, help_text='Emulate backend operations')),
             ],
