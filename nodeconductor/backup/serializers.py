@@ -5,6 +5,7 @@ from django.utils import timezone as django_timezone
 from rest_framework import serializers
 
 from nodeconductor.backup import models, utils
+from nodeconductor.core.fields import JsonField
 from nodeconductor.core.serializers import GenericRelatedField
 
 
@@ -27,10 +28,12 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
 class BackupSerializer(serializers.HyperlinkedModelSerializer):
     backup_source = GenericRelatedField(related_models=utils.get_backupable_models())
     state = serializers.ReadOnlyField(source='get_state_display')
+    metadata = JsonField(read_only=True)
 
     class Meta(object):
         model = models.Backup
-        fields = ('url', 'description', 'created_at', 'kept_until', 'backup_source', 'state', 'backup_schedule')
+        fields = ('url', 'description', 'created_at', 'kept_until', 'backup_source', 'state', 'backup_schedule',
+                  'metadata')
         read_only_fields = ('created_at', 'kept_until', 'backup_schedule')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
