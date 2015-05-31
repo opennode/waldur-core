@@ -6,6 +6,10 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.49.1
+--------------
+- Bugfix of erred cloud recovery job.
+
 Release 0.49.0
 --------------
 - Draft version of billing integration with WHMCS.
