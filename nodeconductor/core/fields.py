@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
 
 import re
+import json
 
 from django.db import models
 from django.core import validators
-import django_filters
 from rest_framework import serializers
 import six
 
@@ -121,3 +121,19 @@ class MappedChoiceField(serializers.ChoiceField):
         value = self.model_to_mapped[value]
 
         return super(MappedChoiceField, self).to_representation(value)
+
+
+class JsonField(serializers.Field):
+    """
+    A read-write DRF field for the jsonfield.JSONField objects.
+    """
+
+    def to_representation(self, obj):
+        return obj
+
+    def to_internal_value(self, data):
+        try:
+            data = json.loads(data)
+        except ValueError:
+            raise serializers.ValidationError('This field should a be valid JSON string.')
+        return data
