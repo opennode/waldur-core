@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from nodeconductor.logging import models, utils
 from nodeconductor.core.serializers import GenericRelatedField
-from nodeconductor.core.fields import MappedChoiceField
+from nodeconductor.core.fields import MappedChoiceField, JsonField
 
 
 class AlertSerializer(serializers.HyperlinkedModelSerializer):
@@ -12,6 +12,7 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
         choice_mappings={v: k for k, v in models.Alert.SeverityChoices.CHOICES},
         read_only=True,
     )
+    context = JsonField()
 
     class Meta(object):
         model = models.Alert
