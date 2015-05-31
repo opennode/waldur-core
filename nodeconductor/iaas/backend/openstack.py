@@ -10,6 +10,8 @@ import dateutil.parser
 
 from itertools import groupby
 
+from ceilometerclient import client as ceilometer_client
+from ceilometerclient import exc as ceilometer_exceptions
 from cinderclient import exceptions as cinder_exceptions
 from cinderclient.v1 import client as cinder_client
 from django.conf import settings
@@ -75,6 +77,7 @@ class OpenStackClient(object):
         'NeutronClient': (neutron_client.Client, dummy_clients.NeutronClient),
         'CinderClient': (cinder_client.Client, dummy_clients.CinderClient),
         'GlanceClient': (glance_client.Client, dummy_clients.GlanceClient),
+        'CeilometerClient': (ceilometer_client.Client, dummy_clients.CeilometerClient),
     }
 
     def __init__(self, dummy=False):
@@ -225,6 +228,20 @@ class OpenStackClient(object):
 
         return cls.get_openstack_class('GlanceClient', session.dummy)(endpoint, **kwargs)
 
+    @classmethod
+    def create_ceilometer_client(cls, session):
+        catalog = ServiceCatalog.factory(session.auth.auth_ref)
+        endpoint = catalog.url_for(service_type='metering')
+
+        kwargs = {
+            'token': lambda: session.get_token(),
+            'endpoint': endpoint,
+            'insecure': False,
+            'timeout': 600,
+            'ssl_compression': True,
+        }
+
+        return cls.get_openstack_class('CeilometerClient', session.dummy)('2', **kwargs)
 
 class OpenStackBackend(OpenStackClient):
     """ NodeConductor interface to OpenStack.
@@ -1638,6 +1655,19 @@ class OpenStackBackend(OpenStackClient):
                 instance.name, flavor.name,
                 extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_succeeded'},
             )
+
+    def get_ceilometer_statistics(self, membership, meter_name, period=None, query=None):
+        try:
+            session = self.create_session(membership=membership, dummy=self.dummy)
+            ceilometer = self.create_ceilometer_client(session)
+
+            usage = ceilometer.statistics.list(meter_name=meter_name, period=period, q=query)
+        except ceilometer_exceptions.HTTPException as e:
+            logger.exception('Failed to get %s usage for cloud project membership with id %s',
+                             meter_name, membership.pk)
+            six.reraise(CloudBackendError, e)
+        else:
+            return usage
 
     # Helper methods
     def get_floating_ips(self, tenant_id, neutron):
