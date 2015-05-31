@@ -24,7 +24,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
 
     'nodeconductor.landing',
-    'nodeconductor.events',
+    'nodeconductor.logging',
     'nodeconductor.core',
     'nodeconductor.backup',
     'nodeconductor.template',
@@ -52,7 +52,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'nodeconductor.events.middleware.CaptureUserMiddleware',
+    'nodeconductor.logging.middleware.CaptureUserMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )

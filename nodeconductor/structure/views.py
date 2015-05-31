@@ -359,7 +359,6 @@ class ProjectGroupMembershipViewSet(mixins.CreateModelMixin,
             event_context={
                 'project': project,
                 'project_group': project_group,
-                'customer': project_group.customer,
             })
 
     def perform_destroy(self, instance):
@@ -373,7 +372,6 @@ class ProjectGroupMembershipViewSet(mixins.CreateModelMixin,
             event_context={
                 'project': project,
                 'project_group': project_group,
-                'customer': project_group.customer,
             })
 
 # XXX: This should be put to models

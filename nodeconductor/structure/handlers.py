@@ -89,7 +89,6 @@ def log_project_group_save(sender, instance, created=False, **kwargs):
             event_type='project_group_creation_succeeded',
             event_context={
                 'project_group': instance,
-                'customer': instance.customer,
             })
     else:
         event_logger.project_group.info(
@@ -97,7 +96,6 @@ def log_project_group_save(sender, instance, created=False, **kwargs):
             event_type='project_group_update_succeeded',
             event_context={
                 'project_group': instance,
-                'customer': instance.customer,
             })
 
 
@@ -107,7 +105,6 @@ def log_project_group_delete(sender, instance, **kwargs):
         event_type='project_group_deletion_succeeded',
         event_context={
             'project_group': instance,
-            'customer': instance.customer,
         })
 
 
@@ -118,7 +115,6 @@ def log_project_save(sender, instance, created=False, **kwargs):
             event_type='project_creation_succeeded',
             event_context={
                 'project': instance,
-                'customer': instance.customer,
                 'project_group': instance.project_groups.first(),
             })
     else:
@@ -127,7 +123,6 @@ def log_project_save(sender, instance, created=False, **kwargs):
             event_type='project_update_succeeded',
             event_context={
                 'project': instance,
-                'customer': instance.customer,
                 'project_group': instance.project_groups.first(),
             })
 
@@ -138,7 +133,6 @@ def log_project_delete(sender, instance, **kwargs):
         event_type='project_deletion_succeeded',
         event_context={
             'project': instance,
-            'customer': instance.customer,
             'project_group': instance.project_groups.first(),
         })
 
@@ -174,7 +168,6 @@ def log_project_role_granted(sender, structure, user, role, **kwargs):
         event_context={
             'project': structure,
             'project_group': structure.project_groups.first(),
-            'customer': structure.customer,
             'affected_user': user,
             'structure_type': 'project',
             'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
@@ -188,7 +181,6 @@ def log_project_role_revoked(sender, structure, user, role, **kwargs):
         event_context={
             'project': structure,
             'project_group': structure.project_groups.first(),
-            'customer': structure.customer,
             'affected_user': user,
             'structure_type': 'project',
             'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
@@ -202,7 +194,6 @@ def log_project_group_role_granted(sender, structure, user, role, **kwargs):
         event_type='role_granted',
         event_context={
             'project_group': structure,
-            'customer': structure.customer,
             'affected_user': user,
             'structure_type': 'project_group',
             'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
@@ -216,7 +207,6 @@ def log_project_group_role_revoked(sender, structure, user, role, **kwargs):
         event_type='role_revoked',
         event_context={
             'project_group': structure,
-            'customer': structure.customer,
             'affected_user': user,
             'structure_type': 'project_group',
             'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),

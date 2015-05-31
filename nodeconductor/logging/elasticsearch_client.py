@@ -5,7 +5,7 @@ import logging
 from django.conf import settings
 from elasticsearch import Elasticsearch
 
-from nodeconductor.events.log import event_logger
+from nodeconductor.logging.log import event_logger
 
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class ElasticsearchResultList(object):
     def _get_client(self):
         if settings.NODECONDUCTOR.get('ELASTICSEARCH_DUMMY', False):
             # to avoid circular dependencies
-            from nodeconductor.events.elasticsearch_dummy_client import ElasticsearchDummyClient
+            from nodeconductor.logging.elasticsearch_dummy_client import ElasticsearchDummyClient
             logger.warn(
                 'Dummy client for elasticsearch is used, set ELASTICSEARCH_DUMMY to False to disable dummy client')
             return ElasticsearchDummyClient()

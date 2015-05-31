@@ -1,7 +1,7 @@
 from operator import itemgetter
 
-from nodeconductor.events import elasticsearch_client
-from nodeconductor.events.log import event_logger
+from nodeconductor.logging import elasticsearch_client
+from nodeconductor.logging.log import event_logger
 
 
 class ElasticsearchDummyClient(elasticsearch_client.ElasticsearchClient):

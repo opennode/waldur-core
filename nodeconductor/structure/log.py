@@ -1,4 +1,4 @@
-from nodeconductor.events.log import EventLogger, event_logger
+from nodeconductor.logging.log import EventLogger, event_logger
 from nodeconductor.core.models import User
 from nodeconductor.structure import models
 from nodeconductor.structure.filters import filter_queryset_for_user
@@ -23,7 +23,6 @@ class CustomerEventLogger(EventLogger):
 
 class ProjectEventLogger(EventLogger):
     project = models.Project
-    customer = models.Customer
     project_group = models.ProjectGroup
 
     class Meta:
@@ -39,7 +38,6 @@ class ProjectEventLogger(EventLogger):
 
 class ProjectGroupEventLogger(EventLogger):
     project_group = models.ProjectGroup
-    customer = models.Customer
 
     class Meta:
         event_types = ('project_group_deletion_succeeded',
@@ -64,7 +62,6 @@ class CustomerRoleEventLogger(EventLogger):
 class ProjectRoleEventLogger(EventLogger):
     project = models.Project
     project_group = models.ProjectGroup
-    customer = models.Customer
     affected_user = User
     structure_type = basestring
     role_name = basestring
@@ -76,7 +73,6 @@ class ProjectRoleEventLogger(EventLogger):
 
 class ProjectGroupRoleEventLogger(EventLogger):
     project_group = models.ProjectGroup
-    customer = models.Customer
     affected_user = User
     structure_type = basestring
     role_name = basestring
@@ -88,7 +84,6 @@ class ProjectGroupRoleEventLogger(EventLogger):
 class ProjectGroupMembershipEventLogger(EventLogger):
     project = models.Project
     project_group = models.ProjectGroup
-    customer = models.Customer
 
     class Meta:
         event_types = 'project_added_to_project_group', 'project_removed_from_project_group'
