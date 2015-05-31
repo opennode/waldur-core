@@ -370,7 +370,7 @@ def sync_instance_with_zabbix(instance_uuid):
 
 @shared_task
 def recover_erred_cloud_memberships(membership_pks=None):
-    memberships = models.CloudProjectMembership.filter(state=SynchronizationStates.ERRED)
+    memberships = models.CloudProjectMembership.objects.filter(state=SynchronizationStates.ERRED)
 
     if membership_pks and isinstance(membership_pks, (list, tuple)):
         memberships = memberships.filter(pk__in=membership_pks)
