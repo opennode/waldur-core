@@ -210,3 +210,16 @@ class WHMCSAPI(object):
                 "Can't parse product price: %s" % response.text)
 
         return match.groups()[0]
+
+    def create_invoice(self, client_id, date, due_date, description,
+                       amount, payment_method='banktransfer', is_taxed=False):
+        self.request(
+            'createinvoice',
+            userid=client_id,
+            date=date,
+            duedate=due_date,
+            itemdescription1=description,
+            itemamount=amount,
+            paymentmethod=payment_method,
+            itemtaxed1=1 if is_taxed else 0
+        )
