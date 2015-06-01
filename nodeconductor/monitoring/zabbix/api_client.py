@@ -170,7 +170,7 @@ class ZabbixApiClient(object):
         return '%s' % instance.backend_id
 
     def get_host_visible_name(self, instance):
-        return '%s' % instance.name
+        return '%s-%s' % (instance.uuid, instance.name)
 
     def get_hostgroup_name(self, project):
         return '%s_%s' % (project.name, project.uuid)
