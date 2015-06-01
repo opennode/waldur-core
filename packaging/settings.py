@@ -440,7 +440,7 @@ CELERY_RESULT_BACKEND = config.get('celery', 'result_backend_url')
 
 # Regular tasks
 # See also: http://celery.readthedocs.org/en/latest/userguide/periodic-tasks.html#entries
-CELERYBEAT_SCHEDULE = {
+CELERYBEAT_SCHEDULE.update({
     'delete-expired-backups': {
         'task': 'nodeconductor.backup.tasks.delete_expired_backups',
         'schedule': timedelta(seconds=config.getint('celery', 'expired_backup_delete_period')),
@@ -496,7 +496,7 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(seconds=config.getint('celery', 'instance_yearly_sla_update_period')),
         'args': ('yearly',),
     },
-}
+})
 
 # NodeConductor throttling settings for celery tasks
 CELERY_TASK_THROTTLING = {
