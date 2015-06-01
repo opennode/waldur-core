@@ -41,7 +41,8 @@ Arguments:
         # month in seconds. Used as a period argument for the ceilometer client.
         seconds = last_day * 24 * 60 * 60
 
-        if len(args) in (1, 3):
+        is_customer_id = len(args) in (1, 3)
+        if is_customer_id:
             create_invoices.delay(args[0], str(start_timestamp), str(end_timestamp), seconds)
         else:
             customers = Customer.objects.all()
