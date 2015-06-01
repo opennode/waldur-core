@@ -207,7 +207,7 @@ NODECONDUCTOR['BILLING'] = {
     'api_url': 'http://demo.whmcs.com/includes/api.php',
     'username': 'Admin',
     'password': 'demo',
-    'OpenStack': {
+    'openstack': {
         'invoice_meters': {
             # ceilometer meter name: (resource name, pricelist name, unit converter, unit)
             'cpu': ('CPU', 'cpu_hours', 'get_ceilometer_cpu_time', 'hours'),

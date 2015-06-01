@@ -56,7 +56,7 @@ class CreateInvoicesTaskTest(TestCase):
 
         self.nc_settings = {
             'BILLING': {
-                'OpenStack': {
+                'openstack': {
                     'invoice_meters': {
                         'cpu': ('CPU', 'cpu_hours', 'get_ceilometer_cpu_time', 'hours'),
                         'memory': ('Memory', 'ram_gb', 'get_ceilometer_ram_size', 'GB'),

@@ -41,7 +41,7 @@ def create_invoices(customer_uuid, from_date, to_date, period=0):
     for membership in memberships:
         backend = membership.cloud.get_backend()
 
-        meters_mapping = settings.NODECONDUCTOR.get('BILLING')['OpenStack']['invoice_meters']
+        meters_mapping = settings.NODECONDUCTOR.get('BILLING')['openstack']['invoice_meters']
 
         for index, meter in enumerate(meters_mapping.keys(), 1):
             name, price_name, converter, unit = meters_mapping[meter]
