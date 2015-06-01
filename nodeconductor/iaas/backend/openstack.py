@@ -1669,6 +1669,18 @@ class OpenStackBackend(OpenStackClient):
         else:
             return usage
 
+    def get_ceilometer_cpu_time(self, time):
+        return time / (60 * 60 * pow(10, 9))
+
+    def get_ceilometer_ram_size(self, ram_size):
+        return ram_size * 1024
+
+    def get_ceilometer_network_traffic_size(self, traffic_sum):
+        return traffic_sum / pow(1024, 3)
+
+    def get_ceilometer_disk_size(self, disk_size):
+        return disk_size / pow(1024, 3)
+
     # Helper methods
     def get_floating_ips(self, tenant_id, neutron):
         return neutron.list_floatingips(tenant_id=tenant_id)['floatingips']
