@@ -8,9 +8,9 @@ from polymorphic.admin import (
     PolymorphicChildModelFilter)
 
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models
-from nodeconductor.structure import tasks
 
 
 class ChangeReadonlyMixin(object):
@@ -47,7 +47,7 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
 
     def sync_with_backend(self, request, queryset):
         customer_uuids = list(queryset.values_list('uuid', flat=True))
-        tasks.sync_billing_customers.delay(customer_uuids)
+        send_task('structure', 'sync_billing_customers')(customer_uuids)
 
         tasks_scheduled = queryset.count()
         message = ungettext(
@@ -89,14 +89,14 @@ class ServiceSettingsAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         super(ServiceSettingsAdmin, self).save_model(request, obj, form, change)
         if not change:
-            tasks.begin_syncing_service_settings.delay(obj.uuid.hex)
+            send_task('structure', 'sync_service_settings')(obj.uuid.hex, initial=True)
 
     def sync(self, request, queryset):
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
         service_uuids = list(queryset.values_list('uuid', flat=True))
         tasks_scheduled = queryset.count()
 
-        tasks.sync_service_settings.delay(service_uuids)
+        send_task('structure', 'sync_service_settings')(service_uuids)
 
         message = ungettext(
             'One service settings record scheduled for sync',

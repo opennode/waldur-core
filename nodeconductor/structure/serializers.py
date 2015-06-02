@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from django.core.validators import RegexValidator
 from django.contrib import auth
 from django.db import models as django_models
-from rest_framework import serializers
+from rest_framework import serializers, exceptions
 
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import models as core_models
@@ -422,7 +422,7 @@ class ProjectGroupPermissionSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = User.groups.through
         fields = (
-            'url',  'pk',
+            'url', 'pk',
             'role',
             'project_group', 'project_group_uuid', 'project_group_name',
             'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
@@ -576,3 +576,78 @@ class ServiceSettingsSerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+
+
+class BaseServiceSerializer(PermissionFieldFilteringMixin,
+                            core_serializers.AugmentedSerializerMixin,
+                            serializers.HyperlinkedModelSerializer):
+
+    SERVICE_TYPE = NotImplemented
+
+    projects = BasicProjectSerializer(many=True, read_only=True)
+    customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
+
+    class Meta(object):
+        model = NotImplemented
+        view_name = NotImplemented
+        fields = (
+            'uuid',
+            'url',
+            'name', 'projects', 'settings',
+            'customer', 'customer_name', 'customer_native_name',
+        )
+        protected_fields = 'customer', 'settings'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+            'customer': {'lookup_field': 'uuid'},
+            'settings': {'lookup_field': 'uuid'},
+        }
+
+    def get_filtered_field_names(self):
+        return 'customer',
+
+    def get_related_paths(self):
+        return 'customer',
+
+    def get_fields(self):
+        fields = super(BaseServiceSerializer, self).get_fields()
+        fields['settings'].queryset = fields['settings'].queryset.filter(type=self.SERVICE_TYPE)
+        return fields
+
+    def validate(self, attrs):
+        user = self.context['user']
+        customer = attrs.get('customer') or self.instance.customer
+        if not user.is_staff and not customer.has_user(user, models.CustomerRole.OWNER):
+            raise exceptions.PermissionDenied()
+
+        return attrs
+
+
+class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
+                                       core_serializers.AugmentedSerializerMixin,
+                                       serializers.HyperlinkedModelSerializer):
+
+    state = MappedChoiceField(
+        choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
+        choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
+        read_only=True)
+
+    class Meta(object):
+        model = NotImplemented
+        view_name = NotImplemented
+        fields = (
+            'url',
+            'project', 'project_name', 'project_uuid',
+            'service', 'service_name', 'service_uuid',
+            'state',
+        )
+        extra_kwargs = {
+            'service': {'lookup_field': 'uuid', 'view_name': NotImplemented},
+            'project': {'lookup_field': 'uuid'},
+        }
+
+    def get_filtered_field_names(self):
+        return 'project', 'service'
+
+    def get_related_paths(self):
+        return 'project', 'service'

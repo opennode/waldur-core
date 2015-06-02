@@ -354,6 +354,7 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
         Amazon = 3
         Jira = 4
         GitLab = 5
+        Oracle = 6
 
         CHOICES = (
             (OpenStack, 'OpenStack'),
@@ -361,6 +362,7 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
             (Amazon, 'Amazon'),
             (Jira, 'Jira'),
             (GitLab, 'GitLab'),
+            (Oracle, 'Oracle'),
         )
 
     backend_url = models.URLField(max_length=200, blank=True, null=True)
@@ -377,6 +379,10 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
         if self.type == self.Types.DigitalOcean:
             from nodeconductor_plus.digitalocean.backend import DigitalOceanBackend
             return DigitalOceanBackend(self)
+
+        if self.type == self.Types.Oracle:
+            from nodeconductor.oracle.backend import OracleBackend
+            return OracleBackend(self)
 
         raise NotImplementedError
 
