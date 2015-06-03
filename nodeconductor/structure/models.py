@@ -9,6 +9,8 @@ from django.db import models
 from django.db import transaction
 from django.db.models import Q
 from django.utils.encoding import python_2_unicode_compatible
+from django_fsm import FSMIntegerField
+from django_fsm import transition
 from model_utils.models import TimeStampedModel
 from polymorphic import PolymorphicModel
 
@@ -495,16 +497,177 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
     class Meta(object):
         abstract = True
 
+    class States(object):
+        PROVISIONING_SCHEDULED = 1
+        PROVISIONING = 2
+
+        ONLINE = 3
+        OFFLINE = 4
+
+        STARTING_SCHEDULED = 5
+        STARTING = 6
+
+        STOPPING_SCHEDULED = 7
+        STOPPING = 8
+
+        ERRED = 9
+
+        DELETION_SCHEDULED = 10
+        DELETING = 11
+
+        RESIZING_SCHEDULED = 13
+        RESIZING = 14
+
+        RESTARTING_SCHEDULED = 15
+        RESTARTING = 16
+
+        CHOICES = (
+            (PROVISIONING_SCHEDULED, 'Provisioning Scheduled'),
+            (PROVISIONING, 'Provisioning'),
+
+            (ONLINE, 'Online'),
+            (OFFLINE, 'Offline'),
+
+            (STARTING_SCHEDULED, 'Starting Scheduled'),
+            (STARTING, 'Starting'),
+
+            (STOPPING_SCHEDULED, 'Stopping Scheduled'),
+            (STOPPING, 'Stopping'),
+
+            (ERRED, 'Erred'),
+
+            (DELETION_SCHEDULED, 'Deletion Scheduled'),
+            (DELETING, 'Deleting'),
+
+            (RESIZING_SCHEDULED, 'Resizing Scheduled'),
+            (RESIZING, 'Resizing'),
+
+            (RESTARTING_SCHEDULED, 'Restarting Scheduled'),
+            (RESTARTING, 'Restarting'),
+        )
+
+        # Stable instances are the ones for which
+        # no tasks are scheduled or are in progress
+
+        STABLE_STATES = set([ONLINE, OFFLINE])
+        UNSTABLE_STATES = set([
+            s for (s, _) in CHOICES
+            if s not in STABLE_STATES
+        ])
+
     class Permissions(object):
         customer_path = 'service_project_link__project__customer'
         project_path = 'service_project_link__project'
         project_group_path = 'service_project_link__project__project_groups'
 
     service_project_link = NotImplemented
-    backend_id = models.CharField(max_length=255, db_index=True)
+    backend_id = models.CharField(max_length=255, blank=True)
+
+    start_time = models.DateTimeField(blank=True, null=True)
+    state = FSMIntegerField(
+        default=States.PROVISIONING_SCHEDULED,
+        choices=States.CHOICES,
+        help_text="WARNING! Should not be changed manually unless you really know what you are doing.",
+        max_length=1)
 
     def get_backend(self):
         return self.service_project_link.get_backend()
 
     def __str__(self):
         return self.name
+
+    @transition(field=state,
+                source=States.PROVISIONING_SCHEDULED,
+                target=States.PROVISIONING)
+    def begin_provisioning(self):
+        pass
+
+    @transition(field=state,
+                source=[States.PROVISIONING, States.STOPPING, States.RESIZING],
+                target=States.OFFLINE)
+    def set_offline(self):
+        pass
+
+    @transition(field=state,
+                source=States.OFFLINE,
+                target=States.STARTING_SCHEDULED)
+    def schedule_starting(self):
+        pass
+
+    @transition(field=state,
+                source=States.STARTING_SCHEDULED,
+                target=States.STARTING)
+    def begin_starting(self):
+        pass
+
+    @transition(field=state,
+                source=[States.STARTING, States.PROVISIONING, States.RESTARTING],
+                target=States.ONLINE)
+    def set_online(self):
+        pass
+
+    @transition(field=state,
+                source=States.ONLINE,
+                target=States.STOPPING_SCHEDULED)
+    def schedule_stopping(self):
+        pass
+
+    @transition(field=state,
+                source=States.STOPPING_SCHEDULED,
+                target=States.STOPPING)
+    def begin_stopping(self):
+        pass
+
+    @transition(field=state,
+                source=States.OFFLINE,
+                target=States.DELETION_SCHEDULED)
+    def schedule_deletion(self):
+        pass
+
+    @transition(field=state,
+                source=States.DELETION_SCHEDULED,
+                target=States.DELETING)
+    def begin_deleting(self):
+        pass
+
+    @transition(field=state,
+                source=States.OFFLINE,
+                target=States.RESIZING_SCHEDULED)
+    def schedule_resizing(self):
+        pass
+
+    @transition(field=state,
+                source=States.RESIZING_SCHEDULED,
+                target=States.RESIZING)
+    def begin_resizing(self):
+        pass
+
+    @transition(field=state,
+                source=States.RESIZING,
+                target=States.OFFLINE)
+    def set_resized(self):
+        pass
+
+    @transition(field=state,
+                source=States.ONLINE,
+                target=States.RESTARTING_SCHEDULED)
+    def schedule_restarting(self):
+        pass
+
+    @transition(field=state,
+                source=States.RESTARTING_SCHEDULED,
+                target=States.RESTARTING)
+    def begin_restarting(self):
+        pass
+
+    @transition(field=state,
+                source=States.RESTARTING,
+                target=States.ONLINE)
+    def set_restarted(self):
+        pass
+
+    @transition(field=state,
+                source='*',
+                target=States.ERRED)
+    def set_erred(self):
+        pass

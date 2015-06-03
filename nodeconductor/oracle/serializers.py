@@ -95,6 +95,7 @@ class DatabaseCreateSerializer(structure_serializers.PermissionFieldFilteringMix
     class Meta(object):
         model = models.Database
         fields = (
+            'url', 'uuid',
             'name', 'description', 'service_project_link',
             'zone', 'template', 'username', 'database_sid', 'service_name',
         )

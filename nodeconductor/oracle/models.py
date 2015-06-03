@@ -2,7 +2,6 @@
 from django.db import models
 
 from nodeconductor.structure import models as structure_models
-from nodeconductor.iaas import models as iaas_models
 
 
 class OracleService(structure_models.Service):
@@ -32,6 +31,6 @@ class Template(structure_models.ServiceProperty):
     type = models.SmallIntegerField(choices=Types.CHOICES)
 
 
-class Database(structure_models.Resource, iaas_models.ServiceMixin):
+class Database(structure_models.Resource):
     service_project_link = models.ForeignKey(
         OracleServiceProjectLink, related_name='databases', on_delete=models.PROTECT)

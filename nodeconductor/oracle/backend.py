@@ -5,6 +5,7 @@ from nodeconductor.oracle import models
 from nodeconductor.core.utils import pwgen
 from nodeconductor.core.tasks import send_task
 from nodeconductor.iaas.backend import ServiceBackend
+from nodeconductor import __version__
 
 
 class OracleBackendError(Exception):
@@ -119,7 +120,7 @@ class EMConnection(object):
         self.auth = requests.auth.HTTPBasicAuth(username, password)
 
     def request(self, uri, method='GET', mime_type=None, params=None):
-        headers = {'Authorization': "Basic %s" % self.auth}
+        headers = {'User-Agent': 'NodeConductor/%s' % __version__}
         if mime_type:
             headers['Accept'] = mime_type
         if method.upper() == 'POST':
