@@ -1,6 +1,4 @@
 import time
-import string
-import random
 import requests
 
 from collections import OrderedDict
@@ -8,6 +6,7 @@ from datetime import datetime
 from operator import itemgetter
 
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 from django.core.urlresolvers import reverse
 
 from rest_framework.authtoken.models import Token
@@ -91,12 +90,10 @@ def request_api(request, view_name, method='GET', data=None):
 
 
 def pwgen(pw_len=8):
-    pwlist = []
-    for i in range(pw_len // 3):
-        pwlist.append(string.ascii_lowercase[random.randrange(len(string.ascii_lowercase))])
-        pwlist.append(string.ascii_uppercase[random.randrange(len(string.ascii_uppercase))])
-
-    pwlist += [string.ascii_letters[random.randrange(len(string.ascii_letters))]
-               for _ in range(pw_len - len(pwlist))]
-
-    return "".join(pwlist)
+    """ Generate a random password with the given length.
+        Allowed chars does not have "I" or "O" or letters and
+        digits that look similar -- just to avoid confusion.
+    """
+    return get_random_string(pw_len, 'abcdefghjkmnpqrstuvwxyz'
+                                     'ABCDEFGHJKLMNPQRSTUVWXYZ'
+                                     '23456789')

@@ -5,8 +5,8 @@ from django.db import models, migrations
 import django.db.models.deletion
 import django.utils.timezone
 import django_fsm
-import model_utils.fields
 import uuidfield.fields
+import model_utils.fields
 
 
 class Migration(migrations.Migration):
@@ -26,9 +26,8 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=150, verbose_name='name')),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
                 ('backend_id', models.CharField(max_length=255, db_index=True)),
-                ('database_sid', models.CharField(max_length=255)),
-                ('username', models.CharField(max_length=100)),
-                ('password', models.CharField(max_length=100)),
+                ('start_time', models.DateTimeField(null=True, blank=True)),
+                ('state', django_fsm.FSMIntegerField(default=1, help_text='WARNING! Should not be changed manually unless you really know what you are doing.', max_length=1, choices=[(1, 'Provisioning Scheduled'), (2, 'Provisioning'), (3, 'Online'), (4, 'Offline'), (5, 'Starting Scheduled'), (6, 'Starting'), (7, 'Stopping Scheduled'), (8, 'Stopping'), (9, 'Erred'), (10, 'Deletion Scheduled'), (11, 'Deleting'), (13, 'Resizing Scheduled'), (14, 'Resizing'), (15, 'Restarting Scheduled'), (16, 'Restarting')])),
             ],
             options={
                 'abstract': False,

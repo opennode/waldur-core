@@ -1,11 +1,10 @@
 from __future__ import unicode_literals
 
-from rest_framework import (
-    viewsets, decorators, permissions,
-    filters, mixins, response, status)
+from rest_framework import viewsets, permissions, filters, mixins
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.structure import filters as structure_filters
+from nodeconductor.structure.views import BaseResourceViewSet
 from nodeconductor.oracle import models
 from nodeconductor.oracle import serializers
 
@@ -40,3 +39,23 @@ class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.Template.objects.all()
     serializer_class = serializers.TemplateSerializer
     lookup_field = 'uuid'
+
+
+class DatabaseViewSet(BaseResourceViewSet):
+    queryset = models.Database.objects.all()
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return serializers.DatabaseCreateSerializer
+        return serializers.DatabaseSerializer
+
+    def perform_provision(self, serializer):
+        resource = serializer.save()
+        backend = resource.get_backend()
+        backend.provision(
+            resource,
+            zone=serializer.validated_data['zone'],
+            template=serializer.validated_data['template'],
+            username=serializer.validated_data['username'],
+            database_sid=serializer.validated_data['database_sid'],
+            service_name=serializer.validated_data['service_name'])

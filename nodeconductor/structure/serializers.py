@@ -627,6 +627,11 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
                                        core_serializers.AugmentedSerializerMixin,
                                        serializers.HyperlinkedModelSerializer):
 
+    project = serializers.HyperlinkedRelatedField(
+        queryset=models.Project.objects.all(),
+        view_name='project-detail',
+        lookup_field='uuid')
+
     state = MappedChoiceField(
         choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
@@ -643,7 +648,6 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         )
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': NotImplemented},
-            'project': {'lookup_field': 'uuid'},
         }
 
     def get_filtered_field_names(self):
@@ -651,3 +655,57 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
 
     def get_related_paths(self):
         return 'project', 'service'
+
+
+class BaseResourceSerializer(core_serializers.AugmentedSerializerMixin,
+                             serializers.HyperlinkedModelSerializer):
+
+    state = serializers.ReadOnlyField(source='get_state_display')
+    project_groups = BasicProjectGroupSerializer(
+        source='service_project_link.project.project_groups', many=True, read_only=True)
+
+    project = serializers.HyperlinkedRelatedField(
+        source='service_project_link.project',
+        view_name='project-detail',
+        read_only=True,
+        lookup_field='uuid')
+
+    project_name = serializers.ReadOnlyField(source='service_project_link.project.name')
+    project_uuid = serializers.ReadOnlyField(source='service_project_link.project.uuid')
+
+    service = serializers.HyperlinkedRelatedField(
+        source='service_project_link.service',
+        view_name=NotImplemented,
+        read_only=True,
+        lookup_field='uuid')
+
+    service_name = serializers.ReadOnlyField(source='service_project_link.service.name')
+    service_uuid = serializers.ReadOnlyField(source='service_project_link.service.uuid')
+
+    customer = serializers.HyperlinkedRelatedField(
+        source='service_project_link.project.customer',
+        view_name='customer-detail',
+        read_only=True,
+        lookup_field='uuid')
+
+    customer_name = serializers.ReadOnlyField(source='service_project_link.project.customer.name')
+    customer_abbreviation = serializers.ReadOnlyField(source='service_project_link.project.customer.abbreviation')
+    customer_native_name = serializers.ReadOnlyField(source='service_project_link.project.customer.native_name')
+
+    created = serializers.DateTimeField()
+
+    class Meta(object):
+        model = NotImplemented
+        view_name = NotImplemented
+        fields = (
+            'url', 'uuid', 'name', 'description', 'start_time',
+            'service', 'service_name', 'service_uuid',
+            'project', 'project_name', 'project_uuid',
+            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
+            'project_groups',
+            'state',
+            'created',
+        )
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }

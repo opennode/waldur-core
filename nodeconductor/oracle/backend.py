@@ -1,6 +1,9 @@
+import json
 import requests
 
 from nodeconductor.oracle import models
+from nodeconductor.core.utils import pwgen
+from nodeconductor.core.tasks import send_task
 from nodeconductor.iaas.backend import ServiceBackend
 
 
@@ -25,6 +28,62 @@ class OracleBaseBackend(ServiceBackend):
 
     def sync(self):
         self.pull_service_properties()
+
+    def provision(self, resource, zone=None, template=None, username=None,
+                  database_sid=None, service_name=None):
+
+        if not username:
+            username = '{0}-{1}'.format(resource.service_project_link.project.name, pwgen())
+
+        params = {
+            'zone': self.manager.URI.DBZONE % zone.backend_id,
+            'name': resource.name,
+            'description': resource.description,
+            'params': {
+                'username': username,
+                'password': pwgen(),
+            }
+        }
+
+        if isinstance(resource, models.Database):
+            params['based_on'] = self.manager.URI.TEMPLATE_DB % template.backend_id
+            params['params'].update({
+                'database_sid': database_sid,
+                'service_name': service_name,
+            })
+            send_task('oracle', 'provision_database')(resource.uuid.hex, params)
+
+        elif template.type == template.Types.SCHEMA:
+            params['based_on'] = self.manager.URI.TEMPLATE_SCHEMA % template.backend_id
+
+            raise NotImplementedError
+
+    def destroy(self, resource):
+        raise NotImplementedError
+
+    def start(self, resource):
+        if isinstance(resource, models.Database):
+            resource.schedule_starting()
+            resource.save()
+            send_task('oracle', 'start')(resource.uuid.hex)
+        else:
+            raise NotImplementedError
+
+    def stop(self, resource):
+        if isinstance(resource, models.Database):
+            resource.schedule_stopping()
+            resource.save()
+            send_task('oracle', 'stop')(resource.uuid.hex)
+        else:
+            raise NotImplementedError
+
+    def restart(self, resource):
+        if isinstance(resource, models.Database):
+            resource.schedule_restarting()
+            resource.save()
+            send_task('oracle', 'restart')(resource.uuid.hex)
+        else:
+            raise NotImplementedError
 
 
 class EMConnection(object):
@@ -59,16 +118,21 @@ class EMConnection(object):
         self.em_url = em_url[:-3] if em_url.endswith('/em') else em_url
         self.auth = requests.auth.HTTPBasicAuth(username, password)
 
-    def request(self, uri, mime_type=None, method='GET', content_type=None, params=None):
+    def request(self, uri, method='GET', mime_type=None, params=None):
         headers = {'Authorization': "Basic %s" % self.auth}
         if mime_type:
-            headers['Accept'] = getattr(self.MimeType, mime_type)
-        if method == 'POST':
-            headers['Content-Type'] = content_type
+            headers['Accept'] = mime_type
+        if method.upper() == 'POST':
+            headers['Content-Type'] = mime_type
 
         url = self.em_url + uri
         method = getattr(requests, method.lower())
-        response = method(url, data=params, headers=headers, auth=self.auth, verify=False)
+        response = method(
+            url,
+            auth=self.auth,
+            data=json.dumps(params) if params else None,
+            headers=headers,
+            verify=False)
 
         if response.status_code != 200:
             raise OracleBackendError(
@@ -93,6 +157,9 @@ class EMConnection(object):
     def get_templates(self):
         return self._get_dbaas_resources('service_templates')
 
+    def get_database(self, database_id):
+        return self.request(self.URI.DBINSTANCE % database_id)
+
 
 class OracleRealBackend(OracleBaseBackend):
     """ NodeConductor interface to Oracle EM API. """
@@ -109,8 +176,8 @@ class OracleRealBackend(OracleBaseBackend):
         cur_tmpls = {t.backend_id: t for t in models.Template.objects.filter(settings=self.settings)}
 
         tmpl_type_mapping = {
-            EMConnection.MimeType.TEMPLATE_DB: models.Template.Types.DB,
-            EMConnection.MimeType.TEMPLATE_SCHEMA: models.Template.Types.SCHEMA,
+            self.manager.MimeType.TEMPLATE_DB: models.Template.Types.DB,
+            self.manager.MimeType.TEMPLATE_SCHEMA: models.Template.Types.SCHEMA,
         }
 
         for zone in self.manager.get_zones():
@@ -138,6 +205,21 @@ class OracleRealBackend(OracleBaseBackend):
 
         map(lambda i: i.delete(), cur_zones.values())
         map(lambda i: i.delete(), cur_tmpls.values())
+
+    def create_database(self, provision_params):
+        zone = provision_params.pop('zone')
+        return self.manager.request(
+            zone,
+            method='POST',
+            mime_type=self.manager.MimeType.DBINSTANCE,
+            params=provision_params)
+
+    def database_operation(self, database_id, operation):
+        return self.manager.request(
+            self.URI.DBINSTANCE % database_id,
+            method='POST',
+            mime_type=self.manager.MimeType.DBINSTANCE,
+            params={'operation': operation})
 
 
 class OracleDummyBackend(OracleBaseBackend):
