@@ -56,7 +56,7 @@ class BaseLogger(object):
     def validate_logging_type(self, logging_type):
         if self.supported_types and logging_type not in self.supported_types:
             raise EventLoggerError(
-                "Unsupported event type '%s'. Choices are: %s" % (
+                "Unsupported logging type '%s'. Choices are: %s" % (
                     logging_type, ', '.join(self.supported_types)))
 
     def compile_context(self, **kwargs):
@@ -79,7 +79,7 @@ class BaseLogger(object):
                     "Currently authenticated user %s ignored." % (
                         user_entity_name, user.username))
             else:
-                context.update(user._get_event_log_context(user_entity_name))
+                context.update(user._get_log_context(user_entity_name))
 
         for entity_name, entity in six.iteritems(kwargs):
             if entity_name in required_fields:
@@ -92,7 +92,7 @@ class BaseLogger(object):
                             entity_name, entity_class.__name__, entity.__class__.__name__))
             else:
                 logger.error(
-                    "Field '%s' cannot be used in event context for %s",
+                    "Field '%s' cannot be used in logging context for %s",
                     entity_name, self.__class__.__name__)
                 continue
 
@@ -186,9 +186,9 @@ class EventLogger(BaseLogger):
 
 
 class AlertLogger(BaseLogger):
-    """ Base event logger API.
+    """ Base alert logger API.
 
-        Fields which must be passed during event log emitting (event context)
+        Fields which must be passed during alert log emitting (alert context)
         should be defined as attributes for this class in the form of:
 
         field_name = ObjectClass || '<app_label>.<class_name>'
