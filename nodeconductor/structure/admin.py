@@ -84,7 +84,6 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
 class ServiceSettingsAdmin(admin.ModelAdmin):
     list_display = ('name', 'type', 'state')
     list_filter = ('type', 'state')
-    add_exclude = ('state',)
     actions = ['sync']
 
     def add_view(self, *args, **kwargs):
@@ -92,6 +91,9 @@ class ServiceSettingsAdmin(admin.ModelAdmin):
         return super(ServiceSettingsAdmin, self).add_view(*args, **kwargs)
 
     def get_form(self, request, obj=None, **kwargs):
+        # filter out certain fields from the creation form
+        if not obj:
+            kwargs['exclude'] = ('state',)
         form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
         form.base_fields['shared'].initial = True
         return form
