@@ -5,6 +5,7 @@ from django.utils import timezone
 from nodeconductor.core.tasks import transition, retry_if_false
 from nodeconductor.structure.models import ServiceSettings
 from nodeconductor.oracle.models import Database
+from nodeconductor.oracle.backend import OracleBackendError
 
 
 @shared_task(name='nodeconductor.oracle.provision_database', is_heavy_task=True)
@@ -49,12 +50,15 @@ def restart_database(database_uuid):
         link_error=set_database_erred.si(database_uuid))
 
 
-@shared_task(max_retries=300, default_retry_delay=3)
+@shared_task(max_retries=120, default_retry_delay=30)
 @retry_if_false
 def wait_for_status(action, status):
     settings = ServiceSettings.objects.get(uuid=action['settings_uuid'])
     backend = settings.get_backend()
     resource = backend.manager.request(action['resource_uri'])
+
+    if resource['resource_state']['state'] == "EXCEPTION":
+        raise OracleBackendError("Action %s failed: %s" % (resource['uri'], resource['status']))
 
     return resource['status'] == status
 

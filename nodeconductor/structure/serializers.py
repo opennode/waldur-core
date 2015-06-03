@@ -657,7 +657,8 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         return 'project', 'service'
 
 
-class BaseResourceSerializer(core_serializers.AugmentedSerializerMixin,
+class BaseResourceSerializer(PermissionFieldFilteringMixin,
+                             core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer):
 
     state = serializers.ReadOnlyField(source='get_state_display')
@@ -672,6 +673,11 @@ class BaseResourceSerializer(core_serializers.AugmentedSerializerMixin,
 
     project_name = serializers.ReadOnlyField(source='service_project_link.project.name')
     project_uuid = serializers.ReadOnlyField(source='service_project_link.project.uuid')
+
+    service_project_link = serializers.HyperlinkedRelatedField(
+        view_name=NotImplemented,
+        queryset=NotImplemented,
+        write_only=True)
 
     service = serializers.HyperlinkedRelatedField(
         source='service_project_link.service',
@@ -692,7 +698,7 @@ class BaseResourceSerializer(core_serializers.AugmentedSerializerMixin,
     customer_abbreviation = serializers.ReadOnlyField(source='service_project_link.project.customer.abbreviation')
     customer_native_name = serializers.ReadOnlyField(source='service_project_link.project.customer.native_name')
 
-    created = serializers.DateTimeField()
+    created = serializers.DateTimeField(read_only=True)
 
     class Meta(object):
         model = NotImplemented
@@ -705,7 +711,22 @@ class BaseResourceSerializer(core_serializers.AugmentedSerializerMixin,
             'project_groups',
             'state',
             'created',
+            'service_project_link',
         )
+        read_only_fields = ('start_time',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+
+    def get_filtered_field_names(self):
+        return 'service_project_link',
+
+    def create(self, validated_data):
+        data = validated_data.copy()
+        fields = self.Meta.model._meta.get_all_field_names()
+        # Remove `virtual` properties which ain't actually belong to the model
+        for prop in data.keys():
+            if prop not in fields:
+                del data[prop]
+
+        return super(BaseResourceSerializer, self).create(data)

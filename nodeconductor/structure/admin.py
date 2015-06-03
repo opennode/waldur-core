@@ -83,8 +83,14 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
 
 class ServiceSettingsAdmin(admin.ModelAdmin):
     list_display = ('name', 'type', 'state')
-    list_filter = ('type',)
+    list_filter = ('type', 'state')
+    exclude = ('state',)
     actions = ['sync']
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
+        form.base_fields['shared'].initial = True
+        return form
 
     def save_model(self, request, obj, form, change):
         super(ServiceSettingsAdmin, self).save_model(request, obj, form, change)

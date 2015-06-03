@@ -991,22 +991,29 @@ class CreationTimeStatsView(views.APIView):
         return Response(stats, status=status.HTTP_200_OK)
 
 
+class ServiceSettingsFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_type='icontains')
+
+    class Meta(object):
+        model = models.ServiceSettings
+        fields = ('name', 'type', 'state')
+
+
 class ServiceSettingsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.ServiceSettings.objects.filter(shared=True)
     serializer_class = serializers.ServiceSettingsSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (rf_filters.DjangoFilterBackend,)
+    filter_class = ServiceSettingsFilter
     lookup_field = 'uuid'
 
 
 class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
     queryset = NotImplemented
+    serializer_class = NotImplemented
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
-
-    def get_serializer_class(self):
-        raise NotImplementedError
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update', 'destroy'):

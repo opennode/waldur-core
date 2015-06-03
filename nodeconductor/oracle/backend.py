@@ -2,7 +2,6 @@ import json
 import requests
 
 from nodeconductor.oracle import models
-from nodeconductor.core.utils import pwgen
 from nodeconductor.core.tasks import send_task
 from nodeconductor.iaas.backend import ServiceBackend
 from nodeconductor import __version__
@@ -30,27 +29,22 @@ class OracleBaseBackend(ServiceBackend):
     def sync(self):
         self.pull_service_properties()
 
-    def provision(self, resource, zone=None, template=None, username=None,
-                  database_sid=None, service_name=None):
-
-        if not username:
-            username = '{0}-{1}'.format(resource.service_project_link.project.name, pwgen())
-
+    def provision(self, resource, zone=None, template=None, username=None, password=None):
         params = {
             'zone': self.manager.URI.DBZONE % zone.backend_id,
             'name': resource.name,
             'description': resource.description,
             'params': {
                 'username': username,
-                'password': pwgen(),
+                'password': password,
             }
         }
 
         if isinstance(resource, models.Database):
             params['based_on'] = self.manager.URI.TEMPLATE_DB % template.backend_id
             params['params'].update({
-                'database_sid': database_sid,
-                'service_name': service_name,
+                'database_sid': resource.backend_database_sid,
+                'service_name': resource.backend_service_name,
             })
             send_task('oracle', 'provision_database')(resource.uuid.hex, params)
 
@@ -208,9 +202,9 @@ class OracleRealBackend(OracleBaseBackend):
         map(lambda i: i.delete(), cur_tmpls.values())
 
     def create_database(self, provision_params):
-        zone = provision_params.pop('zone')
+        endpoint = provision_params.pop('based_on')
         return self.manager.request(
-            zone,
+            endpoint,
             method='POST',
             mime_type=self.manager.MimeType.DBINSTANCE,
             params=provision_params)

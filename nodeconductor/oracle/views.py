@@ -9,7 +9,7 @@ from nodeconductor.oracle import models
 from nodeconductor.oracle import serializers
 
 
-class ServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
+class OracleServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
     queryset = models.OracleService.objects.all()
     serializer_class = serializers.ServiceSerializer
     lookup_field = 'uuid'
@@ -17,11 +17,11 @@ class ServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
 
 
-class ServiceProjectLinkViewSet(mixins.CreateModelMixin,
-                                mixins.RetrieveModelMixin,
-                                mixins.DestroyModelMixin,
-                                mixins.ListModelMixin,
-                                viewsets.GenericViewSet):
+class OracleServiceProjectLinkViewSet(mixins.CreateModelMixin,
+                                      mixins.RetrieveModelMixin,
+                                      mixins.DestroyModelMixin,
+                                      mixins.ListModelMixin,
+                                      viewsets.GenericViewSet):
 
     queryset = models.OracleServiceProjectLink.objects.all()
     serializer_class = serializers.ServiceProjectLinkSerializer
@@ -43,11 +43,7 @@ class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
 
 class DatabaseViewSet(BaseResourceViewSet):
     queryset = models.Database.objects.all()
-
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return serializers.DatabaseCreateSerializer
-        return serializers.DatabaseSerializer
+    serializer_class = serializers.DatabaseSerializer
 
     def perform_provision(self, serializer):
         resource = serializer.save()
@@ -57,5 +53,4 @@ class DatabaseViewSet(BaseResourceViewSet):
             zone=serializer.validated_data['zone'],
             template=serializer.validated_data['template'],
             username=serializer.validated_data['username'],
-            database_sid=serializer.validated_data['database_sid'],
-            service_name=serializer.validated_data['service_name'])
+            password=serializer.validated_data['password'])
