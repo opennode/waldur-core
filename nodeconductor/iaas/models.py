@@ -8,8 +8,6 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
-from django_fsm import FSMIntegerField
-from django_fsm import transition
 from model_utils.models import TimeStampedModel
 import yaml
 
@@ -301,191 +299,19 @@ def validate_yaml(value):
         raise ValidationError('A valid YAML value is required.')
 
 
-class VirtualMachineStates(object):
-    PROVISIONING_SCHEDULED = 1
-    PROVISIONING = 2
-
-    ONLINE = 3
-    OFFLINE = 4
-
-    STARTING_SCHEDULED = 5
-    STARTING = 6
-
-    STOPPING_SCHEDULED = 7
-    STOPPING = 8
-
-    ERRED = 9
-
-    DELETION_SCHEDULED = 10
-    DELETING = 11
-
-    RESIZING_SCHEDULED = 13
-    RESIZING = 14
-
-    RESTARTING_SCHEDULED = 15
-    RESTARTING = 16
-
-    CHOICES = (
-        (PROVISIONING_SCHEDULED, 'Provisioning Scheduled'),
-        (PROVISIONING, 'Provisioning'),
-
-        (ONLINE, 'Online'),
-        (OFFLINE, 'Offline'),
-
-        (STARTING_SCHEDULED, 'Starting Scheduled'),
-        (STARTING, 'Starting'),
-
-        (STOPPING_SCHEDULED, 'Stopping Scheduled'),
-        (STOPPING, 'Stopping'),
-
-        (ERRED, 'Erred'),
-
-        (DELETION_SCHEDULED, 'Deletion Scheduled'),
-        (DELETING, 'Deleting'),
-
-        (RESIZING_SCHEDULED, 'Resizing Scheduled'),
-        (RESIZING, 'Resizing'),
-
-        (RESTARTING_SCHEDULED, 'Restarting Scheduled'),
-        (RESTARTING, 'Restarting'),
-    )
-
-    # Stable instances are the ones for which
-    # no tasks are scheduled or are in progress
-
-    STABLE_STATES = set([ONLINE, OFFLINE])
-    UNSTABLE_STATES = set([
-        s for (s, _) in CHOICES
-        if s not in STABLE_STATES
-    ])
-
-
 class VirtualMachineMixin(models.Model):
-
-    class Meta(object):
-        abstract = True
-
     key_name = models.CharField(max_length=50, blank=True)
     key_fingerprint = models.CharField(max_length=47, blank=True)
-
-    start_time = models.DateTimeField(blank=True, null=True)
 
     user_data = models.TextField(
         blank=True, validators=[validate_yaml],
         help_text='Additional data that will be added to instance on provisioning')
 
-    state = FSMIntegerField(
-        default=VirtualMachineStates.PROVISIONING_SCHEDULED,
-        choices=VirtualMachineStates.CHOICES,
-        help_text="WARNING! Should not be changed manually unless you really know what you are doing.",
-        max_length=1)
-
-    @transition(field=state,
-                source=VirtualMachineStates.PROVISIONING_SCHEDULED,
-                target=VirtualMachineStates.PROVISIONING)
-    def begin_provisioning(self):
-        pass
-
-    @transition(field=state,
-                source=[VirtualMachineStates.PROVISIONING, VirtualMachineStates.STOPPING, VirtualMachineStates.RESIZING],
-                target=VirtualMachineStates.OFFLINE)
-    def set_offline(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.OFFLINE,
-                target=VirtualMachineStates.STARTING_SCHEDULED)
-    def schedule_starting(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.STARTING_SCHEDULED,
-                target=VirtualMachineStates.STARTING)
-    def begin_starting(self):
-        pass
-
-    @transition(field=state,
-                source=[VirtualMachineStates.STARTING, VirtualMachineStates.PROVISIONING, VirtualMachineStates.RESTARTING],
-                target=VirtualMachineStates.ONLINE)
-    def set_online(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.ONLINE,
-                target=VirtualMachineStates.STOPPING_SCHEDULED)
-    def schedule_stopping(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.STOPPING_SCHEDULED,
-                target=VirtualMachineStates.STOPPING)
-    def begin_stopping(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.OFFLINE,
-                target=VirtualMachineStates.DELETION_SCHEDULED)
-    def schedule_deletion(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.DELETION_SCHEDULED,
-                target=VirtualMachineStates.DELETING)
-    def begin_deleting(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.OFFLINE,
-                target=VirtualMachineStates.RESIZING_SCHEDULED)
-    def schedule_resizing(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.RESIZING_SCHEDULED,
-                target=VirtualMachineStates.RESIZING)
-    def begin_resizing(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.RESIZING,
-                target=VirtualMachineStates.OFFLINE)
-    def set_resized(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.ONLINE,
-                target=VirtualMachineStates.RESTARTING_SCHEDULED)
-    def schedule_restarting(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.RESTARTING_SCHEDULED,
-                target=VirtualMachineStates.RESTARTING)
-    def begin_restarting(self):
-        pass
-
-    @transition(field=state,
-                source=VirtualMachineStates.RESTARTING,
-                target=VirtualMachineStates.ONLINE)
-    def set_restarted(self):
-        pass
-
-    @transition(field=state,
-                source='*',
-                target=VirtualMachineStates.ERRED)
-    def set_erred(self):
-        pass
+    class Meta(object):
+        abstract = True
 
 
-@python_2_unicode_compatible
-class Instance(core_models.UuidMixin,
-               core_models.DescribableMixin,
-               core_models.NameMixin,
-               VirtualMachineMixin,
-               LoggableMixin,
-               # This needs to be inlined in order to set on_delete
-               # CloudProjectMember,
-               TimeStampedModel):
+class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
     """
     A generalization of a single virtual machine.
 
@@ -500,8 +326,6 @@ class Instance(core_models.UuidMixin,
     class Services(object):
         IAAS = 'IaaS'
         PAAS = 'PaaS'
-
-    States = VirtualMachineStates
 
     SERVICE_TYPES = (
         (Services.IAAS, 'IaaS'), (Services.PAAS, 'PaaS'))
@@ -527,7 +351,6 @@ class Instance(core_models.UuidMixin,
     ram = models.PositiveIntegerField(help_text='Memory size in MiB')
 
     # OpenStack backend specific fields
-    backend_id = models.CharField(max_length=255, blank=True)
     system_volume_id = models.CharField(max_length=255, blank=True)
     system_volume_size = models.PositiveIntegerField(help_text='Root disk size in MiB')
     data_volume_id = models.CharField(max_length=255, blank=True)
@@ -537,9 +360,6 @@ class Instance(core_models.UuidMixin,
     # Services specific fields
     agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=Services.IAAS)
-
-    def __str__(self):
-        return self.name
 
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)

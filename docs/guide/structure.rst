@@ -14,9 +14,17 @@ is below:
     Customer
       A standalone entity. Represents a company or a department.
 
-    Service (deprecated name: Cloud)
-      Represents an account in service, for example, AWS, OpenStack or GitHub. Currently for OpenStack it should be an
-      account with admin privileges.
+    Service settings
+      Represents an account of particular cloud service, for example, AWS, OpenStack, GitHub or Oracle.
+      Account credentials must provide full access to service API.
+
+    Service
+      A standalone entity. Represents cloud service within NodeConductor and belongs to a customer.
+      Customer can have any number of any services.
+
+    Service property
+      Represents any properties of cloud service usually used for a resource provisioning.
+      For example: image and flavor in OpenStack or zone and template in Oracle.
 
     Customer owner
       A role of the user that allows her to represent a corresponding customer. In this role, a user can create new
@@ -32,8 +40,8 @@ is below:
       Limited access to project management and billing.
 
     Resource
-      A resource is a provisioned entity of a cloud, for example, a VM in OpenStack or AWS, or a repository in Github.
-      Each resource belongs to a particular project.
+      A resource is a provisioned entity of a service, for example, a VM in OpenStack or AWS, a repository in Github
+      or a database in Oracle. Each resource belongs to a particular project.
 
     Project group
       Projects can be grouped together for convenience or permission delegation from Customer owner to Project group

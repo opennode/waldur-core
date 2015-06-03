@@ -17,6 +17,9 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from nodeconductor.core import filters as core_filters
+from nodeconductor.core import mixins as core_mixins
+from nodeconductor.core import models as core_models
+from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
@@ -988,9 +991,77 @@ class CreationTimeStatsView(views.APIView):
         return Response(stats, status=status.HTTP_200_OK)
 
 
+class ServiceSettingsFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_type='icontains')
+
+    class Meta(object):
+        model = models.ServiceSettings
+        fields = ('name', 'type', 'state')
+
+
 class ServiceSettingsViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.ServiceSettings.objects.filter(shared=True)
     serializer_class = serializers.ServiceSettingsSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (rf_filters.DjangoFilterBackend,)
+    filter_class = ServiceSettingsFilter
     lookup_field = 'uuid'
+
+
+class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
+    queryset = NotImplemented
+    serializer_class = NotImplemented
+    lookup_field = 'uuid'
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+
+    def initial(self, request, *args, **kwargs):
+        if self.action in ('update', 'partial_update', 'destroy'):
+            resource = self.get_object()
+            if resource.state not in resource.States.STABLE_STATES:
+                raise core_exceptions.IncorrectStateException(
+                    'Modification allowed in stable states only')
+
+        elif self.action in ('stop', 'start', 'resize'):
+            resource = self.get_object()
+            if resource.state == resource.States.PROVISIONING_SCHEDULED:
+                raise core_exceptions.IncorrectStateException(
+                    'Provisioning scheduled. Disabled modifications.')
+
+        super(BaseResourceViewSet, self).initial(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        if serializer.validated_data['service_project_link'].state == core_models.SynchronizationStates.ERRED:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot modify resource if its service project link in erred state.')
+
+        self.perform_provision(serializer)
+
+    def perform_update(self, serializer):
+        spl = self.get_object().service_project_link
+        if spl.state == core_models.SynchronizationStates.ERRED:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot modify resource if its service project link in erred state.')
+
+        serializer.save()
+
+    def perform_provision(self, serializer):
+        raise NotImplementedError
+
+    @detail_route(methods=['post'])
+    def start(self, request, uuid=None):
+        backend = self.get_object().get_backend()
+        backend.start()
+        return Response({'status': 'start was scheduled'}, status=status.HTTP_202_ACCEPTED)
+
+    @detail_route(methods=['post'])
+    def stop(self, request, uuid=None):
+        backend = self.get_object().get_backend()
+        backend.stop()
+        return Response({'status': 'stop was scheduled'}, status=status.HTTP_202_ACCEPTED)
+
+    @detail_route(methods=['post'])
+    def restart(self, request, uuid=None):
+        backend = self.get_object().get_backend()
+        backend.restart()
+        return Response({'status': 'restart was scheduled'}, status=status.HTTP_202_ACCEPTED)

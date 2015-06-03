@@ -32,6 +32,7 @@ INSTALLED_APPS = (
     'nodeconductor.quotas',
     'nodeconductor.structure',
     'nodeconductor.billing',
+    'nodeconductor.oracle',
     'nodeconductor.iaas',
     'nodeconductor.ldapsync',
 
