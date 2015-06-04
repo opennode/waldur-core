@@ -66,17 +66,16 @@ class AlertStatsView(views.APIView):
             "Warning": 1
         }
         """
-        serializer = serializers.StatsQuerySerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
+        serializer = serializers.StatsQuerySerializer()
+        alerts = serializer.get_alerts(request)
 
-        alerts = serializer.get_alerts(request.user)
-        stats = self.get_stat(alerts)
+        items = alerts.values('severity').annotate(count=Count('severity'))
+        stats = self.format_result(items)
 
         return response.Response(stats, status=status.HTTP_200_OK)
 
-    def get_stat(self, alerts):
+    def format_result(self, items):
         choices = dict(models.Alert.SeverityChoices.CHOICES)
-        items = alerts.values('severity').annotate(count=Count('severity'))
         stat = {}
         for item in items:
             key = item['severity']

@@ -26,21 +26,16 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class StatsQuerySerializer(serializers.Serializer):
-    start_timestamp = serializers.IntegerField(min_value=0, required=False)
-    end_timestamp = serializers.IntegerField(min_value=0, required=False)
-
-    def get_alerts(self, user):
-        # instances = filter_queryset_for_user(Instance.objects.all(), request.user)
-        # alerts = models.Alert.objects.for_objects(instances)
-        alerts = models.Alert.objects.filtered_for_user(user)\
+    def get_alerts(self, request):
+        alerts = models.Alert.objects.filtered_for_user(request.user)\
                                      .filter(closed__isnull=True)
 
-        if self.data.get('start_timestamp', 0):
-            start_datetime = self.parse_timestamp(self.data['start_timestamp'])
+        if 'from' in request.query_params:
+            start_datetime = self.parse_timestamp(request.query_params['from'])
             alerts = alerts.filter(created__gte=start_datetime)
 
-        if self.data.get('end_timestamp', 0):
-            end_datetime = self.parse_timestamp(self.data['end_timestamp'])
+        if 'to' in request.query_params:
+            end_datetime = self.parse_timestamp(request.query_params['to'])
             alerts = alerts.filter(created__lte=end_datetime)
 
         return alerts
@@ -49,4 +44,4 @@ class StatsQuerySerializer(serializers.Serializer):
         try:
             return timestamp_to_datetime(timestamp)
         except ValueError:
-            raise ParseError("Invalid start_timestamp")
+            raise ParseError("Invalid timestamp")
