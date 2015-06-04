@@ -219,8 +219,22 @@ class Template(core_models.UuidMixin,
         UNIX = 'Unix'
         OTHER = 'Other'
 
+    # XXX: a hackish solution for the immediate needs. Consider redesigning.
+    class ApplicationTypes(object):
+        WORDPRESS = 'WordPress'
+        POSTGRESQL = 'PostgreSQL'
+        ZIMBRA = 'Zimbra'
+        NONE = 'None'
+
     SERVICE_TYPES = (
         (OsTypes.LINUX, 'Linux'), (OsTypes.WINDOWS, 'Windows'), (OsTypes.UNIX, 'Unix'), (OsTypes.OTHER, 'Other'))
+
+    APPLICATION_TYPES = (
+        (ApplicationTypes.WORDPRESS, 'WordPress'),
+        (ApplicationTypes.POSTGRESQL, 'PostgreSQL'),
+        (ApplicationTypes.ZIMBRA, 'Zimbra'),
+        (ApplicationTypes.NONE, 'None')
+    )
 
     # Model doesn't inherit NameMixin, because name field must be unique.
     name = models.CharField(max_length=150, unique=True)
@@ -239,7 +253,8 @@ class Template(core_models.UuidMixin,
     # fields for categorisation
     # XXX consider changing to tags
     type = models.CharField(max_length=100, blank=True, help_text='Template type')
-    application_type = models.CharField(max_length=100, blank=True,
+    application_type = models.CharField(max_length=100, blank=True, choices=APPLICATION_TYPES,
+                                        default=ApplicationTypes.NONE,
                                         help_text='Type of the application inside the template (optional)')
 
     def __str__(self):
