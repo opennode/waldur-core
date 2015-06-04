@@ -185,3 +185,29 @@ Example result:
         'storage_usage': 16000,
         'max_instances_usage': 3
     }
+
+
+Alerts statistics
+------------------------
+
+Health statistics based on the alert number and severity.
+
+URL: **/api/stats/alert/**
+
+Available request parameters:
+
+- ?from=timestamp (default: now - 1 day, for example: 1415910025)
+- ?to=timestamp (default: now, for example: 1415912625)
+
+Answer will be dictionary where key is severity and value is alert number.
+
+Example:
+
+.. code-block:: javascript
+
+        {
+            "Debug": 2,
+            "Error": 1,
+            "Info": 1,
+            "Warning": 1
+        }

@@ -1,10 +1,12 @@
+import time
+
 from rest_framework import serializers
+from rest_framework.exceptions import ParseError
 
 from nodeconductor.logging import models, utils
 from nodeconductor.core.serializers import GenericRelatedField
 from nodeconductor.core.fields import MappedChoiceField, JsonField
 from nodeconductor.core.utils import timestamp_to_datetime
-from rest_framework.exceptions import ParseError
 
 
 class AlertSerializer(serializers.HyperlinkedModelSerializer):
@@ -31,11 +33,14 @@ class StatsQuerySerializer(serializers.Serializer):
                                      .filter(closed__isnull=True)
 
         if 'from' in request.query_params:
-            start_datetime = self.parse_timestamp(request.query_params['from'])
+            day = 60 * 60 * 24
+            start_timestamp = request.query_params.get('from', int(time.time() - day))
+            start_datetime = self.parse_timestamp(start_timestamp)
             alerts = alerts.filter(created__gte=start_datetime)
 
         if 'to' in request.query_params:
-            end_datetime = self.parse_timestamp(request.query_params['to'])
+            end_timestamp = request.query_params.get('to', int(time.time()))
+            end_datetime = self.parse_timestamp(end_timestamp)
             alerts = alerts.filter(created__lte=end_datetime)
 
         return alerts
