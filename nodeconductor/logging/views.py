@@ -66,9 +66,12 @@ class AlertStatsView(views.APIView):
             "Warning": 1
         }
         """
-        instances = filter_queryset_for_user(Instance.objects.all(), request.user)
-        alerts = models.Alert.objects.for_objects(instances)
+        serializer = serializers.StatsQuerySerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+
+        alerts = serializer.get_alerts(request.user)
         stats = self.get_stat(alerts)
+
         return response.Response(stats, status=status.HTTP_200_OK)
 
     def get_stat(self, alerts):
