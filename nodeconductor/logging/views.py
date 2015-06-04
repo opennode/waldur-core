@@ -1,9 +1,12 @@
 from __future__ import unicode_literals
 
-from rest_framework import generics, response, settings, viewsets, permissions
+from django.db.models import Count
+from rest_framework import generics, response, settings, views, viewsets, permissions, status
 
 from nodeconductor.logging import elasticsearch_client, models, serializers
-
+from nodeconductor.core.utils import sort_dict
+from nodeconductor.iaas.models import Instance
+from nodeconductor.structure.filters import filter_queryset_for_user
 
 class EventListView(generics.GenericAPIView):
 
@@ -49,3 +52,31 @@ class AlertViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return models.Alert.objects.filtered_for_user(self.request.user)
+
+
+class AlertStatsView(views.APIView):
+    def get(self, request):
+        """
+        Counts health statistics based on the alert number and severity
+        Example response:
+        {
+            "Debug": 2,
+            "Error": 1,
+            "Info": 1,
+            "Warning": 1
+        }
+        """
+        instances = filter_queryset_for_user(Instance.objects.all(), request.user)
+        alerts = models.Alert.objects.for_objects(instances)
+        stats = self.get_stat(alerts)
+        return response.Response(stats, status=status.HTTP_200_OK)
+
+    def get_stat(self, alerts):
+        choices = dict(models.Alert.SeverityChoices.CHOICES)
+        items = alerts.values('severity').annotate(count=Count('severity'))
+        stat = {}
+        for item in items:
+            key = item['severity']
+            label = choices[key]
+            stat[label] = item['count']
+        return sort_dict(stat)

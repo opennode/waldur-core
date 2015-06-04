@@ -22,3 +22,11 @@ class AlertManager(models.Manager):
             query |= Q(object_id__in=user_object_ids, content_type_id=content_type_id)
 
         return queryset.filter(query)
+
+    def for_objects(self, qs):
+        kwargs = dict(
+            content_type=ct_models.ContentType.objects.get_for_model(qs.model),
+            object_id__in=qs.values_list('id', flat=True),
+            closed__isnull=True
+        )
+        return self.get_queryset().filter(**kwargs)
