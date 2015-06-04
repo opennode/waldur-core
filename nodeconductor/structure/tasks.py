@@ -43,14 +43,21 @@ def sync_billing_customer(customer_uuid):
 
 
 @shared_task(name='nodeconductor.structure.sync_service_settings')
-def sync_service_settings(settings_uuids=None):
-    settings = models.ServiceSettings.objects.filter(state=SynchronizationStates.IN_SYNC)
-    if settings_uuids and isinstance(settings_uuids, (list, tuple)):
+def sync_service_settings(settings_uuids=None, initial=False):
+    settings = models.ServiceSettings.objects.all()
+    if settings_uuids:
+        if not isinstance(settings_uuids, (list, tuple)):
+            settings_uuids = [settings_uuids]
         settings = settings.filter(uuid__in=settings_uuids)
+    else:
+        settings = settings.filter(state=SynchronizationStates.IN_SYNC)
 
     for obj in settings:
-        obj.schedule_syncing()
-        obj.save()
+        # Settings are being created in SYNCING_SCHEDULED state,
+        # thus bypass transition during 'initial' sync.
+        if not initial:
+            obj.schedule_syncing()
+            obj.save()
 
         settings_uuid = obj.uuid.hex
         begin_syncing_service_settings.apply_async(
