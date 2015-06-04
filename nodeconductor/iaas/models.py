@@ -8,7 +8,6 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
-from model_utils.models import TimeStampedModel
 import yaml
 
 from nodeconductor.core import models as core_models
