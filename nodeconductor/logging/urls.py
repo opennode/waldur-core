@@ -8,5 +8,5 @@ def register_in(router):
 
 urlpatterns = [
     url(r'^events/$', views.EventListView.as_view(), name='event-list'),
-    url(r'^alert/stat/$', views.AlertStatsView.as_view(), name='alert-stat'),
+    url(r'^stats/alert/$', views.AlertStatsView.as_view(), name='alert-stat'),
 ]
