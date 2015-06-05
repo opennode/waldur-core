@@ -13,7 +13,7 @@ from nodeconductor.iaas.models import Instance
 from nodeconductor.core.utils import sort_dict, Timeshift
 
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('nodeconductor.logging.serializers')
 
 class AlertSerializer(serializers.HyperlinkedModelSerializer):
     scope = GenericRelatedField(related_models=utils.get_loggable_models(), read_only=True)
@@ -63,7 +63,7 @@ class StatsQuerySerializer(serializers.Serializer):
 
     def format_result(self, items):
         choices = dict(models.Alert.SeverityChoices.CHOICES)
-        stat = {}
+        stat = {val: 0 for key, val in choices.items()}
         for item in items:
             key = item['severity']
             label = choices[key]
