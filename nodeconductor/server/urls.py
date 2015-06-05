@@ -20,8 +20,8 @@ from nodeconductor.structure import urls as structure_urls
 from nodeconductor.template import urls as template_urls
 
 
-nc_plus_urls = getattr(settings, 'NODECONDUCTOR_PLUS_URLS', ())
-register_nc_plus = settings.NODECONDUCTOR_PLUS_URLS_AUTOREGISTER and nc_plus_urls
+nc_plus_urls = getattr(settings, 'NODECONDUCTOR_EXTENSIONS', ())
+register_nc_plus = settings.NODECONDUCTOR_EXTENSIONS_AUTOREGISTER and nc_plus_urls
 
 admin.autodiscover()
 permission.autodiscover()

@@ -235,12 +235,10 @@ NODECONDUCTOR = {
     'JIRA_DUMMY': True,
 }
 
-NODECONDUCTOR_PLUS_URLS_AUTOREGISTER = True
+NODECONDUCTOR_EXTENSIONS_AUTOREGISTER = True
 
-try:
-    nc_plus_modules = pkg_resources.get_entry_map('nodeconductor_plus').get('applications').values()
-    applications = ['nodeconductor_plus.%s' % module.name for module in nc_plus_modules]
-    INSTALLED_APPS += tuple(module for module in applications if module not in INSTALLED_APPS)
-    NODECONDUCTOR_PLUS_URLS = nc_plus_modules
-except pkg_resources.DistributionNotFound:
-    pass
+nc_plus_modules = list(pkg_resources.iter_entry_points('nodeconductor_extensions'))
+applications = ['nodeconductor_plus.%s' % module.name for module in nc_plus_modules]
+
+INSTALLED_APPS += tuple(module for module in applications if module not in INSTALLED_APPS)
+NODECONDUCTOR_EXTENSIONS = nc_plus_modules
