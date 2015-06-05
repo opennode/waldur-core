@@ -4,6 +4,7 @@ Django base settings for nodeconductor project.
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 from datetime import timedelta
+import pkg_resources
 import os
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
@@ -233,3 +234,13 @@ NODECONDUCTOR = {
     'ELASTICSEARCH_DUMMY': True,
     'JIRA_DUMMY': True,
 }
+
+NODECONDUCTOR_PLUS_URLS_AUTOREGISTER = True
+
+try:
+    nc_plus_modules = pkg_resources.get_entry_map('nodeconductor_plus').get('applications').values()
+    applications = ['nodeconductor_plus.%s' % module.name for module in nc_plus_modules]
+    INSTALLED_APPS += tuple(module for module in applications if module not in INSTALLED_APPS)
+    NODECONDUCTOR_PLUS_URLS = nc_plus_modules
+except pkg_resources.DistributionNotFound:
+    pass

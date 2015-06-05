@@ -20,6 +20,9 @@ from nodeconductor.structure import urls as structure_urls
 from nodeconductor.template import urls as template_urls
 
 
+nc_plus_urls = getattr(settings, 'NODECONDUCTOR_PLUS_URLS', ())
+register_nc_plus = settings.NODECONDUCTOR_PLUS_URLS_AUTOREGISTER and nc_plus_urls
+
 admin.autodiscover()
 permission.autodiscover()
 
@@ -38,6 +41,18 @@ logging_urls.register_in(router)
 urlpatterns = patterns(
     '',
     url(r'^admin/', include(admin.site.urls), name='admin'),
+)
+
+if register_nc_plus:
+    for entry_point in nc_plus_urls:
+        url_module = entry_point.load()
+        if hasattr(url_module, 'register_in'):
+            url_module.register_in(router)
+        if hasattr(url_module, 'urlpatterns'):
+            urlpatterns += url_module.urlpatterns
+
+urlpatterns += patterns(
+    '',
     url(r'^api/', include(router.urls)),
     url(r'^api/', include('nodeconductor.logging.urls')),
     url(r'^api/', include('nodeconductor.iaas.urls')),
