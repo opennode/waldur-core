@@ -41,12 +41,17 @@ class TimeframeAlertsStatsTest(test.APITransactionTestCase):
         }
         self.assertEqual(expected, dict(response.data))
 
+
 class StructureAlertsStatsTest(test.APITransactionTestCase):
     def setUp(self):
         self.date = timezone.now() - timedelta(minutes=5)
         self.staff = UserFactory(is_staff=True)
 
-        self.project1 = ProjectFactory()
+        self.owner = UserFactory()
+        self.customer = CustomerFactory()
+        self.customer.add_user(self.owner, CustomerRole.OWNER)
+
+        self.project1 = ProjectFactory(customer=self.customer)
         self.instance1 = InstanceFactory(cloud_project_membership__project=self.project1)
 
         self.project2 = ProjectFactory()
@@ -58,6 +63,20 @@ class StructureAlertsStatsTest(test.APITransactionTestCase):
         alert2 = AlertFactory(created=self.date,
             scope=self.instance2, severity=Alert.SeverityChoices.INFO)
 
+        self.project1_stats = {
+            "Debug": 0,
+            "Error": 1,
+            "Info": 0,
+            "Warning": 0
+        }
+
+        self.project2_stats = {
+            "Debug": 0,
+            "Error": 0,
+            "Info": 1,
+            "Warning": 0
+        }
+
     def test_alerts_filtered_by_project1(self):
         self.client.force_authenticate(self.staff)
 
@@ -65,13 +84,7 @@ class StructureAlertsStatsTest(test.APITransactionTestCase):
             data={'aggregate': 'project', 'uuid': self.project1.uuid.hex})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        expected = {
-            "Debug": 0,
-            "Error": 1,
-            "Info": 0,
-            "Warning": 0
-        }
-        self.assertEqual(expected, dict(response.data))
+        self.assertEqual(self.project1_stats, dict(response.data))
 
     def test_alerts_filtered_by_project2(self):
         self.client.force_authenticate(self.staff)
@@ -80,10 +93,10 @@ class StructureAlertsStatsTest(test.APITransactionTestCase):
             data={'aggregate': 'project', 'uuid': self.project2.uuid.hex})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        expected = {
-            "Debug": 0,
-            "Error": 0,
-            "Info": 1,
-            "Warning": 0
-        }
-        self.assertEqual(expected, dict(response.data))
+        self.assertEqual(self.project2_stats, dict(response.data))
+
+    def test_alerts_filtered_for_owner(self):
+        self.client.force_authenticate(self.owner)
+        response = self.client.get(AlertFactory.get_stats_url())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.project1_stats, dict(response.data))
