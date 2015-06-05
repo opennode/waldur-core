@@ -42,7 +42,7 @@ urlpatterns = patterns(
     url(r'^admin/', include(admin.site.urls), name='admin'),
 )
 
-if settings.NODECONDUCTOR['EXTENSIONS_AUTOREGISTER']:
+if settings.NODECONDUCTOR.get('EXTENSIONS_AUTOREGISTER'):
     for nodeconductor_extension in pkg_resources.iter_entry_points('nodeconductor_extensions'):
         for app in settings.INSTALLED_APPS:
             if nodeconductor_extension.module_name.startswith(app):
