@@ -210,6 +210,7 @@ CELERY_TASK_THROTTLING = {
 }
 
 NODECONDUCTOR = {
+    'EXTENSIONS_AUTOREGISTER': True,
     'DEFAULT_SECURITY_GROUPS': (
         {
             'name': 'ssh',
