@@ -638,6 +638,14 @@ class ProjectPermissionFilter(django_filters.FilterSet):
     project = django_filters.CharFilter(
         name='group__projectrole__project__uuid',
     )
+    project_url = core_filters.URLFilter(
+        viewset=ProjectViewSet,
+        name='group__projectrole__project__uuid',
+    )
+    user_url = core_filters.URLFilter(
+        viewset=UserViewSet,
+        name='user__uuid',
+    )
     username = django_filters.CharFilter(
         name='user__username',
         lookup_type='icontains',
@@ -746,6 +754,14 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
 class ProjectGroupPermissionFilter(django_filters.FilterSet):
     project_group = django_filters.CharFilter(
         name='group__projectgrouprole__project_group__uuid',
+    )
+    project_group_url = core_filters.URLFilter(
+        viewset=ProjectGroupViewSet,
+        name='group__projectgrouprole__project_group__uuid',
+    )
+    user_url = core_filters.URLFilter(
+        viewset=UserViewSet,
+        name='user__uuid',
     )
     username = django_filters.CharFilter(
         name='user__username',
@@ -859,6 +875,14 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
 class CustomerPermissionFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='group__customerrole__customer__uuid',
+    )
+    customer_url = core_filters.URLFilter(
+        viewset=CustomerViewSet,
+        name='group__customerrole__customer__uuid',
+    )
+    user_url = core_filters.URLFilter(
+        viewset=UserViewSet,
+        name='user__uuid',
     )
     username = django_filters.CharFilter(
         name='user__username',

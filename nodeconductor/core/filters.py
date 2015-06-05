@@ -1,6 +1,10 @@
-import django_filters
-from rest_framework import filters
 import six
+import django_filters
+
+from urlparse import urlparse
+from rest_framework import filters
+
+from django.core.urlresolvers import resolve
 
 
 class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
@@ -107,3 +111,22 @@ class MappedChoiceFilter(django_filters.ChoiceFilter):
         if value in self.mapped_to_model:
             value = self.mapped_to_model[value]
         return super(MappedChoiceFilter, self).filter(qs, value)
+
+
+class URLFilter(django_filters.CharFilter):
+    """ Filter by hyperlinks. ViewSet name must be supplied in order to validate URL. """
+
+    def __init__(self, viewset=None, **kwargs):
+        super(URLFilter, self).__init__(**kwargs)
+        self.viewset = viewset
+
+    def filter(self, qs, value):
+        uuid = ''
+        path = urlparse(value).path
+        if path.startswith('/'):
+            url = resolve(path)
+            if url.func.cls is self.viewset:
+                pk_name = getattr(url.func.cls, 'lookup_field', 'pk')
+                uuid = url.kwargs.get(pk_name)
+
+        return super(URLFilter, self).filter(qs, uuid)
