@@ -1,12 +1,8 @@
 from __future__ import unicode_literals
 
-from django.db.models import Count
 from rest_framework import generics, response, settings, views, viewsets, permissions, status
 
 from nodeconductor.logging import elasticsearch_client, models, serializers
-from nodeconductor.core.utils import sort_dict
-from nodeconductor.iaas.models import Instance
-from nodeconductor.structure.filters import filter_queryset_for_user
 
 class EventListView(generics.GenericAPIView):
 
@@ -55,30 +51,24 @@ class AlertViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class AlertStatsView(views.APIView):
+    """
+    Counts health statistics based on the alert number and severity
+    """
+
     def get(self, request):
-        """
-        Counts health statistics based on the alert number and severity
-        Example response:
-        {
-            "Debug": 2,
-            "Error": 1,
-            "Info": 1,
-            "Warning": 1
-        }
-        """
-        serializer = serializers.StatsQuerySerializer()
-        alerts = serializer.get_alerts(request)
+        data = self.get_data(request)
+        serializer = serializers.StatsQuerySerializer(data=data)
+        serializer.is_valid(raise_exception=True)
 
-        items = alerts.values('severity').annotate(count=Count('severity'))
-        stats = self.format_result(items)
-
+        stats = serializer.get_stats(request.user)
         return response.Response(stats, status=status.HTTP_200_OK)
 
-    def format_result(self, items):
-        choices = dict(models.Alert.SeverityChoices.CHOICES)
-        stat = {}
-        for item in items:
-            key = item['severity']
-            label = choices[key]
-            stat[label] = item['count']
-        return sort_dict(stat)
+    def get_data(self, request):
+        mapped = {
+            'start_time': request.query_params.get('from'),
+            'end_time': request.query_params.get('to'),
+            'model': request.query_params.get('aggregate'),
+            'uuid': request.query_params.get('uuid'),
+        }
+
+        return {key: val for (key, val) in mapped.items() if val}

@@ -4,9 +4,10 @@ import unittest
 
 from rest_framework import serializers
 from nodeconductor.core.fields import JsonField
-
+from nodeconductor.core.fields import TimestampField
 from nodeconductor.core.serializers import Base64Field
-
+from nodeconductor.core import utils
+from django.utils import timezone
 
 class Base64Serializer(serializers.Serializer):
     content = Base64Field()
@@ -65,4 +66,33 @@ class JsonFieldTest(unittest.TestCase):
         self.assertIn('content', serializer.errors,
                       'There should be errors for content field')
         self.assertIn('This field should a be valid JSON string.',
+                      serializer.errors['content'])
+
+
+class TimestampSerializer(serializers.Serializer):
+    content = TimestampField()
+
+
+class TimestampFieldTest(unittest.TestCase):
+    def setUp(self):
+        self.datetime = timezone.now().replace(microsecond=0)
+        self.timestamp = utils.datetime_to_timestamp(self.datetime)
+
+    def test_datetime_serialized_as_timestamp(self):
+        serializer = TimestampSerializer(instance={'content': self.datetime})
+        actual = serializer.data['content']
+        self.assertEqual(self.timestamp, actual)
+
+    def test_timestamp_parsed_as_datetime(self):
+        serializer = TimestampSerializer(data={'content': str(self.timestamp)})
+        self.assertTrue(serializer.is_valid())
+        actual = serializer.validated_data['content']
+        self.assertEqual(self.datetime, actual)
+
+    def test_incorrect_timestamp(self):
+        serializer = TimestampSerializer(data={'content': 'NOT_A_UNIX_TIMESTAMP'})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('content', serializer.errors,
+                      'There should be errors for content field')
+        self.assertIn('This field should be valid UNIX timestamp.',
                       serializer.errors['content'])
