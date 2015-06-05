@@ -7,7 +7,6 @@ from nodeconductor.core.fields import JsonField
 from nodeconductor.core.fields import TimestampField
 from nodeconductor.core.serializers import Base64Field
 from nodeconductor.core import utils
-from django.utils import timezone
 
 class Base64Serializer(serializers.Serializer):
     content = Base64Field()
@@ -75,7 +74,7 @@ class TimestampSerializer(serializers.Serializer):
 
 class TimestampFieldTest(unittest.TestCase):
     def setUp(self):
-        self.datetime = timezone.now().replace(microsecond=0)
+        self.datetime = utils.Timeshift(days=1)()
         self.timestamp = utils.datetime_to_timestamp(self.datetime)
 
     def test_datetime_serialized_as_timestamp(self):
