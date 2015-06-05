@@ -12,11 +12,15 @@ GET request against a corresponding endpoint.
 - project_group: endpoint **/api/project-group-permissions/**
 - project: endpoint **/api/project-permissions/**
 
-Filtering by *organisational unit* UUID is supported. Depending on the type, filter field is one of:
+Filtering by *organisational unit* UUID or URL is supported. Depending on the type, filter field is one of:
 
 - ?customer=<UUID>
+- ?customer_url=<URL>
 - ?project_group=<UUID>
+- ?project_group_url=<URL>
 - ?project=<UUID>
+- ?project_url=<URL>
+- ?user_url=<URL>
 
 In addition, filtering by field names is supported. In all cases filtering is based on case
 insensitive partial matching.
