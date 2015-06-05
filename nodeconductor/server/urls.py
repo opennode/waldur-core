@@ -1,12 +1,14 @@
 from __future__ import unicode_literals
 
+import permission
+import pkg_resources
+
 from django.conf import settings
 from django.conf.urls import patterns
 from django.conf.urls import include
 from django.conf.urls import url
 from django.contrib import admin
 from django.views.generic import TemplateView
-import permission
 
 from nodeconductor.core.routers import SortedDefaultRouter as DefaultRouter
 from nodeconductor.backup import urls as backup_urls
@@ -19,9 +21,6 @@ from nodeconductor.quotas import urls as quotas_urls
 from nodeconductor.structure import urls as structure_urls
 from nodeconductor.template import urls as template_urls
 
-
-nc_plus_urls = getattr(settings, 'NODECONDUCTOR_EXTENSIONS', ())
-register_nc_plus = settings.NODECONDUCTOR_EXTENSIONS_AUTOREGISTER and nc_plus_urls
 
 admin.autodiscover()
 permission.autodiscover()
@@ -43,13 +42,16 @@ urlpatterns = patterns(
     url(r'^admin/', include(admin.site.urls), name='admin'),
 )
 
-if register_nc_plus:
-    for entry_point in nc_plus_urls:
-        url_module = entry_point.load()
-        if hasattr(url_module, 'register_in'):
-            url_module.register_in(router)
-        if hasattr(url_module, 'urlpatterns'):
-            urlpatterns += url_module.urlpatterns
+if settings.NODECONDUCTOR['EXTENSIONS_AUTOREGISTER']:
+    for nodeconductor_extension in pkg_resources.iter_entry_points('nodeconductor_extensions'):
+        for app in settings.INSTALLED_APPS:
+            if nodeconductor_extension.module_name.startswith(app):
+                extension_module = nodeconductor_extension.load()
+                if hasattr(extension_module, 'register_in'):
+                    extension_module.register_in(router)
+                if hasattr(extension_module, 'urlpatterns'):
+                    urlpatterns += extension_module.urlpatterns
+                break
 
 urlpatterns += patterns(
     '',

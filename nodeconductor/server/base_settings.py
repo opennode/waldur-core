@@ -4,7 +4,6 @@ Django base settings for nodeconductor project.
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 from datetime import timedelta
-import pkg_resources
 import os
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
@@ -211,6 +210,7 @@ CELERY_TASK_THROTTLING = {
 }
 
 NODECONDUCTOR = {
+    'EXTENSIONS_AUTOREGISTER': True,
     'DEFAULT_SECURITY_GROUPS': (
         {
             'name': 'ssh',
@@ -234,11 +234,3 @@ NODECONDUCTOR = {
     'ELASTICSEARCH_DUMMY': True,
     'JIRA_DUMMY': True,
 }
-
-NODECONDUCTOR_EXTENSIONS_AUTOREGISTER = True
-
-nc_plus_modules = list(pkg_resources.iter_entry_points('nodeconductor_extensions'))
-applications = ['nodeconductor_plus.%s' % module.name for module in nc_plus_modules]
-
-INSTALLED_APPS += tuple(module for module in applications if module not in INSTALLED_APPS)
-NODECONDUCTOR_EXTENSIONS = nc_plus_modules
