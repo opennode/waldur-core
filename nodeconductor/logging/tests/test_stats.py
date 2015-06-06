@@ -1,3 +1,4 @@
+import unittest
 from rest_framework import test, status
 
 from nodeconductor.core.utils import datetime_to_timestamp, timeshift
@@ -6,25 +7,20 @@ from nodeconductor.structure.tests.factories import CustomerFactory, UserFactory
 from nodeconductor.logging.models import Alert
 from nodeconductor.logging.tests.factories import AlertFactory
 from nodeconductor.iaas.tests.factories import InstanceFactory
-
+from nodeconductor.logging.serializers import StatsQuerySerializer
 
 class TimeframeAlertsStatsTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.staff = UserFactory(is_staff=True)
 
-    def test_staff_counts_all_alerts_within_day(self):
+    def test_staff_receives_all_stats_within_timeframe(self):
         minutes = timeshift(minutes=-5)
         weeks = timeshift(weeks=-1)
 
-        error_alert = AlertFactory(created=minutes,
-            severity=Alert.SeverityChoices.ERROR)
-
-        debug_alert = AlertFactory(created=minutes,
-            severity=Alert.SeverityChoices.DEBUG)
-
-        info_alert = AlertFactory(created=weeks,
-            severity=Alert.SeverityChoices.DEBUG)
+        error_alert = AlertFactory(created=minutes, severity=Alert.SeverityChoices.ERROR)
+        debug_alert = AlertFactory(created=minutes, severity=Alert.SeverityChoices.DEBUG)
+        info_alert = AlertFactory(created=weeks, severity=Alert.SeverityChoices.INFO)
 
         self.client.force_authenticate(self.staff)
         response = self.client.get(AlertFactory.get_stats_url())
@@ -74,26 +70,41 @@ class StructureAlertsStatsTest(test.APITransactionTestCase):
             "Warning": 0
         }
 
-    def test_alerts_filtered_by_project1(self):
+    def test_project_can_be_filtered_by_uuid(self):
         self.client.force_authenticate(self.staff)
 
         response = self.client.get(AlertFactory.get_stats_url(),
             data={'aggregate': 'project', 'uuid': self.project1.uuid.hex})
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.project1_stats, dict(response.data))
 
-    def test_alerts_filtered_by_project2(self):
-        self.client.force_authenticate(self.staff)
-
         response = self.client.get(AlertFactory.get_stats_url(),
             data={'aggregate': 'project', 'uuid': self.project2.uuid.hex})
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.project2_stats, dict(response.data))
 
-    def test_alerts_filtered_for_owner(self):
+    def test_owner_receive_data_for_his_project(self):
         self.client.force_authenticate(self.owner)
         response = self.client.get(AlertFactory.get_stats_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(self.project1_stats, dict(response.data))
+
+class SerializerValidationTest(unittest.TestCase):
+    def test_valid_data(self):
+        serializer = StatsQuerySerializer(data={
+            'start_time': '0',
+            'aggregate': 'project',
+            'uuid': '6a806164e4ac4541ae07fad62800ddb9'
+        })
+        self.assertTrue(serializer.is_valid())
+
+    def test_invalid_data(self):
+        serializer = StatsQuerySerializer(data={
+            'model': 'INVALID_MODEL'
+        })
+        self.assertFalse(serializer.is_valid())
+
+        serializer = StatsQuerySerializer(data={
+            'start_time': '9999999999'
+        })
+        self.assertFalse(serializer.is_valid())
