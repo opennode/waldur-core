@@ -8,9 +8,9 @@ from polymorphic.admin import (
     PolymorphicChildModelFilter)
 
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models
-from nodeconductor.structure import tasks
 
 
 class ChangeReadonlyMixin(object):
@@ -47,7 +47,7 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
 
     def sync_with_backend(self, request, queryset):
         customer_uuids = list(queryset.values_list('uuid', flat=True))
-        tasks.sync_billing_customers.delay(customer_uuids)
+        send_task('structure', 'sync_billing_customers')(customer_uuids)
 
         tasks_scheduled = queryset.count()
         message = ungettext(
@@ -81,10 +81,49 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
     change_readonly_fields = ['customer']
 
 
+class ServiceSettingsAdmin(admin.ModelAdmin):
+    list_display = ('name', 'type', 'state')
+    list_filter = ('type', 'state')
+    actions = ['sync']
+
+    def add_view(self, *args, **kwargs):
+        self.exclude = getattr(self, 'add_exclude', ())
+        return super(ServiceSettingsAdmin, self).add_view(*args, **kwargs)
+
+    def get_form(self, request, obj=None, **kwargs):
+        # filter out certain fields from the creation form
+        if not obj:
+            kwargs['exclude'] = ('state',)
+        form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
+        form.base_fields['shared'].initial = True
+        return form
+
+    def save_model(self, request, obj, form, change):
+        super(ServiceSettingsAdmin, self).save_model(request, obj, form, change)
+        if not change:
+            send_task('structure', 'sync_service_settings')(obj.uuid.hex, initial=True)
+
+    def sync(self, request, queryset):
+        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
+        service_uuids = list(queryset.values_list('uuid', flat=True))
+        tasks_scheduled = queryset.count()
+
+        send_task('structure', 'sync_service_settings')(service_uuids)
+
+        message = ungettext(
+            'One service settings record scheduled for sync',
+            '%(tasks_scheduled)d service settings records scheduled for sync',
+            tasks_scheduled)
+        message = message % {'tasks_scheduled': tasks_scheduled}
+
+        self.message_user(request, message)
+
+    sync.short_description = "Sync selected service settings with backend"
+
+
 class ServiceAdmin(PolymorphicParentModelAdmin):
-    list_display = ('name', 'customer', 'polymorphic_ctype', 'state')
+    list_display = ('name', 'customer', 'settings', 'polymorphic_ctype')
     ordering = ('name', 'customer')
-    actions = ['sync_services']
     list_filter = (PolymorphicChildModelFilter,)
     base_model = models.Service
 
@@ -94,23 +133,6 @@ class ServiceAdmin(PolymorphicParentModelAdmin):
 
         return [(model, BaseAdminClass) for model in get_models()
                 if model is not models.Service and issubclass(model, models.Service)]
-
-    def sync_services(self, request, queryset):
-        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
-        service_uuids = list(queryset.values_list('uuid', flat=True))
-        tasks_scheduled = queryset.count()
-
-        tasks.sync_services.delay(service_uuids)
-
-        message = ungettext(
-            'One service scheduled for sync',
-            '%(tasks_scheduled)d services scheduled for sync',
-            tasks_scheduled)
-        message = message % {'tasks_scheduled': tasks_scheduled}
-
-        self.message_user(request, message)
-
-    sync_services.short_description = "Sync selected services with backend"
 
 
 class HiddenServiceAdmin(admin.ModelAdmin):
@@ -122,3 +144,4 @@ admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ProjectGroup, ProjectGroupAdmin)
 admin.site.register(models.Service, ServiceAdmin)
+admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)

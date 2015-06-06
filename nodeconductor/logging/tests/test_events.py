@@ -1,6 +1,6 @@
 from rest_framework import status, test, settings
 
-from nodeconductor.events.tests import factories
+from nodeconductor.logging.tests import factories
 # XXX: this dependency exists because this is not real unit-test.
 # In ideal world Mocked Event has to be created and all tests have to be rewritten with it.
 from nodeconductor.structure import models as structure_models

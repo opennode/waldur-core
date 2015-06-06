@@ -33,3 +33,12 @@ class UpdateOnlyStableMixin(object):
                         'Modification allowed in stable states only.')
 
         return super(UpdateOnlyStableMixin, self).initial(request, *args, **kwargs)
+
+
+class UserContextMixin(object):
+    """ Pass current user to serializer context """
+
+    def get_serializer_context(self):
+        context = super(UserContextMixin, self).get_serializer_context()
+        context['user'] = self.request.user
+        return context

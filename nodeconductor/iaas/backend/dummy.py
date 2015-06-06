@@ -13,12 +13,13 @@ import threading
 
 from datetime import datetime, timedelta
 
+from ceilometerclient import exc as ceilometer_exceptions
+from cinderclient import exceptions as cinder_exceptions
+from glanceclient import exc as glance_exceptions
 from keystoneclient.auth.identity import v2
 from keystoneclient.service_catalog import ServiceCatalog
 from keystoneclient import exceptions as keystone_exceptions
 from neutronclient.client import exceptions as neutron_exceptions
-from cinderclient import exceptions as cinder_exceptions
-from glanceclient import exc as glance_exceptions
 from novaclient import exceptions as nova_exceptions
 
 from nodeconductor.core.models import get_ssh_key_fingerprint
@@ -851,6 +852,16 @@ class CinderClient(OpenStackBaseClient):
                     "has been consumed." % (size, quota.gigabytes, consumed))
             return False
         return True
+
+class CeilometerClient(OpenStackBaseClient):
+    """ Dummy OpenStack measurements service """
+
+    VERSION = '1.0.10'
+    Exceptions = ceilometer_exceptions
+
+    class Statistics(OpenStackResourceList):
+        def list(self, **kwargs):
+            raise NotImplementedError("No usage")
 
 
 class DummyDataSet(object):

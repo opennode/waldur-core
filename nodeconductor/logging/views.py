@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
-from rest_framework import generics, response, settings
+from rest_framework import generics, response, settings, viewsets, permissions
 
-from nodeconductor.events import elasticsearch_client
+from nodeconductor.logging import elasticsearch_client, models, serializers
 
 
 class EventListView(generics.GenericAPIView):
@@ -38,3 +38,14 @@ class EventListView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
+
+
+class AlertViewSet(viewsets.ReadOnlyModelViewSet):
+
+    queryset = models.Alert.objects.all()
+    serializer_class = serializers.AlertSerializer
+    lookup_field = 'uuid'
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return models.Alert.objects.filtered_for_user(self.request.user)

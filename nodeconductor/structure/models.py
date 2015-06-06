@@ -9,26 +9,26 @@ from django.db import models
 from django.db import transaction
 from django.db.models import Q
 from django.utils.encoding import python_2_unicode_compatible
+from django_fsm import FSMIntegerField
+from django_fsm import transition
 from model_utils.models import TimeStampedModel
 from polymorphic import PolymorphicModel
 
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
-from nodeconductor.events.log import EventLoggableMixin
+from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 @python_2_unicode_compatible
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
                quotas_models.QuotaModelMixin,
-               EventLoggableMixin,
+               LoggableMixin,
                TimeStampedModel):
     class Permissions(object):
         customer_path = 'self'
@@ -47,7 +47,7 @@ class Customer(core_models.UuidMixin,
     def get_billing_backend(self):
         return BillingBackend(self)
 
-    def get_event_log_fields(self):
+    def get_log_fields(self):
         return ('uuid', 'name', 'abbreviation', 'contact_details')
 
     def add_user(self, user, role_type):
@@ -67,18 +67,6 @@ class Customer(core_models.UuidMixin,
                     structure=self,
                     user=user,
                     role=role_type,
-                )
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has gained role of %s in customer %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'customer': self,
-                        'affected_user': user,
-                        'event_type': 'role_granted',
-                        'structure_type': 'customer',
-                        'role_name': role_name,
-                    },
                 )
 
             return membership, created
@@ -106,19 +94,6 @@ class Customer(core_models.UuidMixin,
                 )
 
                 membership.delete()
-
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has lost role of %s in customer %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'customer': self,
-                        'affected_user': user,
-                        'event_type': 'role_revoked',
-                        'structure_type': 'customer',
-                        'role_name': role_name,
-                    },
-                )
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
@@ -199,7 +174,7 @@ class Project(core_models.DescribableMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
               quotas_models.QuotaModelMixin,
-              EventLoggableMixin,
+              LoggableMixin,
               TimeStampedModel):
     class Permissions(object):
         customer_path = 'customer'
@@ -229,18 +204,6 @@ class Project(core_models.DescribableMixin,
                     user=user,
                     role=role_type,
                 )
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has gained role of %s in project %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'project': self,
-                        'affected_user': user,
-                        'event_type': 'role_granted',
-                        'structure_type': 'project',
-                        'role_name': role_name,
-                    },
-                )
 
             return membership, created
 
@@ -267,19 +230,6 @@ class Project(core_models.DescribableMixin,
 
                 membership.delete()
 
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has lost role of %s in project %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'project': self,
-                        'affected_user': user,
-                        'event_type': 'role_revoked',
-                        'structure_type': 'project',
-                        'role_name': role_name,
-                    },
-                )
-
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
 
@@ -296,6 +246,9 @@ class Project(core_models.DescribableMixin,
 
     def can_user_update_quotas(self, user):
         return user.is_staff
+
+    def get_log_fields(self):
+        return ('uuid', 'customer', 'name')
 
 
 @python_2_unicode_compatible
@@ -321,6 +274,7 @@ class ProjectGroupRole(core_models.UuidMixin, models.Model):
 class ProjectGroup(core_models.UuidMixin,
                    core_models.DescribableMixin,
                    core_models.NameMixin,
+                   LoggableMixin,
                    TimeStampedModel):
     """
     Project groups are means to organize customer's projects into arbitrary sets.
@@ -355,18 +309,6 @@ class ProjectGroup(core_models.UuidMixin,
                     user=user,
                     role=role_type,
                 )
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has gained role of %s in project group %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'project_group': self,
-                        'affected_user': user,
-                        'event_type': 'role_granted',
-                        'structure_type': 'project_group',
-                        'role_name': role_name,
-                    },
-                )
 
             return membership, created
 
@@ -393,19 +335,6 @@ class ProjectGroup(core_models.UuidMixin,
 
                 membership.delete()
 
-                role_name = role.get_role_type_display().lower()
-                event_logger.info(
-                    'User %s has lost role of %s in project group %s.',
-                    user.username, role_name, self.name,
-                    extra={
-                        'project_group': self,
-                        'affected_user': user,
-                        'event_type': 'role_revoked',
-                        'structure_type': 'project_group',
-                        'role_name': role_name,
-                    },
-                )
-
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
 
@@ -414,11 +343,57 @@ class ProjectGroup(core_models.UuidMixin,
 
         return queryset.exists()
 
+    def get_log_fields(self):
+        return ('uuid', 'customer', 'name')
+
 
 @python_2_unicode_compatible
-class Service(PolymorphicModel, core_models.UuidMixin,
-              core_models.NameMixin, core_models.SynchronizableMixin):
+class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.SynchronizableMixin):
 
+    class Types(object):
+        OpenStack = 1
+        DigitalOcean = 2
+        Amazon = 3
+        Jira = 4
+        GitLab = 5
+        Oracle = 6
+
+        CHOICES = (
+            (OpenStack, 'OpenStack'),
+            (DigitalOcean, 'DigitalOcean'),
+            (Amazon, 'Amazon'),
+            (Jira, 'Jira'),
+            (GitLab, 'GitLab'),
+            (Oracle, 'Oracle'),
+        )
+
+    backend_url = models.URLField(max_length=200, blank=True, null=True)
+    username = models.CharField(max_length=100, blank=True, null=True)
+    password = models.CharField(max_length=100, blank=True, null=True)
+    token = models.CharField(max_length=255, blank=True, null=True)
+    type = models.SmallIntegerField(choices=Types.CHOICES)
+
+    shared = models.BooleanField(default=False, help_text='Anybody can use it')
+    dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
+
+    def get_backend(self):
+        # TODO: Find a way to register backend form the other side, perhaps within NC-519
+        if self.type == self.Types.DigitalOcean:
+            from nodeconductor_plus.digitalocean.backend import DigitalOceanBackend
+            return DigitalOceanBackend(self)
+
+        if self.type == self.Types.Oracle:
+            from nodeconductor.oracle.backend import OracleBackend
+            return OracleBackend(self)
+
+        raise NotImplementedError
+
+    def __str__(self):
+        return '%s (%s)' % (self.name, self.get_type_display())
+
+
+@python_2_unicode_compatible
+class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
     """ Base service class. Define specific service model as follows:
 
         .. code-block:: python
@@ -459,40 +434,35 @@ class Service(PolymorphicModel, core_models.UuidMixin,
         project_path = 'projects'
         project_group_path = 'customer__projects__project_groups'
 
+    settings = models.ForeignKey(ServiceSettings, related_name='+')
     customer = models.ForeignKey(Customer, related_name='services')
     projects = NotImplemented
 
-    dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
-
-    def get_backend(self, sp_link=None):
-        raise NotImplementedError
+    def get_backend(self):
+        return self.settings.get_backend()
 
     def __str__(self):
         return self.name
 
 
 @python_2_unicode_compatible
-class Resource(core_models.UuidMixin, core_models.NameMixin, models.Model):
-    """ Base service resource like image, flavor, region. """
+class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
+    """ Base service properties like image, flavor, region,
+        which are usually used for Resource provisioning.
+    """
 
     class Meta(object):
         abstract = True
 
-    class Permissions(object):
-        customer_path = 'service__projects__customer'
-        project_path = 'service__projects'
-        project_group_path = 'service__projects__project_groups'
-
-    service = NotImplemented
-    backend_id = models.CharField(max_length=255)
+    settings = models.ForeignKey(ServiceSettings, related_name='+')
+    backend_id = models.CharField(max_length=255, db_index=True)
 
     def __str__(self):
-        return '{0} | {1}'.format(self.service.name, self.name)
+        return '{0} | {1}'.format(self.name, self.settings)
 
 
 @python_2_unicode_compatible
 class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin):
-
     """ Base service-project link class. See Service class for usage example. """
 
     class Meta(object):
@@ -510,7 +480,194 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
         return [self.project]
 
     def get_backend(self):
-        return self.service.get_backend(sp_link=self)
+        return self.service.get_backend()
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
+
+
+@python_2_unicode_compatible
+class Resource(core_models.UuidMixin, core_models.DescribableMixin,
+               core_models.NameMixin, TimeStampedModel):
+
+    """ Base resource class. Resource is a provisioned entity of a service,
+        for example: a VM in OpenStack or AWS, or a repository in Github.
+    """
+
+    class Meta(object):
+        abstract = True
+
+    class States(object):
+        PROVISIONING_SCHEDULED = 1
+        PROVISIONING = 2
+
+        ONLINE = 3
+        OFFLINE = 4
+
+        STARTING_SCHEDULED = 5
+        STARTING = 6
+
+        STOPPING_SCHEDULED = 7
+        STOPPING = 8
+
+        ERRED = 9
+
+        DELETION_SCHEDULED = 10
+        DELETING = 11
+
+        RESIZING_SCHEDULED = 13
+        RESIZING = 14
+
+        RESTARTING_SCHEDULED = 15
+        RESTARTING = 16
+
+        CHOICES = (
+            (PROVISIONING_SCHEDULED, 'Provisioning Scheduled'),
+            (PROVISIONING, 'Provisioning'),
+
+            (ONLINE, 'Online'),
+            (OFFLINE, 'Offline'),
+
+            (STARTING_SCHEDULED, 'Starting Scheduled'),
+            (STARTING, 'Starting'),
+
+            (STOPPING_SCHEDULED, 'Stopping Scheduled'),
+            (STOPPING, 'Stopping'),
+
+            (ERRED, 'Erred'),
+
+            (DELETION_SCHEDULED, 'Deletion Scheduled'),
+            (DELETING, 'Deleting'),
+
+            (RESIZING_SCHEDULED, 'Resizing Scheduled'),
+            (RESIZING, 'Resizing'),
+
+            (RESTARTING_SCHEDULED, 'Restarting Scheduled'),
+            (RESTARTING, 'Restarting'),
+        )
+
+        # Stable instances are the ones for which
+        # no tasks are scheduled or are in progress
+
+        STABLE_STATES = set([ONLINE, OFFLINE])
+        UNSTABLE_STATES = set([
+            s for (s, _) in CHOICES
+            if s not in STABLE_STATES
+        ])
+
+    class Permissions(object):
+        customer_path = 'service_project_link__project__customer'
+        project_path = 'service_project_link__project'
+        project_group_path = 'service_project_link__project__project_groups'
+
+    service_project_link = NotImplemented
+    backend_id = models.CharField(max_length=255, blank=True)
+
+    start_time = models.DateTimeField(blank=True, null=True)
+    state = FSMIntegerField(
+        default=States.PROVISIONING_SCHEDULED,
+        choices=States.CHOICES,
+        help_text="WARNING! Should not be changed manually unless you really know what you are doing.",
+        max_length=1)
+
+    def get_backend(self):
+        return self.service_project_link.get_backend()
+
+    def __str__(self):
+        return self.name
+
+    @transition(field=state,
+                source=States.PROVISIONING_SCHEDULED,
+                target=States.PROVISIONING)
+    def begin_provisioning(self):
+        pass
+
+    @transition(field=state,
+                source=[States.PROVISIONING, States.STOPPING, States.RESIZING],
+                target=States.OFFLINE)
+    def set_offline(self):
+        pass
+
+    @transition(field=state,
+                source=States.OFFLINE,
+                target=States.STARTING_SCHEDULED)
+    def schedule_starting(self):
+        pass
+
+    @transition(field=state,
+                source=States.STARTING_SCHEDULED,
+                target=States.STARTING)
+    def begin_starting(self):
+        pass
+
+    @transition(field=state,
+                source=[States.STARTING, States.PROVISIONING, States.RESTARTING],
+                target=States.ONLINE)
+    def set_online(self):
+        pass
+
+    @transition(field=state,
+                source=States.ONLINE,
+                target=States.STOPPING_SCHEDULED)
+    def schedule_stopping(self):
+        pass
+
+    @transition(field=state,
+                source=States.STOPPING_SCHEDULED,
+                target=States.STOPPING)
+    def begin_stopping(self):
+        pass
+
+    @transition(field=state,
+                source=States.OFFLINE,
+                target=States.DELETION_SCHEDULED)
+    def schedule_deletion(self):
+        pass
+
+    @transition(field=state,
+                source=States.DELETION_SCHEDULED,
+                target=States.DELETING)
+    def begin_deleting(self):
+        pass
+
+    @transition(field=state,
+                source=States.OFFLINE,
+                target=States.RESIZING_SCHEDULED)
+    def schedule_resizing(self):
+        pass
+
+    @transition(field=state,
+                source=States.RESIZING_SCHEDULED,
+                target=States.RESIZING)
+    def begin_resizing(self):
+        pass
+
+    @transition(field=state,
+                source=States.RESIZING,
+                target=States.OFFLINE)
+    def set_resized(self):
+        pass
+
+    @transition(field=state,
+                source=States.ONLINE,
+                target=States.RESTARTING_SCHEDULED)
+    def schedule_restarting(self):
+        pass
+
+    @transition(field=state,
+                source=States.RESTARTING_SCHEDULED,
+                target=States.RESTARTING)
+    def begin_restarting(self):
+        pass
+
+    @transition(field=state,
+                source=States.RESTARTING,
+                target=States.ONLINE)
+    def set_restarted(self):
+        pass
+
+    @transition(field=state,
+                source='*',
+                target=States.ERRED)
+    def set_erred(self):
+        pass
