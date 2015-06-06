@@ -1,4 +1,4 @@
-from nodeconductor.events.log import EventLogger, event_logger
+from nodeconductor.logging.log import EventLogger, event_logger
 from nodeconductor.core.models import User, SshPublicKey
 
 
@@ -45,12 +45,12 @@ from datetime import datetime
 import logging
 import json
 
-from nodeconductor.events.middleware import get_current_user
+from nodeconductor.logging.middleware import get_current_user
 
-from nodeconductor.events.log import RequireEvent, RequireNotEvent
-from nodeconductor.events.log import TCPEventHandler as NewTCPEventHandler
-from nodeconductor.events.log import EventLoggerAdapter as NewEventLoggerAdapter
-from nodeconductor.events.log import EventFormatter as NewEventFormatter
+from nodeconductor.logging.log import RequireEvent, RequireNotEvent
+from nodeconductor.logging.log import TCPEventHandler as NewTCPEventHandler
+from nodeconductor.logging.log import EventLoggerAdapter as NewEventLoggerAdapter
+from nodeconductor.logging.log import EventFormatter as NewEventFormatter
 
 
 class EventLoggerAdapter(NewEventLoggerAdapter):

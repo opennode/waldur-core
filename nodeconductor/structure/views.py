@@ -17,16 +17,18 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from nodeconductor.core import filters as core_filters
-from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.core import mixins as core_mixins
+from nodeconductor.core import models as core_models
+from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
+from nodeconductor.structure.log import event_logger
 
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 User = auth.get_user_model()
 
@@ -354,30 +356,26 @@ class ProjectGroupMembershipViewSet(mixins.CreateModelMixin,
         project = serializer.validated_data['project']
         project_group = serializer.validated_data['projectgroup']
 
-        event_logger.info(
-            'Project %s has been added to project group %s.',
-            project.name, project_group.name,
-            extra={
+        event_logger.project_group_membership.info(
+            'Project {project_name} has been added to project group {project_group_name}.',
+            event_type='project_added_to_project_group',
+            event_context={
                 'project': project,
                 'project_group': project_group,
-                'event_type': 'project_added_to_project_group',
-            }
-        )
+            })
 
     def perform_destroy(self, instance):
         super(ProjectGroupMembershipViewSet, self).perform_destroy(instance)
 
         project = instance.project
         project_group = instance.projectgroup
-        event_logger.info(
-            'Project %s has been removed from project group %s.',
-            project.name, project_group.name,
-            extra={
+        event_logger.project_group_membership.info(
+            'Project {project_name} has been removed from project group {project_group_name}.',
+            event_type='project_removed_from_project_group',
+            event_context={
                 'project': project,
                 'project_group': project_group,
-                'event_type': 'project_removed_from_project_group',
-            }
-        )
+            })
 
 # XXX: This should be put to models
 filters.set_permissions_for_model(
@@ -567,10 +565,13 @@ class UserViewSet(viewsets.ModelViewSet):
         instance.organization_approved = False
         instance.save()
 
-        event_logger.info(
-            'User %s has claimed organization %s.', instance.username, instance.organization,
-            extra={'affected_user': instance, 'event_type': 'user_organization_claimed',
-                   'affected_organization': instance.organization})
+        event_logger.user_organization.info(
+            'User {affected_user_username} has claimed organization {affected_organization}.',
+            event_type='user_organization_claimed',
+            event_context={
+                'affected_user': instance,
+                'affected_organization': instance.organization,
+            })
 
         return Response({'detail': "User request for joining the organization has been successfully submitted."},
                         status=status.HTTP_200_OK)
@@ -581,10 +582,14 @@ class UserViewSet(viewsets.ModelViewSet):
 
         instance.organization_approved = True
         instance.save()
-        event_logger.info(
-            'User %s has been approved for organization %s.', instance.username, instance.organization,
-            extra={'affected_user': instance, 'event_type': 'user_organization_approved',
-                   'affected_organization': instance.organization})
+
+        event_logger.user_organization.info(
+            'User {affected_user_username} has been approved for organization {affected_organization}.',
+            event_type='user_organization_approved',
+            event_context={
+                'affected_user': instance,
+                'affected_organization': instance.organization,
+            })
 
         return Response({'detail': "User request for joining the organization has been successfully approved"},
                         status=status.HTTP_200_OK)
@@ -596,10 +601,14 @@ class UserViewSet(viewsets.ModelViewSet):
         instance.organization = ""
         instance.organization_approved = False
         instance.save()
-        event_logger.info(
-            'User %s claim for organization %s has been rejected.', instance.username, old_organization,
-            extra={'affected_user': instance, 'event_type': 'user_organization_rejected',
-                   'affected_organization': old_organization})
+
+        event_logger.user_organization.info(
+            'User {affected_user_username} claim for organization {affected_organization} has been rejected.',
+            event_type='user_organization_rejected',
+            event_context={
+                'affected_user': instance,
+                'affected_organization': old_organization,
+            })
 
         return Response({'detail': "User has been successfully rejected from the organization"},
                         status=status.HTTP_200_OK)
@@ -611,10 +620,14 @@ class UserViewSet(viewsets.ModelViewSet):
         instance.organization_approved = False
         instance.organization = ""
         instance.save()
-        event_logger.info(
-            'User %s has been removed from organization %s.', instance.username, old_organization,
-            extra={'affected_user': instance, 'event_type': 'user_organization_removed',
-                   'affected_organization': old_organization})
+
+        event_logger.user_organization.info(
+            'User {affected_user_username} has been removed from organization {affected_organization}.',
+            event_type='user_organization_removed',
+            event_context={
+                'affected_user': instance,
+                'affected_organization': old_organization,
+            })
 
         return Response({'detail': "User has been successfully removed from the organization"},
                         status=status.HTTP_200_OK)
@@ -624,6 +637,14 @@ class UserViewSet(viewsets.ModelViewSet):
 class ProjectPermissionFilter(django_filters.FilterSet):
     project = django_filters.CharFilter(
         name='group__projectrole__project__uuid',
+    )
+    project_url = core_filters.URLFilter(
+        viewset=ProjectViewSet,
+        name='group__projectrole__project__uuid',
+    )
+    user_url = core_filters.URLFilter(
+        viewset=UserViewSet,
+        name='user__uuid',
     )
     username = django_filters.CharFilter(
         name='user__username',
@@ -733,6 +754,14 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
 class ProjectGroupPermissionFilter(django_filters.FilterSet):
     project_group = django_filters.CharFilter(
         name='group__projectgrouprole__project_group__uuid',
+    )
+    project_group_url = core_filters.URLFilter(
+        viewset=ProjectGroupViewSet,
+        name='group__projectgrouprole__project_group__uuid',
+    )
+    user_url = core_filters.URLFilter(
+        viewset=UserViewSet,
+        name='user__uuid',
     )
     username = django_filters.CharFilter(
         name='user__username',
@@ -846,6 +875,14 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
 class CustomerPermissionFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='group__customerrole__customer__uuid',
+    )
+    customer_url = core_filters.URLFilter(
+        viewset=CustomerViewSet,
+        name='group__customerrole__customer__uuid',
+    )
+    user_url = core_filters.URLFilter(
+        viewset=UserViewSet,
+        name='user__uuid',
     )
     username = django_filters.CharFilter(
         name='user__username',
@@ -976,3 +1013,79 @@ class CreationTimeStatsView(views.APIView):
 
         stats = serializer.get_stats(request.user)
         return Response(stats, status=status.HTTP_200_OK)
+
+
+class ServiceSettingsFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_type='icontains')
+
+    class Meta(object):
+        model = models.ServiceSettings
+        fields = ('name', 'type', 'state')
+
+
+class ServiceSettingsViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.ServiceSettings.objects.filter(shared=True)
+    serializer_class = serializers.ServiceSettingsSerializer
+    permission_classes = (rf_permissions.IsAuthenticated,)
+    filter_backends = (rf_filters.DjangoFilterBackend,)
+    filter_class = ServiceSettingsFilter
+    lookup_field = 'uuid'
+
+
+class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
+    queryset = NotImplemented
+    serializer_class = NotImplemented
+    lookup_field = 'uuid'
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+
+    def initial(self, request, *args, **kwargs):
+        if self.action in ('update', 'partial_update', 'destroy'):
+            resource = self.get_object()
+            if resource.state not in resource.States.STABLE_STATES:
+                raise core_exceptions.IncorrectStateException(
+                    'Modification allowed in stable states only')
+
+        elif self.action in ('stop', 'start', 'resize'):
+            resource = self.get_object()
+            if resource.state == resource.States.PROVISIONING_SCHEDULED:
+                raise core_exceptions.IncorrectStateException(
+                    'Provisioning scheduled. Disabled modifications.')
+
+        super(BaseResourceViewSet, self).initial(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        if serializer.validated_data['service_project_link'].state == core_models.SynchronizationStates.ERRED:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot modify resource if its service project link in erred state.')
+
+        self.perform_provision(serializer)
+
+    def perform_update(self, serializer):
+        spl = self.get_object().service_project_link
+        if spl.state == core_models.SynchronizationStates.ERRED:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot modify resource if its service project link in erred state.')
+
+        serializer.save()
+
+    def perform_provision(self, serializer):
+        raise NotImplementedError
+
+    @detail_route(methods=['post'])
+    def start(self, request, uuid=None):
+        backend = self.get_object().get_backend()
+        backend.start()
+        return Response({'status': 'start was scheduled'}, status=status.HTTP_202_ACCEPTED)
+
+    @detail_route(methods=['post'])
+    def stop(self, request, uuid=None):
+        backend = self.get_object().get_backend()
+        backend.stop()
+        return Response({'status': 'stop was scheduled'}, status=status.HTTP_202_ACCEPTED)
+
+    @detail_route(methods=['post'])
+    def restart(self, request, uuid=None):
+        backend = self.get_object().get_backend()
+        backend.restart()
+        return Response({'status': 'restart was scheduled'}, status=status.HTTP_202_ACCEPTED)

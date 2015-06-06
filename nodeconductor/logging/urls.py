@@ -1,6 +1,10 @@
 from django.conf.urls import url
 
-from nodeconductor.events import views
+from nodeconductor.logging import views
+
+
+def register_in(router):
+    router.register(r'alerts', views.AlertViewSet)
 
 
 urlpatterns = [

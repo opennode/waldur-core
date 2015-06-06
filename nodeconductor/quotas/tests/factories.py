@@ -13,7 +13,7 @@ class QuotaFactory(factory.DjangoModelFactory):
     class Meta:
         model = models.Quota
 
-    owner = factory.SubFactory(iaas_factories.CloudProjectMembershipFactory)
+    scope = factory.SubFactory(iaas_factories.CloudProjectMembershipFactory)
     limit = factory.fuzzy.FuzzyFloat(low=16.0, high=1024.0)
     usage = factory.LazyAttribute(lambda q: q.limit / 2)
     name = factory.Iterator(['vcpu', 'storage', 'max_instances', 'ram'])

@@ -1,4 +1,4 @@
-from nodeconductor.events.log import EventLogger, event_logger
+from nodeconductor.logging.log import EventLogger, event_logger
 from nodeconductor.template.models import Template, TemplateService
 
 

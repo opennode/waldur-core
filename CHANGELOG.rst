@@ -6,6 +6,19 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.50.0
+--------------
+- New base structure for supporting of services.
+- Support for NodeConductor extensions.
+- Draft version of Oracle EM integration.
+- Hook for invoice generation based on OpenStack Ceilometer data.
+- Filtering and ordering API extensions.
+- Draft of alerting API.
+
+Release 0.49.1
+--------------
+- Bugfix of erred cloud recovery job.
+
 Release 0.49.0
 --------------
 - Draft version of billing integration with WHMCS.
