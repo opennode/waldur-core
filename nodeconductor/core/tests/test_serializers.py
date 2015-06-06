@@ -74,7 +74,7 @@ class TimestampSerializer(serializers.Serializer):
 
 class TimestampFieldTest(unittest.TestCase):
     def setUp(self):
-        self.datetime = utils.Timeshift(days=1)()
+        self.datetime = utils.timeshift(days=-1)
         self.timestamp = utils.datetime_to_timestamp(self.datetime)
 
     def test_datetime_serialized_as_timestamp(self):

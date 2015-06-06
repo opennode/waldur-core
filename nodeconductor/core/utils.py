@@ -70,16 +70,8 @@ def timestamp_to_datetime(timestamp):
     return datetime.fromtimestamp(int(timestamp)).replace(tzinfo=timezone.get_current_timezone())
 
 
-class Timeshift(object):
-    """
-    Factory for relative datetime. Used in serializer field as default value.
-    >> start_time = TimestampField(default=Timeshift(days=1))
-    """
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
-
-    def __call__(self):
-        return timezone.now().replace(microsecond=0) - timedelta(**self.kwargs)
+def timeshift(**kwargs):
+    return timezone.now().replace(microsecond=0) + timedelta(**kwargs)
 
 
 def request_api(request, view_name, method='GET', data=None):

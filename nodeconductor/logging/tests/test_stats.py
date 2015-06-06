@@ -1,9 +1,6 @@
-from datetime import timedelta
-from django.utils import timezone
-
 from rest_framework import test, status
 
-from nodeconductor.core.utils import datetime_to_timestamp
+from nodeconductor.core.utils import datetime_to_timestamp, timeshift
 from nodeconductor.structure.models import CustomerRole, ProjectGroupRole
 from nodeconductor.structure.tests.factories import CustomerFactory, UserFactory, ProjectFactory
 from nodeconductor.logging.models import Alert
@@ -17,8 +14,8 @@ class TimeframeAlertsStatsTest(test.APITransactionTestCase):
         self.staff = UserFactory(is_staff=True)
 
     def test_staff_counts_all_alerts_within_day(self):
-        minutes = timezone.now() - timedelta(minutes=5)
-        weeks = timezone.now() - timedelta(weeks=1)
+        minutes = timeshift(minutes=-5)
+        weeks = timeshift(weeks=-1)
 
         error_alert = AlertFactory(created=minutes,
             severity=Alert.SeverityChoices.ERROR)
@@ -44,7 +41,7 @@ class TimeframeAlertsStatsTest(test.APITransactionTestCase):
 
 class StructureAlertsStatsTest(test.APITransactionTestCase):
     def setUp(self):
-        self.date = timezone.now() - timedelta(minutes=5)
+        self.date = timeshift(minutes=-5)
         self.staff = UserFactory(is_staff=True)
 
         self.owner = UserFactory()

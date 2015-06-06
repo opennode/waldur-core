@@ -10,7 +10,7 @@ from nodeconductor.core.fields import MappedChoiceField, JsonField, TimestampFie
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.filters import filter_queryset_for_user
 from nodeconductor.iaas.models import Instance
-from nodeconductor.core.utils import sort_dict, Timeshift
+from nodeconductor.core.utils import sort_dict, timeshift
 
 import logging
 logger = logging.getLogger('nodeconductor.logging.serializers')
@@ -34,8 +34,8 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class StatsQuerySerializer(serializers.Serializer):
-    start_time = TimestampField(default=Timeshift(days=1))
-    end_time = TimestampField(default=Timeshift())
+    start_time = TimestampField(default=lambda: timeshift(days=-1))
+    end_time = TimestampField(default=lambda: timeshift())
 
     model = MappedChoiceField(
         choices=(
