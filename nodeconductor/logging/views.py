@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 
-from rest_framework import generics, response, settings, viewsets, permissions
+from rest_framework import generics, response, settings, views, viewsets, permissions, status
 
 from nodeconductor.logging import elasticsearch_client, models, serializers
-
 
 class EventListView(generics.GenericAPIView):
 
@@ -49,3 +48,27 @@ class AlertViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return models.Alert.objects.filtered_for_user(self.request.user)
+
+
+class AlertStatsView(views.APIView):
+    """
+    Counts health statistics based on the alert number and severity
+    """
+
+    def get(self, request):
+        data = self.get_data(request)
+        serializer = serializers.StatsQuerySerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        stats = serializer.get_stats(request.user)
+        return response.Response(stats, status=status.HTTP_200_OK)
+
+    def get_data(self, request):
+        mapped = {
+            'start_time': request.query_params.get('from'),
+            'end_time': request.query_params.get('to'),
+            'model': request.query_params.get('aggregate'),
+            'uuid': request.query_params.get('uuid'),
+        }
+
+        return {key: val for (key, val) in mapped.items() if val}

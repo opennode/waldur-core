@@ -3,6 +3,7 @@ import requests
 
 from collections import OrderedDict
 from datetime import datetime
+from datetime import timedelta
 from operator import itemgetter
 
 from django.utils import timezone
@@ -67,6 +68,10 @@ def datetime_to_timestamp(datetime):
 
 def timestamp_to_datetime(timestamp):
     return datetime.fromtimestamp(int(timestamp)).replace(tzinfo=timezone.get_current_timezone())
+
+
+def timeshift(**kwargs):
+    return timezone.now().replace(microsecond=0) + timedelta(**kwargs)
 
 
 def request_api(request, view_name, method='GET', data=None):

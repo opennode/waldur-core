@@ -9,7 +9,7 @@ from rest_framework import serializers
 import six
 
 from nodeconductor.core.validators import validate_cron_schedule
-
+from nodeconductor.core import utils
 
 # XXX: This field is left only for migrations compatibility.
 # It has to be removed after migrations compression
@@ -137,3 +137,17 @@ class JsonField(serializers.Field):
         except ValueError:
             raise serializers.ValidationError('This field should a be valid JSON string.')
         return data
+
+
+class TimestampField(serializers.Field):
+    """
+    Unix timestamp field mapped to datetime object.
+    """
+    def to_representation(self, value):
+        return utils.datetime_to_timestamp(value)
+
+    def to_internal_value(self, value):
+        try:
+            return utils.timestamp_to_datetime(value)
+        except ValueError:
+            raise serializers.ValidationError('This field should be valid UNIX timestamp.')
