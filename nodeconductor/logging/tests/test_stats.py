@@ -93,7 +93,7 @@ class SerializerValidationTest(unittest.TestCase):
     def test_valid_data(self):
         serializer = StatsQuerySerializer(data={
             'start_time': '0',
-            'aggregate': 'project',
+            'model': 'project',
             'uuid': '6a806164e4ac4541ae07fad62800ddb9'
         })
         self.assertTrue(serializer.is_valid())
@@ -105,6 +105,6 @@ class SerializerValidationTest(unittest.TestCase):
         self.assertFalse(serializer.is_valid())
 
         serializer = StatsQuerySerializer(data={
-            'start_time': '9999999999'
+            'start_time': 'INVALID_TIMESTAMP'
         })
         self.assertFalse(serializer.is_valid())

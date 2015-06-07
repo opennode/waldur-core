@@ -13,7 +13,7 @@ from nodeconductor.iaas.models import Instance
 from nodeconductor.core.utils import sort_dict, timeshift
 
 import logging
-logger = logging.getLogger('nodeconductor.logging.serializers')
+logger = logging.getLogger(__name__)
 
 class AlertSerializer(serializers.HyperlinkedModelSerializer):
     scope = GenericRelatedField(related_models=utils.get_loggable_models(), read_only=True)
