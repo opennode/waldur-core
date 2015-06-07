@@ -16,7 +16,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.50.0
-Release: 1.el7
+Release: 2.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # openssl package is needed to generate SAML2 keys during NodeConductor install
@@ -39,6 +39,7 @@ Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
 Requires: python-jira = 0.47
 Requires: python-jsonfield = 1.0.0
+Requires: python-ceilometerclient = 1.0.10
 Requires: python-cinderclient = 1.0.9
 Requires: python-glanceclient = 1:0.12.0
 Requires: python-keystoneclient = 1:0.9.0
@@ -196,6 +197,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Sun Jun 7 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.50.0-2.el7
+- Add missing python-ceilometerclient dependency
+
 * Sat Jun 6 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.50.0-1.el7
 - New upstream release
 
