@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 import rest_framework.authentication
 from rest_framework import exceptions
@@ -7,7 +8,7 @@ from rest_framework import exceptions
 import nodeconductor.logging.middleware
 
 
-TOKEN_KEY = 'x-auth-token'
+TOKEN_KEY = settings.NODECONDUCTOR.get('TOKEN_KEY', 'x-auth-token')
 
 
 class TokenAuthentication(rest_framework.authentication.TokenAuthentication):
