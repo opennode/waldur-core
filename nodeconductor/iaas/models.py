@@ -104,7 +104,7 @@ class ServiceStatistics(models.Model):
 
 
 @python_2_unicode_compatible
-class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin, models.Model):
+class CloudProjectMembership(structure_models.ServiceProjectLink):
     """
     This model represents many to many relationships between project and cloud
     """
@@ -113,7 +113,6 @@ class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.Quot
     DEFAULT_URL_NAME = 'cloudproject_membership'
 
     cloud = models.ForeignKey(Cloud)
-    project = models.ForeignKey(structure_models.Project)
 
     # OpenStack backend specific fields
     username = models.CharField(max_length=100, blank=True)
@@ -140,6 +139,9 @@ class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.Quot
 
     def get_quota_parents(self):
         return [self.project]
+
+    def get_backend(self):
+        return self.cloud.get_backend()
 
 
 class CloudProjectMember(models.Model):
