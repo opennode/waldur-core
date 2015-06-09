@@ -44,10 +44,10 @@ class ServiceBackend(object):
     def restart(self, resource):
         raise NotImplementedError
 
-    def add_ssh_key(self, ssh_key, **kwargs):
+    def add_ssh_key(self, ssh_key, service_project_link):
         raise NotImplementedError
 
-    def remove_ssh_key(self, ssh_key, **kwargs):
+    def remove_ssh_key(self, ssh_key, service_project_link):
         raise NotImplementedError
 
     @staticmethod
