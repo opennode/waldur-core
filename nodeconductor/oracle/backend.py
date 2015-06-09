@@ -3,11 +3,11 @@ import requests
 
 from nodeconductor.oracle import models
 from nodeconductor.core.tasks import send_task
-from nodeconductor.iaas.backend import ServiceBackend
+from nodeconductor.iaas.backend import ServiceBackend, ServiceBackendError
 from nodeconductor import __version__
 
 
-class OracleBackendError(Exception):
+class OracleBackendError(ServiceBackendError):
     pass
 
 

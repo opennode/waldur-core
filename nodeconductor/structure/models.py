@@ -2,13 +2,15 @@ from __future__ import unicode_literals
 
 import logging
 
+from django.apps import apps
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models
 from django.db import transaction
 from django.db.models import Q
-from django.utils.encoding import python_2_unicode_compatible
+from django.utils.lru_cache import lru_cache
+from django.utils.encoding import python_2_unicode_compatible, force_text
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 from model_utils.models import TimeStampedModel
@@ -481,6 +483,25 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
 
     def get_backend(self):
         return self.service.get_backend()
+
+    def to_string(self):
+        """ Dump an instance into a string preserving class name and PK """
+        return ':'.join([force_text(self._meta), str(self.pk)])
+
+    @staticmethod
+    def from_string(objects):
+        """ Recover objects from string """
+        if not isinstance(objects, (list, tuple)):
+            objects = [objects]
+        for obj in objects:
+            cls, pk = obj.split(':')
+            model = apps.get_model(cls)
+            yield model._default_manager.get(pk=pk)
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)

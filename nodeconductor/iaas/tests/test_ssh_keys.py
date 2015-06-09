@@ -115,14 +115,14 @@ class SshKeyPropagationTest(test.APITransactionTestCase):
         with patch('celery.app.base.Celery.send_task') as mocked_task:
             ssh_key = factories.SshPublicKeyFactory(user=self.owner)
             mocked_task.assert_called_with(
-                'nodeconductor.iaas.push_ssh_public_keys',
-                ([ssh_key.uuid.hex], [membership.pk]), {})
+                'nodeconductor.structure.sync_ssh_public_keys',
+                ('PUSH', [ssh_key.uuid.hex], [membership.to_string()]), {})
 
             with patch('celery.app.base.Celery.send_task') as mocked_task:
                 self.client.delete(self._get_ssh_key_url(ssh_key))
                 mocked_task.assert_called_with(
-                    'nodeconductor.iaas.remove_ssh_public_keys',
-                    ([ssh_key.uuid.hex], [membership.pk]), {})
+                    'nodeconductor.structure.sync_ssh_public_keys',
+                    ('REMOVE', [ssh_key.uuid.hex], [membership.to_string()]), {})
 
         user = structure_factories.UserFactory()
         user_key = factories.SshPublicKeyFactory(user=user)
@@ -131,11 +131,11 @@ class SshKeyPropagationTest(test.APITransactionTestCase):
         with patch('celery.app.base.Celery.send_task') as mocked_task:
             project.add_user(user, ProjectRole.ADMINISTRATOR)
             mocked_task.assert_called_with(
-                'nodeconductor.iaas.push_ssh_public_keys',
-                ([user_key.uuid.hex], [membership.pk]), {})
+                'nodeconductor.structure.sync_ssh_public_keys',
+                ('PUSH', [user_key.uuid.hex], [membership.to_string()]), {})
 
             with patch('celery.app.base.Celery.send_task') as mocked_task:
                 project.remove_user(user)
                 mocked_task.assert_called_with(
-                    'nodeconductor.iaas.remove_ssh_public_keys',
-                    ([user_key.uuid.hex], [membership.pk]), {})
+                    'nodeconductor.structure.sync_ssh_public_keys',
+                    ('REMOVE', [user_key.uuid.hex], [membership.to_string()]), {})
