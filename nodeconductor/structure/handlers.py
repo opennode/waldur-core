@@ -17,6 +17,9 @@ from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, 
 
 logger = logging.getLogger(__name__)
 
+PUSH_KEY = 1
+REMOVE_KEY = 2
+
 
 def sync_ssh_public_keys(action, public_key=None, project=None, user=None):
     """ Call supplied background task to push or remove SSH key(s) for a service.
@@ -30,7 +33,7 @@ def sync_ssh_public_keys(action, public_key=None, project=None, user=None):
             for spl in filter_queryset_for_user(spl_cls.objects.all(), public_key.user):
                 # Key has been already removed from DB and can't be
                 # recovered in celery task so call backend here
-                if action == 'REMOVE':
+                if action == REMOVE_KEY:
                     backend = spl.get_backend()
                     backend.remove_ssh_key(public_key, spl)
                 else:
@@ -54,28 +57,28 @@ def propagate_users_key_to_his_projects_services(sender, instance=None, created=
         ssh_public_key_uuids = SshPublicKey.objects.filter(
             user__groups__projectrole__project=instance.project).values_list('uuid', flat=True)
         send_task('structure', 'sync_ssh_public_keys')(
-            'PUSH', list(ssh_public_key_uuids), [instance.to_string()])
+            PUSH_KEY, list(ssh_public_key_uuids), [instance.to_string()])
 
 
 def propagate_new_users_key_to_his_projects_services(sender, instance=None, created=False, **kwargs):
     """ Propagate new ssh public key to all services it belongs via user projects """
     if created:
-        sync_ssh_public_keys('PUSH', public_key=instance)
+        sync_ssh_public_keys(PUSH_KEY, public_key=instance)
 
 
 def remove_stale_users_key_from_his_projects_services(sender, instance=None, **kwargs):
     """ Remove new ssh public key from all services it belongs via user projects """
-    sync_ssh_public_keys('REMOVE', public_key=instance)
+    sync_ssh_public_keys(REMOVE_KEY, public_key=instance)
 
 
 def propagate_users_keys_to_services_of_newly_granted_project(sender, structure, user, role, **kwargs):
     """ Propagate user's ssh public key to a service of new project """
-    sync_ssh_public_keys('PUSH', project=structure, user=user)
+    sync_ssh_public_keys(PUSH_KEY, project=structure, user=user)
 
 
 def remove_stale_users_keys_from_services_of_revoked_project(sender, structure, user, role, **kwargs):
     """ Remove user's ssh public key from a service of old project """
-    sync_ssh_public_keys('REMOVE', project=structure, user=user)
+    sync_ssh_public_keys(REMOVE_KEY, project=structure, user=user)
 
 
 def prevent_non_empty_project_group_deletion(sender, instance, **kwargs):
