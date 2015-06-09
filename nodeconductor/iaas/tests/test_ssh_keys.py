@@ -105,11 +105,20 @@ class SshKeyPropagationTest(test.APITransactionTestCase):
         customer.add_user(self.owner, CustomerRole.OWNER)
 
         project = structure_factories.ProjectFactory(customer=customer)
-        cloud = factories.CloudFactory(auth_url='http://example.com:5000/v2', customer=customer)
+        cloud = factories.CloudFactory(
+            auth_url='http://keystone.example.com:5000/v2.0', customer=customer, dummy=True)
 
         self.client.force_authenticate(self.owner)
 
         membership = factories.CloudProjectMembershipFactory(cloud=cloud, project=project)
+
+        def Any(obj):
+            class Any(obj.__class__):
+                class Meta:
+                    abstract = True
+                def __eq__(self, other):
+                    return isinstance(other, obj.__class__)
+            return Any()
 
         # Test user add/remove key
         with patch('celery.app.base.Celery.send_task') as mocked_task:
@@ -118,11 +127,9 @@ class SshKeyPropagationTest(test.APITransactionTestCase):
                 'nodeconductor.structure.sync_ssh_public_keys',
                 ('PUSH', [ssh_key.uuid.hex], [membership.to_string()]), {})
 
-            with patch('celery.app.base.Celery.send_task') as mocked_task:
+            with patch('nodeconductor.iaas.backend.openstack.OpenStackBackend.remove_ssh_public_key') as mocked_task:
                 self.client.delete(self._get_ssh_key_url(ssh_key))
-                mocked_task.assert_called_with(
-                    'nodeconductor.structure.sync_ssh_public_keys',
-                    ('REMOVE', [ssh_key.uuid.hex], [membership.to_string()]), {})
+                mocked_task.assert_called_with(Any(membership), Any(ssh_key))
 
         user = structure_factories.UserFactory()
         user_key = factories.SshPublicKeyFactory(user=user)
