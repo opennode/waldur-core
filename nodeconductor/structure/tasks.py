@@ -109,8 +109,12 @@ def sync_service_settings_failed(settings_uuid, transition_entity=None):
 @shared_task(max_retries=120, default_retry_delay=30)
 @retry_if_false
 def push_ssh_public_key(ssh_public_keys_uuid, service_project_link_str):
-    public_key = SshPublicKey.objects.get(uuid=ssh_public_keys_uuid)
-    service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
+    try:
+        public_key = SshPublicKey.objects.get(uuid=ssh_public_keys_uuid)
+        service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
+    except SshPublicKey.DoesNotExist:
+        logging.warn('Missing public key %s.', ssh_public_keys_uuid)
+        return True
 
     if service_project_link.state != SynchronizationStates.IN_SYNC:
         logging.warn(
@@ -148,6 +152,8 @@ def push_ssh_public_key(ssh_public_keys_uuid, service_project_link_str):
                     'cloud': service_project_link.cloud,
                     'event_type': 'sync_cloud_membership'}
             )
+
+    return True
 
 
 @shared_task(max_retries=120, default_retry_delay=30)

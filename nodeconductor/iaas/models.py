@@ -140,6 +140,9 @@ class CloudProjectMembership(structure_models.ServiceProjectLink):
     def get_quota_parents(self):
         return [self.project]
 
+    def get_backend(self):
+        return self.cloud.get_backend()
+
 
 class CloudProjectMember(models.Model):
     class Meta(object):

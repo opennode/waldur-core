@@ -30,6 +30,14 @@ def sync_ssh_public_keys(action, public_key=None, project=None, user=None):
             for spl in filter_queryset_for_user(spl_cls.objects.all(), public_key.user):
                 service_project_links.append(spl.to_string())
 
+        # Key has been already removed from DB and can't be
+        # recovered in celery task so call backend here
+        if action == 'REMOVE':
+            for spl in service_project_links:
+                backend = spl.get_backend()
+                backend.remove_ssh_key(public_key, spl)
+            return
+
     elif project and user:
         ssh_public_key_uuids = list(SshPublicKey.objects.filter(
             user=user).values_list('uuid', flat=True))
