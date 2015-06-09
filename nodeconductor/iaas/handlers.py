@@ -200,13 +200,3 @@ def check_instance_name_update(sender, instance=None, created=False, **kwargs):
     if old_name != instance.name:
         from nodeconductor.iaas.tasks.zabbix import zabbix_update_host_visible_name
         zabbix_update_host_visible_name.delay(instance.uuid.hex)
-
-
-def add_instance_uuid_to_user_data(sender, instance=None, created=False, **kwargs):
-    if not created:
-        return
-
-    parsed_user_data = yaml.load(instance.user_data) or {}
-    parsed_user_data[str('nc_instance_uuid')] = instance.uuid.hex
-    instance.user_data = yaml.dump(parsed_user_data)
-    instance.save()

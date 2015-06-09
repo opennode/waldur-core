@@ -86,9 +86,3 @@ class IaasConfig(AppConfig):
             sender=Instance,
             dispatch_uid='nodeconductor.iaas.handlers.decrease_cutomer_nc_instances_quota',
         )
-
-        signals.post_save.connect(
-            handlers.add_instance_uuid_to_user_data,
-            sender=Instance,
-            dispatch_uid='nodeconductor.iaas.handlers.add_instance_uuid_to_user_data',
-        )
