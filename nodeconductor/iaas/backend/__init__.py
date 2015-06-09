@@ -16,6 +16,13 @@ class CloudBackendInternalError(Exception):
     pass
 
 
+class ServiceBackendError(Exception):
+    """
+    Base exception for errors occurring during backend communication.
+    """
+    pass
+
+
 class ServiceBackend(object):
     """ Basic service backed with only common methods pre-defined. """
 
@@ -37,10 +44,10 @@ class ServiceBackend(object):
     def restart(self, resource):
         raise NotImplementedError
 
-    def add_ssh_key(self, ssh_key):
+    def add_ssh_key(self, ssh_key, **kwargs):
         raise NotImplementedError
 
-    def remove_ssh_key(self, ssh_key):
+    def remove_ssh_key(self, ssh_key, **kwargs):
         raise NotImplementedError
 
     @staticmethod

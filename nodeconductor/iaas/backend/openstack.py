@@ -284,6 +284,13 @@ class OpenStackBackend(OpenStackClient):
     def get_core_ram_size(self, backend_ram_size):
         return backend_ram_size
 
+    # ServiceBackend compability methods
+    def add_ssh_key(self, public_key, membership):
+        return self.push_ssh_public_key(membership, public_key)
+
+    def remove_ssh_key(self, public_key, membership):
+        return self.remove_ssh_public_key(membership, public_key)
+
     # CloudAccount related methods
     def push_cloud_account(self, cloud_account):
         # There's nothing to push for OpenStack

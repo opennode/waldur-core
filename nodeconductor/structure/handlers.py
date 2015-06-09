@@ -2,16 +2,74 @@ from __future__ import unicode_literals
 
 import logging
 
-from django.contrib.auth.models import Group
 from django.db import models, transaction
+from django.contrib.auth.models import Group
 
+from nodeconductor.core.tasks import send_task
+from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure import signals
 from nodeconductor.structure.log import event_logger
-from nodeconductor.structure.models import CustomerRole, Project, ProjectRole, ProjectGroupRole, Customer, ProjectGroup
+from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
+                                            Customer, ProjectGroup, ServiceProjectLink)
 
 
 logger = logging.getLogger(__name__)
+
+
+def sync_ssh_public_keys(action, public_key=None, project=None, user=None):
+    """ Call supplied background task to push or remove SSH key(s) for a service.
+        Use supplied public_key or lookup it by project & user.
+    """
+
+    service_project_links = []
+    if public_key:
+        ssh_public_key_uuids = [public_key.uuid.hex]
+        for spl_cls in ServiceProjectLink.get_all_models():
+            for spl in filter_queryset_for_user(spl_cls.objects.all(), public_key.user):
+                service_project_links.append(spl.to_string())
+
+    elif project and user:
+        ssh_public_key_uuids = list(SshPublicKey.objects.filter(
+            user=user).values_list('uuid', flat=True))
+        for spl_cls in ServiceProjectLink.get_all_models():
+            for spl in spl_cls.objects.filter(project=project):
+                service_project_links.append(spl.to_string())
+
+    if ssh_public_key_uuids and service_project_links:
+        send_task('structure', 'sync_ssh_public_keys')(
+            action, ssh_public_key_uuids, service_project_links)
+
+
+def propagate_users_key_to_his_projects_services(sender, instance=None, created=False, **kwargs):
+    """ Propagate ssh public keys of users involved in the project """
+    if created:
+        ssh_public_key_uuids = SshPublicKey.objects.filter(
+            user__groups__projectrole__project=instance.project).values_list('uuid', flat=True)
+        send_task('structure', 'sync_ssh_public_keys')(
+            'PUSH', list(ssh_public_key_uuids), [instance.to_string()])
+
+
+def propagate_new_users_key_to_his_projects_services(sender, instance=None, created=False, **kwargs):
+    """ Propagate new ssh public key to all services it belongs via user projects """
+    if created:
+        sync_ssh_public_keys('PUSH', public_key=instance)
+
+
+def remove_stale_users_key_from_his_projects_services(sender, instance=None, **kwargs):
+    """ Remove new ssh public key from all services it belongs via user projects """
+    sync_ssh_public_keys('REMOVE', public_key=instance)
+
+
+def propagate_users_keys_to_services_of_newly_granted_project(sender, structure, user, role, **kwargs):
+    """ Propagate user's ssh public key to a service of new project """
+    sync_ssh_public_keys('PUSH', project=structure, user=user)
+
+
+def remove_stale_users_keys_from_services_of_revoked_project(sender, structure, user, role, **kwargs):
+    """ Remove user's ssh public key from a service of old project """
+    sync_ssh_public_keys('REMOVE', project=structure, user=user)
 
 
 def prevent_non_empty_project_group_deletion(sender, instance, **kwargs):
