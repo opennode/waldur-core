@@ -2,6 +2,8 @@ from django.db.models import signals
 
 from nodeconductor.quotas.log import alert_logger
 
+import logging
+logger = logging.getLogger(__name__)
 
 def add_quotas_to_scope(sender, instance, created=False, **kwargs):
     if created:
@@ -74,3 +76,10 @@ def check_quota_threshold_breach(sender, instance, **kwargs):
             })
     else:
         alert_logger.quota.close(scope=quota, alert_type='quota_usage_is_over_threshold')
+
+
+def create_quota_log(sender, instance, **kwargs):
+    from nodeconductor.quotas.models import QuotaLog
+    quota = QuotaLog.objects.create(quota=instance, limit=instance.limit, usage=instance.usage)
+    logger.debug("Creating quota log item created=%s, limit=%s, usage=%s",
+                 quota.created, instance.limit, instance.usage)

@@ -22,3 +22,18 @@ class QuotaManager(models.Manager):
             query |= Q(object_id__in=user_object_ids, content_type_id=content_type_id)
 
         return queryset.filter(query)
+
+    def for_object(self, obj):
+        kwargs = dict(
+            content_type=ct_models.ContentType.objects.get_for_model(obj._meta.model),
+            object_id=obj.id
+        )
+        return self.get_queryset().filter(**kwargs)
+
+class QuotaLogManager(models.Manager):
+    def for_object(self, obj):
+        kwargs = dict(
+            quota__content_type=ct_models.ContentType.objects.get_for_model(obj._meta.model),
+            quota__object_id=obj.id
+        )
+        return self.get_queryset().filter(**kwargs)
