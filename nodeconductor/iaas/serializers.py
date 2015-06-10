@@ -7,7 +7,7 @@ from django.db.models import Max
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
-from nodeconductor.core import models as core_models, serializers as core_serializers
+from nodeconductor.core import models as core_models, serializers as core_serializers, utils as core_utils
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
@@ -869,3 +869,22 @@ class StatsAggregateSerializer(serializers.Serializer):
     def get_memberships(self, user):
         projects = self.get_projects(user)
         return models.CloudProjectMembership.objects.filter(project__in=projects).all()
+
+
+class TimeIntervalSerializer(serializers.Serializer):
+    start_timestamp = serializers.IntegerField(min_value=0)
+    end_timestamp = serializers.IntegerField(min_value=0)
+
+    def validate(self, data):
+        """
+        Check that the start is before the end.
+        """
+        if data['start_timestamp'] > data['end_timestamp']:
+            raise serializers.ValidationError("End must occur after start")
+        return data
+
+    def get_start_datetime(self):
+        return core_utils.timestamp_to_datetime(self.validated_data['start_timestamp'])
+
+    def get_end_datetime(self):
+        return core_utils.timestamp_to_datetime(self.validated_data['end_timestamp'])
