@@ -162,6 +162,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             'name', 'native_name', 'abbreviation', 'contact_details',
             'projects', 'project_groups',
             'owners',
+            'registration_code',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},

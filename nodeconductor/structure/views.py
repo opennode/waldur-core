@@ -54,17 +54,20 @@ class CustomerFilter(django_filters.FilterSet):
             'abbreviation',
             'contact_details',
             'native_name',
+            'registration_code',
         ]
         order_by = [
             'name',
             'abbreviation',
             'contact_details',
             'native_name',
+            'registration_code',
             # desc
             '-name',
             '-abbreviation',
             '-contact_details',
             '-native_name',
+            '-registration_code',
         ]
 
 
