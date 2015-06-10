@@ -1080,6 +1080,12 @@ class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
             resource.delete()
 
     @detail_route(methods=['post'])
+    def unlink(self, request, uuid=None):
+        resource = self.get_object()
+        resource.delete()
+        return Response({'status': 'resource unlinked'}, status=status.HTTP_200_OK)
+
+    @detail_route(methods=['post'])
     def start(self, request, uuid=None):
         resource = self.get_object()
         if resource.state != resource.States.OFFLINE:
