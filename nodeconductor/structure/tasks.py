@@ -9,6 +9,7 @@ from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas.backend import ServiceBackendError, CloudBackendError
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
+from nodeconductor.structure.handlers import PUSH_KEY, REMOVE_KEY
 from nodeconductor.structure import models
 
 logger = logging.getLogger(__name__)
@@ -26,8 +27,8 @@ def sync_billing_customers(customer_uuids=None):
 @shared_task(name='nodeconductor.structure.sync_ssh_public_keys')
 def sync_ssh_public_keys(action, ssh_public_keys_uuids, service_project_links):
     actions = {
-        'PUSH': push_ssh_public_key,
-        'REMOVE': remove_ssh_public_key,
+        PUSH_KEY: push_ssh_public_key,
+        REMOVE_KEY: remove_ssh_public_key,
     }
 
     try:
