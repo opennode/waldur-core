@@ -1043,7 +1043,7 @@ class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
 
     def initial(self, request, *args, **kwargs):
-        if self.action in ('update', 'partial_update', 'destroy'):
+        if self.action in ('update', 'partial_update'):
             resource = self.get_object()
             if resource.state not in resource.States.STABLE_STATES:
                 raise core_exceptions.IncorrectStateException(
@@ -1075,20 +1075,50 @@ class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
     def perform_provision(self, serializer):
         raise NotImplementedError
 
+    def perform_destroy(self, resource):
+        if resource.backend_id:
+            backend = resource.get_backend()
+            backend.destroy(resource)
+        else:
+            resource.delete()
+
+    @detail_route(methods=['post'])
+    def unlink(self, request, uuid=None):
+        resource = self.get_object()
+        resource.delete()
+        return Response({'status': 'resource unlinked'}, status=status.HTTP_200_OK)
+
     @detail_route(methods=['post'])
     def start(self, request, uuid=None):
-        backend = self.get_object().get_backend()
-        backend.start()
+        resource = self.get_object()
+        if resource.state != resource.States.OFFLINE:
+            raise core_exceptions.IncorrectStateException(
+                "Resource can't be started in its current state")
+
+        backend = resource.get_backend()
+        backend.start(resource)
         return Response({'status': 'start was scheduled'}, status=status.HTTP_202_ACCEPTED)
 
     @detail_route(methods=['post'])
     def stop(self, request, uuid=None):
-        backend = self.get_object().get_backend()
-        backend.stop()
+        resource = self.get_object()
+        if resource.state != resource.States.ONLINE:
+            raise core_exceptions.IncorrectStateException(
+                "Resource can't be stopped in its current state")
+
+        backend = resource.get_backend()
+        backend.stop(resource)
         return Response({'status': 'stop was scheduled'}, status=status.HTTP_202_ACCEPTED)
 
     @detail_route(methods=['post'])
     def restart(self, request, uuid=None):
-        backend = self.get_object().get_backend()
-        backend.restart()
+        resource = self.get_object()
+        if resource.state == resource.States.OFFLINE:
+            return self.start(request, uuid)
+        elif resource.state != resource.States.ONLINE:
+            raise core_exceptions.IncorrectStateException(
+                "Resource can't be restarted in its current state")
+
+        backend = resource.get_backend()
+        backend.restart(resource)
         return Response({'status': 'restart was scheduled'}, status=status.HTTP_202_ACCEPTED)
