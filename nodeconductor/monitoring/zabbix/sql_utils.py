@@ -1,8 +1,8 @@
 from django.db import NotSupportedError
 
 
-def make_list_placeholder(xs):
-    return ", ".join('%s' for x in range(len(xs)))
+def make_list_placeholder(count):
+    return ", ".join('%s' for _ in range(count))
 
 
 def sql_date_span(engine, interval, field):

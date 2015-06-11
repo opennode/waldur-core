@@ -15,7 +15,7 @@ class ZabbixStatisticsTest(unittest.TestCase):
 
     def test_resource_names_are_converted(self):
         hosts = ('a0e2b6c08d474a15b348633a86109933', )
-        resources = ('gigabytes', )
+        resources = ('storage', )
         start = datetime_to_timestamp(datetime(2015, 6, 9))
         end = datetime_to_timestamp(datetime(2015, 6, 10))
         interval = 'day'
@@ -28,10 +28,10 @@ class ZabbixStatisticsTest(unittest.TestCase):
         )
 
         expected = [
-            (1433808000, 1433894399, 'gigabytes_usage', 0.0),
-            (1433808000, 1433894399, 'gigabytes_limit', 988972732710.5263),
-            (1433894400, 1433980799, 'gigabytes_usage', 0.0),
-            (1433894400, 1433980799, 'gigabytes_limit', 1073741824000.0)
+            (1433808000, 1433894399, 'storage_usage', 0.0),
+            (1433808000, 1433894399, 'storage_limit', 988972732710.5263),
+            (1433894400, 1433980799, 'storage_usage', 0.0),
+            (1433894400, 1433980799, 'storage_limit', 1073741824000.0)
         ]
 
         with mock.patch('nodeconductor.monitoring.zabbix.stats_client.execute_query', return_value=recordset):

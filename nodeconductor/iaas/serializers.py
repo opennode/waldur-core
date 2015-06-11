@@ -14,7 +14,7 @@ from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.monitoring.zabbix import stats_client as zabbix_stats_client
-from nodeconductor.monitoring.zabbix.utils import ItemsNames
+from nodeconductor.monitoring.zabbix import items as zabbix_items
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
@@ -881,7 +881,7 @@ class StatsAggregateSerializer(serializers.Serializer):
 class QuotaTimelineStatsSerializer(serializers.Serializer):
 
     INTERVAL_CHOICES = ('day', 'week', 'month')
-    ITEM_CHOICES = ItemsNames().get_resources()
+    ITEM_CHOICES = zabbix_items.get_choices()
 
     start_time = TimestampField(default=lambda: timeshift(days=-1))
     end_time = TimestampField(default=lambda: timeshift())

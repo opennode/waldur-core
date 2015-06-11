@@ -8,19 +8,18 @@ from django.conf import settings
 from django.utils import six
 
 from nodeconductor.monitoring.zabbix import errors
-from nodeconductor.monitoring.zabbix.utils import ItemsNames
+from nodeconductor.monitoring.zabbix import items as zabbix_items
 from nodeconductor.monitoring.zabbix.sql_utils import make_list_placeholder, sql_date_span, sql_truncate_date
 
 logger = logging.getLogger(__name__)
 
 
 def get_stats(hosts, resources, start, end, interval):
-    names = ItemsNames()
-    items = names.get_items(resources)
+    items = zabbix_items.get_items(resources)
 
     records = execute_query(hosts, items, start, end, interval)
 
-    return [(start, end, names.get_label(item), float(value))
+    return [(start, end, zabbix_items.get_label(item), float(value))
             for (start, end, item, value) in records]
 
 
@@ -72,8 +71,8 @@ def prepare_sql(hosts, items, start, end, interval):
     query = template.format(
         date_span=sql_date_span(engine, interval, 'date'),
         date_trunc=sql_truncate_date(engine, interval, 'clock'),
-        hosts=make_list_placeholder(hosts),
-        items=make_list_placeholder(items),
+        hosts=make_list_placeholder(len(hosts)),
+        items=make_list_placeholder(len(items)),
         start=start,
         end=end
     )
