@@ -8,7 +8,6 @@ from django.utils import six
 
 from nodeconductor.core import utils as core_utils
 from nodeconductor.monitoring.zabbix import errors, api_client
-from nodeconductor.monitoring.zabbix.errors import ZabbixError
 from nodeconductor.monitoring.zabbix import items as zabbix_items
 from nodeconductor.monitoring.zabbix import sql_utils
 
@@ -37,7 +36,7 @@ class ZabbixDBClient(object):
         for instance in instances:
             try:
                 host_ids.append(self.zabbix_api_client.get_host(instance)['hostid'])
-            except ZabbixError:
+            except errors.ZabbixError:
                 logger.warn('Failed to get a Zabbix host for instance %s', instance.uuid)
 
         # return an empty list if no hosts were found
@@ -90,7 +89,7 @@ class ZabbixDBClient(object):
             try:
                 host_data = self.zabbix_api_client.get_host(instance)
                 host_ids.append(int(host_data['hostid']))
-            except (ZabbixError, ValueError, KeyError):
+            except (errors.ZabbixError, ValueError, KeyError):
                 logger.warn('Failed to get Zabbix hostid for instance %s', instance.uuid)
 
         # return an empty list if no hosts were found

@@ -895,6 +895,5 @@ class QuotaTimelineStatsSerializer(serializers.Serializer):
             'end': datetime_to_timestamp(self.validated_data['end_time']),
             'interval': self.validated_data['interval']
         }
-        logger.debug("Query quota timeline statistics for %s", query)
         stats = ZabbixDBClient().get_projects_quota_timeline(**query)
         return lists_to_dicts(stats)

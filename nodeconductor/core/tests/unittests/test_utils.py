@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import unittest
 
 from nodeconductor.core import utils
-from nodeconductor.core.utils import lists_to_dicts
 
 
 class TestFormatTimeAndValueToSegmentList(unittest.TestCase):
@@ -49,7 +48,7 @@ class TestListToDict(unittest.TestCase):
                 'vcpu_usage': 5
             }
         ]
-        actual = lists_to_dicts([
+        actual = utils.lists_to_dicts([
             (1433808000, 1433894399, 'vcpu_limit', 10),
             (1433808000, 1433894399, 'vcpu_usage', 5)
         ])
