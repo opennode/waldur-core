@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.core.urlresolvers import reverse
 from mock import patch, Mock
 from rest_framework import test, status
@@ -373,3 +374,36 @@ class QuotaStatsTest(test.APITransactionTestCase):
         response = self.execute_request_with_data(self.staff, {'aggregate': 'customer', 'uuid': customer.uuid.hex})
         # then
         self.assertEqual(response.data, {})
+
+
+class QuotaTimelineStatsTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.staff = structure_factories.UserFactory(is_staff=True)
+
+    def test_stats(self):
+        expected = [
+            {
+                'from': 1433894400L,
+                'to': 1433980799L,
+                'gigabytes_limit': 1073741824000.0,
+                'gigabytes_usage': 0.0
+            },
+            {
+                'from': 1433808000L,
+                'to': 1433894399L,
+                'gigabytes_limit': 988972732710.5263,
+                'gigabytes_usage': 0.0000
+            }
+        ]
+
+        recordset = (
+            (1433808000, 1433894399, 'openstack.project.consumption.gigabytes', Decimal('0.0000')),
+            (1433808000, 1433894399, 'openstack.project.limit.gigabytes', Decimal('988972732710.5263')),
+            (1433894400, 1433980799, 'openstack.project.consumption.gigabytes', Decimal('0.0000')),
+            (1433894400, 1433980799, 'openstack.project.limit.gigabytes', Decimal('1073741824000.0000'))
+        )
+
+        with patch('nodeconductor.monitoring.zabbix.stats_client.execute_query', return_value=recordset):
+            self.client.force_authenticate(self.staff)
+            response = self.client.get(self.url)
+            self.assertEqual(expected, response.data)

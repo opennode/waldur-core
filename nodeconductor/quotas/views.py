@@ -1,11 +1,9 @@
 from __future__ import unicode_literals
-from nodeconductor.quotas.serializers import QuotaTimelineStatsSerializer
 
 from rest_framework import permissions as rf_permissions, exceptions as rf_exceptions
-from rest_framework import views, viewsets, status, mixins, response
+from rest_framework import viewsets, mixins
 
 from nodeconductor.core.pagination import UnlimitedLinkHeaderPagination
-
 from nodeconductor.quotas import models, serializers
 
 
@@ -91,26 +89,3 @@ class QuotaFilterMixin(object):
 
         data.setlist(self.order_by_field, order_by_input)
 
-class QuotaTimelineStatsView(views.APIView):
-    """
-    Count quota usage and limit history statistics
-    """
-
-    def get(self, request):
-        data = self.get_data(request)
-        serializer = QuotaTimelineStatsSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-
-        stats = serializer.get_stats(request.user)
-        return response.Response(stats, status=status.HTTP_200_OK)
-
-    def get_data(self, request):
-        mapped = {
-            'start_time': request.query_params.get('from'),
-            'end_time': request.query_params.get('to'),
-            'interval': request.query_params.get('interval'),
-            'scope': request.query_params.get('scope'),
-            'item': request.query_params.get('item'),
-        }
-
-        return {key: val for (key, val) in mapped.items() if val}

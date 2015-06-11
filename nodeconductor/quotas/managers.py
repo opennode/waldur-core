@@ -29,11 +29,3 @@ class QuotaManager(models.Manager):
             object_id=obj.id
         )
         return self.get_queryset().filter(**kwargs)
-
-class QuotaLogManager(models.Manager):
-    def for_object(self, obj):
-        kwargs = dict(
-            quota__content_type=ct_models.ContentType.objects.get_for_model(obj._meta.model),
-            quota__object_id=obj.id
-        )
-        return self.get_queryset().filter(**kwargs)

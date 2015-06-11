@@ -3,12 +3,10 @@ from django.contrib.contenttypes import models as ct_models
 from django.db import models, transaction
 from django.db.models import Sum
 from django.utils.encoding import python_2_unicode_compatible
-from model_utils.fields import AutoCreatedField
 
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.quotas import exceptions, managers
 from nodeconductor.core.models import UuidMixin, NameMixin
-from nodeconductor.quotas.managers import QuotaLogManager
 
 
 @python_2_unicode_compatible
@@ -210,10 +208,3 @@ class QuotaModelMixin(models.Model):
                 result[quota_sum['name']] = quota_sum['limit']
 
         return result
-
-class QuotaLog(models.Model):
-    quota = models.ForeignKey(Quota, related_name='items')
-    limit = models.FloatField(default=-1)
-    usage = models.FloatField(default=0)
-    created = AutoCreatedField()
-    objects = QuotaLogManager()

@@ -18,8 +18,3 @@ class QuotasConfig(AppConfig):
             sender=Quota,
             dispatch_uid='nodeconductor.quotas.handlers.check_quota_threshold_breach',
         )
-
-        signals.post_save.connect(
-            handlers.create_quota_log,
-            sender=Quota
-        )

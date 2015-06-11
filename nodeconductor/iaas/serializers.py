@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import logging
+
 from django.core.urlresolvers import reverse
 from django.core.validators import MaxLengthValidator
 from django.db import IntegrityError
@@ -11,9 +13,14 @@ from nodeconductor.core import models as core_models, serializers as core_serial
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
+from nodeconductor.monitoring.zabbix import stats_client as zabbix_stats_client
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
+from nodeconductor.core.fields import TimestampField
+from nodeconductor.core.utils import timeshift, datetime_to_timestamp, lists_to_dicts
+
+logger = logging.getLogger(__name__)
 
 
 class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
@@ -869,3 +876,25 @@ class StatsAggregateSerializer(serializers.Serializer):
     def get_memberships(self, user):
         projects = self.get_projects(user)
         return models.CloudProjectMembership.objects.filter(project__in=projects).all()
+
+class QuotaTimelineStatsSerializer(serializers.Serializer):
+
+    INTERVAL_CHOICES = ('day', 'week', 'month')
+    ITEM_CHOICES = ('vcpu', 'ram', 'instances')
+
+    start_time = TimestampField(default=lambda: timeshift(days=-1))
+    end_time = TimestampField(default=lambda: timeshift())
+    interval = serializers.ChoiceField(choices=INTERVAL_CHOICES, default='day')
+    item = serializers.ChoiceField(choices=ITEM_CHOICES, required=False)
+
+    def get_stats(self, memberships):
+        query = {
+            'hosts': memberships.values_list('tenant_id', flat=True),
+            'resources': self.validated_data.get('item') or self.ITEM_CHOICES,
+            'start': datetime_to_timestamp(self.validated_data['start_time']),
+            'end': datetime_to_timestamp(self.validated_data['end_time']),
+            'interval': self.validated_data['interval']
+        }
+        logger.debug("Query quota timeline statistics for %s", query)
+        stats = zabbix_stats_client.get_stats(**query)
+        return lists_to_dicts(stats)
