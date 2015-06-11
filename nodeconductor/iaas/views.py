@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from copy import deepcopy
 import functools
 import datetime
 import logging
@@ -30,7 +29,7 @@ from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.core.utils import sort_dict, timestamp_to_datetime, datetime_to_timestamp
+from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
