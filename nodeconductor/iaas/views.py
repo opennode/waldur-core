@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from copy import deepcopy
 import functools
 import datetime
 import logging
@@ -1206,8 +1207,9 @@ class OpenstackAlertStatsView(views.APIView):
         })
         aggregate_serializer.is_valid(raise_exception=True)
 
+        yesturday = timezone.now() - datetime.timedelta(days=1)
         time_interval_serializer = serializers.TimeIntervalSerializer(data={
-            'start_timestamp': request.query_params.get('from'),
+            'start_timestamp': request.query_params.get('from', datetime_to_timestamp(yesturday)),
             'end_timestamp': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
         })
         time_interval_serializer.is_valid(raise_exception=True)
@@ -1241,9 +1243,12 @@ class OpenstackAlertStatsView(views.APIView):
         alerts = (logging_models.Alert.objects.filter(aggregate_query)
                                               .filter(closed_time_query)
                                               .filter(created_time_query))
-        alerts_severities = alerts.values('severity').annotate(count=Count('severity'))
-        severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
-        for alert_severity in alerts_severities:
-            alert_severity['severity'] = severity_names[alert_severity.pop('severity')]
+        alerts_severities_count = alerts.values('severity').annotate(count=Count('severity'))
 
-        return Response(alerts_severities, status=status.HTTP_200_OK)
+        severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
+        alerts_severities_count = {severity_names[asc['severity']]: asc['count'] for asc in alerts_severities_count}
+        for severity_name in severity_names.values():
+            if severity_name not in alerts_severities_count:
+                alerts_severities_count[severity_name] = 0
+
+        return Response(alerts_severities_count, status=status.HTTP_200_OK)

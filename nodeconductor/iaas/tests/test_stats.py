@@ -426,8 +426,12 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
 
         self.assertItemsEqual(
             response.data,
-            [{'severity': severity_names[logging_models.Alert.SeverityChoices.ERROR], 'count': len(error_alerts)},
-             {'severity': severity_names[logging_models.Alert.SeverityChoices.WARNING], 'count': len(warning_alerts)}]
+            {
+                severity_names[logging_models.Alert.SeverityChoices.ERROR]: len(error_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(warning_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.DEBUG]: 0,
+            }
         )
 
     def test_alerts_stats_can_be_filtered_by_time_interval(self):
@@ -457,7 +461,12 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
 
         self.assertItemsEqual(
             response.data,
-            [{'severity': severity_names[logging_models.Alert.SeverityChoices.WARNING], 'count': len(old_alerts)}]
+            {
+                severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(old_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.DEBUG]: 0,
+            }
         )
 
     def test_alerts_can_be_filtered_by_project(self):
@@ -491,7 +500,12 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
 
         self.assertItemsEqual(
             response.data,
-            [{'severity': severity_names[logging_models.Alert.SeverityChoices.WARNING], 'count': len(project1_alerts)}]
+            {
+                severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(project1_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.DEBUG]: 0,
+            }
         )
 
     def test_project_administrator_can_see_only_alerts_of_his_project(self):
@@ -523,7 +537,12 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
 
         self.assertItemsEqual(
             response.data,
-            [{'severity': severity_names[logging_models.Alert.SeverityChoices.WARNING], 'count': len(project1_alerts)}]
+            {
+                severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(project1_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.DEBUG]: 0,
+            }
         )
 
     def test_instances_alerts_are_counted_in_project_alerts(self):
@@ -549,6 +568,10 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
 
         self.assertItemsEqual(
             response.data,
-            [{'severity': severity_names[logging_models.Alert.SeverityChoices.WARNING],
-              'count': len(instances_alerts)}]
+            {
+                severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(instances_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.DEBUG]: 0,
+            }
         )
