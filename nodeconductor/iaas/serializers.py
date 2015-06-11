@@ -876,19 +876,17 @@ class StatsAggregateSerializer(serializers.Serializer):
 
 
 class TimeIntervalSerializer(serializers.Serializer):
-    start_timestamp = serializers.IntegerField(min_value=0)
-    end_timestamp = serializers.IntegerField(min_value=0)
+    start = serializers.IntegerField(min_value=0)
+    end = serializers.IntegerField(min_value=0)
 
     def validate(self, data):
         """
         Check that the start is before the end.
         """
-        if data['start_timestamp'] > data['end_timestamp']:
+        if data['start'] >= data['end']:
             raise serializers.ValidationError("End must occur after start")
         return data
 
-    def get_start_datetime(self):
-        return core_utils.timestamp_to_datetime(self.validated_data['start_timestamp'])
-
-    def get_end_datetime(self):
-        return core_utils.timestamp_to_datetime(self.validated_data['end_timestamp'])
+    def to_internal_value(self, data):
+        internal_value = super(TimeIntervalSerializer, self).to_internal_value(data)
+        return {key: core_utils.timestamp_to_datetime(value) for key, value in internal_value.items()}

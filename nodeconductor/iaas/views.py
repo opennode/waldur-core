@@ -1206,10 +1206,10 @@ class OpenstackAlertStatsView(views.APIView):
         })
         aggregate_serializer.is_valid(raise_exception=True)
 
-        yesturday = timezone.now() - datetime.timedelta(days=1)
+        yesterday = timezone.now() - datetime.timedelta(days=1)
         time_interval_serializer = serializers.TimeIntervalSerializer(data={
-            'start_timestamp': request.query_params.get('from', datetime_to_timestamp(yesturday)),
-            'end_timestamp': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
+            'start': request.query_params.get('from', datetime_to_timestamp(yesterday)),
+            'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
         })
         time_interval_serializer.is_valid(raise_exception=True)
 
@@ -1236,8 +1236,8 @@ class OpenstackAlertStatsView(views.APIView):
                 object_id__in=instances_ids
             )
 
-        closed_time_query = Q(closed__gte=time_interval_serializer.get_start_datetime()) | Q(closed__isnull=True)
-        created_time_query = Q(created__lte=time_interval_serializer.get_end_datetime())
+        closed_time_query = Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True)
+        created_time_query = Q(created__lte=time_interval_serializer.validated_data['end'])
 
         alerts = (logging_models.Alert.objects.filter(aggregate_query)
                                               .filter(closed_time_query)

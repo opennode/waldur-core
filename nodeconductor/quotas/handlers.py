@@ -62,7 +62,7 @@ def quantity_quota_handler_factory(path_to_quota_scope, quota_name, count=1):
 
 def check_quota_threshold_breach(sender, instance, **kwargs):
     quota = instance
-    alert_threshold = 80
+    alert_threshold = 0.8
 
     if quota.is_exceeded(threshold=alert_threshold):
         alert_logger.quota.warning(
