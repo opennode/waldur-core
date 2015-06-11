@@ -14,6 +14,7 @@ from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.monitoring.zabbix import stats_client as zabbix_stats_client
+from nodeconductor.monitoring.zabbix.utils import ItemsNames
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
@@ -880,7 +881,7 @@ class StatsAggregateSerializer(serializers.Serializer):
 class QuotaTimelineStatsSerializer(serializers.Serializer):
 
     INTERVAL_CHOICES = ('day', 'week', 'month')
-    ITEM_CHOICES = ('vcpu', 'ram', 'instances')
+    ITEM_CHOICES = ItemsNames().get_resources()
 
     start_time = TimestampField(default=lambda: timeshift(days=-1))
     end_time = TimestampField(default=lambda: timeshift())
@@ -889,7 +890,7 @@ class QuotaTimelineStatsSerializer(serializers.Serializer):
 
     def get_stats(self, memberships):
         query = {
-            'hosts': memberships.values_list('tenant_id', flat=True),
+            'hosts': memberships.exclude(tenant_id='').values_list('tenant_id', flat=True),
             'resources': self.validated_data.get('item') or self.ITEM_CHOICES,
             'start': datetime_to_timestamp(self.validated_data['start_time']),
             'end': datetime_to_timestamp(self.validated_data['end_time']),

@@ -20,6 +20,13 @@ class ItemsNames(object):
             ('openstack.project.consumption.volumes', 'volumes', 'usage'),
         )
 
+    def get_resources(self):
+        resources = set()
+        for row in self.rows:
+            item, resource, variant = row
+            resources.add(resource)
+        return resources
+
     def get_items(self, resources):
         """
         >>> get_items(('vcpu', 'ram'))
