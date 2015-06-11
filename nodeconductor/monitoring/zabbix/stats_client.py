@@ -51,10 +51,10 @@ def execute_query(hosts, items, start, end, interval):
 
 def prepare_sql(hosts, items, start, end, interval):
     template = """
-  SELECT {date_span}, item, sum(value)
+  SELECT {date_span}, item, SUM(value)
     FROM (SELECT {date_trunc} AS date,
                items.key_ AS item,
-               avg(value) AS value
+               AVG(value) AS value
           FROM hosts, 
                items,
                history_uint

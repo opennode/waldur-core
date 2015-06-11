@@ -20,7 +20,7 @@ def get_choices():
 
 def get_items(resources):
     """
-    >>> get_items(('vcpu', 'ram'))
+    >>> get_items(('instances', 'ram'))
     [
       'openstack.project.quota_limit.instances',
       'openstack.project.quota_consumption.instances',
@@ -28,10 +28,10 @@ def get_items(resources):
       'openstack.project.quota_consumption.ram'
     ]
     """
-    items = []
+    items = set()
     for (item, resource, variant) in CHOICES:
         if resource in resources:
-            items.append(item)
+            items.add(item)
     return items
 
 def get_label(item):

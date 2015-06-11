@@ -385,14 +385,14 @@ class QuotaTimelineStatsTest(test.APITransactionTestCase):
             {
                 'from': 1433894400L,
                 'to': 1433980799L,
-                'gigabytes_limit': 1073741824000.0,
-                'gigabytes_usage': 0.0
+                'storage_limit': 1073741824000.0,
+                'storage_usage': 0.0
             },
             {
                 'from': 1433808000L,
                 'to': 1433894399L,
-                'gigabytes_limit': 988972732710.5263,
-                'gigabytes_usage': 0.0000
+                'storage_limit': 988972732710.5263,
+                'storage_usage': 0.0000
             }
         ]
 
