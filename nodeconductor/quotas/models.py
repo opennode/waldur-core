@@ -77,10 +77,7 @@ class QuotaModelMixin(models.Model):
     quotas = ct_fields.GenericRelation('quotas.Quota', related_query_name='quotas')
 
     def set_quota_limit(self, quota_name, limit):
-        with transaction.atomic():
-            original_quota = self.quotas.get(name=quota_name)
-            original_quota.limit = limit
-            original_quota.save()
+        self.quotas.filter(name=quota_name).update(limit=limit)
 
     def set_quota_usage(self, quota_name, usage):
         with transaction.atomic():

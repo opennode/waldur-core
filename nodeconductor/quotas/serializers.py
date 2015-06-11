@@ -3,9 +3,6 @@ from rest_framework import serializers
 from nodeconductor.quotas import models, utils
 from nodeconductor.core.serializers import GenericRelatedField
 
-import logging
-
-logger = logging.getLogger(__name__)
 
 class QuotaSerializer(serializers.HyperlinkedModelSerializer):
     scope = GenericRelatedField(related_models=utils.get_models_with_quotas(), read_only=True)
@@ -17,4 +14,3 @@ class QuotaSerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
-

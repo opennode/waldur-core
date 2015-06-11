@@ -2,8 +2,6 @@ from django.db.models import signals
 
 from nodeconductor.quotas.log import alert_logger
 
-import logging
-logger = logging.getLogger(__name__)
 
 def add_quotas_to_scope(sender, instance, created=False, **kwargs):
     if created:
