@@ -379,6 +379,7 @@ class QuotaStatsTest(test.APITransactionTestCase):
 class QuotaTimelineStatsTest(test.APITransactionTestCase):
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
+        self.url = reverse('stats_quota_timeline')
 
     def test_stats(self):
         expected = [
