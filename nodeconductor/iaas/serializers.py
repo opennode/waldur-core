@@ -13,7 +13,6 @@ from nodeconductor.core import models as core_models, serializers as core_serial
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
-from nodeconductor.monitoring.zabbix import stats_client as zabbix_stats_client
 from nodeconductor.monitoring.zabbix import items as zabbix_items
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
@@ -897,5 +896,5 @@ class QuotaTimelineStatsSerializer(serializers.Serializer):
             'interval': self.validated_data['interval']
         }
         logger.debug("Query quota timeline statistics for %s", query)
-        stats = zabbix_stats_client.get_stats(**query)
+        stats = ZabbixDBClient().get_projects_quota_timeline(**query)
         return lists_to_dicts(stats)

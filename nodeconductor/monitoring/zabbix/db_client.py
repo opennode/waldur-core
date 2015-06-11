@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import logging
 import sys
 
@@ -7,13 +9,13 @@ from django.utils import six
 from nodeconductor.core import utils as core_utils
 from nodeconductor.monitoring.zabbix import errors, api_client
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
-
+from nodeconductor.monitoring.zabbix import items as zabbix_items
+from nodeconductor.monitoring.zabbix import sql_utils
 
 logger = logging.getLogger(__name__)
 
 
 class ZabbixDBClient(object):
-
     items = {
         'cpu': {'key': 'kvm.vm.cpu.util', 'table': 'history', 'convert_to_mb': False},
         'memory': {'key': 'kvm.vm.memory.size.used', 'table': 'history_uint', 'convert_to_mb': True},
@@ -22,6 +24,9 @@ class ZabbixDBClient(object):
 
     def __init__(self):
         self.zabbix_api_client = api_client.ZabbixApiClient()
+
+    def get_projects_quota_timeline(self, *args, **kwargs):
+        return ProjectsQuotaTimeline(*args, **kwargs).execute()
 
     def get_item_stats(self, instances, item, start_timestamp, end_timestamp, segments_count):
         # FIXME: Quick and dirty hack to handle storage in a separate flow
@@ -133,7 +138,7 @@ class ZabbixDBClient(object):
             preceding_values = [
                 value for time, value in actual_values
                 if time < segment_end_timestamp
-            ]
+                ]
             try:
                 value = preceding_values[-1]
             except IndexError:
@@ -146,3 +151,71 @@ class ZabbixDBClient(object):
             })
 
         return resampled_values
+
+
+class ProjectsQuotaTimeline(object):
+    def __init__(self, hosts, resources, start, end, interval):
+        """
+        hosts: list of tenant UUID
+        items: list of items, such as 'vcpu', 'ram'
+        start, end: timestamp
+        interval: day, week, month
+        Returns list of tuples like
+        (1415912624, 1415912630, 'vcpu_limit', 2048.0)
+        """
+        self.hosts = hosts
+        self.items = zabbix_items.get_items(resources)
+        self.start = start
+        self.end = end
+        self.interval = interval
+
+    def execute(self):
+        records = self.fetch_data()
+
+        return [(start, end, zabbix_items.get_label(item), float(value))
+                for (start, end, item, value) in records]
+
+    def fetch_data(self):
+        try:
+            query = self.prepare_sql()
+            logging.debug('Prepared Zabbix SQL query for OpenStack projects statistics %s', query)
+
+            with connections['zabbix'].cursor() as cursor:
+                cursor.execute(query, list(self.hosts) + list(self.items))
+                records = cursor.fetchall()
+
+                logging.debug('Executed Zabbix SQL query for OpenStack projects statistics %s', records)
+                return records
+
+        except DatabaseError as e:
+            logger.exception('Can not execute query the Zabbix DB.')
+            six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
+
+    def prepare_sql(self):
+        template = """
+          SELECT {date_span}, item, SUM(value)
+            FROM (SELECT {date_trunc} AS date,
+                       items.key_ AS item,
+                       AVG(value) AS value
+                  FROM hosts,
+                       items,
+                       history_uint
+                 WHERE hosts.hostid = items.hostid
+                   AND items.itemid = history_uint.itemid
+                   AND hosts.name IN ({hosts})
+                   AND items.key_ IN ({items})
+                   AND clock >= {start}
+                   AND clock <= {end}
+                 GROUP BY date, items.itemid) AS t
+          GROUP BY date, item
+          """
+        engine = sql_utils.get_zabbix_engine()
+        query = template.format(
+            date_span=sql_utils.make_date_span(engine, self.interval, 'date'),
+            date_trunc=sql_utils.truncate_date(engine, self.interval, 'clock'),
+            hosts=sql_utils.make_list_placeholder(len(self.hosts)),
+            items=sql_utils.make_list_placeholder(len(self.items)),
+            start=self.start,
+            end=self.end
+        )
+        return query

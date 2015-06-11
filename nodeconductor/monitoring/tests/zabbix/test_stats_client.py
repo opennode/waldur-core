@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from django.db import DatabaseError
 
-from nodeconductor.monitoring.zabbix.stats_client import get_stats
+from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.core.utils import datetime_to_timestamp
 
 
@@ -38,7 +38,8 @@ class ZabbixStatisticsTest(unittest.TestCase):
             (1433894400, 1433980799, 'storage_limit', 1073741824000.0)
         ]
 
-        with mock.patch('nodeconductor.monitoring.zabbix.stats_client.execute_query', return_value=recordset) as execute_query:
-            actual = get_stats(hosts, resources, start, end, interval)
-            execute_query.assert_called_once_with(hosts, items, start, end, interval)
+        with mock.patch('nodeconductor.monitoring.zabbix.db_client.ProjectsQuotaTimeline.fetch_data', 
+            return_value=recordset) as fetch_data:
+            actual = ZabbixDBClient().get_projects_quota_timeline(hosts, resources, start, end, interval)
+            fetch_data.assert_called_once()
             self.assertEqual(expected, actual)

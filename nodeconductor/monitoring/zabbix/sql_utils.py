@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import NotSupportedError
 
 
@@ -5,7 +6,7 @@ def make_list_placeholder(count):
     return ", ".join('%s' for _ in range(count))
 
 
-def sql_date_span(engine, interval, field):
+def make_date_span(engine, interval, field):
     """
     Returns start and end of timeframe for given duration:
     1) Format 2015-06-09 to 1433808000
@@ -23,10 +24,10 @@ def sql_date_span(engine, interval, field):
     return template.format(field=field, interval=interval)
 
 
-def sql_truncate_date(engine, interval, field):
+def truncate_date(engine, interval, field):
     """
     Returns function which truncates UNIX timestamp to interval
-    >>> sql_truncate_date('mysql', 'minute', 'clock')
+    >>> truncate_date('mysql', 'minute', 'clock')
     "DATE_FORMAT(`clock`, '%%Y-%%m-%%d %%H:%%i')"
     """
     FUNCTIONS_FOR_ENGINES = {
@@ -56,3 +57,12 @@ def sql_truncate_date(engine, interval, field):
 
     template = FUNCTIONS_FOR_ENGINES[engine][interval]
     return template.replace('{}', field)
+
+
+def get_zabbix_engine():
+    cls_name = settings.DATABASES['zabbix']['ENGINE']
+
+    for engine in ('mysql', 'postgresql'):
+        if engine in cls_name:
+            return engine
+    raise NotSupportedError("Database engine %s is not supported" % engine)
