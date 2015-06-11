@@ -205,6 +205,7 @@ Available request parameters:
 Answer will be list of dictionaries with fields, determining time frame. It's size is equal to interval paramter. Values within each bucket are averaged for each host and then all tenants' metrics are summarized.
 
 Value fields include:
+
 - vcpu_limit - virtual CPUs quota
 - vcpu_usage - virtual CPUs usage
 - ram_limit - RAM quota
