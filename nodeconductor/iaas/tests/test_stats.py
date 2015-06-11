@@ -1,9 +1,15 @@
+from datetime import timedelta
+
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from mock import patch, Mock
 from rest_framework import test, status
 
+from nodeconductor.core import utils as core_utils
 from nodeconductor.iaas import models
 from nodeconductor.iaas.tests import factories
+from nodeconductor.logging import models as logging_models
+from nodeconductor.logging.tests import factories as logging_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -373,3 +379,176 @@ class QuotaStatsTest(test.APITransactionTestCase):
         response = self.execute_request_with_data(self.staff, {'aggregate': 'customer', 'uuid': customer.uuid.hex})
         # then
         self.assertEqual(response.data, {})
+
+
+class OpenstackAlertStatsTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.customer = structure_factories.CustomerFactory()
+        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
+        self.project1 = structure_factories.ProjectFactory(customer=self.customer)
+        self.project2 = structure_factories.ProjectFactory(customer=self.customer)
+        self.membership1 = factories.CloudProjectMembershipFactory(project=self.project1)
+        self.membership2 = factories.CloudProjectMembershipFactory(project=self.project2)
+        self.project_group.projects.add(self.project1)
+        # users
+        self.staff = structure_factories.UserFactory(is_staff=True)
+        self.customer_owner = structure_factories.UserFactory()
+        self.customer.add_user(self.customer_owner, structure_models.CustomerRole.OWNER)
+        self.project1_admin = structure_factories.UserFactory()
+        self.project1.add_user(self.project1_admin, structure_models.ProjectRole.ADMINISTRATOR)
+
+        self.url = 'http://testserver' + reverse('stats_alerts')
+
+    def test_customer_owner_can_see_stats_for_all_alerts_that_are_related_to_his_customer(self):
+        warning_alerts = [
+            logging_factories.AlertFactory(
+                severity=logging_models.Alert.SeverityChoices.WARNING,
+                scope=self.membership1,
+                closed=None,
+                created=timezone.now() - timedelta(minutes=1))
+            for _ in range(3)]
+        error_alerts = [
+            logging_factories.AlertFactory(
+                severity=logging_models.Alert.SeverityChoices.ERROR,
+                scope=self.membership2,
+                closed=None,
+                created=timezone.now() - timedelta(minutes=1))
+            for _ in range(2)]
+
+        self.client.force_authenticate(self.customer_owner)
+        response = self.client.get(
+            self.url,
+            data={'from': core_utils.datetime_to_timestamp(timezone.now() - timedelta(minutes=10))})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
+
+        self.assertItemsEqual(
+            response.data,
+            [{'severity': severity_names[logging_models.Alert.SeverityChoices.ERROR], 'count': len(error_alerts)},
+             {'severity': severity_names[logging_models.Alert.SeverityChoices.WARNING], 'count': len(warning_alerts)}]
+        )
+
+    def test_alerts_stats_can_be_filtered_by_time_interval(self):
+        # new alerts
+        for _ in range(3):
+            logging_factories.AlertFactory(
+                severity=logging_models.Alert.SeverityChoices.WARNING,
+                scope=self.membership1,
+                closed=timezone.now(),
+                created=timezone.now() - timedelta(minutes=10))
+        old_alerts = [
+            logging_factories.AlertFactory(
+                severity=logging_models.Alert.SeverityChoices.WARNING,
+                scope=self.membership2,
+                closed=timezone.now() - timedelta(minutes=20),
+                created=timezone.now() - timedelta(minutes=30))
+            for _ in range(2)]
+
+        self.client.force_authenticate(self.customer_owner)
+        response = self.client.get(
+            self.url,
+            data={'from': core_utils.datetime_to_timestamp(timezone.now() - timedelta(minutes=35)),
+                  'to': core_utils.datetime_to_timestamp(timezone.now() - timedelta(minutes=15))})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
+
+        self.assertItemsEqual(
+            response.data,
+            [{'severity': severity_names[logging_models.Alert.SeverityChoices.WARNING], 'count': len(old_alerts)}]
+        )
+
+    def test_alerts_can_be_filtered_by_project(self):
+        project1_alerts = [
+            logging_factories.AlertFactory(
+                severity=logging_models.Alert.SeverityChoices.WARNING,
+                scope=self.membership1,
+                closed=None,
+                created=timezone.now() - timedelta(minutes=1))
+            for _ in range(3)]
+        # project 2 alerts
+        for _ in range(2):
+            logging_factories.AlertFactory(
+                severity=logging_models.Alert.SeverityChoices.ERROR,
+                scope=self.membership2,
+                closed=None,
+                created=timezone.now() - timedelta(minutes=1))
+
+        self.client.force_authenticate(self.customer_owner)
+        response = self.client.get(
+            self.url,
+            data={
+                'from': core_utils.datetime_to_timestamp(timezone.now() - timedelta(minutes=10)),
+                'aggregate': 'project',
+                'uuid': self.project1.uuid.hex,
+            }
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
+
+        self.assertItemsEqual(
+            response.data,
+            [{'severity': severity_names[logging_models.Alert.SeverityChoices.WARNING], 'count': len(project1_alerts)}]
+        )
+
+    def test_project_administrator_can_see_only_alerts_of_his_project(self):
+        project1_alerts = [
+            logging_factories.AlertFactory(
+                severity=logging_models.Alert.SeverityChoices.WARNING,
+                scope=self.membership1,
+                closed=None,
+                created=timezone.now() - timedelta(minutes=1))
+            for _ in range(3)]
+        # project 2 alerts
+        for _ in range(2):
+            logging_factories.AlertFactory(
+                severity=logging_models.Alert.SeverityChoices.WARNING,
+                scope=self.membership2,
+                closed=None,
+                created=timezone.now() - timedelta(minutes=1))
+
+        self.client.force_authenticate(self.project1_admin)
+        response = self.client.get(
+            self.url,
+            data={
+                'from': core_utils.datetime_to_timestamp(timezone.now() - timedelta(minutes=10)),
+            }
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
+
+        self.assertItemsEqual(
+            response.data,
+            [{'severity': severity_names[logging_models.Alert.SeverityChoices.WARNING], 'count': len(project1_alerts)}]
+        )
+
+    def test_instances_alerts_are_counted_in_project_alerts(self):
+        instance = factories.InstanceFactory(cloud_project_membership=self.membership1)
+        instances_alerts = [
+            logging_factories.AlertFactory(
+                severity=logging_models.Alert.SeverityChoices.WARNING,
+                scope=instance,
+                closed=None,
+                created=timezone.now() - timedelta(minutes=1))
+            for _ in range(3)]
+
+        self.client.force_authenticate(self.project1_admin)
+        response = self.client.get(
+            self.url,
+            data={
+                'from': core_utils.datetime_to_timestamp(timezone.now() - timedelta(minutes=10)),
+            }
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
+
+        self.assertItemsEqual(
+            response.data,
+            [{'severity': severity_names[logging_models.Alert.SeverityChoices.WARNING],
+              'count': len(instances_alerts)}]
+        )

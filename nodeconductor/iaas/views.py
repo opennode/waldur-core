@@ -1214,6 +1214,7 @@ class OpenstackAlertStatsView(views.APIView):
 
         projects_ids = aggregate_serializer.get_projects(request.user).values_list('id', flat=True)
         memberships_ids = aggregate_serializer.get_memberships(request.user).values_list('id', flat=True)
+        instances_ids = aggregate_serializer.get_instances(request.user).values_list('id', flat=True)
 
         aggregate_query = Q()
         # XXX: We need to include projects, because we have openstack-related quotas that are connected to projects,
@@ -1227,6 +1228,11 @@ class OpenstackAlertStatsView(views.APIView):
             aggregate_query |= Q(
                 content_type=ContentType.objects.get_for_model(models.CloudProjectMembership),
                 object_id__in=memberships_ids
+            )
+        if instances_ids:
+            aggregate_query |= Q(
+                content_type=ContentType.objects.get_for_model(models.Instance),
+                object_id__in=instances_ids
             )
 
         closed_time_query = Q(closed__gte=time_interval_serializer.get_start_datetime()) | Q(closed__isnull=True)

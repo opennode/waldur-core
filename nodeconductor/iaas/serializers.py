@@ -870,6 +870,10 @@ class StatsAggregateSerializer(serializers.Serializer):
         projects = self.get_projects(user)
         return models.CloudProjectMembership.objects.filter(project__in=projects).all()
 
+    def get_instances(self, user):
+        projects = self.get_projects(user)
+        return models.Instance.objects.filter(cloud_project_membership__project__in=projects).all()
+
 
 class TimeIntervalSerializer(serializers.Serializer):
     start_timestamp = serializers.IntegerField(min_value=0)
