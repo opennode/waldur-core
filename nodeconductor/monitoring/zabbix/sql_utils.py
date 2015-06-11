@@ -3,7 +3,7 @@ from django.db import NotSupportedError
 
 
 def make_list_placeholder(count):
-    return ", ".join('%s' for _ in range(count))
+    return ", ".join(r'%s' for _ in range(count))
 
 
 def make_date_span(engine, interval, field):

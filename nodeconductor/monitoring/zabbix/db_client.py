@@ -8,7 +8,6 @@ from django.utils import six
 
 from nodeconductor.core import utils as core_utils
 from nodeconductor.monitoring.zabbix import errors, api_client
-from nodeconductor.monitoring.zabbix import items as zabbix_items
 from nodeconductor.monitoring.zabbix import sql_utils
 
 logger = logging.getLogger(__name__)
@@ -16,16 +15,147 @@ logger = logging.getLogger(__name__)
 
 class ZabbixDBClient(object):
     items = {
-        'cpu': {'key': 'kvm.vm.cpu.util', 'table': 'history', 'convert_to_mb': False},
-        'memory': {'key': 'kvm.vm.memory.size.used', 'table': 'history_uint', 'convert_to_mb': True},
-        'storage': {'key': 'kvm.vm.disk.size', 'table': 'history_uint', 'convert_to_mb': True}
+        'cpu': {
+            'key': 'kvm.vm.cpu.util',
+            'table': 'history',
+            'convert_to_mb': False
+        },
+
+        'memory': {
+            'key': 'kvm.vm.memory.size.used',
+            'table': 'history_uint',
+            'convert_to_mb': True
+        },
+
+        'storage': {
+            'key': 'kvm.vm.disk.size',
+            'table': 'history_uint',
+            'convert_to_mb': True
+        },
+
+        'project_instances_limit': {
+            'key': 'openstack.project.quota_limit.instances',
+            'table': 'history_uint',
+            'convert_to_mb': False
+        },
+
+        'project_instances_usage': {
+            'key': 'openstack.project.quota_consumption.instances',
+            'table': 'history_uint',
+            'convert_to_mb': False
+        },
+
+        'project_vcpu_limit': {
+            'key': 'openstack.project.quota_limit.cores',
+            'table': 'history_uint',
+            'convert_to_mb': False
+        },
+
+        'project_vcpu_usage': {
+            'key': 'openstack.project.quota_consumption.cores',
+            'table': 'history_uint',
+            'convert_to_mb': False
+        },
+
+        'project_ram_limit': {
+            'key': 'openstack.project.quota_limit.ram',
+            'table': 'history_uint',
+            'convert_to_mb': True
+        },
+
+        'project_ram_usage': {
+            'key': 'openstack.project.quota_consumption.ram',
+            'table': 'history_uint',
+            'convert_to_mb': True
+        },
+
+        'project_storage_limit': {
+            'key': 'openstack.project.limit.gigabytes',
+            'table': 'history_uint',
+            'convert_to_mb': True
+        },
+
+        'project_storage_usage': {
+            'key': 'openstack.project.consumption.gigabytes',
+            'table': 'history_uint',
+            'convert_to_mb': True
+        },
     }
 
     def __init__(self):
         self.zabbix_api_client = api_client.ZabbixApiClient()
 
-    def get_projects_quota_timeline(self, *args, **kwargs):
-        return ProjectsQuotaTimeline(*args, **kwargs).execute()
+    def get_projects_quota_timeline(self, hosts, items, start, end, interval):
+        """
+        hosts: list of tenant UUID
+        items: list of items, such as 'vcpu', 'ram'
+        start, end: timestamp
+        interval: day, week, month
+        Returns list of tuples like
+        (1415912624, 1415912630, 'vcpu_limit', 2048)
+        """
+
+        template = r"""
+          SELECT {date_span}, item, SUM(value)
+            FROM (SELECT {date_trunc} AS date,
+                       items.key_ AS item,
+                       AVG(value) AS value
+                  FROM hosts,
+                       items,
+                       history_uint
+                 WHERE hosts.hostid = items.hostid
+                   AND items.itemid = history_uint.itemid
+                   AND hosts.name IN ({hosts_placeholder})
+                   AND items.key_ IN ({items_placeholder})
+                   AND clock >= %s
+                   AND clock <= %s
+                 GROUP BY date, items.itemid) AS t
+          GROUP BY date, item
+          """
+
+        try:
+            engine = sql_utils.get_zabbix_engine()
+            query = template.format(
+                date_span=sql_utils.make_date_span(engine, interval, 'date'),
+                date_trunc=sql_utils.truncate_date(engine, interval, 'clock'),
+                hosts_placeholder=sql_utils.make_list_placeholder(len(hosts)),
+                items_placeholder=sql_utils.make_list_placeholder(len(items)),
+            )
+            items = [self.items[name]['key'] for name in items]
+            params = hosts + items + [start, end]
+            logging.warning('Prepared Zabbix SQL query for OpenStack projects statistics %s %s', query, params)
+
+            with connections['zabbix'].cursor() as cursor:
+                cursor.execute(query, params)
+                records = cursor.fetchall()
+                logging.debug('Executed Zabbix SQL query for OpenStack projects statistics %s', records)
+
+        except DatabaseError as e:
+            logger.exception('Can not execute query the Zabbix DB.')
+            six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
+
+        return self.prepare_result(records)
+
+    def prepare_result(self, records):
+        """
+        Converts names and values
+        """
+        results = []
+        for (start, end, key, value) in records:
+            name = self.get_item_name_by_key(key)
+            if name == None:
+                logging.debug('Invalid item key %s', key)
+                continue
+            if self.items[name]['convert_to_mb']:
+                value = value / (1024 * 1024)
+            value = int(value)
+            results.append((start, end, name, value))
+        return results
+
+    def get_item_name_by_key(self, key):
+        for name, value in self.items.items():
+            if value['key'] == key:
+                return name
 
     def get_item_stats(self, instances, item, start_timestamp, end_timestamp, segments_count):
         # FIXME: Quick and dirty hack to handle storage in a separate flow
@@ -150,75 +280,3 @@ class ZabbixDBClient(object):
             })
 
         return resampled_values
-
-
-class ProjectsQuotaTimeline(object):
-    def __init__(self, hosts, resources, start, end, interval):
-        """
-        hosts: list of tenant UUID
-        items: list of items, such as 'vcpu', 'ram'
-        start, end: timestamp
-        interval: day, week, month
-        Returns list of tuples like
-        (1415912624, 1415912630, 'vcpu_limit', 2048.0)
-        """
-        self.hosts = hosts
-        self.items = zabbix_items.get_items(resources)
-        self.start = start
-        self.end = end
-        self.interval = interval
-
-    def execute(self):
-        records = self.fetch_data()
-        results = []
-        for (start, end, item, value) in records:
-            label = zabbix_items.get_label(item)
-            value = zabbix_items.get_value(item, value)
-            row = (start, end, label, value)
-            results.append(row)
-        return results
-
-    def fetch_data(self):
-        try:
-            query = self.prepare_sql()
-            logging.debug('Prepared Zabbix SQL query for OpenStack projects statistics %s', query)
-
-            with connections['zabbix'].cursor() as cursor:
-                cursor.execute(query, list(self.hosts) + list(self.items))
-                records = cursor.fetchall()
-
-                logging.debug('Executed Zabbix SQL query for OpenStack projects statistics %s', records)
-                return records
-
-        except DatabaseError as e:
-            logger.exception('Can not execute query the Zabbix DB.')
-            six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
-
-    def prepare_sql(self):
-        template = """
-          SELECT {date_span}, item, SUM(value)
-            FROM (SELECT {date_trunc} AS date,
-                       items.key_ AS item,
-                       AVG(value) AS value
-                  FROM hosts,
-                       items,
-                       history_uint
-                 WHERE hosts.hostid = items.hostid
-                   AND items.itemid = history_uint.itemid
-                   AND hosts.name IN ({hosts})
-                   AND items.key_ IN ({items})
-                   AND clock >= {start}
-                   AND clock <= {end}
-                 GROUP BY date, items.itemid) AS t
-          GROUP BY date, item
-          """
-        engine = sql_utils.get_zabbix_engine()
-        query = template.format(
-            date_span=sql_utils.make_date_span(engine, self.interval, 'date'),
-            date_trunc=sql_utils.truncate_date(engine, self.interval, 'clock'),
-            hosts=sql_utils.make_list_placeholder(len(self.hosts)),
-            items=sql_utils.make_list_placeholder(len(self.items)),
-            start=self.start,
-            end=self.end
-        )
-        return query
