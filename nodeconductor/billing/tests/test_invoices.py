@@ -83,3 +83,11 @@ class CreateInvoicesTaskTest(TestCase):
 
             self.assertTrue(mocked_openstack().get_ceilometer_statistics.called)
             self.assertTrue(mocked_billing().api.create_invoice.called)
+
+
+class CreateSampleDateTest(TestCase):
+    def setUp(self):
+        self.customer = CustomerFactory()
+
+    def test_create_sample_billing_data_fails(self):
+        call_command('createsamplebillingdata')

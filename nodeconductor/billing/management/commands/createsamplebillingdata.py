@@ -10,11 +10,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         invoices = (
-            {'date': '2015-03-15', 'amount': '12.95'},
-            {'date': '2015-02-07', 'amount': '319.00'},
-            {'date': '2014-10-10', 'amount': '7.95'},
-            {'date': '2014-10-17', 'amount': '2.45'},
-            {'date': '2014-10-21', 'amount': '10.00'},
+            {'date': '2015-03-15', 'amount': 12.95},
+            {'date': '2015-02-07', 'amount': 319.00},
+            {'date': '2014-10-10', 'amount': 7.95},
+            {'date': '2014-10-17', 'amount': 2.45},
+            {'date': '2014-10-21', 'amount': 10.00},
         )
 
         pricelist = {
