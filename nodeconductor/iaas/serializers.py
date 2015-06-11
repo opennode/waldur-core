@@ -847,19 +847,19 @@ class StatsAggregateSerializer(serializers.Serializer):
         'project_group': structure_models.ProjectGroup,
     }
 
-    model_name = serializers.ChoiceField(choices=MODEL_NAME_CHOICES)
-    uuid = serializers.CharField(allow_null=True)
+    aggregate = serializers.ChoiceField(choices=MODEL_NAME_CHOICES, default='customer')
+    uuid = serializers.CharField(allow_null=True, default=None)
 
     def get_projects(self, user):
-        model = self.MODEL_CLASSES[self.data['model_name']]
+        model = self.MODEL_CLASSES[self.data['aggregate']]
         queryset = structure_filters.filter_queryset_for_user(model.objects.all(), user)
 
         if 'uuid' in self.data and self.data['uuid']:
             queryset = queryset.filter(uuid=self.data['uuid'])
 
-        if self.data['model_name'] == 'project':
+        if self.data['aggregate'] == 'project':
             return queryset.all()
-        elif self.data['model_name'] == 'project_group':
+        elif self.data['aggregate'] == 'project_group':
             projects = structure_models.Project.objects.filter(project_groups__in=list(queryset))
             return structure_filters.filter_queryset_for_user(projects, user)
         else:
@@ -876,8 +876,9 @@ class StatsAggregateSerializer(serializers.Serializer):
 
 
 class TimeIntervalSerializer(serializers.Serializer):
-    start = serializers.IntegerField(min_value=0)
-    end = serializers.IntegerField(min_value=0)
+    MAX_TIMESTAMP_VALUE = 2 ** 32  # This is quick fix. TODO: implement TimestampField with validation
+    start = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE)
+    end = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE)
 
     def validate(self, data):
         """

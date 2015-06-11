@@ -362,7 +362,7 @@ class QuotaStatsTest(test.APITransactionTestCase):
         # when
         response = self.execute_request_with_data(self.staff, {'aggregate': 'customer'})
         # then
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(response.data, self.expected_quotas_for_both_projects)
 
     def test_project_can_be_filtered_by_uuid(self):

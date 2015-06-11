@@ -1185,10 +1185,7 @@ class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
 class QuotaStatsView(views.APIView):
 
     def get(self, request, format=None):
-        serializer = serializers.StatsAggregateSerializer(data={
-            'model_name': request.query_params.get('aggregate', 'customer'),
-            'uuid': request.query_params.get('uuid'),
-        })
+        serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
 
         memberships = serializer.get_memberships(request.user)
@@ -1200,10 +1197,7 @@ class QuotaStatsView(views.APIView):
 class OpenstackAlertStatsView(views.APIView):
 
     def get(self, request, format=None):
-        aggregate_serializer = serializers.StatsAggregateSerializer(data={
-            'model_name': request.query_params.get('aggregate', 'customer'),
-            'uuid': request.query_params.get('uuid'),
-        })
+        aggregate_serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         aggregate_serializer.is_valid(raise_exception=True)
 
         yesterday = timezone.now() - datetime.timedelta(days=1)
