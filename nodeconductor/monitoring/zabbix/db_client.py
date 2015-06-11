@@ -170,9 +170,13 @@ class ProjectsQuotaTimeline(object):
 
     def execute(self):
         records = self.fetch_data()
-
-        return [(start, end, zabbix_items.get_label(item), float(value))
-                for (start, end, item, value) in records]
+        results = []
+        for (start, end, item, value) in records:
+            label = zabbix_items.get_label(item)
+            value = zabbix_items.get_value(item, value)
+            row = (start, end, label, value)
+            results.append(row)
+        return results
 
     def fetch_data(self):
         try:

@@ -208,10 +208,10 @@ Value fields include:
 
 - vcpu_limit - virtual CPUs quota
 - vcpu_usage - virtual CPUs usage
-- ram_limit - RAM quota
-- ram_usage - RAM usage
-- storage_limit - storage quota
-- storage_usage - storage usage
+- ram_limit - RAM quota limit, in MiB
+- ram_usage - RAM usage, in MiB
+- storage_limit - volume storage quota limit, in MiB
+- storage_usage - volume storage quota consumption, in MiB
 - instances_limit - max number of running instance
 - instances_usage - number of running instance
 
@@ -223,26 +223,26 @@ Example result:
         {
             "from": 1433880000,
             "to": 1433966400,
-            "instances_limit": 13.0,
-            "instances_usage": 1.0,
-            "ram_limit": 56908316672.0,
-            "ram_usage": 2048.0,
-            "storage_limit": 1105954078720.0,
-            "storage_usage": 11811160064.0,
-            "vcpu_limit": 23.0,
-            "vcpu_usage": 1.0
+            "instances_limit": 13,
+            "instances_usage": 1,
+            "ram_limit": 54272,
+            "ram_usage": 0,
+            "storage_limit": 1054720,
+            "storage_usage": 11264,
+            "vcpu_limit": 23,
+            "vcpu_usage": 1
         },
         {
             "from": 1433966400,
             "to": 1434052800,
-            "instances_limit": 13.0,
-            "instances_usage": 2.0,
-            "ram_limit": 56908316672.0,
-            "ram_usage": 1022612333.7143,
-            "storage_limit": 1105954078720.0,
-            "storage_usage": 11811160064.0,
-            "vcpu_limit": 23.0,
-            "vcpu_usage": 1.0
+            "instances_limit": 13,
+            "instances_usage": 5,
+            "ram_limit": 54272,
+            "ram_usage": 1059,
+            "storage_limit": 1054720,
+            "storage_usage": 11264,
+            "vcpu_limit": 23,
+            "vcpu_usage": 5
         }
     ]
 

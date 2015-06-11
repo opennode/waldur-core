@@ -13,7 +13,7 @@ from nodeconductor.core.utils import datetime_to_timestamp
 
 class ZabbixStatisticsTest(unittest.TestCase):
 
-    def test_resource_names_are_converted(self):
+    def test_resource_names_are_converted_values_are_scaled(self):
         hosts = ('a0e2b6c08d474a15b348633a86109933', )
         resources = ('storage', )
         items = set([
@@ -32,10 +32,10 @@ class ZabbixStatisticsTest(unittest.TestCase):
         ]
 
         expected = [
-            (1433808000, 1433894399, 'storage_usage', 0.0),
-            (1433808000, 1433894399, 'storage_limit', 988972732710.5263),
-            (1433894400, 1433980799, 'storage_usage', 0.0),
-            (1433894400, 1433980799, 'storage_limit', 1073741824000.0)
+            (1433808000, 1433894399, 'storage_usage', 0),
+            (1433808000, 1433894399, 'storage_limit', 988972732710/1024/1024),
+            (1433894400, 1433980799, 'storage_usage', 0),
+            (1433894400, 1433980799, 'storage_limit', 1073741824000/1024/1024)
         ]
 
         with mock.patch('nodeconductor.monitoring.zabbix.db_client.ProjectsQuotaTimeline.fetch_data', 
