@@ -190,7 +190,7 @@ Example result:
 Quotas timeline statistics
 ------------------------
 
-Historical data of quotas and quotas usage usage aggregated by projects/project_groups/customers. 
+Historical data of quotas and quotas usage aggregated by projects/project_groups/customers. 
 
 URL: **/api/stats/quota/timeline/**
 
