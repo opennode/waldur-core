@@ -42,9 +42,9 @@ class QuietSession(requests.Session):
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', exceptions.InsecurePlatformWarning)
                 warnings.simplefilter('ignore', exceptions.InsecureRequestWarning)
-                return super(requests.Session, self).request(*args, **kwargs)
+                return super(QuietSession, self).request(*args, **kwargs)
         else:
-            return super(requests.Session, self).request(*args, **kwargs)
+            return super(QuietSession, self).request(*args, **kwargs)
 
 
 class ZabbixApiClient(object):
