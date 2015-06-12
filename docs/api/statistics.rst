@@ -251,7 +251,8 @@ Example result:
 Alerts statistics
 ------------------------
 
-Health statistics based on the alert number and severity. You may also narrow down statistics by instances aggregated by specific projects/project_groups/customers.
+Health statistics based on the alert number and severity. You may also narrow down statistics by instances aggregated
+by specific projects/project_groups/customers.
 
 URL: **/api/stats/alert/**
 
@@ -260,7 +261,8 @@ All available request parameters are optional:
 - ?from=timestamp (default: now - 1 day, for example: 1415910025)
 - ?to=timestamp (default: now, for example: 1415912625)
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
-- ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only object with given uuid)
+- ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
+  object with given uuid)
 
 Answer will be dictionary where key is severity and value is a count of alerts.
 
