@@ -124,8 +124,8 @@ class ZabbixDBClient(object):
         2015-06-01, host2, ram, 400
         
         is converted to
-        2015-06-01, vcpu, 30
-        2015-06-01, ram,  300
+        2015-06-01, vcpu, 60
+        2015-06-01, ram,  600
         
         6) Then we add end time span. For example:
         2015-06-01, vcpu, 30
