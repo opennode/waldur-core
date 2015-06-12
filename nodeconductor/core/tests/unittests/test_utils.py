@@ -37,19 +37,3 @@ class TestFormatTimeAndValueToSegmentList(unittest.TestCase):
         expected_second_segment_value = sum([value for _, value in second_segment_time_value_list])
         self.assertEqual(first_segment['value'], expected_first_segment_value)
         self.assertEqual(second_segment['value'], expected_second_segment_value)
-
-class TestListToDict(unittest.TestCase):
-    def test_list_converted_to_dict(self):
-        expected = [
-            {
-                'from': 1433808000,
-                'to': 1433894399,
-                'vcpu_limit': 10,
-                'vcpu_usage': 5
-            }
-        ]
-        actual = utils.lists_to_dicts([
-            (1433808000, 1433894399, 'vcpu_limit', 10),
-            (1433808000, 1433894399, 'vcpu_usage', 5)
-        ])
-        self.assertEqual(expected, actual)

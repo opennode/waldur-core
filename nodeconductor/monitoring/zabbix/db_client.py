@@ -115,26 +115,34 @@ class ZabbixDBClient(object):
 
         try:
             engine = sql_utils.get_zabbix_engine()
-            query = template.format(
-                date_span=sql_utils.make_date_span(engine, interval, 'date'),
-                date_trunc=sql_utils.truncate_date(engine, interval, 'clock'),
-                hosts_placeholder=sql_utils.make_list_placeholder(len(hosts)),
-                items_placeholder=sql_utils.make_list_placeholder(len(items)),
-            )
-            items = [self.items[name]['key'] for name in items]
-            params = hosts + items + [start, end]
-            logging.warning('Prepared Zabbix SQL query for OpenStack projects statistics %s %s', query, params)
+            date_span = sql_utils.make_date_span(engine, interval, 'date')
+            date_trunc = sql_utils.truncate_date(engine, interval, 'clock')
+        except DatabaseError as e:
+            six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
 
+        query = template.format(
+            date_span=date_span,
+            date_trunc=date_trunc,
+            hosts_placeholder=sql_utils.make_list_placeholder(len(hosts)),
+            items_placeholder=sql_utils.make_list_placeholder(len(items)),
+        )
+        items = [self.items[name]['key'] for name in items]
+        params = hosts + items + [start, end]
+        logging.debug('Prepared Zabbix SQL query for OpenStack projects statistics %s %s', query, params)
+
+        records = self.execute_query(query, params)
+        return self.prepare_result(records)
+
+    def execute_query(self, query, params=None):
+        try:
             with connections['zabbix'].cursor() as cursor:
                 cursor.execute(query, params)
                 records = cursor.fetchall()
-                logging.debug('Executed Zabbix SQL query for OpenStack projects statistics %s', records)
-
+                logging.debug('Executed Zabbix SQL query %s', records)
+                return records
         except DatabaseError as e:
             logger.exception('Can not execute query the Zabbix DB.')
             six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
-
-        return self.prepare_result(records)
 
     def prepare_result(self, records):
         """

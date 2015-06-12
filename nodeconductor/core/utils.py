@@ -62,41 +62,6 @@ def format_time_and_value_to_segment_list(time_and_value_list, segments_count, s
     return segment_list
 
 
-def lists_to_dicts(rows):
-    """
-    >>> lists_to_dicts([
-      (start, end, key1, val1),
-      (start, end, key2, val2)
-    ])
-    {
-      from: start,
-      to: end,
-      key1: val1
-      key2: val2
-    }
-    """
-    # Collect key value pairs to the same date bucket
-    frames = {}
-    for row in rows:
-        start, end, item, value = row
-        key = (start, end)
-        if key not in frames:
-            frames[key] = {}
-        frames[key][item] = value
-
-    # Format flat dictionary
-    results = []
-    for key, items in frames.items():
-        start, end = key
-        row = {
-            'from': start,
-            'to': end
-        }
-        row.update(items)
-        results.append(sort_dict(row))
-    return results
-
-
 def datetime_to_timestamp(datetime):
     return int(time.mktime(datetime.timetuple()))
 

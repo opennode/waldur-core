@@ -404,7 +404,8 @@ class QuotaTimelineStatsTest(test.APITransactionTestCase):
             (1433894400, 1433980799, 'openstack.project.limit.gigabytes', Decimal('1073741824000.0000'))
         )
 
-        with patch('nodeconductor.monitoring.zabbix.db_client.ProjectsQuotaTimeline.fetch_data', return_value=recordset):
+        with patch('nodeconductor.iaas.serializers.ZabbixDBClient') as client:
+            client.execute_query = Mock(return_value=recordset)
             self.client.force_authenticate(self.staff)
             response = self.client.get(self.url)
             self.assertEqual(expected, response.data)
