@@ -202,7 +202,8 @@ Available request parameters:
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
 - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter is defined, result will contain only object with given uuid)
 
-Answer will be list of dictionaries with fields, determining time frame. It's size is equal to interval paramter. Values within each bucket are averaged for each host and then all tenants' metrics are summarized.
+Answer will be list of dictionaries with fields, determining time frame. It's size is equal to interval paramter.
+Values within each bucket are averaged for each project and then all projects metrics are summarized.
 
 Value fields include:
 
