@@ -17,7 +17,7 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.BackupSchedule
-        fields = ('url', 'description', 'backups', 'retention_time', 'timezone',
+        fields = ('url', 'uuid', 'description', 'backups', 'retention_time', 'timezone',
                   'backup_source', 'maximal_number_of_backups', 'schedule', 'is_active', 'backup_source_name')
         read_only_fields = ('is_active', 'backups')
         extra_kwargs = {
@@ -34,7 +34,7 @@ class BackupSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Backup
-        fields = ('url', 'description', 'created_at', 'kept_until', 'backup_source', 'state', 'backup_schedule',
+        fields = ('url', 'uuid', 'description', 'created_at', 'kept_until', 'backup_source', 'state', 'backup_schedule',
                   'metadata', 'backup_source_name')
         read_only_fields = ('created_at', 'kept_until', 'backup_schedule')
         extra_kwargs = {
