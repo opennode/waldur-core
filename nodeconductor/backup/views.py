@@ -37,11 +37,24 @@ class BackupPermissionFilter():
         return queryset.filter(q_query)
 
 
+class BackupScheduleFilter(django_filters.FilterSet):
+    description = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
+
+    class Meta(object):
+        model = models.BackupSchedule
+        fields = (
+            'description',
+        )
+
+
 class BackupScheduleViewSet(viewsets.ModelViewSet):
     queryset = models.BackupSchedule.objects.all()
     serializer_class = serializers.BackupScheduleSerializer
     lookup_field = 'uuid'
-    filter_backends = (BackupPermissionFilter,)
+    filter_backends = (BackupPermissionFilter, DjangoMappingFilterBackend)
+    filter_class = BackupScheduleFilter
     permission_classes = (rf_permissions.IsAuthenticated,)
 
     def perform_create(self, serializer):
