@@ -1,5 +1,5 @@
 import unittest
-from nodeconductor.core.utils import format_timeline
+from nodeconductor.monitoring.zabbix.utils import format_timeline
 
 
 class TestFormatTimeline(unittest.TestCase):

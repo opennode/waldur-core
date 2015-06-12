@@ -1,3 +1,5 @@
+from nodeconductor.core.utils import sort_dict
+
 def format_timeline(rows):
     """
     >>> format_timeline([
