@@ -7,7 +7,7 @@ from django.db.models import Max
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
-from nodeconductor.core import models as core_models, serializers as core_serializers
+from nodeconductor.core import models as core_models, serializers as core_serializers, utils as core_utils
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
@@ -847,19 +847,19 @@ class StatsAggregateSerializer(serializers.Serializer):
         'project_group': structure_models.ProjectGroup,
     }
 
-    model_name = serializers.ChoiceField(choices=MODEL_NAME_CHOICES)
-    uuid = serializers.CharField(allow_null=True)
+    aggregate = serializers.ChoiceField(choices=MODEL_NAME_CHOICES, default='customer')
+    uuid = serializers.CharField(allow_null=True, default=None)
 
     def get_projects(self, user):
-        model = self.MODEL_CLASSES[self.data['model_name']]
+        model = self.MODEL_CLASSES[self.data['aggregate']]
         queryset = structure_filters.filter_queryset_for_user(model.objects.all(), user)
 
         if 'uuid' in self.data and self.data['uuid']:
             queryset = queryset.filter(uuid=self.data['uuid'])
 
-        if self.data['model_name'] == 'project':
+        if self.data['aggregate'] == 'project':
             return queryset.all()
-        elif self.data['model_name'] == 'project_group':
+        elif self.data['aggregate'] == 'project_group':
             projects = structure_models.Project.objects.filter(project_groups__in=list(queryset))
             return structure_filters.filter_queryset_for_user(projects, user)
         else:
@@ -869,3 +869,25 @@ class StatsAggregateSerializer(serializers.Serializer):
     def get_memberships(self, user):
         projects = self.get_projects(user)
         return models.CloudProjectMembership.objects.filter(project__in=projects).all()
+
+    def get_instances(self, user):
+        projects = self.get_projects(user)
+        return models.Instance.objects.filter(cloud_project_membership__project__in=projects).all()
+
+
+class TimeIntervalSerializer(serializers.Serializer):
+    MAX_TIMESTAMP_VALUE = 2 ** 32  # This is quick fix. TODO: implement TimestampField with validation
+    start = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE)
+    end = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE)
+
+    def validate(self, data):
+        """
+        Check that the start is before the end.
+        """
+        if data['start'] >= data['end']:
+            raise serializers.ValidationError("End must occur after start")
+        return data
+
+    def to_internal_value(self, data):
+        internal_value = super(TimeIntervalSerializer, self).to_internal_value(data)
+        return {key: core_utils.timestamp_to_datetime(value) for key, value in internal_value.items()}

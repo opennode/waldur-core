@@ -5,10 +5,13 @@ import datetime
 import logging
 import time
 
+from django.contrib.contenttypes.models import ContentType
 from django.db import models as django_models
 from django.db import transaction, IntegrityError
+from django.db.models import Q, Count
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django_fsm import TransitionNotAllowed
 import django_filters
 from rest_framework import exceptions
@@ -26,11 +29,12 @@ from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.core.utils import sort_dict
+from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
+from nodeconductor.logging import models as logging_models
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
@@ -1181,13 +1185,63 @@ class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
 class QuotaStatsView(views.APIView):
 
     def get(self, request, format=None):
-        serializer = serializers.StatsAggregateSerializer(data={
-            'model_name': request.query_params.get('aggregate', 'customer'),
-            'uuid': request.query_params.get('uuid'),
-        })
+        serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
 
         memberships = serializer.get_memberships(request.user)
         sum_of_quotas = models.CloudProjectMembership.get_sum_of_quotas_as_dict(
             memberships, ['vcpu', 'ram', 'storage', 'max_instances'])
         return Response(sum_of_quotas, status=status.HTTP_200_OK)
+
+
+class OpenstackAlertStatsView(views.APIView):
+
+    def get(self, request, format=None):
+        aggregate_serializer = serializers.StatsAggregateSerializer(data=request.query_params)
+        aggregate_serializer.is_valid(raise_exception=True)
+
+        yesterday = timezone.now() - datetime.timedelta(days=1)
+        time_interval_serializer = serializers.TimeIntervalSerializer(data={
+            'start': request.query_params.get('from', datetime_to_timestamp(yesterday)),
+            'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
+        })
+        time_interval_serializer.is_valid(raise_exception=True)
+
+        projects_ids = aggregate_serializer.get_projects(request.user).values_list('id', flat=True)
+        memberships_ids = aggregate_serializer.get_memberships(request.user).values_list('id', flat=True)
+        instances_ids = aggregate_serializer.get_instances(request.user).values_list('id', flat=True)
+
+        aggregate_query = Q()
+        # XXX: We need to include projects, because we have openstack-related quotas that are connected to projects,
+        #      so openstack-related alerts can appear with project as scope.
+        if projects_ids:
+            aggregate_query |= Q(
+                content_type=ContentType.objects.get_for_model(Project),
+                object_id__in=projects_ids
+            )
+        if memberships_ids:
+            aggregate_query |= Q(
+                content_type=ContentType.objects.get_for_model(models.CloudProjectMembership),
+                object_id__in=memberships_ids
+            )
+        if instances_ids:
+            aggregate_query |= Q(
+                content_type=ContentType.objects.get_for_model(models.Instance),
+                object_id__in=instances_ids
+            )
+
+        closed_time_query = Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True)
+        created_time_query = Q(created__lte=time_interval_serializer.validated_data['end'])
+
+        alerts = (logging_models.Alert.objects.filter(aggregate_query)
+                                              .filter(closed_time_query)
+                                              .filter(created_time_query))
+        alerts_severities_count = alerts.values('severity').annotate(count=Count('severity'))
+
+        severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
+        alerts_severities_count = {severity_names[asc['severity']]: asc['count'] for asc in alerts_severities_count}
+        for severity_name in severity_names.values():
+            if severity_name not in alerts_severities_count:
+                alerts_severities_count[severity_name] = 0
+
+        return Response(alerts_severities_count, status=status.HTTP_200_OK)
