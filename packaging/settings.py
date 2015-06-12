@@ -534,30 +534,6 @@ NODECONDUCTOR = {
             ),
         },
         {
-            'name': 'smtp',
-            'description': 'Security group for SMTP',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 25,
-                    'to_port': 25,
-                },
-            ),
-        },
-        {
-            'name': 'dns',
-            'description': 'Security group for DNS',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 53,
-                    'to_port': 53,
-                },
-            ),
-        },
-        {
             'name': 'http',
             'description': 'Security group for HTTP',
             'rules': (
@@ -566,18 +542,6 @@ NODECONDUCTOR = {
                     'cidr': '0.0.0.0/0',
                     'from_port': 80,
                     'to_port': 80,
-                },
-            ),
-        },
-        {
-            'name': 'imap',
-            'description': 'Security group for IMAP',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 143,
-                    'to_port': 143,
                 },
             ),
         },
@@ -594,18 +558,6 @@ NODECONDUCTOR = {
             ),
         },
         {
-            'name': 'mysql',
-            'description': 'Security group for MySQL',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 3306,
-                    'to_port': 3306,
-                },
-            ),
-        },
-        {
             'name': 'rdp',
             'description': 'Security group for RDP',
             'rules': (
@@ -614,6 +566,126 @@ NODECONDUCTOR = {
                     'cidr': '0.0.0.0/0',
                     'from_port': 3389,
                     'to_port': 3389,
+                },
+            ),
+        },
+        {
+            'name': 'postgresql',
+            'description': 'Security group for PostgreSQL PaaS service',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 22,
+                    'to_port': 22,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 5432,
+                    'to_port': 5432,
+                },
+                {
+                    'protocol': 'icmp',
+                    'cidr': '0.0.0.0/0',
+                    'icmp_type': -1,
+                    'icmp_code': -1,
+                },
+            ),
+        },
+        {
+            'name': 'wordpress',
+            'description': 'Security group for WordPress PaaS service',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 22,
+                    'to_port': 22,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 80,
+                    'to_port': 80,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 443,
+                    'to_port': 443,
+                },
+            ),
+        },
+        {
+            'name': 'zimbra',
+            'description': 'Security group for Zimbra PaaS service',
+            'rules': (
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 22,
+                    'to_port': 22,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 25,
+                    'to_port': 25,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 465,
+                    'to_port': 465,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 110,
+                    'to_port': 110,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 995,
+                    'to_port': 995,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 143,
+                    'to_port': 143,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 993,
+                    'to_port': 993,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 80,
+                    'to_port': 80,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 443,
+                    'to_port': 443,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 7071,
+                    'to_port': 7071,
+                },
+                {
+                    'protocol': 'tcp',
+                    'cidr': '0.0.0.0/0',
+                    'from_port': 7025,
+                    'to_port': 7025,
                 },
             ),
         },
