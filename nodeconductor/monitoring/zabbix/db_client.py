@@ -99,18 +99,18 @@ class ZabbixDBClient(object):
 
         2) Filter rows by host name, item name and time range.
 
-        3) Truncate date. For example, when interval is 'month', 
-        2015-06-09 09:56:23 is truncated to 2015-06-01.
+        3) Truncate date. For example, when interval is 'day', 
+        2015-06-01 09:56:23 is truncated to 2015-06-01.
 
         4) Rows are grouped by date and itemid and then averaged. 
         There's distinct itemid for combination of hostid and item.key_.
         For example:
-        2015-06-09 09:56:23, host1, vcpu, 10,
-        2015-06-09 10:56:23, host1, vcpu, 20,
-        2015-06-09 11:56:23, host1, vcpu, 30,
-        2015-06-09 09:56:23, host1, ram, 100,
-        2015-06-09 10:56:23, host1, ram, 200,
-        2015-06-09 11:56:23, host1, ram, 300,
+        2015-06-01 09:56:23, host1, vcpu, 10,
+        2015-06-01 10:56:23, host1, vcpu, 20,
+        2015-06-01 11:56:23, host1, vcpu, 30,
+        2015-06-01 09:56:23, host1, ram, 100,
+        2015-06-01 10:56:23, host1, ram, 200,
+        2015-06-01 11:56:23, host1, ram, 300,
         
         is converted to
         2015-06-01, host1, vcpu, 20
@@ -128,12 +128,12 @@ class ZabbixDBClient(object):
         2015-06-01, ram,  600
         
         6) Then we add end time span. For example:
-        2015-06-01, vcpu, 30
-        2015-06-01, ram,  300
+        2015-06-01, vcpu, 60
+        2015-06-01, ram,  600
         
         is converted to
-        2015-06-01, 2015-06-02, vcpu, 30
-        2015-06-01, 2015-06-02, ram,  300
+        2015-06-01, 2015-06-02, vcpu, 60
+        2015-06-01, 2015-06-02, ram,  600
         
         The benefit of this solution is that computations are 
         performed in the database, not in REST server.
