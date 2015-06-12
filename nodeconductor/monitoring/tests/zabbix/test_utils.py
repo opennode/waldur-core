@@ -12,7 +12,7 @@ class TestFormatTimeline(unittest.TestCase):
                 'vcpu_usage': 5
             }
         ]
-        actual = utils.lists_to_dicts([
+        actual = format_timeline([
             (1433808000, 1433894399, 'vcpu_limit', 10),
             (1433808000, 1433894399, 'vcpu_usage', 5)
         ])

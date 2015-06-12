@@ -13,11 +13,13 @@ from nodeconductor.core import models as core_models, serializers as core_serial
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
+from nodeconductor.monitoring.zabbix import utils as zabbix_utils
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.core.fields import TimestampField
-from nodeconductor.core.utils import timeshift, datetime_to_timestamp, lists_to_dicts
+from nodeconductor.core.utils import timeshift, datetime_to_timestamp
+
 
 logger = logging.getLogger(__name__)
 
@@ -908,4 +910,4 @@ class QuotaTimelineStatsSerializer(serializers.Serializer):
         for (start, end, key, value) in rows:
             key = key.replace("project_", "")
             results.append((start, end, key, value))
-        return lists_to_dicts(results)
+        return zabbix_utils.format_timeline(results)
