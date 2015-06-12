@@ -575,3 +575,39 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
                 severity_names[logging_models.Alert.SeverityChoices.DEBUG]: 0,
             }
         )
+
+
+class QuotaTimelineStatsTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.staff = structure_factories.UserFactory(is_staff=True)
+        self.url = reverse('stats_quota_timeline')
+
+    def test_timeline_formatted_as_list_of_dictionaries(self):
+        expected = [
+            {
+                'from': 1433808000,
+                'to': 1433894399,
+                'storage_limit': 400,
+                'storage_usage': 200
+            },
+            {
+                'from': 1433894400,
+                'to': 1433980799,
+                'storage_limit': 300,
+                'storage_usage': 100
+            },
+        ]
+
+        recordset = (
+            (1433894400, 1433980799, 'project_storage_limit', 300),
+            (1433894400, 1433980799, 'project_storage_usage', 100),
+            (1433808000, 1433894399, 'project_storage_limit', 400),
+            (1433808000, 1433894399, 'project_storage_usage', 200)
+        )
+
+        with patch('nodeconductor.monitoring.zabbix.db_client.ZabbixDBClient.get_projects_quota_timeline') as obj:
+            obj.return_value = recordset
+            self.client.force_authenticate(self.staff)
+            response = self.client.get(self.url)
+            self.assertEqual(expected, response.data)
+            obj.assert_called_once()

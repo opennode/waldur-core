@@ -34,6 +34,7 @@ from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
+from nodeconductor.iaas.serializers import QuotaTimelineStatsSerializer
 from nodeconductor.logging import models as logging_models
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
@@ -1245,3 +1246,36 @@ class OpenstackAlertStatsView(views.APIView):
                 alerts_severities_count[severity_name] = 0
 
         return Response(alerts_severities_count, status=status.HTTP_200_OK)
+
+
+class QuotaTimelineStatsView(views.APIView):
+    """
+    Count quota usage and limit history statistics
+    """
+
+    def get(self, request, format=None):
+        memberships = self.get_memberships(request)
+        stats = self.get_stats(request, memberships)
+        return Response(stats, status=status.HTTP_200_OK)
+
+    def get_memberships(self, request):
+        serializer = serializers.StatsAggregateSerializer(data={
+            'model_name': request.query_params.get('aggregate', 'customer'),
+            'uuid': request.query_params.get('uuid'),
+        })
+        serializer.is_valid(raise_exception=True)
+        return serializer.get_memberships(request.user)
+
+    def get_stats(self, request, memberships):
+        mapped = {
+            'start_time': request.query_params.get('from'),
+            'end_time': request.query_params.get('to'),
+            'interval': request.query_params.get('interval'),
+            'item': request.query_params.get('item'),
+        }
+
+        data = {key: val for (key, val) in mapped.items() if val}
+        serializer = QuotaTimelineStatsSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        return serializer.get_stats(memberships)

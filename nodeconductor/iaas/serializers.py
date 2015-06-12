@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import logging
+
 from django.core.urlresolvers import reverse
 from django.core.validators import MaxLengthValidator
 from django.db import IntegrityError
@@ -11,9 +13,15 @@ from nodeconductor.core import models as core_models, serializers as core_serial
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
+from nodeconductor.monitoring.zabbix import utils as zabbix_utils
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
+from nodeconductor.core.fields import TimestampField
+from nodeconductor.core.utils import timeshift, datetime_to_timestamp
+
+
+logger = logging.getLogger(__name__)
 
 
 class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
@@ -891,3 +899,38 @@ class TimeIntervalSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         internal_value = super(TimeIntervalSerializer, self).to_internal_value(data)
         return {key: core_utils.timestamp_to_datetime(value) for key, value in internal_value.items()}
+
+
+class QuotaTimelineStatsSerializer(serializers.Serializer):
+
+    INTERVAL_CHOICES = ('day', 'week', 'month')
+    ITEM_CHOICES = ('vcpu', 'storage', 'ram', 'instances')
+
+    start_time = TimestampField(default=lambda: timeshift(days=-1))
+    end_time = TimestampField(default=lambda: timeshift())
+    interval = serializers.ChoiceField(choices=INTERVAL_CHOICES, default='day')
+    item = serializers.ChoiceField(choices=ITEM_CHOICES, required=False)
+
+    def get_stats(self, memberships):
+        # Format request data
+        hosts = list(memberships.exclude(tenant_id='').values_list('tenant_id', flat=True))
+
+        item_names = self.validated_data.get('item') or self.ITEM_CHOICES
+        items = []
+        for item in item_names:
+            items.append("project_%s_limit" % item)
+            items.append("project_%s_usage" % item)
+
+        start = datetime_to_timestamp(self.validated_data['start_time'])
+        end = datetime_to_timestamp(self.validated_data['end_time'])
+        interval = self.validated_data['interval']
+
+        # Execute request
+        rows = ZabbixDBClient().get_projects_quota_timeline(hosts, items, start, end, interval)
+
+        # Format response data
+        results = []
+        for (start, end, key, value) in rows:
+            key = key.replace("project_", "")
+            results.append((start, end, key, value))
+        return zabbix_utils.format_timeline(results)
