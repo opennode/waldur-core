@@ -15,7 +15,7 @@ class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
     class Meta(object):
         model = Invoice
         fields = (
-            'url', 'uuid', 'year', 'month', 'amount', 'pdf',
+            'url', 'uuid', 'year', 'month', 'amount', 'pdf', 'date',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name'
         )
         related_paths = ('customer',)
