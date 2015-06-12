@@ -1,4 +1,3 @@
-from decimal import Decimal
 from datetime import timedelta
 
 from django.core.urlresolvers import reverse
@@ -583,31 +582,32 @@ class QuotaTimelineStatsTest(test.APITransactionTestCase):
         self.staff = structure_factories.UserFactory(is_staff=True)
         self.url = reverse('stats_quota_timeline')
 
-    def test_stats(self):
+    def test_timeline_formatted_as_list_of_dictionaries(self):
         expected = [
             {
-                'from': 1433894400L,
-                'to': 1433980799L,
-                'storage_limit': 1073741824000/1024/1024,
-                'storage_usage': 0
+                'from': 1433808000,
+                'to': 1433894399,
+                'storage_limit': 400,
+                'storage_usage': 200
             },
             {
-                'from': 1433808000L,
-                'to': 1433894399L,
-                'storage_limit': 988972732710/1024/1024,
-                'storage_usage': 0
-            }
+                'from': 1433894400,
+                'to': 1433980799,
+                'storage_limit': 300,
+                'storage_usage': 100
+            },
         ]
 
         recordset = (
-            (1433808000, 1433894399, 'openstack.project.consumption.gigabytes', Decimal('0.0000')),
-            (1433808000, 1433894399, 'openstack.project.limit.gigabytes', Decimal('988972732710.5263')),
-            (1433894400, 1433980799, 'openstack.project.consumption.gigabytes', Decimal('0.0000')),
-            (1433894400, 1433980799, 'openstack.project.limit.gigabytes', Decimal('1073741824000.0000'))
+            (1433894400, 1433980799, 'project_storage_limit', 300),
+            (1433894400, 1433980799, 'project_storage_usage', 100),
+            (1433808000, 1433894399, 'project_storage_limit', 400),
+            (1433808000, 1433894399, 'project_storage_usage', 200)
         )
 
-        with patch('nodeconductor.iaas.serializers.ZabbixDBClient') as client:
-            client.execute_query = Mock(return_value=recordset)
+        with patch('nodeconductor.monitoring.zabbix.db_client.ZabbixDBClient.get_projects_quota_timeline') as obj:
+            obj.return_value = recordset
             self.client.force_authenticate(self.staff)
             response = self.client.get(self.url)
             self.assertEqual(expected, response.data)
+            obj.assert_called_once()

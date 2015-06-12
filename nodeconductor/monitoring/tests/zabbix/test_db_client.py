@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime
 
 from django.db import DatabaseError
-from mock import Mock
+from mock import Mock, patch
 
 from nodeconductor.core.utils import datetime_to_timestamp
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
@@ -47,11 +47,7 @@ class ProjectTimelineStatisticsTest(unittest.TestCase):
 
     def test_resource_names_are_converted_values_are_scaled(self):
         hosts = ['a0e2b6c08d474a15b348633a86109933' ]
-        resources = ['project_storage_limit', 'project_storage_usage']
-        items = set([
-            'openstack.project.limit.gigabytes',
-            'openstack.project.consumption.gigabytes'
-        ])
+        items = ['project_storage_limit', 'project_storage_usage']
         start = datetime_to_timestamp(datetime(2015, 6, 9))
         end = datetime_to_timestamp(datetime(2015, 6, 10))
         interval = 'day'
@@ -72,6 +68,7 @@ class ProjectTimelineStatisticsTest(unittest.TestCase):
 
         self.client.execute_query = Mock(return_value=recordset)
 
-        actual = self.client.get_projects_quota_timeline(hosts, resources, start, end, interval)
-        self.client.execute_query.assert_called_once()
-        self.assertEqual(expected, actual)
+        with patch('nodeconductor.monitoring.zabbix.sql_utils.get_zabbix_engine', return_value='mysql'):
+            actual = self.client.get_projects_quota_timeline(hosts, items, start, end, interval)
+            self.client.execute_query.assert_called_once()
+            self.assertEqual(expected, actual)
