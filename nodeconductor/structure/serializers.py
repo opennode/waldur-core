@@ -162,6 +162,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             'name', 'native_name', 'abbreviation', 'contact_details',
             'projects', 'project_groups',
             'owners',
+            'registration_code',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -254,6 +255,12 @@ class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
         return 'project', 'project_group'
 
 
+STRUCTURE_PERMISSION_USER_FIELDS = {
+    'fields': ('user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid', 'user_email'),
+    'path': ('username', 'full_name', 'native_name', 'uuid', 'email')
+}
+
+
 class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
                                    core_serializers.AugmentedSerializerMixin,
                                    serializers.HyperlinkedModelSerializer):
@@ -279,10 +286,9 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
         fields = (
             'url', 'pk', 'role',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
-        )
+        ) + STRUCTURE_PERMISSION_USER_FIELDS['fields']
         related_paths = {
-            'user': ('username', 'full_name', 'native_name', 'uuid'),
+            'user': STRUCTURE_PERMISSION_USER_FIELDS['path'],
             'group.customerrole.customer': ('name', 'native_name', 'abbreviation', 'uuid')
         }
         extra_kwargs = {
@@ -353,11 +359,11 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
             'url', 'pk',
             'role',
             'project', 'project_uuid', 'project_name',
-            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
-        )
+        ) + STRUCTURE_PERMISSION_USER_FIELDS['fields']
+
         related_paths = {
-            'user': ('username', 'full_name', 'native_name', 'uuid'),
-            'group.projectrole.project': ('name', 'uuid')
+            'group.projectrole.project': ('name', 'uuid'),
+            'user': STRUCTURE_PERMISSION_USER_FIELDS['path']
         }
         extra_kwargs = {
             'user': {
@@ -425,10 +431,9 @@ class ProjectGroupPermissionSerializer(PermissionFieldFilteringMixin,
             'url', 'pk',
             'role',
             'project_group', 'project_group_uuid', 'project_group_name',
-            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid',
-        )
+        ) + STRUCTURE_PERMISSION_USER_FIELDS['fields']
         related_paths = {
-            'user': ('username', 'full_name', 'native_name', 'uuid'),
+            'user': STRUCTURE_PERMISSION_USER_FIELDS['path'],
             'group.projectgrouprole.project_group': ('name', 'uuid'),
         }
         extra_kwargs = {

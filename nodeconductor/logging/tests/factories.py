@@ -78,3 +78,7 @@ class AlertFactory(factory.DjangoModelFactory):
     @classmethod
     def get_list_url(self):
         return 'http://testserver' + reverse('alert-list')
+
+    @classmethod
+    def get_stats_url(self):
+        return 'http://testserver' + reverse('alert-stat')

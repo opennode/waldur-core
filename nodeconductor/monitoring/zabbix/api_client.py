@@ -1,7 +1,9 @@
 import logging
+import warnings
 
 import requests
 from requests.exceptions import RequestException
+from requests.packages.urllib3 import exceptions
 
 from django.conf import settings as django_settings
 from django.utils import six
@@ -29,6 +31,20 @@ def _exception_decorator(message, fail_silently=None):
         return wrapper
 
     return decorator
+
+
+class QuietSession(requests.Session):
+    """Session class that suppresses warning about unsafe TLS sessions and clogging the logs.
+    Inspired by: https://github.com/kennethreitz/requests/issues/2214#issuecomment-110366218
+    """
+    def request(self, *args, **kwargs):
+        if not kwargs.get('verify', self.verify):
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', exceptions.InsecurePlatformWarning)
+                warnings.simplefilter('ignore', exceptions.InsecureRequestWarning)
+                return super(QuietSession, self).request(*args, **kwargs)
+        else:
+            return super(QuietSession, self).request(*args, **kwargs)
 
 
 class ZabbixApiClient(object):
@@ -159,7 +175,7 @@ class ZabbixApiClient(object):
 
     # Helpers:
     def get_zabbix_api(self):
-        unsafe_session = requests.Session()
+        unsafe_session = QuietSession()
         unsafe_session.verify = False
 
         api = ZabbixAPI(server=self._settings['server'], session=unsafe_session)

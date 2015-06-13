@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import logging
+
 from django.core.urlresolvers import reverse
 from django.core.validators import MaxLengthValidator
 from django.db import IntegrityError
@@ -7,13 +9,19 @@ from django.db.models import Max
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
-from nodeconductor.core import models as core_models, serializers as core_serializers
+from nodeconductor.core import models as core_models, serializers as core_serializers, utils as core_utils
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
+from nodeconductor.monitoring.zabbix import utils as zabbix_utils
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
+from nodeconductor.core.fields import TimestampField
+from nodeconductor.core.utils import timeshift, datetime_to_timestamp
+
+
+logger = logging.getLogger(__name__)
 
 
 class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
@@ -847,19 +855,19 @@ class StatsAggregateSerializer(serializers.Serializer):
         'project_group': structure_models.ProjectGroup,
     }
 
-    model_name = serializers.ChoiceField(choices=MODEL_NAME_CHOICES)
-    uuid = serializers.CharField(allow_null=True)
+    aggregate = serializers.ChoiceField(choices=MODEL_NAME_CHOICES, default='customer')
+    uuid = serializers.CharField(allow_null=True, default=None)
 
     def get_projects(self, user):
-        model = self.MODEL_CLASSES[self.data['model_name']]
+        model = self.MODEL_CLASSES[self.data['aggregate']]
         queryset = structure_filters.filter_queryset_for_user(model.objects.all(), user)
 
         if 'uuid' in self.data and self.data['uuid']:
             queryset = queryset.filter(uuid=self.data['uuid'])
 
-        if self.data['model_name'] == 'project':
+        if self.data['aggregate'] == 'project':
             return queryset.all()
-        elif self.data['model_name'] == 'project_group':
+        elif self.data['aggregate'] == 'project_group':
             projects = structure_models.Project.objects.filter(project_groups__in=list(queryset))
             return structure_filters.filter_queryset_for_user(projects, user)
         else:
@@ -869,3 +877,60 @@ class StatsAggregateSerializer(serializers.Serializer):
     def get_memberships(self, user):
         projects = self.get_projects(user)
         return models.CloudProjectMembership.objects.filter(project__in=projects).all()
+
+    def get_instances(self, user):
+        projects = self.get_projects(user)
+        return models.Instance.objects.filter(cloud_project_membership__project__in=projects).all()
+
+
+class TimeIntervalSerializer(serializers.Serializer):
+    MAX_TIMESTAMP_VALUE = 2 ** 32  # This is quick fix. TODO: implement TimestampField with validation
+    start = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE)
+    end = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE)
+
+    def validate(self, data):
+        """
+        Check that the start is before the end.
+        """
+        if data['start'] >= data['end']:
+            raise serializers.ValidationError("End must occur after start")
+        return data
+
+    def to_internal_value(self, data):
+        internal_value = super(TimeIntervalSerializer, self).to_internal_value(data)
+        return {key: core_utils.timestamp_to_datetime(value) for key, value in internal_value.items()}
+
+
+class QuotaTimelineStatsSerializer(serializers.Serializer):
+
+    INTERVAL_CHOICES = ('day', 'week', 'month')
+    ITEM_CHOICES = ('vcpu', 'storage', 'ram', 'instances')
+
+    start_time = TimestampField(default=lambda: timeshift(days=-1))
+    end_time = TimestampField(default=lambda: timeshift())
+    interval = serializers.ChoiceField(choices=INTERVAL_CHOICES, default='day')
+    item = serializers.ChoiceField(choices=ITEM_CHOICES, required=False)
+
+    def get_stats(self, memberships):
+        # Format request data
+        hosts = list(memberships.exclude(tenant_id='').values_list('tenant_id', flat=True))
+
+        item_names = self.validated_data.get('item') or self.ITEM_CHOICES
+        items = []
+        for item in item_names:
+            items.append("project_%s_limit" % item)
+            items.append("project_%s_usage" % item)
+
+        start = datetime_to_timestamp(self.validated_data['start_time'])
+        end = datetime_to_timestamp(self.validated_data['end_time'])
+        interval = self.validated_data['interval']
+
+        # Execute request
+        rows = ZabbixDBClient().get_projects_quota_timeline(hosts, items, start, end, interval)
+
+        # Format response data
+        results = []
+        for (start, end, key, value) in rows:
+            key = key.replace("project_", "")
+            results.append((start, end, key, value))
+        return zabbix_utils.format_timeline(results)

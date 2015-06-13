@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.db.models import Q
 from django.contrib.contenttypes import models as ct_models
+import django_filters
 from django_fsm import TransitionNotAllowed
 
 from rest_framework import permissions as rf_permissions, status, viewsets, mixins
@@ -9,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
 from nodeconductor.backup.models import Backup
+from nodeconductor.core.filters import DjangoMappingFilterBackend
 
 from nodeconductor.core.permissions import has_user_permission_for_instance
 from nodeconductor.backup import models, serializers, utils
@@ -35,11 +37,24 @@ class BackupPermissionFilter():
         return queryset.filter(q_query)
 
 
+class BackupScheduleFilter(django_filters.FilterSet):
+    description = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
+
+    class Meta(object):
+        model = models.BackupSchedule
+        fields = (
+            'description',
+        )
+
+
 class BackupScheduleViewSet(viewsets.ModelViewSet):
     queryset = models.BackupSchedule.objects.all()
     serializer_class = serializers.BackupScheduleSerializer
     lookup_field = 'uuid'
-    filter_backends = (BackupPermissionFilter,)
+    filter_backends = (BackupPermissionFilter, DjangoMappingFilterBackend)
+    filter_class = BackupScheduleFilter
     permission_classes = (rf_permissions.IsAuthenticated,)
 
     def perform_create(self, serializer):
@@ -95,6 +110,18 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         return Response({'status': 'BackupSchedule was deactivated'})
 
 
+class BackupFilter(django_filters.FilterSet):
+    description = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
+
+    class Meta(object):
+        model = models.Backup
+        fields = (
+            'description',
+        )
+
+
 class BackupViewSet(mixins.CreateModelMixin,
                     mixins.RetrieveModelMixin,
                     mixins.ListModelMixin,
@@ -102,7 +129,8 @@ class BackupViewSet(mixins.CreateModelMixin,
     queryset = models.Backup.objects.all()
     serializer_class = serializers.BackupSerializer
     lookup_field = 'uuid'
-    filter_backends = (BackupPermissionFilter,)
+    filter_backends = (BackupPermissionFilter, DjangoMappingFilterBackend)
+    filter_class = BackupFilter
     permission_classes = (rf_permissions.IsAuthenticated,)
 
     def perform_create(self, serializer):

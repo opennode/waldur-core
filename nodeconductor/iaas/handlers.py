@@ -9,8 +9,6 @@ from django.db import models, router, DEFAULT_DB_ALIAS
 from django.utils.lru_cache import lru_cache
 import yaml
 
-from nodeconductor.core import models as core_models
-from nodeconductor.core.tasks import send_task
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.filters import filter_queryset_for_user
@@ -62,44 +60,6 @@ def filter_clouds(clouds, request):
 
 def add_clouds_to_related_model(sender, fields, **kwargs):
     fields['clouds'] = UnboundSerializerMethodField(filter_clouds)
-
-
-def sync_ssh_public_keys(task_name, public_key=None, project=None, user=None):
-    """ Call supplied background task to push or remove SSH key(s).
-        Use supplied public_key or lookup it by project & user.
-    """
-    CloudProjectMembership = apps.get_model('iaas', 'CloudProjectMembership')
-
-    if public_key:
-        ssh_public_key_uuids = [public_key.uuid.hex]
-        membership_pks = filter_queryset_for_user(
-            CloudProjectMembership.objects.all(), public_key.user).values_list('pk', flat=True)
-
-    elif project and user:
-        ssh_public_key_uuids = core_models.SshPublicKey.objects.filter(
-            user=user).values_list('uuid', flat=True)
-        membership_pks = CloudProjectMembership.objects.filter(
-            project=project).values_list('pk', flat=True)
-
-    if ssh_public_key_uuids and membership_pks:
-        send_task('iaas', task_name)(list(ssh_public_key_uuids), list(membership_pks))
-
-
-def propagate_new_users_key_to_his_projects_clouds(sender, instance=None, created=False, **kwargs):
-    if created:
-        sync_ssh_public_keys('push_ssh_public_keys', public_key=instance)
-
-
-def remove_stale_users_key_from_his_projects_clouds(sender, instance=None, **kwargs):
-    sync_ssh_public_keys('remove_ssh_public_keys', public_key=instance)
-
-
-def propagate_users_keys_to_clouds_of_newly_granted_project(sender, structure, user, role, **kwargs):
-    sync_ssh_public_keys('push_ssh_public_keys', project=structure, user=user)
-
-
-def remove_stale_users_keys_from_clouds_of_revoked_project(sender, structure, user, role, **kwargs):
-    sync_ssh_public_keys('remove_ssh_public_keys', project=structure, user=user)
 
 
 @lru_cache(maxsize=1)
@@ -240,13 +200,3 @@ def check_instance_name_update(sender, instance=None, created=False, **kwargs):
     if old_name != instance.name:
         from nodeconductor.iaas.tasks.zabbix import zabbix_update_host_visible_name
         zabbix_update_host_visible_name.delay(instance.uuid.hex)
-
-
-def add_instance_uuid_to_user_data(sender, instance=None, created=False, **kwargs):
-    if not created:
-        return
-
-    parsed_user_data = yaml.load(instance.user_data) or {}
-    parsed_user_data[str('nc_instance_uuid')] = instance.uuid.hex
-    instance.user_data = yaml.dump(parsed_user_data)
-    instance.save()
