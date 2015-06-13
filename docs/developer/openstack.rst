@@ -119,14 +119,3 @@ It's possible to emulate interaction with OpenStack by creating dummy clouds as 
         dummy=True,
         auth_url='http://keystone.example.com:5000/v2.0',
     )
-
-Propagate SSH keys
-------------------
-
-Users' SSH public keys are automatically synced with OpenStack backend when required:
-
-* After an Instance creation: propagate SSH keys of all users from cloud membership project to backend
-* On adding/removing user's SSH key: add or remove it from related backend respectively
-* On adding/removing user to a Project: ditto
-
-All SSH keys are identified by fingerprint in order to avoid duplicates.

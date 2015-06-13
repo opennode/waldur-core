@@ -70,7 +70,9 @@ def bind_current_user(sender=None, **kwargs):
     # and wraps them into an User-like object for EventFormatter to consume.
     import uuid
 
-    class FakeUser(object):
+    from nodeconductor.logging.log import LoggableMixin
+
+    class FakeUser(LoggableMixin):
         def __init__(self, event_context):
             for k, v in event_context.items():
                 if not k.startswith('user_'):

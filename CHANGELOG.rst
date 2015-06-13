@@ -6,6 +6,13 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.51.0
+--------------
+- Support for authentication token passing via query parameters.
+- Alert API: historical and statistical.
+- Support for historical quota usage/limit data via Zabbix backend.
+- Filtering and minor API modifications across multiple endpoints.
+
 Release 0.50.0
 --------------
 - New base structure for supporting of services.

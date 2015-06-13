@@ -4,6 +4,7 @@ from rest_framework import viewsets, permissions, response, decorators, filters,
 
 from django.conf import settings
 from django.views.static import serve
+from nodeconductor.core.filters import DjangoMappingFilterBackend
 
 from nodeconductor.structure.filters import GenericRoleFilter
 from nodeconductor.billing.serializers import InvoiceSerializer, InvoiceDetailedSerializer
@@ -42,10 +43,13 @@ class InvoiceFilter(django_filters.FilterSet):
         fields = [
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'year', 'month',
+            'amount',
         ]
         order_by = [
             'date',
             '-date',
+            'amount',
+            '-amount',
         ]
         order_by_mapping = {
             # Proper field naming
@@ -58,7 +62,7 @@ class InvoiceFilter(django_filters.FilterSet):
 class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Invoice.objects.all()
     filter_class = InvoiceFilter
-    filter_backends = (GenericRoleFilter, filters.DjangoFilterBackend)
+    filter_backends = (GenericRoleFilter, filters.DjangoFilterBackend, DjangoMappingFilterBackend)
     lookup_field = 'uuid'
     permission_classes = (
         permissions.IsAuthenticated,

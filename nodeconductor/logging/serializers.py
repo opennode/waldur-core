@@ -1,8 +1,8 @@
 from rest_framework import serializers
 
-from nodeconductor.logging import models, utils
 from nodeconductor.core.serializers import GenericRelatedField
 from nodeconductor.core.fields import MappedChoiceField, JsonField
+from nodeconductor.logging import models, utils
 
 
 class AlertSerializer(serializers.HyperlinkedModelSerializer):

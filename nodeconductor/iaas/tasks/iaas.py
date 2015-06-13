@@ -5,7 +5,6 @@ import logging
 
 from celery import shared_task
 
-from nodeconductor.core import models as core_models
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeError, transition
 from nodeconductor.core.log import EventLoggerAdapter
@@ -213,23 +212,6 @@ def sync_cloud_membership(membership_pk):
     # Propagate cloud-project membership itself
     backend.push_membership(membership)
 
-    # Propagate ssh public keys of users involved in the project
-    for public_key in core_models.SshPublicKey.objects.filter(
-            user__groups__projectrole__project=membership.project).iterator():
-        try:
-            backend.push_ssh_public_key(membership, public_key)
-        except CloudBackendError:
-            logger.warn(
-                'Failed to push public key %s to cloud membership %s',
-                public_key.uuid, membership.pk,
-                exc_info=1,
-            )
-            event_logger.warning(
-                'Failed to push public key %s to cloud membership %s.',
-                public_key.uuid, membership.pk,
-                extra={'project': membership.project, 'cloud': membership.cloud, 'event_type': 'sync_cloud_membership'}
-            )
-
     # Propagate membership security groups
     try:
         backend.push_security_groups(membership)
@@ -255,69 +237,6 @@ def sync_cloud_membership(membership_pk):
             membership.pk,
             exc_info=1,
         )
-
-
-@shared_task(name='nodeconductor.iaas.push_ssh_public_keys')
-def push_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
-    public_keys = core_models.SshPublicKey.objects.filter(uuid__in=ssh_public_keys_uuids)
-
-    existing_keys = set(k.uuid.hex for k in public_keys)
-    missing_keys = set(ssh_public_keys_uuids) - existing_keys
-    if missing_keys:
-        logging.warn(
-            'Failed to push missing public keys: %s',
-            ', '.join(missing_keys)
-        )
-
-    membership_queryset = models.CloudProjectMembership.objects.filter(
-        pk__in=membership_pks)
-
-    potential_rerunnable = []
-    for membership in membership_queryset.iterator():
-        if membership.state != core_models.SynchronizationStates.IN_SYNC:
-            logging.warn(
-                'Not pushing public keys to cloud membership %s which is in state %s.',
-                membership.pk, membership.get_state_display()
-            )
-            if membership.state != core_models.SynchronizationStates.ERRED:
-                # reschedule a task for this membership if membership is in a sane state
-                logging.debug(
-                    'Rescheduling synchronisation of keys for membership %s in state %s.',
-                    membership.pk, membership.get_state_display()
-                )
-                potential_rerunnable.append(membership.id)
-            continue
-
-        backend = membership.cloud.get_backend()
-        for public_key in public_keys:
-            try:
-                backend.push_ssh_public_key(membership, public_key)
-            except CloudBackendError:
-                logger.warn(
-                    'Failed to push public key %s to cloud membership %s',
-                    public_key.uuid, membership.pk,
-                    exc_info=1,
-                )
-    # reschedule sync to membership that were blocked
-    if potential_rerunnable:
-        push_ssh_public_keys.delay(ssh_public_keys_uuids, potential_rerunnable)
-
-
-@shared_task(name='nodeconductor.iaas.remove_ssh_public_keys')
-def remove_ssh_public_keys(ssh_public_keys_uuids, membership_pks):
-    public_keys = core_models.SshPublicKey.objects.filter(uuid__in=ssh_public_keys_uuids)
-    membership_queryset = models.CloudProjectMembership.objects.filter(pk__in=membership_pks)
-
-    for membership in membership_queryset.iterator():
-        backend = membership.cloud.get_backend()
-        for public_key in public_keys:
-            try:
-                backend.remove_ssh_public_key(membership, public_key)
-            except CloudBackendError:
-                logger.warn(
-                    'Failed to remove public key %s from cloud membership %s',
-                    public_key.uuid, membership.pk,
-                    exc_info=1)
 
 
 @shared_task
