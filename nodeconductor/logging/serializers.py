@@ -12,13 +12,11 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
         choice_mappings={v: k for k, v in models.Alert.SeverityChoices.CHOICES},
     )
     context = JsonField(read_only=True)
-    status = serializers.ChoiceField(
-        choices=(('PROBLEM', 'Problem'), ('OK', 'OK')), default='PROBLEM', write_only=True)
 
     class Meta(object):
         model = models.Alert
         fields = (
-            'url', 'uuid', 'alert_type', 'message', 'severity', 'scope', 'created', 'closed', 'context', 'status')
+            'url', 'uuid', 'alert_type', 'message', 'severity', 'scope', 'created', 'closed', 'context')
         read_only_fields = ('uuid', 'created', 'closed')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
