@@ -52,4 +52,4 @@ def poll_instance_installation_state(instance_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)
     instance.installation_state = _get_installation_state(instance)
     instance.save()
-    return instance.installation_state != 'synced'
+    return instance.installation_state == 'synced'

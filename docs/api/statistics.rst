@@ -187,10 +187,72 @@ Example result:
     }
 
 
+Quotas timeline statistics
+------------------------
+
+Historical data of quotas and quotas usage aggregated by projects/project_groups/customers. 
+
+URL: **/api/stats/quota/timeline/**
+
+Available request parameters:
+
+- ?from=timestamp (default: now - 1 day, for example: 1415910025)
+- ?to=timestamp (default: now, for example: 1415912625)
+- ?interval (default: day. Has to be from list: day, week, month)
+- ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
+- ?uuid=uuid_of_aggregate_model_object (not required. If this parameter is defined, result will contain only object with given uuid)
+
+Answer will be list of dictionaries with fields, determining time frame. It's size is equal to interval paramter.
+Values within each bucket are averaged for each project and then all projects metrics are summarized.
+
+Value fields include:
+
+- vcpu_limit - virtual CPUs quota
+- vcpu_usage - virtual CPUs usage
+- ram_limit - RAM quota limit, in MiB
+- ram_usage - RAM usage, in MiB
+- storage_limit - volume storage quota limit, in MiB
+- storage_usage - volume storage quota consumption, in MiB
+- instances_limit - max number of running instance
+- instances_usage - number of running instance
+
+Example result:
+
+.. code-block:: javascript
+
+    [
+        {
+            "from": 1433880000,
+            "to": 1433966400,
+            "instances_limit": 13,
+            "instances_usage": 1,
+            "ram_limit": 54272,
+            "ram_usage": 0,
+            "storage_limit": 1054720,
+            "storage_usage": 11264,
+            "vcpu_limit": 23,
+            "vcpu_usage": 1
+        },
+        {
+            "from": 1433966400,
+            "to": 1434052800,
+            "instances_limit": 13,
+            "instances_usage": 5,
+            "ram_limit": 54272,
+            "ram_usage": 1059,
+            "storage_limit": 1054720,
+            "storage_usage": 11264,
+            "vcpu_limit": 23,
+            "vcpu_usage": 5
+        }
+    ]
+
+
 Alerts statistics
 ------------------------
 
-Health statistics based on the alert number and severity. You may also narrow down statistics by instances aggregated by specific projects/project_groups/customers.
+Health statistics based on the alert number and severity. You may also narrow down statistics by instances aggregated
+by specific projects/project_groups/customers.
 
 URL: **/api/stats/alert/**
 
@@ -199,7 +261,8 @@ All available request parameters are optional:
 - ?from=timestamp (default: now - 1 day, for example: 1415910025)
 - ?to=timestamp (default: now, for example: 1415912625)
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
-- ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only object with given uuid)
+- ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
+  object with given uuid)
 
 Answer will be dictionary where key is severity and value is a count of alerts.
 

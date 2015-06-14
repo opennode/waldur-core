@@ -4,7 +4,9 @@ from django.apps import AppConfig
 from django.contrib.auth import get_user_model
 from django.db.models import signals
 
+from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
+from nodeconductor.structure.models import ServiceProjectLink
 from nodeconductor.structure import filters
 from nodeconductor.structure import handlers
 from nodeconductor.structure import signals as structure_signals
@@ -122,7 +124,7 @@ class StructureConfig(AppConfig):
             structure_signals.structure_role_granted.connect(
                 handlers.change_customer_nc_users_quota,
                 sender=model,
-                dispatch_uid='nodeconductor.iaas.handlers.%s' % name,
+                dispatch_uid='nodeconductor.structure.handlers.%s' % name,
             )
 
         # decrease nc_user_count quota usage on removing user from customer
@@ -131,41 +133,73 @@ class StructureConfig(AppConfig):
             structure_signals.structure_role_revoked.connect(
                 handlers.change_customer_nc_users_quota,
                 sender=model,
-                dispatch_uid='nodeconductor.iaas.handlers.%s' % name,
+                dispatch_uid='nodeconductor.structure.handlers.%s' % name,
             )
 
         structure_signals.structure_role_granted.connect(
             handlers.log_customer_role_granted,
             sender=Customer,
-            dispatch_uid='nodeconductor.iaas.handlers.log_customer_role_granted',
+            dispatch_uid='nodeconductor.structure.handlers.log_customer_role_granted',
         )
 
         structure_signals.structure_role_revoked.connect(
             handlers.log_customer_role_revoked,
             sender=Customer,
-            dispatch_uid='nodeconductor.iaas.handlers.log_customer_role_revoked',
+            dispatch_uid='nodeconductor.structure.handlers.log_customer_role_revoked',
         )
 
         structure_signals.structure_role_granted.connect(
             handlers.log_project_role_granted,
             sender=Project,
-            dispatch_uid='nodeconductor.iaas.handlers.log_project_role_granted',
+            dispatch_uid='nodeconductor.structure.handlers.log_project_role_granted',
         )
 
         structure_signals.structure_role_revoked.connect(
             handlers.log_project_role_revoked,
             sender=Project,
-            dispatch_uid='nodeconductor.iaas.handlers.log_project_role_revoked',
+            dispatch_uid='nodeconductor.structure.handlers.log_project_role_revoked',
         )
 
         structure_signals.structure_role_granted.connect(
             handlers.log_project_group_role_granted,
             sender=ProjectGroup,
-            dispatch_uid='nodeconductor.iaas.handlers.log_project_group_role_granted',
+            dispatch_uid='nodeconductor.structure.handlers.log_project_group_role_granted',
         )
 
         structure_signals.structure_role_revoked.connect(
             handlers.log_project_group_role_revoked,
             sender=ProjectGroup,
-            dispatch_uid='nodeconductor.iaas.handlers.log_project_group_role_revoked',
+            dispatch_uid='nodeconductor.structure.handlers.log_project_group_role_revoked',
+        )
+
+        for model in ServiceProjectLink.get_all_models():
+            name = 'propagate_ssh_keys_for_%s' % model.__name__
+            signals.post_save.connect(
+                handlers.propagate_users_key_to_his_projects_services,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.%s' % name,
+            )
+
+        signals.post_save.connect(
+            handlers.propagate_new_users_key_to_his_projects_services,
+            sender=SshPublicKey,
+            dispatch_uid='nodeconductor.structure.handlers.propagate_new_users_key_to_his_projects_services',
+        )
+
+        signals.post_delete.connect(
+            handlers.remove_stale_users_key_from_his_projects_services,
+            sender=SshPublicKey,
+            dispatch_uid='nodeconductor.structure.handlers.remove_stale_key_from_his_projects_services',
+        )
+
+        structure_signals.structure_role_granted.connect(
+            handlers.propagate_users_keys_to_services_of_newly_granted_project,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.propagate_users_keys_to_services_of_newly_granted_project',
+        )
+
+        structure_signals.structure_role_revoked.connect(
+            handlers.remove_stale_users_keys_from_services_of_revoked_project,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.remove_stale_users_keys_from_services_of_revoked_project',
         )

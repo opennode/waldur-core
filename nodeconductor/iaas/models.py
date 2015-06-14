@@ -16,9 +16,7 @@ from nodeconductor.core.utils import request_api
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
-from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure import models as structure_models
-from nodeconductor.iaas.managers import InstanceManager
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +102,7 @@ class ServiceStatistics(models.Model):
 
 
 @python_2_unicode_compatible
-class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin, models.Model):
+class CloudProjectMembership(structure_models.ServiceProjectLink):
     """
     This model represents many to many relationships between project and cloud
     """
@@ -113,7 +111,6 @@ class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.Quot
     DEFAULT_URL_NAME = 'cloudproject_membership'
 
     cloud = models.ForeignKey(Cloud)
-    project = models.ForeignKey(structure_models.Project)
 
     # OpenStack backend specific fields
     username = models.CharField(max_length=100, blank=True)
@@ -140,6 +137,9 @@ class CloudProjectMembership(core_models.SynchronizableMixin, quotas_models.Quot
 
     def get_quota_parents(self):
         return [self.project]
+
+    def get_backend(self):
+        return self.cloud.get_backend()
 
 
 class CloudProjectMember(models.Model):
@@ -374,8 +374,6 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
     # Services specific fields
     agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=Services.IAAS)
-
-    objects = InstanceManager()
 
     def __str__(self):
         return self.name
