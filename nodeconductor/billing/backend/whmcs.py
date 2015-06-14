@@ -4,10 +4,14 @@ import hashlib
 import datetime
 import urlparse
 import requests
+import logging
 
 from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.core.utils import pwgen
 from nodeconductor import __version__
+
+
+logger = logging.getLogger(__name__)
 
 
 class WHMCSAPI(object):
@@ -43,7 +47,11 @@ class WHMCSAPI(object):
                 return self
 
             def _get_results(self, data):
-                return reduce(dict.get, self.request.resultset_path.split('.'), data)
+                try:
+                    return reduce(dict.get, self.request.resultset_path.split('.'), data)
+                except TypeError:
+                    logging.debug('Unexpected structure received as a response. Empty or missing response. %s', data)
+                    raise StopIteration
 
             def __next__(self):
                 return self.next()
@@ -78,7 +86,7 @@ class WHMCSAPI(object):
             data = self.request_data
             data.update(**kwargs)
 
-            response = requests.post(self.url, data=data, headers=headers)
+            response = requests.post(self.url, data=data, headers=headers, verify=False)
             if response.status_code != 200:
                 raise BillingBackendError(
                     "%s. Request to WHMCS backend failed: %s" %
@@ -111,6 +119,9 @@ class WHMCSAPI(object):
 
     def _get_backend_url(self, path, args=()):
         url_parts = list(urlparse.urlparse(self.api_url))
+        # XXX: a hack to support default deployments of whmcs that expose whmcs as the suffix name
+        if url_parts[2].startswith('/whmcs/'):
+            path = '/whmcs/%s' % path
         url_parts[2] = path
         url_parts[4] = urllib.urlencode(args)
         return urlparse.urlunparse(url_parts)
@@ -125,20 +136,19 @@ class WHMCSAPI(object):
         req = self.Request(self.api_url, data, resultset_path=resultset_path)
         return req.data()
 
-    def add_client(self, name=None, email=None, organization=None, phone_number=None, **kwargs):
-        names = name.split() if name else ['']
+    def add_client(self, name=None, email=None, organization=None,**kwargs):
         data = self.request(
             'addclient',
-            firstname=names[0],
-            lastname=' '.join(names[1:]) or '-',
+            firstname=name,
+            lastname='n/a',
             companyname=organization,
             email=email,
             address1='n/a',
             city='n/a',
             state='n/a',
             postcode='00000',
-            country='US',
-            phonenumber=phone_number or '1234567',
+            country='OM',
+            phonenumber='1234567',
             password2=pwgen())
 
         return data['clientid']
@@ -151,14 +161,15 @@ class WHMCSAPI(object):
         invoices = self.request(
             'getinvoices',
             userid=client_id,
-            status='Paid',
             resultset_path='invoices.invoice')
 
         for invoice in invoices:
             data = dict(
                 backend_id=invoice['id'],
                 date=self._parse_date(invoice['date']),
-                amount=invoice['total'])
+                amount=invoice['total'],
+                status=invoice['status']
+            )
 
             if with_pdf:
                 data['pdf'] = self.get_invoice_pdf(invoice['id'])
@@ -176,6 +187,7 @@ class WHMCSAPI(object):
     def get_invoice_pdf(self, invoice_id):
         if not hasattr(self, 'session'):
             self.session = requests.Session()
+            self.session.verify = False
             self.session.get(self._get_backend_url('/admin/login.php'))
             self.session.post(
                 self._get_backend_url('/admin/dologin.php'),
@@ -198,7 +210,7 @@ class WHMCSAPI(object):
             '/feeds/productsinfo.php',
             {'pid': product_id, 'get': 'price', 'billingcycle': 'monthly'})
 
-        response = requests.get(price_url)
+        response = requests.get(price_url, verify=False)
         if response.status_code != 200:
             raise BillingBackendError(
                 "%s. Can't retrieve product price from backend: %s" %
