@@ -80,12 +80,15 @@ class BillingBackend(object):
             if cur_invoice:
                 cur_invoice.date = invoice['date']
                 cur_invoice.amount = invoice['amount']
+                cur_invoice.status = invoice['status']
                 cur_invoice.save(update_fields=['date', 'amount'])
             else:
                 cur_invoice = self.customer.invoices.create(
                     backend_id=invoice['backend_id'],
                     date=invoice['date'],
-                    amount=invoice['amount'])
+                    amount=invoice['amount'],
+                    status=invoice['status']
+                )
 
             if 'pdf' in invoice:
                 cur_invoice.pdf.delete()

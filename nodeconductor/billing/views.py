@@ -44,12 +44,15 @@ class InvoiceFilter(django_filters.FilterSet):
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'year', 'month',
             'amount',
+            'status',
         ]
         order_by = [
             'date',
             '-date',
             'amount',
             '-amount',
+            'status',
+            '-status',
         ]
         order_by_mapping = {
             # Proper field naming

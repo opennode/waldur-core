@@ -167,7 +167,9 @@ class WHMCSAPI(object):
             data = dict(
                 backend_id=invoice['id'],
                 date=self._parse_date(invoice['date']),
-                amount=invoice['total'])
+                amount=invoice['total'],
+                status=invoice['status']
+            )
 
             if with_pdf:
                 data['pdf'] = self.get_invoice_pdf(invoice['id'])
