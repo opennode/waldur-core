@@ -44,9 +44,9 @@ Alerts can be ordered by:
             "created": "2015-05-29T14:24:27.342Z",
             "closed": null,
             "context": {
-                'customer_abbreviation': 'MoCS',
-                'customer_contact_details': 'drop db;',
-                'customer_name': 'The Ministry of Civil Service',
+                'customer_abbreviation': 'customer_abbreviation',
+                'customer_contact_details': 'customer details',
+                'customer_name': 'Customer name',
                 'customer_uuid': '53c6e86406e349faa7924f4c865b15ab',
                 'quota_limit': '131072.0',
                 'quota_name': 'ram',
