@@ -22,6 +22,7 @@ config_defaults = {
         'secret_key': '',
         'static_root': os.path.join(data_dir, 'static'),
         'template_debug': 'false',
+        'media_root': work_dir,
     },
     'celery': {
         'backup_schedule_execute_period': 600,
@@ -121,6 +122,8 @@ SECRET_KEY = config.get('global', 'secret_key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config.getboolean('global', 'debug')
 TEMPLATE_DEBUG = config.getboolean('global', 'template_debug')
+
+MEDIA_ROOT = config.get('global', 'media_root'),
 
 ALLOWED_HOSTS = ['*']
 
