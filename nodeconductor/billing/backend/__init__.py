@@ -53,12 +53,11 @@ class BillingBackend(object):
         if self.customer.billing_backend_id:
             return self.customer.billing_backend_id
 
-        owner = self.customer.get_owners().first()
         self.customer.billing_backend_id = self.api.add_client(
-            name=owner.full_name,
-            email=owner.email,
-            phone_number=owner.phone_number,
-            organization=owner.organization)
+            name=self.customer.name,
+            organization=self.customer.name,
+            email="%s@example.com" % self.customer.uuid  # XXX: a fake email address unique to a customer
+        )
 
         self.customer.save(update_fields=['billing_backend_id'])
 

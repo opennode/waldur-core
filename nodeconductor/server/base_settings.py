@@ -13,6 +13,8 @@ DEBUG = False
 
 TEMPLATE_DEBUG = False
 
+MEDIA_ROOT = '/tmp/'
+
 ALLOWED_HOSTS = []
 
 # Application definition
