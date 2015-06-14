@@ -236,6 +236,9 @@ class AlertLogger(BaseLogger):
     def debug(self, *args, **kwargs):
         self.process(models.Alert.SeverityChoices.DEBUG, *args, **kwargs)
 
+    def critical(self, *args, **kwargs):
+        self.process(models.Alert.SeverityChoices.CRITICAL, *args, **kwargs)
+
     def process(self, severity, message_template, scope, alert_type='undefined', alert_context=None):
         self.validate_logging_type(alert_type)
 
@@ -251,9 +254,13 @@ class AlertLogger(BaseLogger):
             if alert.severity != severity:
                 alert.severity = severity
                 alert.save()
+            created = False
         except models.Alert.DoesNotExist:
-            models.Alert.objects.create(
+            alert = models.Alert.objects.create(
                 alert_type=alert_type, message=msg, severity=severity, context=context, scope=scope)
+            created = True
+
+        return alert, created
 
     def close(self, scope, alert_type):
         try:
