@@ -27,6 +27,7 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - ?system_volume_size=<size of system disk in MiB>
 - ?data_volume_size=<size of data disk in MiB>
 - ?type=<type of the resource: IaaS or PaaS>
+- ?backend_id=<openstack id of instance>
 
 Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
 
@@ -229,7 +230,8 @@ Example rendering of the Instance object:
             "data_volume_size": 20480,
             "cores": 2,
             "ram": 1024,
-            "created": "2015-01-26T14:06:00.978Z"
+            "created": "2015-01-26T14:06:00.978Z",
+            "backend_id": "9c4dacb2-34f4-4da5-ac83-ba7f12ba19f1"
         }
     ]
 

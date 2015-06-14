@@ -198,6 +198,7 @@ class InstanceFilter(django_filters.FilterSet):
             'description',
             'created',
             'type',
+            'backend_id',
         ]
         order_by = [
             'name',
@@ -1010,7 +1011,8 @@ class CloudProjectMembershipFilter(django_filters.FilterSet):
         model = models.CloudProjectMembership
         fields = [
             'cloud',
-            'project'
+            'project',
+            'tenant_id',
         ]
 
 

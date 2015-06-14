@@ -110,6 +110,7 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             'cloud', 'cloud_name', 'cloud_uuid',
             'quotas',
             'state',
+            'tenant_id',
         )
         view_name = 'cloudproject_membership-detail'
         extra_kwargs = {
@@ -564,6 +565,7 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
             'user_data',
             'type',
             'installation_state',
+            'backend_id',
         )
         read_only_fields = (
             'key_name',
