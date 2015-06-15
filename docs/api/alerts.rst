@@ -3,7 +3,7 @@ Alerts
 
 To get a list of alerts, run GET against **/api/alerts/** as authenticated user.
 
-Alert severity field can take one of this values: "Critical", "Error", "Warning", "Info", "Debug".
+Alert severity field can take one of this values: "Error", "Warning", "Info", "Debug".
 Field scope will contain link to object that cause alert.
 Context - dictionary that contains information about all related to alert objects.
 

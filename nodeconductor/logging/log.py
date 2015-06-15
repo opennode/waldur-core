@@ -236,9 +236,6 @@ class AlertLogger(BaseLogger):
     def debug(self, *args, **kwargs):
         self.process(models.Alert.SeverityChoices.DEBUG, *args, **kwargs)
 
-    def critical(self, *args, **kwargs):
-        self.process(models.Alert.SeverityChoices.CRITICAL, *args, **kwargs)
-
     def process(self, severity, message_template, scope, alert_type='undefined', alert_context=None):
         self.validate_logging_type(alert_type)
 

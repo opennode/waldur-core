@@ -16,8 +16,7 @@ class Alert(TimeStampedModel):
         INFO = 20
         WARNING = 30
         ERROR = 40
-        CRITICAL = 50
-        CHOICES = ((DEBUG, 'Debug'), (INFO, 'Info'), (WARNING, 'Warning'), (ERROR, 'Error'), (CRITICAL, 'Critical'))
+        CHOICES = ((DEBUG, 'Debug'), (INFO, 'Info'), (WARNING, 'Warning'), (ERROR, 'Error'))
 
     # There is circular dependency between logging and core applications. Core not abstract models are loggable.
     # So we cannot use UUID mixin here
