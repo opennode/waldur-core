@@ -8,6 +8,7 @@ from requests.packages.urllib3 import exceptions
 from django.conf import settings as django_settings
 from django.utils import six
 from pyzabbix import ZabbixAPI, ZabbixAPIException
+from nodeconductor.iaas.models import Instance
 
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
@@ -170,8 +171,32 @@ class ZabbixApiClient(object):
 
     @_exception_decorator('Can not get instance {1} installation state from zabbix')
     def get_service_installation_state(self, instance):
-        # TODO: Get installation state from zabbix
-        return 'synced'
+        # a shortcut for the IaaS instances -- all done
+        if instance.type == Instance.Services.IAAS:
+            return 'synced'
+        name = self.get_host_name(instance)
+        api = self.get_zabbix_api()
+
+        if api.host.exists(host=name):
+            hostid = api.host.get(filter={'host': name})[0]['hostid']
+            # lookup item by a pre-defined name
+            item_id = api.item.get(
+                output='extend',
+                hostids=hostid,
+                filter={'key_': 'application.status'}
+            )['itemid']
+            value = api.history.get(
+                output='extend',
+                itemids=item_id,
+                sortfield=["clock"],
+                sortorder="ASC",
+                limit=1
+            )[0]['value']
+            logger.debug('Installation state metric %s.', instance)
+            return value
+        else:
+            logger.warn('Cannot retrieve installation state of instance %s. Host does not exist.', instance)
+            return 'not_synced'
 
     # Helpers:
     def get_zabbix_api(self):
