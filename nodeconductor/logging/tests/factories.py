@@ -71,7 +71,8 @@ class AlertFactory(factory.DjangoModelFactory):
     alert_type = factory.Iterator(['first_alert', 'second_alert', 'third_alert', 'fourth_alert'])
     severity = factory.Iterator([
         models.Alert.SeverityChoices.DEBUG, models.Alert.SeverityChoices.INFO,
-        models.Alert.SeverityChoices.WARNING, models.Alert.SeverityChoices.ERROR])
+        models.Alert.SeverityChoices.WARNING, models.Alert.SeverityChoices.ERROR,
+        models.Alert.SeverityChoices.CRITICAL])
     context = {'test': 'test'}
     scope = factory.SubFactory(structure_factories.CustomerFactory)
 
@@ -80,5 +81,8 @@ class AlertFactory(factory.DjangoModelFactory):
         return 'http://testserver' + reverse('alert-list')
 
     @classmethod
-    def get_stats_url(self):
-        return 'http://testserver' + reverse('alert-stat')
+    def get_url(self, alert=None, action=None):
+        if alert is None:
+            alert = AlertFactory()
+        url = 'http://testserver' + reverse('alert-detail', kwargs={'uuid': alert.uuid})
+        return url if action is None else url + action + '/'

@@ -2,7 +2,8 @@ from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
-from rest_framework import generics, response, settings, viewsets, permissions, filters, serializers as rf_serializers
+from rest_framework import generics, response, settings, viewsets, permissions, filters, status, decorators, mixins
+from rest_framework.serializers import ValidationError
 
 from nodeconductor.core import utils as core_utils
 from nodeconductor.logging import elasticsearch_client, models, serializers
@@ -111,13 +112,18 @@ class AlertFilter(filters.BaseFilterBackend):
                     queryset = queryset.filter(
                         **{filter_field: core_utils.timestamp_to_datetime(int(request.query_params[parameter]))})
                 except ValueError:
-                    raise rf_serializers.ValidationError(
+                    raise ValidationError(
                         'Parameter {} is not valid. (It has to be valid timestamp)'.format(parameter))
+
+        if ('o' in request.query_params and
+                (request.query_params['o'] == 'severity' or request.query_params['o'] == '-severity')):
+            queryset = queryset.order_by(request.query_params['o'])
 
         return queryset
 
 
-class AlertViewSet(viewsets.ReadOnlyModelViewSet):
+class AlertViewSet(mixins.CreateModelMixin,
+                   viewsets.ReadOnlyModelViewSet):
 
     queryset = models.Alert.objects.all()
     serializer_class = serializers.AlertSerializer
@@ -127,3 +133,10 @@ class AlertViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return models.Alert.objects.filtered_for_user(self.request.user)
+
+    @decorators.detail_route(methods=['post'])
+    def close(self, request, *args, **kwargs):
+        alert = self.get_object()
+        alert.close()
+
+        return response.Response(status=status.HTTP_204_NO_CONTENT)

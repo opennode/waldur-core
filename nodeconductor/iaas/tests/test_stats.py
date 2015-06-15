@@ -427,6 +427,7 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
         self.assertItemsEqual(
             response.data,
             {
+                severity_names[logging_models.Alert.SeverityChoices.CRITICAL]: 0,
                 severity_names[logging_models.Alert.SeverityChoices.ERROR]: len(error_alerts),
                 severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(warning_alerts),
                 severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
@@ -462,6 +463,7 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
         self.assertItemsEqual(
             response.data,
             {
+                severity_names[logging_models.Alert.SeverityChoices.CRITICAL]: 0,
                 severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
                 severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(old_alerts),
                 severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
@@ -501,6 +503,7 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
         self.assertItemsEqual(
             response.data,
             {
+                severity_names[logging_models.Alert.SeverityChoices.CRITICAL]: 0,
                 severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
                 severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(project1_alerts),
                 severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
@@ -538,6 +541,7 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
         self.assertItemsEqual(
             response.data,
             {
+                severity_names[logging_models.Alert.SeverityChoices.CRITICAL]: 0,
                 severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
                 severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(project1_alerts),
                 severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
@@ -569,6 +573,7 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
         self.assertItemsEqual(
             response.data,
             {
+                severity_names[logging_models.Alert.SeverityChoices.CRITICAL]: 0,
                 severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
                 severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(instances_alerts),
                 severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
