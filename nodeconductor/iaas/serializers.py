@@ -887,8 +887,8 @@ class StatsAggregateSerializer(serializers.Serializer):
 
 class TimeIntervalSerializer(serializers.Serializer):
     MAX_TIMESTAMP_VALUE = 2 ** 32  # This is quick fix. TODO: implement TimestampField with validation
-    start = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE)
-    end = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE)
+    start = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE, required=False)
+    end = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE, required=False)
 
     def validate(self, data):
         """

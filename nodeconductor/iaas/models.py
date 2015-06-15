@@ -102,7 +102,7 @@ class ServiceStatistics(models.Model):
 
 
 @python_2_unicode_compatible
-class CloudProjectMembership(structure_models.ServiceProjectLink):
+class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink):
     """
     This model represents many to many relationships between project and cloud
     """

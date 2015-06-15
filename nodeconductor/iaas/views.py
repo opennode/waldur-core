@@ -1239,6 +1239,10 @@ class OpenstackAlertStatsView(views.APIView):
         alerts = (logging_models.Alert.objects.filter(aggregate_query)
                                               .filter(closed_time_query)
                                               .filter(created_time_query))
+
+        if 'opened' in request.query_params:
+            alerts = alerts.filter(closed__isnull=True)
+
         alerts_severities_count = alerts.values('severity').annotate(count=Count('severity'))
 
         severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)

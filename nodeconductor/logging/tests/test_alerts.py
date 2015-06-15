@@ -20,8 +20,9 @@ class AlertsListTest(test.APITransactionTestCase):
         self.owner = structure_factories.UserFactory()
         self.customer.add_user(self.owner, structure_models.CustomerRole.OWNER)
 
-    def test_customer_owner_can_see_alert_about_his_customer(self):
-        alert = factories.AlertFactory(scope=self.customer)
+    def test_customer_owner_can_see_alert_about_his_project(self):
+        project = structure_factories.ProjectFactory(customer=self.customer)
+        alert = factories.AlertFactory(scope=project)
 
         self.client.force_authenticate(self.owner)
         response = self.client.get(factories.AlertFactory.get_list_url())
@@ -37,6 +38,72 @@ class AlertsListTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertNotIn(alert.uuid.hex, [a['uuid'] for a in response.data])
+
+    def test_alert_list_can_be_filtered_by_scope(self):
+        project = structure_factories.ProjectFactory(customer=self.customer)
+        alert1 = factories.AlertFactory(scope=project)
+        alert2 = factories.AlertFactory()
+
+        self.client.force_authenticate(self.owner)
+        response = self.client.get(factories.AlertFactory.get_list_url(), data={
+            'scope': structure_factories.ProjectFactory.get_url(project)})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(alert1.uuid.hex, [a['uuid'] for a in response.data])
+        self.assertNotIn(alert2.uuid.hex, [a['uuid'] for a in response.data])
+
+    def test_alert_list_can_be_filtered_by_scope_type(self):
+        project = structure_factories.ProjectFactory(customer=self.customer)
+        alert1 = factories.AlertFactory(scope=project)
+        alert2 = factories.AlertFactory(scope=self.customer)
+
+        self.client.force_authenticate(self.owner)
+        response = self.client.get(factories.AlertFactory.get_list_url(), data={'scope_type': 'project'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(alert1.uuid.hex, [a['uuid'] for a in response.data])
+        self.assertNotIn(alert2.uuid.hex, [a['uuid'] for a in response.data])
+
+    def test_alert_list_can_be_aggregated_for_concreate_customer(self):
+        project = structure_factories.ProjectFactory(customer=self.customer)
+        alert1 = factories.AlertFactory(scope=project)
+        alert2 = factories.AlertFactory()
+
+        self.client.force_authenticate(self.owner)
+        response = self.client.get(factories.AlertFactory.get_list_url(), data={
+            'aggregate': 'customer', 'uuid': self.customer.uuid.hex})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(alert1.uuid.hex, [a['uuid'] for a in response.data])
+        self.assertNotIn(alert2.uuid.hex, [a['uuid'] for a in response.data])
+
+    def test_alert_list_can_be_filtered_by_created_date(self):
+        project = structure_factories.ProjectFactory(customer=self.customer)
+        alert1 = factories.AlertFactory(scope=project, created=timezone.now()-timedelta(days=1))
+        alert2 = factories.AlertFactory(scope=project, created=timezone.now()-timedelta(days=3))
+
+        self.client.force_authenticate(self.owner)
+        response = self.client.get(factories.AlertFactory.get_list_url(), data={
+            'created_from': core_utils.datetime_to_timestamp(timezone.now()-timedelta(days=2)),
+            'created_to': core_utils.datetime_to_timestamp(timezone.now())})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(alert1.uuid.hex, [a['uuid'] for a in response.data])
+        self.assertNotIn(alert2.uuid.hex, [a['uuid'] for a in response.data])
+
+    def test_alert_list_can_be_filtered_by_severity_list(self):
+        project = structure_factories.ProjectFactory(customer=self.customer)
+        alert1 = factories.AlertFactory(scope=project, severity=models.Alert.SeverityChoices.WARNING)
+        alert2 = factories.AlertFactory(scope=project, severity=models.Alert.SeverityChoices.ERROR)
+        alert3 = factories.AlertFactory(scope=project, severity=models.Alert.SeverityChoices.INFO)
+
+        self.client.force_authenticate(self.owner)
+        response = self.client.get(factories.AlertFactory.get_list_url(), data={'severity': ['Warning', 'Error']})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(alert1.uuid.hex, [a['uuid'] for a in response.data])
+        self.assertIn(alert2.uuid.hex, [a['uuid'] for a in response.data])
+        self.assertNotIn(alert3.uuid.hex, [a['uuid'] for a in response.data])
 
 
 class AlertsCreateUpdateDeleteTest(test.APITransactionTestCase):
