@@ -176,6 +176,10 @@ NODECONDUCTOR = {
             'groupid': '8',
             'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
             'FAIL_SILENTLY': True,
+            # application-specific templates
+            'wordpress-templateid': '10107',
+            'zimbra-templateid': '10108',
+            'postgresql-templateid': '10107',
         }
     }
 }

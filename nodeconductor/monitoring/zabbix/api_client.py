@@ -8,6 +8,7 @@ from requests.packages.urllib3 import exceptions
 from django.conf import settings as django_settings
 from django.utils import six
 from pyzabbix import ZabbixAPI, ZabbixAPIException
+from nodeconductor.iaas.models import Instance
 
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
@@ -73,10 +74,11 @@ class ZabbixApiClient(object):
             api, instance,
             groupid=self._settings['groupid'],
             templateid=self._settings['templateid'],
-            interface_parameters=self._settings['interface_parameters']
+            interface_parameters=self._settings['interface_parameters'],
+            application_templateid=self._settings.get("%s-templateid" % instance.template.application_type.lower())
         )
         if not created and warn_if_host_exists:
-            logger.warn('Can not create new Zabbix host for instance %s. It already exists.', instance)
+            logger.warn('Can not create new Zabbix host for instance %s. Already exists.', instance)
 
     @_exception_decorator('Can not update Zabbix host visible name for instance {1}. {exception_name}: {exception}')
     def update_host_visible_name(self, instance):
@@ -217,17 +219,20 @@ class ZabbixApiClient(object):
         except IndexError:
             return False
 
-    def get_or_create_host(self, api, instance, groupid, templateid, interface_parameters):
+    def get_or_create_host(self, api, instance, groupid, templateid, interface_parameters, application_templateid=None):
         name = self.get_host_name(instance)
         visible_name = self.get_host_visible_name(instance)
 
         if not api.host.exists(host=name):
+            templates = [{"templateid": templateid}]
+            if application_templateid:
+                templates.append({"templateid": application_templateid})
             host = api.host.create({
                 "host": name,
                 "name": visible_name,
-                "interfaces": [self._settings['interface_parameters']],
+                "interfaces": [interface_parameters],
                 "groups": [{"groupid": groupid}],
-                "templates": [{"templateid": templateid}],
+                "templates": templates,
             })
             return host, True
         else:
