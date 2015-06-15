@@ -251,9 +251,13 @@ class AlertLogger(BaseLogger):
             if alert.severity != severity:
                 alert.severity = severity
                 alert.save()
+            created = False
         except models.Alert.DoesNotExist:
-            models.Alert.objects.create(
+            alert = models.Alert.objects.create(
                 alert_type=alert_type, message=msg, severity=severity, context=context, scope=scope)
+            created = True
+
+        return alert, created
 
     def close(self, scope, alert_type):
         try:

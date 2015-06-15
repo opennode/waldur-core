@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from rest_framework import generics, response, settings, viewsets, permissions
+from rest_framework import generics, response, settings, viewsets, permissions, mixins, status, decorators
 
 from nodeconductor.logging import elasticsearch_client, models, serializers
 
@@ -40,7 +40,8 @@ class EventListView(generics.GenericAPIView):
         return self.list(request, *args, **kwargs)
 
 
-class AlertViewSet(viewsets.ReadOnlyModelViewSet):
+class AlertViewSet(mixins.CreateModelMixin,
+                   viewsets.ReadOnlyModelViewSet):
 
     queryset = models.Alert.objects.all()
     serializer_class = serializers.AlertSerializer
@@ -49,3 +50,9 @@ class AlertViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return models.Alert.objects.filtered_for_user(self.request.user)
+
+    @decorators.detail_route(methods=['post'])
+    def close(self, request, *args, **kwargs):
+        alert = self.get_object()
+        alert.close()
+        return response.Response(status=status.HTTP_204_NO_CONTENT)
