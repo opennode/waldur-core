@@ -20,8 +20,9 @@ class AlertsListTest(test.APITransactionTestCase):
         self.owner = structure_factories.UserFactory()
         self.customer.add_user(self.owner, structure_models.CustomerRole.OWNER)
 
-    def test_customer_owner_can_see_alert_about_his_customer(self):
-        alert = factories.AlertFactory(scope=self.customer)
+    def test_customer_owner_can_see_alert_about_his_project(self):
+        project = structure_factories.ProjectFactory(customer=self.customer)
+        alert = factories.AlertFactory(scope=project)
 
         self.client.force_authenticate(self.owner)
         response = self.client.get(factories.AlertFactory.get_list_url())
