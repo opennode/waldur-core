@@ -71,8 +71,7 @@ class AlertFactory(factory.DjangoModelFactory):
     alert_type = factory.Iterator(['first_alert', 'second_alert', 'third_alert', 'fourth_alert'])
     severity = factory.Iterator([
         models.Alert.SeverityChoices.DEBUG, models.Alert.SeverityChoices.INFO,
-        models.Alert.SeverityChoices.WARNING, models.Alert.SeverityChoices.ERROR,
-        models.Alert.SeverityChoices.CRITICAL])
+        models.Alert.SeverityChoices.WARNING, models.Alert.SeverityChoices.ERROR])
     context = {'test': 'test'}
     scope = factory.SubFactory(structure_factories.CustomerFactory)
 
