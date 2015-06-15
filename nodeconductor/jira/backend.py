@@ -8,8 +8,11 @@ import threading
 
 from jira import JIRA, JIRAError
 
-from django.conf import settings
+from django.conf import settings as django_settings
 from django.utils import six
+
+from nodeconductor.iaas.backend import ServiceBackend, ServiceBackendError
+from nodeconductor.structure.models import ServiceSettings
 
 
 now = lambda: datetime.datetime.now() - datetime.timedelta(minutes=random.randint(0, 60))
@@ -17,21 +20,62 @@ DATA = threading.local().jira_data = {}
 logger = logging.getLogger(__name__)
 
 
-class JiraClientError(Exception):
+class JiraBackendError(ServiceBackendError):
     pass
 
 
-class JiraResource(object):
-    """ Generic JIRA resource """
-
-    def __init__(self, client):
-        self.client = client
-
-
 class JiraClient(object):
+    # TODO: This should be done as separate resource (NC-549)
+
+    REPORTER_FIELD = 'Original Reporter'
+
+    def __new__(self):
+        try:
+            base_config = django_settings.NODECONDUCTOR['JIRA_SUPPORT']
+            server = base_config['server']
+            project = base_config['project']
+        except (KeyError, AttributeError):
+            raise JiraBackendError(
+                "Missed JIRA server or project. They must be defined "
+                "within settings.NODECONDUCTOR.JIRA_SUPPORT")
+
+        try:
+            jira_settings = ServiceSettings.objects.filter(
+                type=ServiceSettings.Types.Jira).get(backend_url=server)
+        except ServiceSettings.DoesNotExist as e:
+            logger.exception(
+                "Can't find jira credential with backend url %s among ServiceSettings", server)
+            six.reraise(JiraBackendError, e)
+
+        return JiraBackend(
+            jira_settings, core_project=project, reporter_field=JiraClient.REPORTER_FIELD)
+
+
+class JiraBackend(object):
+
+    def __init__(self, settings, **kwargs):
+        self.backend = JiraRealBackend(settings, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self.backend, name)
+
+
+class JiraBaseBackend(ServiceBackend):
+
+    def sync(self):
+        pass
+
+
+class JiraRealBackend(JiraBaseBackend):
     """ NodeConductor interface to JIRA """
 
-    class Issue(JiraResource):
+    class Resource(object):
+        """ Generic JIRA resource """
+
+        def __init__(self, manager):
+            self.manager = manager
+
+    class Issue(Resource):
         """ JIRA issues resource """
 
         class IssueQuerySet(object):
@@ -58,7 +102,7 @@ class JiraClient(object):
                 except JIRAError as e:
                     logger.exception(
                         'Failed to perform issues search with query "%s"', self.query_string)
-                    six.reraise(JiraClientError, e)
+                    six.reraise(JiraBackendError, e)
 
                 return self.items
 
@@ -76,117 +120,163 @@ class JiraClient(object):
             def __getitem__(self, val):
                 return self._fetch_items(offset=val.start, limit=val.stop - val.start, force=True)
 
-        def create(self, summary, description='', reporter=None, assignee=None):
+        def create(self, summary, description='', reporter='', assignee=None):
+            args = {
+                'summary': summary,
+                'description': description,
+                'project': {'key': self.manager.core_project},
+                'issuetype': {'name': 'Task'},
+            }
+
             # Validate reporter & assignee before actual issue creation
-            if reporter:
-                reporter = self.client.users.get(reporter)
             if assignee:
-                assignee = self.client.users.get(assignee)
+                assignee = self.manager.users.get(assignee)
+            if self.reporter_field:
+                args[self.reporter_field] = reporter
+            elif reporter:
+                reporter = self.client.users.get(reporter)
 
             try:
-                issue = self.client.jira.create_issue(
-                    summary=summary,
-                    description=description,
-                    project={'key': self.client.core_project},
-                    issuetype={'name': 'Task'})
+                issue = self.manager.jira.create_issue(fields=args)
 
-                if reporter:
+                if reporter and not self.reporter_field:
                     issue.update(reporter={'name': reporter.name})
                 if assignee:
-                    self.client.jira.assign_issue(issue, assignee.key)
+                    self.manager.jira.assign_issue(issue, assignee.key)
 
             except JIRAError as e:
                 logger.exception('Failed to create issue with summary "%s"', summary)
-                six.reraise(JiraClientError, e)
+                six.reraise(JiraBackendError, e)
 
             return issue
 
         def get_by_user(self, username, user_key):
-            reporter = self.client.users.get(username)
-
             try:
-                issue = self.client.jira.issue(user_key)
+                issue = self.manager.jira.issue(user_key)
             except JIRAError:
-                raise JiraClientError("Can't find issue %s" % user_key)
+                raise JiraBackendError("Can't find issue %s" % user_key)
 
-            if issue.fields.reporter.key != reporter.key:
-                raise JiraClientError("Access denied to issue %s for user %s" % (user_key, username))
+            if self.reporter_field:
+                is_owner = getattr(issue.fields, self.manager.reporter_field) == username
+            else:
+                reporter = self.client.users.get(username)
+                is_owner = issue.fields.reporter.key == reporter.key
+
+            if not is_owner:
+                raise JiraBackendError("Access denied to issue %s for user %s" % (user_key, username))
 
             return issue
 
         def list_by_user(self, username):
-            query_string = "project = {} AND reporter = {}".format(
-                self.client.core_project, username)
+            if self.manager.reporter_field:
+                query_string = "project = {} AND '{}' ~ '{}'".format(
+                    self.manager.core_project, self.manager.reporter_field, username)
+            else:
+                query_string = "project = {} AND reporter = {}".format(
+                    self.manager.core_project, username)
 
-            return self.IssueQuerySet(self.client.jira, query_string)
+            return self.IssueQuerySet(self.manager.jira, query_string)
 
-    class Comment(JiraResource):
+    class Comment(Resource):
         """ JIRA issue comments resource """
 
         def list(self, issue_key):
             try:
-                return self.client.jira.comments(issue_key)
+                return self.manager.jira.comments(issue_key)
             except JIRAError as e:
                 logger.exception(
                     'Failed to perform comments search for issue %s', issue_key)
-                six.reraise(JiraClientError, e)
+                six.reraise(JiraBackendError, e)
 
         def create(self, issue_key, comment):
-            return self.client.jira.add_comment(issue_key, comment)
+            return self.manager.jira.add_comment(issue_key, comment)
 
-    class User(JiraResource):
+    class User(Resource):
         """ JIRA users resource """
 
         def get(self, username):
             try:
-                return self.client.jira.user(username)
+                return self.manager.jira.user(username)
             except JIRAError:
-                raise JiraClientError("Unknown JIRA user %s" % username)
+                raise JiraBackendError("Unknown JIRA user %s" % username)
 
-    def __init__(self):
-        self.core_project = None
+    def __init__(self, settings, core_project=None, reporter_field=None):
+        self.settings = settings
+        self.core_project = core_project
+        self.reporter_field = reporter_field
 
-        if settings.NODECONDUCTOR.get('JIRA_DUMMY'):
-            logger.warn(
-                "Dummy client for JIRA is used, "
-                "set JIRA_DUMMY to False to disable dummy client")
-            self.jira = JiraDummyBackend()
-
+        if settings.dummy:
+            self.jira = JiraDummyClient()
         else:
-            try:
-                base_config = settings.NODECONDUCTOR['JIRA']
-                server = base_config['server']
-                auth = base_config['auth']
-            except (KeyError, AttributeError):
-                raise JiraClientError(
-                    "Missed JIRA server. It must be supplied explicitly or defined "
-                    "within settings.NODECONDUCTOR.JIRA")
-
-            try:
-                self.core_project = base_config['project']
-            except KeyError:
-                raise JiraClientError(
-                    "Missed JIRA project key. Please define it as "
-                    "settings.NODECONDUCTOR.JIRA['project']")
-
-            verify_ssl = base_config['verify'] if 'verify' in base_config else True
             self.jira = JIRA(
-                {'server': server, 'verify': verify_ssl},
-                basic_auth=auth, validate=False)
+                {'server': settings.backend_url, 'verify': False},
+                basic_auth=(settings.username, settings.password), validate=False)
+
+        if self.reporter_field:
+            try:
+                self.reporter_field_id = next(
+                    f['id'] for f in self.jira.fields() if self.reporter_field in f['clauseNames'])
+            except StopIteration:
+                raise JiraBackendError("Can't custom field %s" % self.reporter_field)
 
         self.users = self.User(self)
         self.issues = self.Issue(self)
         self.comments = self.Comment(self)
 
 
-class JiraDummyBackend(object):
-    """ Dummy JIRA API client """
+class JiraDummyClient(object):
+    """ Dummy JIRA API manager """
 
     class DataSet(object):
         USERS = (
             {'key': 'alice', 'displayName': 'Alice', 'emailAddress': 'alice@example.com'},
             {'key': 'bob', 'displayName': 'Bob', 'emailAddress': 'bob@example.com'},
         )
+
+        FIELDS = [
+            {'clauseNames': ['issuetype', 'type'],
+                'custom': False,
+                'id': 'issuetype',
+                'name': 'Issue Type',
+                'navigable': True,
+                'orderable': True,
+                'schema': {'system': 'issuetype', 'type': 'issuetype'},
+                'searchable': True},
+            {'clauseNames': ['project'],
+                'custom': False,
+                'id': 'project',
+                'name': 'Project',
+                'navigable': True,
+                'orderable': False,
+                'schema': {'system': 'project', 'type': 'project'},
+                'searchable': True},
+            {'clauseNames': ['description'],
+                'custom': False,
+                'id': 'description',
+                'name': 'Description',
+                'navigable': True,
+                'orderable': True,
+                'schema': {'system': 'description', 'type': 'string'},
+                'searchable': True},
+            {'clauseNames': ['summary'],
+                'custom': False,
+                'id': 'summary',
+                'name': 'Summary',
+                'navigable': True,
+                'orderable': True,
+                'schema': {'system': 'summary', 'type': 'string'},
+                'searchable': True},
+            {'clauseNames': ['cf[10000]', 'Original Reporter'],
+                'custom': True,
+                'id': 'customfield_10000',
+                'name': 'Original Reporter',
+                'navigable': True,
+                'orderable': True,
+                'schema': {'custom': 'com.atlassian.jira.plugin.system.customfieldtypes:textfield',
+                           'customId': 10000,
+                           'type': 'string'},
+                'searchable': True},
+        ]
 
         ISSUES = (
             {
@@ -232,7 +322,7 @@ class JiraDummyBackend(object):
 
     class PersistentResource(Resource):
         def __init__(self, **kwargs):
-            super(JiraDummyBackend.PersistentResource, self).__init__(**kwargs)
+            super(JiraDummyClient.PersistentResource, self).__init__(**kwargs)
             key = "%ss" % self.__class__.__name__.lower()
             DATA.setdefault(key, set())
             DATA[key].add(self)
@@ -245,7 +335,7 @@ class JiraDummyBackend(object):
 
     class Issue(PersistentResource):
         def update(self, reporter=()):
-            self.fields.reporter = JiraDummyBackend().user(reporter['name'])
+            self.fields.reporter = JiraDummyClient().user(reporter['name'])
 
     class Comment(Resource):
         pass
@@ -324,6 +414,9 @@ class JiraDummyBackend(object):
             results = self._issues
 
         return self.ResultSet(results)[startAt:startAt + maxResults]
+
+    def fields(self):
+        return self.DataSet.FIELDS
 
     def comments(self, issue_key):
         return self.issue(issue_key).fields.comments

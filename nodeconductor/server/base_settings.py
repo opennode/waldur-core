@@ -234,6 +234,5 @@ NODECONDUCTOR = {
         },
     ),
     'ELASTICSEARCH_DUMMY': True,
-    'JIRA_DUMMY': True,
     'TOKEN_KEY': 'x-auth-token',
 }
