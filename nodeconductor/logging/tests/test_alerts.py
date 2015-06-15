@@ -1,7 +1,11 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 from rest_framework import test, status
 
+from nodeconductor.core import utils as core_utils
 from nodeconductor.logging import models
 from nodeconductor.logging.tests import factories
 # Dependency from `structure` application exists only in tests
@@ -41,7 +45,7 @@ class AlertsCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.project = structure_factories.ProjectFactory()
         self.staff = get_user_model().objects.create_superuser(
             username='staff', password='staff', email='staff@example.com')
-        self.alert = factories.AlertFactory.build(scope=self.project)
+        self.alert = factories.AlertFactory.build(scope=self.project, severity=10)
         severity_names = dict(models.Alert.SeverityChoices.CHOICES)
         self.valid_data = {
             'scope': structure_factories.ProjectFactory.get_url(self.project),
@@ -62,7 +66,7 @@ class AlertsCreateUpdateDeleteTest(test.APITransactionTestCase):
 
     def test_alert_severity_can_be_updated(self):
         self.alert.save()
-        self.valid_data['severity'] = 'Critical'
+        self.valid_data['severity'] = 'Error'
 
         self.client.force_authenticate(self.staff)
         response = self.client.post(self.url, data=self.valid_data)
@@ -73,7 +77,7 @@ class AlertsCreateUpdateDeleteTest(test.APITransactionTestCase):
             content_type=ct,
             object_id=self.project.id,
             alert_type=self.alert.alert_type,
-            severity=models.Alert.SeverityChoices.CRITICAL).exists()
+            severity=models.Alert.SeverityChoices.ERROR).exists()
         )
 
     def test_alert_can_be_closed(self):
