@@ -11,18 +11,18 @@ class IssueViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin,
     filter_backends = (JiraSearchFilter,)
 
     def get_queryset(self):
-        return JiraClient().issues.list_by_user(self.request.user.username)
+        return JiraClient().issues.list_by_user(self.request.user.uuid.hex)
 
     def get_object(self):
         try:
             return JiraClient().issues.get_by_user(
-                self.request.user.username, self.kwargs['pk'])
+                self.request.user.uuid.hex, self.kwargs['pk'])
         except JiraBackendError as e:
             raise exceptions.NotFound(e)
 
     def perform_create(self, serializer):
         try:
-            serializer.save(reporter=self.request.user.username)
+            serializer.save(reporter=self.request.user.uuid.hex)
         except JiraBackendError as e:
             return response.Response(
                 {'detail': "Failed to create issue", 'error': str(e)},

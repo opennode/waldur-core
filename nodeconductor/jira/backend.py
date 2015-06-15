@@ -27,9 +27,13 @@ class JiraBackendError(ServiceBackendError):
 class JiraClient(object):
     # TODO: This should be done as separate resource (NC-549)
 
+    ISSUE_TYPE = 'Support Request'
     REPORTER_FIELD = 'Original Reporter'
 
     def __new__(self):
+        if django_settings.NODECONDUCTOR.get('JIRA_DUMMY'):
+            return JiraBackend(ServiceSettings(dummy=True))
+
         try:
             base_config = django_settings.NODECONDUCTOR['JIRA_SUPPORT']
             server = base_config['server']
@@ -48,7 +52,10 @@ class JiraClient(object):
             six.reraise(JiraBackendError, e)
 
         return JiraBackend(
-            jira_settings, core_project=project, reporter_field=JiraClient.REPORTER_FIELD)
+            jira_settings,
+            core_project=project,
+            reporter_field=JiraClient.REPORTER_FIELD,
+            default_issue_type=JiraClient.ISSUE_TYPE)
 
 
 class JiraBackend(object):
@@ -125,21 +132,21 @@ class JiraRealBackend(JiraBaseBackend):
                 'summary': summary,
                 'description': description,
                 'project': {'key': self.manager.core_project},
-                'issuetype': {'name': 'Task'},
+                'issuetype': {'name': self.manager.default_issue_type},
             }
 
             # Validate reporter & assignee before actual issue creation
             if assignee:
                 assignee = self.manager.users.get(assignee)
-            if self.reporter_field:
-                args[self.reporter_field] = reporter
+            if self.manager.reporter_field:
+                args[self.manager.reporter_field] = reporter
             elif reporter:
-                reporter = self.client.users.get(reporter)
+                reporter = self.manager.users.get(reporter)
 
             try:
                 issue = self.manager.jira.create_issue(fields=args)
 
-                if reporter and not self.reporter_field:
+                if reporter and not self.manager.reporter_field:
                     issue.update(reporter={'name': reporter.name})
                 if assignee:
                     self.manager.jira.assign_issue(issue, assignee.key)
@@ -156,10 +163,10 @@ class JiraRealBackend(JiraBaseBackend):
             except JIRAError:
                 raise JiraBackendError("Can't find issue %s" % user_key)
 
-            if self.reporter_field:
+            if self.manager.reporter_field:
                 is_owner = getattr(issue.fields, self.manager.reporter_field) == username
             else:
-                reporter = self.client.users.get(username)
+                reporter = self.manager.users.get(username)
                 is_owner = issue.fields.reporter.key == reporter.key
 
             if not is_owner:
@@ -200,10 +207,11 @@ class JiraRealBackend(JiraBaseBackend):
             except JIRAError:
                 raise JiraBackendError("Unknown JIRA user %s" % username)
 
-    def __init__(self, settings, core_project=None, reporter_field=None):
+    def __init__(self, settings, core_project=None, reporter_field=None, default_issue_type='Task'):
         self.settings = settings
         self.core_project = core_project
         self.reporter_field = reporter_field
+        self.default_issue_type = default_issue_type
 
         if settings.dummy:
             self.jira = JiraDummyClient()
@@ -383,13 +391,13 @@ class JiraDummyClient(object):
     def assign_issue(self, issue, user_key):
         issue.assignee = self.user(user_key)
 
-    def create_issue(self, **kwargs):
-        kwargs['reporter'] = 'admin'
-        kwargs['comments'] = []
+    def create_issue(self, fields=()):
+        fields['reporter'] = 'admin'
+        fields['comments'] = []
         issue = self.Issue(
             key='TST-{}'.format(len(self._issues) + 1),
             created=datetime.datetime.now(),
-            fields=self.Resource(**kwargs))
+            fields=self.Resource(**fields))
         return issue
 
     def search_issues(self, query, startAt=0, maxResults=50, **kwargs):
