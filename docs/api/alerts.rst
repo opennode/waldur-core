@@ -67,7 +67,7 @@ it will be updated
 
 Request example:
 
-.. code-block:: http
+.. code-block:: javascript
 
     POST /api/alerts/
     Accept: application/json
@@ -75,10 +75,10 @@ Request example:
     Host: example.com
 
     {
-        'scope': u'http://testserver/api/projects/b9e8a102b5ff4469b9ac03253fae4b95/',
-        'message': u'message#1',
-        'alert_type': u'first_alert',
-        'severity': 'Debug'
+        "scope": "http://testserver/api/projects/b9e8a102b5ff4469b9ac03253fae4b95/",
+        "message": "message#1",
+        "alert_type": "first_alert",
+        "severity": "Debug"
     }
 
 
@@ -86,4 +86,3 @@ Close alert
 -----------
 
 To close alert - run POST against */api/alerts/<alert_uuid>/close/*. No data is required.
-
