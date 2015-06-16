@@ -36,7 +36,7 @@ def zabbix_update_host_visible_name(instance_uuid):
 def _get_installation_state(instance):
     zabbix_settings = getattr(settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('APPLICATION_ZABBIX', {})
     zabbix_client = ZabbixApiClient(settings=zabbix_settings)
-    return zabbix_client.get_service_installation_state(instance)
+    return zabbix_client.get_application_installation_state(instance)
 
 
 @shared_task
@@ -52,4 +52,4 @@ def poll_instance_installation_state(instance_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)
     instance.installation_state = _get_installation_state(instance)
     instance.save()
-    return instance.installation_state == 'synced'
+    return instance.installation_state == 'OK'
