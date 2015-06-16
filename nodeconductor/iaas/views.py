@@ -1265,10 +1265,7 @@ class QuotaTimelineStatsView(views.APIView):
         return Response(stats, status=status.HTTP_200_OK)
 
     def get_memberships(self, request):
-        serializer = serializers.StatsAggregateSerializer(data={
-            'model_name': request.query_params.get('aggregate', 'customer'),
-            'uuid': request.query_params.get('uuid'),
-        })
+        serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         return serializer.get_memberships(request.user)
 

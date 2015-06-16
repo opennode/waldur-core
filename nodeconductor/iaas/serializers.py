@@ -917,7 +917,10 @@ class QuotaTimelineStatsSerializer(serializers.Serializer):
         # Format request data
         hosts = list(memberships.exclude(tenant_id='').values_list('tenant_id', flat=True))
 
-        item_names = self.validated_data.get('item') or self.ITEM_CHOICES
+        if not hosts:
+            return []
+
+        item_names = [self.validated_data['item']] if 'item' in self.validated_data else self.ITEM_CHOICES
         items = []
         for item in item_names:
             items.append("project_%s_limit" % item)
