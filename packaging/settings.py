@@ -102,6 +102,9 @@ config_defaults = {
         'password': '',
         'server_url': '',
         'username': '',
+        'wordpress-templateid': '',
+        'zimbra-templateid': '',
+        'postgresql-templateid': '',
     }
 }
 
@@ -740,6 +743,9 @@ NODECONDUCTOR = {
                 'showsla': 1,
                 'goodsla': 95,
             },
+            'wordpress-templateid': config.get('zabbix', 'wordpress-templateid'),
+            'zimbra-templateid': config.get('zabbix', 'zimbra-templateid'),
+            'postgresql-templateid': config.get('zabbix', 'postgresql-templateid'),
         }
     },
     'BILLING': {
