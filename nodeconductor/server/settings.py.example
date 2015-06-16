@@ -179,7 +179,7 @@ NODECONDUCTOR = {
             # application-specific templates
             'wordpress-templateid': '10107',
             'zimbra-templateid': '10108',
-            'postgresql-templateid': '10107',
+            'postgresql-templateid': '10109',
         }
     }
 }
