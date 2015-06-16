@@ -190,7 +190,7 @@ Example result:
 Quotas timeline statistics
 ------------------------
 
-Historical data of quotas and quotas usage aggregated by projects/project_groups/customers. 
+Historical data of quotas and quotas usage aggregated by projects/project_groups/customers.
 
 URL: **/api/stats/quota/timeline/**
 
@@ -263,6 +263,7 @@ All available request parameters are optional:
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
 - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
   object with given uuid)
+- ?opened - if this argument is in GET request - endpoint will return statistics only for alerts that are not closed
 
 Answer will be dictionary where key is severity and value is a count of alerts.
 

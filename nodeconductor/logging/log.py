@@ -248,12 +248,17 @@ class AlertLogger(BaseLogger):
             content_type = ct_models.ContentType.objects.get_for_model(scope)
             alert = models.Alert.objects.get(
                 object_id=scope.id, content_type=content_type, alert_type=alert_type, closed__isnull=True)
-            if alert.severity != severity:
+            if alert.severity != severity or alert.message != msg:
                 alert.severity = severity
+                alert.message = msg
                 alert.save()
+            created = False
         except models.Alert.DoesNotExist:
-            models.Alert.objects.create(
+            alert = models.Alert.objects.create(
                 alert_type=alert_type, message=msg, severity=severity, context=context, scope=scope)
+            created = True
+
+        return alert, created
 
     def close(self, scope, alert_type):
         try:
