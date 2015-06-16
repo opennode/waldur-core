@@ -7,38 +7,12 @@ from celery import shared_task
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeError, transition
-from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError
-from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
-from nodeconductor.monitoring.zabbix.errors import ZabbixError
+from nodeconductor.monitoring import utils as monitoring_utils
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
-
-
-def create_zabbix_host_and_service(instance, warn_if_exists=True):
-    try:
-        zabbix_client = ZabbixApiClient()
-        zabbix_client.create_host(instance, warn_if_host_exists=warn_if_exists)
-        zabbix_client.create_service(instance, warn_if_service_exists=warn_if_exists)
-    except Exception as e:
-        # task does not have to fail if something is wrong with zabbix
-        logger.error('Zabbix host creation flow has broken %s' % e, exc_info=1)
-
-
-def delete_zabbix_host_and_service(instance):
-    try:
-        zabbix_client = ZabbixApiClient()
-        zabbix_client.delete_host(instance)
-        zabbix_client.delete_service(instance)
-    except ZabbixError as e:
-        # task does not have to fail if something is wrong with zabbix
-        logger.error('Zabbix host deletion flow has broken %s' % e, exc_info=1)
-        event_logger.error(
-            'Zabbix host deletion flow has broken %s', e,
-            extra={'instance': instance, 'event_type': 'zabbix_host_deletion'}
-        )
 
 
 @shared_task
@@ -83,7 +57,7 @@ def schedule_deleting(instance_uuid):
         backend = instance.cloud_project_membership.cloud.get_backend()
         backend.delete_instance(instance)
 
-        delete_zabbix_host_and_service(instance)
+        monitoring_utils.delete_host_and_service(instance)
     except Exception:
         # noinspection PyProtectedMember
         logger.exception('Failed to begin deleting Instance with id %s', instance_uuid)
@@ -109,11 +83,13 @@ def import_instance(membership_pk, instance_id, template_id=None):
     backend = membership.cloud.get_backend()
     imported_instance = backend.import_instance(membership, instance_id, template_id)
     if imported_instance:
-        create_zabbix_host_and_service(imported_instance)
+        monitoring_utils.create_host_and_service(imported_instance)
     else:
         # in case Instance object hasn't been created, emit an event for a user
-        event_logger.info('Import of a virtual machine with backend id %s has failed.', instance_id,
-                          extra={'event_type': 'iaas_instance_import_failed'})
+        event_logger.instance_import.info(
+            'Import of a virtual machine with backend id {instance_id} has failed.',
+            event_type='iaas_instance_import_failed',
+            event_context={'instance_id': instance_id})
 
 
 @shared_task
@@ -221,10 +197,13 @@ def sync_cloud_membership(membership_pk):
             membership.pk,
             exc_info=1,
         )
-        event_logger.warning(
-            'Failed to push security groups to cloud membership %s.',
-            public_key.uuid, membership.pk,
-            extra={'project': membership.project, 'cloud': membership.cloud, 'event_type': 'sync_cloud_membership'}
+        event_logger.membership.warning(
+            'Failed to push security groups to cloud membership {cloud_name}.',
+            event_type='iaas_sync_membership_security_group_failed',
+            event_context={
+                'cloud': membership.cloud,
+                'project': membership.project, 
+            }
         )
 
     # Pull created membership quotas
@@ -259,18 +238,17 @@ def check_cloud_memberships_quotas():
     for membership in queryset.iterator():
         for quota in membership.quotas.all():
             if quota.is_exceeded(threshold=threshold):
-                event_logger.warning(
-                    '%s quota threshold has been reached for project %s.', quota.name, membership.project.name,
-                    extra=dict(
-                        event_type='quota_threshold_reached',
-                        quota_type=quota.name,
-                        quota_container_type=membership,
-                        cloud=membership.cloud,
-                        project=membership.project,
-                        project_group=membership.project.project_groups.first(),
-                        threshold=threshold * quota.limit,
-                        resource_usage=quota.usage,
-                    ))
+                event_logger.quota.warning(
+                    '{quota_name} quota threshold has been reached for project {project_name}.',
+                    event_type='quota_threshold_reached',
+                    event_context={
+                        'quota': quota,
+                        'cloud': membership.cloud,
+                        'project': membership.project,
+                        'project_group': membership.project.project_groups.first(),
+                        'threshold': threshold * quota.limit,
+                        'usage': quota.usage
+                    }
 
 
 @shared_task
@@ -284,7 +262,7 @@ def sync_instances_with_zabbix():
 def sync_instance_with_zabbix(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
     logger.debug('Synchronizing instance %s with zabbix', instance.uuid, exc_info=1)
-    create_zabbix_host_and_service(instance, warn_if_exists=False)
+    monitoring_utils.create_host_and_service(instance, warn_if_exists=False)
 
 
 @shared_task

@@ -27,7 +27,6 @@ from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core.filters import DjangoMappingFilterBackend
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
 from nodeconductor.iaas import models
@@ -35,13 +34,13 @@ from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.iaas.serializers import QuotaTimelineStatsSerializer
+from nodeconductor.iaas.log import event_logger
 from nodeconductor.logging import models as logging_models
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 def schedule_transition():
@@ -105,9 +104,10 @@ def schedule_transition():
             else:
                 # Call celery task AFTER transaction has been commited
                 processing_task.delay(instance.uuid.hex, **celery_kwargs)
-                event_logger.info(
-                    logger_info['message'], logger_info['context'],
-                    extra=logger_info['extra'])
+                event_logger.instance.info(
+                    logger_info['message'],
+                    event_type=logger_info['event_type'],
+                    event_context=logger_info['event_context'])
 
             return Response({'status': '%s was scheduled' % operation},
                             status=status.HTTP_202_ACCEPTED)
@@ -320,8 +320,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
         membership.project.customer.validate_quota_change({'nc_resource_count': 1}, raise_exception=True)
 
         instance = serializer.save()
-        event_logger.info('Virtual machine %s creation has been scheduled.', instance.name,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_creation_scheduled'})
+        event_logger.instance.info(
+            'Virtual machine {instance_name} creation has been scheduled.',
+            event_type='iaas_instance_creation_scheduled',
+            event_context={'instance': instance})
         tasks.provision_instance.delay(instance.uuid.hex, backend_flavor_id=instance.flavor.backend_id)
 
     def perform_update(self, serializer):
@@ -332,8 +334,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
             )
         instance = serializer.save()
 
-        event_logger.info('Virtual machine %s has been updated.', instance.name,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_update_succeeded'})
+        event_logger.instance.info(
+            'Virtual machine {instance_name} has been updated.',
+            event_type='iaas_instance_update_succeeded',
+            event_context={'instance': instance})
 
         from nodeconductor.iaas.tasks import push_instance_security_groups
         push_instance_security_groups.delay(instance.uuid.hex)
@@ -342,9 +346,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     @schedule_transition()
     def stop(self, request, instance, uuid=None):
         logger_info = dict(
-            message='Virtual machine %s has been scheduled to stop.',
-            context=instance.name,
-            extra={'instance': instance, 'event_type': 'iaas_instance_stop_scheduled'}
+            message='Virtual machine {instance_name} has been scheduled to stop.',
+            event_type='iaas_instance_stop_scheduled',
+            event_context={'instance': instance}
         )
         return 'stop', logger_info
 
@@ -352,9 +356,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     @schedule_transition()
     def start(self, request, instance, uuid=None):
         logger_info = dict(
-            message='Virtual machine %s has been scheduled to start.',
-            context=instance.name,
-            extra={'instance': instance, 'event_type': 'iaas_instance_start_scheduled'}
+            message='Virtual machine {instance_name} has been scheduled to start.',
+            event_type='iaas_instance_start_scheduled',
+            event_context={'instance': instance}
         )
         return 'start', logger_info
 
@@ -362,9 +366,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     @schedule_transition()
     def restart(self, request, instance, uuid=None):
         logger_info = dict(
-            message='Virtual machine %s has been scheduled to restart.',
-            context=instance.name,
-            extra={'instance': instance, 'event_type': 'iaas_instance_restart_scheduled'}
+            message='Virtual machine {instance_name} has been scheduled to restart.',
+            event_type='iaas_instance_restart_scheduled',
+            event_context={'instance': instance}
         )
         return 'restart', logger_info
 
@@ -382,9 +386,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return Response({'detail': e.args[0]}, status=status.HTTP_409_CONFLICT)
 
         logger_info = dict(
-            message='Virtual machine %s has been scheduled to deletion.',
-            context=instance.name,
-            extra={'instance': instance, 'event_type': 'iaas_instance_deletion_scheduled'}
+            message='Virtual machine {instance_name} has been scheduled to deletion.',
+            event_type='iaas_instance_deletion_scheduled',
+            event_context={'instance': instance}
         )
         return 'destroy', logger_info
 
@@ -415,9 +419,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
             instance.save(update_fields=['ram', 'cores'])
 
             logger_info = dict(
-                message='Virtual machine %s has been scheduled to change flavor.',
-                context=instance.name,
-                extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_scheduled'}
+                message='Virtual machine {instance_name} has been scheduled to change flavor.',
+                event_type='iaas_instance_flavor_change_scheduled',
+                event_context={'instance': instance, 'flavor': flavor}
             )
             return 'flavor change', logger_info, dict(flavor_uuid=flavor.uuid.hex)
 
@@ -431,9 +435,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
             instance.save(update_fields=['data_volume_size'])
 
             logger_info = dict(
-                message='Virtual machine %s has been scheduled to extend disk.',
-                context=instance.name,
-                extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_scheduled'}
+                message='Virtual machine {instance_name} has been scheduled to extend disk.',
+                event_type='iaas_instance_volume_extension_scheduled',
+                event_context={'instance': instance, 'volume_size': new_size}
             )
             return 'disk extension', logger_info
 
@@ -1079,8 +1083,10 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         template_id = template.uuid.hex if template else None
         tasks.import_instance.delay(membership.pk, instance_id=instance_id, template_id=template_id)
 
-        event_logger.info('Virtual machine with backend id %s has been scheduled for import.', instance_id,
-                          extra={'event_type': 'iaas_instance_import_scheduled'})
+        event_logger.instance_import.info(
+            'Virtual machine with backend id {instance_id} has been scheduled for import.',
+            event_type='iaas_instance_import_scheduled',
+            event_context={'instance_id': instance_id})
 
         return Response({'status': 'Instance import was scheduled'},
                         status=status.HTTP_202_ACCEPTED)

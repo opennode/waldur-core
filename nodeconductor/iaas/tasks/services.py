@@ -5,14 +5,12 @@ import logging
 
 from celery import shared_task, current_app
 
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.tasks import transition
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.models import Cloud
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 @shared_task(name='nodeconductor.iaas.sync_services')
@@ -58,11 +56,8 @@ def sync_service_failed(service_uuid, transition_entity=None):
 def sync_service_log_error(task_uuid, service_uuid):
     result = current_app.AsyncResult(task_uuid)
     cloud = Cloud.objects.get(uuid=service_uuid)
-    event_logger.error(
-        'Cloud service %s has failed to sync with error: %s.', cloud.name, result.result,
-        extra={'cloud': cloud, 'event_type': 'iaas_service_sync_failed'},
-    )
-
+    # TODO (NC-416): Event should be emitted if CloudAccount enters the 'erred' state 
+    logger.error('Cloud service %s has failed to sync with error: %s.', cloud.name, result.result)
     sync_service_failed.delay(service_uuid)
 
 
