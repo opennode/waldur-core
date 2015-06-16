@@ -136,7 +136,7 @@ class JiraRealBackend(JiraBaseBackend):
             if assignee:
                 assignee = self.manager.users.get(assignee)
             if self.manager.reporter_field:
-                args[self.manager.reporter_field] = reporter
+                args[self.manager.reporter_field_id] = reporter
             elif reporter:
                 reporter = self.manager.users.get(reporter)
 
@@ -161,7 +161,7 @@ class JiraRealBackend(JiraBaseBackend):
                 raise JiraBackendError("Can't find issue %s" % user_key)
 
             if self.manager.reporter_field:
-                is_owner = getattr(issue.fields, self.manager.reporter_field) == username
+                is_owner = getattr(issue.fields, self.manager.reporter_field_id) == username
             else:
                 reporter = self.manager.users.get(username)
                 is_owner = issue.fields.reporter.key == reporter.key

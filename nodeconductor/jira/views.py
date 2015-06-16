@@ -40,6 +40,4 @@ class CommentViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.Ge
         try:
             serializer.save(issue=self.kwargs['pk'])
         except JiraBackendError as e:
-            return response.Response(
-                {'detail': "Failed to create comment", 'error': str(e)},
-                status=status.HTTP_409_CONFLICT)
+            raise exceptions.ValidationError(e)
