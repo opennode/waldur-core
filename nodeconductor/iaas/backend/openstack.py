@@ -399,8 +399,6 @@ class OpenStackBackend(OpenStackClient):
                     # see https://docs.djangoproject.com/en/1.6/ref/models/querysets/#django.db.models.query.QuerySet.get_or_create
                     image, created = cloud_account.images.get_or_create(
                         template=mapping.template,
-                        min_disk=self.get_core_disk_size(backend_image.min_disk),
-                        min_ram=self.get_core_ram_size(backend_image.min_ram),
                         defaults={'backend_id': mapping.backend_image_id},
                     )
 

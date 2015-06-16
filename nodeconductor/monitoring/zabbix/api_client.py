@@ -8,6 +8,7 @@ from requests.packages.urllib3 import exceptions
 from django.conf import settings as django_settings
 from django.utils import six
 from pyzabbix import ZabbixAPI, ZabbixAPIException
+from nodeconductor.iaas.models import Instance
 
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
@@ -73,10 +74,11 @@ class ZabbixApiClient(object):
             api, instance,
             groupid=self._settings['groupid'],
             templateid=self._settings['templateid'],
-            interface_parameters=self._settings['interface_parameters']
+            interface_parameters=self._settings['interface_parameters'],
+            application_templateid=self._settings.get("%s-templateid" % instance.template.application_type.lower())
         )
         if not created and warn_if_host_exists:
-            logger.warn('Can not create new Zabbix host for instance %s. It already exists.', instance)
+            logger.warn('Can not create new Zabbix host for instance %s. Already exists.', instance)
 
     @_exception_decorator('Can not update Zabbix host visible name for instance {1}. {exception_name}: {exception}')
     def update_host_visible_name(self, instance):
@@ -169,9 +171,38 @@ class ZabbixApiClient(object):
         return sla, events
 
     @_exception_decorator('Can not get instance {1} installation state from zabbix')
-    def get_service_installation_state(self, instance):
-        # TODO: Get installation state from zabbix
-        return 'synced'
+    def get_application_installation_state(self, instance):
+        # a shortcut for the IaaS instances -- all done
+        if instance.type == Instance.Services.IAAS:
+            return 'OK'
+
+        name = self.get_host_name(instance)
+        api = self.get_zabbix_api()
+
+        if api.host.exists(host=name):
+            hostid = api.host.get(filter={'host': name})[0]['hostid']
+            # lookup item by a pre-defined name
+            item_id = api.item.get(
+                output='extend',
+                hostids=hostid,
+                filter={'key_': self._settings.get('application-status-item', 'application.status')}
+            )[0]['itemid']
+            history = api.history.get(
+                output='extend',
+                itemids=item_id,
+                sortfield=["clock"],
+                sortorder="ASC",
+                limit=1
+            )
+            if len(history) < 1:
+                return 'NO DATA'
+            else:
+                value = [0]['value']
+                return 'OK' if value == '0' else 'NOT OK'
+            return value
+        else:
+            logger.warn('Cannot retrieve installation state of instance %s. Host does not exist.', instance)
+            return 'NO DATA'
 
     # Helpers:
     def get_zabbix_api(self):
@@ -217,17 +248,20 @@ class ZabbixApiClient(object):
         except IndexError:
             return False
 
-    def get_or_create_host(self, api, instance, groupid, templateid, interface_parameters):
+    def get_or_create_host(self, api, instance, groupid, templateid, interface_parameters, application_templateid=None):
         name = self.get_host_name(instance)
         visible_name = self.get_host_visible_name(instance)
 
         if not api.host.exists(host=name):
+            templates = [{"templateid": templateid}]
+            if application_templateid:
+                templates.append({"templateid": application_templateid})
             host = api.host.create({
                 "host": name,
                 "name": visible_name,
-                "interfaces": [self._settings['interface_parameters']],
+                "interfaces": [interface_parameters],
                 "groups": [{"groupid": groupid}],
-                "templates": [{"templateid": templateid}],
+                "templates": templates,
             })
             return host, True
         else:

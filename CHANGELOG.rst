@@ -6,6 +6,12 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.52.0
+--------------
+- Alert filterting and statistics bugfixes.
+- Support for application-specific zabbix templates/checks.
+- Alert endpoint for creating alerts with push.
+
 Release 0.51.0
 --------------
 - Support for authentication token passing via query parameters.

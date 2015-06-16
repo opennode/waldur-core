@@ -16,7 +16,8 @@ class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
         model = Invoice
         fields = (
             'url', 'uuid', 'year', 'month', 'amount', 'pdf', 'date',
-            'customer', 'customer_uuid', 'customer_name', 'customer_native_name'
+            'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
+            'status',
         )
         related_paths = ('customer',)
         extra_kwargs = {

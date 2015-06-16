@@ -93,16 +93,16 @@ class ZabbixDBClient(object):
         interval: day, week, month
         Returns list of tuples like
         (1415912624, 1415912630, 'vcpu_limit', 2048)
-        
+
         Explanation of the the SQL query.
         1) Join three tables: hosts, items and history_uint.
 
         2) Filter rows by host name, item name and time range.
 
-        3) Truncate date. For example, when interval is 'day', 
+        3) Truncate date. For example, when interval is 'day',
         2015-06-01 09:56:23 is truncated to 2015-06-01.
 
-        4) Rows are grouped by date and itemid and then averaged. 
+        4) Rows are grouped by date and itemid and then averaged.
         There's distinct itemid for combination of hostid and item.key_.
         For example:
         2015-06-01 09:56:23, host1, vcpu, 10,
@@ -111,31 +111,31 @@ class ZabbixDBClient(object):
         2015-06-01 09:56:23, host1, ram, 100,
         2015-06-01 10:56:23, host1, ram, 200,
         2015-06-01 11:56:23, host1, ram, 300,
-        
+
         is converted to
         2015-06-01, host1, vcpu, 20
         2015-06-01, host1, ram, 200
-        
+
         5) Rows are grouped by date and item name and the sum is applied.
         For example:
         2015-06-01, host1, vcpu, 20
         2015-06-01, host1, ram, 200
         2015-06-01, host2, vcpu, 40
         2015-06-01, host2, ram, 400
-        
+
         is converted to
         2015-06-01, vcpu, 60
         2015-06-01, ram,  600
-        
+
         6) Then we add end time span. For example:
         2015-06-01, vcpu, 60
         2015-06-01, ram,  600
-        
+
         is converted to
         2015-06-01, 2015-06-02, vcpu, 60
         2015-06-01, 2015-06-02, ram,  600
-        
-        The benefit of this solution is that computations are 
+
+        The benefit of this solution is that computations are
         performed in the database, not in REST server.
         """
 
@@ -195,7 +195,7 @@ class ZabbixDBClient(object):
         results = []
         for (start, end, key, value) in records:
             name = self.get_item_name_by_key(key)
-            if name == None:
+            if name is None:
                 logging.debug('Invalid item key %s', key)
                 continue
             if self.items[name]['convert_to_mb']:

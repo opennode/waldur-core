@@ -13,6 +13,8 @@ DEBUG = False
 
 TEMPLATE_DEBUG = False
 
+MEDIA_ROOT = '/tmp/'
+
 ALLOWED_HOSTS = []
 
 # Application definition
@@ -232,6 +234,5 @@ NODECONDUCTOR = {
         },
     ),
     'ELASTICSEARCH_DUMMY': True,
-    'JIRA_DUMMY': True,
     'TOKEN_KEY': 'x-auth-token',
 }
