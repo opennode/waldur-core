@@ -149,7 +149,7 @@ class BackupViewSet(mixins.CreateModelMixin,
     def restore(self, request, uuid):
         backup = self._get_backup(request.user, uuid)
         if backup.state != Backup.States.READY:
-            return Response('Cannot restore a backup in state \'%s\'' % backup.get_state_display(),
+            return Response({'detail': 'Cannot restore a backup in state \'%s\'' % backup.get_state_display()},
                             status=status.HTTP_409_CONFLICT)
         # fail early if inputs are incorrect during the call time
         instance, user_input, snapshot_ids, errors = backup.get_strategy().\
@@ -159,7 +159,7 @@ class BackupViewSet(mixins.CreateModelMixin,
                 backup.start_restoration(instance.uuid, user_input=user_input, snapshot_ids=snapshot_ids)
             except TransitionNotAllowed:
                 # this should never be hit as the check is done on function entry
-                return Response('Cannot restore a backup in state \'%s\'' % backup.get_state_display(),
+                return Response({'detail': 'Cannot restore a backup in state \'%s\'' % backup.get_state_display()},
                                 status=status.HTTP_409_CONFLICT)
             return Response({'status': 'Backup restoration process was started'})
 
@@ -171,7 +171,7 @@ class BackupViewSet(mixins.CreateModelMixin,
         try:
             backup.start_deletion()
         except TransitionNotAllowed:
-            return Response('Cannot delete a backup in state \'%s\'' % backup.get_state_display(),
+            return Response({'detail': 'Cannot delete a backup in state \'%s\'' % backup.get_state_display()},
                             status=status.HTTP_409_CONFLICT)
 
         return Response({'status': 'Backup deletion was started'})
