@@ -24,9 +24,7 @@ class IssueViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin,
         try:
             serializer.save(reporter=self.request.user.uuid.hex)
         except JiraBackendError as e:
-            return response.Response(
-                {'detail': "Failed to create issue", 'error': str(e)},
-                status=status.HTTP_409_CONFLICT)
+            raise exceptions.ValidationError(e)
 
 
 class CommentViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):

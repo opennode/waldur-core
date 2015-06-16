@@ -30,10 +30,7 @@ class JiraClient(object):
     ISSUE_TYPE = 'Support Request'
     REPORTER_FIELD = 'Original Reporter'
 
-    def __new__(self):
-        if django_settings.NODECONDUCTOR.get('JIRA_DUMMY'):
-            return JiraBackend(ServiceSettings(dummy=True))
-
+    def __new__(cls):
         try:
             base_config = django_settings.NODECONDUCTOR['JIRA_SUPPORT']
             server = base_config['server']
@@ -54,8 +51,8 @@ class JiraClient(object):
         return JiraBackend(
             jira_settings,
             core_project=project,
-            reporter_field=JiraClient.REPORTER_FIELD,
-            default_issue_type=JiraClient.ISSUE_TYPE)
+            reporter_field=cls.REPORTER_FIELD,
+            default_issue_type=cls.ISSUE_TYPE)
 
 
 class JiraBackend(object):
@@ -391,7 +388,8 @@ class JiraDummyClient(object):
     def assign_issue(self, issue, user_key):
         issue.assignee = self.user(user_key)
 
-    def create_issue(self, fields=()):
+    def create_issue(self, **kwargs):
+        fields = kwargs.get('fields') or kwargs
         fields['reporter'] = 'admin'
         fields['comments'] = []
         issue = self.Issue(
