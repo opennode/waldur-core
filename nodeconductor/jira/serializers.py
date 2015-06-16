@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from nodeconductor.jira.client import JiraClient
+from nodeconductor.jira.backend import JiraClient
 
 
 class UserSerializer(serializers.Serializer):
@@ -23,8 +23,8 @@ class IssueSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         return JiraClient().issues.create(
-            validated_data['summary'],
-            validated_data['description'],
+            validated_data.get('summary'),
+            validated_data.get('description'),
             reporter=self.reporter)
 
     def to_representation(self, obj):

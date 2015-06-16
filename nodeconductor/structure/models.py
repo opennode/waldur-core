@@ -386,6 +386,10 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
             from nodeconductor_plus.digitalocean.backend import DigitalOceanBackend
             return DigitalOceanBackend(self)
 
+        if self.type == self.Types.Jira:
+            from nodeconductor.jira.backend import JiraBackend
+            return JiraBackend(self)
+
         if self.type == self.Types.Oracle:
             from nodeconductor.oracle.backend import OracleBackend
             return OracleBackend(self)

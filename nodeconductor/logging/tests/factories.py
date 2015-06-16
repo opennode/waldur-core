@@ -80,5 +80,8 @@ class AlertFactory(factory.DjangoModelFactory):
         return 'http://testserver' + reverse('alert-list')
 
     @classmethod
-    def get_stats_url(self):
-        return 'http://testserver' + reverse('alert-stat')
+    def get_url(self, alert=None, action=None):
+        if alert is None:
+            alert = AlertFactory()
+        url = 'http://testserver' + reverse('alert-detail', kwargs={'uuid': alert.uuid})
+        return url if action is None else url + action + '/'
