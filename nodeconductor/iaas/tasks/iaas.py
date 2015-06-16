@@ -248,7 +248,7 @@ def check_cloud_memberships_quotas():
                         'project_group': membership.project.project_groups.first(),
                         'threshold': threshold * quota.limit,
                         'usage': quota.usage
-                    }
+                    })
 
 
 @shared_task
