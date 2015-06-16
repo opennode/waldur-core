@@ -172,7 +172,7 @@ class ZabbixDBClient(object):
         )
         items = [self.items[name]['key'] for name in items]
         params = hosts + items + [start, end]
-        logging.info('Prepared Zabbix SQL query for OpenStack projects statistics %s %s', query, params)
+        logging.debug('Prepared Zabbix SQL query for OpenStack projects statistics %s %s', query, params)
 
         records = self.execute_query(query, params)
         return self.prepare_result(records)
