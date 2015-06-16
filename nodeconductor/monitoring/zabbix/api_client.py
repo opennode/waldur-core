@@ -170,10 +170,11 @@ class ZabbixApiClient(object):
         return sla, events
 
     @_exception_decorator('Can not get instance {1} installation state from zabbix')
-    def get_service_installation_state(self, instance):
+    def get_application_installation_state(self, instance):
         # a shortcut for the IaaS instances -- all done
         if instance.type == Instance.Services.IAAS:
-            return 'synced'
+            return 'OK'
+
         name = self.get_host_name(instance)
         api = self.get_zabbix_api()
 
@@ -183,20 +184,24 @@ class ZabbixApiClient(object):
             item_id = api.item.get(
                 output='extend',
                 hostids=hostid,
-                filter={'key_': 'application.status'}
-            )['itemid']
-            value = api.history.get(
+                filter={'key_': self._settings.get('application-status-item', 'application.status')}
+            )[0]['itemid']
+            history = api.history.get(
                 output='extend',
                 itemids=item_id,
                 sortfield=["clock"],
                 sortorder="ASC",
                 limit=1
-            )[0]['value']
-            logger.debug('Installation state metric %s.', instance)
+            )
+            if len(history) < 1:
+                return 'NO DATA'
+            else:
+                value = [0]['value']
+                return 'OK' if value == '0' else 'NOT OK'
             return value
         else:
             logger.warn('Cannot retrieve installation state of instance %s. Host does not exist.', instance)
-            return 'not_synced'
+            return 'NO DATA'
 
     # Helpers:
     def get_zabbix_api(self):
