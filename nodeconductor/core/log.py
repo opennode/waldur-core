@@ -138,9 +138,6 @@ class EventFormatter(logging.Formatter):
         )
         self.add_related_details(message, instance, 'iaas_instance', 'name')
 
-        if hasattr(record, 'instance_id'):
-            message['iaas_instance_uuid'] = record.instance_id
-
         # flavor
         flavor = self.get_related('flavor', instance)
         self.add_related_details(message, flavor, 'iaas_instance_flavor', 'name', 'cores', 'ram', 'disk')

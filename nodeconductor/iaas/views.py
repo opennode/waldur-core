@@ -104,10 +104,11 @@ def schedule_transition():
             else:
                 # Call celery task AFTER transaction has been commited
                 processing_task.delay(instance.uuid.hex, **celery_kwargs)
-                event_logger.instance.info(
-                    logger_info['message'],
-                    event_type=logger_info['event_type'],
-                    event_context=logger_info['event_context'])
+                if logger_info is not None:
+                    event_logger.instance.info(
+                        logger_info['message'],
+                        event_type=logger_info['event_type'],
+                        event_context=logger_info['event_context'])
 
             return Response({'status': '%s was scheduled' % operation},
                             status=status.HTTP_202_ACCEPTED)
@@ -418,12 +419,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
             instance.cores = flavor.cores
             instance.save(update_fields=['ram', 'cores'])
 
-            logger_info = dict(
-                message='Virtual machine {instance_name} has been scheduled to change flavor.',
+            event_logger.instance_flavor.info(
+                'Virtual machine {instance_name} has been scheduled to change flavor.',
                 event_type='iaas_instance_flavor_change_scheduled',
                 event_context={'instance': instance, 'flavor': flavor}
             )
-            return 'flavor change', logger_info, dict(flavor_uuid=flavor.uuid.hex)
+            return 'flavor change', None, dict(flavor_uuid=flavor.uuid.hex)
 
         else:
             new_size = serializer.validated_data['disk_size']
@@ -434,12 +435,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
             instance.data_volume_size = new_size
             instance.save(update_fields=['data_volume_size'])
 
-            logger_info = dict(
-                message='Virtual machine {instance_name} has been scheduled to extend disk.',
+            event_logger.instance_volume.info(
+                'Virtual machine {instance_name} has been scheduled to extend disk.',
                 event_type='iaas_instance_volume_extension_scheduled',
                 event_context={'instance': instance, 'volume_size': new_size}
             )
-            return 'disk extension', logger_info
+            return 'disk extension', None
 
     @detail_route()
     def usage(self, request, uuid):

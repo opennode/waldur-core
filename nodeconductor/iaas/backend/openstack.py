@@ -474,11 +474,7 @@ class OpenStackBackend(OpenStackClient):
             event_logger.membership.warning(
                 'Failed to push public key {ssh_key_name} to cloud {cloud_name}.',
                 event_type='iaas_sync_membership_ssh_key_failed',
-                event_context={
-                    'cloud': membership.cloud,
-                    'project': membership.project,
-                    'ssh_key': public_key,
-                }
+                event_context={'membership': membership, 'ssh_key': public_key}
             )
 
             six.reraise(CloudBackendError, e)
@@ -503,11 +499,7 @@ class OpenStackBackend(OpenStackClient):
             event_logger.membership.warning(
                 'Failed to delete public key {ssh_key_name} from cloud {cloud_name}.',
                 event_type='iaas_sync_membership_ssh_key_failed',
-                event_context={
-                    'cloud': membership.cloud,
-                    'project': membership.project,
-                    'ssh_key': public_key,
-                }
+                event_context={'membership': membership, 'ssh_key': public_key}
             )
 
             six.reraise(CloudBackendError, e)
@@ -1622,7 +1614,7 @@ class OpenStackBackend(OpenStackClient):
             elif old_core_size > new_core_size:
                 logger.warning('Not extending volume %s: desired size %d MiB is less then current size %d MiB',
                                volume.id, new_core_size, old_core_size)
-                event_logger.instance.error(
+                event_logger.instance_volume.error(
                     "Virtual machine {instance_name} disk extension has failed "
                     "due to new size being less than old size.",
                     event_type='iaas_instance_volume_extension_failed',
@@ -1641,7 +1633,7 @@ class OpenStackBackend(OpenStackClient):
                     'Failed to extend volume: exceeded quota limit while trying to extend volume %s',
                     volume.id,
                 )
-                event_logger.instance.error(
+                event_logger.instance_volume.error(
                     "Virtual machine {instance_name} disk extension has failed due to quota limits.",
                     event_type='iaas_instance_volume_extension_failed',
                     event_context={'instance': instance},
@@ -1662,7 +1654,7 @@ class OpenStackBackend(OpenStackClient):
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully extended disk of an instance %s', instance.uuid)
-            event_logger.instance.info(
+            event_logger.instance_volume.info(
                 "Virtual machine {instance_name} disk has been extended to {volume_size} GB.",
                 event_type='iaas_instance_volume_extension_succeeded',
                 event_context={'instance': instance, 'volume_size': new_core_size_gib},
@@ -1701,14 +1693,14 @@ class OpenStackBackend(OpenStackClient):
                 )
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
             logger.exception('Failed to change flavor of an instance %s', instance.uuid)
-            event_logger.instance.error(
+            event_logger.instance_flavor.error(
                 'Virtual machine {instance_name} flavor change has failed.',
                 event_type='iaas_instance_flavor_change_failed',
                 event_context={'instance': instance, 'flavor': flavor}
             )
             six.reraise(CloudBackendError, e)
         except CloudBackendError:
-            event_logger.instance.error(
+            event_logger.instance_flavor.error(
                 'Virtual machine {instance_name} flavor change has failed.',
                 event_type='iaas_instance_flavor_change_failed',
                 event_context={'instance': instance, 'flavor': flavor}
@@ -1716,7 +1708,7 @@ class OpenStackBackend(OpenStackClient):
             raise
         else:
             logger.info('Successfully changed flavor of an instance %s', instance.uuid)
-            event_logger.instance.info(
+            event_logger.instance_flavor.info(
                 'Virtual machine {instance_name} flavor has been changed to {flavor_name}.',
                 event_type='iaas_instance_flavor_change_succeeded',
                 event_context={'instance': instance, 'flavor': flavor},

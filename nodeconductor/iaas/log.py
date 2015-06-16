@@ -2,12 +2,8 @@ from nodeconductor.logging.log import EventLogger, event_logger
 
 class InstanceEventLogger(EventLogger):
     instance = 'iaas.Instance'
-    volume_size = float
-    flavor = 'iaas.Flavor'
 
     class Meta:
-        nullable_fields = ('volume_size', 'flavor')
-
         event_types = (
             'iaas_instance_start_scheduled',
             'iaas_instance_start_succeeded',
@@ -29,11 +25,27 @@ class InstanceEventLogger(EventLogger):
             'iaas_instance_deletion_scheduled',
             'iaas_instance_deletion_succeeded',
             'iaas_instance_deletion_failed',
+        )
 
+
+class InstanceVolumeChangeEventLogger(EventLogger):
+    instance = 'iaas.Instance'
+    volume_size = int
+
+    class Meta:
+        event_types = (
             'iaas_instance_volume_extension_scheduled',
             'iaas_instance_volume_extension_succeeded',
             'iaas_instance_volume_extension_failed',
+        )
 
+
+class InstanceFlavorChangeEventLogger(EventLogger):
+    instance = 'iaas.Instance'
+    flavor = 'iaas.Flavor'
+
+    class Meta:
+        event_types = (
             'iaas_instance_flavor_change_scheduled',
             'iaas_instance_flavor_change_succeeded',
             'iaas_instance_flavor_change_failed',
@@ -52,8 +64,7 @@ class InstanceImportEventLogger(EventLogger):
 
 
 class MembershipEventLogger(EventLogger):
-    cloud = 'iaas.Cloud'
-    project = 'structure.Project'
+    membership = 'iaas.CloudProjectMembership'
     ssh_key = 'core.SshPublicKey'
 
     class Meta:
@@ -71,7 +82,6 @@ class QuotaEventLogger(EventLogger):
     project = 'structure.Project'
     project_group = 'structure.ProjectGroup'
     threshold = float
-    usage = float
 
     class Meta:
         event_types = (
@@ -81,5 +91,7 @@ class QuotaEventLogger(EventLogger):
 
 event_logger.register('instance', InstanceEventLogger)
 event_logger.register('instance_import', InstanceImportEventLogger)
+event_logger.register('instance_volume', InstanceVolumeChangeEventLogger)
+event_logger.register('instance_flavor', InstanceFlavorChangeEventLogger)
 event_logger.register('membership', MembershipEventLogger)
 event_logger.register('quota', QuotaEventLogger)

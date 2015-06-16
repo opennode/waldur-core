@@ -200,10 +200,7 @@ def sync_cloud_membership(membership_pk):
         event_logger.membership.warning(
             'Failed to push security groups to cloud membership {cloud_name}.',
             event_type='iaas_sync_membership_security_group_failed',
-            event_context={
-                'cloud': membership.cloud,
-                'project': membership.project, 
-            }
+            event_context={'membership': membership}
         )
 
     # Pull created membership quotas
@@ -247,7 +244,6 @@ def check_cloud_memberships_quotas():
                         'project': membership.project,
                         'project_group': membership.project.project_groups.first(),
                         'threshold': threshold * quota.limit,
-                        'usage': quota.usage
                     })
 
 

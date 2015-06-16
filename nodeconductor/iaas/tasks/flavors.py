@@ -42,7 +42,7 @@ def flavor_change_succeeded(instance_uuid, flavor_uuid, transition_entity=None):
     instance = transition_entity
     flavor = instance.cloud_project_membership.cloud.flavors.get(uuid=flavor_uuid)
     logger.info('Successfully changed flavor of an instance %s', instance.uuid)
-    event_logger.instance.info(
+    event_logger.instance_flavor.info(
         'Virtual machine {instance_name} flavor has been changed to {flavor_name}.',
         event_type='iaas_instance_flavor_change_succeeded',
         event_context={'instance': instance, 'flavor': flavor}
@@ -54,8 +54,8 @@ def flavor_change_succeeded(instance_uuid, flavor_uuid, transition_entity=None):
 def flavor_change_failed(instance_uuid, transition_entity=None):
     instance = transition_entity
     logger.exception('Failed to change flavor of an instance %s', instance.uuid)
-    event_logger.instance.error(
-        'Virtual machine {instance_name} flavor change has failed.', instance.name,
+    event_logger.instance_flavor.error(
+        'Virtual machine {instance_name} flavor change has failed.',
         event_type='iaas_instance_flavor_change_failed',
         event_context={'instance': instance, 'flavor': flavor}
     )
