@@ -197,7 +197,7 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
-* Sat Jun 16 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.52.0-1.el7
+* Tue Jun 16 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.52.0-1.el7
 - New upstream release
 
 * Sat Jun 13 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.51.0-1.el7
