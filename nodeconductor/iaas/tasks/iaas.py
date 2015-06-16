@@ -110,7 +110,15 @@ def push_cloud_membership_quotas(membership_pk, quotas):
     membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
 
     backend = membership.cloud.get_backend()
-    backend.push_membership_quotas(membership, quotas)
+
+    try:
+        backend.push_membership_quotas(membership, quotas)
+    except CloudBackendError:
+        event_logger.membership.warning(
+            'Failed to push quotas to cloud membership {cloud_name}.',
+            event_type='iaas_membership_sync_failed',
+            event_context={'membership': membership}
+        )
 
     # Pull created membership quotas
     try:
@@ -155,11 +163,42 @@ def pull_cloud_membership(membership_pk):
     membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
 
     backend = membership.cloud.get_backend()
-    backend.pull_security_groups(membership)
-    backend.pull_instances(membership)
-    backend.pull_resource_quota(membership)
-    backend.pull_resource_quota_usage(membership)
-    backend.pull_floating_ips(membership)
+    try:
+        backend.pull_security_groups(membership)
+    except CloudBackendError:
+        event_logger.membership.warning(
+            'Failed to pull security groups from cloud membership {cloud_name}.',
+            event_type='iaas_membership_sync_failed',
+            event_context={'membership': membership}
+        )
+
+    try:
+        backend.pull_instances(membership)
+    except CloudBackendError:
+        event_logger.membership.warning(
+            'Failed to pull instances from cloud membership {cloud_name}.',
+            event_type='iaas_membership_sync_failed',
+            event_context={'membership': membership}
+        )
+
+    try:
+        backend.pull_resource_quota(membership)
+        backend.pull_resource_quota_usage(membership)
+    except CloudBackendError:
+        event_logger.membership.warning(
+            'Failed to pull resource quotas from cloud membership {cloud_name}.',
+            event_type='iaas_membership_sync_failed',
+            event_context={'membership': membership}
+        )
+
+    try:
+        backend.pull_floating_ips(membership)
+    except CloudBackendError:
+        event_logger.membership.warning(
+            'Failed to pull floating IPs from cloud membership {cloud_name}.',
+            event_type='iaas_membership_sync_failed',
+            event_context={'membership': membership}
+        )
 
 
 @shared_task
@@ -186,7 +225,14 @@ def sync_cloud_membership(membership_pk):
     backend = membership.cloud.get_backend()
 
     # Propagate cloud-project membership itself
-    backend.push_membership(membership)
+    try:
+        backend.push_membership(membership)
+    except CloudBackendError:
+        event_logger.membership.warning(
+            'Failed to create cloud membership {cloud_name}.',
+            event_type='iaas_membership_sync_failed',
+            event_context={'membership': membership}
+        )
 
     # Propagate membership security groups
     try:
@@ -199,7 +245,7 @@ def sync_cloud_membership(membership_pk):
         )
         event_logger.membership.warning(
             'Failed to push security groups to cloud membership {cloud_name}.',
-            event_type='iaas_sync_membership_security_group_failed',
+            event_type='iaas_membership_sync_failed',
             event_context={'membership': membership}
         )
 

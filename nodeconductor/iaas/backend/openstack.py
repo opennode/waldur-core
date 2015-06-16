@@ -472,9 +472,9 @@ class OpenStackBackend(OpenStackClient):
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
 
             event_logger.membership.warning(
-                'Failed to push public key {ssh_key_name} to cloud {cloud_name}.',
-                event_type='iaas_sync_membership_ssh_key_failed',
-                event_context={'membership': membership, 'ssh_key': public_key}
+                'Failed to push public key to cloud {cloud_name}.',
+                event_type='iaas_membership_sync_failed',
+                event_context={'membership': membership}
             )
 
             six.reraise(CloudBackendError, e)
@@ -497,9 +497,9 @@ class OpenStackBackend(OpenStackClient):
             logger.exception('Failed to delete ssh public key %s from backend', public_key.name)
 
             event_logger.membership.warning(
-                'Failed to delete public key {ssh_key_name} from cloud {cloud_name}.',
-                event_type='iaas_sync_membership_ssh_key_failed',
-                event_context={'membership': membership, 'ssh_key': public_key}
+                'Failed to delete public key from cloud {cloud_name}.',
+                event_type='iaas_membership_sync_failed',
+                event_context={'membership': membership}
             )
 
             six.reraise(CloudBackendError, e)

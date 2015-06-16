@@ -65,14 +65,19 @@ class InstanceImportEventLogger(EventLogger):
 
 class MembershipEventLogger(EventLogger):
     membership = 'iaas.CloudProjectMembership'
-    ssh_key = 'core.SshPublicKey'
 
     class Meta:
-        nullable_fields = ['ssh_key']
-
         event_types = (
-            'iaas_sync_membership_ssh_key_failed',
-            'iaas_sync_membership_security_group_failed',
+            'iaas_membership_sync_failed',
+        )
+
+
+class CloudEventLogger(EventLogger):
+    cloud = 'iaas.Cloud'
+
+    class Meta:
+        event_types = (
+            'iaas_service_sync_failed',
         )
 
 
@@ -93,5 +98,6 @@ event_logger.register('instance', InstanceEventLogger)
 event_logger.register('instance_import', InstanceImportEventLogger)
 event_logger.register('instance_volume', InstanceVolumeChangeEventLogger)
 event_logger.register('instance_flavor', InstanceFlavorChangeEventLogger)
+event_logger.register('cloud', CloudEventLogger)
 event_logger.register('membership', MembershipEventLogger)
 event_logger.register('quota', QuotaEventLogger)
