@@ -53,12 +53,11 @@ class BillingBackend(object):
         if self.customer.billing_backend_id:
             return self.customer.billing_backend_id
 
-        owner = self.customer.get_owners().first()
         self.customer.billing_backend_id = self.api.add_client(
-            name=owner.full_name,
-            email=owner.email,
-            phone_number=owner.phone_number,
-            organization=owner.organization)
+            name=self.customer.name,
+            organization=self.customer.name,
+            email="%s@example.com" % self.customer.uuid  # XXX: a fake email address unique to a customer
+        )
 
         self.customer.save(update_fields=['billing_backend_id'])
 
@@ -81,12 +80,15 @@ class BillingBackend(object):
             if cur_invoice:
                 cur_invoice.date = invoice['date']
                 cur_invoice.amount = invoice['amount']
+                cur_invoice.status = invoice['status']
                 cur_invoice.save(update_fields=['date', 'amount'])
             else:
                 cur_invoice = self.customer.invoices.create(
                     backend_id=invoice['backend_id'],
                     date=invoice['date'],
-                    amount=invoice['amount'])
+                    amount=invoice['amount'],
+                    status=invoice['status']
+                )
 
             if 'pdf' in invoice:
                 cur_invoice.pdf.delete()

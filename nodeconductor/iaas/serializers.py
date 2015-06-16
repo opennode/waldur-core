@@ -110,6 +110,7 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             'cloud', 'cloud_name', 'cloud_uuid',
             'quotas',
             'state',
+            'tenant_id',
         )
         view_name = 'cloudproject_membership-detail'
         extra_kwargs = {
@@ -564,6 +565,7 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
             'user_data',
             'type',
             'installation_state',
+            'backend_id',
         )
         read_only_fields = (
             'key_name',
@@ -885,8 +887,8 @@ class StatsAggregateSerializer(serializers.Serializer):
 
 class TimeIntervalSerializer(serializers.Serializer):
     MAX_TIMESTAMP_VALUE = 2 ** 32  # This is quick fix. TODO: implement TimestampField with validation
-    start = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE)
-    end = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE)
+    start = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE, required=False)
+    end = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE, required=False)
 
     def validate(self, data):
         """
@@ -915,7 +917,10 @@ class QuotaTimelineStatsSerializer(serializers.Serializer):
         # Format request data
         hosts = list(memberships.exclude(tenant_id='').values_list('tenant_id', flat=True))
 
-        item_names = self.validated_data.get('item') or self.ITEM_CHOICES
+        if not hosts:
+            return []
+
+        item_names = [self.validated_data['item']] if 'item' in self.validated_data else self.ITEM_CHOICES
         items = []
         for item in item_names:
             items.append("project_%s_limit" % item)

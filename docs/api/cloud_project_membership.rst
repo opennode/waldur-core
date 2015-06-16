@@ -5,6 +5,15 @@ A connection between a project and a cloud is represented through an object call
 can expose additional operations. Supported operations are listed below.
 
 
+Links list
+----------
+List of memberships(links) is available at */api/project-cloud-memberships/* endpoint and support next filters:
+
+- ?cloud=<cloud uuid>
+- ?project=<project uuid>
+- ?tenant_id=<id of tenant that is related to link>
+
+
 Setting a project-cloud link quota
 ----------------------------------
 

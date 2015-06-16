@@ -190,7 +190,7 @@ Example result:
 Quotas timeline statistics
 ------------------------
 
-Historical data of quotas and quotas usage aggregated by projects/project_groups/customers. 
+Historical data of quotas and quotas usage aggregated by projects/project_groups/customers.
 
 URL: **/api/stats/quota/timeline/**
 
@@ -199,6 +199,8 @@ Available request parameters:
 - ?from=timestamp (default: now - 1 day, for example: 1415910025)
 - ?to=timestamp (default: now, for example: 1415912625)
 - ?interval (default: day. Has to be from list: day, week, month)
+- ?item=<item_name> (Has to take values from: 'vcpu', 'storage', 'ram', 'instances'). If this parameter is not
+  defined - endpoint will return data for all items.
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
 - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter is defined, result will contain only object with given uuid)
 
@@ -263,6 +265,7 @@ All available request parameters are optional:
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
 - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
   object with given uuid)
+- ?opened - if this argument is in GET request - endpoint will return statistics only for alerts that are not closed
 
 Answer will be dictionary where key is severity and value is a count of alerts.
 
