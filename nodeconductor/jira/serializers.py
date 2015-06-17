@@ -39,10 +39,12 @@ class IssueSerializer(serializers.Serializer):
 
 
 class CommentSerializer(serializers.Serializer):
+    author = UserSerializer(read_only=True)
     created = serializers.DateTimeField(read_only=True)
     body = serializers.CharField()
 
-    AUTHOR_RE = re.compile("Comment posted by user ([\w.@+-]+)")
+    AUTHOR_RE = re.compile("Comment posted by user ([\w.@+-]+) \(([0-9a-z]{32})\)")
+    AUTHOR_TEMPLATE = "Comment posted by user {username} ({uuid})\n{body}"
 
     def save(self, issue):
         self.issue = issue
@@ -52,22 +54,34 @@ class CommentSerializer(serializers.Serializer):
         return JiraClient().comments.create(self.issue, self.serialize_body())
 
     def to_representation(self, obj):
+        """
+        Try to extract injected author information.
+        Use original author otherwise.
+        """
         data = super(CommentSerializer, self).to_representation(obj)
         author, body = self.parse_body(data['body'])
-        data['author'] = {'displayName': author}
+        data['author'] = author or data['author']
         data['body'] = body
         return data
 
     def serialize_body(self):
+        """
+        Inject author's name and UUID into comment's body
+        """
         body = self.validated_data['body']
-        author = self.context['request'].user.username
-        return "Comment posted by user {}\n{}".format(author, body)
+        user = self.context['request'].user
+        return self.AUTHOR_TEMPLATE.format(username=user.username, uuid=user.uuid.hex, body=body)
 
     def parse_body(self, body):
+        """
+        Extract author's name and UUID from comment's body
+        """
         match = re.match(self.AUTHOR_RE, body)
         if match:
-            author = match.group(1)
-            body = body[match.end(1) + 1:]
+            username = match.group(1)
+            uuid = match.group(2)
+            body = body[match.end(2) + 2:]
+            author = {'displayName': username, 'uuid': uuid}
             return author, body
         else:
-            return "User", body
+            return None, body

@@ -78,14 +78,16 @@ class JiraTest(test.APITransactionTestCase):
 
 
 class JiraCommentAuthorSerializerTest(unittest.TestCase):
-    def test_serialization(self):
-        author = "Walter"
+    def test_parsing(self):
+        username = "Walter"
+        uuid = '1c3323fc4ae44120b57ec40dea1be6e6'
         body = "Hello, world!"
-        comment = {"body": "Comment posted by user {}\n{}".format(author, body)}
+        comment = {"body": "Comment posted by user {} ({})\n{}".format(username, uuid, body)}
 
         expected = {
             'author': {
-                'displayName': author
+                'displayName': username,
+                'uuid': uuid
             },
             'body': body
         }
