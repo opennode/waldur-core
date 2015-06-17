@@ -5,16 +5,14 @@ import logging
 
 from celery import shared_task, chain
 
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.tasks import transition
+from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tasks.openstack import (
     openstack_create_session, nova_wait_for_server_status,
     nova_server_resize, nova_server_resize_confirm)
 
-
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 @shared_task(name='nodeconductor.iaas.resize_flavor')
@@ -44,9 +42,10 @@ def flavor_change_succeeded(instance_uuid, flavor_uuid, transition_entity=None):
     instance = transition_entity
     flavor = instance.cloud_project_membership.cloud.flavors.get(uuid=flavor_uuid)
     logger.info('Successfully changed flavor of an instance %s', instance.uuid)
-    event_logger.info(
-        'Virtual machine %s flavor has been changed to %s.', instance.name, flavor.name,
-        extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_succeeded'},
+    event_logger.instance_flavor.info(
+        'Virtual machine {instance_name} flavor has been changed to {flavor_name}.',
+        event_type='iaas_instance_flavor_change_succeeded',
+        event_context={'instance': instance, 'flavor': flavor}
     )
 
 
@@ -55,7 +54,8 @@ def flavor_change_succeeded(instance_uuid, flavor_uuid, transition_entity=None):
 def flavor_change_failed(instance_uuid, transition_entity=None):
     instance = transition_entity
     logger.exception('Failed to change flavor of an instance %s', instance.uuid)
-    event_logger.error(
-        'Virtual machine %s flavor change has failed.', instance.name,
-        extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_failed'},
+    event_logger.instance_flavor.error(
+        'Virtual machine {instance_name} flavor change has failed.',
+        event_type='iaas_instance_flavor_change_failed',
+        event_context={'instance': instance, 'flavor': flavor}
     )

@@ -6,6 +6,11 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.53.0
+--------------
+- Extend alert filtering API
+- Bugfixes
+
 Release 0.52.0
 --------------
 - Alert filterting and statistics bugfixes.

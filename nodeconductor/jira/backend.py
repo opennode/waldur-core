@@ -37,7 +37,7 @@ class JiraClient(object):
             project = base_config['project']
         except (KeyError, AttributeError):
             raise JiraBackendError(
-                "Missed JIRA server or project. They must be defined "
+                "Missing JIRA server or project. They must be defined "
                 "within settings.NODECONDUCTOR.JIRA_SUPPORT")
 
         try:
@@ -45,7 +45,7 @@ class JiraClient(object):
                 type=ServiceSettings.Types.Jira).get(backend_url=server)
         except ServiceSettings.DoesNotExist as e:
             logger.exception(
-                "Can't find jira credential with backend url %s among ServiceSettings", server)
+                "Can't find JIRA credential with backend url %s among ServiceSettings", server)
             six.reraise(JiraBackendError, e)
 
         return JiraBackend(

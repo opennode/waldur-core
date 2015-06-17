@@ -27,7 +27,6 @@ from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core.filters import DjangoMappingFilterBackend
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
 from nodeconductor.iaas import models
@@ -35,13 +34,13 @@ from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.iaas.serializers import QuotaTimelineStatsSerializer
-from nodeconductor.logging import models as logging_models
+from nodeconductor.iaas.log import event_logger
+from nodeconductor.logging import models as logging_models, serializers as logging_serializers
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 def schedule_transition():
@@ -105,9 +104,11 @@ def schedule_transition():
             else:
                 # Call celery task AFTER transaction has been commited
                 processing_task.delay(instance.uuid.hex, **celery_kwargs)
-                event_logger.info(
-                    logger_info['message'], logger_info['context'],
-                    extra=logger_info['extra'])
+                if logger_info is not None:
+                    event_logger.instance.info(
+                        logger_info['message'],
+                        event_type=logger_info['event_type'],
+                        event_context=logger_info['event_context'])
 
             return Response({'status': '%s was scheduled' % operation},
                             status=status.HTTP_202_ACCEPTED)
@@ -320,8 +321,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
         membership.project.customer.validate_quota_change({'nc_resource_count': 1}, raise_exception=True)
 
         instance = serializer.save()
-        event_logger.info('Virtual machine %s creation has been scheduled.', instance.name,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_creation_scheduled'})
+        event_logger.instance.info(
+            'Virtual machine {instance_name} creation has been scheduled.',
+            event_type='iaas_instance_creation_scheduled',
+            event_context={'instance': instance})
         tasks.provision_instance.delay(instance.uuid.hex, backend_flavor_id=instance.flavor.backend_id)
 
     def perform_update(self, serializer):
@@ -332,8 +335,10 @@ class InstanceViewSet(mixins.CreateModelMixin,
             )
         instance = serializer.save()
 
-        event_logger.info('Virtual machine %s has been updated.', instance.name,
-                          extra={'instance': instance, 'event_type': 'iaas_instance_update_succeeded'})
+        event_logger.instance.info(
+            'Virtual machine {instance_name} has been updated.',
+            event_type='iaas_instance_update_succeeded',
+            event_context={'instance': instance})
 
         from nodeconductor.iaas.tasks import push_instance_security_groups
         push_instance_security_groups.delay(instance.uuid.hex)
@@ -342,9 +347,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     @schedule_transition()
     def stop(self, request, instance, uuid=None):
         logger_info = dict(
-            message='Virtual machine %s has been scheduled to stop.',
-            context=instance.name,
-            extra={'instance': instance, 'event_type': 'iaas_instance_stop_scheduled'}
+            message='Virtual machine {instance_name} has been scheduled to stop.',
+            event_type='iaas_instance_stop_scheduled',
+            event_context={'instance': instance}
         )
         return 'stop', logger_info
 
@@ -352,9 +357,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     @schedule_transition()
     def start(self, request, instance, uuid=None):
         logger_info = dict(
-            message='Virtual machine %s has been scheduled to start.',
-            context=instance.name,
-            extra={'instance': instance, 'event_type': 'iaas_instance_start_scheduled'}
+            message='Virtual machine {instance_name} has been scheduled to start.',
+            event_type='iaas_instance_start_scheduled',
+            event_context={'instance': instance}
         )
         return 'start', logger_info
 
@@ -362,9 +367,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     @schedule_transition()
     def restart(self, request, instance, uuid=None):
         logger_info = dict(
-            message='Virtual machine %s has been scheduled to restart.',
-            context=instance.name,
-            extra={'instance': instance, 'event_type': 'iaas_instance_restart_scheduled'}
+            message='Virtual machine {instance_name} has been scheduled to restart.',
+            event_type='iaas_instance_restart_scheduled',
+            event_context={'instance': instance}
         )
         return 'restart', logger_info
 
@@ -382,9 +387,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
             return Response({'detail': e.args[0]}, status=status.HTTP_409_CONFLICT)
 
         logger_info = dict(
-            message='Virtual machine %s has been scheduled to deletion.',
-            context=instance.name,
-            extra={'instance': instance, 'event_type': 'iaas_instance_deletion_scheduled'}
+            message='Virtual machine {instance_name} has been scheduled to deletion.',
+            event_type='iaas_instance_deletion_scheduled',
+            event_context={'instance': instance}
         )
         return 'destroy', logger_info
 
@@ -414,12 +419,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
             instance.cores = flavor.cores
             instance.save(update_fields=['ram', 'cores'])
 
-            logger_info = dict(
-                message='Virtual machine %s has been scheduled to change flavor.',
-                context=instance.name,
-                extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_scheduled'}
+            event_logger.instance_flavor.info(
+                'Virtual machine {instance_name} has been scheduled to change flavor.',
+                event_type='iaas_instance_flavor_change_scheduled',
+                event_context={'instance': instance, 'flavor': flavor}
             )
-            return 'flavor change', logger_info, dict(flavor_uuid=flavor.uuid.hex)
+            return 'flavor change', None, dict(flavor_uuid=flavor.uuid.hex)
 
         else:
             new_size = serializer.validated_data['disk_size']
@@ -430,12 +435,12 @@ class InstanceViewSet(mixins.CreateModelMixin,
             instance.data_volume_size = new_size
             instance.save(update_fields=['data_volume_size'])
 
-            logger_info = dict(
-                message='Virtual machine %s has been scheduled to extend disk.',
-                context=instance.name,
-                extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_scheduled'}
+            event_logger.instance_volume.info(
+                'Virtual machine {instance_name} has been scheduled to extend disk.',
+                event_type='iaas_instance_volume_extension_scheduled',
+                event_context={'instance': instance, 'volume_size': new_size}
             )
-            return 'disk extension', logger_info
+            return 'disk extension', None
 
     @detail_route()
     def usage(self, request, uuid):
@@ -1079,8 +1084,10 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         template_id = template.uuid.hex if template else None
         tasks.import_instance.delay(membership.pk, instance_id=instance_id, template_id=template_id)
 
-        event_logger.info('Virtual machine with backend id %s has been scheduled for import.', instance_id,
-                          extra={'event_type': 'iaas_instance_import_scheduled'})
+        event_logger.instance_import.info(
+            'Virtual machine with backend id {instance_id} has been scheduled for import.',
+            event_type='iaas_instance_import_scheduled',
+            event_context={'instance_id': instance_id})
 
         return Response({'status': 'Instance import was scheduled'},
                         status=status.HTTP_202_ACCEPTED)
@@ -1199,6 +1206,7 @@ class QuotaStatsView(views.APIView):
 
 class OpenstackAlertStatsView(views.APIView):
 
+    # XXX: This method uses same filter parameters as alerts filtering. It is not DRY.
     def get(self, request, format=None):
         aggregate_serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         aggregate_serializer.is_valid(raise_exception=True)
@@ -1236,20 +1244,45 @@ class OpenstackAlertStatsView(views.APIView):
         closed_time_query = Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True)
         created_time_query = Q(created__lte=time_interval_serializer.validated_data['end'])
 
-        alerts = (logging_models.Alert.objects.filter(aggregate_query)
-                                              .filter(closed_time_query)
-                                              .filter(created_time_query))
+        queryset = (logging_models.Alert.objects.filter(aggregate_query)
+                                                .filter(closed_time_query)
+                                                .filter(created_time_query))
+
+        if 'scope' in request.query_params:
+            scope_serializer = logging_serializers.ScopeSerializer(data=request.query_params)
+            scope_serializer.is_valid(raise_exception=True)
+            scope = scope_serializer.validated_data['scope']
+            ct = ContentType.objects.get_for_model(scope)
+            queryset = queryset.filter(content_type=ct, object_id=scope.id)
+
+        if 'scope_type' in request.query_params:
+            scope_type_serializer = logging_serializers.ScopeTypeSerializer(data=request.query_params)
+            scope_type_serializer.is_valid(raise_exception=True)
+            scope_type = scope_type_serializer.validated_data['scope_type']
+            ct = ContentType.objects.get_for_model(scope_type)
+            queryset = queryset.filter(content_type=ct)
 
         if 'opened' in request.query_params:
-            alerts = alerts.filter(closed__isnull=True)
+            queryset = queryset.filter(closed__isnull=True)
 
-        alerts_severities_count = alerts.values('severity').annotate(count=Count('severity'))
+        if 'severity' in request.query_params:
+            severity_codes = {v: k for k, v in models.Alert.SeverityChoices.CHOICES}
+            severities = [
+                severity_codes.get(severity_name) for severity_name in request.query_params.getlist('severity')]
+            queryset = queryset.filter(severity__in=severities)
+
+        if 'alert_type' in request.query_params:
+            queryset = queryset.filter(alert_type__in=request.query_params.getlist('alert_type'))
+
+        alerts_severities_count = queryset.values('severity').annotate(count=Count('severity'))
 
         severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
-        alerts_severities_count = {severity_names[asc['severity']]: asc['count'] for asc in alerts_severities_count}
+        # For consistency with all other endpoint we need to return severity names in lower case.
+        alerts_severities_count = {
+            severity_names[asc['severity']].lower(): asc['count'] for asc in alerts_severities_count}
         for severity_name in severity_names.values():
-            if severity_name not in alerts_severities_count:
-                alerts_severities_count[severity_name] = 0
+            if severity_name.lower() not in alerts_severities_count:
+                alerts_severities_count[severity_name.lower()] = 0
 
         return Response(alerts_severities_count, status=status.HTTP_200_OK)
 

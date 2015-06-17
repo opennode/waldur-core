@@ -8,9 +8,9 @@ from django.conf import settings
 
 from nodeconductor.core.tasks import retry_if_false
 from nodeconductor.iaas.models import Instance
-from nodeconductor.iaas.tasks import iaas
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
+from nodeconductor.monitoring import utils as monitoring_utils
 
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @shared_task
 def zabbix_create_host_and_service(instance_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)
-    iaas.create_zabbix_host_and_service(instance)
+    monitoring_utils.create_host_and_service(instance)
 
 
 @shared_task

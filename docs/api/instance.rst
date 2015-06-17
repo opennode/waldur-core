@@ -305,7 +305,7 @@ Instance usage info
 
 To get information about instance usage, make GET request to /api/instances/<uuid>/usage/ with such parameters:
 
-- ?item=instance_usage_item(required. Have to be from list: 'cpu', 'memory', 'storage')
+- ?item=instance_usage_item(required. Have to be from list: 'cpu', 'cpu_util', 'memory', 'memory_util', 'storage', 'storage_root_util', 'storage_data_util')
 - ?from=timestamp(default: now - one hour, example: 1415910025)
 - ?to=timestamp(default: now, example: 1415912625)
 - ?datapoints=how many data points have to be in answer(default: 6)
