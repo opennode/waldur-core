@@ -1225,21 +1225,18 @@ class OpenstackAlertStatsView(views.APIView):
         aggregate_query = Q()
         # XXX: We need to include projects, because we have openstack-related quotas that are connected to projects,
         #      so openstack-related alerts can appear with project as scope.
-        if projects_ids:
-            aggregate_query |= Q(
-                content_type=ContentType.objects.get_for_model(Project),
-                object_id__in=projects_ids
-            )
-        if memberships_ids:
-            aggregate_query |= Q(
-                content_type=ContentType.objects.get_for_model(models.CloudProjectMembership),
-                object_id__in=memberships_ids
-            )
-        if instances_ids:
-            aggregate_query |= Q(
-                content_type=ContentType.objects.get_for_model(models.Instance),
-                object_id__in=instances_ids
-            )
+        aggregate_query |= Q(
+            content_type=ContentType.objects.get_for_model(Project),
+            object_id__in=projects_ids
+        )
+        aggregate_query |= Q(
+            content_type=ContentType.objects.get_for_model(models.CloudProjectMembership),
+            object_id__in=memberships_ids
+        )
+        aggregate_query |= Q(
+            content_type=ContentType.objects.get_for_model(models.Instance),
+            object_id__in=instances_ids
+        )
 
         closed_time_query = Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True)
         created_time_query = Q(created__lte=time_interval_serializer.validated_data['end'])
