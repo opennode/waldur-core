@@ -266,6 +266,9 @@ All available request parameters are optional:
 - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
   object with given uuid)
 - ?opened - if this argument is in GET request - endpoint will return statistics only for alerts that are not closed
+- ?alert_type=<alert_type> (can be list)
+- ?scope=<url> concrete alert scope
+- ?scope_type=<string> name of scope type (Ex.: instance, cloud_project_membership, project...)
 
 Answer will be dictionary where key is severity and value is a count of alerts.
 
