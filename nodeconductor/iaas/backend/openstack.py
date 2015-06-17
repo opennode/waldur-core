@@ -34,13 +34,12 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
-from nodeconductor.core.log import EventLoggerAdapter
+from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 from nodeconductor.iaas.backend import dummy as dummy_clients
 from nodeconductor.iaas import models
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 @lru_cache(maxsize=1)
@@ -471,6 +470,13 @@ class OpenStackBackend(OpenStackClient):
 
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
+
+            event_logger.membership.warning(
+                'Failed to push public key to cloud {cloud_name}.',
+                event_type='iaas_membership_sync_failed',
+                event_context={'membership': membership}
+            )
+
             six.reraise(CloudBackendError, e)
 
     def remove_ssh_public_key(self, membership, public_key):
@@ -489,6 +495,13 @@ class OpenStackBackend(OpenStackClient):
             logger.info('Deleted ssh public key %s from backend', public_key.name)
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to delete ssh public key %s from backend', public_key.name)
+
+            event_logger.membership.warning(
+                'Failed to delete public key from cloud {cloud_name}.',
+                event_type='iaas_membership_sync_failed',
+                event_context={'membership': membership}
+            )
+
             six.reraise(CloudBackendError, e)
 
     def push_membership_quotas(self, membership, quotas):
@@ -1086,15 +1099,24 @@ class OpenStackBackend(OpenStackClient):
                 nova_exceptions.ClientException,
                 neutron_exceptions.NeutronClientException) as e:
             logger.exception('Failed to boot instance %s', instance.uuid)
-            event_logger.error('Virtual machine %s creation has failed.', instance.name,
-                               extra={'instance': instance, 'event_type': 'iaas_instance_creation_failed'})
+
+            event_logger.instance.error(
+                'Virtual machine {instance_name} creation has failed.',
+                event_type='iaas_instance_creation_failed',
+                event_context={'instance': instance})
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully booted instance %s', instance.uuid)
-            event_logger.info('Virtual machine %s has been created.', instance.name,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_creation_succeeded'})
-            event_logger.info('Virtual machine %s has been started.', instance.name,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_start_succeeded'})
+
+            event_logger.instance.info(
+                'Virtual machine {instance_name} has been created.',
+                event_type='iaas_instance_creation_succeeded',
+                event_context={'instance': instance})
+
+            event_logger.instance.info(
+                'Virtual machine {instance_name} has been started.',
+                event_type='iaas_instance_start_succeeded',
+                event_context={'instance': instance})
 
     def start_instance(self, instance):
         logger.debug('About to start instance %s', instance.uuid)
@@ -1116,28 +1138,37 @@ class OpenStackBackend(OpenStackClient):
                 instance.start_time = timezone.now()
                 instance.save()
                 logger.info('Successfully started instance %s', instance.uuid)
-                event_logger.info('Virtual machine %s has been started.', instance.name,
-                                  extra={'instance': instance, 'event_type': 'iaas_instance_start_succeeded'})
+                event_logger.instance.info(
+                    'Virtual machine {instance_name} has been started.',
+                    event_type='iaas_instance_start_succeeded',
+                    event_context={'instance': instance})
                 return
 
             nova.servers.start(instance.backend_id)
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
                 logger.error('Failed to start instance %s', instance.uuid)
-                event_logger.error('Virtual machine %s start has failed.', instance.name,
-                                   extra={'instance': instance, 'event_type': 'iaas_instance_start_failed'})
+                event_logger.instance.error(
+                    'Virtual machine {instance_name} start has failed.',
+                    event_type='iaas_instance_start_failed',
+                    event_context={'instance': instance})
                 raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to start instance %s', instance.uuid)
-            event_logger.error('Virtual machine %s start has failed.', instance.name,
-                               extra={'instance': instance, 'event_type': 'iaas_instance_start_failed'})
+            event_logger.instance.error(
+                'Virtual machine {instance_name} start has failed.',
+                event_type='iaas_instance_start_failed',
+                event_context={'instance': instance})
             six.reraise(CloudBackendError, e)
         else:
             instance.start_time = timezone.now()
             instance.save()
+
             logger.info('Successfully started instance %s', instance.uuid)
-            event_logger.info('Virtual machine %s has been started.', instance.name,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_start_succeeded'})
+            event_logger.instance.info(
+                'Virtual machine {instance_name} has been started.',
+                event_type='iaas_instance_start_succeeded',
+                event_context={'instance': instance})
 
     def stop_instance(self, instance):
         logger.debug('About to stop instance %s', instance.uuid)
@@ -1157,28 +1188,36 @@ class OpenStackBackend(OpenStackClient):
                 instance.start_time = None
                 instance.save()
                 logger.info('Successfully stopped instance %s', instance.uuid)
-                event_logger.info('Virtual machine %s has been stopped.', instance.name,
-                                  extra={'instance': instance, 'event_type': 'iaas_instance_stop_succeeded'})
+                event_logger.instance.info(
+                    'Virtual machine {instance_name} has been stopped.',
+                    event_type='iaas_instance_stop_succeeded',
+                    event_context={'instance': instance})
                 return
 
             nova.servers.stop(instance.backend_id)
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
                 logger.error('Failed to stop instance %s', instance.uuid)
-                event_logger.error('Virtual machine %s stop has failed.', instance.name,
-                                   extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
+                event_logger.instance.error(
+                    'Virtual machine {instance_name} stop has failed.',
+                    event_type='iaas_instance_stop_failed',
+                    event_context={'instance': instance})
                 raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to stop instance %s', instance.uuid)
-            event_logger.error('Virtual machine %s stop has failed.', instance.name,
-                               extra={'instance': instance, 'event_type': 'iaas_instance_stop_failed'})
+            event_logger.instance.error(
+                'Virtual machine {instance_name} stop has failed.',
+                event_type='iaas_instance_stop_failed',
+                event_context={'instance': instance})
             six.reraise(CloudBackendError, e)
         else:
             instance.start_time = None
             instance.save()
             logger.info('Successfully stopped instance %s', instance.uuid)
-            event_logger.info('Virtual machine %s has been stopped.', instance.name,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_stop_succeeded'})
+            event_logger.instance.info(
+                'Virtual machine {instance_name} has been stopped.',
+                event_type='iaas_instance_stop_succeeded',
+                event_context={'instance': instance})
 
     def restart_instance(self, instance):
         logger.debug('About to restart instance %s', instance.uuid)
@@ -1192,18 +1231,24 @@ class OpenStackBackend(OpenStackClient):
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE', retries=80):
                 logger.error('Failed to restart instance %s', instance.uuid)
-                event_logger.error('Virtual machine %s restart has failed.', instance.name,
-                                   extra={'instance': instance, 'event_type': 'iaas_instance_restart_failed'})
+                event_logger.instance.error(
+                    'Virtual machine {instance_name} restart has failed.',
+                    event_type='iaas_instance_restart_failed',
+                    event_context={'instance': instance})
                 raise CloudBackendError('Timed out waiting for instance %s to restart' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to restart instance %s', instance.uuid)
-            event_logger.error('Virtual machine %s restart has failed.', instance.name,
-                               extra={'instance': instance, 'event_type': 'iaas_instance_restart_failed'})
+            event_logger.instance.error(
+                'Virtual machine {instance_name} restart has failed.',
+                event_type='iaas_instance_restart_failed',
+                event_context={'instance': instance})
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully restarted instance %s', instance.uuid)
-            event_logger.info('Virtual machine %s has been restarted.', instance.name,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_restart_succeeded'})
+            event_logger.instance.info(
+                'Virtual machine {instance_name} has been restarted.',
+                event_type='iaas_instance_restart_succeeded',
+                event_context={'instance': instance})
 
     def delete_instance(self, instance):
         logger.info('About to delete instance %s', instance.uuid)
@@ -1217,8 +1262,10 @@ class OpenStackBackend(OpenStackClient):
 
             if not self._wait_for_instance_deletion(instance.backend_id, nova):
                 logger.info('Failed to delete instance %s', instance.uuid)
-                event_logger.error('Virtual machine %s deletion has failed.', instance.name,
-                                   extra={'instance': instance, 'event_type': 'iaas_instance_deletion_failed'})
+                event_logger.instance.error(
+                    'Virtual machine {instance_name} deletion has failed.',
+                    event_type='iaas_instance_deletion_failed',
+                    event_context={'instance': instance})
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
             else:
                 membership.add_quota_usage('max_instances', -1)
@@ -1231,13 +1278,17 @@ class OpenStackBackend(OpenStackClient):
 
         except nova_exceptions.ClientException as e:
             logger.info('Failed to delete instance %s', instance.uuid)
-            event_logger.error('Virtual machine %s deletion has failed.', instance.name,
-                               extra={'instance': instance, 'event_type': 'iaas_instance_deletion_failed'})
+            event_logger.instance.error(
+                'Virtual machine {instance_name} deletion has failed.',
+                event_type='iaas_instance_deletion_failed',
+                event_context={'instance': instance})
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully deleted instance %s', instance.uuid)
-            event_logger.info('Virtual machine %s has been deleted.', instance.name,
-                              extra={'instance': instance, 'event_type': 'iaas_instance_deletion_succeeded'})
+            event_logger.instance.info(
+                'Virtual machine {instance_name} has been deleted.',
+                event_type='iaas_instance_deletion_succeeded',
+                event_context={'instance': instance})
 
     def import_instance(self, membership, instance_id, template_id=None):
         try:
@@ -1324,8 +1375,10 @@ class OpenStackBackend(OpenStackClient):
                     security_group=nc_sg,
                 )
 
-            event_logger.info('Virtual machine %s has been imported.', nc_instance.name,
-                              extra={'instance': nc_instance, 'event_type': 'iaas_instance_import_succeeded'})
+            event_logger.instance_import.info(
+                'Virtual machine {instance_id} has been imported.',
+                event_type='iaas_instance_import_succeeded',
+                event_context={'instance_id': instance_id})
             logger.info('Created new instance %s in database', nc_instance.uuid)
 
             return nc_instance
@@ -1561,11 +1614,11 @@ class OpenStackBackend(OpenStackClient):
             elif old_core_size > new_core_size:
                 logger.warning('Not extending volume %s: desired size %d MiB is less then current size %d MiB',
                                volume.id, new_core_size, old_core_size)
-                event_logger.error(
-                    "Virtual machine %s disk extension has failed "
+                event_logger.instance_volume.error(
+                    "Virtual machine {instance_name} disk extension has failed "
                     "due to new size being less than old size.",
-                    instance.name,
-                    extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_failed'},
+                    event_type='iaas_instance_volume_extension_failed',
+                    event_context={'instance': instance}
                 )
                 return
 
@@ -1580,10 +1633,10 @@ class OpenStackBackend(OpenStackClient):
                     'Failed to extend volume: exceeded quota limit while trying to extend volume %s',
                     volume.id,
                 )
-                event_logger.error(
-                    "Virtual machine %s disk extension has failed due to quota limits.",
-                    instance.name,
-                    extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_failed'},
+                event_logger.instance_volume.error(
+                    "Virtual machine {instance_name} disk extension has failed due to quota limits.",
+                    event_type='iaas_instance_volume_extension_failed',
+                    event_context={'instance': instance},
                 )
                 # Reset instance.data_volume_size back so that model reflects actual state
                 instance.data_volume_size = old_core_size
@@ -1601,10 +1654,10 @@ class OpenStackBackend(OpenStackClient):
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully extended disk of an instance %s', instance.uuid)
-            event_logger.info(
-                "Virtual machine %s disk has been extended to %d GB.",
-                instance.name, new_core_size_gib,
-                extra={'instance': instance, 'event_type': 'iaas_instance_volume_extension_succeeded'},
+            event_logger.instance_volume.info(
+                "Virtual machine {instance_name} disk has been extended to {volume_size} GB.",
+                event_type='iaas_instance_volume_extension_succeeded',
+                event_context={'instance': instance, 'volume_size': new_core_size_gib},
             )
 
     def update_flavor(self, instance, flavor):
@@ -1640,25 +1693,25 @@ class OpenStackBackend(OpenStackClient):
                 )
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
             logger.exception('Failed to change flavor of an instance %s', instance.uuid)
-            event_logger.error(
-                'Virtual machine %s flavor change has failed.',
-                instance.name,
-                extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_failed'},
+            event_logger.instance_flavor.error(
+                'Virtual machine {instance_name} flavor change has failed.',
+                event_type='iaas_instance_flavor_change_failed',
+                event_context={'instance': instance, 'flavor': flavor}
             )
             six.reraise(CloudBackendError, e)
         except CloudBackendError:
-            event_logger.error(
-                'Virtual machine %s flavor change has failed.',
-                instance.name,
-                extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_failed'},
+            event_logger.instance_flavor.error(
+                'Virtual machine {instance_name} flavor change has failed.',
+                event_type='iaas_instance_flavor_change_failed',
+                event_context={'instance': instance, 'flavor': flavor}
             )
             raise
         else:
             logger.info('Successfully changed flavor of an instance %s', instance.uuid)
-            event_logger.info(
-                'Virtual machine %s flavor has been changed to %s.',
-                instance.name, flavor.name,
-                extra={'instance': instance, 'event_type': 'iaas_instance_flavor_change_succeeded'},
+            event_logger.instance_flavor.info(
+                'Virtual machine {instance_name} flavor has been changed to {flavor_name}.',
+                event_type='iaas_instance_flavor_change_succeeded',
+                event_context={'instance': instance, 'flavor': flavor},
             )
 
     def get_ceilometer_statistics(self, membership, meter_name, period=None, query=None):

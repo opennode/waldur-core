@@ -6,14 +6,12 @@ from celery import shared_task
 
 from nodeconductor.core.tasks import transition, retry_if_false
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
-from nodeconductor.core.log import EventLoggerAdapter
 from nodeconductor.iaas.backend import ServiceBackendError, CloudBackendError
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.structure.handlers import PUSH_KEY, REMOVE_KEY
 from nodeconductor.structure import models
 
 logger = logging.getLogger(__name__)
-event_logger = EventLoggerAdapter(logger)
 
 
 @shared_task(name='nodeconductor.structure.sync_billing_customers')
@@ -140,20 +138,6 @@ def push_ssh_public_key(ssh_public_keys_uuid, service_project_link_str):
             'Failed to push public key %s for service project link %s',
             public_key.uuid, service_project_link.pk,
             exc_info=1)
-
-        from nodeconductor.iaas.models import CloudProjectMembership
-
-        if isinstance(service_project_link, CloudProjectMembership):
-            # TODO: Refactor it according to NC-498
-            event_logger.warning(
-                'Failed to push public key %s to cloud membership %s.',
-                public_key.uuid, service_project_link.pk,
-                extra={
-                    'project': service_project_link.project,
-                    'cloud': service_project_link.cloud,
-                    'event_type': 'sync_cloud_membership'}
-            )
-
     return True
 
 
