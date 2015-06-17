@@ -427,10 +427,10 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
         self.assertItemsEqual(
             response.data,
             {
-                severity_names[logging_models.Alert.SeverityChoices.ERROR]: len(error_alerts),
-                severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(warning_alerts),
-                severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
-                severity_names[logging_models.Alert.SeverityChoices.DEBUG]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.ERROR].lower(): len(error_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.WARNING].lower(): len(warning_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.INFO].lower(): 0,
+                severity_names[logging_models.Alert.SeverityChoices.DEBUG].lower(): 0,
             }
         )
 
@@ -462,10 +462,10 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
         self.assertItemsEqual(
             response.data,
             {
-                severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
-                severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(old_alerts),
-                severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
-                severity_names[logging_models.Alert.SeverityChoices.DEBUG]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.ERROR].lower(): 0,
+                severity_names[logging_models.Alert.SeverityChoices.WARNING].lower(): len(old_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.INFO].lower(): 0,
+                severity_names[logging_models.Alert.SeverityChoices.DEBUG].lower(): 0,
             }
         )
 
@@ -501,10 +501,10 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
         self.assertItemsEqual(
             response.data,
             {
-                severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
-                severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(project1_alerts),
-                severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
-                severity_names[logging_models.Alert.SeverityChoices.DEBUG]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.ERROR].lower(): 0,
+                severity_names[logging_models.Alert.SeverityChoices.WARNING].lower(): len(project1_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.INFO].lower(): 0,
+                severity_names[logging_models.Alert.SeverityChoices.DEBUG].lower(): 0,
             }
         )
 
@@ -538,10 +538,10 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
         self.assertItemsEqual(
             response.data,
             {
-                severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
-                severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(project1_alerts),
-                severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
-                severity_names[logging_models.Alert.SeverityChoices.DEBUG]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.ERROR].lower(): 0,
+                severity_names[logging_models.Alert.SeverityChoices.WARNING].lower(): len(project1_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.INFO].lower(): 0,
+                severity_names[logging_models.Alert.SeverityChoices.DEBUG].lower(): 0,
             }
         )
 
@@ -569,10 +569,10 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
         self.assertItemsEqual(
             response.data,
             {
-                severity_names[logging_models.Alert.SeverityChoices.ERROR]: 0,
-                severity_names[logging_models.Alert.SeverityChoices.WARNING]: len(instances_alerts),
-                severity_names[logging_models.Alert.SeverityChoices.INFO]: 0,
-                severity_names[logging_models.Alert.SeverityChoices.DEBUG]: 0,
+                severity_names[logging_models.Alert.SeverityChoices.ERROR].lower(): 0,
+                severity_names[logging_models.Alert.SeverityChoices.WARNING].lower(): len(instances_alerts),
+                severity_names[logging_models.Alert.SeverityChoices.INFO].lower(): 0,
+                severity_names[logging_models.Alert.SeverityChoices.DEBUG].lower(): 0,
             }
         )
 

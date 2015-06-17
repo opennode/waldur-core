@@ -21,16 +21,40 @@ class ZabbixDBClient(object):
             'convert_to_mb': False
         },
 
+        'cpu_util': {
+            'key': 'openstack.instance.cpu_util',
+            'table': 'history',
+            'convert_to_mb': False
+        },
+
         'memory': {
-            'key': 'kvm.vm.memory.size.used',
+            'key': 'kvm.vm.memory.size',
+            'table': 'history_uint',
+            'convert_to_mb': True
+        },
+
+        'memory_util': {
+            'key': 'kvm.vm.memory_util',
             'table': 'history_uint',
             'convert_to_mb': True
         },
 
         'storage': {
-            'key': 'kvm.vm.disk.size',
+            'key': 'openstack.vm.disk.size',
             'table': 'history_uint',
-            'convert_to_mb': True
+            'convert_to_mb': False
+        },
+
+        'storage_root_util': {
+            'key': 'vfs.fs.size[/,pfree]',
+            'table': 'history',
+            'convert_to_mb': False
+        },
+
+        'storage_data_util': {
+            'key': 'vfs.fs.size[/data,pfree]',
+            'table': 'history',
+            'convert_to_mb': False
         },
 
         'project_instances_limit': {
