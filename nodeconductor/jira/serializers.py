@@ -1,3 +1,5 @@
+import re
+
 from rest_framework import serializers
 
 from nodeconductor.jira.backend import JiraClient
@@ -37,13 +39,35 @@ class IssueSerializer(serializers.Serializer):
 
 
 class CommentSerializer(serializers.Serializer):
-    author = UserSerializer(read_only=True)
     created = serializers.DateTimeField(read_only=True)
     body = serializers.CharField()
+
+    AUTHOR_RE = re.compile("Comment posted by user ([\w.@+-]+)")
 
     def save(self, issue):
         self.issue = issue
         return super(CommentSerializer, self).save()
 
     def create(self, validated_data):
-        return JiraClient().comments.create(self.issue, validated_data['body'])
+        return JiraClient().comments.create(self.issue, self.serialize_body())
+
+    def to_representation(self, obj):
+        data = super(CommentSerializer, self).to_representation(obj)
+        author, body = self.parse_body(data['body'])
+        data['author'] = {'displayName': author}
+        data['body'] = body
+        return data
+
+    def serialize_body(self):
+        body = self.validated_data['body']
+        author = self.context['request'].user.username
+        return "Comment posted by user {}\n{}".format(author, body)
+
+    def parse_body(self, body):
+        match = re.match(self.AUTHOR_RE, body)
+        if match:
+            author = match.group(1)
+            body = body[match.end(1) + 1:]
+            return author, body
+        else:
+            return "User", body
