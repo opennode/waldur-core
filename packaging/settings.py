@@ -126,7 +126,7 @@ SECRET_KEY = config.get('global', 'secret_key')
 DEBUG = config.getboolean('global', 'debug')
 TEMPLATE_DEBUG = config.getboolean('global', 'template_debug')
 
-MEDIA_ROOT = config.get('global', 'media_root'),
+MEDIA_ROOT = config.get('global', 'media_root')
 
 ALLOWED_HOSTS = ['*']
 
