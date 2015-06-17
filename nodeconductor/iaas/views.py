@@ -35,7 +35,7 @@ from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.iaas.serializers import QuotaTimelineStatsSerializer
 from nodeconductor.iaas.log import event_logger
-from nodeconductor.logging import models as logging_models
+from nodeconductor.logging import models as logging_models, serializers as logging_serializers
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
@@ -1206,6 +1206,7 @@ class QuotaStatsView(views.APIView):
 
 class OpenstackAlertStatsView(views.APIView):
 
+    # XXX: This method uses same filter parameters as alerts filtering. It is not DRY.
     def get(self, request, format=None):
         aggregate_serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         aggregate_serializer.is_valid(raise_exception=True)
@@ -1243,14 +1244,37 @@ class OpenstackAlertStatsView(views.APIView):
         closed_time_query = Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True)
         created_time_query = Q(created__lte=time_interval_serializer.validated_data['end'])
 
-        alerts = (logging_models.Alert.objects.filter(aggregate_query)
-                                              .filter(closed_time_query)
-                                              .filter(created_time_query))
+        queryset = (logging_models.Alert.objects.filter(aggregate_query)
+                                                .filter(closed_time_query)
+                                                .filter(created_time_query))
+
+        if 'scope' in request.query_params:
+            scope_serializer = logging_serializers.ScopeSerializer(data=request.query_params)
+            scope_serializer.is_valid(raise_exception=True)
+            scope = scope_serializer.validated_data['scope']
+            ct = ContentType.objects.get_for_model(scope)
+            queryset = queryset.filter(content_type=ct, object_id=scope.id)
+
+        if 'scope_type' in request.query_params:
+            scope_type_serializer = logging_serializers.ScopeTypeSerializer(data=request.query_params)
+            scope_type_serializer.is_valid(raise_exception=True)
+            scope_type = scope_type_serializer.validated_data['scope_type']
+            ct = ContentType.objects.get_for_model(scope_type)
+            queryset = queryset.filter(content_type=ct)
 
         if 'opened' in request.query_params:
-            alerts = alerts.filter(closed__isnull=True)
+            queryset = queryset.filter(closed__isnull=True)
 
-        alerts_severities_count = alerts.values('severity').annotate(count=Count('severity'))
+        if 'severity' in request.query_params:
+            severity_codes = {v: k for k, v in models.Alert.SeverityChoices.CHOICES}
+            severities = [
+                severity_codes.get(severity_name) for severity_name in request.query_params.getlist('severity')]
+            queryset = queryset.filter(severity__in=severities)
+
+        if 'alert_type' in request.query_params:
+            queryset = queryset.filter(alert_type__in=request.query_params.getlist('alert_type'))
+
+        alerts_severities_count = queryset.values('severity').annotate(count=Count('severity'))
 
         severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
         alerts_severities_count = {severity_names[asc['severity']]: asc['count'] for asc in alerts_severities_count}
