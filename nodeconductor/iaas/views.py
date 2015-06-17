@@ -1253,10 +1253,12 @@ class OpenstackAlertStatsView(views.APIView):
         alerts_severities_count = alerts.values('severity').annotate(count=Count('severity'))
 
         severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
-        alerts_severities_count = {severity_names[asc['severity']]: asc['count'] for asc in alerts_severities_count}
+        # For consistency with all other endpoint we need to return severity names in lower case.
+        alerts_severities_count = {
+            severity_names[asc['severity']].lower(): asc['count'] for asc in alerts_severities_count}
         for severity_name in severity_names.values():
-            if severity_name not in alerts_severities_count:
-                alerts_severities_count[severity_name] = 0
+            if severity_name.lower() not in alerts_severities_count:
+                alerts_severities_count[severity_name.lower()] = 0
 
         return Response(alerts_severities_count, status=status.HTTP_200_OK)
 
