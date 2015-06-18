@@ -358,7 +358,7 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
 
     installation_state = models.CharField(
-        max_length=50, blank=True, help_text='State of post deploy installation process')
+        max_length=50, default='NO DATA', blank=True, help_text='State of post deploy installation process')
 
     # fields, defined by flavor
     cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')

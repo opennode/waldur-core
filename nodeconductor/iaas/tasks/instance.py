@@ -13,12 +13,8 @@ from nodeconductor.iaas.models import Instance
 @transition(Instance, 'begin_provisioning')
 def provision_instance(instance_uuid, backend_flavor_id,
                        system_volume_id=None, data_volume_id=None, transition_entity=None):
-    chain(
-        openstack_provision_instance.si(
-            instance_uuid, backend_flavor_id, system_volume_id, data_volume_id),
-        zabbix_create_host_and_service.si(instance_uuid),
-        poll_instance_installation_state.si(instance_uuid),
-    ).apply_async(
+    openstack_provision_instance.apply_async(
+        args=(instance_uuid, backend_flavor_id, system_volume_id, data_volume_id),
         link=provision_succeeded.si(instance_uuid),
         link_error=provision_failed.si(instance_uuid),
     )
@@ -27,10 +23,21 @@ def provision_instance(instance_uuid, backend_flavor_id,
 @shared_task
 @transition(Instance, 'set_online')
 def provision_succeeded(instance_uuid, transition_entity=None):
-    pass
+    chain(
+        zabbix_create_host_and_service.si(instance_uuid),
+        poll_instance_installation_state.si(instance_uuid),
+    ).apply_async(
+        link_error=zabbix_provision_failed(instance_uuid),
+    )
 
 
 @shared_task
 @transition(Instance, 'set_erred')
 def provision_failed(instance_uuid, transition_entity=None):
     pass
+
+
+def zabbix_provision_failed(instance_uuid):
+    instance = Instance.objects.get(uuid=instance_uuid)
+    instance.installation_state = 'FAIL'
+    instance.save()
