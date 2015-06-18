@@ -102,9 +102,9 @@ config_defaults = {
         'password': '',
         'server_url': '',
         'username': '',
-        'wordpress-templateid': '',
-        'zimbra-templateid': '',
-        'postgresql-templateid': '',
+        'wordpress_template_id': '',
+        'zimbra_template_id': '',
+        'postgresql_template_id': '',
     }
 }
 
