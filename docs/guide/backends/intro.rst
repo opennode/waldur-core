@@ -7,7 +7,7 @@ SaaS, the common denominator is the ability to control services over APIs. Curre
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
 | Backend          | Provision      | Import | Destroy | Manage                    | Monitor  | Backup     |
 +==================+================+========+=========+===========================+==========+============+
-| DigitalOcean     | VirtualMachine | yes    | yes     | start/stop/restart        | –        | –          |
+| DigitalOcean *   | VirtualMachine | yes    | yes     | start/stop/restart        | –        | –          |
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
 | Jira             | –              | –      | –       | –                         | –        | –          |
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
@@ -15,6 +15,8 @@ SaaS, the common denominator is the ability to control services over APIs. Curre
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
 | Oracle           | DataBase       | –      | –       | start/stop/restart        | –        | –          |
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
+
+* available via NodeConductor extensions
 
 
 OpenStack (private cloud, volume-based VMs)
