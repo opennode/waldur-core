@@ -31,6 +31,7 @@ install_requires = [
     'elasticsearch>=1.0.0,<2.0.0',
     'jira>=0.47',
     'jsonfield==1.0.0',
+    'Pillow==2.8.2',
     'python-ceilometerclient==1.0.10',
     'python-cinderclient==1.0.9',
     'python-glanceclient==0.12.0',
@@ -41,6 +42,7 @@ install_requires = [
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
     'requests>=2.6.0',
+    'sorl-thumbnail==12.2',
 ]
 
 

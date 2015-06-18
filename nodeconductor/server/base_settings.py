@@ -48,6 +48,7 @@ INSTALLED_APPS = (
 
     'permission',
     'django_fsm',
+    'sorl.thumbnail',
 )
 
 MIDDLEWARE_CLASSES = (

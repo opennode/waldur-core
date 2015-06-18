@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-import logging
-
 from django.apps import apps
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
@@ -15,6 +13,7 @@ from django_fsm import FSMIntegerField
 from django_fsm import transition
 from model_utils.models import TimeStampedModel
 from polymorphic import PolymorphicModel
+from sorl.thumbnail import ImageField
 
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
@@ -23,7 +22,11 @@ from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 
 
-logger = logging.getLogger(__name__)
+class ImageModelMixin(models.Model):
+    class Meta(object):
+        abstract = True
+
+    image = ImageField(upload_to='image', null=True, blank=True)
 
 
 @python_2_unicode_compatible
@@ -31,6 +34,7 @@ class Customer(core_models.UuidMixin,
                core_models.NameMixin,
                quotas_models.QuotaModelMixin,
                LoggableMixin,
+               ImageModelMixin,
                TimeStampedModel):
     class Permissions(object):
         customer_path = 'self'
