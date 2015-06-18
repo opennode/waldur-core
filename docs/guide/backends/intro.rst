@@ -13,18 +13,15 @@ SaaS, the common denominator is the ability to control services over APIs. Curre
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
 | OpenStack        | VirtualMachine | yes    | yes     | start/stop/restart/resize | zabbix   | snapshots  |
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
-| Oracle           | DataBase       | –      | –       | start/stop/restart        | –        | –          |
+| Oracle           | DataBase       | –      | –       | start/stop/restart        | –        | –          |
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
 
 * available via NodeConductor extensions
-
 
 OpenStack (private cloud, volume-based VMs)
 +++++++++++++++++++++++++++++++++++++++++++
 
 OpenStack_ is a popular open-source toolkit for building private clouds.
-
-TODO: describe account model (admin -> service accounts)
 
 VM creation
 ===========
