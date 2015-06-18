@@ -53,6 +53,12 @@ class InvoiceFilter(django_filters.FilterSet):
             '-amount',
             'status',
             '-status',
+            'customer__name',
+            '-customer__name',
+            'customer__abbreviation',
+            '-customer__abbreviation',
+            'customer__native_name',
+            '-customer__native_name',
         ]
         order_by_mapping = {
             # Proper field naming
@@ -65,7 +71,7 @@ class InvoiceFilter(django_filters.FilterSet):
 class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Invoice.objects.all()
     filter_class = InvoiceFilter
-    filter_backends = (GenericRoleFilter, filters.DjangoFilterBackend, DjangoMappingFilterBackend)
+    filter_backends = (GenericRoleFilter, DjangoMappingFilterBackend)
     lookup_field = 'uuid'
     permission_classes = (
         permissions.IsAuthenticated,
