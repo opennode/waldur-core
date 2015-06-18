@@ -4,6 +4,19 @@ Shareable services
 NodeConductor is designed to support multiple API-based services for access sharing. Services can range from IaaS to
 SaaS, the common denominator is the ability to control services over APIs. Currently supported services are listed below.
 
++------------------+----------------+--------+---------+---------------------------+----------+------------+
+| Backend          | Provision      | Import | Destroy | Manage                    | Monitor  | Backup     |
++==================+================+========+=========+===========================+==========+============+
+| DigitalOcean     | VirtualMachine | yes    | yes     | start/stop/restart        | –        | –          |
++------------------+----------------+--------+---------+---------------------------+----------+------------+
+| Jira             | –              | –      | –       | –                         | –        | –          |
++------------------+----------------+--------+---------+---------------------------+----------+------------+
+| OpenStack        | VirtualMachine | yes    | yes     | start/stop/restart/resize | zabbix   | snapshots  |
++------------------+----------------+--------+---------+---------------------------+----------+------------+
+| Oracle           | DataBase       | –      | –       | start/stop/restart        | –        | –          |
++------------------+----------------+--------+---------+---------------------------+----------+------------+
+
+
 OpenStack (private cloud, volume-based VMs)
 +++++++++++++++++++++++++++++++++++++++++++
 
