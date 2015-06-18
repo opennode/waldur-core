@@ -202,7 +202,7 @@ class ZabbixApiClient(object):
                 return 'NO DATA'
             else:
                 value = history[0]['value']
-                return 'OK' if value == '0' else 'NOT OK'
+                return 'OK' if value == '1' else 'NOT OK'
         else:
             logger.warn('Cannot retrieve installation state of instance %s. Host does not exist.', instance)
             return 'NO DATA'
