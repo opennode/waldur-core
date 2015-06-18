@@ -4,7 +4,6 @@ from __future__ import absolute_import
 import logging
 
 from celery import shared_task
-from django.conf import settings
 
 from nodeconductor.core.tasks import retry_if_false
 from nodeconductor.iaas.models import Instance
@@ -34,8 +33,7 @@ def zabbix_update_host_visible_name(instance_uuid):
 
 
 def _get_installation_state(instance):
-    zabbix_settings = getattr(settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('APPLICATION_ZABBIX', {})
-    zabbix_client = ZabbixApiClient(settings=zabbix_settings)
+    zabbix_client = ZabbixApiClient()
     return zabbix_client.get_application_installation_state(instance)
 
 

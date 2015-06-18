@@ -182,11 +182,15 @@ class ZabbixApiClient(object):
         if api.host.exists(host=name):
             hostid = api.host.get(filter={'host': name})[0]['hostid']
             # lookup item by a pre-defined name
-            item_id = api.item.get(
+            items = api.item.get(
                 output='extend',
                 hostids=hostid,
                 filter={'key_': self._settings.get('application-status-item', 'application.status')}
-            )[0]['itemid']
+            )
+            if not items:
+                return 'NO DATA'
+            else:
+                item_id = items[0]['itemid']
             history = api.history.get(
                 output='extend',
                 itemids=item_id,
@@ -194,12 +198,11 @@ class ZabbixApiClient(object):
                 sortorder="ASC",
                 limit=1
             )
-            if len(history) < 1:
+            if not history:
                 return 'NO DATA'
             else:
-                value = [0]['value']
+                value = history[0]['value']
                 return 'OK' if value == '0' else 'NOT OK'
-            return value
         else:
             logger.warn('Cannot retrieve installation state of instance %s. Host does not exist.', instance)
             return 'NO DATA'

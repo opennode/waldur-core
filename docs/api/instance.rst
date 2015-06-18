@@ -97,6 +97,19 @@ A graph of possible state transitions is shown below.
 
 .. image:: ../images/instance-states.png
 
+Instance installation state
+---------------------------
+
+Each PaaS instance has a **installation state** field that defines its current installation state.
+
+Possible states:
+
+- OK - installation succeed
+- NOT OK - installation is not ready yet
+- NO DATA - no information about installation state
+- FAIL - installation failed
+
+
 Create a new instance
 ---------------------
 
