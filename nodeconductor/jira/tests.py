@@ -1,11 +1,13 @@
 from __future__ import unicode_literals
 
-from rest_framework import status, test, settings
+import unittest
 
+from rest_framework import status, test, settings
 from django.core.urlresolvers import reverse
 from django.test.utils import override_settings
 
 from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.jira.serializers import CommentSerializer
 
 
 class JiraTest(test.APITransactionTestCase):
@@ -69,7 +71,26 @@ class JiraTest(test.APITransactionTestCase):
 
         response = self.client.post(url, data={'body': comment})
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('Alice', response.data['author']['displayName'])
+        self.assertIn(self.user.username, response.data['author']['displayName'])
 
         response = self.client.get(url)
         self.assertEqual(response.data[-1]['body'], comment)
+
+
+class JiraCommentAuthorSerializerTest(unittest.TestCase):
+    def test_parsing(self):
+        username = "Walter"
+        uuid = '1c3323fc4ae44120b57ec40dea1be6e6'
+        body = "Hello, world!"
+        comment = {"body": "Comment posted by user {} ({})\n{}".format(username, uuid, body)}
+
+        expected = {
+            'author': {
+                'displayName': username,
+                'uuid': uuid
+            },
+            'body': body
+        }
+
+        serializer = CommentSerializer(instance=comment)
+        self.assertEqual(expected, serializer.data)
