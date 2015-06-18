@@ -462,7 +462,7 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
     class Meta(object):
         abstract = True
 
-    settings = models.ForeignKey(ServiceSettings, related_name='+')
+    settings = models.ForeignKey(ServiceSettings, related_name='+', blank=True, null=True)
     backend_id = models.CharField(max_length=255, db_index=True)
 
     def __str__(self):
