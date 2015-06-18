@@ -6,6 +6,11 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.54.0
+--------------
+- Alert API filtering extensions.
+- Bugfixes of PaaS instance monitoring polling.
+
 Release 0.53.0
 --------------
 - Extend alert filtering API
