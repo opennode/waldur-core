@@ -52,11 +52,11 @@ class ServiceBackend(object):
 
     @staticmethod
     def gb2mb(val):
-        return val * 1024 if val else 0
+        return int(val * 1024) if val else 0
 
     @staticmethod
     def tb2mb(val):
-        return val * 1024 * 1024 if val else 0
+        return int(val * 1024 * 1024) if val else 0
 
     @staticmethod
     def mb2gb(val):
