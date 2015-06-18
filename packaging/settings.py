@@ -743,9 +743,9 @@ NODECONDUCTOR = {
                 'showsla': 1,
                 'goodsla': 95,
             },
-            'wordpress-templateid': config.get('zabbix', 'wordpress-templateid'),
-            'zimbra-templateid': config.get('zabbix', 'zimbra-templateid'),
-            'postgresql-templateid': config.get('zabbix', 'postgresql-templateid'),
+            'postgresql-templateid': config.get('zabbix', 'postgresql_template_id'),
+            'wordpress-templateid': config.get('zabbix', 'wordpress_template_id'),
+            'zimbra-templateid': config.get('zabbix', 'zimbra_template_id'),
         }
     },
     'BILLING': {

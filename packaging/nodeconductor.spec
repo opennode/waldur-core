@@ -16,7 +16,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.53.1
-Release: 1.el7
+Release: 2.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # openssl package is needed to generate SAML2 keys during NodeConductor install
@@ -197,6 +197,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Thu Jun 18 2015 Juri Hudolejev <juri@opennodecloud.com> - 0.53.1-2.el7
+- Config fixes
+
 * Wed Jun 17 2015 Ilja Livenson <ilja@opennodecloud.com> - 0.53.1-1.el7
 - New upstream bugfix release
 
