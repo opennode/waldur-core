@@ -195,11 +195,11 @@ LOGGING = {
     'filters': {
         # Filter out only events (user-facing messages)
         'is-event': {
-            '()': 'nodeconductor.core.log.RequireEvent',
+            '()': 'nodeconductor.logging.log.RequireEvent',
         },
         # Filter out only non-events (not user-facing messages)
         'is-not-event': {
-            '()': 'nodeconductor.core.log.RequireNotEvent',
+            '()': 'nodeconductor.logging.log.RequireNotEvent',
         },
     },
 
@@ -256,14 +256,14 @@ LOGGING = {
             'level': config.get('logging', 'log_level').upper(),
         },
         # Send logs to log server
-        # Note that nodeconductor.core.log.TCPEventHandler does not support exernal formatters
+        # Note that nodeconductor.logging.log.TCPEventHandler does not support exernal formatters
         'tcp': {
-            'class': 'nodeconductor.core.log.TCPEventHandler',
+            'class': 'nodeconductor.logging.log.TCPEventHandler',
             'filters': ['is-not-event'],
             'level': config.get('events', 'log_level').upper(),
         },
         'tcp-event': {
-            'class': 'nodeconductor.core.log.TCPEventHandler',
+            'class': 'nodeconductor.logging.log.TCPEventHandler',
             'filters': ['is-event'],
             'level': config.get('events', 'log_level').upper(),
         },
