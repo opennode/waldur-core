@@ -104,7 +104,7 @@ Each PaaS instance has a **installation state** field that defines its current i
 
 Possible states:
 
-- OK - installation succeed
+- OK - installation succeeded
 - NOT OK - installation is not ready yet
 - NO DATA - no information about installation state
 - FAIL - installation failed
