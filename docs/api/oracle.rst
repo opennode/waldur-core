@@ -23,7 +23,7 @@ Example of a request:
     {
         "name": "My Oracle"
         "customer": "http://example.com/api/customers/2aadad6a4b764661add14dfdda26b373/",
-        "settings": "http://example.com/api/service-settings/668f3bb7a5994b69bdcb76c9df14ca60/",
+        "settings": "http://example.com/api/service-settings/668f3bb7a5994b69bdcb76c9df14ca60/"
     }
 
 Settings must be of proper type and represent Oracle service.
@@ -44,7 +44,7 @@ For example,
 
     {
         "project": "http://example.com/api/projects/e5f973af2eb14d2d8c38d62bcbaccb33/",
-        "service": "http://example.com/api/oracle/b0e8a4cbd47c4f9ca01642b7ec033db4/",
+        "service": "http://example.com/api/oracle/b0e8a4cbd47c4f9ca01642b7ec033db4/"
     }
 
 To remove a link, issue DELETE to url of the corresponding connection as stuff user or customer owner.
@@ -107,7 +107,7 @@ Example of a valid request:
         "backend_database_sid": "demodb",
         "backend_service_name": "svc_demo",
         "username": "oracle",
-        "password": "secret",
+        "password": "secret"
     }
 
 Database display
