@@ -464,6 +464,34 @@ class InstanceViewSet(mixins.CreateModelMixin,
         stats = serializer.get_stats([instance])
         return Response(stats, status=status.HTTP_200_OK)
 
+    @detail_route()
+    def max_usage(self, request, uuid):
+        """
+        Find maximum utilization of cpu, memory and storage of the instance within timeframe.
+        """
+        instance = self.get_object()
+
+        if not instance.backend_id:
+            raise Http404()
+
+        default_start = timezone.now() - datetime.timedelta(hours=1)
+        time_interval_serializer = serializers.TimeIntervalSerializer(data={
+            'start': request.query_params.get('from', datetime_to_timestamp(default_start)),
+            'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
+        })
+        time_interval_serializer.is_valid(raise_exception=True)
+
+        start = datetime_to_timestamp(time_interval_serializer.validated_data['start'])
+        end = datetime_to_timestamp(time_interval_serializer.validated_data['end'])
+
+        serializer = serializers.MaximumUsageSerializer(data={
+            'items': request.query_params.get('items', 'cpu, memory, storage')
+        })
+        serializer.is_valid(raise_exception=True)
+
+        results = serializer.get_stats(instance.backend_id, start, end)
+        return Response(results, status=status.HTTP_200_OK)
+
 
 class TemplateFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(

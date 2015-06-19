@@ -324,3 +324,37 @@ To get information about instance usage, make GET request to /api/instances/<uui
 - ?datapoints=how many data points have to be in answer(default: 6)
 
 Answer will be list of points(dictionaries) with fields: 'from', 'to', 'value'
+
+Instance maximum usage statistics
+---------------------------------
+
+To get maximum utilization of cpu, memory and storage of the instance within timeframe, make GET request to /api/instances/<uuid>/max_usage/ with optional parameters:
+
+- ?from=timestamp (default: now - one hour, example: 1415910025)
+- ?to=timestamp (default: now, example: 1415912625)
+- ?items=list of comma separated values (default: cpu, memory, storage)
+
+Answer is list of dictionaries with fields item, value and timestamp, where item is one of:
+
+- cpu - virtual CPUs usage
+- memory - RAM usage, in MiB
+- storage - volume size, in MiB
+
+.. code-block:: javascript
+    [
+        {
+            "item": "cpu",
+            "value": 5,
+            "timestamp": 1415910025
+        },
+        {
+            "item": "memory",
+            "value": 5472,
+            "timestamp": 1415910025
+        },
+        {
+            "item": "storage",
+            "value": 242535,
+            "timestamp": 1415910025
+        }
+    ]
