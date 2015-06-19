@@ -86,6 +86,23 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_class = CustomerFilter
 
 
+class CustomerImageView(views.APIView):
+    def post(self, request, uuid):
+        customer = models.Customer.objects.get(uuid=uuid)
+
+        if not request.user.is_staff and not customer.has_user(request.user, models.CustomerRole.OWNER):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        serializer = serializers.ImageSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        image = serializer.validated_data['image']
+        customer.image = image
+        customer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class ProjectFilter(quotas_views.QuotaFilterMixin, django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='customer__uuid',

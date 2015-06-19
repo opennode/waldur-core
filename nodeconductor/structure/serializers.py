@@ -171,6 +171,10 @@ class ThumbnailSerializer(serializers.ImageField):
         return urls
 
 
+class ImageSerializer(serializers.Serializer):
+    image = ThumbnailSerializer()
+
+
 class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField()
