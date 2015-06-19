@@ -2,6 +2,7 @@ import unittest
 import tempfile
 
 from django.utils.image import Image
+from django.test.utils import override_settings
 from rest_framework import status
 from rest_framework import test
 
@@ -50,6 +51,7 @@ class ImageUploadTest(UrlResolverMixin, test.APITransactionTestCase):
             self.assert_can_upload_image(image)
             self.assert_can_delete_image()
 
+    @override_settings(MEDIA_URL='/media/')
     def assert_can_upload_image(self, image):
         response = self.client.patch(self.url, {'image': image}, format='multipart')
         self.assertEqual(status.HTTP_200_OK, response.status_code)
