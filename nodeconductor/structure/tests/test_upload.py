@@ -11,11 +11,11 @@ from nodeconductor.structure.tests.factories import UserFactory, CustomerFactory
 from nodeconductor.structure.tests.test_customer import UrlResolverMixin
 
 
-def dummy_image():
+def dummy_image(filetype='gif'):
     """
     Generate empty JPEG image in temporary file for testing
     """
-    tmp_file = tempfile.NamedTemporaryFile(suffix='.jpg')
+    tmp_file = tempfile.NamedTemporaryFile(suffix='.%s' % filetype)
     image = Image.new('RGB', (100, 100))
     image.save(tmp_file)
     return open(tmp_file.name)

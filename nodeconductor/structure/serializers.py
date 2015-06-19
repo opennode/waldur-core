@@ -157,6 +157,7 @@ class ThumbnailSerializer(serializers.ImageField):
     def __init__(self):
         super(ThumbnailSerializer, self).__init__()
         self.allow_null = True
+        self.required = False
         self.sizes = settings.NODECONDUCTOR.get('THUMBNAIL_SIZES')
 
     def to_representation(self, image):

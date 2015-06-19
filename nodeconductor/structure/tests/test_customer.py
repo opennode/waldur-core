@@ -461,7 +461,7 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
         response = self.client.put(self._get_customer_url(self.customers['owner']),
                                    self._get_valid_payload())
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_change_customer_as_whole_if_he_is_staff(self):
         self.client.force_authenticate(user=self.users['staff'])
@@ -482,7 +482,7 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
     def test_user_cannot_change_customer_field_he_is_owner_of(self):
         self.client.force_authenticate(user=self.users['owner'])
 
-        self._check_single_customer_field_change_permission(self.customers['owner'], status.HTTP_403_FORBIDDEN)
+        self._check_single_customer_field_change_permission(self.customers['owner'], status.HTTP_200_OK)
 
     def test_user_can_change_single_customer_field_if_he_is_staff(self):
         self.client.force_authenticate(user=self.users['staff'])
