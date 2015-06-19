@@ -167,7 +167,7 @@ class ThumbnailSerializer(serializers.ImageField):
         for size in self.sizes:
             key = 'size_%s' % size
             square = '%sx%s' % (size, size)
-            thumbnail = get_thumbnail(image, square, crop='center', quality=90)
+            thumbnail = get_thumbnail(image, square, quality=90)
             urls[key] = request.build_absolute_uri(thumbnail.url)
         return urls
 
