@@ -38,6 +38,7 @@ from nodeconductor.iaas.log import event_logger
 from nodeconductor.logging import models as logging_models, serializers as logging_serializers
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
+from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 
 
 logger = logging.getLogger(__name__)
@@ -463,6 +464,29 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         stats = serializer.get_stats([instance])
         return Response(stats, status=status.HTTP_200_OK)
+
+    @detail_route()
+    def max_usage(self, request, uuid):
+        """
+        Find maximum utilization of cpu, memory and storage of the instance within timeframe.
+        """
+        instance = self.get_object()
+
+        if not instance.backend_id:
+            raise Http404()
+
+        yesterday = timezone.now() - datetime.timedelta(days=1)
+        time_interval_serializer = serializers.TimeIntervalSerializer(data={
+            'start': request.query_params.get('from', datetime_to_timestamp(yesterday)),
+            'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
+        })
+        time_interval_serializer.is_valid(raise_exception=True)
+        start_timestamp = datetime_to_timestamp(time_interval_serializer.validated_data['start'])
+        end_timestamp = datetime_to_timestamp(time_interval_serializer.validated_data['end'])
+
+        items = ['cpu', 'memory', 'storage']
+        stats = ZabbixDBClient().get_host_max_values(instance.backend_id, items, start_timestamp, end_timestamp)
+        return Response(dict(stats), status=status.HTTP_200_OK)
 
 
 class TemplateFilter(django_filters.FilterSet):

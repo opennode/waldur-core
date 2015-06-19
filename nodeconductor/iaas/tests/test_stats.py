@@ -644,3 +644,44 @@ class QuotaTimelineStatsTest(test.APITransactionTestCase):
                 query_params['to'],
                 query_params['interval']
             )
+
+
+class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.staff = structure_factories.UserFactory(is_staff=True)
+        self.instance = factories.InstanceFactory()
+        self.url = factories.InstanceFactory.get_url(self.instance, action='max_usage')
+
+    def test_statistic_unavailable_if_instance_does_not_have_backend_id(self):
+        self.client.force_authenticate(self.staff)
+
+        instance = factories.InstanceFactory(backend_id='')
+        url = factories.InstanceFactory.get_url(instance, action='max_usage')
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_zabbix_is_called_with_right_parameters(self):
+        self.client.force_authenticate(self.staff)
+        usage = {
+            'vcpu': 10,
+            'ram': 200,
+            'storage': 500
+        }
+        with patch('nodeconductor.monitoring.zabbix.db_client.ZabbixDBClient.get_host_max_values') as client:
+            client.return_value = usage
+            query_params = {
+                'from': core_utils.datetime_to_timestamp(timezone.now() - timedelta(days=10)),
+                'to': core_utils.datetime_to_timestamp(timezone.now() - timedelta(days=5)),
+            }
+            response = self.client.get(self.url, data=query_params)
+
+            self.assertEqual(status.HTTP_200_OK, response.status_code)
+            self.assertItemsEqual(usage, response.data)
+
+            client.assert_called_once_with(
+                self.instance.backend_id,
+                ['cpu', 'memory', 'storage'],
+                query_params['from'],
+                query_params['to'],
+            )

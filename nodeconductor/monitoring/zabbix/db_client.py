@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import logging
 import sys
+import collections
 
 from django.db import connections, DatabaseError
 from django.utils import six
@@ -42,19 +43,19 @@ class ZabbixDBClient(object):
         'storage': {
             'key': 'openstack.vm.disk.size',
             'table': 'history_uint',
-            'convert_to_mb': False
+            'convert_to_mb': True
         },
 
         'storage_root_util': {
             'key': 'vfs.fs.size[/,pfree]',
             'table': 'history',
-            'convert_to_mb': False
+            'convert_to_mb': True
         },
 
         'storage_data_util': {
             'key': 'vfs.fs.size[/data,pfree]',
             'table': 'history',
-            'convert_to_mb': False
+            'convert_to_mb': True
         },
 
         'project_instances_limit': {
@@ -196,12 +197,11 @@ class ZabbixDBClient(object):
         )
         items = [self.items[name]['key'] for name in items]
         params = hosts + items + [start, end]
-        logging.debug('Prepared Zabbix SQL query for OpenStack projects statistics %s %s', query, params)
 
         records = self.execute_query(query, params)
         return self.prepare_result(records)
 
-    def execute_query(self, query, params=None):
+    def execute_query(self, query, params):
         try:
             with connections['zabbix'].cursor() as cursor:
                 cursor.execute(query, params)
@@ -209,7 +209,7 @@ class ZabbixDBClient(object):
                 logging.debug('Executed Zabbix SQL query %s', records)
                 return records
         except DatabaseError as e:
-            logger.exception('Can not execute query the Zabbix DB.')
+            logger.exception('Can not execute query the Zabbix DB %s %s', query, params)
             six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
 
     def prepare_result(self, records):
@@ -220,7 +220,7 @@ class ZabbixDBClient(object):
         for (start, end, key, value) in records:
             name = self.get_item_name_by_key(key)
             if name is None:
-                logging.debug('Invalid item key %s', key)
+                logging.warning('Invalid item key %s', key)
                 continue
             if self.items[name]['convert_to_mb']:
                 value = value / (1024 * 1024)
@@ -232,6 +232,68 @@ class ZabbixDBClient(object):
         for name, value in self.items.items():
             if value['key'] == key:
                 return name
+
+    def group_items_by_table(self, items):
+        """
+        >>> group_items_by_table(['cpu_util', 'memory_util'])
+        {
+            'history': ['openstack.instance.cpu_util'],
+            'history_uint': ['kvm.vm.memory_util']
+        }
+        """
+        table_keys = collections.defaultdict(list)
+        for item in items:
+            table = self.items[item]['table']
+            key = self.items[item]['key']
+            table_keys[table].append(key)
+        return table_keys
+
+    def get_host_max_values(self, host, items, start_timestamp, end_timestamp):
+        """
+        Returns name and maximum value for each item of host within timeframe.
+        Executed as single SQL query on several tables.
+        """
+        table_query = r"""
+        SELECT items.key_,
+               MAX(value)
+        FROM hosts,
+             items,
+             {table_name}
+        WHERE hosts.hostid = items.hostid
+          AND items.itemid = {table_name}.itemid
+          AND hosts.host = %s
+          AND items.key_ IN ({items_placeholder})
+          AND clock >= %s
+          AND clock <= %s
+        GROUP BY items.itemid
+        """
+        table_keys = self.group_items_by_table(items)
+        queries = []
+        params = []
+        for table, keys in table_keys.items():
+            if keys:
+                queries.append(table_query.format(
+                    table_name=table,
+                    items_placeholder=sql_utils.make_list_placeholder(len(keys))
+                ))
+                params.append(host)
+                params.extend(keys)
+                params.append(start_timestamp)
+                params.append(end_timestamp)
+        query = sql_utils.make_union(queries)
+        records = self.execute_query(query, params)
+
+        results = []
+        for key, value in records:
+            name = self.get_item_name_by_key(key)
+            if name is None:
+                logging.warning('Invalid item key %s', key)
+                continue
+            if self.items[name]['convert_to_mb']:
+                value = value / (1024 * 1024)
+            value = int(value)
+            results.append((name, value))
+        return results
 
     def get_item_stats(self, instances, item, start_timestamp, end_timestamp, segments_count):
         # FIXME: Quick and dirty hack to handle storage in a separate flow
