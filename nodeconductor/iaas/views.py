@@ -474,9 +474,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
         if not instance.backend_id:
             raise Http404()
 
-        yesterday = timezone.now() - datetime.timedelta(hours=1)
+        default_start = timezone.now() - datetime.timedelta(hours=1)
         time_interval_serializer = serializers.TimeIntervalSerializer(data={
-            'start': request.query_params.get('from', datetime_to_timestamp(yesterday)),
+            'start': request.query_params.get('from', datetime_to_timestamp(default_start)),
             'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
         })
         time_interval_serializer.is_valid(raise_exception=True)
