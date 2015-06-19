@@ -1,10 +1,12 @@
 import unittest
 import tempfile
+import mock
 
 from django.utils.image import Image
 from django.test.utils import override_settings
 from rest_framework import status
 from rest_framework import test
+from sorl.thumbnail.images import DummyImageFile
 
 from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.tests.factories import UserFactory, CustomerFactory
@@ -13,7 +15,7 @@ from nodeconductor.structure.tests.test_customer import UrlResolverMixin
 
 def dummy_image(filetype='gif'):
     """
-    Generate empty JPEG image in temporary file for testing
+    Generate empty image in temporary file for testing
     """
     tmp_file = tempfile.NamedTemporaryFile(suffix='.%s' % filetype)
     image = Image.new('RGB', (100, 100))
@@ -53,11 +55,17 @@ class ImageUploadTest(UrlResolverMixin, test.APITransactionTestCase):
             self.assert_can_delete_image()
 
     def assert_can_upload_image(self, image):
-        response = self.client.patch(self.url, {'image': image}, format='multipart')
-        self.assertEqual(status.HTTP_200_OK, response.status_code)
-        self.assertIsNotNone(response.data['image'])
-        self.assertIn('small', response.data['image'])
-        self.assertIn('medium', response.data['image'])
+        with mock.patch('sorl.thumbnail.get_thumbnail') as get_thumbnail:
+            get_thumbnail.return_value = DummyImageFile('50x50')
+
+            response = self.client.patch(self.url, {'image': image}, format='multipart')
+            get_thumbnail.assert_called()
+
+            self.assertEqual(status.HTTP_200_OK, response.status_code)
+            self.assertIsNotNone(response.data['image'])
+
+            self.assertIn('small', response.data['image'])
+            self.assertIn('medium', response.data['image'])
 
     def assert_cannot_upload_image(self, image):
         response = self.client.patch(self.url, {'image': image}, format='multipart')
