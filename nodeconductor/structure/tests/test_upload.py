@@ -21,6 +21,8 @@ def dummy_image():
     return open(tmp_file.name)
 
 
+@override_settings(MEDIA_URL='/media/')
+@override_settings(NODECONDUCTOR={'THUMBNAIL_SIZES': {'small': 50, 'medium': 100}})
 class ImageUploadTest(UrlResolverMixin, test.APITransactionTestCase):
     def setUp(self):
         self.staff = UserFactory(is_staff=True)
@@ -43,7 +45,6 @@ class ImageUploadTest(UrlResolverMixin, test.APITransactionTestCase):
         with dummy_image() as image:
             self.assert_cannot_upload_image(image)
 
-    @unittest.skip("Customer owner should be able to modify it's customer")
     def test_customer_owner_can_upload_and_delete_customer_logo(self):
         self.client.force_authenticate(user=self.owner)
 
@@ -51,13 +52,12 @@ class ImageUploadTest(UrlResolverMixin, test.APITransactionTestCase):
             self.assert_can_upload_image(image)
             self.assert_can_delete_image()
 
-    @override_settings(MEDIA_URL='/media/')
     def assert_can_upload_image(self, image):
         response = self.client.patch(self.url, {'image': image}, format='multipart')
         self.assertEqual(status.HTTP_200_OK, response.status_code)
         self.assertIsNotNone(response.data['image'])
-        self.assertIn('size_50', response.data['image'])
-        self.assertIn('size_100', response.data['image'])
+        self.assertIn('small', response.data['image'])
+        self.assertIn('medium', response.data['image'])
 
     def assert_cannot_upload_image(self, image):
         response = self.client.patch(self.url, {'image': image}, format='multipart')

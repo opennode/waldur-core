@@ -164,11 +164,9 @@ class ThumbnailSerializer(serializers.ImageField):
             return
         request = self.context['request']
         urls = {}
-        for size in self.sizes:
-            key = 'size_%s' % size
-            square = '%sx%s' % (size, size)
-            thumbnail = get_thumbnail(image, square, quality=90)
-            urls[key] = request.build_absolute_uri(thumbnail.url)
+        for name, width in self.sizes.items():
+            thumbnail = get_thumbnail(image, '%sx%s' % (width, width), quality=90)
+            urls[name] = request.build_absolute_uri(thumbnail.url)
         return urls
 
 

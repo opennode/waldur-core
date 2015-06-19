@@ -226,4 +226,7 @@ NODECONDUCTOR['BILLING'] = {
     }
 }
 
-NODECONDUCTOR['THUMBNAIL_SIZES'] = (50, 100)
+NODECONDUCTOR['THUMBNAIL_SIZES'] = {
+    'small': 50,
+    'medium': 100
+}
