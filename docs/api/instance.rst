@@ -330,18 +330,31 @@ Instance maximum usage statistics
 
 To get maximum utilization of cpu, memory and storage of the instance within timeframe, make GET request to /api/instances/<uuid>/max_usage/ with optional parameters:
 
-- ?from=timestamp(default: now - one day, example: 1415910025)
-- ?to=timestamp(default: now, example: 1415912625)
+- ?from=timestamp (default: now - one hour, example: 1415910025)
+- ?to=timestamp (default: now, example: 1415912625)
+- ?items=list of comma separated values (default: cpu, memory, storage)
 
-Value fields include:
+Answer is list of dictionaries with fields item, value and timestamp, where item is one of:
 
 - cpu - virtual CPUs usage
 - memory - RAM usage, in MiB
 - storage - volume size, in MiB
 
 .. code-block:: javascript
-    {
-        "cpu": 5,
-        "memory": 5472,
-        "storage": 105472
-    }
+    [
+        {
+            "item": "cpu",
+            "value": 5,
+            "timestamp": 1415910025
+        },
+        {
+            "item": "memory",
+            "value": 5472,
+            "timestamp": 1415910025
+        },
+        {
+            "item": "storage",
+            "value": 242535,
+            "timestamp": 1415910025
+        }
+    ]

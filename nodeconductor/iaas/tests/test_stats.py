@@ -663,11 +663,29 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
 
     def test_zabbix_is_called_with_right_parameters(self):
         self.client.force_authenticate(self.staff)
-        usage = {
-            'vcpu': 10,
-            'ram': 200,
-            'storage': 500
-        }
+        usage = [
+            (1415910025, 'cpu', 10),
+            (1415910025, 'memory', 200),
+            (1415910025, 'storage', 500),
+        ]
+        expected = [
+            {
+                'item': 'cpu',
+                'value': 10,
+                'timestamp': 1415910025
+            },
+            {
+                'item': 'memory',
+                'value': 200,
+                'timestamp': 1415910025
+            },
+            {
+                'item': 'storage',
+                'value': 500,
+                'timestamp': 1415910025
+            }
+        ]
+
         with patch('nodeconductor.monitoring.zabbix.db_client.ZabbixDBClient.get_host_max_values') as client:
             client.return_value = usage
             query_params = {
@@ -677,7 +695,7 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
             response = self.client.get(self.url, data=query_params)
 
             self.assertEqual(status.HTTP_200_OK, response.status_code)
-            self.assertItemsEqual(usage, response.data)
+            self.assertItemsEqual(expected, response.data)
 
             client.assert_called_once_with(
                 self.instance.backend_id,

@@ -10,7 +10,7 @@ from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core import models as core_models, serializers as core_serializers, utils as core_utils
-from nodeconductor.core.fields import MappedChoiceField
+from nodeconductor.core.fields import MappedChoiceField, CommaSeparatedListField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.monitoring.zabbix import utils as zabbix_utils
@@ -842,6 +842,22 @@ class UsageStatsSerializer(serializers.Serializer):
         return zabbix_db_client.get_item_stats(
             instances, self.data['item'],
             self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])
+
+
+class MaximumUsageSerializer(serializers.Serializer):
+    items = CommaSeparatedListField(choices=ZabbixDBClient.items.keys())
+
+    def get_stats(self, host, start, end):
+        items = self.validated_data['items']
+        records = ZabbixDBClient().get_host_max_values(host, items, start, end)
+        results = []
+        for timestamp, item, value in records:
+            results.append({
+                'item': item,
+                'timestamp': timestamp,
+                'value': value
+            })
+        return results
 
 
 class SlaHistoryEventSerializer(serializers.Serializer):

@@ -49,13 +49,13 @@ class ZabbixDBClient(object):
         'storage_root_util': {
             'key': 'vfs.fs.size[/,pfree]',
             'table': 'history',
-            'convert_to_mb': True
+            'convert_to_mb': False
         },
 
         'storage_data_util': {
             'key': 'vfs.fs.size[/data,pfree]',
             'table': 'history',
-            'convert_to_mb': True
+            'convert_to_mb': False
         },
 
         'project_instances_limit': {
@@ -254,7 +254,8 @@ class ZabbixDBClient(object):
         Executed as single SQL query on several tables.
         """
         table_query = r"""
-        SELECT items.key_,
+        SELECT clock,
+               items.key_,
                MAX(value)
         FROM hosts,
              items,
@@ -284,7 +285,7 @@ class ZabbixDBClient(object):
         records = self.execute_query(query, params)
 
         results = []
-        for key, value in records:
+        for timestamp, key, value in records:
             name = self.get_item_name_by_key(key)
             if name is None:
                 logging.warning('Invalid item key %s', key)
@@ -292,7 +293,7 @@ class ZabbixDBClient(object):
             if self.items[name]['convert_to_mb']:
                 value = value / (1024 * 1024)
             value = int(value)
-            results.append((name, value))
+            results.append((timestamp, name, value))
         return results
 
     def get_item_stats(self, instances, item, start_timestamp, end_timestamp, segments_count):
