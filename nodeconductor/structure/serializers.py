@@ -170,7 +170,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
     projects = serializers.SerializerMethodField()
     project_groups = serializers.SerializerMethodField()
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
-    image = DefaultImageField()
+    image = DefaultImageField(required=False, read_only=True)
 
     class Meta(object):
         model = models.Customer
@@ -183,7 +183,6 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             'registration_code',
             'image'
         )
-        read_only_fields = ['image']
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
