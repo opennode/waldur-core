@@ -12,6 +12,7 @@ from rest_framework import permissions as rf_permissions
 from rest_framework import status
 from rest_framework import views
 from rest_framework import viewsets
+from rest_framework import generics
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -86,21 +87,22 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_class = CustomerFilter
 
 
-class CustomerImageView(views.APIView):
-    def post(self, request, uuid):
-        customer = models.Customer.objects.get(uuid=uuid)
+class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
 
-        if not request.user.is_staff and not customer.has_user(request.user, models.CustomerRole.OWNER):
-            return Response(status=status.HTTP_403_FORBIDDEN)
+    queryset = models.Customer.objects.all()
+    lookup_field = 'uuid'
+    serializer_class = serializers.CustomerImageSerializer
 
-        serializer = serializers.ImageSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
+    def perform_destroy(self, instance):
+        instance.image = None
+        instance.save()
 
-        image = serializer.validated_data['image']
-        customer.image = image
-        customer.save()
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def check_object_permissions(self, request, customer):
+        if request.user.is_staff:
+            return
+        if customer.has_user(request.user, models.CustomerRole.OWNER):
+            return
+        raise PermissionDenied()
 
 
 class ProjectFilter(quotas_views.QuotaFilterMixin, django_filters.FilterSet):

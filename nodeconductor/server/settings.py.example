@@ -225,8 +225,3 @@ NODECONDUCTOR['BILLING'] = {
         }
     }
 }
-
-NODECONDUCTOR['THUMBNAIL_SIZES'] = {
-    'small': 50,
-    'medium': 100
-}

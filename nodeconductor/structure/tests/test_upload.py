@@ -1,30 +1,19 @@
 import unittest
-import tempfile
-from django.core.urlresolvers import reverse
 import mock
 
 from django.utils.image import Image
 from django.test.utils import override_settings
+from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
-from sorl.thumbnail.images import DummyImageFile
 
 from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.tests.factories import UserFactory, CustomerFactory
-
-def dummy_image(filetype='gif'):
-    """
-    Generate empty image in temporary file for testing
-    """
-    tmp_file = tempfile.NamedTemporaryFile(suffix='.%s' % filetype)
-    image = Image.new('RGB', (100, 100))
-    image.save(tmp_file)
-    return open(tmp_file.name)
+from nodeconductor.structure.images import dummy_image
 
 
 @override_settings(MEDIA_URL='/media/')
-@override_settings(NODECONDUCTOR={'THUMBNAIL_SIZES': {'small': 50, 'medium': 100}})
-class ImageUploadTest(test.APITransactionTestCase):
+class ImageUploadTest(test.APISimpleTestCase):
     def setUp(self):
         self.staff = UserFactory(is_staff=True)
         self.owner = UserFactory()
@@ -33,18 +22,23 @@ class ImageUploadTest(test.APITransactionTestCase):
         self.customer.add_user(self.owner, CustomerRole.OWNER)
         self.url = reverse('customer_image', kwargs={'uuid': self.customer.uuid.hex})
 
+    def test_default_customer_logo(self):
+        self.client.force_authenticate(user=self.staff)
+        self.assert_default_logo()
+
+        with dummy_image() as image:
+            self.assert_can_upload_image(image)
+            self.assert_can_delete_image()
+
+        self.assert_default_logo()
+
+    # Positive
     def test_staff_can_upload_and_delete_customer_logo(self):
         self.client.force_authenticate(user=self.staff)
 
         with dummy_image() as image:
             self.assert_can_upload_image(image)
             self.assert_can_delete_image()
-
-    def test_user_cannot_upload_logo_for_customer_he_is_not_owner_of(self):
-        self.client.force_authenticate(user=self.user)
-
-        with dummy_image() as image:
-            self.assert_cannot_upload_image(image)
 
     def test_customer_owner_can_upload_and_delete_customer_logo(self):
         self.client.force_authenticate(user=self.owner)
@@ -53,24 +47,32 @@ class ImageUploadTest(test.APITransactionTestCase):
             self.assert_can_upload_image(image)
             self.assert_can_delete_image()
 
+    # Negative
+    def test_user_cannot_upload_logo_for_customer_he_is_not_owner_of(self):
+        self.client.force_authenticate(user=self.user)
+
+        with dummy_image() as image:
+            response = self.upload_image(self.url, image)
+            self.assertEqual(status.HTTP_403_FORBIDDEN, response.status_code)
+
+    # Helpers
     def assert_can_upload_image(self, image):
-        with mock.patch('sorl.thumbnail.base.ThumbnailBackend.get_thumbnail') as get_thumbnail:
-            get_thumbnail.return_value = DummyImageFile('50x50')
-
-            response = self.client.post(self.url, {'image': image}, format='multipart')
-            get_thumbnail.assert_called()
-
-            self.assertEqual(status.HTTP_200_OK, response.status_code)
-            self.assertIsNotNone(response.data['image'])
-
-            self.assertIn('small', response.data['image'])
-            self.assertIn('medium', response.data['image'])
-
-    def assert_cannot_upload_image(self, image):
-        response = self.client.post(self.url, {'image': image}, format='multipart')
-        self.assertEqual(status.HTTP_403_FORBIDDEN, response.status_code)
+        response = self.upload_image(self.url, image)
+        self.assertEqual(status.HTTP_200_OK, response.status_code, response.data)
+        self.assertIn('image', response.data)
+        self.assertIsNotNone(response.data['image'])
 
     def assert_can_delete_image(self):
-        response = self.client.post(self.url, {'image': None})
+        response = self.client.delete(self.url)
+        self.assertEqual(status.HTTP_204_NO_CONTENT, response.status_code, response.data)
+
+    @override_settings(NODECONDUCTOR={'DEFAULT_CUSTOMER_LOGO':'default_logo.jpg'})
+    def assert_default_logo(self):
+        url = reverse('customer-detail', kwargs={'uuid': self.customer.uuid.hex})
+        response = self.client.get(url)
+
         self.assertEqual(status.HTTP_200_OK, response.status_code)
-        self.assertIsNone(response.data['image'])
+        self.assertEqual('default_logo.jpg', response.data['image'])
+
+    def upload_image(self, url, image):
+        return self.client.put(self.url, {'image': image}, format='multipart')

@@ -1,13 +1,10 @@
 from __future__ import unicode_literals
 
-import logging
-
-from django.conf import settings
 from django.core.validators import RegexValidator
 from django.contrib import auth
 from django.db import models as django_models
+from django.conf import settings
 from rest_framework import serializers, exceptions
-from sorl.thumbnail import get_thumbnail
 
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import models as core_models
@@ -17,7 +14,6 @@ from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, filters
 from nodeconductor.structure.filters import filter_queryset_for_user
 
-logger = logging.getLogger(__name__)
 
 User = auth.get_user_model()
 
@@ -153,26 +149,20 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         return super(ProjectSerializer, self).update(instance, validated_data)
 
 
-class ThumbnailSerializer(serializers.ImageField):
-    def __init__(self):
-        super(ThumbnailSerializer, self).__init__()
-        self.allow_null = True
-        self.required = False
-        self.sizes = settings.NODECONDUCTOR.get('THUMBNAIL_SIZES')
-
+class DefaultImageField(serializers.ImageField):
     def to_representation(self, image):
-        if not image:
-            return
-        request = self.context['request']
-        urls = {}
-        for name, width in self.sizes.items():
-            thumbnail = get_thumbnail(image, '%sx%s' % (width, width), quality=90)
-            urls[name] = request.build_absolute_uri(thumbnail.url)
-        return urls
+        if image:
+            return super(DefaultImageField, self).to_representation(image)
+        else:
+            return settings.NODECONDUCTOR.get('DEFAULT_CUSTOMER_LOGO')
 
 
-class ImageSerializer(serializers.Serializer):
-    image = ThumbnailSerializer()
+class CustomerImageSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField()
+
+    class Meta:
+        model = models.Customer
+        fields = ['image']
 
 
 class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
@@ -180,7 +170,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
     projects = serializers.SerializerMethodField()
     project_groups = serializers.SerializerMethodField()
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
-    image = ThumbnailSerializer()
+    image = DefaultImageField()
 
     class Meta(object):
         model = models.Customer
@@ -193,6 +183,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             'registration_code',
             'image'
         )
+        read_only_fields = ['image']
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }

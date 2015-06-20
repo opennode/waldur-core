@@ -13,20 +13,13 @@ from django_fsm import FSMIntegerField
 from django_fsm import transition
 from model_utils.models import TimeStampedModel
 from polymorphic import PolymorphicModel
-from sorl.thumbnail import ImageField
 
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
-
-
-class ImageModelMixin(models.Model):
-    class Meta(object):
-        abstract = True
-
-    image = ImageField(upload_to='image', null=True, blank=True)
+from nodeconductor.structure.images import ImageModelMixin
 
 
 @python_2_unicode_compatible
