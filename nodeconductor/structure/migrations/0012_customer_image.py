@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
+import nodeconductor.structure.images
 
 
 class Migration(migrations.Migration):
@@ -14,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='customer',
             name='image',
-            field=models.ImageField(null=True, blank=True),
+            field=models.ImageField(null=True, upload_to=nodeconductor.structure.images.get_upload_path, blank=True),
             preserve_default=True,
         ),
     ]
