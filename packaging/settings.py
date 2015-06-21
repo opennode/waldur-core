@@ -756,13 +756,10 @@ NODECONDUCTOR = {
         'openstack': {
             'invoice_meters': {
                 # ceilometer meter name: (resource name, pricelist name, unit converter, unit)
-                'cpu': ('CPU', 'cpu_hours', 'get_ceilometer_cpu_time', 'hours'),
-                'memory': ('Memory', 'ram_gb', 'get_ceilometer_ram_size', 'GB'),
-                'disk.allocation': ('Storage', 'storage_gb', 'get_ceilometer_disk_size', 'GB'),
-                'network.incoming.bytes': ('Network incoming', 'network_in_gb',
-                                           'get_ceilometer_network_traffic_size', 'GB'),
-                'network.outgoing.bytes': ('Network outgoing', 'network_out_gb',
-                                           'get_ceilometer_network_traffic_size', 'GB')
+                'cpu': ('CPU', 'cpu_hours', 'hours'),
+                'memory': ('Memory', 'ram_gb', 'GB/h'),
+                'disk': ('Storage', 'storage_gb', 'GB/h'),
+                'servers': ('Servers', 'server_num', 'units'),
             }
         }
     }
