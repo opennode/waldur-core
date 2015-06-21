@@ -203,6 +203,12 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=10),
         'args': (),
     },
+
+    'pull-instances-installation-state': {
+        'task': 'nodeconductor.iaas.tasks.zabbix.pull_instances_installation_state',
+        'schedule': timedelta(minutes=5),
+        'args': (),
+    },
 }
 
 CELERY_TASK_THROTTLING = {

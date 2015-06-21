@@ -229,6 +229,8 @@ class InstanceFilter(django_filters.FilterSet):
             '-created',
             'type',
             '-type',
+            'installation_state',
+            '-installation_state',
         ]
         order_by_mapping = {
             # Proper field naming
@@ -274,6 +276,11 @@ class InstanceViewSet(mixins.CreateModelMixin,
             queryset = queryset.extra(select={
                 'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
                 .order_by('-is_null', '-start_time')
+
+        # XXX: Implement filter field for filtering by list of GET parameters:
+        installation_states = self.request.query_params.getlist('installation_state')
+        if installation_states:
+            queryset = queryset.filter(installation_state__in=installation_states)
 
         return queryset
 

@@ -28,6 +28,7 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - ?data_volume_size=<size of data disk in MiB>
 - ?type=<type of the resource: IaaS or PaaS>
 - ?backend_id=<openstack id of instance>
+- ?installation_state=<instance installation state (FAIL, NO DATA, NOT OK, OK)>
 
 Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
 
@@ -47,6 +48,7 @@ Sorting is supported in ascending and descending order by specifying a field to 
 - ?o=data_volume_size - sort by data volume size
 - ?o=created - sort by creation time
 - ?o=type - sort by resource type
+- ?o=installation_state - sort by instance installation_state
 - ?o=project__name - **deprecated**, use ?o=project_name instead
 - ?o=template__name - **deprecated**, use ?o=template_name instead
 
