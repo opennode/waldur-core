@@ -66,8 +66,11 @@ def datetime_to_timestamp(datetime):
     return int(time.mktime(datetime.timetuple()))
 
 
-def timestamp_to_datetime(timestamp):
-    return datetime.fromtimestamp(int(timestamp)).replace(tzinfo=timezone.get_current_timezone())
+def timestamp_to_datetime(timestamp, replace_tz=True):
+    dt = datetime.fromtimestamp(int(timestamp))
+    if replace_tz:
+        dt = dt.replace(tzinfo=timezone.get_current_timezone())
+    return dt
 
 
 def timeshift(**kwargs):
