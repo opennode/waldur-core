@@ -38,6 +38,18 @@ def _get_installation_state(instance):
 
 
 @shared_task
+def pull_instance_installation_state(instance_uuid):
+    instance = Instance.objects.get(uuid=instance_uuid)
+    installation_state = _get_installation_state(instance)
+    if installation_state in ['NO DATA', 'NOT OK'] and instance.installation_state in ['FAIL', 'OK']:
+        installation_state = 'FAIL'
+    if instance.installation_state != installation_state:
+        print 'old state', instance.installation_state, 'new', installation_state
+        instance.installation_state = installation_state
+        instance.save()
+
+
+@shared_task
 def pull_instances_installation_state():
     instances = Instance.objects.filter(
         installation_state__in=['OK', 'FAIL'],

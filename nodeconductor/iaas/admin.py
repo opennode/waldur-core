@@ -175,7 +175,7 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
             return ['template']
         return []
     ordering = ('name',)
-    list_display = ['name', 'uuid', 'backend_id', 'state', 'get_project_name', 'template']
+    list_display = ['name', 'uuid', 'backend_id', 'state', 'installation_state', 'get_project_name', 'template']
     search_fields = ['name', 'uuid']
     list_filter = ['state', 'cloud_project_membership__project', 'template']
 
