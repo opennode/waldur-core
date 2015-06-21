@@ -48,7 +48,7 @@ Sorting is supported in ascending and descending order by specifying a field to 
 - ?o=data_volume_size - sort by data volume size
 - ?o=created - sort by creation time
 - ?o=type - sort by resource type
-- ?o=installation_state
+- ?o=installation_state - sort by instance installation_state
 - ?o=project__name - **deprecated**, use ?o=project_name instead
 - ?o=template__name - **deprecated**, use ?o=template_name instead
 
