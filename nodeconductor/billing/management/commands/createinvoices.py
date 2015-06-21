@@ -1,9 +1,10 @@
 from calendar import monthrange
-from datetime import date
+from datetime import date, datetime
 
 from django.core.management.base import BaseCommand, CommandError
 
 from nodeconductor.billing.tasks import create_invoices
+from nodeconductor.core.utils import datetime_to_timestamp
 from nodeconductor.structure.models import Customer
 
 
@@ -31,20 +32,18 @@ Arguments:
                 year = date.today().year
                 month = date.today().month - 1
 
-            start_timestamp = date(day=1, month=month, year=year)
+            start_date = datetime(day=1, month=month, year=year)
         except ValueError:
             raise CommandError('Year and month should be valid values.')
 
         last_day = monthrange(year, month)[1]
-        end_timestamp = date(day=last_day, month=month, year=year)
-
-        # month in seconds. Used as a period argument for the ceilometer client.
-        seconds = last_day * 24 * 60 * 60
+        end_date = datetime(day=last_day, month=month, year=year)
 
         is_customer_id = len(args) in (1, 3)
         if is_customer_id:
-            create_invoices.delay(args[0], str(start_timestamp), str(end_timestamp), seconds)
+            create_invoices.delay(args[0], datetime_to_timestamp(start_date), datetime_to_timestamp(end_date))
         else:
-            customers = Customer.objects.all()
+            customers = Customer.objects.exclude(billing_backend_id='')
             for customer in customers:
-                create_invoices.delay(customer.uuid.hex, str(start_timestamp), str(end_timestamp), seconds)
+                create_invoices.delay(customer.uuid.hex, datetime_to_timestamp(start_date),
+                                      datetime_to_timestamp(end_date))

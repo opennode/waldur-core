@@ -141,6 +141,9 @@ class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink)
     def get_backend(self):
         return self.cloud.get_backend()
 
+    def get_log_fields(self):
+        return ('project', 'cloud',)
+
 
 class CloudProjectMember(models.Model):
     class Meta(object):
@@ -399,6 +402,8 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
         if created:
             self._init_instance_licenses()
 
+    def get_log_fields(self):
+        return ('uuid', 'name', 'type', 'cloud_project_membership')
 
 @python_2_unicode_compatible
 class InstanceSlaHistory(models.Model):

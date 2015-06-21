@@ -4,7 +4,8 @@ from __future__ import absolute_import
 from celery import shared_task, chain
 
 from nodeconductor.core.tasks import transition
-from nodeconductor.iaas.tasks.zabbix import zabbix_create_host_and_service, poll_instance_installation_state
+from nodeconductor.iaas.tasks.zabbix import (
+    zabbix_create_host_and_service, poll_instance_installation_state, installation_state_pull_failed)
 from nodeconductor.iaas.tasks.openstack import openstack_provision_instance
 from nodeconductor.iaas.models import Instance
 
@@ -27,7 +28,7 @@ def provision_succeeded(instance_uuid, transition_entity=None):
         zabbix_create_host_and_service.si(instance_uuid),
         poll_instance_installation_state.si(instance_uuid),
     ).apply_async(
-        link_error=zabbix_provision_failed(instance_uuid),
+        link_error=installation_state_pull_failed(instance_uuid),
     )
 
 
@@ -35,9 +36,3 @@ def provision_succeeded(instance_uuid, transition_entity=None):
 @transition(Instance, 'set_erred')
 def provision_failed(instance_uuid, transition_entity=None):
     pass
-
-
-def zabbix_provision_failed(instance_uuid):
-    instance = Instance.objects.get(uuid=instance_uuid)
-    instance.installation_state = 'FAIL'
-    instance.save()
