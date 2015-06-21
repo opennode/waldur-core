@@ -189,6 +189,10 @@ class Project(core_models.DescribableMixin,
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
 
+    @property
+    def project_group(self):
+        return self.project_groups.first()
+
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
 
@@ -252,7 +256,7 @@ class Project(core_models.DescribableMixin,
         return user.is_staff
 
     def get_log_fields(self):
-        return ('uuid', 'customer', 'name')
+        return ('uuid', 'customer', 'name', 'project_group')
 
 
 @python_2_unicode_compatible
