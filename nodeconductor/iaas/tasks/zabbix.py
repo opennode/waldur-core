@@ -38,10 +38,18 @@ def _get_installation_state(instance):
 
 
 @shared_task
-def pull_instance_installation_state(instance_uuid):
-    instance = Instance.objects.get(uuid=instance_uuid)
-    instance.installation_state = _get_installation_state(instance)
-    instance.save()
+def pull_instances_installation_state():
+    instances = Instance.objects.filter(
+        installation_state__in=['OK', 'FAIL'],
+        state__in=Instance.States.STABLE_STATES,
+        type=Instance.Services.PAAS)
+    for instance in instances:
+        installation_state = _get_installation_state(instance)
+        if installation_state != 'OK':
+            installation_state = 'FAIL'
+        if instance.installation_state != installation_state:
+            instance.installation_state = installation_state
+            instance.save()
 
 
 @shared_task(max_retries=60, default_retry_delay=60)
