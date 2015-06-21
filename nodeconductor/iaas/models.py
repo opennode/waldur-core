@@ -405,6 +405,7 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
     def get_log_fields(self):
         return ('uuid', 'name', 'type', 'cloud_project_membership')
 
+
 @python_2_unicode_compatible
 class InstanceSlaHistory(models.Model):
     period = models.CharField(max_length=10)
