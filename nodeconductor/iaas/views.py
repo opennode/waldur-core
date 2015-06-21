@@ -200,6 +200,7 @@ class InstanceFilter(django_filters.FilterSet):
             'created',
             'type',
             'backend_id',
+            'installation_state',
         ]
         order_by = [
             'name',
@@ -229,6 +230,8 @@ class InstanceFilter(django_filters.FilterSet):
             '-created',
             'type',
             '-type',
+            'installation_state',
+            '-installation_state',
         ]
         order_by_mapping = {
             # Proper field naming
