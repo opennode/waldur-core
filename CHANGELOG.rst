@@ -6,6 +6,11 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.55.0
+--------------
+- Bugfixes
+- Support billing data extraction from nova
+
 Release 0.54.0
 --------------
 - Alert API filtering extensions.
