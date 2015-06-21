@@ -43,7 +43,7 @@ Arguments:
         if is_customer_id:
             create_invoices.delay(args[0], datetime_to_timestamp(start_date), datetime_to_timestamp(end_date))
         else:
-            customers = Customer.objects.exclude(backend_id='')
+            customers = Customer.objects.exclude(billing_backend_id='')
             for customer in customers:
                 create_invoices.delay(customer.uuid.hex, datetime_to_timestamp(start_date),
                                       datetime_to_timestamp(end_date))
