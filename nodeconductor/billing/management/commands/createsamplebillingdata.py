@@ -18,10 +18,10 @@ class Command(BaseCommand):
         )
 
         pricelist = {
-            'core': 1000,
-            'ram_mb': 500,
-            'storage_mb': 300,
-            'license_type': 700,
+            'cpu_hours': 1000,
+            'ram_gb': 500,
+            'storage_gb': 300,
+            'server_num': 700,
         }
 
         cur_prices = set(p.name for p in PriceList.objects.all())

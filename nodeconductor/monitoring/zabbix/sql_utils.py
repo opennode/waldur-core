@@ -2,6 +2,14 @@ from django.conf import settings
 from django.db import NotSupportedError
 
 
+def make_union(queries):
+    """
+    >>> make_union(["SELECT * from A", "SELECT * from B"])
+    "(SELECT * from A) UNION (SELECT * from B)"
+    """
+    return " UNION ".join("({})".format(query) for query in queries)
+
+
 def make_list_placeholder(count):
     return ", ".join(r'%s' for _ in range(count))
 

@@ -229,6 +229,8 @@ class InstanceFilter(django_filters.FilterSet):
             '-created',
             'type',
             '-type',
+            'installation_state',
+            '-installation_state',
         ]
         order_by_mapping = {
             # Proper field naming
@@ -274,6 +276,11 @@ class InstanceViewSet(mixins.CreateModelMixin,
             queryset = queryset.extra(select={
                 'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
                 .order_by('-is_null', '-start_time')
+
+        # XXX: Implement filter field for filtering by list of GET parameters:
+        installation_states = self.request.query_params.getlist('installation_state')
+        if installation_states:
+            queryset = queryset.filter(installation_state__in=installation_states)
 
         return queryset
 
@@ -463,6 +470,34 @@ class InstanceViewSet(mixins.CreateModelMixin,
 
         stats = serializer.get_stats([instance])
         return Response(stats, status=status.HTTP_200_OK)
+
+    @detail_route()
+    def max_usage(self, request, uuid):
+        """
+        Find maximum utilization of cpu, memory and storage of the instance within timeframe.
+        """
+        instance = self.get_object()
+
+        if not instance.backend_id:
+            raise Http404()
+
+        default_start = timezone.now() - datetime.timedelta(hours=1)
+        time_interval_serializer = serializers.TimeIntervalSerializer(data={
+            'start': request.query_params.get('from', datetime_to_timestamp(default_start)),
+            'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
+        })
+        time_interval_serializer.is_valid(raise_exception=True)
+
+        start = datetime_to_timestamp(time_interval_serializer.validated_data['start'])
+        end = datetime_to_timestamp(time_interval_serializer.validated_data['end'])
+
+        serializer = serializers.MaximumUsageSerializer(data={
+            'items': request.query_params.get('items', 'cpu, memory, storage')
+        })
+        serializer.is_valid(raise_exception=True)
+
+        results = serializer.get_stats(instance.backend_id, start, end)
+        return Response(results, status=status.HTTP_200_OK)
 
 
 class TemplateFilter(django_filters.FilterSet):
@@ -1270,6 +1305,12 @@ class OpenstackAlertStatsView(views.APIView):
 
         if 'alert_type' in request.query_params:
             queryset = queryset.filter(alert_type__in=request.query_params.getlist('alert_type'))
+
+        if 'acknowledged' in request.query_params:
+            if request.query_params['acknowledged'] == 'False':
+                queryset = queryset.filter(acknowledged=False)
+            else:
+                queryset = queryset.filter(acknowledged=True)
 
         alerts_severities_count = queryset.values('severity').annotate(count=Count('severity'))
 

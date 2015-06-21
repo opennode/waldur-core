@@ -28,6 +28,7 @@ Filtering of instance list is supported through HTTP query parameters, the follo
 - ?data_volume_size=<size of data disk in MiB>
 - ?type=<type of the resource: IaaS or PaaS>
 - ?backend_id=<openstack id of instance>
+- ?installation_state=<instance installation state (FAIL, NO DATA, NOT OK, OK)>
 
 Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter.
 
@@ -47,6 +48,7 @@ Sorting is supported in ascending and descending order by specifying a field to 
 - ?o=data_volume_size - sort by data volume size
 - ?o=created - sort by creation time
 - ?o=type - sort by resource type
+- ?o=installation_state - sort by instance installation_state
 - ?o=project__name - **deprecated**, use ?o=project_name instead
 - ?o=template__name - **deprecated**, use ?o=template_name instead
 
@@ -324,3 +326,37 @@ To get information about instance usage, make GET request to /api/instances/<uui
 - ?datapoints=how many data points have to be in answer(default: 6)
 
 Answer will be list of points(dictionaries) with fields: 'from', 'to', 'value'
+
+Instance maximum usage statistics
+---------------------------------
+
+To get maximum utilization of cpu, memory and storage of the instance within timeframe, make GET request to /api/instances/<uuid>/max_usage/ with optional parameters:
+
+- ?from=timestamp (default: now - one hour, example: 1415910025)
+- ?to=timestamp (default: now, example: 1415912625)
+- ?items=list of comma separated values (default: cpu, memory, storage)
+
+Answer is list of dictionaries with fields item, value and timestamp, where item is one of:
+
+- cpu - virtual CPUs usage
+- memory - RAM usage, in MiB
+- storage - volume size, in MiB
+
+.. code-block:: javascript
+    [
+        {
+            "item": "cpu",
+            "value": 5,
+            "timestamp": 1415910025
+        },
+        {
+            "item": "memory",
+            "value": 5472,
+            "timestamp": 1415910025
+        },
+        {
+            "item": "storage",
+            "value": 242535,
+            "timestamp": 1415910025
+        }
+    ]

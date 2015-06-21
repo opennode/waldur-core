@@ -1714,30 +1714,23 @@ class OpenStackBackend(OpenStackClient):
                 event_context={'instance': instance, 'flavor': flavor},
             )
 
-    def get_ceilometer_statistics(self, membership, meter_name, period=None, query=None):
+    def get_nova_usage(self, membership, start_date, end_date):
         try:
             session = self.create_session(membership=membership, dummy=self.dummy)
-            ceilometer = self.create_ceilometer_client(session)
+            nova = self.create_nova_client(session)
 
-            usage = ceilometer.statistics.list(meter_name=meter_name, period=period, q=query)
+            usage = nova.usage.get(tenant_id=membership.tenant_id, start=start_date, end=end_date)
         except ceilometer_exceptions.HTTPException as e:
             logger.exception('Failed to get %s usage for cloud project membership with id %s',
-                             meter_name, membership.pk)
+                             membership.pk)
             six.reraise(CloudBackendError, e)
         else:
-            return usage
-
-    def get_ceilometer_cpu_time(self, time):
-        return time / (60 * 60 * pow(10, 9))
-
-    def get_ceilometer_ram_size(self, ram_size):
-        return ram_size * 1024
-
-    def get_ceilometer_network_traffic_size(self, traffic_sum):
-        return traffic_sum / pow(1024, 3)
-
-    def get_ceilometer_disk_size(self, disk_size):
-        return disk_size / pow(1024, 3)
+            return {
+                'cpu': usage.total_vcpus_usage,
+                'disk': usage.total_local_gb_usage,
+                'memory': usage.total_memory_mb_usage / 1024,  # to get to GBs
+                'servers': len(usage.server_usages),
+            }
 
     # Helper methods
     def get_floating_ips(self, tenant_id, neutron):
