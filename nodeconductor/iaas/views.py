@@ -1306,6 +1306,12 @@ class OpenstackAlertStatsView(views.APIView):
         if 'alert_type' in request.query_params:
             queryset = queryset.filter(alert_type__in=request.query_params.getlist('alert_type'))
 
+        if 'acknowledged' in request.query_params:
+            if request.query_params['acknowledged'] == 'False':
+                queryset = queryset.filter(acknowledged=False)
+            else:
+                queryset = queryset.filter(acknowledged=True)
+
         alerts_severities_count = queryset.values('severity').annotate(count=Count('severity'))
 
         severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)

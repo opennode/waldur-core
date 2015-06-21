@@ -25,6 +25,7 @@ class Alert(TimeStampedModel):
     message = models.CharField(max_length=255)
     severity = models.SmallIntegerField(choices=SeverityChoices.CHOICES)
     closed = models.DateTimeField(null=True, blank=True)
+    acknowledged = models.BooleanField(default=False)
     context = JSONField(blank=True)
 
     content_type = models.ForeignKey(ct_models.ContentType, null=True, on_delete=models.SET_NULL)
