@@ -37,11 +37,15 @@ def _get_installation_state(instance):
     return zabbix_client.get_application_installation_state(instance)
 
 
+# XXX: instances pulling and polling has to be refactored:
+# Or we simply return zabbix status or we handle its status changes.
+
 @shared_task
 def pull_instance_installation_state(instance_uuid):
+    """ Pull state for one instance """
     instance = Instance.objects.get(uuid=instance_uuid)
     installation_state = _get_installation_state(instance)
-    if installation_state in ['NO DATA', 'NOT OK'] and instance.installation_state in ['FAIL', 'OK']:
+    if installation_state != 'OK':
         installation_state = 'FAIL'
     if instance.installation_state != installation_state:
         instance.installation_state = installation_state
@@ -50,17 +54,16 @@ def pull_instance_installation_state(instance_uuid):
 
 @shared_task
 def pull_instances_installation_state():
+    """ Pull state for all stable instances """
     instances = Instance.objects.filter(
         installation_state__in=['OK', 'FAIL'],
         state__in=Instance.States.STABLE_STATES,
         type=Instance.Services.PAAS)
     for instance in instances:
-        installation_state = _get_installation_state(instance)
-        if installation_state != 'OK':
-            installation_state = 'FAIL'
-        if instance.installation_state != installation_state:
-            instance.installation_state = installation_state
-            instance.save()
+        pull_instance_installation_state.apply_async(
+            args=(instance.uuid.hex,),
+            link_error=installation_state_pull_failed(instance.uuid.hex),
+        )
 
 
 @shared_task(max_retries=60, default_retry_delay=60)
@@ -70,3 +73,9 @@ def poll_instance_installation_state(instance_uuid):
     instance.installation_state = _get_installation_state(instance)
     instance.save()
     return instance.installation_state == 'OK'
+
+
+def installation_state_pull_failed(instance_uuid):
+    instance = Instance.objects.get(uuid=instance_uuid)
+    instance.installation_state = 'FAIL'
+    instance.save()

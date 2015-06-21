@@ -190,7 +190,12 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
         erred_instances = []
         for instance in queryset:
             try:
-                tasks.zabbix.pull_instance_installation_state(instance.uuid.hex)
+                installation_state = tasks.zabbix._get_installation_state(instance)
+                if installation_state in ['NO DATA', 'NOT OK'] and instance.installation_state in ['FAIL', 'OK']:
+                    installation_state = 'FAIL'
+                if instance.installation_state != installation_state:
+                    instance.installation_state = installation_state
+                    instance.save()
             except ZabbixError:
                 erred_instances.append(instance)
 
