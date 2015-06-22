@@ -154,6 +154,5 @@ class AlertViewSet(mixins.CreateModelMixin,
     def acknowledge(self, request, *args, **kwargs):
         alert = self.get_object()
         alert.acknowledge()
-        print 'asdasd'
 
         return response.Response(status=status.HTTP_200_OK)
