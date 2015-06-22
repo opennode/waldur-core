@@ -186,8 +186,9 @@ class Project(core_models.DescribableMixin,
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
 
+    # XXX: Hack for gcloud and logging
     @property
-    def project_group(self):
+    def group(self):
         return self.project_groups.first()
 
     def add_user(self, user, role_type):
@@ -253,7 +254,7 @@ class Project(core_models.DescribableMixin,
         return user.is_staff
 
     def get_log_fields(self):
-        return ('uuid', 'customer', 'name', 'project_group')
+        return ('uuid', 'customer', 'name', 'group')
 
 
 @python_2_unicode_compatible
