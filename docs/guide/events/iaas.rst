@@ -148,3 +148,6 @@ IaaS events
 
     **iaas_instance_application_failed**
         Application failure has been detected.
+
+    **iaas_instance_application_became_available**
+        Application has restored from a failure.

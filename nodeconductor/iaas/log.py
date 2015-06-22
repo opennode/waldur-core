@@ -29,7 +29,7 @@ class InstanceEventLogger(EventLogger):
 
             'iaas_instance_application_failed',
             'iaas_instance_application_deployment_succeeded',
-            'iaas_instance_application_has_become_available',
+            'iaas_instance_application_became_available',
         )
 
 

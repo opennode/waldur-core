@@ -61,7 +61,7 @@ def pull_instance_installation_state(instance_uuid):
         else:
             event_logger.instance.info(
                 'Application has become available on {instance_name}.',
-                event_type='iaas_instance_application_has_become_available',
+                event_type='iaas_instance_application_became_available',
                 event_context={'instance': instance}
             )
 
