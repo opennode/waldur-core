@@ -190,10 +190,10 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
     def _get_filtered_data(self, objects, serializer):
         try:
             user = self.context['request'].user
+            queryset = filter_queryset_for_user(objects, user)
         except (KeyError, AttributeError):
-            return None
+            queryset = objects.all()
 
-        queryset = filter_queryset_for_user(objects, user)
         serializer_instance = serializer(queryset, many=True, context=self.context)
         return serializer_instance.data
 
@@ -207,7 +207,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer):
-    projects = BasicProjectSerializer(many=True, read_only=True)
+    projects = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.ProjectGroup
@@ -243,6 +243,21 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin,
             fields['customer'].read_only = True
 
         return fields
+
+    def _get_filtered_data(self, objects, serializer):
+        # XXX: this method completely duplicates _get_filtered_data in CustomerSerializer.
+        # We need to create mixin to follow DRY principle. (NC-578)
+        try:
+            user = self.context['request'].user
+            queryset = filter_queryset_for_user(objects, user)
+        except (KeyError, AttributeError):
+            queryset = objects.all()
+
+        serializer_instance = serializer(queryset, many=True, context=self.context)
+        return serializer_instance.data
+
+    def get_projects(self, obj):
+        return self._get_filtered_data(obj.projects.all(), BasicProjectSerializer)
 
 
 class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
