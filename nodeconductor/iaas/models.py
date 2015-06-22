@@ -403,7 +403,10 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
             self._init_instance_licenses()
 
     def get_log_fields(self):
-        return ('uuid', 'name', 'type', 'cloud_project_membership')
+        return (
+            'uuid', 'name', 'type', 'cloud_project_membership', 'ram',
+            'cores', 'data_volume_size', 'system_volume_size', 'installation_state',
+        )
 
 
 @python_2_unicode_compatible

@@ -58,6 +58,12 @@ def pull_instance_installation_state(instance_uuid):
                 event_type='iaas_instance_application_failed',
                 event_context={'instance': instance}
             )
+        else:
+            event_logger.instance.info(
+                'Application has become available on {instance_name}.',
+                event_type='iaas_instance_application_has_become_available',
+                event_context={'instance': instance}
+            )
 
 
 @shared_task
