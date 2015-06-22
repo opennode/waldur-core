@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.views import exception_handler as rf_exception_handler
 from saml2.client import Saml2Client
+from saml2 import BINDING_HTTP_POST
 
 from nodeconductor import __version__
 from nodeconductor.core.exceptions import IncorrectStateException
@@ -110,18 +111,14 @@ class Saml2AuthView(APIView):
             'SAML_CREATE_UNKNOWN_USER', True)
 
         conf = get_config(request=request)
-        client = Saml2Client(conf, logger=logger)
+        client = Saml2Client(conf)
 
-        post = {'SAMLResponse': serializer.validated_data['saml2response']}
+        xmlstr = serializer.validated_data['saml2response']
 
         # process the authentication response
         # noinspection PyBroadException
         try:
-            response = client.response(
-                post,
-                outstanding=None,  # Rely on allow_unsolicited setting
-                decode=False,      # The response is already base64 decoded
-            )
+            response = client.parse_authn_request_response(xmlstr, BINDING_HTTP_POST)
         except Exception as e:
             logger.error('SAML response parsing failed %s' % e)
             response = None
