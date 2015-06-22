@@ -1028,7 +1028,7 @@ class InstanceUsageTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_instance_installation_state_is_faile_instance_is_not_online(self):
-        instance = factories.InstanceFactory(installation_state='OK')
+        instance = factories.InstanceFactory(installation_state='OK', state=Instance.States.OFFLINE)
 
         self.client.force_authenticate(self.staff)
         response = self.client.get(factories.InstanceFactory.get_url(instance))
