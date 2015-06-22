@@ -171,10 +171,10 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
     def _get_filtered_data(self, objects, serializer):
         try:
             user = self.context['request'].user
+            queryset = filter_queryset_for_user(objects, user)
         except (KeyError, AttributeError):
-            return None
+            queryset = objects.all()
 
-        queryset = filter_queryset_for_user(objects, user)
         serializer_instance = serializer(queryset, many=True, context=self.context)
         return serializer_instance.data
 
@@ -226,12 +226,14 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin,
         return fields
 
     def _get_filtered_data(self, objects, serializer):
+        # XXX: this method completely duplicates _get_filtered_data in CustomerSerializer.
+        # We need to create mixin to follow DRY principle. (NC-578)
         try:
             user = self.context['request'].user
+            queryset = filter_queryset_for_user(objects, user)
         except (KeyError, AttributeError):
-            return None
+            queryset = objects.all()
 
-        queryset = filter_queryset_for_user(objects, user)
         serializer_instance = serializer(queryset, many=True, context=self.context)
         return serializer_instance.data
 
