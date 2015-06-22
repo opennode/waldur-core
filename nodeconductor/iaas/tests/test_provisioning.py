@@ -6,7 +6,6 @@ from django.core.urlresolvers import reverse
 from mock import patch, Mock
 from rest_framework import status
 from rest_framework import test
-import yaml
 
 from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
@@ -1027,6 +1026,15 @@ class InstanceUsageTest(test.APITransactionTestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_instance_installation_state_is_faile_instance_is_not_online(self):
+        instance = factories.InstanceFactory(installation_state='OK')
+
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(factories.InstanceFactory.get_url(instance))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['installation_state'], 'FAIL')
 
     def test_instance_in_provisioning_scheduled_state(self):
         self.client.force_authenticate(self.staff)

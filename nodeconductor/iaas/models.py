@@ -360,6 +360,7 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
     external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
 
+    # This field has to be changed to ChoiceField in NC-580
     installation_state = models.CharField(
         max_length=50, default='NO DATA', blank=True, help_text='State of post deploy installation process')
 
