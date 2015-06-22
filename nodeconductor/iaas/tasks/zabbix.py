@@ -37,7 +37,7 @@ def _get_installation_state(instance):
     return zabbix_client.get_application_installation_state(instance)
 
 
-# XXX: instances pulling and polling has to be refactored:
+# XXX: instances pulling and polling has to be refactored (NC-580):
 # Or we simply return zabbix status or we handle its status changes.
 
 @shared_task

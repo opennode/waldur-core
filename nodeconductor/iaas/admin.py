@@ -190,6 +190,7 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
         erred_instances = []
         for instance in queryset:
             try:
+                # This code has to be refactored in NC-580 because it is not DRY (duplications in tasks)
                 installation_state = tasks.zabbix._get_installation_state(instance)
                 if installation_state in ['NO DATA', 'NOT OK'] and instance.installation_state in ['FAIL', 'OK']:
                     installation_state = 'FAIL'
