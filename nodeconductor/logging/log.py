@@ -11,6 +11,7 @@ from django.contrib.contenttypes import models as ct_models
 
 from nodeconductor.logging import models
 from nodeconductor.logging.middleware import get_current_user
+from nodeconductor.logging.middleware import get_current_request
 
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,9 @@ class BaseLogger(object):
 
         context = {}
         required_fields = self.fields.copy()
+
+        request = get_current_request()
+        context['user_ip_address'] = request.META.get("REMOTE_ADDR")
 
         user = get_current_user()
         user_entity_name = 'user'

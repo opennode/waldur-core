@@ -32,3 +32,17 @@ class CaptureUserMiddleware(object):
     def process_response(self, request, response):
         reset_current_user()
         return response
+
+
+def get_current_request():
+    return getattr(_locals, 'request', None)
+
+
+class CaptureRequestMiddleware(object):
+    def process_request(self, request):
+        _locals.request = request
+
+    def process_response(self, request, response):
+        if hasattr(_locals, 'request'):
+            del _locals.request
+        return response
