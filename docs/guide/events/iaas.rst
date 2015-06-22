@@ -143,7 +143,7 @@ IaaS events
 
 .. glossary::
 
-    **paas_instance_application_deployment_succeeded**
+    **iaas_instance_application_deployment_succeeded**
         Application deployment has succeeded.
 
     **iaas_instance_application_failed**
