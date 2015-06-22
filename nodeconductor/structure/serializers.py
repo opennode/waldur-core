@@ -188,7 +188,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer):
-    projects = BasicProjectSerializer(many=True, read_only=True)
+    projects = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.ProjectGroup
@@ -224,6 +224,19 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin,
             fields['customer'].read_only = True
 
         return fields
+
+    def _get_filtered_data(self, objects, serializer):
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return None
+
+        queryset = filter_queryset_for_user(objects, user)
+        serializer_instance = serializer(queryset, many=True, context=self.context)
+        return serializer_instance.data
+
+    def get_projects(self, obj):
+        return self._get_filtered_data(obj.projects.all(), BasicProjectSerializer)
 
 
 class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
