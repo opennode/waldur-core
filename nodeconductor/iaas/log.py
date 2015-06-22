@@ -25,6 +25,9 @@ class InstanceEventLogger(EventLogger):
             'iaas_instance_deletion_scheduled',
             'iaas_instance_deletion_succeeded',
             'iaas_instance_deletion_failed',
+
+            'iaas_instance_application_failed',
+            'iaas_instance_application_deployment_succeeded',
         )
 
 

@@ -7,6 +7,7 @@ from celery import shared_task
 
 from nodeconductor.core.tasks import retry_if_false
 from nodeconductor.iaas.models import Instance
+from nodeconductor.iaas.log import event_logger
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 from nodeconductor.monitoring import utils as monitoring_utils
@@ -51,6 +52,13 @@ def pull_instance_installation_state(instance_uuid):
         instance.installation_state = installation_state
         instance.save()
 
+        if installation_state == 'FAIL':
+            event_logger.instance.info(
+                'Application has failed on {instance_name}.',
+                event_type='iaas_instance_application_failed',
+                event_context={'instance': instance}
+            )
+
 
 @shared_task
 def pull_instances_installation_state():
@@ -72,10 +80,24 @@ def poll_instance_installation_state(instance_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)
     instance.installation_state = _get_installation_state(instance)
     instance.save()
-    return instance.installation_state == 'OK'
+    if instance.installation_state == 'OK':
+        if instance.type == Instance.Services.PAAS:
+            event_logger.instance.info(
+                'Application has been deployed on {instance_name}.',
+                event_type='iaas_instance_application_deployment_succeeded',
+                event_context={'instance': instance}
+            )
+        return True
+    else:
+        return False
 
 
 def installation_state_pull_failed(instance_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)
     instance.installation_state = 'FAIL'
     instance.save()
+    event_logger.instance.info(
+        'Application has failed on {instance_name}.',
+        event_type='iaas_instance_application_failed',
+        event_context={'instance': instance}
+    )
