@@ -94,4 +94,5 @@ privileges can close alerts.
 Acknowledge alert
 -----------------
 
-To acknowledge alert - run POST against */api/alerts/<alert_uuid>/acknowledge/*. No data is required.
+To acknowledge alert - run POST against */api/alerts/<alert_uuid>/acknowledge/*. No payload is required.
+All users that can see alerts can also acknowledge it.
