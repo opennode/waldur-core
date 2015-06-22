@@ -5,7 +5,7 @@ from django.db import models
 from django.utils.image import Image
 
 def get_upload_path(instance, filename):
-    path = 'upload/%s/%s' % (instance._meta.model_name, instance.uuid.hex)
+    path = '%s/%s' % (instance._meta.model_name, instance.uuid.hex)
     _, ext = os.path.splitext(filename)
     return '%s%s' % (path, ext)
 
