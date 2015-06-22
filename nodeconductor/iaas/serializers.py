@@ -413,6 +413,8 @@ class CloudProjectMembershipQuotaSerializer(serializers.Serializer):
     max_instances = serializers.IntegerField(min_value=1, required=False)
     ram = serializers.IntegerField(min_value=1, required=False)
     vcpu = serializers.IntegerField(min_value=1, required=False)
+    security_group_count = serializers.IntegerField(min_value=1, required=False)
+    security_group_rule_count = serializers.IntegerField(min_value=1, required=False)
 
 
 class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMixin,

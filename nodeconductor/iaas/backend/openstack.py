@@ -514,6 +514,10 @@ class OpenStackBackend(OpenStackClient):
             'ram': ('ram', self.get_backend_ram_size),
             'vcpu': ('cores', lambda x: x),
         }
+        neutron_quota_mapping = {
+            'security_group_count': ('security_group', lambda x: x),
+            'security_group_rule_count': ('security_group_rule', lambda x: x),
+        }
 
         def extract_backend_quotas(mapping):
             return {
@@ -525,8 +529,9 @@ class OpenStackBackend(OpenStackClient):
         # split quotas by components
         cinder_quotas = extract_backend_quotas(cinder_quota_mapping)
         nova_quotas = extract_backend_quotas(nova_quota_mapping)
+        neutron_quotas = extract_backend_quotas(neutron_quota_mapping)
 
-        if not (cinder_quotas or nova_quotas):
+        if not (cinder_quotas or nova_quotas or neutron_quotas):
             return
 
         try:
@@ -543,7 +548,14 @@ class OpenStackBackend(OpenStackClient):
                     nova = self.create_nova_client(session)
                     nova.quotas.update(membership.tenant_id, **nova_quotas)
             except nova_exceptions.ClientException:
-                logger.exception('Failed to update membership %s nova quotas %s', membership, quotas)
+                logger.exception('Failed to update membership %s nova quotas %s', membership, nova_quotas)
+
+            try:
+                if neutron_quotas:
+                    neutron = self.create_neutron_client(session)
+                    neutron.update_quota(membership.tenant_id, {'quota': neutron_quotas})
+            except neutron_exceptions.ClientException:
+                logger.exception('Failed to update membership %s neutron quotas %s', membership, neutron_quotas)
 
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to update membership %s quotas %s', membership, quotas)
@@ -745,6 +757,7 @@ class OpenStackBackend(OpenStackClient):
             session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
+            neutron = self.create_neutron_client(session)
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client or cinder client')
             six.reraise(CloudBackendError, e)
@@ -753,6 +766,7 @@ class OpenStackBackend(OpenStackClient):
         try:
             nova_quotas = nova.quotas.get(tenant_id=membership.tenant_id)
             cinder_quotas = cinder.quotas.get(tenant_id=membership.tenant_id)
+            neutron_quotas = neutron.show_quota(tenant_id=membership.tenant_id)['quota']
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
             logger.exception('Failed to get quotas for tenant %s', membership.tenant_id)
             six.reraise(CloudBackendError, e)
@@ -763,6 +777,8 @@ class OpenStackBackend(OpenStackClient):
         membership.set_quota_limit('vcpu', nova_quotas.cores)
         membership.set_quota_limit('max_instances', nova_quotas.instances)
         membership.set_quota_limit('storage', self.get_core_disk_size(cinder_quotas.gigabytes))
+        membership.set_quota_limit('security_group_count', neutron_quotas['security_group'])
+        membership.set_quota_limit('security_group_rule_count', neutron_quotas['security_group_rule'])
 
         # XXX Horrible hack -- to be removed once the Portal has moved to new quotas. NC-421
         membership.project.set_quota_limit('ram', self.get_core_ram_size(nova_quotas.ram))
@@ -785,13 +801,16 @@ class OpenStackBackend(OpenStackClient):
             snapshots = cinder.volume_snapshots.list()
             flavors = dict((flavor.id, flavor) for flavor in nova.flavors.list())
             instances = nova.servers.list()
+            security_groups = nova.security_groups.list()
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
             logger.exception(
-                'Failed to get volumes, snapshots, flavors or instances for tenant %s', membership.tenant_id)
+                'Failed to get volumes, snapshots, flavors, instances or security_groups for tenant %s',
+                membership.tenant_id)
             six.reraise(CloudBackendError, e)
         else:
             logger.info(
-                'Successfully got volumes, snapshots, flavors and instances for tenant %s', membership.tenant_id)
+                'Successfully got volumes, snapshots, flavors, instances or security_groups for tenant %s',
+                membership.tenant_id)
 
         # ram and vcpu
         instance_flavor_ids = [instance.flavor['id'] for instance in instances]
@@ -812,6 +831,8 @@ class OpenStackBackend(OpenStackClient):
         membership.set_quota_usage('vcpu', vcpu)
         membership.set_quota_usage('max_instances', len(instances))
         membership.set_quota_usage('storage', sum([self.get_core_disk_size(v.size) for v in volumes + snapshots]))
+        membership.set_quota_usage('security_group_count', len(security_groups))
+        membership.set_quota_usage('security_group_rule_count', len(sum([sg.rules for sg in security_groups], [])))
 
     def pull_floating_ips(self, membership):
         logger.debug('Pulling floating ips for membership %s', membership.id)
