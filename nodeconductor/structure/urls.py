@@ -21,4 +21,5 @@ def register_in(router):
 urlpatterns = patterns(
     '',
     url(r'^stats/creation-time/$', views.CreationTimeStatsView.as_view(), name='stats_creation_time'),
+    url(r'^customers/(?P<uuid>[a-z0-9]+)/image/$', views.CustomerImageView.as_view(), name='customer_image'),
 )

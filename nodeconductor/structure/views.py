@@ -12,6 +12,7 @@ from rest_framework import permissions as rf_permissions
 from rest_framework import status
 from rest_framework import views
 from rest_framework import viewsets
+from rest_framework import generics
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -84,6 +85,24 @@ class CustomerViewSet(viewsets.ModelViewSet):
                           rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = CustomerFilter
+
+
+class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
+
+    queryset = models.Customer.objects.all()
+    lookup_field = 'uuid'
+    serializer_class = serializers.CustomerImageSerializer
+
+    def perform_destroy(self, instance):
+        instance.image = None
+        instance.save()
+
+    def check_object_permissions(self, request, customer):
+        if request.user.is_staff:
+            return
+        if customer.has_user(request.user, models.CustomerRole.OWNER):
+            return
+        raise PermissionDenied()
 
 
 class ProjectFilter(quotas_views.QuotaFilterMixin, django_filters.FilterSet):

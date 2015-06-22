@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.core.validators import RegexValidator
 from django.contrib import auth
 from django.db import models as django_models
+from django.conf import settings
 from rest_framework import serializers, exceptions
 
 from nodeconductor.core import serializers as core_serializers
@@ -148,11 +149,28 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         return super(ProjectSerializer, self).update(instance, validated_data)
 
 
+class DefaultImageField(serializers.ImageField):
+    def to_representation(self, image):
+        if image:
+            return super(DefaultImageField, self).to_representation(image)
+        else:
+            return settings.NODECONDUCTOR.get('DEFAULT_CUSTOMER_LOGO')
+
+
+class CustomerImageSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField()
+
+    class Meta:
+        model = models.Customer
+        fields = ['image']
+
+
 class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField()
     project_groups = serializers.SerializerMethodField()
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
+    image = DefaultImageField(required=False, read_only=True)
 
     class Meta(object):
         model = models.Customer
@@ -163,6 +181,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             'projects', 'project_groups',
             'owners',
             'registration_code',
+            'image'
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},

@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-import logging
-
 from django.apps import apps
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
@@ -21,9 +19,7 @@ from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
-
-
-logger = logging.getLogger(__name__)
+from nodeconductor.structure.images import ImageModelMixin
 
 
 @python_2_unicode_compatible
@@ -31,6 +27,7 @@ class Customer(core_models.UuidMixin,
                core_models.NameMixin,
                quotas_models.QuotaModelMixin,
                LoggableMixin,
+               ImageModelMixin,
                TimeStampedModel):
     class Permissions(object):
         customer_path = 'self'
