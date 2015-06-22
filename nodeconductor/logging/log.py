@@ -72,7 +72,8 @@ class BaseLogger(object):
         required_fields = self.fields.copy()
 
         request = get_current_request()
-        context['user_ip_address'] = request.META.get("REMOTE_ADDR")
+        if request:
+            context['user_ip_address'] = request.META.get('REMOTE_ADDR')
 
         user = get_current_user()
         user_entity_name = 'user'
