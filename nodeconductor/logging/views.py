@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from rest_framework import generics, response, settings, viewsets, permissions, filters, status, decorators, mixins
 from rest_framework.serializers import ValidationError
@@ -142,7 +143,17 @@ class AlertViewSet(mixins.CreateModelMixin,
 
     @decorators.detail_route(methods=['post'])
     def close(self, request, *args, **kwargs):
+        if not request.user.is_staff:
+            raise PermissionDenied()
         alert = self.get_object()
         alert.close()
 
         return response.Response(status=status.HTTP_204_NO_CONTENT)
+
+    @decorators.detail_route(methods=['post'])
+    def acknowledge(self, request, *args, **kwargs):
+        alert = self.get_object()
+        alert.acknowledge()
+        print 'asdasd'
+
+        return response.Response(status=status.HTTP_200_OK)

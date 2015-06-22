@@ -65,7 +65,7 @@ Create alert
 ------------
 
 Run POST against */api/alerts/* to create or update alert. If alert with posted scope and alert_type already exists -
-it will be updated
+it will be updated. Only users with staff privileges can create alerts.
 
 Request example:
 
@@ -87,4 +87,11 @@ Request example:
 Close alert
 -----------
 
-To close alert - run POST against */api/alerts/<alert_uuid>/close/*. No data is required.
+To close alert - run POST against */api/alerts/<alert_uuid>/close/*. No data is required. Only users with staff
+privileges can close alerts.
+
+
+Acknowledge alert
+-----------------
+
+To acknowledge alert - run POST against */api/alerts/<alert_uuid>/acknowledge/*. No data is required.
