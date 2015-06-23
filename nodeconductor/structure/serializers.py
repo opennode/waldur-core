@@ -737,22 +737,24 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             if settings and not settings.shared and attrs.get('customer') != settings.customer:
                 raise serializers.ValidationError('Customer must match settings customer.')
 
-        settings_fields = 'backend_url', 'username', 'password', 'token'
-        create_settings = any([attrs.get(f) for f in settings_fields])
-        if not settings and not create_settings:
-            raise serializers.ValidationError('Either service settings or credentials must be supplied.')
+        if self.context['request'].method == 'POST':
+            settings_fields = 'backend_url', 'username', 'password', 'token'
+            create_settings = any([attrs.get(f) for f in settings_fields])
+            if not settings and not create_settings:
+                raise serializers.ValidationError(
+                    "Either service settings or credentials must be supplied.")
 
-        if create_settings:
-            settings_fields += 'dummy',
-            args = {f: attrs.pop(f) for f in settings_fields if f in attrs}
-            settings = models.ServiceSettings.objects.create(
-                type=self.SERVICE_TYPE,
-                name=attrs['name'],
-                customer=customer,
-                **args)
+            if create_settings:
+                settings_fields += 'dummy',
+                args = {f: attrs.pop(f) for f in settings_fields if f in attrs}
+                settings = models.ServiceSettings.objects.create(
+                    type=self.SERVICE_TYPE,
+                    name=attrs['name'],
+                    customer=customer,
+                    **args)
 
-            send_task('structure', 'sync_service_settings')(settings.uuid.hex, initial=True)
-            attrs['settings'] = settings
+                send_task('structure', 'sync_service_settings')(settings.uuid.hex, initial=True)
+                attrs['settings'] = settings
 
         return attrs
 
