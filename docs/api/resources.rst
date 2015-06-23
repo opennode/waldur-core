@@ -48,17 +48,17 @@ Response example:
 
     [
         {
-            "url": "http://127.0.0.1:8000/api/resources/0356addb8e9742e7b984ebcaf5912c6b/",
+            "url": "http://example.com/api/resources/0356addb8e9742e7b984ebcaf5912c6b/",
             "uuid": "0356addb8e9742e7b984ebcaf5912c6b",
             "state": "Offline",
             "name": "FromBackup777",
             "template_name": "cirros-0.3.1-x86_64",
-            "customer_name": "The Ministry of Civil Service",
-            "customer_native_name": "The Ministry of Civil Service",
-            "customer_abbreviation": "MoCS",
+            "customer_name": "Customer A",
+            "customer_native_name": "Customer A (native)",
+            "customer_abbreviation": "CA",
             "project_name": "STG/Backups",
             "project_uuid": "19e4581367cb4f93bf77c21f68fbc2d1",
-            "project_url": "http://127.0.0.1:8000/api/projects/19e4581367cb4f93bf77c21f68fbc2d1/",
+            "project_url": "http://example.com/api/projects/19e4581367cb4f93bf77c21f68fbc2d1/",
             "project_groups": [],
             "agreed_sla": "95",
             "actual_sla": null,
