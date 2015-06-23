@@ -372,6 +372,11 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
             (Oracle, 'Oracle'),
         )
 
+    class Permissions(object):
+        customer_path = 'customer'
+        extra_query = dict(shared=True)
+
+    customer = models.ForeignKey(Customer, related_name='service_settings', blank=True, null=True)
     backend_url = models.URLField(max_length=200, blank=True, null=True)
     username = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100, blank=True, null=True)
@@ -436,7 +441,7 @@ class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
     """
 
     class Meta(object):
-        unique_together = ('customer', 'name', 'polymorphic_ctype')
+        unique_together = ('customer', 'settings', 'polymorphic_ctype')
 
     class Permissions(object):
         customer_path = 'customer'

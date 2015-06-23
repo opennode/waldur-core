@@ -759,7 +759,7 @@ class ServiceSerializer(serializers.Serializer):
             'service_type',
             'access_information',
         )
-        view_name = 'service-detail'
+        view_name = 'resource-detail'
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -792,7 +792,7 @@ class ServiceSerializer(serializers.Serializer):
             raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
 
         # TODO: this could use something similar to backup's generic model for all resources
-        view_name = 'service-detail'
+        view_name = 'resource-detail'
         service_instance = obj
         hyperlinked_field = serializers.HyperlinkedRelatedField(
             view_name=view_name,

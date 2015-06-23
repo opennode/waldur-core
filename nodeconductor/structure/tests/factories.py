@@ -8,6 +8,7 @@ import factory.fuzzy
 
 from rest_framework.reverse import reverse
 
+from nodeconductor.core import models as core_models
 from nodeconductor.structure import models
 
 
@@ -113,6 +114,8 @@ class ServiceSettingsFactory(factory.DjangoModelFactory):
         model = models.ServiceSettings
 
     name = factory.Sequence(lambda n: 'Settings %s' % n)
+    state = core_models.SynchronizationStates.IN_SYNC
+    shared = True
     type = 2
 
     @classmethod
