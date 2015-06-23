@@ -416,6 +416,9 @@ SAML_CONFIG = {
     'key_file': config.get('saml2', 'key_file'),  # private part
     'cert_file': config.get('saml2', 'cert_file'),  # public part
 
+    'only_use_keys_in_metadata': False,
+    'allow_unknown_attributes': True,
+
     'accepted_time_diff': 120,
 }
 
