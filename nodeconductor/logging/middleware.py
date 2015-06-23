@@ -19,7 +19,9 @@ def reset_event_context():
 
 
 def set_current_user(user):
-    set_event_context(user._get_log_context('user'))
+    context = get_event_context() or {}
+    context.update(user._get_log_context('user'))
+    set_event_context(context)
 
 
 def get_ip_address(request):
