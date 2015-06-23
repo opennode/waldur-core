@@ -32,13 +32,13 @@ class CaptureEventContextMiddleware(object):
     def process_request(self, request):
         user = getattr(request, 'user', None)
         if user.is_anonymous():
-            reset_log_context()
+            reset_context()
             return
 
         context = user._get_log_context('user')
         context['ip_address'] = get_ip_address(request)
-        set_log_context(context)
+        set_context(context)
 
     def process_response(self, request, response):
-        reset_current_context()
+        reset_context()
         return response
