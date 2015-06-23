@@ -410,6 +410,7 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
         )
 
 
+
 @python_2_unicode_compatible
 class InstanceSlaHistory(models.Model):
     period = models.CharField(max_length=10)
