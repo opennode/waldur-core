@@ -34,7 +34,7 @@ class CaptureEventContextMiddleware(object):
 
         user = getattr(request, 'user', None)
         if user and not user.is_anonymous():
-            context.update(user._get_event_context('user'))
+            context.update(user._get_log_context('user'))
 
         set_event_context(context)
 
