@@ -18,6 +18,10 @@ def reset_event_context():
         del _locals.context
 
 
+def set_current_user(user):
+    set_event_context(user._get_log_context('user'))
+
+
 def get_ip_address(request):
     """
     Correct IP address is expected as first element of HTTP_X_FORWARDED_FOR or REMOTE_ADDR 
