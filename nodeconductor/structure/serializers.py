@@ -171,6 +171,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
     project_groups = serializers.SerializerMethodField()
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
     image = DefaultImageField(required=False, read_only=True)
+    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.Customer
@@ -181,6 +182,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             'projects', 'project_groups',
             'owners',
             'registration_code',
+            'quotas',
             'image'
         )
         extra_kwargs = {

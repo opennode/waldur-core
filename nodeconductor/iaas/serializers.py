@@ -582,6 +582,9 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
         # We need this hook, because ips have to be represented as list
         instance.external_ips = [instance.external_ips] if instance.external_ips else []
         instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
+        # This code is ugly and has to be refactored in NC-580
+        if instance.state != models.Instance.States.ONLINE:
+            instance.installation_state = 'FAIL'
         return super(InstanceSerializer, self).to_representation(instance)
 
 

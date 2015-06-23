@@ -195,7 +195,7 @@ class ZabbixApiClient(object):
                 output='extend',
                 itemids=item_id,
                 sortfield=["clock"],
-                sortorder="ASC",
+                sortorder="DESC",
                 limit=1
             )
             if not history:
