@@ -5,44 +5,40 @@ import threading
 _locals = threading.local()
 
 
-def get_current_user():
-    return getattr(_locals, 'user', None)
+def get_context():
+    return getattr(_locals, 'context', None)
 
 
-def set_current_user(user):
-    if user is None or user.is_anonymous():
-        reset_current_user()
+def set_context(context):
+    _locals.context = context
+
+
+def reset_context():
+    if hasattr(_locals, 'context'):
+        del _locals.context
+
+
+def get_ip_address(request):
+    """
+    Correct IP address is expected as first element of HTTP_X_FORWARDED_FOR or REMOTE_ADDR 
+    """
+    if 'HTTP_X_FORWARDED_FOR' in request.META:
+        return request.META['HTTP_X_FORWARDED_FOR'].split(',')[0].strip()
     else:
-        _locals.user = user
+        return request.META['REMOTE_ADDR']
 
 
-def reset_current_user():
-    try:
-        del _locals.user
-    except AttributeError:
-        pass
-
-
-# noinspection PyMethodMayBeStatic
-class CaptureUserMiddleware(object):
+class CaptureEventContextMiddleware(object):
     def process_request(self, request):
         user = getattr(request, 'user', None)
-        set_current_user(user)
+        if user.is_anonymous():
+            reset_log_context()
+            return
+
+        context = user._get_log_context('user')
+        context['ip_address'] = get_ip_address(request)
+        set_log_context(context)
 
     def process_response(self, request, response):
-        reset_current_user()
-        return response
-
-
-def get_current_request():
-    return getattr(_locals, 'request', None)
-
-
-class CaptureRequestMiddleware(object):
-    def process_request(self, request):
-        _locals.request = request
-
-    def process_response(self, request, response):
-        if hasattr(_locals, 'request'):
-            del _locals.request
+        reset_current_context()
         return response
