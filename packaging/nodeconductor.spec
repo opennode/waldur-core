@@ -24,7 +24,9 @@ License: Copyright 2014 OpenNode LLC.  All rights reserved.
 Requires: logrotate
 Requires: MySQL-python
 Requires: openssl
+Requires: python-ceilometerclient = 1.0.10
 Requires: python-celery >= 3.1.15, python-celery < 3.2
+Requires: python-cinderclient = 1.0.9
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.7.1
 Requires: python-django-auth-ldap = 1.2.0
@@ -37,11 +39,9 @@ Requires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 
 Requires: python-django-saml2 = 0.13.0
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
+Requires: python-glanceclient = 1:0.12.0
 Requires: python-jira = 0.47
 Requires: python-jsonfield = 1.0.0
-Requires: python-ceilometerclient = 1.0.10
-Requires: python-cinderclient = 1.0.9
-Requires: python-glanceclient = 1:0.12.0
 Requires: python-keystoneclient = 1:0.9.0
 Requires: python-neutronclient = 2.3.4
 Requires: python-novaclient = 1:2.17.0
