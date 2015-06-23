@@ -6,7 +6,7 @@ from celery import Celery
 from celery import signals
 from django.conf import settings
 
-from nodeconductor.logging.middleware import get_context, set_context, reset_context
+from nodeconductor.logging.middleware import get_event_context, set_event_context, reset_event_context
 
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nodeconductor.server.settings')  # XXX:
@@ -38,23 +38,21 @@ def pass_event_context(sender=None, body=None, **kwargs):
     if body is None:
         return
 
-    context = get_context()
-    if context is None:
-        return
-
-    body['kwargs']['event_context'] = context
+    event_context = get_event_context()
+    if event_context:
+        body['kwargs']['event_context'] = event_context
 
 
 @signals.task_prerun.connect
 def bind_event_context(sender=None, **kwargs):
     try:
-        context = kwargs['kwargs'].pop('event_context')
+        event_context = kwargs['kwargs'].pop('event_context')
     except KeyError:
         return
 
-    set_context(context)
+    set_event_context(event_context)
 
 
 @signals.task_postrun.connect
 def unbind_event_context(sender=None, **kwargs):
-    reset_context()
+    reset_event_context()

@@ -10,7 +10,7 @@ from django.utils import six
 from django.contrib.contenttypes import models as ct_models
 
 from nodeconductor.logging import models
-from nodeconductor.logging.middleware import get_context
+from nodeconductor.logging.middleware import get_event_context
 
 
 logger = logging.getLogger(__name__)
@@ -70,11 +70,11 @@ class BaseLogger(object):
         context = {}
         required_fields = self.fields.copy()
 
-        current_context = get_context()
-        if current_context:
-            context.update(current_context)
-            if 'user' in required_fields:
-                username = current_context['user_username']
+        event_context = get_event_context()
+        if event_context:
+            context.update(event_context)
+            username = event_context.get('user_username')
+            if 'user' in required_fields and username:
                 logger.warning("User is passed directly to event context. "
                                "Currently authenticated user %s is ignored.", username)
 

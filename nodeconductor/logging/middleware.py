@@ -5,15 +5,15 @@ import threading
 _locals = threading.local()
 
 
-def get_context():
+def get_event_context():
     return getattr(_locals, 'context', None)
 
 
-def set_context(context):
+def set_event_context(context):
     _locals.context = context
 
 
-def reset_context():
+def reset_event_context():
     if hasattr(_locals, 'context'):
         del _locals.context
 
@@ -30,15 +30,14 @@ def get_ip_address(request):
 
 class CaptureEventContextMiddleware(object):
     def process_request(self, request):
-        user = getattr(request, 'user', None)
-        if user.is_anonymous():
-            reset_context()
-            return
+        context = {'ip_address': get_ip_address(request)}
 
-        context = user._get_log_context('user')
-        context['ip_address'] = get_ip_address(request)
-        set_context(context)
+        user = getattr(request, 'user', None)
+        if user and not user.is_anonymous():
+            context.update(user._get_event_context('user'))
+
+        set_event_context(context)
 
     def process_response(self, request, response):
-        reset_context()
+        reset_event_context()
         return response
