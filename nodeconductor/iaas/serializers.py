@@ -580,6 +580,9 @@ class InstanceSerializer(core_serializers.AugmentedSerializerMixin,
         # We need this hook, because ips have to be represented as list
         instance.external_ips = [instance.external_ips] if instance.external_ips else []
         instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
+        # This code is ugly and has to be refactored in NC-580
+        if instance.state != models.Instance.States.ONLINE:
+            instance.installation_state = 'FAIL'
         return super(InstanceSerializer, self).to_representation(instance)
 
 
@@ -759,7 +762,7 @@ class ServiceSerializer(serializers.Serializer):
             'service_type',
             'access_information',
         )
-        view_name = 'service-detail'
+        view_name = 'resource-detail'
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -792,7 +795,7 @@ class ServiceSerializer(serializers.Serializer):
             raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
 
         # TODO: this could use something similar to backup's generic model for all resources
-        view_name = 'service-detail'
+        view_name = 'resource-detail'
         service_instance = obj
         hyperlinked_field = serializers.HyperlinkedRelatedField(
             view_name=view_name,

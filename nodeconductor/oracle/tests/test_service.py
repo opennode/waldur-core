@@ -1,3 +1,4 @@
+from mock import patch
 from rest_framework import status, test
 
 from nodeconductor.structure.models import ServiceSettings, ProjectRole, CustomerRole, ProjectGroupRole
@@ -41,7 +42,8 @@ class ServicePermissionTest(test.APITransactionTestCase):
             'not_in_project': factories.OracleServiceFactory(),
         }
 
-        self.settings = structure_factories.ServiceSettingsFactory(type=ServiceSettings.Types.Oracle)
+        self.settings = structure_factories.ServiceSettingsFactory(
+            type=ServiceSettings.Types.Oracle, customer=self.customers['owned'])
         self.customers['owned'].add_user(self.users['customer_owner'], CustomerRole.OWNER)
 
         self.projects['admined'].add_user(self.users['project_admin'], ProjectRole.ADMINISTRATOR)
@@ -178,6 +180,25 @@ class ServicePermissionTest(test.APITransactionTestCase):
         new_service = factories.OracleServiceFactory.build(settings=self.settings, customer=self.customers['owned'])
         response = self.client.post(factories.OracleServiceFactory.get_list_url(), self._get_valid_payload(new_service))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        payload = {
+            'name': factories.OracleServiceFactory().name,
+            'customer': structure_factories.CustomerFactory.get_url(self.customers['owned']),
+            "backend_url": "http://example.com",
+            "username": "user",
+            "password": "secret",
+        }
+
+        with patch('celery.app.base.Celery.send_task') as mocked_task:
+            response = self.client.post(factories.OracleServiceFactory.get_list_url(), payload)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+            settings = ServiceSettings.objects.get(name=payload['name'])
+            self.assertFalse(settings.shared)
+
+            mocked_task.assert_called_with(
+                'nodeconductor.structure.sync_service_settings',
+                (settings.uuid.hex,), {'initial': True})
 
     def test_user_cannot_add_service_to_the_customer_he_sees_but_doesnt_own(self):
         for user_role, customer_type in {

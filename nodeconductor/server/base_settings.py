@@ -15,6 +15,8 @@ TEMPLATE_DEBUG = False
 
 MEDIA_ROOT = '/tmp/'
 
+MEDIA_URL = '/media/'
+
 ALLOWED_HOSTS = []
 
 # Application definition
@@ -55,7 +57,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'nodeconductor.logging.middleware.CaptureUserMiddleware',
+    'nodeconductor.logging.middleware.CaptureEventContextMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
@@ -206,7 +208,7 @@ CELERYBEAT_SCHEDULE = {
 
     'pull-instances-installation-state': {
         'task': 'nodeconductor.iaas.tasks.zabbix.pull_instances_installation_state',
-        'schedule': timedelta(minutes=5),
+        'schedule': timedelta(minutes=1),
         'args': (),
     },
 }

@@ -23,7 +23,8 @@ class Base64Field(serializers.CharField):
     def to_internal_value(self, data):
         value = super(Base64Field, self).to_internal_value(data)
         try:
-            return base64.b64decode(value)
+            base64.b64decode(value)
+            return value
         except TypeError:
             raise serializers.ValidationError('This field should a be valid Base64 encoded string.')
 

@@ -99,6 +99,11 @@ Quotas
 
 .. include:: quotas.rst
 
+Resources
+=========
+
+.. include:: resources.rst
+
 Security group management
 =========================
 
@@ -108,6 +113,11 @@ Services
 ========
 
 .. include:: services.rst
+
+Service Settings
+================
+
+.. include:: service_settings.rst
 
 Statistics
 ==========

@@ -81,21 +81,30 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
     change_readonly_fields = ['customer']
 
 
-class ServiceSettingsAdmin(admin.ModelAdmin):
-    list_display = ('name', 'type', 'state')
-    list_filter = ('type', 'state')
+class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
+    list_display = ('name', 'customer', 'type', 'shared', 'state')
+    list_filter = ('type', 'state', 'shared')
+    change_readonly_fields = ('shared', 'customer')
     actions = ['sync']
 
     def add_view(self, *args, **kwargs):
         self.exclude = getattr(self, 'add_exclude', ())
         return super(ServiceSettingsAdmin, self).add_view(*args, **kwargs)
 
+    def get_readonly_fields(self, request, obj=None):
+        fields = super(ServiceSettingsAdmin, self).get_readonly_fields(request, obj)
+        if obj and not obj.shared:
+            obj.password = '(hidden)'
+            return fields + ('password',)
+        return fields
+
     def get_form(self, request, obj=None, **kwargs):
         # filter out certain fields from the creation form
         if not obj:
             kwargs['exclude'] = ('state',)
         form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
-        form.base_fields['shared'].initial = True
+        if 'shared' in form.base_fields:
+            form.base_fields['shared'].initial = True
         return form
 
     def save_model(self, request, obj, form, change):

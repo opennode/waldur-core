@@ -137,3 +137,17 @@ IaaS events
 
     **zabbix_host_deletion**
         Zabbix host deletion flow has broken.
+
+
+------------
+
+.. glossary::
+
+    **iaas_instance_application_deployment_succeeded**
+        Application deployment has succeeded.
+
+    **iaas_instance_application_failed**
+        Application failure has been detected.
+
+    **iaas_instance_application_became_available**
+        Application has restored from a failure.
