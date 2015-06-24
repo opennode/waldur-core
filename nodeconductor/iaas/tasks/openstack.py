@@ -5,7 +5,7 @@ import functools
 
 from celery import shared_task
 
-from nodeconductor.iaas.models import Instance
+from nodeconductor.iaas.models import Instance, SecurityGroup
 from nodeconductor.iaas.backend.openstack import OpenStackBackend
 from nodeconductor.core.tasks import throttle, retry_if_false
 
@@ -56,3 +56,24 @@ def openstack_provision_instance(instance_uuid, backend_flavor_id,
         backend = cloud.get_backend()
         backend.provision_instance(
             instance, backend_flavor_id, system_volume_id, data_volume_id)
+
+
+@shared_task
+def openstack_create_security_group(security_group_uuid):
+    security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
+    backend = security_group.cloud_project_membership.cloud.get_backend()
+    backend.create_security_group(security_group)
+
+
+@shared_task
+def openstack_update_security_group(security_group_uuid):
+    security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
+    backend = security_group.cloud_project_membership.cloud.get_backend()
+    backend.update_security_group(security_group)
+
+
+@shared_task
+def openstack_delete_security_group(security_group_uuid):
+    security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
+    backend = security_group.cloud_project_membership.cloud.get_backend()
+    backend.delete_security_group(security_group.backend_id, security_group.cloud_project_membership)

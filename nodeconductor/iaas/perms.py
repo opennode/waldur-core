@@ -44,8 +44,32 @@ PERMISSION_LOGICS = (
         any_permission=True,
     )),
     ('iaas.Flavor', StaffPermissionLogic(any_permission=True)),
-    ('iaas.SecurityGroup', StaffPermissionLogic(any_permission=True)),
-    ('iaas.SecurityGroupRule', StaffPermissionLogic(any_permission=True)),
+    ('iaas.SecurityGroup', FilteredCollaboratorsPermissionLogic(
+        collaborators_query=[
+            'cloud_project_membership__cloud__customer__roles__permission_group__user',
+            'cloud_project_membership__project__roles__permission_group__user',
+        ],
+        collaborators_filter=[
+            {'cloud_project_membership__cloud__customer__roles__role_type': structure_models.CustomerRole.OWNER},
+            {'cloud_project_membership__project__roles__role_type': structure_models.ProjectRole.ADMINISTRATOR},
+        ],
+
+        any_permission=True,
+    )),
+    ('iaas.SecurityGroupRule', FilteredCollaboratorsPermissionLogic(
+        collaborators_query=[
+            'security_group__cloud_project_membership__cloud__customer__roles__permission_group__user',
+            'security_group__cloud_project_membership__project__roles__permission_group__user',
+        ],
+        collaborators_filter=[
+            {'security_group__cloud_project_membership__cloud__customer__roles__role_type':
+             structure_models.CustomerRole.OWNER},
+            {'security_group__cloud_project_membership__project__roles__role_type':
+             structure_models.ProjectRole.ADMINISTRATOR},
+        ],
+
+        any_permission=True,
+    )),
     ('iaas.IpMapping',  StaffPermissionLogic(any_permission=True)),
     ('iaas.FloatingIP',  StaffPermissionLogic(any_permission=True)),
     ('iaas.InstanceSlaHistoryEvents', StaffPermissionLogic(any_permission=True)),

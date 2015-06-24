@@ -1154,7 +1154,7 @@ class SecurityGroupFilter(django_filters.FilterSet):
         ]
 
 
-class SecurityGroupViewSet(viewsets.ReadOnlyModelViewSet):
+class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
     """
     List of security groups
 
@@ -1167,6 +1167,24 @@ class SecurityGroupViewSet(viewsets.ReadOnlyModelViewSet):
                           permissions.DjangoObjectPermissions)
     filter_class = SecurityGroupFilter
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend,)
+
+    def perform_create(self, serializer):
+        security_group = serializer.save()
+        tasks.create_security_group.delay(security_group.uuid.hex)
+
+    def perform_update(self, serializer):
+        super(SecurityGroupViewSet, self).perform_update(serializer)
+        security_group = self.get_object()
+        security_group.schedule_syncing()
+        security_group.save()
+        tasks.update_security_group.delay(serializer.instance.uuid.hex)
+
+    def destroy(self, request, *args, **kwargs):
+        security_group = self.get_object()
+        security_group.schedule_syncing()
+        security_group.save()
+        tasks.delete_security_group.delay(security_group.uuid.hex)
+        return Response({'status': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
 
 
 class IpMappingFilter(django_filters.FilterSet):

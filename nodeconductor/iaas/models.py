@@ -494,6 +494,7 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
 class SecurityGroup(core_models.UuidMixin,
                     core_models.DescribableMixin,
                     core_models.NameMixin,
+                    core_models.SynchronizableMixin,
                     CloudProjectMember,
                     models.Model):
 

@@ -57,5 +57,5 @@ def flavor_change_failed(instance_uuid, transition_entity=None):
     event_logger.instance_flavor.error(
         'Virtual machine {instance_name} flavor change has failed.',
         event_type='iaas_instance_flavor_change_failed',
-        event_context={'instance': instance, 'flavor': flavor}
+        event_context={'instance': instance}
     )
