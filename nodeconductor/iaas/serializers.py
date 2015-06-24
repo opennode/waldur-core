@@ -175,13 +175,18 @@ class NestedSecurityGroupRuleSerializer(serializers.ModelSerializer):
 
 class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
 
+    state = MappedChoiceField(
+        choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
+        choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
+        read_only=True,
+    )
     rules = NestedSecurityGroupRuleSerializer(many=True)
     cloud_project_membership = NestedCloudProjectMembershipSerializer(
         queryset=models.CloudProjectMembership.objects.all())
 
     class Meta(object):
         model = models.SecurityGroup
-        fields = ('url', 'uuid', 'name', 'description', 'rules', 'cloud_project_membership')
+        fields = ('url', 'uuid', 'state', 'name', 'description', 'rules', 'cloud_project_membership')
         read_only_fields = ('url', 'uuid')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
