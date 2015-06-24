@@ -153,7 +153,6 @@ class NestedCloudProjectMembershipSerializer(structure_serializers.PermissionFie
             'quotas',
             'state',
         )
-        # read_only_fields = ('cloud', 'project', )
         view_name = 'cloudproject_membership-detail'
         extra_kwargs = {
             'cloud': {'lookup_field': 'uuid'},
