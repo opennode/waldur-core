@@ -48,10 +48,13 @@ PERMISSION_LOGICS = (
         collaborators_query=[
             'cloud_project_membership__cloud__customer__roles__permission_group__user',
             'cloud_project_membership__project__roles__permission_group__user',
+            'cloud_project_membership__project__project_groups__roles__permission_group__user',
         ],
         collaborators_filter=[
             {'cloud_project_membership__cloud__customer__roles__role_type': structure_models.CustomerRole.OWNER},
             {'cloud_project_membership__project__roles__role_type': structure_models.ProjectRole.ADMINISTRATOR},
+            {'cloud_project_membership__project__project_groups__roles__role_type':
+             structure_models.ProjectGroupRole.MANAGER}
         ],
 
         any_permission=True,
@@ -60,12 +63,16 @@ PERMISSION_LOGICS = (
         collaborators_query=[
             'security_group__cloud_project_membership__cloud__customer__roles__permission_group__user',
             'security_group__cloud_project_membership__project__roles__permission_group__user',
+            'security_group__cloud_project_membership__project__project_groups__roles__permission_group__user',
         ],
         collaborators_filter=[
             {'security_group__cloud_project_membership__cloud__customer__roles__role_type':
              structure_models.CustomerRole.OWNER},
             {'security_group__cloud_project_membership__project__roles__role_type':
              structure_models.ProjectRole.ADMINISTRATOR},
+            {'security_group__cloud_project_membership__project__project_groups__roles__permission_group__user':
+             structure_models.ProjectGroupRole.MANAGER},
+
         ],
 
         any_permission=True,
