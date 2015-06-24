@@ -15,10 +15,12 @@ def register_in(router):
     router.register(r'project-permissions', views.ProjectPermissionViewSet, base_name='project_permission')
     router.register(r'project-group-permissions', views.ProjectGroupPermissionViewSet, base_name='projectgroup_permission')
     router.register(r'service-settings', views.ServiceSettingsViewSet)
+    router.register(r'services', views.ServiceViewSet, base_name='service')
     router.register(r'users', views.UserViewSet)
 
 
 urlpatterns = patterns(
     '',
     url(r'^stats/creation-time/$', views.CreationTimeStatsView.as_view(), name='stats_creation_time'),
+    url(r'^customers/(?P<uuid>[a-z0-9]+)/image/$', views.CustomerImageView.as_view(), name='customer_image'),
 )

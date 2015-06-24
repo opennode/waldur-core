@@ -18,7 +18,9 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Alert
         fields = (
-            'url', 'uuid', 'alert_type', 'message', 'severity', 'scope', 'created', 'closed', 'context')
+            'url', 'uuid', 'alert_type', 'message', 'severity', 'scope',
+            'created', 'closed', 'context', 'acknowledged',
+        )
         read_only_fields = ('uuid', 'created', 'closed')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},

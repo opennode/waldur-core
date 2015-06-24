@@ -12,6 +12,8 @@ from rest_framework import permissions as rf_permissions
 from rest_framework import status
 from rest_framework import views
 from rest_framework import viewsets
+from rest_framework import generics
+from rest_framework.reverse import reverse
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -20,6 +22,7 @@ from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
+from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
@@ -84,6 +87,24 @@ class CustomerViewSet(viewsets.ModelViewSet):
                           rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = CustomerFilter
+
+
+class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
+
+    queryset = models.Customer.objects.all()
+    lookup_field = 'uuid'
+    serializer_class = serializers.CustomerImageSerializer
+
+    def perform_destroy(self, instance):
+        instance.image = None
+        instance.save()
+
+    def check_object_permissions(self, request, customer):
+        if request.user.is_staff:
+            return
+        if customer.has_user(request.user, models.CustomerRole.OWNER):
+            return
+        raise PermissionDenied()
 
 
 class ProjectFilter(quotas_views.QuotaFilterMixin, django_filters.FilterSet):
@@ -1020,19 +1041,65 @@ class CreationTimeStatsView(views.APIView):
 
 class ServiceSettingsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_type='icontains')
+    type = core_filters.MappedChoiceFilter(
+        choices=(
+            ('OpenStack', 'OpenStack'),
+            ('DigitalOcean', 'DigitalOcean'),
+            ('Amazon', 'Amazon'),
+            ('Jira', 'Jira'),
+            ('GitLab', 'GitLab'),
+            ('Oracle', 'Oracle'),
+        ),
+        choice_mappings={
+            'OpenStack': models.ServiceSettings.Types.OpenStack,
+            'DigitalOcean': models.ServiceSettings.Types.DigitalOcean,
+            'Amazon': models.ServiceSettings.Types.Amazon,
+            'Jira': models.ServiceSettings.Types.Jira,
+            'GitLab': models.ServiceSettings.Types.GitLab,
+            'Oracle': models.ServiceSettings.Types.Oracle,
+        },
+    )
+    state = core_filters.MappedChoiceFilter(
+        choices=(
+            ('sync_scheduled', 'Sync Scheduled'),
+            ('syncing', 'Syncing'),
+            ('in_sync', 'In Sync'),
+            ('erred', 'Erred'),
+        ),
+        choice_mappings={
+            'sync_scheduled': core_models.SynchronizationStates.SYNCING_SCHEDULED,
+            'syncing': core_models.SynchronizationStates.SYNCING,
+            'in_sync': core_models.SynchronizationStates.IN_SYNC,
+            'erred': core_models.SynchronizationStates.ERRED,
+        },
+    )
 
     class Meta(object):
         model = models.ServiceSettings
         fields = ('name', 'type', 'state')
 
 
-class ServiceSettingsViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.ServiceSettings.objects.filter(shared=True)
+class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
+                             mixins.UpdateModelMixin,
+                             mixins.ListModelMixin,
+                             viewsets.GenericViewSet):
+    queryset = models.ServiceSettings.objects.filter()
     serializer_class = serializers.ServiceSettingsSerializer
-    permission_classes = (rf_permissions.IsAuthenticated,)
-    filter_backends = (rf_filters.DjangoFilterBackend,)
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = ServiceSettingsFilter
     lookup_field = 'uuid'
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        send_task('structure', 'sync_service_settings')(instance.uuid.hex, initial=True)
+
+
+class ServiceViewSet(viewsets.GenericViewSet):
+
+    def list(self, request):
+        return Response({k: reverse(v, request=request)
+                        for k, v in serializers.SUPPORTED_SERVICES.items()})
 
 
 class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):

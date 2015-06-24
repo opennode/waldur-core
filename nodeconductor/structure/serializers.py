@@ -3,16 +3,25 @@ from __future__ import unicode_literals
 from django.core.validators import RegexValidator
 from django.contrib import auth
 from django.db import models as django_models
+from django.conf import settings
+from django.utils import six
 from rest_framework import serializers, exceptions
 
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
+from nodeconductor.core.tasks import send_task
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, filters
 from nodeconductor.structure.filters import filter_queryset_for_user
 
+
+# The regestry of all supported services
+# TODO: Move OpenstackSettings to ServiceSettings and remove this hardcoding
+SUPPORTED_SERVICES = {
+    'OpenStack': 'cloud-list',
+}
 
 User = auth.get_user_model()
 
@@ -148,11 +157,29 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         return super(ProjectSerializer, self).update(instance, validated_data)
 
 
+class DefaultImageField(serializers.ImageField):
+    def to_representation(self, image):
+        if image:
+            return super(DefaultImageField, self).to_representation(image)
+        else:
+            return settings.NODECONDUCTOR.get('DEFAULT_CUSTOMER_LOGO')
+
+
+class CustomerImageSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField()
+
+    class Meta:
+        model = models.Customer
+        fields = ['image']
+
+
 class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer):
     projects = serializers.SerializerMethodField()
     project_groups = serializers.SerializerMethodField()
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
+    image = DefaultImageField(required=False, read_only=True)
+    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.Customer
@@ -163,6 +190,8 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             'projects', 'project_groups',
             'owners',
             'registration_code',
+            'quotas',
+            'image'
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -171,10 +200,10 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
     def _get_filtered_data(self, objects, serializer):
         try:
             user = self.context['request'].user
+            queryset = filter_queryset_for_user(objects, user)
         except (KeyError, AttributeError):
-            return None
+            queryset = objects.all()
 
-        queryset = filter_queryset_for_user(objects, user)
         serializer_instance = serializer(queryset, many=True, context=self.context)
         return serializer_instance.data
 
@@ -188,7 +217,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer):
-    projects = BasicProjectSerializer(many=True, read_only=True)
+    projects = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.ProjectGroup
@@ -224,6 +253,21 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin,
             fields['customer'].read_only = True
 
         return fields
+
+    def _get_filtered_data(self, objects, serializer):
+        # XXX: this method completely duplicates _get_filtered_data in CustomerSerializer.
+        # We need to create mixin to follow DRY principle. (NC-578)
+        try:
+            user = self.context['request'].user
+            queryset = filter_queryset_for_user(objects, user)
+        except (KeyError, AttributeError):
+            queryset = objects.all()
+
+        serializer_instance = serializer(queryset, many=True, context=self.context)
+        return serializer_instance.data
+
+    def get_projects(self, obj):
+        return self._get_filtered_data(obj.projects.all(), BasicProjectSerializer)
 
 
 class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
@@ -567,9 +611,11 @@ class PasswordSerializer(serializers.Serializer):
     ])
 
 
-class ServiceSettingsSerializer(serializers.HyperlinkedModelSerializer):
+class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
+                                core_serializers.AugmentedSerializerMixin,
+                                serializers.HyperlinkedModelSerializer):
 
-    type = serializers.ReadOnlyField(source='get_type_display')
+    customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
     state = MappedChoiceField(
         choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
@@ -577,20 +623,73 @@ class ServiceSettingsSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.ServiceSettings
-        fields = ('url', 'uuid', 'name', 'type', 'state')
+        fields = (
+            'url', 'uuid', 'name', 'type', 'state', 'shared',
+            'backend_url', 'username', 'password', 'token',
+            'customer', 'customer_name', 'customer_native_name',
+            'dummy'
+        )
+        protected_fields = ('type', 'customer')
+        read_only_fields = ('shared', 'state')
+        write_only_fields = ('backend_url', 'username', 'token', 'password')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
+            'customer': {'lookup_field': 'uuid'},
         }
 
+    def get_filtered_field_names(self):
+        return 'customer',
 
-class BaseServiceSerializer(PermissionFieldFilteringMixin,
+    def get_related_paths(self):
+        return 'customer',
+
+    def get_fields(self):
+        fields = super(ServiceSettingsSerializer, self).get_fields()
+        request = self.context['request']
+
+        if isinstance(self.instance, self.Meta.model):
+            perm = 'structure.change_%s' % self.Meta.model._meta.model_name
+            if request.user.has_perms([perm], self.instance):
+                for field in 'backend_url', 'username', 'token':
+                    fields[field].write_only = False
+
+        if request.method == 'GET':
+            fields['type'] = serializers.ReadOnlyField(source='get_type_display')
+
+        return fields
+
+
+class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
+    TYPES = dict(models.ServiceSettings.Types.CHOICES)
+
+    def __new__(cls, name, bases, args):
+        service_type = args.get('SERVICE_TYPE', NotImplemented)
+        if service_type is not NotImplemented:
+            bansename = args['Meta'].view_name.split('-')[0]
+            SUPPORTED_SERVICES[cls.TYPES[service_type]] = '%s-list' % bansename
+        return super(ServiceSerializerMetaclass, cls).__new__(cls, name, bases, args)
+
+
+class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
+                            PermissionFieldFilteringMixin,
                             core_serializers.AugmentedSerializerMixin,
-                            serializers.HyperlinkedModelSerializer):
+                            serializers.HyperlinkedModelSerializer)):
 
     SERVICE_TYPE = NotImplemented
 
     projects = BasicProjectSerializer(many=True, read_only=True)
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
+    settings = serializers.HyperlinkedRelatedField(
+        queryset=models.ServiceSettings.objects.filter(shared=True),
+        view_name='servicesettings-detail',
+        lookup_field='uuid',
+        allow_null=True)
+
+    backend_url = serializers.CharField(max_length=200, allow_null=True, write_only=True, required=False)
+    username = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
+    password = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
+    token = serializers.CharField(allow_null=True, write_only=True, required=False)
+    dummy = serializers.BooleanField(write_only=True, required=False)
 
     class Meta(object):
         model = NotImplemented
@@ -600,8 +699,12 @@ class BaseServiceSerializer(PermissionFieldFilteringMixin,
             'url',
             'name', 'projects', 'settings',
             'customer', 'customer_name', 'customer_native_name',
+            'backend_url', 'username', 'password', 'token', 'dummy',
         )
-        protected_fields = 'customer', 'settings'
+        protected_fields = (
+            'customer', 'settings',
+            'backend_url', 'username', 'password', 'token', 'dummy'
+        )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
@@ -616,14 +719,44 @@ class BaseServiceSerializer(PermissionFieldFilteringMixin,
 
     def get_fields(self):
         fields = super(BaseServiceSerializer, self).get_fields()
-        fields['settings'].queryset = fields['settings'].queryset.filter(type=self.SERVICE_TYPE)
+        if self.SERVICE_TYPE is not NotImplemented:
+            fields['settings'].queryset = fields['settings'].queryset.filter(type=self.SERVICE_TYPE)
         return fields
+
+    def validate_empty_values(self, data):
+        # required=False is ignored for settings FK, deal with it here
+        if 'settings' not in data:
+            data['settings'] = None
+        return super(BaseServiceSerializer, self).validate_empty_values(data)
 
     def validate(self, attrs):
         user = self.context['user']
         customer = attrs.get('customer') or self.instance.customer
-        if not user.is_staff and not customer.has_user(user, models.CustomerRole.OWNER):
-            raise exceptions.PermissionDenied()
+        settings = attrs.get('settings')
+        if not user.is_staff:
+            if not customer.has_user(user, models.CustomerRole.OWNER):
+                raise exceptions.PermissionDenied()
+            if settings and not settings.shared and attrs.get('customer') != settings.customer:
+                raise serializers.ValidationError('Customer must match settings customer.')
+
+        if self.context['request'].method == 'POST':
+            settings_fields = 'backend_url', 'username', 'password', 'token'
+            create_settings = any([attrs.get(f) for f in settings_fields])
+            if not settings and not create_settings:
+                raise serializers.ValidationError(
+                    "Either service settings or credentials must be supplied.")
+
+            if create_settings:
+                settings_fields += 'dummy',
+                args = {f: attrs.pop(f) for f in settings_fields if f in attrs}
+                settings = models.ServiceSettings.objects.create(
+                    type=self.SERVICE_TYPE,
+                    name=attrs['name'],
+                    customer=customer,
+                    **args)
+
+                send_task('structure', 'sync_service_settings')(settings.uuid.hex, initial=True)
+                attrs['settings'] = settings
 
         return attrs
 

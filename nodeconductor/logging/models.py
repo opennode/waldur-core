@@ -37,3 +37,7 @@ class Alert(TimeStampedModel):
     def close(self):
         self.closed = timezone.now()
         self.save()
+
+    def acknowledge(self):
+        self.acknowledged = True
+        self.save()

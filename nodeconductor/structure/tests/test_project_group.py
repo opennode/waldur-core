@@ -124,9 +124,9 @@ class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
         }
         project_groups[2].add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
-        admined_project = factories.ProjectFactory(customer=self.customer)
-        admined_project.add_user(self.users['admin'], ProjectGroupRole.MANAGER)
-        admined_project.project_groups.add(*self.project_groups['admin'])
+        self.admined_project = factories.ProjectFactory(customer=self.customer)
+        self.admined_project.add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
+        self.admined_project.project_groups.add(*self.project_groups['admin'])
 
         managed_project = factories.ProjectFactory(customer=self.customer)
         managed_project.add_user(self.users['manager'], ProjectRole.MANAGER)
@@ -280,6 +280,28 @@ class ProjectGroupApiPermissionTest(UrlResolverMixin, test.APISimpleTestCase):
 
     def test_user_can_list_project_groups_where_he_is_manager(self):
         self._ensure_list_access_allowed('group_manager')
+
+    def test_project_administrator_can_not_see_not_his_projects_with_project_group(self):
+        visible_project_group = self.project_groups['admin'][0]
+        unvisible_project = factories.ProjectFactory()
+        visible_project_group.projects.add(unvisible_project)
+
+        self.client.force_authenticate(user=self.users['admin'])
+        response = self.client.get(factories.ProjectGroupFactory.get_url(visible_project_group))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        visible_projects_urls = [p['url'] for p in response.data['projects']]
+        self.assertNotIn(factories.ProjectFactory.get_url(unvisible_project), visible_projects_urls)
+
+    def test_project_administrator_can_see_his_projects_with_project_group(self):
+        visible_project_group = self.project_groups['admin'][0]
+
+        self.client.force_authenticate(user=self.users['admin'])
+        response = self.client.get(factories.ProjectGroupFactory.get_url(visible_project_group))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        visible_projects_urls = [p['url'] for p in response.data['projects']]
+        self.assertIn(factories.ProjectFactory.get_url(self.admined_project), visible_projects_urls)
 
     def test_user_cannot_list_project_groups_he_has_no_role_in(self):
         self._ensure_list_access_forbidden('owner')

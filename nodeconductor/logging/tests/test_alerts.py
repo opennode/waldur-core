@@ -161,3 +161,38 @@ class AlertsCreateUpdateDeleteTest(test.APITransactionTestCase):
             alert_type=self.alert.alert_type,
             closed__isnull=False).exists()
         )
+
+
+class TestAlertActions(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.project = structure_factories.ProjectFactory()
+        self.staff = get_user_model().objects.create_superuser(
+            username='staff', password='staff', email='staff@example.com')
+        self.alert = factories.AlertFactory(scope=self.project)
+        self.admin = structure_factories.UserFactory()
+        self.project.add_user(self.admin, structure_models.ProjectRole.ADMINISTRATOR)
+
+    def test_alert_can_be_closed_by_staff(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.post(factories.AlertFactory.get_url(self.alert, 'close'))
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        reread_alert = models.Alert.objects.get(pk=self.alert.pk)
+        self.assertTrue(reread_alert.closed is not None)
+
+    def test_alert_can_not_be_closed_by_project_administrator(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(factories.AlertFactory.get_url(self.alert, 'close'))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        reread_alert = models.Alert.objects.get(pk=self.alert.pk)
+        self.assertTrue(reread_alert.closed is None)
+
+    def test_alert_can_be_marked_as_acknowledged_by_project_administrator(self):
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(factories.AlertFactory.get_url(self.alert, 'acknowledge'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        reread_alert = models.Alert.objects.get(pk=self.alert.pk)
+        self.assertTrue(reread_alert.acknowledged)

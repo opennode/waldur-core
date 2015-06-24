@@ -27,10 +27,11 @@ install_requires = [
     'django-polymorphic>=0.7',
     'django-uuidfield==0.5.0',
     'djangorestframework>=3.1.0,<3.2.0',
-    'djangosaml2==0.12.0.dev0',
+    'djangosaml2==0.13.0',
     'elasticsearch>=1.0.0,<2.0.0',
     'jira>=0.47',
     'jsonfield==1.0.0',
+    'Pillow>=2.0.0',
     'python-ceilometerclient==1.0.10',
     'python-cinderclient==1.0.9',
     'python-glanceclient==0.12.0',
@@ -46,7 +47,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.55.1',
+    version='0.56.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
@@ -54,9 +55,6 @@ setup(
     long_description=open('README.rst').read(),
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     install_requires=install_requires,
-    dependency_links=[
-        'https://bitbucket.org/opennode/djangosaml2/downloads',
-    ],
     extras_require={
         'dev': dev_requires,
         'tests': tests_requires,

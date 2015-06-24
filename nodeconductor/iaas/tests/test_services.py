@@ -10,11 +10,11 @@ from nodeconductor.structure.tests import factories as structure_factories
 
 
 def _get_service_url(service):
-    return 'http://testserver' + reverse('service-detail', kwargs={'uuid': service.uuid})
+    return 'http://testserver' + reverse('resource-detail', kwargs={'uuid': service.uuid})
 
 
 def _get_service_list_url():
-    return 'http://testserver' + reverse('service-list')
+    return 'http://testserver' + reverse('resource-list')
 
 
 def _service_to_dict(service):
@@ -181,4 +181,4 @@ class ServiceEventsTest(test.APISimpleTestCase):
 
     # Helper methods
     def _get_service_events_url(self, service):
-        return 'http://testserver' + reverse('service-detail', kwargs={'uuid': service.uuid}) + 'events/'
+        return _get_service_url(service) + 'events/'
