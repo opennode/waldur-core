@@ -34,6 +34,7 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 from nodeconductor.iaas.backend import dummy as dummy_clients
@@ -573,6 +574,7 @@ class OpenStackBackend(OpenStackClient):
 
         nc_security_groups = SecurityGroup.objects.filter(
             cloud_project_membership=membership,
+            state__in=SynchronizationStates.STABLE_STATES,
         )
 
         try:
@@ -614,7 +616,7 @@ class OpenStackBackend(OpenStackClient):
         # creating nonexistent and unsynchronized security groups
         for nc_group in nonexistent_groups:
             try:
-                self.push_security_group(nc_group, nova=nova)
+                self.create_security_group(nc_group, nova=nova)
             except CloudBackendError, e:
                 pass
 

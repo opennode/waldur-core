@@ -72,7 +72,6 @@ PERMISSION_LOGICS = (
              structure_models.ProjectRole.ADMINISTRATOR},
             {'security_group__cloud_project_membership__project__project_groups__roles__permission_group__user':
              structure_models.ProjectGroupRole.MANAGER},
-
         ],
 
         any_permission=True,
