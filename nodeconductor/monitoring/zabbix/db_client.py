@@ -36,8 +36,8 @@ class ZabbixDBClient(object):
 
         'memory_util': {
             'key': 'kvm.vm.memory_util',
-            'table': 'history_uint',
-            'convert_to_mb': True
+            'table': 'history',
+            'convert_to_mb': False
         },
 
         'storage': {
