@@ -202,3 +202,29 @@ class SecurityGroupDeleteTest(test.APITransactionTestCase):
         response = self.client.delete(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+
+class SecurityGroupRetreiveTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.admin = structure_factories.UserFactory()
+        self.user = structure_factories.UserFactory()
+        self.staff = structure_factories.UserFactory(is_staff=True)
+
+        self.project = structure_factories.ProjectFactory()
+        self.project.add_user(self.admin, structure_models.ProjectRole.ADMINISTRATOR)
+        self.cloud_project_membership = factories.CloudProjectMembershipFactory(project=self.project)
+        self.security_group = factories.SecurityGroupFactory(cloud_project_membership=self.cloud_project_membership)
+
+        self.url = factories.SecurityGroupFactory.get_url(self.security_group)
+
+    def test_user_can_access_security_groups_of_project_instances_he_is_admin_of(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_cannot_access_security_groups_of_instances_not_connected_to_him(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
