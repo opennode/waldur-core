@@ -159,6 +159,10 @@ class NestedCloudProjectMembershipSerializer(structure_serializers.PermissionFie
             'project': {'lookup_field': 'uuid'},
         }
 
+    def run_validators(self, value):
+        # No need to validate any fields except 'url' that is validated in to_internal_value method
+        pass
+
     def get_filtered_field_names(self):
         return 'project', 'cloud'
 

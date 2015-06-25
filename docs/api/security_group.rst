@@ -82,17 +82,16 @@ Example of a request:
         "description": "description",
         "rules": [
             {
-                'protocol': 'tcp',
-                'from_port': 1,
-                'to_port': 10,
-                'cidr': 'cidr'
+                "protocol": "tcp",
+                "from_port": 1,
+                "to_port": 10,
+                "cidr": "10.1.1.0/24"
             },
             {
-                'protocol': 'udp',
-                'from_port': 10,
-                'to_port': 8000,
-                'cidr': 'cidr'
-
+                "protocol": "udp",
+                "from_port": 10,
+                "to_port": 8000,
+                "cidr": "10.1.1.0/24"
             }
         ],
         "cloud_project_membership": {
