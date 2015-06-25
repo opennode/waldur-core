@@ -27,6 +27,8 @@ The following is a list of supported quotas. All values are expected to be integ
 - ram - maximal size of ram for allocation. In MiB_.
 - storage - maximal size of storage for allocation. In MiB_.
 - vcpu - maximal number of virtual cores for allocation.
+- security_group_count - maximal number of created security groups.
+- security_group_rule_count - maximal number of created security groups rules.
 
 It is possible to update quotas by one or by submitting all the fields in one request. NodeConductor will attempt
 to update the provided quotas. Please note, that if provided quotas are conflicting with the backend
@@ -48,7 +50,9 @@ Example of a valid request (token is user specific):
         "max_instances": 30,
         "ram": 100000,
         "storage": 1000000,
-        "vcpu": 30
+        "vcpu": 30,
+        "security_group_count": 100,
+        "security_group_rule_count": 100
     }
 
 Response code of a successful request is **202 ACCEPTED**. In case link is in a non-stable status, the response would

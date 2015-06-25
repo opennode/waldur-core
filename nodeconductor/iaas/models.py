@@ -106,7 +106,7 @@ class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink)
     """
     This model represents many to many relationships between project and cloud
     """
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances', 'security_group_count', 'security_group_rule_count']
     # This name will be used by generic relationships to membership model for URL creation
     DEFAULT_URL_NAME = 'cloudproject_membership'
 
@@ -153,7 +153,7 @@ class CloudProjectMember(models.Model):
 
 
 @python_2_unicode_compatible
-class Flavor(core_models.UuidMixin, core_models.NameMixin, models.Model):
+class Flavor(LoggableMixin, core_models.UuidMixin, core_models.NameMixin, models.Model):
     """
     A preset of computing resources.
     """
@@ -211,6 +211,7 @@ class Image(models.Model):
 @python_2_unicode_compatible
 class Template(core_models.UuidMixin,
                core_models.UiDescribableMixin,
+               LoggableMixin,
                models.Model):
     """
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
@@ -261,6 +262,9 @@ class Template(core_models.UuidMixin,
 
     def __str__(self):
         return self.name
+
+    def get_log_fields(self):
+        return ('uuid', 'name', 'applicaiton_type', 'type', 'os', 'os_type',)
 
 
 @python_2_unicode_compatible
@@ -406,7 +410,7 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
     def get_log_fields(self):
         return (
             'uuid', 'name', 'type', 'cloud_project_membership', 'ram',
-            'cores', 'data_volume_size', 'system_volume_size', 'installation_state',
+            'cores', 'data_volume_size', 'system_volume_size', 'installation_state', 'template',
         )
 
 
@@ -495,6 +499,7 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
 class SecurityGroup(core_models.UuidMixin,
                     core_models.DescribableMixin,
                     core_models.NameMixin,
+                    core_models.SynchronizableMixin,
                     CloudProjectMember,
                     models.Model):
 

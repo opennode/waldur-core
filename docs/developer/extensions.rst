@@ -46,6 +46,6 @@ Example of a request:
     Host: example.com
 
     {
-        "backend_id": "4039243"
-        "service_project_link": "http://example.com/api/digitalocean-service-project-link/2/"
+        "backend_id": "4039243",
+        "project": "http://example.com/api/projects/e5f973af2eb14d2d8c38d62bcbaccb33/"
     }

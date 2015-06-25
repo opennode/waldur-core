@@ -110,13 +110,14 @@ class BillingBackend(object):
             else:
                 if product['name'] in used_names:
                     logger.warn("Product %s already exists in pricelist." % product['name'])
+                    pricelist_item = PriceList.objects.get(name=product['name'])
+                    pricelist_item.price = product['price']
+                    pricelist_item.backend_id = product['backend_id']
+                    pricelist_item.save()
                     continue
 
                 PriceList.objects.create(**product)
                 used_names.add(product['name'])
-
-        # Remove stale prices
-        map(lambda i: i.delete(), cur_prices.values())
 
     def get_invoice_items(self, invoice_id):
         return self.api.get_invoice_items(invoice_id)
