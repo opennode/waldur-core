@@ -18,6 +18,8 @@ class IssueSerializer(serializers.Serializer):
     assignee = UserSerializer(read_only=True)
     created = serializers.DateTimeField(read_only=True)
     comments = serializers.HyperlinkedIdentityField(view_name='issue-comments-list')
+    status = serializers.CharField(source='status.name', read_only=True)
+    resolution = serializers.CharField(source='resolution.name', read_only=True)
 
     def save(self, reporter):
         self.reporter = reporter

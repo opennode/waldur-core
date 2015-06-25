@@ -52,7 +52,7 @@ Example of a valid request (token is user specific):
         "storage": 1000000,
         "vcpu": 30,
         "security_group_count": 100,
-        "security_group_rule_count": 100,
+        "security_group_rule_count": 100
     }
 
 Response code of a successful request is **202 ACCEPTED**. In case link is in a non-stable status, the response would

@@ -301,10 +301,6 @@ class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):
         )
         super(HyperlinkedRelatedModelSerializer, self).__init__(**kwargs)
 
-    def run_validators(self, value):
-        # No need to validate any fields except 'url' that is validated in to_internal_value method
-        pass
-
     def to_internal_value(self, data):
         url_field = self.fields['url']
 
