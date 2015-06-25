@@ -106,11 +106,16 @@ class OpenStackClient(object):
                 self.keystone_session = self.backend.get_openstack_class(
                     'KeystoneSession', self.dummy)(auth=auth_plugin)
 
+            try:
+                # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+                self.keystone_session.get_token()
+            except keystone_exceptions.AuthorizationFailure as e:
+                six.reraise(CloudBackendError, e)
+
+            # Preserve session parameters
+            # Make sure session has been created first
             for opt in self.OPTIONS:
                 self[opt] = getattr(self.auth, opt)
-
-            # This will eagerly sign in throwing AuthorizationFailure on bad credentials
-            self.keystone_session.get_token()
 
         def __getattr__(self, name):
             return getattr(self.keystone_session, name)

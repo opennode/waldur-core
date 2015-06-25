@@ -277,10 +277,16 @@ class InstanceViewSet(mixins.CreateModelMixin,
                 'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
                 .order_by('-is_null', '-start_time')
 
-        # XXX: Implement filter field for filtering by list of GET parameters:
+        # XXX: Hack. This filtering should be refactored in NC-580
         installation_states = self.request.query_params.getlist('installation_state')
         if installation_states:
-            queryset = queryset.filter(installation_state__in=installation_states)
+            query = Q()
+            for installation_state in installation_states:
+                if installation_state == 'FAIL':
+                    query |= ~Q(state=models.Instance.States.ONLINE) | Q(installation_state=installation_state)
+                else:
+                    query |= Q(state=models.Instance.States.ONLINE, installation_state=installation_state)
+            queryset = queryset.filter(query)
 
         return queryset
 

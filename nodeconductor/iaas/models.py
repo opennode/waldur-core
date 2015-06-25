@@ -153,7 +153,7 @@ class CloudProjectMember(models.Model):
 
 
 @python_2_unicode_compatible
-class Flavor(core_models.UuidMixin, core_models.NameMixin, models.Model):
+class Flavor(LoggableMixin, core_models.UuidMixin, core_models.NameMixin, models.Model):
     """
     A preset of computing resources.
     """
@@ -408,6 +408,7 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
             'uuid', 'name', 'type', 'cloud_project_membership', 'ram',
             'cores', 'data_volume_size', 'system_volume_size', 'installation_state',
         )
+
 
 
 @python_2_unicode_compatible

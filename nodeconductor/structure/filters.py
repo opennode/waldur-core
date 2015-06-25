@@ -58,6 +58,15 @@ def filter_queryset_for_user(queryset, user):
     ) if q_object is not None]
 
     try:
+        # Add extra query which basically allows to
+        # additionally filter by some flag and ignore permissions
+        extra_q = getattr(permissions, 'extra_query')
+    except AttributeError:
+        pass
+    else:
+        q_objects.append(Q(**extra_q))
+
+    try:
         # Whether both customer and project filtering requested?
         any_of_q = reduce(or_, q_objects)
         return queryset.filter(any_of_q).distinct()
