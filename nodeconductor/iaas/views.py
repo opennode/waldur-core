@@ -924,7 +924,7 @@ class UsageStatsView(views.APIView):
         aggregate_model_name = request.query_params.get('aggregate', 'customer')
         if aggregate_model_name not in self.aggregate_models.keys():
             return Response(
-                'Get parameter "aggregate" can take only this values: ' % ', '.join(self.aggregate_models.keys()),
+                'Get parameter "aggregate" can take only this values: %s' % ', '.join(self.aggregate_models.keys()),
                 status=status.HTTP_400_BAD_REQUEST)
 
         # This filters out the things we group by (aka aggregate root) to those that can be seen
