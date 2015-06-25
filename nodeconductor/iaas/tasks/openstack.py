@@ -79,6 +79,7 @@ def openstack_update_security_group(session, security_group_uuid):
 
 
 @shared_task
+@track_openstack_session
 def openstack_delete_security_group(session, security_group_uuid):
     security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
     backend = security_group.cloud_project_membership.cloud.get_backend()
