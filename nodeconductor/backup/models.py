@@ -113,6 +113,8 @@ class BackupSchedule(core_models.UuidMixin,
 
         super(BackupSchedule, self).save(*args, **kwargs)
 
+    def get_log_fields(self):
+        return ('uuid', 'name', 'backup_source')
 
 @python_2_unicode_compatible
 class Backup(core_models.UuidMixin,
@@ -250,6 +252,9 @@ class Backup(core_models.UuidMixin,
 
     def __save(self, *args, **kwargs):
         return super(Backup, self).save(*args, **kwargs)
+
+    def get_log_fields(self):
+        return ('uuid', 'name', 'backup_source')
 
 
 class BackupStrategy(object):
