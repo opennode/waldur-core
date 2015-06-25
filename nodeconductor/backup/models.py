@@ -116,6 +116,7 @@ class BackupSchedule(core_models.UuidMixin,
     def get_log_fields(self):
         return ('uuid', 'name', 'backup_source')
 
+
 @python_2_unicode_compatible
 class Backup(core_models.UuidMixin,
              core_models.DescribableMixin,

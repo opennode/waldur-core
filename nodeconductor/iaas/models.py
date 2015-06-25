@@ -264,7 +264,7 @@ class Template(core_models.UuidMixin,
         return self.name
 
     def get_log_fields(self):
-        ('uuid', 'name', 'applicaiton_type', 'type', 'os', 'os_type',)
+        return ('uuid', 'name', 'applicaiton_type', 'type', 'os', 'os_type',)
 
 
 @python_2_unicode_compatible
