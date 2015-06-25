@@ -8,5 +8,6 @@ from .flavors import *
 from .iaas import *
 from .instance import *
 from .openstack import *
+from .security_groups import *
 from .services import *
 from .zabbix import *

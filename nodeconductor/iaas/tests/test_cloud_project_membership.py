@@ -7,8 +7,7 @@ from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.iaas import models, handlers, tasks
-from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.iaas import models, handlers
 from nodeconductor.iaas.tests import factories
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
@@ -98,6 +97,24 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
                 membership.save()
 
             self.assertEqual(membership.availability_zone, output_value)
+
+
+class CloudProjectMembershipActionsTest(test.APISimpleTestCase):
+
+    def setUp(self):
+        self.staff = structure_factories.UserFactory(is_staff=True)
+        self.cloud_project_membership = factories.CloudProjectMembershipFactory(state=SynchronizationStates.IN_SYNC)
+
+    @patch('nodeconductor.iaas.tasks.push_cloud_membership_quotas')
+    def test_staff_can_set_cloud_project_membership_quotas(self, mocked_task):
+        self.client.force_authenticate(self.staff)
+        url = factories.CloudProjectMembershipFactory.get_url(self.cloud_project_membership, 'set_quotas')
+        quotas_data = {'security_group_count': 100, 'security_group_rule_count': 100}
+        response = self.client.post(url, data=quotas_data)
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        mocked_task.delay.assert_called_once_with(self.cloud_project_membership.pk, quotas=quotas_data)
+
 
 # XXX: this have to be reworked to permissions test
 

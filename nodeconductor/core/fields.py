@@ -129,7 +129,7 @@ class JsonField(serializers.Field):
     """
 
     def to_representation(self, obj):
-        return obj
+        return obj if obj != "" else None
 
     def to_internal_value(self, data):
         try:

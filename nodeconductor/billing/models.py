@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 
 from nodeconductor.core import models as core_models
+from nodeconductor.logging.log import LoggableMixin
 
 
 @python_2_unicode_compatible
@@ -18,7 +19,7 @@ class PriceList(core_models.UuidMixin, core_models.DescribableMixin):
 
 
 @python_2_unicode_compatible
-class Invoice(core_models.UuidMixin):
+class Invoice(LoggableMixin, core_models.UuidMixin):
 
     class Permissions(object):
         customer_path = 'customer'
@@ -33,3 +34,6 @@ class Invoice(core_models.UuidMixin):
 
     def __str__(self):
         return "%s %.2f %s" % (self.date, self.amount, self.customer.name)
+
+    def get_log_fields(self):
+        return ('uuid', 'customer', 'amount', 'date', 'status')

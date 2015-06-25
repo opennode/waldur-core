@@ -104,6 +104,10 @@ class SecurityGroupFactory(factory.DjangoModelFactory):
             security_group = CloudProjectMembershipFactory()
         return 'http://testserver' + reverse('security_group-detail', kwargs={'uuid': security_group.uuid})
 
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('security_group-list')
+
 
 class SecurityGroupRuleFactory(factory.DjangoModelFactory):
     class Meta(object):
