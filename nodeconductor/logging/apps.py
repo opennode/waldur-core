@@ -8,7 +8,7 @@ from nodeconductor.logging import handlers, utils
 
 class EventsConfig(AppConfig):
     name = 'nodeconductor.logging'
-    verbose_name = 'NodeConductor Events'
+    verbose_name = 'NodeConductor Logging'
 
     def ready(self):
         for model in utils.get_loggable_models():
