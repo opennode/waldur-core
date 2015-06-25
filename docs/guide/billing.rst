@@ -11,8 +11,8 @@ At the moment, only WHMCS_ is supported as a backend.
 
 .. _WHMCS: http://www.whmcs.com/
 
-Configuration of integration
-++++++++++++++++++++++++++++
+Configuration of integration with WHMCS
++++++++++++++++++++++++++++++++++++++++
 
 Connecting NodeConductor with WHMCS means defining WHMCS API endpoint along with user credentials that have admin
 access. API access for the NodeConductor service must be enabled in WHMCS before connection can be established.
@@ -31,6 +31,8 @@ To setup a WHMCS integration, add a billing block of configuration as shown in t
         # credentials
         'username': 'Admin',
         'password': 'demo',
+        # currency pk in WHMCS used for price synchronisation
+        'currency': 1,
         # OpenStack service specific checks
         'openstack': {
             'invoice_meters': {
@@ -42,3 +44,13 @@ To setup a WHMCS integration, add a billing block of configuration as shown in t
             }
         }
     }
+
+Synchronisation with product prices of WHMCS
+++++++++++++++++++++++++++++++++++++++++++++
+
+NodeConductor can populate its pricelist based on the configured products in WHMCS.
+
+The following conventions are in place:
+
+- WHMCS product names and descriptions are taken as pricelist item names in NodeConductor.
+- WHMCS monthly price is taken as an item price.
