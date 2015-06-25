@@ -22,7 +22,8 @@ def track_openstack_session(task_fn):
 
 @shared_task
 def openstack_create_session(**kwargs):
-    return OpenStackBackend.create_session(**kwargs)
+    session = OpenStackBackend.create_session(**kwargs)
+    return session
 
 
 @shared_task
@@ -46,6 +47,7 @@ def nova_wait_for_server_status(session, server_id, status):
 
 
 @shared_task(is_heavy_task=True)
+@track_openstack_session
 def openstack_provision_instance(instance_uuid, backend_flavor_id,
                                  system_volume_id=None, data_volume_id=None):
     instance = Instance.objects.get(uuid=instance_uuid)
@@ -59,21 +61,26 @@ def openstack_provision_instance(instance_uuid, backend_flavor_id,
 
 
 @shared_task
-def openstack_create_security_group(security_group_uuid):
+@track_openstack_session
+def openstack_create_security_group(session, security_group_uuid):
     security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
     backend = security_group.cloud_project_membership.cloud.get_backend()
-    backend.create_security_group(security_group)
+    nova = OpenStackBackend.create_nova_client(session)
+    backend.create_security_group(security_group, nova=nova)
 
 
 @shared_task
-def openstack_update_security_group(security_group_uuid):
+@track_openstack_session
+def openstack_update_security_group(session, security_group_uuid):
     security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
     backend = security_group.cloud_project_membership.cloud.get_backend()
-    backend.update_security_group(security_group)
+    nova = OpenStackBackend.create_nova_client(session)
+    backend.update_security_group(security_group, nova=nova)
 
 
 @shared_task
-def openstack_delete_security_group(security_group_uuid):
+def openstack_delete_security_group(session, security_group_uuid):
     security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
     backend = security_group.cloud_project_membership.cloud.get_backend()
-    backend.delete_security_group(security_group.backend_id, security_group.cloud_project_membership)
+    nova = OpenStackBackend.create_nova_client(session)
+    backend.delete_security_group(security_group.backend_id, nova=nova)

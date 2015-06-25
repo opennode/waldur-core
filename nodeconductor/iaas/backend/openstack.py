@@ -243,23 +243,28 @@ class OpenStackClient(object):
 
         return cls.get_openstack_class('CeilometerClient', session.dummy)('2', **kwargs)
 
+
 class OpenStackBackend(OpenStackClient):
     """ NodeConductor interface to OpenStack.
         Test mode implies by creating an instance as OpenStackBackend(dummy=True)
     """
 
     @classmethod
-    def create_session(cls, keystone_url=None, instance_uuid=None, check_tenant=True, membership=None, **kwargs):
+    def create_session(
+            cls, keystone_url=None, instance_uuid=None, membership_id=None, check_tenant=True, membership=None,
+            **kwargs):
         """ Create OpenStack session using NodeConductor credentials """
 
         backend = cls(dummy=kwargs.get('dummy', False))
         if keystone_url:
             return backend.create_admin_session(keystone_url)
 
-        elif instance_uuid or membership:
+        elif instance_uuid or membership or membership_id:
             if instance_uuid:
                 instance = models.Instance.objects.get(uuid=instance_uuid)
                 membership = instance.cloud_project_membership
+            if membership_id:
+                membership = models.CloudProjectMembership.objects.get(id=membership_id)
             credentials = {
                 'auth_url': membership.cloud.auth_url,
                 'username': membership.username,
@@ -267,7 +272,6 @@ class OpenStackBackend(OpenStackClient):
             }
             if check_tenant:
                 credentials['tenant_id'] = membership.tenant_id
-
             return backend.create_tenant_session(credentials)
 
         raise CloudBackendError('Missing OpenStack credentials')
@@ -620,15 +624,7 @@ class OpenStackBackend(OpenStackClient):
             except CloudBackendError, e:
                 pass
 
-    def create_security_group(self, security_group, nova=None):
-        if nova is None:
-            try:
-                session = self.create_session(membership=security_group.cloud_project_membership, dummy=self.dummy)
-                nova = self.create_nova_client(session)
-            except keystone_exceptions.ClientException as e:
-                logger.exception('Failed to create nova client')
-                six.reraise(CloudBackendError, e)
-
+    def create_security_group(self, security_group, nova):
         logger.debug('About to create security group %s in backend', security_group.uuid)
         try:
             backend_security_group = nova.security_groups.create(name=security_group.name, description='')
@@ -641,17 +637,7 @@ class OpenStackBackend(OpenStackClient):
         else:
             logger.info('Security group %s successfully created in backend', security_group.uuid)
 
-    def delete_security_group(self, backend_id, cloud_project_membership=None, nova=None):
-        if nova is None:
-            if cloud_project_membership is None:
-                raise CloudBackendError('Can not delete security group from unknown tenant')
-            try:
-                session = self.create_session(membership=cloud_project_membership, dummy=self.dummy)
-                nova = self.create_nova_client(session)
-            except keystone_exceptions.ClientException as e:
-                logger.exception('Failed to create nova client')
-                six.reraise(CloudBackendError, e)
-
+    def delete_security_group(self, backend_id, nova):
         logger.debug('About to delete security group with id %s in backend', backend_id)
         try:
             nova.security_groups.delete(backend_id)
@@ -660,15 +646,7 @@ class OpenStackBackend(OpenStackClient):
         else:
             logger.info('Security group with id %s successfully deleted in backend', backend_id)
 
-    def update_security_group(self, security_group, nova=None):
-        if nova is None:
-            try:
-                session = self.create_session(membership=security_group.cloud_project_membership, dummy=self.dummy)
-                nova = self.create_nova_client(session)
-            except keystone_exceptions.ClientException as e:
-                logger.exception('Failed to create nova client')
-                six.reraise(CloudBackendError, e)
-
+    def update_security_group(self, security_group, nova):
         logger.debug('About to update security group %s in backend', security_group.uuid)
         try:
             backend_security_group = nova.security_groups.find(id=security_group.backend_id)
