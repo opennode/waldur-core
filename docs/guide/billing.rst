@@ -32,7 +32,8 @@ To setup a WHMCS integration, add a billing block of configuration as shown in t
         'username': 'Admin',
         'password': 'demo',
         # currency pk in WHMCS used for price synchronisation
-        'currency': 1,
+        'currency_code': 1,
+        'currency_name': 'USD',
         # OpenStack service specific checks
         'openstack': {
             'invoice_meters': {
