@@ -16,6 +16,7 @@ from jsonfield import JSONField
 from nodeconductor.core import models as core_models
 from nodeconductor.core import fields as core_fields
 from nodeconductor.backup import managers, exceptions, utils
+from nodeconductor.logging.log import LoggableMixin
 
 
 class BackupSourceAbstractModel(models.Model):
@@ -34,6 +35,7 @@ class BackupSourceAbstractModel(models.Model):
 @python_2_unicode_compatible
 class BackupSchedule(core_models.UuidMixin,
                      core_models.DescribableMixin,
+                     LoggableMixin,
                      BackupSourceAbstractModel):
     """
     Model representing a backup schedule for a generic object.
@@ -115,6 +117,7 @@ class BackupSchedule(core_models.UuidMixin,
 @python_2_unicode_compatible
 class Backup(core_models.UuidMixin,
              core_models.DescribableMixin,
+             LoggableMixin,
              BackupSourceAbstractModel):
     """
     Model representing a single instance of a backup.
