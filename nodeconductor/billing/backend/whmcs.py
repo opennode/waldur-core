@@ -23,6 +23,8 @@ class WHMCSAPI(object):
                 'api_url': 'http://demo.whmcs.com/includes/api.php',
                 'username': 'Admin',
                 'password': 'demo',
+                'currency_code': 1,
+                'currency_name': 'USD',
             }
     """
 
@@ -101,7 +103,7 @@ class WHMCSAPI(object):
 
             return data
 
-    def __init__(self, api_url=None, username=None, password=None, **kwargs):
+    def __init__(self, api_url=None, username=None, password=None, currency_code=1, currency_name='USD', **kwargs):
         if not all((api_url, username, password)):
             raise BillingBackendError(
                 "Missed billing credentials. They must be supplied explicitly "
@@ -110,6 +112,8 @@ class WHMCSAPI(object):
         self.api_url = api_url
         self.username = username
         self.password = password
+        self.currency_code = currency_code
+        self.currency_name = currency_name
 
     def _parse_date(self, date):
         try:
@@ -136,7 +140,7 @@ class WHMCSAPI(object):
         req = self.Request(self.api_url, data, resultset_path=resultset_path)
         return req.data()
 
-    def add_client(self, name=None, email=None, organization=None,**kwargs):
+    def add_client(self, name=None, email=None, organization=None, **kwargs):
         data = self.request(
             'addclient',
             firstname=name,
@@ -149,7 +153,9 @@ class WHMCSAPI(object):
             postcode='00000',
             country='OM',
             phonenumber='1234567',
-            password2=pwgen())
+            password2=pwgen(),
+            currency=self.currency_code,
+        )
 
         return data['clientid']
 
@@ -201,27 +207,9 @@ class WHMCSAPI(object):
         products = self.request('getproducts', resultset_path='products.product')
         for product in products:
             yield {'backend_id': product['pid'],
-                   'price': self.get_product_price(product['pid']),
+                   'price': product['pricing'][self.currency_name]['monthly'],
                    'description': product['description'] or '',
                    'name': product['name']}
-
-    def get_product_price(self, product_id):
-        price_url = self._get_backend_url(
-            '/feeds/productsinfo.php',
-            {'pid': product_id, 'get': 'price', 'billingcycle': 'monthly'})
-
-        response = requests.get(price_url, verify=False)
-        if response.status_code != 200:
-            raise BillingBackendError(
-                "%s. Can't retrieve product price from backend: %s" %
-                (response.status_code, response.text))
-
-        match = re.search(r'\$(-?[\d.]+)', response.text)
-        if not match:
-            raise BillingBackendError(
-                "Can't parse product price: %s" % response.text)
-
-        return match.groups()[0]
 
     def create_invoice(self, items, payment_method='banktransfer'):
         response = self.request('createinvoice', paymentmethod=payment_method, **items)

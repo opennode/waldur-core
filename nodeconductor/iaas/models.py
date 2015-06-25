@@ -211,6 +211,7 @@ class Image(models.Model):
 @python_2_unicode_compatible
 class Template(core_models.UuidMixin,
                core_models.UiDescribableMixin,
+               LoggableMixin,
                models.Model):
     """
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
@@ -261,6 +262,9 @@ class Template(core_models.UuidMixin,
 
     def __str__(self):
         return self.name
+
+    def get_log_fields(self):
+        return ('uuid', 'name', 'applicaiton_type', 'type', 'os', 'os_type',)
 
 
 @python_2_unicode_compatible
@@ -406,7 +410,7 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
     def get_log_fields(self):
         return (
             'uuid', 'name', 'type', 'cloud_project_membership', 'ram',
-            'cores', 'data_volume_size', 'system_volume_size', 'installation_state',
+            'cores', 'data_volume_size', 'system_volume_size', 'installation_state', 'template',
         )
 
 
