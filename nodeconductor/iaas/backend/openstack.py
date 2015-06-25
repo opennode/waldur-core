@@ -635,7 +635,7 @@ class OpenStackBackend(OpenStackClient):
             security_group.backend_id = backend_security_group.id
             security_group.save()
             self.push_security_group_rules(security_group, nova)
-        except nova_exceptions.ClientException:
+        except nova_exceptions.ClientException as e:
             logger.exception('Failed to create openstack security group with for %s in backend', security_group.uuid)
             six.reraise(CloudBackendError, e)
         else:
@@ -655,8 +655,9 @@ class OpenStackBackend(OpenStackClient):
         logger.debug('About to delete security group with id %s in backend', backend_id)
         try:
             nova.security_groups.delete(backend_id)
-        except nova_exceptions.ClientException:
+        except nova_exceptions.ClientException as e:
             logger.exception('Failed to remove openstack security group with id %s in backend', backend_id)
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Security group with id %s successfully deleted in backend', backend_id)
 
@@ -676,8 +677,9 @@ class OpenStackBackend(OpenStackClient):
                 nova.security_groups.update(
                     backend_security_group, name=security_group.name, description='')
             self.push_security_group_rules(security_group, nova)
-        except nova_exceptions.ClientException:
+        except nova_exceptions.ClientException as e:
             logger.exception('Failed to update security group %s in backend', security_group.uuid)
+            six.reraise(CloudBackendError, e)
         else:
             logger.info('Security group %s successfully updated in backend', security_group.uuid)
 
