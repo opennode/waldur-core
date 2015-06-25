@@ -34,6 +34,7 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 from nodeconductor.iaas.backend import dummy as dummy_clients
@@ -514,6 +515,10 @@ class OpenStackBackend(OpenStackClient):
             'ram': ('ram', self.get_backend_ram_size),
             'vcpu': ('cores', lambda x: x),
         }
+        neutron_quota_mapping = {
+            'security_group_count': ('security_group', lambda x: x),
+            'security_group_rule_count': ('security_group_rule', lambda x: x),
+        }
 
         def extract_backend_quotas(mapping):
             return {
@@ -525,8 +530,9 @@ class OpenStackBackend(OpenStackClient):
         # split quotas by components
         cinder_quotas = extract_backend_quotas(cinder_quota_mapping)
         nova_quotas = extract_backend_quotas(nova_quota_mapping)
+        neutron_quotas = extract_backend_quotas(neutron_quota_mapping)
 
-        if not (cinder_quotas or nova_quotas):
+        if not (cinder_quotas or nova_quotas or neutron_quotas):
             return
 
         try:
@@ -543,7 +549,14 @@ class OpenStackBackend(OpenStackClient):
                     nova = self.create_nova_client(session)
                     nova.quotas.update(membership.tenant_id, **nova_quotas)
             except nova_exceptions.ClientException:
-                logger.exception('Failed to update membership %s nova quotas %s', membership, quotas)
+                logger.exception('Failed to update membership %s nova quotas %s', membership, nova_quotas)
+
+            try:
+                if neutron_quotas:
+                    neutron = self.create_neutron_client(session)
+                    neutron.update_quota(membership.tenant_id, {'quota': neutron_quotas})
+            except neutron_exceptions.ClientException:
+                logger.exception('Failed to update membership %s neutron quotas %s', membership, neutron_quotas)
 
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to update membership %s quotas %s', membership, quotas)
@@ -561,6 +574,7 @@ class OpenStackBackend(OpenStackClient):
 
         nc_security_groups = SecurityGroup.objects.filter(
             cloud_project_membership=membership,
+            state__in=SynchronizationStates.STABLE_STATES,
         )
 
         try:
@@ -587,35 +601,87 @@ class OpenStackBackend(OpenStackClient):
 
         # deleting extra security groups
         for backend_group_id in extra_group_ids:
-            logger.debug('About to delete security group with id %s in backend', backend_group_id)
             try:
-                self.delete_security_group(backend_group_id, nova)
-            except nova_exceptions.ClientException:
-                logger.exception('Failed to remove openstack security group with id %s in backend', backend_group_id)
-            else:
-                logger.info('Security group with id %s successfully deleted in backend', backend_group_id)
+                self.delete_security_group(backend_group_id, nova=nova)
+            except CloudBackendError, e:
+                pass
 
         # updating unsynchronized security groups
         for nc_group in unsynchronized_groups:
-            logger.debug('About to update security group %s in backend', nc_group.uuid)
             try:
-                self.update_security_group(nc_group, nova)
-                self.push_security_group_rules(nc_group, nova)
-            except nova_exceptions.ClientException:
-                logger.exception('Failed to update security group %s in backend', nc_group.uuid)
-            else:
-                logger.info('Security group %s successfully updated in backend', nc_group.uuid)
+                self.update_security_group(nc_group, nova=nova)
+            except CloudBackendError, e:
+                pass
 
         # creating nonexistent and unsynchronized security groups
         for nc_group in nonexistent_groups:
-            logger.debug('About to create security group %s in backend', nc_group.uuid)
             try:
-                self.create_security_group(nc_group, nova)
-                self.push_security_group_rules(nc_group, nova)
-            except nova_exceptions.ClientException:
-                logger.exception('Failed to create openstack security group with for %s in backend', nc_group.uuid)
-            else:
-                logger.info('Security group %s successfully created in backend', nc_group.uuid)
+                self.create_security_group(nc_group, nova=nova)
+            except CloudBackendError, e:
+                pass
+
+    def create_security_group(self, security_group, nova=None):
+        if nova is None:
+            try:
+                session = self.create_session(membership=security_group.cloud_project_membership, dummy=self.dummy)
+                nova = self.create_nova_client(session)
+            except keystone_exceptions.ClientException as e:
+                logger.exception('Failed to create nova client')
+                six.reraise(CloudBackendError, e)
+
+        logger.debug('About to create security group %s in backend', security_group.uuid)
+        try:
+            backend_security_group = nova.security_groups.create(name=security_group.name, description='')
+            security_group.backend_id = backend_security_group.id
+            security_group.save()
+            self.push_security_group_rules(security_group, nova)
+        except nova_exceptions.ClientException as e:
+            logger.exception('Failed to create openstack security group with for %s in backend', security_group.uuid)
+            six.reraise(CloudBackendError, e)
+        else:
+            logger.info('Security group %s successfully created in backend', security_group.uuid)
+
+    def delete_security_group(self, backend_id, cloud_project_membership=None, nova=None):
+        if nova is None:
+            if cloud_project_membership is None:
+                raise CloudBackendError('Can not delete security group from unknown tenant')
+            try:
+                session = self.create_session(membership=cloud_project_membership, dummy=self.dummy)
+                nova = self.create_nova_client(session)
+            except keystone_exceptions.ClientException as e:
+                logger.exception('Failed to create nova client')
+                six.reraise(CloudBackendError, e)
+
+        logger.debug('About to delete security group with id %s in backend', backend_id)
+        try:
+            nova.security_groups.delete(backend_id)
+        except nova_exceptions.ClientException as e:
+            logger.exception('Failed to remove openstack security group with id %s in backend', backend_id)
+            six.reraise(CloudBackendError, e)
+        else:
+            logger.info('Security group with id %s successfully deleted in backend', backend_id)
+
+    def update_security_group(self, security_group, nova=None):
+        if nova is None:
+            try:
+                session = self.create_session(membership=security_group.cloud_project_membership, dummy=self.dummy)
+                nova = self.create_nova_client(session)
+            except keystone_exceptions.ClientException as e:
+                logger.exception('Failed to create nova client')
+                six.reraise(CloudBackendError, e)
+
+        logger.debug('About to update security group %s in backend', security_group.uuid)
+        try:
+            backend_security_group = nova.security_groups.find(id=security_group.backend_id)
+            if backend_security_group.name != security_group.name:
+                nova.security_groups.update(
+                    backend_security_group, name=security_group.name, description='')
+            self.push_security_group_rules(security_group, nova)
+        except nova_exceptions.ClientException as e:
+            logger.exception('Failed to update security group %s in backend', security_group.uuid)
+            six.reraise(CloudBackendError, e)
+        else:
+            logger.info('Security group %s successfully updated in backend', security_group.uuid)
 
     def pull_security_groups(self, membership):
         try:
@@ -745,6 +811,7 @@ class OpenStackBackend(OpenStackClient):
             session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
             cinder = self.create_cinder_client(session)
+            neutron = self.create_neutron_client(session)
         except keystone_exceptions.ClientException as e:
             logger.exception('Failed to create nova client or cinder client')
             six.reraise(CloudBackendError, e)
@@ -753,6 +820,7 @@ class OpenStackBackend(OpenStackClient):
         try:
             nova_quotas = nova.quotas.get(tenant_id=membership.tenant_id)
             cinder_quotas = cinder.quotas.get(tenant_id=membership.tenant_id)
+            neutron_quotas = neutron.show_quota(tenant_id=membership.tenant_id)['quota']
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
             logger.exception('Failed to get quotas for tenant %s', membership.tenant_id)
             six.reraise(CloudBackendError, e)
@@ -763,6 +831,8 @@ class OpenStackBackend(OpenStackClient):
         membership.set_quota_limit('vcpu', nova_quotas.cores)
         membership.set_quota_limit('max_instances', nova_quotas.instances)
         membership.set_quota_limit('storage', self.get_core_disk_size(cinder_quotas.gigabytes))
+        membership.set_quota_limit('security_group_count', neutron_quotas['security_group'])
+        membership.set_quota_limit('security_group_rule_count', neutron_quotas['security_group_rule'])
 
         # XXX Horrible hack -- to be removed once the Portal has moved to new quotas. NC-421
         membership.project.set_quota_limit('ram', self.get_core_ram_size(nova_quotas.ram))
@@ -785,13 +855,16 @@ class OpenStackBackend(OpenStackClient):
             snapshots = cinder.volume_snapshots.list()
             flavors = dict((flavor.id, flavor) for flavor in nova.flavors.list())
             instances = nova.servers.list()
+            security_groups = nova.security_groups.list()
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
             logger.exception(
-                'Failed to get volumes, snapshots, flavors or instances for tenant %s', membership.tenant_id)
+                'Failed to get volumes, snapshots, flavors, instances or security_groups for tenant %s',
+                membership.tenant_id)
             six.reraise(CloudBackendError, e)
         else:
             logger.info(
-                'Successfully got volumes, snapshots, flavors and instances for tenant %s', membership.tenant_id)
+                'Successfully got volumes, snapshots, flavors, instances or security_groups for tenant %s',
+                membership.tenant_id)
 
         # ram and vcpu
         instance_flavor_ids = [instance.flavor['id'] for instance in instances]
@@ -812,6 +885,8 @@ class OpenStackBackend(OpenStackClient):
         membership.set_quota_usage('vcpu', vcpu)
         membership.set_quota_usage('max_instances', len(instances))
         membership.set_quota_usage('storage', sum([self.get_core_disk_size(v.size) for v in volumes + snapshots]))
+        membership.set_quota_usage('security_group_count', len(security_groups))
+        membership.set_quota_usage('security_group_rule_count', len(sum([sg.rules for sg in security_groups], [])))
 
     def pull_floating_ips(self, membership):
         logger.debug('Pulling floating ips for membership %s', membership.id)
@@ -1735,19 +1810,6 @@ class OpenStackBackend(OpenStackClient):
     # Helper methods
     def get_floating_ips(self, tenant_id, neutron):
         return neutron.list_floatingips(tenant_id=tenant_id)['floatingips']
-
-    def create_security_group(self, security_group, nova):
-        backend_security_group = nova.security_groups.create(name=security_group.name, description='')
-        security_group.backend_id = backend_security_group.id
-        security_group.save()
-
-    def update_security_group(self, security_group, nova):
-        backend_security_group = nova.security_groups.find(id=security_group.backend_id)
-        if backend_security_group.name != security_group.name:
-            nova.security_groups.update(backend_security_group, name=security_group.name, description='')
-
-    def delete_security_group(self, backend_id, nova):
-        nova.security_groups.delete(backend_id)
 
     def push_security_group_rules(self, security_group, nova):
         backend_security_group = nova.security_groups.get(group_id=security_group.backend_id)

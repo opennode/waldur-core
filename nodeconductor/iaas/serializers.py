@@ -133,7 +133,44 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             raise UniqueConstraintError()
 
 
-class BasicSecurityGroupRuleSerializer(serializers.ModelSerializer):
+class NestedCloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilteringMixin,
+                                             core_serializers.AugmentedSerializerMixin,
+                                             core_serializers.HyperlinkedRelatedModelSerializer):
+
+    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
+    state = MappedChoiceField(
+        choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
+        choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
+        read_only=True,
+    )
+
+    class Meta(object):
+        model = models.CloudProjectMembership
+        fields = (
+            'url',
+            'project', 'project_name', 'project_uuid',
+            'cloud', 'cloud_name', 'cloud_uuid',
+            'quotas',
+            'state',
+        )
+        view_name = 'cloudproject_membership-detail'
+        extra_kwargs = {
+            'cloud': {'lookup_field': 'uuid'},
+            'project': {'lookup_field': 'uuid'},
+        }
+
+    def run_validators(self, value):
+        # No need to validate any fields except 'url' that is validated in to_internal_value method
+        pass
+
+    def get_filtered_field_names(self):
+        return 'project', 'cloud'
+
+    def get_related_paths(self):
+        return 'project', 'cloud'
+
+
+class NestedSecurityGroupRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.SecurityGroupRule
         fields = ('protocol', 'from_port', 'to_port', 'cidr')
@@ -141,16 +178,66 @@ class BasicSecurityGroupRuleSerializer(serializers.ModelSerializer):
 
 class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
 
-    rules = BasicSecurityGroupRuleSerializer(many=True, read_only=True)
-    cloud_project_membership = CloudProjectMembershipSerializer()
+    state = MappedChoiceField(
+        choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
+        choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
+        read_only=True,
+    )
+    rules = NestedSecurityGroupRuleSerializer(many=True)
+    cloud_project_membership = NestedCloudProjectMembershipSerializer(
+        queryset=models.CloudProjectMembership.objects.all())
 
     class Meta(object):
         model = models.SecurityGroup
-        fields = ('url', 'uuid', 'name', 'description', 'rules', 'cloud_project_membership')
+        fields = ('url', 'uuid', 'state', 'name', 'description', 'rules', 'cloud_project_membership')
+        read_only_fields = ('url', 'uuid')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
+            'cloud_project_membership': {'view_name': 'cloudproject_membership-detail'}
         }
         view_name = 'security_group-detail'
+
+    def validate(self, attrs):
+        if attrs.get('cloud_project_membership') and self.instance is not None:
+            raise serializers.ValidationError('Security group cloud_project_membership can not be updated')
+
+        if self.instance is None:
+            # Check security groups quotas on creation
+            cloud_project_membership = attrs.get('cloud_project_membership')
+            security_group_count_quota = cloud_project_membership.quotas.get(name='security_group_count')
+            if security_group_count_quota.is_exceeded(delta=1):
+                raise serializers.ValidationError('Can not create new security group - amount quota exceeded')
+            security_group_rule_count_quota = cloud_project_membership.quotas.get(name='security_group_rule_count')
+            if security_group_rule_count_quota.is_exceeded(delta=len(attrs.get('rules', []))):
+                raise serializers.ValidationError('Can not create new security group - rules amount quota exceeded')
+        else:
+            # Check security_groups quotas on update
+            cloud_project_membership = self.instance.cloud_project_membership
+            new_rules_count = len(attrs.get('rules', [])) - self.instance.rules.count()
+            if new_rules_count > 0:
+                security_group_rule_count_quota = cloud_project_membership.quotas.get(name='security_group_rule_count')
+                if security_group_rule_count_quota.is_exceeded(delta=new_rules_count):
+                    raise serializers.ValidationError(
+                        'Can not update new security group rules - rules amount quota exceeded')
+
+        return attrs
+
+    def create(self, validated_data):
+        rules = validated_data.pop('rules', [])
+        security_group = super(SecurityGroupSerializer, self).create(validated_data)
+        for rule in rules:
+            rule['group'] = security_group
+            models.SecurityGroupRule.objects.create(**rule)
+        return security_group
+
+    def update(self, instance, validated_data):
+        rules = validated_data.pop('rules', [])
+        security_group = super(SecurityGroupSerializer, self).update(instance, validated_data)
+        security_group.rules.all().delete()
+        for rule in rules:
+            rule['group'] = security_group
+            models.SecurityGroupRule.objects.create(**rule)
+        return security_group
 
 
 class IpMappingSerializer(serializers.HyperlinkedModelSerializer):
@@ -168,7 +255,7 @@ class IpMappingSerializer(serializers.HyperlinkedModelSerializer):
 class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
 
     name = serializers.ReadOnlyField(source='security_group.name')
-    rules = BasicSecurityGroupRuleSerializer(
+    rules = NestedSecurityGroupRuleSerializer(
         source='security_group.rules',
         many=True,
         read_only=True,
@@ -413,6 +500,8 @@ class CloudProjectMembershipQuotaSerializer(serializers.Serializer):
     max_instances = serializers.IntegerField(min_value=1, required=False)
     ram = serializers.IntegerField(min_value=1, required=False)
     vcpu = serializers.IntegerField(min_value=1, required=False)
+    security_group_count = serializers.IntegerField(min_value=1, required=False)
+    security_group_rule_count = serializers.IntegerField(min_value=1, required=False)
 
 
 class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMixin,
@@ -689,7 +778,7 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
-    cloud_project_membership = CloudProjectMembershipSerializer()
+    cloud_project_membership = NestedCloudProjectMembershipSerializer(read_only=True)
 
     class Meta:
         model = models.FloatingIP

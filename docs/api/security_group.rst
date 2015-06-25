@@ -39,6 +39,7 @@ Valid response example:
             "url": "http://example.com/api/security-groups/1b07456342b44dc49b80e7a63aed8572/",
             "uuid": "1b07456342b44dc49b80e7a63aed8572",
             "name": "http",
+            "state": "Syncing",
             "description": "Security group for web servers",
             "rules": [
                 {
@@ -58,3 +59,70 @@ Valid response example:
             }
         }
     ]
+
+
+Create a security group
+-----------------------
+
+To create a new security group, issue a POST with security group details to **/api/security-groups/**. This will
+create new security group and starts its synchronization with OpenStack.
+
+Example of a request:
+
+.. code-block:: http
+
+    POST /api/users/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "name": "Security group name",
+        "description": "description",
+        "rules": [
+            {
+                "protocol": "tcp",
+                "from_port": 1,
+                "to_port": 10,
+                "cidr": "10.1.1.0/24"
+            },
+            {
+                "protocol": "udp",
+                "from_port": 10,
+                "to_port": 8000,
+                "cidr": "10.1.1.0/24"
+            }
+        ],
+        "cloud_project_membership": {
+            "url": "http://127.0.0.1:8000/api/project-cloud-memberships/229/"
+        }
+    }
+
+
+Update a security group
+-----------------------
+
+Security group name, description and rules can be updated. To execute update request make PATCH request with details
+to **/api/security-groups/<security-group-uuid>/**. This will update security group in database and starts its
+synchronization with OpenStack.
+
+    .. code-block:: http
+
+    POST /api/users/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "name": "Security group new name",
+        "rules": [],
+    }
+
+
+Delete a security group
+-----------------------
+
+To schedule security group deletion - issue DELETE request against */api/security-groups/<security-group-uuid>/*.
+Endpoint will return 202 if deletion was scheduled successfully.

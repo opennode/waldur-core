@@ -106,7 +106,7 @@ class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink)
     """
     This model represents many to many relationships between project and cloud
     """
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances', 'security_group_count', 'security_group_rule_count']
     # This name will be used by generic relationships to membership model for URL creation
     DEFAULT_URL_NAME = 'cloudproject_membership'
 
@@ -495,6 +495,7 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
 class SecurityGroup(core_models.UuidMixin,
                     core_models.DescribableMixin,
                     core_models.NameMixin,
+                    core_models.SynchronizableMixin,
                     CloudProjectMember,
                     models.Model):
 
