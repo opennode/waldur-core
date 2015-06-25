@@ -32,7 +32,7 @@ def resize_flavor(instance_uuid, flavor_uuid, transition_entity=None):
         nova_wait_for_server_status.s(server_id, 'SHUTOFF'),
     ).apply_async(
         link=flavor_change_succeeded.si(instance_uuid, flavor_uuid),
-        link_error=flavor_change_failed.si(instance_uuid),
+        link_error=flavor_change_failed.si(instance_uuid, flavor_uuid),
     )
 
 
@@ -51,8 +51,9 @@ def flavor_change_succeeded(instance_uuid, flavor_uuid, transition_entity=None):
 
 @shared_task
 @transition(Instance, 'set_erred')
-def flavor_change_failed(instance_uuid, transition_entity=None):
+def flavor_change_failed(instance_uuid, flavor_uuid, transition_entity=None):
     instance = transition_entity
+    flavor = instance.cloud_project_membership.cloud.flavors.get(uuid=flavor_uuid)
     logger.exception('Failed to change flavor of an instance %s', instance.uuid)
     event_logger.instance_flavor.error(
         'Virtual machine {instance_name} flavor change has failed.',

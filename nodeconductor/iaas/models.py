@@ -153,7 +153,7 @@ class CloudProjectMember(models.Model):
 
 
 @python_2_unicode_compatible
-class Flavor(core_models.UuidMixin, core_models.NameMixin, models.Model):
+class Flavor(LoggableMixin, core_models.UuidMixin, core_models.NameMixin, models.Model):
     """
     A preset of computing resources.
     """

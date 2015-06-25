@@ -96,6 +96,10 @@ class OpenStackClient(object):
         # TODO: Switch to token auth on libraries upgrade.
         OPTIONS = ('auth_ref', 'auth_url', 'username', 'password', 'tenant_id', 'tenant_name')
 
+        # Re-create session from credentials every time instead of tracking session key
+        # which doesn't work properly with currently packaged libraries anyway
+        RECREATE_SESSION = True
+
         def __init__(self, backend, ks_session=None, **credentials):
             self.dummy = self['dummy'] = backend.dummy
             self.backend = backend.__class__(dummy=backend.dummy)
@@ -106,23 +110,35 @@ class OpenStackClient(object):
                 self.keystone_session = self.backend.get_openstack_class(
                     'KeystoneSession', self.dummy)(auth=auth_plugin)
 
-            for opt in self.OPTIONS:
-                self[opt] = getattr(self.auth, opt)
+            try:
+                # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+                self.keystone_session.get_token()
+            except keystone_exceptions.AuthorizationFailure as e:
+                six.reraise(CloudBackendError, e)
 
-            # This will eagerly sign in throwing AuthorizationFailure on bad credentials
-            self.keystone_session.get_token()
+            # Preserve session parameters
+            # Make sure session has been created first
+            if self.RECREATE_SESSION:
+                for opt in credentials:
+                    self[opt] = credentials[opt]
+            else:
+                for opt in self.OPTIONS:
+                    self[opt] = getattr(self.auth, opt)
 
         def __getattr__(self, name):
             return getattr(self.keystone_session, name)
 
         @classmethod
         def factory(cls, backend, session):
-            auth_plugin = v2.Token(
-                auth_url=session['auth_url'],
-                token=session['auth_ref']['token']['id'])
-            ks_session = backend.get_openstack_class(
-                'KeystoneSession', backend.dummy)(auth=auth_plugin)
-            return cls(backend, ks_session=ks_session)
+            if cls.RECREATE_SESSION:
+                return cls(backend, **session)
+            else:
+                auth_plugin = v2.Token(
+                    auth_url=session['auth_url'],
+                    token=session['auth_ref']['token']['id'])
+                ks_session = backend.get_openstack_class(
+                    'KeystoneSession', backend.dummy)(auth=auth_plugin)
+                return cls(backend, ks_session=ks_session)
 
         def validate(self):
             expiresat = dateutil.parser.parse(self.auth.auth_ref['token']['expires'])
@@ -149,10 +165,10 @@ class OpenStackClient(object):
     @classmethod
     def recover_session(cls, session):
         """ Recover OpenStack session from serialized object """
-        if not session or not session.get('auth_ref'):
+        if not session or (not cls.Session.RECREATE_SESSION and not session.get('auth_ref')):
             raise CloudBackendError('Invalid OpenStack session')
 
-        backend = cls(dummy=session.get('dummy', False))
+        backend = cls(dummy=session.pop('dummy', False))
         return backend.Session.factory(backend, session)
 
     @classmethod
@@ -242,6 +258,7 @@ class OpenStackClient(object):
         }
 
         return cls.get_openstack_class('CeilometerClient', session.dummy)('2', **kwargs)
+
 
 class OpenStackBackend(OpenStackClient):
     """ NodeConductor interface to OpenStack.
