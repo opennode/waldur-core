@@ -22,8 +22,7 @@ def track_openstack_session(task_fn):
 
 @shared_task
 def openstack_create_session(**kwargs):
-    session = OpenStackBackend.create_session(**kwargs)
-    return session
+    return OpenStackBackend.create_session(**kwargs)
 
 
 @shared_task
