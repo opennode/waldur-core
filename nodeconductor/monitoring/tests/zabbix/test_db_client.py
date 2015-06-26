@@ -14,9 +14,9 @@ class ZabbixPublicApiTest(unittest.TestCase):
 
     def setUp(self):
         self.client = ZabbixDBClient()
-        self.client.zabbix_api_client.get_host_ids = Mock(return_value=[1])
 
     def test_get_item_stats_returns_time_segments(self):
+        self.client.zabbix_api_client.get_host_ids = Mock(return_value=[1])
         self.client.get_item_time_and_value_list = Mock(
             return_value=((1415912625L, 1L), (1415912626L, 1L), (1415912627L, 1L), (1415912628L, 1L)))
         start_timestamp = 1415912624L
@@ -36,8 +36,8 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.client.zabbix_api_client.get_host_ids.assert_called_once_with([instance])
 
     def test_get_item_stats_returns_empty_list_on_db_error(self):
+        self.client.zabbix_api_client.get_host_ids = Mock(return_value=[])
         self.client.get_item_time_and_value_list = Mock(side_effect=DatabaseError)
-
         self.assertEqual(self.client.get_item_stats([], 'cpu', 1, 10, 2), [])
 
 
