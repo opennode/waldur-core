@@ -73,6 +73,7 @@ class BasicUserSerializer(serializers.HyperlinkedModelSerializer):
 class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.Project
+        fields = ('url', 'uuid', 'name')
 
 
 class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
