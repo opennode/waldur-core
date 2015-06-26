@@ -322,7 +322,7 @@ class ZabbixDBClient(object):
             return segment_list
         except DatabaseError as e:
             logger.exception('Can not execute query the Zabbix DB.')
-            six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
+            return []
 
     def get_item_time_and_value_list(
             self, host_ids, item_keys, item_table, start_timestamp, end_timestamp, convert_to_mb):
