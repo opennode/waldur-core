@@ -255,6 +255,7 @@ class InstanceFactory(factory.DjangoModelFactory):
     backend_id = factory.Sequence(lambda n: 'instance-id%s' % n)
 
     agreed_sla = Decimal('99.9')
+    type = factory.Iterator([models.Instance.Services.IAAS, models.Instance.Services.PAAS])
 
     @classmethod
     def get_url(self, instance=None, action=None):

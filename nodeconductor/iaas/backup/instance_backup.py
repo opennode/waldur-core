@@ -50,6 +50,7 @@ class InstanceBackupStrategy(BackupStrategy):
         metadata['system_snapshot_size'] = instance.system_volume_size
         metadata['data_snapshot_size'] = instance.data_volume_size
 
+
         return metadata
 
     @classmethod
@@ -154,5 +155,7 @@ class InstanceBackupStrategy(BackupStrategy):
             'key_name': instance.key_name,
             'key_fingerprint': instance.key_fingerprint,
             'agreed_sla': instance.agreed_sla,
+            'user_data': instance.user_data,
+            'type': instance.type,
         }
         return metadata
