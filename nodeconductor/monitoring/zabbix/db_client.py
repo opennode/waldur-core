@@ -302,11 +302,10 @@ class ZabbixDBClient(object):
             return self.get_storage_stats(instances, start_timestamp, end_timestamp, segments_count)
 
         host_ids = []
-        for instance in instances:
-            try:
-                host_ids.append(self.zabbix_api_client.get_host(instance)['hostid'])
-            except errors.ZabbixError:
-                logger.warn('Failed to get a Zabbix host for instance %s', instance.uuid)
+        try:
+            host_ids = self.zabbix_api_client.get_host_ids(instances)
+        except errors.ZabbixError:
+            logger.warning('Failed to get a Zabbix host for instances %s', instances)
 
         # return an empty list if no hosts were found
         if not host_ids:
@@ -354,12 +353,10 @@ class ZabbixDBClient(object):
 
     def get_storage_stats(self, instances, start_timestamp, end_timestamp, segments_count):
         host_ids = []
-        for instance in instances:
-            try:
-                host_data = self.zabbix_api_client.get_host(instance)
-                host_ids.append(int(host_data['hostid']))
-            except (errors.ZabbixError, ValueError, KeyError):
-                logger.warn('Failed to get Zabbix hostid for instance %s', instance.uuid)
+        try:
+            host_ids = self.zabbix_api_client.get_host_ids(instances)
+        except errors.ZabbixError:
+            logger.warning('Failed to get a Zabbix host for instances %s', instances)
 
         # return an empty list if no hosts were found
         if not host_ids:
