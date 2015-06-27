@@ -34,6 +34,7 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
             'system_volume_id', 'system_volume_size',
             'data_volume_id', 'data_volume_size',
             'agreed_sla',
+            'type', 'user_data',
         )
         lookup_field = 'uuid'
 

@@ -153,6 +153,11 @@ class UsageStatsTest(test.APITransactionTestCase):
         patched_cliend.get_item_stats = Mock(return_value=self.expected_datapoints)
         return patched_cliend
 
+    def test_invalid_aggregate_processed_correctly(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(self.url, {'aggregate': 'INVALID'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_staff_receive_stats_for_all_customers(self):
         self.client.force_authenticate(self.staff)
 
