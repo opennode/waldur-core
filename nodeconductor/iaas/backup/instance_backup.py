@@ -154,5 +154,7 @@ class InstanceBackupStrategy(BackupStrategy):
             'key_name': instance.key_name,
             'key_fingerprint': instance.key_fingerprint,
             'agreed_sla': instance.agreed_sla,
+            'user_data': instance.user_data,
+            'type': instance.type,
         }
         return metadata

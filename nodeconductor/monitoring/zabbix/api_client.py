@@ -67,6 +67,20 @@ class ZabbixApiClient(object):
             raise ZabbixError('There is no host for instance %s' % instance)
         return hosts[0]
 
+    @_exception_decorator('Can not get Zabbix hosts for instances {1}')
+    def get_host_ids(self, instances):
+        """
+        Return host IDs for instances by names
+        """
+        api = self.get_zabbix_api()
+        names = [self.get_host_name(instance) for instance in instances]
+        hosts = api.host.get(filter={'host': names})
+        if not hosts:
+            raise ZabbixError('There are no hosts for instances %s' % instances)
+        if len(hosts) != len(names):
+            logger.warning('There are no hosts for some instances')
+        return [host['hostid'] for host in hosts]
+
     @_exception_decorator('Can not create Zabbix host for instance {1}. {exception_name}: {exception}')
     def create_host(self, instance, warn_if_host_exists=True):
         api = self.get_zabbix_api()
