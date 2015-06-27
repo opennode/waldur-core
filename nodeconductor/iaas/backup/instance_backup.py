@@ -50,7 +50,6 @@ class InstanceBackupStrategy(BackupStrategy):
         metadata['system_snapshot_size'] = instance.system_volume_size
         metadata['data_snapshot_size'] = instance.data_volume_size
 
-
         return metadata
 
     @classmethod

@@ -1051,8 +1051,8 @@ class OpenStackBackend(OpenStackClient):
                     # Error log is expected to be addressed.
                     # TODO: consider failing provisioning/putting this check into serializer/pre-save.
                     # reset failed key name/fingerprint
-                    instance.key_name = None
-                    instance.key_fingerprint = None
+                    instance.key_name = ''  # has to be an empty string, if None will fail on MySQL backend
+                    instance.key_fingerprint = ''
                     backend_public_key = None
                 else:
                     backend_public_key = matching_keys[0]
