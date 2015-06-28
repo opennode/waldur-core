@@ -7,7 +7,6 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, router, DEFAULT_DB_ALIAS
 from django.utils.lru_cache import lru_cache
-import yaml
 
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.quotas import handlers as quotas_handlers
