@@ -45,6 +45,7 @@ class InvoiceFilter(django_filters.FilterSet):
             'year', 'month',
             'amount',
             'status',
+            'date',
         ]
         order_by = [
             'date',
