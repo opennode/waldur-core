@@ -655,40 +655,46 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
         self.instance = factories.InstanceFactory()
-        self.url = factories.InstanceFactory.get_url(self.instance, action='max_usage')
+        self.url = factories.InstanceFactory.get_url(self.instance, action='calculated_usage')
 
     def test_statistic_unavailable_if_instance_does_not_have_backend_id(self):
+        self.instance.backend_id = ''
+        self.instance.save()
+
         self.client.force_authenticate(self.staff)
+        response = self.client.get(self.url)
 
-        instance = factories.InstanceFactory(backend_id='')
-        url = factories.InstanceFactory.get_url(instance, action='max_usage')
-
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_zabbix_is_called_with_right_parameters(self):
         self.client.force_authenticate(self.staff)
         usage = [
-            (1415910025, 'cpu', 10),
-            (1415910025, 'memory', 200),
-            (1415910025, 'storage', 500),
+            (1415910025, 'cpu_util', 10),
+            (1415910025, 'memory_util', 22),
+            (1415910025, 'storage_root_util', 23),
+            (1415910025, 'storage_data_util', 33),
         ]
         expected = [
             {
-                'item': 'cpu',
+                'item': 'cpu_util',
                 'value': 10,
                 'timestamp': 1415910025
             },
             {
-                'item': 'memory',
-                'value': 200,
+                'item': 'memory_util',
+                'value': 22,
                 'timestamp': 1415910025
             },
             {
-                'item': 'storage',
-                'value': 500,
+                'item': 'storage_root_util',
+                'value': 23,
                 'timestamp': 1415910025
-            }
+            },
+            {
+                'item': 'storage_data_util',
+                'value': 33,
+                'timestamp': 1415910025
+            },
         ]
 
         with patch('nodeconductor.monitoring.zabbix.db_client.ZabbixDBClient.get_host_max_values') as client:
@@ -704,7 +710,8 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
 
             client.assert_called_once_with(
                 self.instance.backend_id,
-                ['cpu', 'memory', 'storage'],
+                ('cpu_util', 'memory_util', 'storage_root_util', 'storage_data_util'),
                 query_params['from'],
                 query_params['to'],
+                method='MAX',
             )

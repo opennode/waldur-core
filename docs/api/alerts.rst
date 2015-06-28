@@ -95,4 +95,13 @@ Acknowledge alert
 -----------------
 
 To acknowledge alert - run POST against */api/alerts/<alert_uuid>/acknowledge/*. No payload is required.
-All users that can see alerts can also acknowledge it.
+All users that can see alerts can also acknowledge it. If alert is already acknowledged endpoint will return error
+with code 409(conflict).
+
+
+Cancel alert acknowledgment
+---------------------------
+
+To cancel alert acknowledgment - run POST against */api/alerts/<alert_uuid>/cancel_acknowledgment/*.
+No payload is required. All users that can see alerts can also cancel it acknowledgment. If alert is not acknowledged
+endpoint will return error with code 409(conflict).
