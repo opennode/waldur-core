@@ -330,7 +330,8 @@ Answer will be list of points(dictionaries) with fields: 'from', 'to', 'value'
 Instance calculated usage statistics
 ------------------------------------
 
-To get max or min utilization of cpu, memory and storage of the instance within timeframe, make GET request to /api/instances/<uuid>/calculated_usage/ with optional parameters:
+To get max or min utilization of cpu, memory and storage of the instance within timeframe, make GET request to
+/api/instances/<uuid>/calculated_usage/ with optional parameters:
 
 - ?from=timestamp (default: now - one hour, example: 1415910025)
 - ?to=timestamp (default: now, example: 1415912625)
