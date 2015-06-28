@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 @shared_task(name='nodeconductor.iaas.create_security_group')
 @transition(SecurityGroup, 'begin_syncing')
 def create_security_group(security_group_uuid, transition_entity=None):
-    security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
+    security_group = transition_entity
 
     chain(
         openstack_create_session.s(
@@ -33,7 +33,7 @@ def create_security_group(security_group_uuid, transition_entity=None):
 @shared_task(name='nodeconductor.iaas.update_security_group')
 @transition(SecurityGroup, 'begin_syncing')
 def update_security_group(security_group_uuid, transition_entity=None):
-    security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
+    security_group = transition_entity
 
     chain(
         openstack_create_session.s(
@@ -49,7 +49,7 @@ def update_security_group(security_group_uuid, transition_entity=None):
 @shared_task(name='nodeconductor.iaas.delete_security_group')
 @transition(SecurityGroup, 'begin_syncing')
 def delete_security_group(security_group_uuid, transition_entity=None):
-    security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
+    security_group = transition_entity
 
     chain(
         openstack_create_session.s(
