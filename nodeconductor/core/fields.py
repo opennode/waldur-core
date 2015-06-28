@@ -11,6 +11,7 @@ import six
 from nodeconductor.core.validators import validate_cron_schedule
 from nodeconductor.core import utils
 
+
 # XXX: This field is left only for migrations compatibility.
 # It has to be removed after migrations compression
 class CronScheduleBaseField(models.CharField):
@@ -151,19 +152,3 @@ class TimestampField(serializers.Field):
             return utils.timestamp_to_datetime(value)
         except ValueError:
             raise serializers.ValidationError('This field should be valid UNIX timestamp.')
-
-
-class CommaSeparatedListField(serializers.Serializer):
-    default_error_messages = {
-        'not_a_list': 'Expected a list of comma separated values from "{choices}".'
-    }
-
-    def __init__(self, choices, **kwargs):
-        self.choices = choices
-        super(CommaSeparatedListField, self).__init__(**kwargs)
-
-    def to_internal_value(self, data):
-        items = [item.strip() for item in data.split(",")]
-        if any(item not in self.choices for item in items):
-            self.fail('not_a_list', choices=", ".join(self.choices))
-        return items

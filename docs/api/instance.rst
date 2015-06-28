@@ -327,36 +327,43 @@ To get information about instance usage, make GET request to /api/instances/<uui
 
 Answer will be list of points(dictionaries) with fields: 'from', 'to', 'value'
 
-Instance maximum usage statistics
----------------------------------
+Instance calculated usage statistics
+------------------------------------
 
-To get maximum utilization of cpu, memory and storage of the instance within timeframe, make GET request to /api/instances/<uuid>/max_usage/ with optional parameters:
+To get max or min utilization of cpu, memory and storage of the instance within timeframe, make GET request to /api/instances/<uuid>/calculated_usage/ with optional parameters:
 
 - ?from=timestamp (default: now - one hour, example: 1415910025)
 - ?to=timestamp (default: now, example: 1415912625)
-- ?items=list of comma separated values (default: cpu, memory, storage)
+- ?item=<item_name> (Available option: 'cpu_util', 'memory_util', 'storage_root_util', 'storage_data_util'.
+        Can be list. Default: all available options)
 
 Answer is list of dictionaries with fields item, value and timestamp, where item is one of:
 
-- cpu - virtual CPUs usage
-- memory - RAM usage, in MiB
-- storage - volume size, in MiB
+- cpu_util - CPU usage in percents
+- memory_util - memory usage in percents
+- storage_root_util - root storage usage in percents
+- storage_data_util - data storage usage in percents
 
 .. code-block:: javascript
     [
         {
-            "item": "cpu",
-            "value": 5,
-            "timestamp": 1415910025
+            "item": "cpu_util",
+            "value": 0,
+            "timestamp": 1435491012
         },
         {
-            "item": "memory",
-            "value": 5472,
-            "timestamp": 1415910025
+            "item": "storage_root_util",
+            "value": 92,
+            "timestamp": 1435491518
         },
         {
-            "item": "storage",
-            "value": 242535,
-            "timestamp": 1415910025
+            "item": "storage_data_util",
+            "value": 99,
+            "timestamp": 1435491518
+        },
+        {
+            "item": "memory_util",
+            "value": 32,
+            "timestamp": 1435491159
         }
     ]

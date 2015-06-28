@@ -478,14 +478,14 @@ class InstanceViewSet(mixins.CreateModelMixin,
         return Response(stats, status=status.HTTP_200_OK)
 
     @detail_route()
-    def max_usage(self, request, uuid):
+    def calculated_usage(self, request, uuid):
         """
-        Find maximum utilization of cpu, memory and storage of the instance within timeframe.
+        Find max or min utilization of cpu, memory and storage of the instance within timeframe.
         """
         instance = self.get_object()
-
         if not instance.backend_id:
-            raise Http404()
+            return Response({'detail': 'calculated usage is not available for instance without backend_id'},
+                            status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
         default_start = timezone.now() - datetime.timedelta(hours=1)
         time_interval_serializer = serializers.TimeIntervalSerializer(data={
@@ -497,12 +497,13 @@ class InstanceViewSet(mixins.CreateModelMixin,
         start = datetime_to_timestamp(time_interval_serializer.validated_data['start'])
         end = datetime_to_timestamp(time_interval_serializer.validated_data['end'])
 
-        serializer = serializers.MaximumUsageSerializer(data={
-            'items': request.query_params.get('items', 'cpu, memory, storage')
-        })
+        mapped = {
+            'items': request.query_params.getlist('item'),
+            'method': request.query_params.get('method'),
+        }
+        serializer = serializers.CalculatedUsageSerializer(data={k: v for k, v in mapped.items() if v})
         serializer.is_valid(raise_exception=True)
-
-        results = serializer.get_stats(instance.backend_id, start, end)
+        results = serializer.get_stats(instance, start, end)
         return Response(results, status=status.HTTP_200_OK)
 
 

@@ -248,7 +248,7 @@ class ZabbixDBClient(object):
             table_keys[table].append(key)
         return table_keys
 
-    def get_host_max_values(self, host, items, start_timestamp, end_timestamp):
+    def get_host_max_values(self, host, items, start_timestamp, end_timestamp, method='MAX'):
         """
         Returns name and maximum value for each item of host within timeframe.
         Executed as single SQL query on several tables.
@@ -256,7 +256,7 @@ class ZabbixDBClient(object):
         table_query = r"""
         SELECT clock,
                items.key_,
-               MAX(value)
+               {method}(value)
         FROM hosts,
              items,
              {table_name}
@@ -275,7 +275,8 @@ class ZabbixDBClient(object):
             if keys:
                 queries.append(table_query.format(
                     table_name=table,
-                    items_placeholder=sql_utils.make_list_placeholder(len(keys))
+                    items_placeholder=sql_utils.make_list_placeholder(len(keys)),
+                    method=method,
                 ))
                 params.append(host)
                 params.extend(keys)
