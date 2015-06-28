@@ -157,7 +157,7 @@ class AlertViewSet(mixins.CreateModelMixin,
             alert.acknowledge()
             return response.Response(status=status.HTTP_200_OK)
         else:
-            return response.Response({'detail': 'Action is already acknowledged'}, status=status.HTTP_409_CONFLICT)
+            return response.Response({'detail': 'Alert is already acknowledged'}, status=status.HTTP_409_CONFLICT)
 
         return response.Response(status=status.HTTP_200_OK)
 
@@ -168,4 +168,4 @@ class AlertViewSet(mixins.CreateModelMixin,
             alert.cancel_acknowledgment()
             return response.Response(status=status.HTTP_200_OK)
         else:
-            return response.Response({'detail': 'Action is not acknowledged'}, status=status.HTTP_409_CONFLICT)
+            return response.Response({'detail': 'Alert is not acknowledged'}, status=status.HTTP_409_CONFLICT)
