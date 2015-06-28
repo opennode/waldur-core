@@ -51,9 +51,19 @@ def create_invoices(customer_uuid, start_date, end_date):
         if membership.project.project_groups.exists():
             billing_category_name = "%s: %s" % (membership.project.project_groups.first().name, membership.project.name)
 
+        # populate billing data with content
         billing_data = {}
         for field in ['cpu', 'disk', 'memory', 'servers']:
             billing_data[field] = usage[field]
+
+        # process and aggregate license usage
+        server_usage = usage['server_usages']
+        for server in server_usage:
+            usage_duration = server['hours']  # round up to a full hour
+            server_uuid = server['instance_id']
+            connected_licenses = ['sample_license'] ## TODO: lookup_instance_licenses_from_event_log(server_uuid)
+            for license in connected_licenses:
+                billing_data[license] = billing_data.get(license, 0) + usage_duration
 
         # create invoices
         meters_mapping = settings.NODECONDUCTOR.get('BILLING')['openstack']['invoice_meters']

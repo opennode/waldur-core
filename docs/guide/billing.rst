@@ -4,7 +4,7 @@ Billing integration
 NodeConductor can integrate with billing systems and expose typical features via REST API and admin interface.
 At the moment, only WHMCS_ is supported as a backend.
 
-- pushing chargeback information from the services for invoice generation
+- pushing chargeback information from the services for invoice generation (based on resource and license consumption)
 - getting invoice data from the backend (including generated PDFs)
 - getting pricelists for products configured in the billing system.
 
@@ -37,11 +37,13 @@ To setup a WHMCS integration, add a billing block of configuration as shown in t
         # OpenStack service specific checks
         'openstack': {
             'invoice_meters': {
-                # nova meter name: (resource name, pricelist name, unit converter, unit)
+                # billing meter name: (resource name, pricelist name, unit converter, unit)
                 'cpu': ('CPU', 'cpu_hours', 'hours'),
                 'memory': ('Memory', 'ram_gb', 'GB/h'),
                 'disk': ('Storage', 'storage_gb', 'GB/h'),
                 'servers': ('Servers', 'server_num', ''),
+                # license type name, for convenience 'license_' prefix is suggested
+                'sample_license_type': ('Sample license title', 'license_name', 'hours')
             }
         }
     }

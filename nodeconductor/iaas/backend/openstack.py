@@ -1822,6 +1822,7 @@ class OpenStackBackend(OpenStackClient):
                 'disk': usage.total_local_gb_usage,
                 'memory': usage.total_memory_mb_usage / 1024,  # to get to GBs
                 'servers': len(usage.server_usages),
+                'server_usages': usage.server_usages,
             }
 
     # Helper methods
