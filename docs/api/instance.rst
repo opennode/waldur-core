@@ -335,8 +335,9 @@ To get max or min utilization of cpu, memory and storage of the instance within 
 
 - ?from=timestamp (default: now - one hour, example: 1415910025)
 - ?to=timestamp (default: now, example: 1415912625)
-- ?item=<item_name> (Available option: 'cpu_util', 'memory_util', 'storage_root_util', 'storage_data_util'.
+- ?item=<item_name> (Available options: 'cpu_util', 'memory_util', 'storage_root_util', 'storage_data_util'.
         Can be list. Default: all available options)
+- ?method=<calculate_method> (Available options: 'MAX', 'MIN'. Default: 'MAX')
 
 Answer is list of dictionaries with fields item, value and timestamp, where item is one of:
 
