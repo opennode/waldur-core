@@ -90,6 +90,8 @@ config_defaults = {
         'api_url': '',
         'username': '',
         'password': '',
+        'currency_code': 1,
+        'currency_name': 'USD',
     },
     'zabbix': {
         'db_host': '',  # empty to disable Zabbix database access
@@ -756,13 +758,20 @@ NODECONDUCTOR = {
         'api_url': config.get('whmcs', 'api_url'),
         'username': config.get('whmcs', 'username'),
         'password': config.get('whmcs', 'password'),
+        'currency_code': int(config.get('whmcs', 'currency_code')),
+        'currency_name': config.get('whmcs', 'currency_name'),
         'openstack': {
             'invoice_meters': {
                 # ceilometer meter name: (resource name, pricelist name, unit converter, unit)
-                'cpu': ('CPU', 'cpu_hours', 'hours'),
+                'cpu': ('CPU', 'cpu', 'hours'),
                 'memory': ('Memory', 'ram_gb', 'GB/h'),
                 'disk': ('Storage', 'storage_gb', 'GB/h'),
                 'servers': ('Servers', 'server_num', 'units'),
+                 # licenses
+                'wordpress': ('WordPress', 'wordpress', 'hours'),
+                'zimbra': ('Zimbra', 'zimbra', 'hours'),
+                'postgresql': ('PostgreSQL', 'postgresql', 'hours'),
+
             }
         }
     }
