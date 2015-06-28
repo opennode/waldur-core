@@ -45,6 +45,7 @@ class ProtectedModelMixin(object):
 class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     readonly_fields = ['balance']
     actions = ['sync_with_backend', 'create_invoices']
+    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation']
 
     def sync_with_backend(self, request, queryset):
         customer_uuids = list(queryset.values_list('uuid', flat=True))
