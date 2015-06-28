@@ -63,8 +63,8 @@ def create_invoices(customer_uuid, start_date, end_date):
             usage_duration = server['hours']  # round up to a full hour
             server_uuid = server['instance_id']
             connected_licenses = lookup_instance_licenses_from_event_log(server_uuid)
-            for license_type, license_serive_type in connected_licenses:
-                # XXX: license_serive_type is not used here.
+            for license_type, license_service_type in connected_licenses:
+                # XXX: license_service_type is not used here.
                 billing_data[license_type] = billing_data.get(license_type, 0) + usage_duration
 
         # create invoices
@@ -80,10 +80,12 @@ def create_invoices(customer_uuid, start_date, end_date):
                 logger.info('Failed to get price for %s in price list.', name)
 
             billing_value = round(billing_data.get(meter, 0))
+            if billing_value == 0:
+                continue
 
             data['itemdescription%s' % billing_item_index] = '%s: %s consumption of %s %s.' % \
                                                              (billing_category_name, name, billing_value, unit)
-            data['itemamount%s' % billing_item_index] = str(float(price) * billing_value)
+            data['itemamount%s' % billing_item_index] = str(float(price) / 30 / 24 * billing_value)
             data['itemtaxed%s' % billing_item_index] = 0
             billing_item_index += 1
 

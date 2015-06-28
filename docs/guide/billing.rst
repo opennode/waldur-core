@@ -44,7 +44,7 @@ To setup a WHMCS integration, add a billing block of configuration as shown in t
                 'disk': ('Storage', 'storage_gb', 'GB/h'),
                 'servers': ('Servers', 'server_num', ''),
                 # license type: (display name, pricelist name, unit)
-                'sample_license_type': ('Sample license title', 'license_type', 'hours')
+                'license_type': ('Sample license title', 'license_type', 'hours')
             }
         }
     }
