@@ -9,6 +9,7 @@ from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.billing.models import PriceList
 from nodeconductor.core.utils import timestamp_to_datetime
 from nodeconductor.iaas.models import CloudProjectMembership
+from nodeconductor.logging.elasticsearch_client import ElasticsearchResultList
 from nodeconductor.structure.models import Customer
 
 logger = logging.getLogger(__name__)
@@ -51,9 +52,20 @@ def create_invoices(customer_uuid, start_date, end_date):
         if membership.project.project_groups.exists():
             billing_category_name = "%s: %s" % (membership.project.project_groups.first().name, membership.project.name)
 
+        # populate billing data with content
         billing_data = {}
         for field in ['cpu', 'disk', 'memory', 'servers']:
             billing_data[field] = usage[field]
+
+        # process and aggregate license usage
+        server_usage = usage.get('server_usages', [])
+        for server in server_usage:
+            usage_duration = server['hours']  # round up to a full hour
+            server_uuid = server['instance_id']
+            connected_licenses = lookup_instance_licenses_from_event_log(server_uuid)
+            for license_type, license_service_type in connected_licenses:
+                # XXX: license_service_type is not used here.
+                billing_data[license_type] = billing_data.get(license_type, 0) + usage_duration
 
         # create invoices
         meters_mapping = settings.NODECONDUCTOR.get('BILLING')['openstack']['invoice_meters']
@@ -68,12 +80,24 @@ def create_invoices(customer_uuid, start_date, end_date):
                 logger.info('Failed to get price for %s in price list.', name)
 
             billing_value = round(billing_data.get(meter, 0))
+            if billing_value == 0:
+                continue
 
             data['itemdescription%s' % billing_item_index] = '%s: %s consumption of %s %s.' % \
-                                                (billing_category_name, name, billing_value, unit)
-            data['itemamount%s' % billing_item_index] = str(float(price) * billing_value)
+                                                             (billing_category_name, name, billing_value, unit)
+            data['itemamount%s' % billing_item_index] = str(float(price) / 30 / 24 * billing_value)
             data['itemtaxed%s' % billing_item_index] = 0
             billing_item_index += 1
 
     invoice_code = billing_backend.api.create_invoice(data)
     logger.info('WHMCS invoice with id %s for customer %s has been created.', invoice_code, customer)
+
+
+def lookup_instance_licenses_from_event_log(instance_uuid):
+    try:
+        event = ElasticsearchResultList(None).filter(
+            event_types=['iaas_instance_licenses_added'], instance_uuid=instance_uuid)[0][0]
+    except IndexError:
+        return []
+
+    return zip(event['licenses_types'], event['licenses_services_types'])

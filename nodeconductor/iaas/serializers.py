@@ -10,9 +10,10 @@ from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core import models as core_models, serializers as core_serializers, utils as core_utils
-from nodeconductor.core.fields import MappedChoiceField, CommaSeparatedListField
+from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
+from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix import utils as zabbix_utils
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
@@ -936,12 +937,23 @@ class UsageStatsSerializer(serializers.Serializer):
             self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])
 
 
-class MaximumUsageSerializer(serializers.Serializer):
-    items = CommaSeparatedListField(choices=ZabbixDBClient.items.keys())
+class CalculatedUsageSerializer(serializers.Serializer):
+    # This is fragile - zabbix keys has to be moved to separate class. Will be done after zabbix refactoring.
+    ZABBIX_KEYS = ('cpu_util', 'memory_util', 'storage_root_util', 'storage_data_util')
 
-    def get_stats(self, host, start, end):
+    method = serializers.ChoiceField(choices=('MAX', 'MIN'), default='MAX')
+    items = serializers.ListField(
+        child=serializers.ChoiceField(choices=ZABBIX_KEYS),
+        default=ZABBIX_KEYS,
+    )
+
+    def get_stats(self, instance, start, end):
         items = self.validated_data['items']
-        records = ZabbixDBClient().get_host_max_values(host, items, start, end)
+        method = self.validated_data['method']
+        host = ZabbixApiClient().get_host_name(instance)
+
+        records = ZabbixDBClient().get_host_max_values(host, items, start, end, method=method)
+
         results = []
         for timestamp, item, value in records:
             results.append({

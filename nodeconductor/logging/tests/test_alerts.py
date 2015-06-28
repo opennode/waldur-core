@@ -196,3 +196,21 @@ class TestAlertActions(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         reread_alert = models.Alert.objects.get(pk=self.alert.pk)
         self.assertTrue(reread_alert.acknowledged)
+
+    def test_acknowledged_alert_cannot_be_marked_as_acknowledged_again(self):
+        self.alert.acknowledge()
+
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(factories.AlertFactory.get_url(self.alert, 'acknowledge'))
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_admin_can_cancel_acknowledgment_of_acknowledged_alert(self):
+        self.alert.acknowledge()
+
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(factories.AlertFactory.get_url(self.alert, 'cancel_acknowledgment'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        reread_alert = models.Alert.objects.get(pk=self.alert.pk)
+        self.assertFalse(reread_alert.acknowledged)

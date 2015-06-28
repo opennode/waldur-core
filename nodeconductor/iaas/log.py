@@ -33,6 +33,17 @@ class InstanceEventLogger(EventLogger):
         )
 
 
+class InstanceLicensesEventLogger(EventLogger):
+    instance = 'iaas.Instance'
+    licenses_types = list
+    licenses_services_types = list
+
+    class Meta:
+        event_types = (
+            'iaas_instance_licenses_added',
+        )
+
+
 class InstanceVolumeChangeEventLogger(EventLogger):
     instance = 'iaas.Instance'
     volume_size = int
@@ -103,6 +114,7 @@ event_logger.register('instance', InstanceEventLogger)
 event_logger.register('instance_import', InstanceImportEventLogger)
 event_logger.register('instance_volume', InstanceVolumeChangeEventLogger)
 event_logger.register('instance_flavor', InstanceFlavorChangeEventLogger)
+event_logger.register('instance_licenses', InstanceLicensesEventLogger)
 event_logger.register('cloud', CloudEventLogger)
 event_logger.register('membership', MembershipEventLogger)
 event_logger.register('quota', QuotaEventLogger)

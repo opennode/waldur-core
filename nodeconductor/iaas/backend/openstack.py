@@ -1210,6 +1210,17 @@ class OpenStackBackend(OpenStackClient):
                 event_type='iaas_instance_start_succeeded',
                 event_context={'instance': instance})
 
+            licenses = instance.instance_licenses.all()
+            event_logger.instance_licenses.info(
+                'Licenses added to VM with name {instance_name}.',
+                event_type='iaas_instance_licenses_added',
+                event_context={
+                    'instance': instance,
+                    'licenses_types': [l.template_license.license_type for l in licenses],
+                    'licenses_services_types': [l.template_license.service_type for l in licenses],
+                }
+            )
+
     def start_instance(self, instance):
         logger.debug('About to start instance %s', instance.uuid)
 
@@ -1822,6 +1833,7 @@ class OpenStackBackend(OpenStackClient):
                 'disk': usage.total_local_gb_usage,
                 'memory': usage.total_memory_mb_usage / 1024,  # to get to GBs
                 'servers': len(usage.server_usages),
+                'server_usages': usage.server_usages,
             }
 
     # Helper methods

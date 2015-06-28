@@ -78,7 +78,6 @@ class BaseLogger(object):
                 logger.warning("User is passed directly to event context. "
                                "Currently authenticated user %s is ignored.", username)
 
-
         for entity_name, entity in six.iteritems(kwargs):
             if entity_name in required_fields:
                 entity_class = required_fields.pop(entity_name)

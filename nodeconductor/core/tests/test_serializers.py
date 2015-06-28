@@ -5,9 +5,9 @@ import unittest
 from rest_framework import serializers
 from nodeconductor.core.fields import JsonField
 from nodeconductor.core.fields import TimestampField
-from nodeconductor.core.fields import CommaSeparatedListField
 from nodeconductor.core.serializers import Base64Field
 from nodeconductor.core import utils
+
 
 class Base64Serializer(serializers.Serializer):
     content = Base64Field()
@@ -96,19 +96,3 @@ class TimestampFieldTest(unittest.TestCase):
                       'There should be errors for content field')
         self.assertIn('This field should be valid UNIX timestamp.',
                       serializer.errors['content'])
-
-
-class CommaSeparatedListFieldSerializer(serializers.Serializer):
-    content = CommaSeparatedListField(choices=('cpu', 'memory', 'storage'))
-
-
-class CommaSeparatedListFieldTest(unittest.TestCase):
-    def test_parse_correct_list(self):
-        serializer = CommaSeparatedListFieldSerializer(data={'content': 'cpu, memory'})
-        self.assertTrue(serializer.is_valid())
-        actual = serializer.validated_data['content']
-        self.assertEqual(['cpu', 'memory'], actual)
-
-    def test_parse_incorrect_list_item(self):
-        serializer = CommaSeparatedListFieldSerializer(data={'content': 'INVALID_LIST_ITEM'})
-        self.assertFalse(serializer.is_valid())

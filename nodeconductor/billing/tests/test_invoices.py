@@ -1,7 +1,6 @@
 from mock import patch, Mock
 
 from datetime import datetime
-import unittest
 
 from django.core.management import call_command, CommandError
 from django.test import TestCase
@@ -14,7 +13,7 @@ from nodeconductor.structure.tests.factories import CustomerFactory, ProjectFact
 
 class CreateInvoicesCommandTest(TestCase):
     def setUp(self):
-        self.customer = CustomerFactory()
+        self.customer = CustomerFactory(billing_backend_id='billing_backend_id')
 
     def test_create_invoices_command_fail_with_invalid_month(self):
         with self.assertRaisesMessage(CommandError, 'Year and month should be valid values.'):
@@ -25,10 +24,15 @@ class CreateInvoicesCommandTest(TestCase):
             call_command('createinvoices', '2015abc', '03')
 
     def test_create_invoices_command_fail_with_more_than_three_arguments(self):
-        with self.assertRaisesMessage(CommandError, 'Only three arguments can be provided.'):
-            call_command('createinvoices', str(self.customer.uuid), '2015', '12', 'invalid')
+        with self.assertRaisesMessage(CommandError, 'Only two or zero arguments can be provided.'):
+            call_command('createinvoices', '2015', '12', 'invalid')
 
-    @unittest.skip('Debugging takes longer, delayed for the next release. Manual testing works.')
+    def test_create_invoices_command_fail_with_customer_without_billing_backend(self):
+        self.customer.billing_backend_id = ''
+        self.customer.save()
+        with self.assertRaisesMessage(CommandError, 'Selected customer does not have billing backend id'):
+            call_command('createinvoices', customer_uuid=self.customer.uuid.hex)
+
     def test_create_invoices_command_succeeds_without_arguments(self):
         with patch('nodeconductor.billing.tasks.create_invoices.delay') as mocked_task:
             call_command('createinvoices')
@@ -36,10 +40,9 @@ class CreateInvoicesCommandTest(TestCase):
 
     def test_create_invoices_command_succeeds_with_one_valid_argument(self):
         with patch('nodeconductor.billing.tasks.create_invoices.delay') as mocked_task:
-            call_command('createinvoices', str(self.customer.uuid))
+            call_command('createinvoices', customer_uuid=self.customer.uuid.hex)
             self.assertTrue(mocked_task.called)
 
-    @unittest.skip('Debugging takes longer, delayed for the next release. Manual testing works.')
     def test_create_invoices_command_succeeds_with_two_valid_arguments(self):
         with patch('nodeconductor.billing.tasks.create_invoices.delay') as mocked_task:
             call_command('createinvoices', '2015', '12')
@@ -47,8 +50,8 @@ class CreateInvoicesCommandTest(TestCase):
 
     def test_create_invoices_command_succeeds_with_three_valid_arguments(self):
         with patch('nodeconductor.billing.tasks.create_invoices.delay') as mocked_task:
-            call_command('createinvoices', str(self.customer.uuid), '2015', '12')
-            self.assertTrue(mocked_task.called)
+            call_command('createinvoices', '2015', '12', customer_uuid=self.customer.uuid.hex)
+            mocked_task.assert_called_once()
 
 
 @patch('nodeconductor.iaas.backend.openstack.OpenStackBackend')
