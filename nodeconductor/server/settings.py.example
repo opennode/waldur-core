@@ -217,10 +217,13 @@ NODECONDUCTOR['BILLING'] = {
     'openstack': {
         'invoice_meters': {
             # nova meter name: (resource name, pricelist name, unit converter, unit)
-            'cpu': ('CPU', 'cpu_hours', 'hours'),
+            'cpu': ('CPU', 'cpu', 'hours'),
             'memory': ('Memory', 'ram_gb', 'GB/h'),
             'disk': ('Storage', 'storage_gb', 'GB/h'),
             'servers': ('Servers', 'server_num', ''),
+            # license_type: (display name, pricelist_name, unit)
+            'sample_license': ('Sample license', 'sample_license', 'hours'),
+            'wordpress': ('WordPress', 'wordpress', 'hours'),
         }
     }
 }

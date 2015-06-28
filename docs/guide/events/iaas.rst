@@ -114,6 +114,13 @@ IaaS events
 
 .. glossary::
 
+    **iaas_instance_licenses_added**
+        Licenses was added to created virtual machine.
+
+------------
+
+.. glossary::
+
     **iaas_service_sync_failed**
         Cloud service has failed to sync.
 

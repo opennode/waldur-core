@@ -144,24 +144,36 @@ class ElasticsearchClient(object):
         return '%s:("%s")' % (field_name, '", "'.join(excaped_field_values))
 
     def _get_search_body(self, user, event_types=None, search_text=None, search_params=[]):
-        permitted_objects_uuids = event_logger.get_permitted_objects_uuids(user)
         # Create query for user-related events
-        query = ' OR '.join([
-            self._format_to_elasticsearch_field_filter(item, uuids)
-            for item, uuids in permitted_objects_uuids.items()
-        ])
-        query = '(' + query + ')'
+        if user is not None:
+            permitted_objects_uuids = event_logger.get_permitted_objects_uuids(user)
+            query = ' OR '.join([
+                self._format_to_elasticsearch_field_filter(item, uuids)
+                for item, uuids in permitted_objects_uuids.items()
+            ])
+            query = '(' + query + ')'
+        else:
+            query = ''
         # Filter it by event types
         if event_types:
-            query += ' AND ' + self._format_to_elasticsearch_field_filter('event_type', event_types)
+            if query:
+                query += ' AND ' + self._format_to_elasticsearch_field_filter('event_type', event_types)
+            else:
+                query = self._format_to_elasticsearch_field_filter('event_type', event_types)
         # Add FTS to query
         if search_text:
             search_query = ' OR '.join(
                 [self._format_to_elasticsearch_field_filter(field, [search_text]) for field in self.FTS_FIELDS])
-            query += ' AND (' + search_query + ')'
+            if query:
+                query += ' AND (' + search_query + ')'
+            else:
+                query = '(' + search_query + ')'
         # Add search parameters
         for field_name, value in search_params:
-            query += ' AND ' + self._format_to_elasticsearch_field_filter(field_name, [value])
+            if query:
+                query += ' AND ' + self._format_to_elasticsearch_field_filter(field_name, [value])
+            else:
+                query = self._format_to_elasticsearch_field_filter(field_name, [value])
 
         logger.debug('Getting elasticsearch results for user: "%s" with query: %s', user, query)
         return {"query": {"query_string": {"query": query}}}
