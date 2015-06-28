@@ -41,3 +41,7 @@ class Alert(TimeStampedModel):
     def acknowledge(self):
         self.acknowledged = True
         self.save()
+
+    def cancel_acknowledgment(self):
+        self.acknowledged = False
+        self.save()

@@ -153,6 +153,19 @@ class AlertViewSet(mixins.CreateModelMixin,
     @decorators.detail_route(methods=['post'])
     def acknowledge(self, request, *args, **kwargs):
         alert = self.get_object()
-        alert.acknowledge()
+        if not alert.acknowledged:
+            alert.acknowledge()
+            return response.Response(status=status.HTTP_200_OK)
+        else:
+            return response.Response({'detail': 'Action is already acknowledged'}, status=status.HTTP_409_CONFLICT)
 
         return response.Response(status=status.HTTP_200_OK)
+
+    @decorators.detail_route(methods=['post'])
+    def cancel_acknowledgment(self, request, *args, **kwargs):
+        alert = self.get_object()
+        if alert.acknowledged:
+            alert.cancel_acknowledgment()
+            return response.Response(status=status.HTTP_200_OK)
+        else:
+            return response.Response({'detail': 'Action is not acknowledged'}, status=status.HTTP_409_CONFLICT)
