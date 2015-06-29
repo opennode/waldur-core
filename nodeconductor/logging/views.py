@@ -1,8 +1,11 @@
 from __future__ import unicode_literals
 
+import datetime
+
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import generics, response, settings, viewsets, permissions, filters, status, decorators, mixins
 from rest_framework.serializers import ValidationError
 
@@ -73,6 +76,18 @@ class AlertFilter(filters.BaseFilterBackend):
             object_id__in=memebersips_ids
         )
         queryset = queryset.filter(aggregate_query)
+
+        yesterday = timezone.now() - datetime.timedelta(days=1)
+        time_interval_serializer = iaas_serializers.TimeIntervalSerializer(data={
+            'start': request.query_params.get('from', core_utils.datetime_to_timestamp(yesterday)),
+            'end': request.query_params.get('to', core_utils.datetime_to_timestamp(timezone.now()))
+        })
+        time_interval_serializer.is_valid(raise_exception=True)
+
+        closed_time_query = Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True)
+        created_time_query = Q(created__lte=time_interval_serializer.validated_data['end'])
+
+        queryset = queryset.filter(closed_time_query).filter(created_time_query)
 
         if 'scope' in request.query_params:
             scope_serializer = serializers.ScopeSerializer(data=request.query_params)

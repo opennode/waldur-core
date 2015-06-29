@@ -270,6 +270,10 @@ All available request parameters are optional:
 - ?scope=<url> concrete alert scope
 - ?scope_type=<string> name of scope type (Ex.: instance, cloud_project_membership, project...)
 - ?acknowledged=True|False - show only acknowledged (non-acknowledged) alerts
+- ?created_from=<timestamp>
+- ?created_to=<timestamp>
+- ?closed_from=<timestamp>
+- ?closed_to=<timestamp>
 
 
 Answer will be dictionary where key is severity and value is a count of alerts.

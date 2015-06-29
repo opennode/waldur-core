@@ -22,13 +22,14 @@ from rest_framework import serializers as rf_serializers
 from rest_framework import viewsets, views
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route, list_route
+from rest_framework.serializers import ValidationError
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
+from nodeconductor.core.utils import sort_dict, datetime_to_timestamp, timestamp_to_datetime
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
@@ -1266,7 +1267,7 @@ class QuotaStatsView(views.APIView):
 
 class OpenstackAlertStatsView(views.APIView):
 
-    # XXX: This method uses same filter parameters as alerts filtering. It is not DRY.
+    # XXX: This method uses same filter parameters as alerts filtering. It is not DRY. Has to be fixed in nc-560
     def get(self, request, format=None):
         aggregate_serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         aggregate_serializer.is_valid(raise_exception=True)
@@ -1338,6 +1339,22 @@ class OpenstackAlertStatsView(views.APIView):
                 queryset = queryset.filter(acknowledged=True)
 
         alerts_severities_count = queryset.values('severity').annotate(count=Count('severity'))
+
+        time_search_parameters_map = {
+            'closed_from': 'closed__gte',
+            'closed_to': 'closed__lt',
+            'created_from': 'created__gte',
+            'created_to': 'created__lt',
+        }
+
+        for parameter, filter_field in time_search_parameters_map.items():
+            if parameter in request.query_params:
+                try:
+                    queryset = queryset.filter(
+                        **{filter_field: timestamp_to_datetime(int(request.query_params[parameter]))})
+                except ValueError:
+                    raise ValidationError(
+                        'Parameter {} is not valid. (It has to be valid timestamp)'.format(parameter))
 
         severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
         # For consistency with all other endpoint we need to return severity names in lower case.
