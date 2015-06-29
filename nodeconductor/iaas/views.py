@@ -1272,13 +1272,6 @@ class OpenstackAlertStatsView(views.APIView):
         aggregate_serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         aggregate_serializer.is_valid(raise_exception=True)
 
-        yesterday = timezone.now() - datetime.timedelta(days=1)
-        time_interval_serializer = serializers.TimeIntervalSerializer(data={
-            'start': request.query_params.get('from', datetime_to_timestamp(yesterday)),
-            'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
-        })
-        time_interval_serializer.is_valid(raise_exception=True)
-
         projects_ids = aggregate_serializer.get_projects(request.user).values_list('id', flat=True)
         memberships_ids = aggregate_serializer.get_memberships(request.user).values_list('id', flat=True)
         instances_ids = aggregate_serializer.get_instances(request.user).values_list('id', flat=True)
@@ -1299,12 +1292,20 @@ class OpenstackAlertStatsView(views.APIView):
             object_id__in=instances_ids
         )
 
-        closed_time_query = Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True)
-        created_time_query = Q(created__lte=time_interval_serializer.validated_data['end'])
+        queryset = logging_models.Alert.objects.filter(aggregate_query)
 
-        queryset = (logging_models.Alert.objects.filter(aggregate_query)
-                                                .filter(closed_time_query)
-                                                .filter(created_time_query))
+        mapped = {
+            'start': request.query_params.get('from'),
+            'end': request.query_params.get('to'),
+        }
+        time_interval_serializer = serializers.TimeIntervalSerializer(data={k: v for k, v in mapped.items() if v})
+        time_interval_serializer.is_valid(raise_exception=True)
+
+        if 'start' in time_interval_serializer.validated_data:
+            queryset = queryset.filter(
+                Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True))
+        if 'end' in time_interval_serializer.validated_data:
+            queryset = queryset.filter(created__lte=time_interval_serializer.validated_data['end'])
 
         if 'scope' in request.query_params:
             scope_serializer = logging_serializers.ScopeSerializer(data=request.query_params)
