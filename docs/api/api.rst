@@ -1,3 +1,8 @@
+Alerts
+======
+
+.. include:: alerts.rst
+
 Authentication
 ==============
 
