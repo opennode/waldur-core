@@ -77,17 +77,18 @@ class AlertFilter(filters.BaseFilterBackend):
         )
         queryset = queryset.filter(aggregate_query)
 
-        yesterday = timezone.now() - datetime.timedelta(days=1)
-        time_interval_serializer = iaas_serializers.TimeIntervalSerializer(data={
-            'start': request.query_params.get('from', core_utils.datetime_to_timestamp(yesterday)),
-            'end': request.query_params.get('to', core_utils.datetime_to_timestamp(timezone.now()))
-        })
+        mapped = {
+            'start': request.query_params.get('from'),
+            'end': request.query_params.get('to'),
+        }
+        time_interval_serializer = iaas_serializers.TimeIntervalSerializer(data={k: v for k, v in mapped.items() if v})
         time_interval_serializer.is_valid(raise_exception=True)
 
-        closed_time_query = Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True)
-        created_time_query = Q(created__lte=time_interval_serializer.validated_data['end'])
-
-        queryset = queryset.filter(closed_time_query).filter(created_time_query)
+        if 'start' in time_interval_serializer.validated_data:
+            queryset = queryset.filter(
+                Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True))
+        if 'end' in time_interval_serializer.validated_data:
+            queryset = queryset.filter(created__lte=time_interval_serializer.validated_data['end'])
 
         if 'scope' in request.query_params:
             scope_serializer = serializers.ScopeSerializer(data=request.query_params)
