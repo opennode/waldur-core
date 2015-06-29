@@ -1,10 +1,13 @@
+import StringIO
 import logging
 
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 from django.conf import settings
 from django.core.files.base import ContentFile
+from django.template.loader import render_to_string
 from celery import shared_task
+import xhtml2pdf.pisa as pisa
 
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.billing.models import PriceList
@@ -27,9 +30,33 @@ def generate_usage_pdf(invoice, usage_data):
     if invoice.usage_pdf is not None:
         invoice.usage_pdf.delete()
 
+    projects = usage_data['usage']
+    for project_name, instances in projects.items():
+        for instance in instances:
+            instance['started_at'] = datetime.strptime(instance['started_at'], '%Y-%m-%dT%H:%M:%S.%f')
+            if instance['ended_at']:
+                instance['ended_at'] = datetime.strptime(instance['ended_at'], '%Y-%m-%dT%H:%M:%S.%f')
+            instance['hours'] = round(instance['hours'], 2)
+
+        projects[project_name] = sorted(instances, key=lambda i: (i['name']))
+
+    context = {
+        'reporting_period': usage_data['reporting_period'],
+        'customer_name': usage_data['customer_name'],
+        'projects': projects,
+    }
+
+    result = StringIO.StringIO()
+    pdf = pisa.pisaDocument(
+        StringIO.StringIO(render_to_string('usage_report.html', context)),
+        result
+    )
     # generate a new file
-    invoice.usage_pdf.save('Usage-%d.pdf' % invoice.uuid, ContentFile("%s" % usage_data)) # TODO: replace with an actual
-    invoice.save(update_fields=['usage_pdf'])
+    if not pdf.err:
+        invoice.usage_pdf.save('Usage-%d.pdf' % invoice.uuid, ContentFile(result.getvalue()))
+        invoice.save(update_fields=['usage_pdf'])
+    else:
+        logger.error(pdf.err)
 
 
 @shared_task(name='nodeconductor.billing.create_invoices')
@@ -55,7 +82,7 @@ def create_invoices(customer_uuid, start_date, end_date):
     # collect_data
     billing_item_index = 1  # as injected into invoice, should start with 1 for whmcs
     projected_total = 0
-    usage_data = {'reporting_period': (start_date, end_date), 'usage': {}}
+    usage_data = {'reporting_period': (start_date, end_date), 'customer_name': customer.name, 'usage': {}}
     for membership in memberships:
         backend = membership.cloud.get_backend()
         usage = backend.get_nova_usage(membership, start_date, end_date)
@@ -66,7 +93,7 @@ def create_invoices(customer_uuid, start_date, end_date):
             billing_category_name = "%s: %s" % (membership.project.project_groups.first().name, membership.project.name)
 
         # empty placeholder for the usage data
-        usage_data['usage'][billing_category_name] = {}
+        usage_data['usage'][billing_category_name] = []
 
         # populate billing data with content
         billing_data = {}
@@ -79,7 +106,7 @@ def create_invoices(customer_uuid, start_date, end_date):
             usage_duration = server['hours']  # round up to a full hour
             server_uuid = server['instance_id']
 
-            usage_data['usage'][billing_category_name][server_uuid] = {
+            usage_data['usage'][billing_category_name].append({
                 'hours': server['hours'],
                 'flavor': server['flavor'],
                 'disk': server['local_gb'],
@@ -89,7 +116,7 @@ def create_invoices(customer_uuid, start_date, end_date):
                 'state': server['state'],
                 'uptime': server['uptime'],
                 'name': server['name'],
-            }
+            })
             # extract data for the usage report
 
             connected_licenses = lookup_instance_licenses_from_event_log(server_uuid)
