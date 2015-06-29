@@ -107,6 +107,13 @@ config_defaults = {
         'wordpress_template_id': '',
         'zimbra_template_id': '',
         'postgresql_template_id': '',
+    },
+    'elasticsearch': {
+        'username': '',
+        'password': '',
+        'host': '',
+        'port': '443',
+        'protocol': 'https',
     }
 }
 
@@ -774,7 +781,17 @@ NODECONDUCTOR = {
 
             }
         }
-    }
+    },
+    'ELASTICSEARCH': {
+        'username': config.get('elasticsearch', 'username'),
+        'password': config.get('elasticsearch', 'password'),
+        'host': config.get('elasticsearch', 'host'),
+        'port': config.get('elasticsearch', 'port'),
+        'protocol': config.get('elasticsearch', 'protocol'),
+    },
+
+
+
 }
 
 # Sentry integration
