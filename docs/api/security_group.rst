@@ -107,7 +107,7 @@ Security group name, description and rules can be updated. To execute update req
 to **/api/security-groups/<security-group-uuid>/**. This will update security group in database and starts its
 synchronization with OpenStack.
 
-    .. code-block:: http
+.. code-block:: http
 
     POST /api/users/ HTTP/1.1
     Content-Type: application/json
