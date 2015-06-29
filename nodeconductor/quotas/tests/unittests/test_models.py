@@ -7,19 +7,17 @@ from nodeconductor.iaas.tests import factories as iaas_factories
 
 
 class QuotaModelMixinTest(TestCase):
-
-    def setUp(self):
+    def test_all_values_are_positive(self):
         # we have 3 memberships:
-        self.memberships = iaas_factories.CloudProjectMembershipFactory.create_batch(3)
+        memberships = iaas_factories.CloudProjectMembershipFactory.create_batch(3)
+
         # each membership has non zero quotas:
-        for membership in self.memberships:
+        for membership in memberships:
             for quota_name in membership.QUOTAS_NAMES:
                 limit = random.choice([10, 20, 30, 40])
                 membership.set_quota_limit(quota_name, limit)
                 membership.set_quota_usage(quota_name, limit / 2)
-
-    def test_get_sum_of_quotas_as_dict_return_sum_of_all_quotas(self):
-        owners = self.memberships[:2]
+        owners = memberships[:2]
 
         sum_of_quotas = iaas_models.CloudProjectMembership.get_sum_of_quotas_as_dict(owners)
 
@@ -31,15 +29,22 @@ class QuotaModelMixinTest(TestCase):
 
         self.assertEqual(expected_sum_of_quotas, sum_of_quotas)
 
-class NegativeLimitQuotaModelMixinTest(TestCase):
+    def test_some_limit_is_negative(self):
+        memberships = iaas_factories.CloudProjectMembershipFactory.create_batch(3)
+        memberships[0].set_quota_limit('vcpu', -1)
+        memberships[1].set_quota_limit('vcpu', 10)
+        memberships[2].set_quota_limit('vcpu', 30)
 
-    def setUp(self):
-        self.memberships = iaas_factories.CloudProjectMembershipFactory.create_batch(3)
-        self.memberships[0].set_quota_limit('vcpu', -1)
-        self.memberships[1].set_quota_limit('vcpu', 10)
-        self.memberships[2].set_quota_limit('vcpu', 30)
-
-    def test_negative_limit_is_omitted(self):
         sum_of_quotas = iaas_models.CloudProjectMembership.get_sum_of_quotas_as_dict(
-            self.memberships, quota_names=['vcpu'], fields=['limit'])
+            memberships, quota_names=['vcpu'], fields=['limit'])
         self.assertEqual({'vcpu': 40}, sum_of_quotas)
+
+    def test_all_limits_are_negative(self):
+        memberships = iaas_factories.CloudProjectMembershipFactory.create_batch(3)
+        memberships[0].set_quota_limit('vcpu', -1)
+        memberships[1].set_quota_limit('vcpu', -1)
+        memberships[2].set_quota_limit('vcpu', -1)
+
+        sum_of_quotas = iaas_models.CloudProjectMembership.get_sum_of_quotas_as_dict(
+            memberships, quota_names=['vcpu'], fields=['limit'])
+        self.assertEqual({'vcpu': -1}, sum_of_quotas)

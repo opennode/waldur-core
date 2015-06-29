@@ -204,5 +204,8 @@ class QuotaModelMixin(models.Model):
                          .exclude(limit=-1).values('name').annotate(limit=Sum('limit'))
             for item in items:
                 result[item['name']] = item['limit']
+            for name in quota_names:
+                if name not in result:
+                    result[name] = -1
 
         return result
