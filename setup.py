@@ -41,8 +41,8 @@ install_requires = [
     'PyYAML>=3.10',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
-    'reportlab>=2.5',
     'requests>=2.6.0',
+    'xhtml2pdf>=0.0.6',
 ]
 
 
