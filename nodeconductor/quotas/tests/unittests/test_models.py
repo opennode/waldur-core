@@ -25,7 +25,7 @@ class QuotaModelMixinTest(TestCase):
 
         expected_sum_of_quotas = {}
         for quota_name in iaas_models.CloudProjectMembership.QUOTAS_NAMES:
-            expected_sum_of_quotas[quota_name] = sum(owner.quotas.get(name=quota_name).limit for owner in owners)
+            expected_sum_of_quotas[quota_name] = max(-1, sum(owner.quotas.get(name=quota_name).limit for owner in owners))
             expected_sum_of_quotas[quota_name + '_usage'] = sum(
                 owner.quotas.get(name=quota_name).usage for owner in owners)
 

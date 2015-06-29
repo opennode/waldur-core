@@ -202,6 +202,6 @@ class QuotaModelMixin(models.Model):
 
         if 'limit' in fields:
             for quota_sum in quota_sums:
-                result[quota_sum['name']] = quota_sum['limit']
+                result[quota_sum['name']] = max(-1, quota_sum['limit'])
 
         return result
