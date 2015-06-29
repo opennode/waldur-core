@@ -25,26 +25,3 @@ class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
         }
-
-
-class InvoiceDetailedSerializer(InvoiceSerializer):
-
-    def get_items(self, obj):
-        # TODO: Move it to createsampleinvoices
-        if not obj.backend_id:
-            # Dummy items
-            return [
-                {
-                    "amount": "7.95",
-                    "type": "Hosting",
-                    "name": "Home Package - topcorp.tv (02/10/2014 - 01/11/2014)"
-                }
-            ]
-
-        backend = obj.customer.get_billing_backend()
-        return backend.get_invoice_items(obj.backend_id)
-
-    def get_fields(self):
-        fields = super(InvoiceDetailedSerializer, self).get_fields()
-        fields['items'] = serializers.SerializerMethodField()
-        return fields

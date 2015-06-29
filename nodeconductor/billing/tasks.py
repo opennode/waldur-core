@@ -1,7 +1,7 @@
 import StringIO
 import logging
 
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta
 
 from django.conf import settings
 from django.core.files.base import ContentFile
