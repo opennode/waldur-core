@@ -100,13 +100,14 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
         # TODO: Move it to createsampleinvoices
         if not invoice.backend_id:
             # Dummy items
-            return [
+            items = [
                 {
                     "amount": "7.95",
                     "type": "Hosting",
                     "name": "Home Package - topcorp.tv (02/10/2014 - 01/11/2014)"
                 }
             ]
+            return response.Response(items, status=status.HTTP_200_OK)
         try:
             backend = invoice.customer.get_billing_backend()
             items = backend.get_invoice_items(invoice.backend_id)
