@@ -25,8 +25,21 @@ class QuotaModelMixinTest(TestCase):
 
         expected_sum_of_quotas = {}
         for quota_name in iaas_models.CloudProjectMembership.QUOTAS_NAMES:
-            expected_sum_of_quotas[quota_name] = max(-1, sum(owner.quotas.get(name=quota_name).limit for owner in owners))
+            expected_sum_of_quotas[quota_name] = sum(owner.quotas.get(name=quota_name).limit for owner in owners)
             expected_sum_of_quotas[quota_name + '_usage'] = sum(
                 owner.quotas.get(name=quota_name).usage for owner in owners)
 
         self.assertEqual(expected_sum_of_quotas, sum_of_quotas)
+
+class NegativeLimitQuotaModelMixinTest(TestCase):
+
+    def setUp(self):
+        self.memberships = iaas_factories.CloudProjectMembershipFactory.create_batch(3)
+        self.memberships[0].set_quota_limit('vcpu', -1)
+        self.memberships[1].set_quota_limit('vcpu', 10)
+        self.memberships[2].set_quota_limit('vcpu', 30)
+
+    def test_negative_limit_is_omitted(self):
+        sum_of_quotas = iaas_models.CloudProjectMembership.get_sum_of_quotas_as_dict(
+            self.memberships, quota_names=['vcpu'], fields=['limit'])
+        self.assertEqual({'vcpu': 40}, sum_of_quotas)
