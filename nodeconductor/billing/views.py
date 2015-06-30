@@ -95,6 +95,19 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
         return response
 
     @decorators.detail_route()
+    def usage_pdf(self, request, uuid=None):
+        invoice = self.get_object()
+        if not invoice.usage_pdf:
+            raise exceptions.NotFound("There's no usage PDF for this invoice")
+
+        response = serve(request, invoice.usage_pdf.name, document_root=settings.MEDIA_ROOT)
+        if request.query_params.get('download'):
+            response['Content-Type'] = 'application/pdf'
+            response['Content-Disposition'] = 'attachment; filename="usage.pdf"'
+
+        return response
+
+    @decorators.detail_route()
     def items(self, request, uuid=None):
         invoice = self.get_object()
         # TODO: Move it to createsampleinvoices

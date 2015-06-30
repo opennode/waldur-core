@@ -1800,17 +1800,17 @@ class OpenStackBackend(OpenStackClient):
             nova = self.create_nova_client(session)
 
             usage = nova.usage.get(tenant_id=membership.tenant_id, start=start_date, end=end_date)
-        except ceilometer_exceptions.HTTPException as e:
+        except nova_exceptions.HTTPException as e:
             logger.exception('Failed to get %s usage for cloud project membership with id %s',
                              membership.pk)
             six.reraise(CloudBackendError, e)
         else:
             return {
-                'cpu': usage.total_vcpus_usage,
-                'disk': usage.total_local_gb_usage,
-                'memory': usage.total_memory_mb_usage / 1024,  # to get to GBs
-                'servers': len(usage.server_usages),
-                'server_usages': usage.server_usages,
+                'cpu': getattr(usage, "total_vcpus_usage", 0),
+                'disk': getattr(usage, 'total_local_gb_usage', 0),
+                'memory': getattr(usage, "total_memory_mb_usage", 0) / 1024,  # to get to GBs
+                'servers': len(getattr(usage, "server_usages", [])),
+                'server_usages': getattr(usage, "server_usages", []),
             }
 
     # Helper methods

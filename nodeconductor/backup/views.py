@@ -37,6 +37,18 @@ class BackupPermissionFilter():
         return queryset.filter(q_query)
 
 
+class BackupSourceFilter(object):
+    def filter_queryset(self, request, queryset, view):
+        if 'backup_source' not in request.query_params:
+            return queryset
+        serializer = serializers.BackupSourceSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        backup_source = serializer.validated_data['backup_source']
+        ct = ct_models.ContentType.objects.get_for_model(backup_source)
+        return queryset.filter(content_type=ct, object_id=backup_source.id)
+
+
+
 class BackupScheduleFilter(django_filters.FilterSet):
     description = django_filters.CharFilter(
         lookup_type='icontains',
@@ -129,7 +141,7 @@ class BackupViewSet(mixins.CreateModelMixin,
     queryset = models.Backup.objects.all()
     serializer_class = serializers.BackupSerializer
     lookup_field = 'uuid'
-    filter_backends = (BackupPermissionFilter, DjangoMappingFilterBackend)
+    filter_backends = (BackupPermissionFilter, BackupSourceFilter, DjangoMappingFilterBackend)
     filter_class = BackupFilter
     permission_classes = (rf_permissions.IsAuthenticated,)
 
