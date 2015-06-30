@@ -311,6 +311,12 @@ class OpenStackBackend(OpenStackClient):
     def remove_ssh_key(self, public_key, membership):
         return self.remove_ssh_public_key(membership, public_key)
 
+    def add_user(self, user, membership):
+        pass
+
+    def remove_user(self, user, membership):
+        pass
+
     # CloudAccount related methods
     def push_cloud_account(self, cloud_account):
         # There's nothing to push for OpenStack

@@ -747,9 +747,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 raise serializers.ValidationError(
                     "Either service settings or credentials must be supplied.")
 
+            settings_fields += 'dummy',
             if create_settings:
-                settings_fields += 'dummy',
-                args = {f: attrs.pop(f) for f in settings_fields if f in attrs}
+                args = {f: attrs.get(f) for f in settings_fields if f in attrs}
                 settings = models.ServiceSettings.objects.create(
                     type=self.SERVICE_TYPE,
                     name=attrs['name'],
@@ -758,6 +758,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
                 send_task('structure', 'sync_service_settings')(settings.uuid.hex, initial=True)
                 attrs['settings'] = settings
+
+            for f in settings_fields:
+                if f in attrs:
+                    del attrs[f]
 
         return attrs
 

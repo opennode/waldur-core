@@ -60,8 +60,7 @@ class DatabaseSerializer(structure_serializers.BaseResourceSerializer):
 
     service_project_link = serializers.HyperlinkedRelatedField(
         view_name='oracle-spl-detail',
-        queryset=models.OracleServiceProjectLink.objects.filter(
-            service__settings__type=structure_models.ServiceSettings.Types.Oracle),
+        queryset=models.OracleServiceProjectLink.objects.all(),
         write_only=True)
 
     zone = serializers.HyperlinkedRelatedField(
