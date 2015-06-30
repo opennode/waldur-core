@@ -104,6 +104,7 @@ def get_customer_usage_data(customer, start_date, end_date):
                 'flavor': server['flavor'],
                 'disk': server['local_gb'],
                 'memory': server['memory_mb'] / 1024.0,
+                'cores': server['vcpus'],
                 'started_at': server['started_at'],
                 'ended_at': server['ended_at'],
                 'state': server['state'],
