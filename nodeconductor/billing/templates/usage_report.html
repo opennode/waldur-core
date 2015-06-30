@@ -19,7 +19,7 @@
                     <th>State</th>
                     <th>CPU hours</th>
                     <th>Memory GB hours</th>
-                    <th>Disk GB hours</th>
+                    <th>Disk GB hours (backups)</th>
                 </tr>
             </thead>
             <!-- Table Header -->
@@ -35,7 +35,7 @@
                     <td align="center">{{ instance.state }}</td>
                     <td align="center">{{ instance.hours }}</td>
                     <td align="center">{{ instance.memory }}</td>
-                    <td align="center">{{ instance.disk }}</td>
+                    <td align="center">{{ instance.disk|add:instance.backups_disk }} ({{ instance.backups_disk }})</td>
                 </tr>
                 {% endfor %}
 
