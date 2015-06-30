@@ -396,7 +396,7 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
         BACKEND_MAPPING = {
             self.Types.DigitalOcean: 'nodeconductor_plus.digitalocean.backend.DigitalOceanBackend',
             self.Types.Jira: 'nodeconductor.jira.backend.JiraBackend',
-            self.Types.GitLab: 'nodeconductor.gitlab.backend.GitLabBackend',
+            self.Types.GitLab: 'nodeconductor_plus.gitlab.backend.GitLabBackend',
             self.Types.Oracle: 'nodeconductor.oracle.backend.OracleBackend',
         }
 
