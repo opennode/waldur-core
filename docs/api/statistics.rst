@@ -260,8 +260,8 @@ URL: **/api/stats/alert/**
 
 All available request parameters are optional:
 
-- ?from=timestamp (default: now - 1 day, for example: 1415910025)
-- ?to=timestamp (default: now, for example: 1415912625)
+- ?from=timestamp
+- ?to=timestamp
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
 - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
   object with given uuid)
@@ -270,6 +270,10 @@ All available request parameters are optional:
 - ?scope=<url> concrete alert scope
 - ?scope_type=<string> name of scope type (Ex.: instance, cloud_project_membership, project...)
 - ?acknowledged=True|False - show only acknowledged (non-acknowledged) alerts
+- ?created_from=<timestamp>
+- ?created_to=<timestamp>
+- ?closed_from=<timestamp>
+- ?closed_to=<timestamp>
 
 
 Answer will be dictionary where key is severity and value is a count of alerts.

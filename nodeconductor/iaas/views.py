@@ -22,13 +22,14 @@ from rest_framework import serializers as rf_serializers
 from rest_framework import viewsets, views
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route, list_route
+from rest_framework.serializers import ValidationError
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
+from nodeconductor.core.utils import sort_dict, datetime_to_timestamp, timestamp_to_datetime
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
@@ -1266,17 +1267,10 @@ class QuotaStatsView(views.APIView):
 
 class OpenstackAlertStatsView(views.APIView):
 
-    # XXX: This method uses same filter parameters as alerts filtering. It is not DRY.
+    # XXX: This method uses same filter parameters as alerts filtering. It is not DRY. Has to be fixed in nc-560
     def get(self, request, format=None):
         aggregate_serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         aggregate_serializer.is_valid(raise_exception=True)
-
-        yesterday = timezone.now() - datetime.timedelta(days=1)
-        time_interval_serializer = serializers.TimeIntervalSerializer(data={
-            'start': request.query_params.get('from', datetime_to_timestamp(yesterday)),
-            'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
-        })
-        time_interval_serializer.is_valid(raise_exception=True)
 
         projects_ids = aggregate_serializer.get_projects(request.user).values_list('id', flat=True)
         memberships_ids = aggregate_serializer.get_memberships(request.user).values_list('id', flat=True)
@@ -1298,12 +1292,20 @@ class OpenstackAlertStatsView(views.APIView):
             object_id__in=instances_ids
         )
 
-        closed_time_query = Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True)
-        created_time_query = Q(created__lte=time_interval_serializer.validated_data['end'])
+        queryset = logging_models.Alert.objects.filter(aggregate_query)
 
-        queryset = (logging_models.Alert.objects.filter(aggregate_query)
-                                                .filter(closed_time_query)
-                                                .filter(created_time_query))
+        mapped = {
+            'start': request.query_params.get('from'),
+            'end': request.query_params.get('to'),
+        }
+        time_interval_serializer = serializers.TimeIntervalSerializer(data={k: v for k, v in mapped.items() if v})
+        time_interval_serializer.is_valid(raise_exception=True)
+
+        if 'start' in time_interval_serializer.validated_data:
+            queryset = queryset.filter(
+                Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True))
+        if 'end' in time_interval_serializer.validated_data:
+            queryset = queryset.filter(created__lte=time_interval_serializer.validated_data['end'])
 
         if 'scope' in request.query_params:
             scope_serializer = logging_serializers.ScopeSerializer(data=request.query_params)
@@ -1338,6 +1340,22 @@ class OpenstackAlertStatsView(views.APIView):
                 queryset = queryset.filter(acknowledged=True)
 
         alerts_severities_count = queryset.values('severity').annotate(count=Count('severity'))
+
+        time_search_parameters_map = {
+            'closed_from': 'closed__gte',
+            'closed_to': 'closed__lt',
+            'created_from': 'created__gte',
+            'created_to': 'created__lt',
+        }
+
+        for parameter, filter_field in time_search_parameters_map.items():
+            if parameter in request.query_params:
+                try:
+                    queryset = queryset.filter(
+                        **{filter_field: timestamp_to_datetime(int(request.query_params[parameter]))})
+                except ValueError:
+                    raise ValidationError(
+                        'Parameter {} is not valid. (It has to be valid timestamp)'.format(parameter))
 
         severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
         # For consistency with all other endpoint we need to return severity names in lower case.

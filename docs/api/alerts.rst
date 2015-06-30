@@ -16,6 +16,8 @@ Alerts can be filtered by:
  - ?created_to=<timestamp>
  - ?closed_from=<timestamp>
  - ?closed_to=<timestamp>
+ - ?from=timestamp
+ - ?to=timestamp
  - ?opened - if this argument is in GET request endpoint will return only alerts that are not closed
  - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
  - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only

@@ -1,6 +1,6 @@
 import logging
 
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta
 
 from django.conf import settings
 from celery import shared_task

@@ -1,14 +1,15 @@
 import django_filters
 
-from rest_framework import viewsets, permissions, response, decorators, filters, exceptions
+from rest_framework import viewsets, permissions, response, decorators, exceptions, status
 
 from django.conf import settings
 from django.views.static import serve
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 
 from nodeconductor.structure.filters import GenericRoleFilter
-from nodeconductor.billing.serializers import InvoiceSerializer, InvoiceDetailedSerializer
+from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.billing.models import PriceList, Invoice
+from nodeconductor.billing.serializers import InvoiceSerializer
 
 
 class BillingViewSet(viewsets.GenericViewSet):
@@ -78,12 +79,7 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
         permissions.IsAuthenticated,
         permissions.DjangoObjectPermissions,
     )
-
-    # Invoice items are being fetched directly from backend
-    # thus we expose them in detailed view only
-    # TODO: Move invoice items to DB and use single serializer
-    def get_serializer_class(self):
-        return InvoiceDetailedSerializer if self.action == 'retrieve' else InvoiceSerializer
+    serializer_class = InvoiceSerializer
 
     @decorators.detail_route()
     def pdf(self, request, uuid=None):
@@ -97,3 +93,25 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
             response['Content-Disposition'] = 'attachment; filename="invoice.pdf"'
 
         return response
+
+    @decorators.detail_route()
+    def items(self, request, uuid=None):
+        invoice = self.get_object()
+        # TODO: Move it to createsampleinvoices
+        if not invoice.backend_id:
+            # Dummy items
+            items = [
+                {
+                    "amount": "7.95",
+                    "type": "Hosting",
+                    "name": "Home Package - topcorp.tv (02/10/2014 - 01/11/2014)"
+                }
+            ]
+            return response.Response(items, status=status.HTTP_200_OK)
+        try:
+            backend = invoice.customer.get_billing_backend()
+            items = backend.get_invoice_items(invoice.backend_id)
+            return response.Response(items, status=status.HTTP_200_OK)
+        except BillingBackendError:
+            return response.Response(
+                {'Detail': 'Cannot retrieve data from invoice backend'}, status=status.HTTP_400_BAD_REQUEST)

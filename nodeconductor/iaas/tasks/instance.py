@@ -28,7 +28,7 @@ def provision_succeeded(instance_uuid, transition_entity=None):
         zabbix_create_host_and_service.si(instance_uuid),
         poll_instance_installation_state.si(instance_uuid),
     ).apply_async(
-        link_error=installation_state_pull_failed(instance_uuid),
+        link_error=installation_state_pull_failed.s(instance_uuid),
     )
 
 
