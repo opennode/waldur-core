@@ -1,24 +1,24 @@
 <html>
     <body>
-        <h2> Annual data of customers invoices </h2>
+        <h2>Annual data of customer invoices</h2>
         {% if group_by == 'month' %}
             {% for month, customers in formatted_data.items %}
                 <hr>
-                <h3> Month: {{ month | date:"Y M" }} (Total: {{ partial_sums.next }})</h3>
+                <h3>Month: {{ month | date:"Y M" }} (Total: {{ partial_sums.next }})</h3>
                 {% for customer_name, amount in customers %}
-                    <div> {{ customer_name }} - {{ amount }} </div>
+                    <div>{{ customer_name }} - {{ amount }}</div>
                 {% endfor %}
             {% endfor %}
         {% elif group_by == 'customer' %}
             {% for customer_name, month_data in formatted_data.items %}
                 <hr>
-                <h3> Customer: {{ customer_name }} (Total: {{ partial_sums.next }}) </h3>
+                <h3>Customer: {{ customer_name }} (Total: {{ partial_sums.next }})</h3>
                 {% for month, amount in month_data %}
-                    <div> {{ month | date:"Y M" }} - {{ amount }} </div>
+                    <div>{{ month | date:"Y M" }} - {{ amount }}</div>
                 {% endfor %}
             {% endfor %}
         {% endif %}
         <hr/>
-        <strong> Total: {{ total_sum }} </strong>
+        <strong>Total: {{ total_sum }}</strong>
     </body>
 </html>
