@@ -41,9 +41,12 @@ class ElasticsearchDummyClient(elasticsearch_client.ElasticsearchClient):
             else:
                 search_text_condition = True
             # define permitted objects filter condition
-            permitted_objects_condition = any(
-                [event[key] in uuids for key, uuids
-                    in event_logger.get_permitted_objects_uuids(user).items() if key in event])
+            if user:
+                permitted_objects_condition = any(
+                    [event[key] in uuids for key, uuids
+                        in event_logger.get_permitted_objects_uuids(user).items() if key in event])
+            else:
+                permitted_objects_condition = True  # for command line execution
             # define search_param filter condition
             search_params_condition = all(event.get(field_name) == value for field_name, value in search_params)
 

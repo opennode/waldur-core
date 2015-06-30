@@ -150,3 +150,10 @@ will return status code 204.
     DELETE /api/customer-permissions/71/ HTTP/1.1
     Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
     Host: example.com
+
+
+Customer estimated price
+------------------------
+
+To get customer estimated price - issue GET request against **/api/customers/<customer_uuid>/estimated_price/**
+ endpoint.

@@ -46,7 +46,6 @@ def nova_wait_for_server_status(session, server_id, status):
 
 
 @shared_task(is_heavy_task=True)
-@track_openstack_session
 def openstack_provision_instance(instance_uuid, backend_flavor_id,
                                  system_volume_id=None, data_volume_id=None):
     instance = Instance.objects.get(uuid=instance_uuid)

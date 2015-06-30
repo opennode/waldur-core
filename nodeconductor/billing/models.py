@@ -28,6 +28,8 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
     amount = models.DecimalField(max_digits=9, decimal_places=2)
     date = models.DateField()
     pdf = models.FileField(upload_to='invoices', blank=True, null=True)
+    usage_pdf = models.FileField(upload_to='invoices_usage', blank=True, null=True)
+
     status = models.CharField(max_length=80, blank=True)
 
     backend_id = models.CharField(max_length=255, blank=True)
