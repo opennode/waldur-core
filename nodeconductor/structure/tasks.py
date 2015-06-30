@@ -92,7 +92,7 @@ def sync_service_settings(settings_uuids=None, initial=False):
 def begin_syncing_service_settings(settings_uuid, transition_entity=None):
     settings = transition_entity
     try:
-        backend = service_project_link.get_backend()
+        backend = settings.get_backend()
         backend.sync()
     except ServiceBackendNotImplemented:
         pass
