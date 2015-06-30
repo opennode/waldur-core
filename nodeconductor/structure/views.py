@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import logging
 import time
+from datetime import datetime
 
 from django.contrib import auth
 from django.db.models.query_utils import Q
@@ -22,6 +23,7 @@ from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
+from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import filters
@@ -87,6 +89,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
                           rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = CustomerFilter
+
+    # XXX: This detail route should be moved to billing application.
+    @detail_route()
+    def estimated_price(self, request, uuid):
+        from nodeconductor.billing.tasks import get_customer_usage_data
+        customer = self.get_object()
+        start_date = core_utils.datetime_to_timestamp(
+            datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0))
+        end_date = core_utils.datetime_to_timestamp(datetime.now())
+        _, _, projected_total = get_customer_usage_data(customer, start_date, end_date)
+        return Response(projected_total, status.HTTP_200_OK)
 
 
 class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):

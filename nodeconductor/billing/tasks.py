@@ -59,14 +59,7 @@ def generate_usage_pdf(invoice, usage_data):
         logger.error(pdf.err)
 
 
-@shared_task(name='nodeconductor.billing.create_invoices')
-def create_invoices(customer_uuid, start_date, end_date):
-    try:
-        customer = Customer.objects.get(uuid=customer_uuid)
-    except Customer.DoesNotExist:
-        logger.exception('Customer with uuid %s does not exist.', customer_uuid)
-        return
-
+def get_customer_usage_data(customer, start_date, end_date):
     start_date = timestamp_to_datetime(start_date, replace_tz=False)  # XXX replacing TZ info causes nova client to fail
     end_date = timestamp_to_datetime(end_date, replace_tz=False)
 
@@ -76,8 +69,6 @@ def create_invoices(customer_uuid, start_date, end_date):
         'date': '{:%Y%m%d}'.format(date.today()),
         'duedate': '{:%Y%m%d}'.format(date.today() + timedelta(days=45)),
     }
-
-    billing_backend = customer.get_billing_backend()
 
     # collect_data
     billing_item_index = 1  # as injected into invoice, should start with 1 for whmcs
@@ -148,6 +139,22 @@ def create_invoices(customer_uuid, start_date, end_date):
             data['itemtaxed%s' % billing_item_index] = 0
             projected_total += cost
             billing_item_index += 1
+
+    return usage_data, data, projected_total
+
+
+# TODO: Refactor this tasks and related method: split it into more readable functions, move logic to models.
+# Use data from django-revisions, not events (if this is possible).
+@shared_task(name='nodeconductor.billing.create_invoices')
+def create_invoices(customer_uuid, start_date, end_date):
+    try:
+        customer = Customer.objects.get(uuid=customer_uuid)
+    except Customer.DoesNotExist:
+        logger.exception('Customer with uuid %s does not exist.', customer_uuid)
+        return
+
+    billing_backend = customer.get_billing_backend()
+    usage_data, data, projected_total = get_customer_usage_data(customer, start_date, end_date)
 
     invoice_code = billing_backend.api.create_invoice(data)
     # create a preliminary invoice in NC
