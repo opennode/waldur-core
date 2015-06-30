@@ -21,6 +21,10 @@ def _backup_list_url():
     return 'http://testserver' + reverse('backup-list')
 
 
+def _instance_url(instance):
+    return 'http://testserver' + reverse('instance-detail', kwargs={'uuid': instance.uuid})
+
+
 class BackupUsageTest(test.APITransactionTestCase):
 
     def setUp(self):
@@ -138,3 +142,24 @@ class BackupPermissionsTest(helpers.PermissionsTest):
         yield {'url': _backup_list_url(), 'method': 'POST',
                'data': {'backup_source': instance_url}}
         yield {'url': _backup_url(self.backup, action='delete'), 'method': 'POST'}
+
+
+class BackupSourceFilterTest(test.APITransactionTestCase):
+
+    def test_filter_backup_by_scope(self):
+        user = structure_factories.UserFactory.create(is_staff=True)
+
+        instance1 = iaas_factories.InstanceFactory()
+        backup1 = factories.BackupFactory(backup_source=instance1)
+        backup2 = factories.BackupFactory(backup_source=instance1)
+
+        instance2 = iaas_factories.InstanceFactory()
+        backup3 = factories.BackupFactory(backup_source=instance2)
+
+        self.client.force_authenticate(user=user)
+        response = self.client.get(_backup_list_url())
+        self.assertEqual(3, len(response.data))
+
+        response = self.client.get(_backup_list_url(), data={'backup_source': _instance_url(instance1)})
+        self.assertEqual(2, len(response.data))
+        self.assertEqual(_instance_url(instance1), response.data[0]['backup_source'])
