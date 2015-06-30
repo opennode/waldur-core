@@ -85,7 +85,8 @@ class CreateInvoicesTaskTest(TestCase):
             self.assertFalse(mocked_openstack.called)
             self.assertFalse(mocked_billing.called)
 
-    def test_create_invoices_with_valid_uuid_succeeds(self, mocked_billing, mocked_openstack):
+    @patch('nodeconductor.billing.tasks.generate_usage_pdf')
+    def test_create_invoices_with_valid_uuid_succeeds(self, mocked_pdf_generator, mocked_billing, mocked_openstack):
         mocked_openstack().get_nova_usage = Mock(return_value={
             'disk': 1.0,
             'memory': 1.0,
@@ -93,6 +94,7 @@ class CreateInvoicesTaskTest(TestCase):
             'servers': 1.0}
         )
         mocked_billing.api.create_invoice = Mock()
+
         start_date = datetime(day=1, month=3, year=2015)
         end_date = datetime(day=31, month=3, year=2015)
 
@@ -102,6 +104,7 @@ class CreateInvoicesTaskTest(TestCase):
 
             self.assertTrue(mocked_openstack().get_nova_usage.called)
             self.assertTrue(mocked_billing().api.create_invoice.called)
+            self.assertTrue(mocked_pdf_generator.called)
 
 
 class CreateSampleDateTest(TestCase):
