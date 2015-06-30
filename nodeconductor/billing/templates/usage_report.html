@@ -14,12 +14,11 @@
                 <tr>
                     <th>Instance name</th>
                     <th>Flavor</th>
-                    <th>Start time</th>
-                    <th>End time</th>
+                    <th>Cores, memory, disk</th>
+                    <th>Creation time</th>
+                    <th>Termination time</th>
                     <th>State</th>
                     <th>CPU hours</th>
-                    <th>Memory GB hours</th>
-                    <th>Disk GB hours</th>
                 </tr>
             </thead>
             <!-- Table Header -->
@@ -30,12 +29,11 @@
                 <tr>
                     <td align="center">{{ instance.name }}</td>
                     <td align="center">{{ instance.flavor }}</td>
+                    <td align="center">{{ instance.cores }}, {{ instance.memory }}GB, {{ instance.disk|add:instance.backups_disk }}GB</td>
                     <td align="center">{{ instance.started_at|date:"M d H:m"}}</td>
                     <td align="center">{% if instance.ended_at %} {{ instance.ended_at |date:"M d H:m"}} {% endif %}</td>
                     <td align="center">{{ instance.state }}</td>
-                    <td align="center">{{ instance.hours }}</td>
-                    <td align="center">{{ instance.memory }}</td>
-                    <td align="center">{{ instance.disk }}</td>
+                    <td align="center">{{ instance.hours }}h</td>
                 </tr>
                 {% endfor %}
 

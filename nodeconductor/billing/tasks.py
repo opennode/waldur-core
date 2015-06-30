@@ -4,15 +4,17 @@ import logging
 from datetime import date, timedelta, datetime
 
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
 from celery import shared_task
 import xhtml2pdf.pisa as pisa
 
+from nodeconductor.backup.models import Backup
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.billing.models import PriceList
 from nodeconductor.core.utils import timestamp_to_datetime
-from nodeconductor.iaas.models import CloudProjectMembership
+from nodeconductor.iaas.models import CloudProjectMembership, Instance
 from nodeconductor.logging.elasticsearch_client import ElasticsearchResultList
 from nodeconductor.structure.models import Customer
 
@@ -102,11 +104,13 @@ def get_customer_usage_data(customer, start_date, end_date):
                 'flavor': server['flavor'],
                 'disk': server['local_gb'],
                 'memory': server['memory_mb'] / 1024.0,
+                'cores': server['vcpus'],
                 'started_at': server['started_at'],
                 'ended_at': server['ended_at'],
                 'state': server['state'],
                 'uptime': server['uptime'],
                 'name': server['name'],
+                'backups_disk': 0,
             })
             # extract data for the usage report
 
@@ -115,6 +119,18 @@ def get_customer_usage_data(customer, start_date, end_date):
                 # XXX: license_service_type is not used here.
                 usage_data['usage'][billing_category_name][server_uuid]['License %s' % license_type] = usage_duration
                 billing_data[license_type] = billing_data.get(license_type, 0) + usage_duration
+
+            # XXX: Only existed backups are connected to existed instances
+            try:
+                instance = Instance.objects.get(uuid=server_uuid)
+                ct = ContentType.objects.get_for_model(instance)
+                backups = Backup.objects.filter(
+                    object_id=instance.id, content_type=ct, created_at__lte=end_date)
+                for backup in backups:
+                    usage_data['backups_disk'] += backup.metadata.get('data_snapshot_size', 0) / 1024.0
+                    usage_data['backups_disk'] += backup.metadata.get('data_volume_size', 0) / 1024.0
+            except Instance.DoesNotExist:
+                pass
 
         # create invoices
         meters_mapping = settings.NODECONDUCTOR.get('BILLING')['openstack']['invoice_meters']
