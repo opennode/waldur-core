@@ -186,22 +186,26 @@ class QuotaModelMixin(models.Model):
         if len(scope_models) > 1:
             raise exceptions.QuotaError('All scopes have to be instances of the same model')
 
-        annotate_kwars = dict((field, Sum(field)) for field in fields)
         filter_kwargs = {
             'content_type': ct_models.ContentType.objects.get_for_model(scopes[0]),
             'object_id__in': [scope.id for scope in scopes],
             'name__in': quota_names
         }
 
-        quota_sums = Quota.objects.filter(**filter_kwargs).values('name').annotate(**annotate_kwars)
-
         result = {}
         if 'usage' in fields:
-            for quota_sum in quota_sums:
-                result[quota_sum['name'] + '_usage'] = quota_sum['usage']
+            items = Quota.objects.filter(**filter_kwargs)\
+                         .values('name').annotate(usage=Sum('usage'))
+            for item in items:
+                result[item['name'] + '_usage'] = item['usage']
 
         if 'limit' in fields:
-            for quota_sum in quota_sums:
-                result[quota_sum['name']] = quota_sum['limit']
+            items = Quota.objects.filter(**filter_kwargs)\
+                         .exclude(limit=-1).values('name').annotate(limit=Sum('limit'))
+            for item in items:
+                result[item['name']] = item['limit']
+            for name in quota_names:
+                if name not in result:
+                    result[name] = -1
 
         return result
