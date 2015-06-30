@@ -76,7 +76,7 @@ def pull_instances_installation_state():
     for instance in instances:
         pull_instance_installation_state.apply_async(
             args=(instance.uuid.hex,),
-            link_error=installation_state_pull_failed(instance.uuid.hex),
+            link_error=installation_state_pull_failed.s(instance.uuid.hex),
         )
 
 
@@ -98,6 +98,7 @@ def poll_instance_installation_state(instance_uuid):
         return False
 
 
+@shared_task
 def installation_state_pull_failed(instance_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)
     instance.installation_state = 'FAIL'
