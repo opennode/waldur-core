@@ -1806,11 +1806,11 @@ class OpenStackBackend(OpenStackClient):
             six.reraise(CloudBackendError, e)
         else:
             return {
-                'cpu': usage.total_vcpus_usage,
-                'disk': usage.total_local_gb_usage,
-                'memory': usage.total_memory_mb_usage / 1024,  # to get to GBs
-                'servers': len(usage.server_usages),
-                'server_usages': usage.server_usages,
+                'cpu': getattr(usage, "total_vcpus_usage", 0),
+                'disk': getattr(usage, 'total_local_gb_usage', 0),
+                'memory': getattr(usage, "total_memory_mb_usage", 0) / 1024,  # to get to GBs
+                'servers': len(getattr(usage, "server_usages", [])),
+                'server_usages': getattr(usage, "server_usages", []),
             }
 
     # Helper methods
