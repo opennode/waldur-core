@@ -104,7 +104,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         customer = self.get_object()
         start_date = core_utils.datetime_to_timestamp(
             datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0))
-        end_date = core_utils.datetime_to_timestamp(datetime.now())
+        end_date = core_utils.datetime_to_timestamp(datetime.now().replace(minute=0, second=0, microsecond=0))
         _, _, projected_total = get_customer_usage_data(customer, start_date, end_date)
         return Response(projected_total, status.HTTP_200_OK)
 
