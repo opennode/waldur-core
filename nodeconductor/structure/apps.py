@@ -175,10 +175,16 @@ class StructureConfig(AppConfig):
         for model in ServiceProjectLink.get_all_models():
             name = 'propagate_ssh_keys_for_%s' % model.__name__
             signals.post_save.connect(
-                handlers.propagate_users_key_to_his_projects_services,
+                handlers.propagate_user_to_his_projects_services,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.%s' % name,
             )
+
+        signals.pre_delete.connect(
+            handlers.remove_stale_user_from_his_projects_services,
+            sender=User,
+            dispatch_uid='nodeconductor.structure.handlers.remove_stale_user_from_his_projects_services',
+        )
 
         signals.post_save.connect(
             handlers.propagate_new_users_key_to_his_projects_services,
@@ -189,17 +195,17 @@ class StructureConfig(AppConfig):
         signals.post_delete.connect(
             handlers.remove_stale_users_key_from_his_projects_services,
             sender=SshPublicKey,
-            dispatch_uid='nodeconductor.structure.handlers.remove_stale_key_from_his_projects_services',
+            dispatch_uid='nodeconductor.structure.handlers.remove_stale_users_key_from_his_projects_services',
         )
 
         structure_signals.structure_role_granted.connect(
-            handlers.propagate_users_keys_to_services_of_newly_granted_project,
+            handlers.propagate_user_to_services_of_newly_granted_project,
             sender=Project,
-            dispatch_uid='nodeconductor.structure.handlers.propagate_users_keys_to_services_of_newly_granted_project',
+            dispatch_uid='nodeconductor.structure.handlers.propagate_user_to_services_of_newly_granted_project',
         )
 
         structure_signals.structure_role_revoked.connect(
-            handlers.remove_stale_users_keys_from_services_of_revoked_project,
+            handlers.remove_stale_user_from_services_of_revoked_project,
             sender=Project,
-            dispatch_uid='nodeconductor.structure.handlers.remove_stale_users_keys_from_services_of_revoked_project',
+            dispatch_uid='nodeconductor.structure.handlers.remove_stale_user_from_services_of_revoked_project',
         )

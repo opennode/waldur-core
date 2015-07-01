@@ -11,8 +11,8 @@ from jira import JIRA, JIRAError
 from django.conf import settings as django_settings
 from django.utils import six
 
-from nodeconductor.iaas.backend import ServiceBackend, ServiceBackendError
 from nodeconductor.structure.models import ServiceSettings
+from nodeconductor.structure import ServiceBackend, ServiceBackendError
 
 
 now = lambda: datetime.datetime.now() - datetime.timedelta(minutes=random.randint(0, 60))

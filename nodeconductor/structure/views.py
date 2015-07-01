@@ -1185,6 +1185,32 @@ class ServiceViewSet(viewsets.GenericViewSet):
                         for k, v in serializers.SUPPORTED_SERVICES.items()})
 
 
+class BaseServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
+    queryset = NotImplemented
+    serializer_class = NotImplemented
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    lookup_field = 'uuid'
+
+
+class BaseServiceProjectLinkViewSet(mixins.CreateModelMixin,
+                                    mixins.RetrieveModelMixin,
+                                    mixins.DestroyModelMixin,
+                                    mixins.ListModelMixin,
+                                    viewsets.GenericViewSet):
+
+    queryset = NotImplemented
+    serializer_class = NotImplemented
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+
+    def perform_create(self, serializer):
+        service_project_link = serializer.save()
+        service_project_link.begin_syncing()
+        service_project_link.set_in_sync()
+        service_project_link.save()
+
+
 class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
     queryset = NotImplemented
     serializer_class = NotImplemented
@@ -1226,6 +1252,10 @@ class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
         raise NotImplementedError
 
     def perform_destroy(self, resource):
+        if resource.state != resource.States.OFFLINE:
+            raise core_exceptions.IncorrectStateException(
+                "Resource must be offline to be deleted")
+
         if resource.backend_id:
             backend = resource.get_backend()
             backend.destroy(resource)
