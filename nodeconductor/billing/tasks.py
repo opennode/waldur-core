@@ -62,7 +62,7 @@ def generate_usage_pdf(invoice, usage_data):
         logger.error(pdf.err)
 
 
-@lru_cache()
+@lru_cache(maxsize=1)
 def get_customer_usage_data(customer, start_date, end_date):
     start_date = timestamp_to_datetime(start_date, replace_tz=False)  # XXX replacing TZ info causes nova client to fail
     end_date = timestamp_to_datetime(end_date, replace_tz=False)
