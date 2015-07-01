@@ -677,6 +677,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                             serializers.HyperlinkedModelSerializer)):
 
     SERVICE_TYPE = NotImplemented
+    SERVICE_ACCOUNT_FIELDS = NotImplemented
 
     projects = BasicProjectSerializer(many=True, read_only=True)
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
@@ -722,6 +723,14 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         fields = super(BaseServiceSerializer, self).get_fields()
         if self.SERVICE_TYPE is not NotImplemented:
             fields['settings'].queryset = fields['settings'].queryset.filter(type=self.SERVICE_TYPE)
+
+        if self.SERVICE_ACCOUNT_FIELDS is not NotImplemented:
+            for field in ('backend_url', 'username', 'password', 'token'):
+                if field in self.SERVICE_ACCOUNT_FIELDS:
+                    fields[field].help_text = self.SERVICE_ACCOUNT_FIELDS[field]
+                else:
+                    del fields[field]
+
         return fields
 
     def validate_empty_values(self, data):
