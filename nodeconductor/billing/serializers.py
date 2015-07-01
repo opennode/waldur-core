@@ -11,11 +11,12 @@ class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
     month = serializers.DateField(format='%m', source='date')
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
     pdf = serializers.HyperlinkedIdentityField(view_name='invoice-pdf', lookup_field='uuid')
+    usage_pdf = serializers.HyperlinkedIdentityField(view_name='invoice-usage-pdf', lookup_field='uuid')
 
     class Meta(object):
         model = Invoice
         fields = (
-            'url', 'uuid', 'year', 'month', 'amount', 'pdf', 'date',
+            'url', 'uuid', 'year', 'month', 'amount', 'pdf', 'usage_pdf', 'date',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
             'status',
         )
@@ -24,26 +25,3 @@ class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
         }
-
-
-class InvoiceDetailedSerializer(InvoiceSerializer):
-
-    def get_items(self, obj):
-        # TODO: Move it to createsampleinvoices
-        if not obj.backend_id:
-            # Dummy items
-            return [
-                {
-                    "amount": "7.95",
-                    "type": "Hosting",
-                    "name": "Home Package - topcorp.tv (02/10/2014 - 01/11/2014)"
-                }
-            ]
-
-        backend = obj.customer.get_billing_backend()
-        return backend.get_invoice_items(obj.backend_id)
-
-    def get_fields(self):
-        fields = super(InvoiceDetailedSerializer, self).get_fields()
-        fields['items'] = serializers.SerializerMethodField()
-        return fields

@@ -23,7 +23,7 @@ def set_permissions_for_model(model, **kwargs):
 def filter_queryset_for_user(queryset, user):
     filtered_relations = ('customer', 'project', 'project_group')
 
-    if user.is_staff:
+    if user is None or user.is_staff:
         return queryset
 
     def create_q(entity):

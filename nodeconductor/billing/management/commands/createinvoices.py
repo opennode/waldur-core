@@ -1,5 +1,5 @@
 from calendar import monthrange
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from optparse import make_option
 
 from django.core.management.base import BaseCommand, CommandError
@@ -43,7 +43,7 @@ class Command(BaseCommand):
             raise CommandError('Year and month should be valid values.')
 
         last_day = monthrange(year, month)[1]
-        end_date = datetime(day=last_day, month=month, year=year)
+        end_date = datetime(day=last_day, month=month, year=year) + timedelta(days=1)
 
         customer_uuid = options.get('customer_uuid')
         if customer_uuid:

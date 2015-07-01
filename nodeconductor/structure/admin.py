@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.contrib import admin, messages
 from django.core.management import call_command, CommandError
 from django.db import models as django_models
@@ -45,7 +47,7 @@ class ProtectedModelMixin(object):
 
 class CustomerAdmin(ProtectedModelMixin, ReversionAdmin):
     readonly_fields = ['balance']
-    actions = ['sync_with_backend', 'create_invoices']
+    actions = ['sync_with_backend', 'create_last_month_invoices', 'create_current_month_invoices']
     list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation']
 
     def sync_with_backend(self, request, queryset):
@@ -64,11 +66,14 @@ class CustomerAdmin(ProtectedModelMixin, ReversionAdmin):
 
     sync_with_backend.short_description = "Sync selected customers with billing backend"
 
-    def create_invoices(self, request, queryset):
+    def create_invoices(self, request, queryset, year=None, month=None):
         succeeded_customers = []
         for customer in queryset.iterator():
             try:
-                call_command('createinvoices', customer_uuid=customer.uuid.hex)
+                if year is not None and month is not None:
+                    call_command('createinvoices', year, month, customer_uuid=customer.uuid.hex)
+                else:
+                    call_command('createinvoices', customer_uuid=customer.uuid.hex)
                 succeeded_customers.append(customer)
             except CommandError as e:
                 message = 'Invoices creation fails for customer {} with error: {}'.format(customer.name, e.message)
@@ -83,7 +88,15 @@ class CustomerAdmin(ProtectedModelMixin, ReversionAdmin):
             message = message % {'customers_names': ', '.join([c.name for c in succeeded_customers])}
             self.message_user(request, message)
 
-    create_invoices.short_description = "Create invoices for last month"
+    def create_last_month_invoices(self, request, queryset):
+        self.create_invoices(request, queryset)
+
+    create_last_month_invoices.short_description = "Create invoices for last month"
+
+    def create_current_month_invoices(self, request, queryset):
+        self.create_invoices(request, queryset, year=datetime.now().year, month=datetime.now().month)
+
+    create_current_month_invoices.short_description = "Create invoices for current month"
 
 
 class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, ReversionAdmin):

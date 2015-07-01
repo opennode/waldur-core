@@ -57,6 +57,9 @@ Backup has a state, currently supported states are:
 - Deleting
 - Erred
 
+You can filter backup by description or backup_source field, which should match object url.
+It is useful when one resource has several backups and you want to get all backups related to this resource.
+
 Backup actions
 --------------
 

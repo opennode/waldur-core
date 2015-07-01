@@ -59,21 +59,27 @@ def openstack_provision_instance(instance_uuid, backend_flavor_id,
 
 
 @shared_task
-def openstack_create_security_group(security_group_uuid):
+@track_openstack_session
+def openstack_create_security_group(session, security_group_uuid):
     security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
     backend = security_group.cloud_project_membership.cloud.get_backend()
-    backend.create_security_group(security_group)
+    nova = OpenStackBackend.create_nova_client(session)
+    backend.create_security_group(security_group, nova=nova)
 
 
 @shared_task
-def openstack_update_security_group(security_group_uuid):
+@track_openstack_session
+def openstack_update_security_group(session, security_group_uuid):
     security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
     backend = security_group.cloud_project_membership.cloud.get_backend()
-    backend.update_security_group(security_group)
+    nova = OpenStackBackend.create_nova_client(session)
+    backend.update_security_group(security_group, nova=nova)
 
 
 @shared_task
-def openstack_delete_security_group(security_group_uuid):
+@track_openstack_session
+def openstack_delete_security_group(session, security_group_uuid):
     security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
     backend = security_group.cloud_project_membership.cloud.get_backend()
-    backend.delete_security_group(security_group.backend_id, security_group.cloud_project_membership)
+    nova = OpenStackBackend.create_nova_client(session)
+    backend.delete_security_group(security_group.backend_id, nova=nova)

@@ -1,10 +1,17 @@
 from __future__ import unicode_literals
 
+from collections import defaultdict, OrderedDict
 import logging
+import StringIO
 import time
+from datetime import datetime, timedelta
 
+from django import http
 from django.contrib import auth
-from django.db.models.query_utils import Q
+from django.db import connection
+from django.db.models import Q, Sum
+from django.template.loader import render_to_string
+from django.utils import timezone
 import django_filters
 from rest_framework import filters as rf_filters
 from rest_framework import mixins
@@ -14,14 +21,16 @@ from rest_framework import views
 from rest_framework import viewsets
 from rest_framework import generics
 from rest_framework.reverse import reverse
-from rest_framework.decorators import detail_route
+from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from xhtml2pdf import pisa
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
+from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import filters
@@ -87,6 +96,80 @@ class CustomerViewSet(viewsets.ModelViewSet):
                           rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = CustomerFilter
+
+    # XXX: This detail route should be moved to billing application.
+    @detail_route()
+    def estimated_price(self, request, uuid):
+        from nodeconductor.billing.tasks import get_customer_usage_data
+        customer = self.get_object()
+        start_date = core_utils.datetime_to_timestamp(
+            datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0))
+        end_date = core_utils.datetime_to_timestamp(datetime.now().replace(minute=0, second=0, microsecond=0))
+        _, _, projected_total = get_customer_usage_data(customer, start_date, end_date)
+        return Response(projected_total, status.HTTP_200_OK)
+
+    # XXX: This detail route should be moved to billing application.
+    @list_route()
+    def annual_report(self, request):
+        from nodeconductor.billing.models import Invoice
+
+        group_by = request.query_params.get('group_by', 'customer')
+        if group_by not in ('customer', 'month'):
+            return Response(
+                {'Detail': 'group_by parameter can be only `month` or `customer`'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        year_ago = timezone.now().replace(day=1) - timedelta(days=365)
+        truncate_date = connection.ops.date_trunc_sql('month', 'date')
+        invoices = Invoice.objects.filter(date__gte=year_ago)
+        invoices_values = (
+            invoices
+            .extra({'month': truncate_date})
+            .values('month', 'customer__name')
+            .annotate(Sum('amount'))
+        )
+
+        formatted_data = defaultdict(list)
+        if group_by == 'customer':
+            for invoice in invoices_values:
+                month = invoice['month']
+                if isinstance(month, basestring):
+                    month = datetime.strptime(invoice['month'], '%Y-%m-%d')
+                formatted_data[invoice['customer__name']].append((month, invoice['amount__sum']))
+            formatted_data.default_factory = None
+            for customer_name, month_data in formatted_data.items():
+                formatted_data[customer_name] = sorted(month_data, key=lambda x: x[0])
+        else:
+            for invoice in invoices_values:
+                month = invoice['month']
+                if isinstance(month, basestring):
+                    month = datetime.strptime(invoice['month'], '%Y-%m-%d')
+                formatted_data[month].append((invoice['customer__name'], invoice['amount__sum']))
+            formatted_data.default_factory = None
+
+        formatted_data = OrderedDict(sorted(formatted_data.items(), key=lambda x: x[0]))
+        partial_sums = [sum([el[1] for el in v]) for v in formatted_data.values()]
+        total_sum = sum(partial_sums)
+
+        context = {
+            'formatted_data': formatted_data,
+            'group_by': group_by,
+            'partial_sums': iter(partial_sums),
+            'total_sum': total_sum
+        }
+
+        result = StringIO.StringIO()
+        pisa.pisaDocument(
+            StringIO.StringIO(render_to_string('billing/annual_report.html', context)),
+            result
+        )
+
+        response = http.HttpResponse(result.getvalue(), content_type='application/pdf')
+
+        if request.query_params.get('download'):
+            response['Content-Disposition'] = 'attachment; filename="annual_report.pdf"'
+
+        return response
 
 
 class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
@@ -1102,6 +1185,32 @@ class ServiceViewSet(viewsets.GenericViewSet):
                         for k, v in serializers.SUPPORTED_SERVICES.items()})
 
 
+class BaseServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
+    queryset = NotImplemented
+    serializer_class = NotImplemented
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    lookup_field = 'uuid'
+
+
+class BaseServiceProjectLinkViewSet(mixins.CreateModelMixin,
+                                    mixins.RetrieveModelMixin,
+                                    mixins.DestroyModelMixin,
+                                    mixins.ListModelMixin,
+                                    viewsets.GenericViewSet):
+
+    queryset = NotImplemented
+    serializer_class = NotImplemented
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+
+    def perform_create(self, serializer):
+        service_project_link = serializer.save()
+        service_project_link.begin_syncing()
+        service_project_link.set_in_sync()
+        service_project_link.save()
+
+
 class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
     queryset = NotImplemented
     serializer_class = NotImplemented
@@ -1143,6 +1252,10 @@ class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
         raise NotImplementedError
 
     def perform_destroy(self, resource):
+        if resource.state != resource.States.OFFLINE:
+            raise core_exceptions.IncorrectStateException(
+                "Resource must be offline to be deleted")
+
         if resource.backend_id:
             backend = resource.get_backend()
             backend.destroy(resource)

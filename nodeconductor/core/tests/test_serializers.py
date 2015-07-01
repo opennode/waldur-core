@@ -5,9 +5,9 @@ import unittest
 from rest_framework import serializers
 from nodeconductor.core.fields import JsonField
 from nodeconductor.core.fields import TimestampField
-from nodeconductor.core.fields import CommaSeparatedListField
 from nodeconductor.core.serializers import Base64Field
 from nodeconductor.core import utils
+
 
 class Base64Serializer(serializers.Serializer):
     content = Base64Field()

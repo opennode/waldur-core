@@ -3,7 +3,7 @@ import requests
 
 from nodeconductor.oracle import models
 from nodeconductor.core.tasks import send_task
-from nodeconductor.iaas.backend import ServiceBackend, ServiceBackendError
+from nodeconductor.structure import ServiceBackend, ServiceBackendError
 from nodeconductor import __version__
 
 

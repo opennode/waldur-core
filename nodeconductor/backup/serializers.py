@@ -41,3 +41,7 @@ class BackupSerializer(serializers.HyperlinkedModelSerializer):
             'url': {'lookup_field': 'uuid'},
             'backup_schedule': {'lookup_field': 'uuid'},
         }
+
+
+class BackupSourceSerializer(serializers.Serializer):
+    backup_source = GenericRelatedField(related_models=utils.get_backupable_models())

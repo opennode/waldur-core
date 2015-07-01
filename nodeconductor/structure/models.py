@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import importlib
+
 from django.apps import apps
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
@@ -7,6 +9,7 @@ from django.contrib.auth.models import Group
 from django.db import models
 from django.db import transaction
 from django.db.models import Q
+from django.utils import six
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible, force_text
 from django_fsm import FSMIntegerField
@@ -20,6 +23,7 @@ from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.images import ImageModelMixin
+from nodeconductor.structure import ServiceBackendError
 
 
 @python_2_unicode_compatible
@@ -391,17 +395,26 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
 
     def get_backend(self):
         # TODO: Find a way to register backend form the other side, perhaps within NC-519
-        if self.type == self.Types.DigitalOcean:
-            from nodeconductor_plus.digitalocean.backend import DigitalOceanBackend
-            return DigitalOceanBackend(self)
+        BACKEND_MAPPING = {
+            self.Types.DigitalOcean: 'nodeconductor_plus.digitalocean.backend.DigitalOceanBackend',
+            self.Types.Jira: 'nodeconductor.jira.backend.JiraBackend',
+            self.Types.GitLab: 'nodeconductor_plus.gitlab.backend.GitLabBackend',
+            self.Types.Oracle: 'nodeconductor.oracle.backend.OracleBackend',
+        }
 
-        if self.type == self.Types.Jira:
-            from nodeconductor.jira.backend import JiraBackend
-            return JiraBackend(self)
-
-        if self.type == self.Types.Oracle:
-            from nodeconductor.oracle.backend import OracleBackend
-            return OracleBackend(self)
+        backend_path = BACKEND_MAPPING.get(self.type)
+        if backend_path:
+            try:
+                path_bits = backend_path.split('.')
+                class_name = path_bits.pop()
+                backend = importlib.import_module('.'.join(path_bits))
+                backend_cls = getattr(backend, class_name)
+            except (AttributeError, IndexError):
+                raise ServiceBackendError("Invalid backend supplied: %s" % backend_path)
+            except ImportError as e:
+                six.reraise(ServiceBackendError, e)
+            else:
+                return backend_cls(self)
 
         raise NotImplementedError
 
@@ -411,37 +424,7 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
 
 @python_2_unicode_compatible
 class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
-    """ Base service class. Define specific service model as follows:
-
-        .. code-block:: python
-
-            class JiraService(Service):
-                projects = 'JiraProjectLink'
-                username = models.CharField(max_length=64)
-                password = models.CharField(max_length=16)
-
-            class JiraProjectLink(ServiceProjectLink):
-                service = 'JiraService'
-                backend_id = models.CharField(max_length=255)
-
-
-            class DigitalOceanService(Service):
-                projects = 'DigitalOceanProjectLink'
-                auth_token = models.CharField(max_length=64)
-
-            class DigitalOceanProjectLink(ServiceProjectLink):
-                QUOTAS_NAMES = ['max_droplets']
-                service = 'DigitalOceanService'
-
-        List all services with single query:
-
-        .. code-block:: python
-
-            >>> Service.objects.all()
-                [ <JiraService: id 1, name "Main JIRA">,
-                  <DigitalOceanService: id 1, name "Production DO Cloud">,
-                  <DigitalOceanService: id 2, name "Temp DigitalOcean"> ]
-    """
+    """ Base service class. """
 
     class Meta(object):
         unique_together = ('customer', 'settings', 'polymorphic_ctype')

@@ -171,7 +171,7 @@ class ZabbixDBClient(object):
                        AVG(value) AS value
                   FROM hosts,
                        items,
-                       history_uint
+                       history_uint USE INDEX (history_uint_1)
                  WHERE hosts.hostid = items.hostid
                    AND items.itemid = history_uint.itemid
                    AND hosts.name IN ({hosts_placeholder})

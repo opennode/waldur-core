@@ -3,13 +3,13 @@ from __future__ import unicode_literals
 import logging
 
 from celery import shared_task
+from django.contrib.auth import get_user_model
 
 from nodeconductor.core.tasks import transition, retry_if_false
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
-from nodeconductor.iaas.backend import ServiceBackendError, CloudBackendError
+from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
-from nodeconductor.structure.handlers import PUSH_KEY, REMOVE_KEY
-from nodeconductor.structure import models
+from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented, models, handlers
 
 logger = logging.getLogger(__name__)
 
@@ -22,21 +22,23 @@ def sync_billing_customers(customer_uuids=None):
     map(sync_billing_customer.delay, customer_uuids)
 
 
-@shared_task(name='nodeconductor.structure.sync_ssh_public_keys')
-def sync_ssh_public_keys(action, ssh_public_keys_uuids, service_project_links):
+@shared_task(name='nodeconductor.structure.sync_users')
+def sync_users(action, entities_uuids, service_project_links):
     actions = {
-        PUSH_KEY: push_ssh_public_key,
-        REMOVE_KEY: remove_ssh_public_key,
+        handlers.PUSH_KEY: push_ssh_public_key,
+        handlers.REMOVE_KEY: remove_ssh_public_key,
+        handlers.ADD_USER: add_user,
+        handlers.REMOVE_USER: remove_user,
     }
 
     try:
         task = actions[action]
     except KeyError:
-        raise NotImplementedError("Action %s isn't supported by sync_ssh_public_keys" % action)
+        raise NotImplementedError("Action %s isn't supported by sync_users" % action)
 
     for spl in service_project_links:
-        for ssh_public_keys_uuid in ssh_public_keys_uuids:
-            task.delay(ssh_public_keys_uuid, spl)
+        for entity_uuid in entities_uuids:
+            task.delay(entity_uuid, spl)
 
 
 @shared_task
@@ -89,8 +91,11 @@ def sync_service_settings(settings_uuids=None, initial=False):
 @transition(models.ServiceSettings, 'begin_syncing')
 def begin_syncing_service_settings(settings_uuid, transition_entity=None):
     settings = transition_entity
-    backend = settings.get_backend()
-    backend.sync()
+    try:
+        backend = settings.get_backend()
+        backend.sync()
+    except ServiceBackendNotImplemented:
+        pass
 
 
 @shared_task
@@ -105,25 +110,67 @@ def sync_service_settings_failed(settings_uuid, transition_entity=None):
     pass
 
 
+@shared_task(name='nodeconductor.structure.sync_service_project_links')
+def sync_service_project_links(service_project_links=None, initial=False):
+    if service_project_links and not isinstance(service_project_links, (list, tuple)):
+        service_project_links = [service_project_links]
+
+    for obj in models.ServiceProjectLink.from_string(service_project_links):
+        # Settings are being created in SYNCING_SCHEDULED state,
+        # thus bypass transition during 'initial' sync.
+        if not initial:
+            obj.schedule_syncing()
+            obj.save()
+
+        service_project_link_pk = obj.pk
+        begin_syncing_service_project_links.apply_async(
+            args=(service_project_link_pk,),
+            link=sync_service_project_link_succeeded.si(service_project_link_pk),
+            link_error=sync_service_project_link_failed.si(service_project_link_pk))
+
+
+@shared_task
+@transition(models.ServiceProjectLink, 'begin_syncing')
+def begin_syncing_service_project_links(service_project_link_pk, transition_entity=None):
+    service_project_link = transition_entity
+    try:
+        backend = service_project_link.get_backend()
+        backend.sync_membership()
+    except ServiceBackendNotImplemented:
+        pass
+
+
+@shared_task
+@transition(models.ServiceProjectLink, 'set_in_sync')
+def sync_service_project_link_succeeded(service_project_link_pk, transition_entity=None):
+    pass
+
+
+@shared_task
+@transition(models.ServiceProjectLink, 'set_erred')
+def sync_service_project_link_failed(service_project_link_pk, transition_entity=None):
+    pass
+
+
 @shared_task(max_retries=120, default_retry_delay=30)
 @retry_if_false
-def push_ssh_public_key(ssh_public_keys_uuid, service_project_link_str):
+def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
     try:
-        public_key = SshPublicKey.objects.get(uuid=ssh_public_keys_uuid)
+        public_key = SshPublicKey.objects.get(uuid=ssh_public_key_uuid)
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
     except SshPublicKey.DoesNotExist:
-        logging.warn('Missing public key %s.', ssh_public_keys_uuid)
+        logging.warn('Missing public key %s.', ssh_public_key_uuid)
         return True
 
     if service_project_link.state != SynchronizationStates.IN_SYNC:
         logging.warn(
             'Not pushing public keys for service project link %s which is in state %s.',
-            service_project_link.pk, service_project_link.get_state_display())
+            service_project_link_str, service_project_link.get_state_display())
 
         if service_project_link.state != SynchronizationStates.ERRED:
             logging.debug(
                 'Rescheduling synchronisation of keys for link %s in state %s.',
-                service_project_link.pk, service_project_link.get_state_display())
+                service_project_link_str, service_project_link.get_state_display())
 
             # retry a task if service project link is in a sane state
             return False
@@ -131,21 +178,67 @@ def push_ssh_public_key(ssh_public_keys_uuid, service_project_link_str):
     backend = service_project_link.get_backend()
     try:
         backend.add_ssh_key(public_key, service_project_link)
-    except NotImplementedError:
+    except ServiceBackendNotImplemented:
         pass
     except (ServiceBackendError, CloudBackendError):
         logger.warn(
             'Failed to push public key %s for service project link %s',
-            public_key.uuid, service_project_link.pk,
+            public_key.uuid, service_project_link_str,
             exc_info=1)
     return True
 
 
-@shared_task(max_retries=120, default_retry_delay=30)
-@retry_if_false
-def remove_ssh_public_key(ssh_public_keys_uuid, service_project_link_str):
-    public_key = SshPublicKey.objects.get(uuid=ssh_public_keys_uuid)
+@shared_task()
+def remove_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
+    public_key = SshPublicKey.objects.get(uuid=ssh_public_key_uuid)
     service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
 
+    try:
+        backend = service_project_link.get_backend()
+        backend.remove_ssh_key(public_key, service_project_link)
+    except ServiceBackendNotImplemented:
+        pass
+
+
+@shared_task(max_retries=120, default_retry_delay=30)
+@retry_if_false
+def add_user(user_uuid, service_project_link_str):
+    user = get_user_model().objects.get(uuid=user_uuid)
+    service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
+
+    if service_project_link.state != SynchronizationStates.IN_SYNC:
+        logging.warn(
+            'Not adding users for service project link %s which is in state %s.',
+            service_project_link_str, service_project_link.get_state_display())
+
+        if service_project_link.state != SynchronizationStates.ERRED:
+            logging.debug(
+                'Rescheduling synchronisation of users for link %s in state %s.',
+                service_project_link_str, service_project_link.get_state_display())
+
+            # retry a task if service project link is in a sane state
+            return False
+
     backend = service_project_link.get_backend()
-    backend.remove_ssh_key(public_key, service_project_link)
+    try:
+        backend.add_user(user, service_project_link)
+    except ServiceBackendNotImplemented:
+        pass
+    except (ServiceBackendError, CloudBackendError):
+        logger.warn(
+            'Failed to add user %s for service project link %s',
+            user.uuid, service_project_link_str,
+            exc_info=1)
+    return True
+
+
+@shared_task()
+def remove_user(user_uuid, service_project_link_str):
+    user = get_user_model().objects.get(uuid=user_uuid)
+    service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
+
+    try:
+        backend = service_project_link.get_backend()
+        backend.remove_user(user, service_project_link)
+    except ServiceBackendNotImplemented:
+        pass

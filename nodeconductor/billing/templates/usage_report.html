@@ -1,0 +1,46 @@
+<html>
+    <head>
+
+    </head>
+    <body>
+        <h1> Usage report of "{{ customer_name }}" </h1>
+        <h2>Period: {{ reporting_period.0 }} - {{ reporting_period.1 }}</h2>
+        <hr/>
+        {% for project_name, instances in projects.items %}
+        <h3>{{ project_name }}</h3>
+        <table border="0.1" cellpadding="5" >
+            <!-- Table Header -->
+            <thead>
+                <tr>
+                    <th>Instance name</th>
+                    <th>Flavor</th>
+                    <th>Cores, memory, disk</th>
+                    <th>Creation time</th>
+                    <th>Termination time</th>
+                    <th>State</th>
+                    <th>CPU hours</th>
+                </tr>
+            </thead>
+            <!-- Table Header -->
+
+            <!-- Table Body -->
+            <tbody>
+                {% for instance in instances %}
+                <tr>
+                    <td align="center">{{ instance.name }}</td>
+                    <td align="center">{{ instance.flavor }}</td>
+                    <td align="center">{{ instance.cores }}, {{ instance.memory }}GB, {{ instance.disk|add:instance.backups_disk }}GB</td>
+                    <td align="center">{{ instance.started_at|date:"M d H:m"}}</td>
+                    <td align="center">{% if instance.ended_at %} {{ instance.ended_at |date:"M d H:m"}} {% endif %}</td>
+                    <td align="center">{{ instance.state }}</td>
+                    <td align="center">{{ instance.hours }}h</td>
+                </tr>
+                {% endfor %}
+
+            </tbody>
+            <!-- Table Body -->
+
+        </table>
+    {% endfor %}
+    </body>
+</html>
