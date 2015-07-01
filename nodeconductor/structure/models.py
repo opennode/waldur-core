@@ -25,6 +25,7 @@ from nodeconductor.structure.images import ImageModelMixin
 @python_2_unicode_compatible
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
+               core_models.ReversionMixin,
                quotas_models.QuotaModelMixin,
                LoggableMixin,
                ImageModelMixin,
@@ -174,6 +175,7 @@ class ProjectRole(core_models.UuidMixin, models.Model):
 class Project(core_models.DescribableMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
+              core_models.ReversionMixin,
               quotas_models.QuotaModelMixin,
               LoggableMixin,
               TimeStampedModel):

@@ -15,6 +15,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from uuidfield import UUIDField
+import reversion
 
 from nodeconductor.logging.log import LoggableMixin
 
@@ -102,6 +103,9 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
 
     def get_log_fields(self):
         return ('uuid', 'full_name', 'native_name', self.USERNAME_FIELD)
+
+    def get_full_name(self):
+        return self.full_name
 
     def email_user(self, subject, message, from_email=None):
         """
@@ -231,3 +235,12 @@ class SynchronizableMixin(models.Model):
     @transition(field=state, source=SynchronizationStates.ERRED, target=SynchronizationStates.IN_SYNC)
     def set_in_sync_from_erred(self):
         pass
+
+
+class ReversionMixin(object):
+
+    def save(self, save_revision=True, **kwargs):
+        if save_revision:
+            with reversion.create_revision():
+                return super(ReversionMixin, self).save(**kwargs)
+        return super(ReversionMixin, self).save(**kwargs)

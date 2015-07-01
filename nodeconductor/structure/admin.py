@@ -8,6 +8,7 @@ from polymorphic.admin import (
     PolymorphicParentModelAdmin, PolymorphicChildModelAdmin,
     PolymorphicChildModelFilter)
 
+from nodeconductor.core.admin import ReversionAdmin
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
@@ -42,7 +43,7 @@ class ProtectedModelMixin(object):
             return response
 
 
-class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
+class CustomerAdmin(ProtectedModelMixin, ReversionAdmin):
     readonly_fields = ['balance']
     actions = ['sync_with_backend', 'create_invoices']
     list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation']
@@ -85,7 +86,7 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     create_invoices.short_description = "Create invoices for last month"
 
 
-class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, ReversionAdmin):
 
     fields = ('name', 'description', 'customer')
 
