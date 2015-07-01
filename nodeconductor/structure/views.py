@@ -132,14 +132,18 @@ class CustomerViewSet(viewsets.ModelViewSet):
         formatted_data = defaultdict(list)
         if group_by == 'customer':
             for invoice in invoices_values:
-                month = datetime.strptime(invoice['month'], '%Y-%m-%d')
+                month = invoice['month']
+                if isinstance(month, basestring):
+                    month = datetime.strptime(invoice['month'], '%Y-%m-%d')
                 formatted_data[invoice['customer__name']].append((month, invoice['amount__sum']))
             formatted_data.default_factory = None
             for customer_name, month_data in formatted_data.items():
                 formatted_data[customer_name] = sorted(month_data, key=lambda x: x[0])
         else:
             for invoice in invoices_values:
-                month = datetime.strptime(invoice['month'], '%Y-%m-%d')
+                month = invoice['month']
+                if isinstance(month, basestring):
+                    month = datetime.strptime(invoice['month'], '%Y-%m-%d')
                 formatted_data[month].append((invoice['customer__name'], invoice['amount__sum']))
             formatted_data.default_factory = None
 
