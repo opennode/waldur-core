@@ -831,6 +831,7 @@ class ServiceSerializer(serializers.Serializer):
     project_uuid = serializers.ReadOnlyField(source='cloud_project_membership.project.uuid')
     project_url = serializers.SerializerMethodField()
     project_groups = serializers.SerializerMethodField()
+    resource_type = serializers.SerializerMethodField()
     access_information = serializers.ListField(
         source='external_ips',
         child=core_serializers.IPAddressField(),
@@ -852,7 +853,7 @@ class ServiceSerializer(serializers.Serializer):
             'service_type',
             'access_information',
         )
-        view_name = 'resource-detail'
+        view_name = 'iaas-resource-detail'
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -867,6 +868,9 @@ class ServiceSerializer(serializers.Serializer):
 
     def get_service_type(self, obj):
         return 'IaaS'
+
+    def get_resource_type(self, obj):
+        return 'Instance'
 
     def get_actual_sla(self, obj):
         try:
@@ -885,7 +889,7 @@ class ServiceSerializer(serializers.Serializer):
             raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
 
         # TODO: this could use something similar to backup's generic model for all resources
-        view_name = 'resource-detail'
+        view_name = 'iaas-resource-detail'
         service_instance = obj
         hyperlinked_field = serializers.HyperlinkedRelatedField(
             view_name=view_name,
