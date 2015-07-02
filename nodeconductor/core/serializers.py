@@ -302,6 +302,8 @@ class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):
         super(HyperlinkedRelatedModelSerializer, self).__init__(**kwargs)
 
     def to_internal_value(self, data):
+        if 'url' not in data:
+            raise serializers.ValidationError('URL has to be defined for related object')
         url_field = self.fields['url']
 
         # This is tricky: self.fields['url'] is the one generated
