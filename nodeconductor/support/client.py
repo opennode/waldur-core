@@ -5,18 +5,7 @@ from nodeconductor.jira.backend import JiraBackend, JiraBackendError
 
 
 class SupportClient(object):
-    """ NodeConductor support client via jira backend.
-        Example settings configuration:
-
-            NODECONDUCTOR['JIRA_SUPPORT'] = {
-                'server': 'https://jira.example.com/',
-                'username': 'alice@example.com',
-                'password': 'password',
-                'project': 'NST',
-            }
-
-        Jira configuration: https://confluence.nortal.com/pages/viewpage.action?title=Issue+tracker&spaceKey=ITACLOUD
-    """
+    """ NodeConductor support client via jira backend """
 
     ISSUE_TYPE = 'Support Request'
     REPORTER_FIELD = 'Original Reporter'
