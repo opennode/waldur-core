@@ -1,0 +1,29 @@
+{% extends 'admin/change_form.html' %}
+{% block form_top %}
+<div class="module">
+    <h3>Supported credentials depending on service type:</h3>
+    <p>DigitalOcean</p>
+    <ul>
+        <li>Token — DigitalOcean personal access token</li>
+    </ul>
+    <p>Jira</p>
+    <ul>
+        <li>Backend url — Jira host (e.g. http://example.atlassian.net/)</li>
+        <li>Username</li>
+        <li>Password</li>
+    </ul>
+    <p>GitLab</p>
+    <ul>
+        <li>Backend url — GitLab host (e.g. https://git.example.com/)</li>
+        <li>Username — Username or Email</li>
+        <li>Password</li>
+        <li>Token — Private token (will be used instead of username/password if supplied)</li>
+    </ul>
+    <p>Oracle</p>
+    <ul>
+        <li>Backend url — Oracle EM host (e.g. https://oracle.example.com:7802/em)</li>
+        <li>Username</li>
+        <li>Password</li>
+    </ul>
+</div>
+{% endblock %}
