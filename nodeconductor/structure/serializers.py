@@ -674,6 +674,20 @@ class BaseServiceSerializerMetaclass(serializers.SerializerMetaclass):
 
 
 class ServiceSerializerMetaclass(BaseServiceSerializerMetaclass):
+    """ Build a list of supported services via serializers definition.
+        Example data structure.
+
+        SUPPORTED_SERVICES = {
+            'gitlab.gitlabservice': {
+                'name': 'GitLab',
+                'view_name': 'gitlab-list',
+                'resources': {
+                    'gitlab.group': {'name': 'Group', 'view_name': 'gitlab-group-list'},
+                    'gitlab.project': {'name': 'Project', 'view_name': 'gitlab-project-list'},
+                },
+            },
+        }
+    """
     def __new__(cls, name, bases, args):
         service_type = args.get('SERVICE_TYPE', NotImplemented)
         if service_type is not NotImplemented:
@@ -823,6 +837,9 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
 
 
 class ResourceSerializerMetaclass(BaseServiceSerializerMetaclass):
+    """ Build a list of supported resource via serializers definition.
+        See ServiceSerializerMetaclass for details.
+    """
     def __new__(cls, name, bases, args):
         service = args.get('service')
         if service and service.view_name is not NotImplemented:

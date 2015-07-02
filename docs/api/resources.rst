@@ -1,7 +1,12 @@
 Resources list
 --------------
 
-Use */api/resources/* to get a list of all the resources that a user can see.
+Use */api/resources/* to get a list of all the resources of any type that a user can see.
+
+OpenStack Resources list
+------------------------
+
+Use */api/iaas-resources/* to get a list of all the resources that a user can see.
 Only resources that have agreed and actual SLA values are shown.
 
 Supported filters are:
@@ -38,7 +43,7 @@ Response example:
 
 .. code-block:: http
 
-    GET /api/resources/ HTTP/1.1
+    GET /api/iaas-resources/ HTTP/1.1
 
     HTTP/1.0 200 OK
     Content-Type: application/json
@@ -48,7 +53,7 @@ Response example:
 
     [
         {
-            "url": "http://example.com/api/resources/0356addb8e9742e7b984ebcaf5912c6b/",
+            "url": "http://example.com/api/iaas-resources/0356addb8e9742e7b984ebcaf5912c6b/",
             "uuid": "0356addb8e9742e7b984ebcaf5912c6b",
             "state": "Offline",
             "name": "FromBackup777",

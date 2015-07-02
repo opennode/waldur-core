@@ -1212,7 +1212,10 @@ class ResourceViewSet(viewsets.GenericViewSet):
                         resource['view_name'], querystring='page_size=%d' % response.total)
                 data += response.data
 
-        return Response(data)
+        page = self.paginate_queryset(data)
+        if page is not None:
+            return self.get_paginated_response(page)
+        return response.Response(data)
 
 
 class BaseServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
