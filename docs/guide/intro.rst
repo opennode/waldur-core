@@ -7,5 +7,6 @@
 .. include:: groups.rst
 .. include:: license.rst
 .. include:: billing.rst
+.. include:: support.rst
 .. include:: events/intro.rst
 

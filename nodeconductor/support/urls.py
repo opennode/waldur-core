@@ -1,4 +1,4 @@
-from nodeconductor.jira import views
+from nodeconductor.support import views
 
 
 def register_in(router):
