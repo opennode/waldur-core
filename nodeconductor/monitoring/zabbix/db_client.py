@@ -171,7 +171,7 @@ class ZabbixDBClient(object):
                        AVG(value) AS value
                   FROM hosts,
                        items,
-                       history_uint USE INDEX (history_uint_1)
+                       history_uint FORCE INDEX (history_uint_1)
                  WHERE hosts.hostid = items.hostid
                    AND items.itemid = history_uint.itemid
                    AND hosts.name IN ({hosts_placeholder})
@@ -205,8 +205,8 @@ class ZabbixDBClient(object):
         try:
             with connections['zabbix'].cursor() as cursor:
                 cursor.execute(query, params)
+                logger.debug('Executed Zabbix SQL query %s with parameters %s', query, params)
                 records = cursor.fetchall()
-                logging.debug('Executed Zabbix SQL query %s', records)
                 return records
         except DatabaseError as e:
             logger.exception('Can not execute query the Zabbix DB %s %s', query, params)
@@ -220,7 +220,7 @@ class ZabbixDBClient(object):
         for (start, end, key, value) in records:
             name = self.get_item_name_by_key(key)
             if name is None:
-                logging.warning('Invalid item key %s', key)
+                logger.warning('Invalid item key %s', key)
                 continue
             if self.items[name]['convert_to_mb']:
                 value = value / (1024 * 1024)
@@ -289,7 +289,7 @@ class ZabbixDBClient(object):
         for timestamp, key, value in records:
             name = self.get_item_name_by_key(key)
             if name is None:
-                logging.warning('Invalid item key %s', key)
+                logger.warning('Invalid item key %s', key)
                 continue
             if self.items[name]['convert_to_mb']:
                 value = value / (1024 * 1024)
