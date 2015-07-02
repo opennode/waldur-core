@@ -22,7 +22,7 @@ from rest_framework import viewsets
 from rest_framework import generics
 from rest_framework.reverse import reverse
 from rest_framework.decorators import detail_route, list_route
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, APIException
 from rest_framework.response import Response
 from xhtml2pdf import pisa
 
@@ -32,6 +32,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import send_task
+from nodeconductor.core.utils import request_api
 from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
@@ -1179,10 +1180,42 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
 
 
 class ServiceViewSet(viewsets.GenericViewSet):
+    """ The list of supported services and resources. """
 
     def list(self, request):
-        return Response({k: reverse(v, request=request)
-                        for k, v in serializers.SUPPORTED_SERVICES.items()})
+        return Response({
+            service['name']: {
+                'url': reverse(service['view_name'], request=request),
+                'resources': {resource['name']: reverse(resource['view_name'], request=request)
+                              for resource in service['resources'].values()},
+            } for service in serializers.SUPPORTED_SERVICES.values()
+        })
+
+
+class ResourceViewSet(viewsets.GenericViewSet):
+    """ The summary list of all user resources. """
+
+    def list(self, request):
+
+        def fetch_data(view_name, querystring=None):
+            response = request_api(request, resource['view_name'], querystring=querystring)
+            if not response.success:
+                raise APIException(response.data)
+            return response
+
+        data = []
+        for service in serializers.SUPPORTED_SERVICES.values():
+            for resource in service['resources'].values():
+                response = fetch_data(resource['view_name'])
+                if response.total and response.total > len(response.data):
+                    response = fetch_data(
+                        resource['view_name'], querystring='page_size=%d' % response.total)
+                data += response.data
+
+        page = self.paginate_queryset(data)
+        if page is not None:
+            return self.get_paginated_response(page)
+        return response.Response(data)
 
 
 class BaseServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
