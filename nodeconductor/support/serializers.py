@@ -2,8 +2,6 @@ import re
 
 from rest_framework import serializers
 
-from nodeconductor.jira.backend import JiraClient
-
 
 class UserSerializer(serializers.Serializer):
     displayName = serializers.CharField()
@@ -21,12 +19,13 @@ class IssueSerializer(serializers.Serializer):
     status = serializers.CharField(source='status.name', read_only=True)
     resolution = serializers.CharField(source='resolution.name', read_only=True)
 
-    def save(self, reporter):
+    def save(self, client, reporter):
+        self.client = client
         self.reporter = reporter
         return super(IssueSerializer, self).save()
 
     def create(self, validated_data):
-        return JiraClient().issues.create(
+        return self.client.issues.create(
             validated_data.get('summary'),
             validated_data.get('description'),
             reporter=self.reporter)
@@ -48,12 +47,13 @@ class CommentSerializer(serializers.Serializer):
     AUTHOR_RE = re.compile("Comment posted by user ([\w.@+-]+) \(([0-9a-z]{32})\)")
     AUTHOR_TEMPLATE = "Comment posted by user {username} ({uuid})\n{body}"
 
-    def save(self, issue):
+    def save(self, client, issue):
+        self.client = client
         self.issue = issue
         return super(CommentSerializer, self).save()
 
     def create(self, validated_data):
-        return JiraClient().comments.create(self.issue, self.serialize_body())
+        return self.client.comments.create(self.issue, self.serialize_body())
 
     def to_representation(self, obj):
         """

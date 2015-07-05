@@ -1,32 +1,20 @@
 from __future__ import unicode_literals
 
-from rest_framework import viewsets, permissions, filters, mixins
+from rest_framework import viewsets
 
-from nodeconductor.core import mixins as core_mixins
-from nodeconductor.structure import filters as structure_filters
-from nodeconductor.structure.views import BaseResourceViewSet
+from nodeconductor.structure import views as structure_views
 from nodeconductor.oracle import models
 from nodeconductor.oracle import serializers
 
 
-class OracleServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
+class OracleServiceViewSet(structure_views.BaseServiceViewSet):
     queryset = models.OracleService.objects.all()
     serializer_class = serializers.ServiceSerializer
-    lookup_field = 'uuid'
-    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
-    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
 
 
-class OracleServiceProjectLinkViewSet(mixins.CreateModelMixin,
-                                      mixins.RetrieveModelMixin,
-                                      mixins.DestroyModelMixin,
-                                      mixins.ListModelMixin,
-                                      viewsets.GenericViewSet):
-
+class OracleServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkViewSet):
     queryset = models.OracleServiceProjectLink.objects.all()
     serializer_class = serializers.ServiceProjectLinkSerializer
-    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
-    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
 
 
 class ZoneViewSet(viewsets.ReadOnlyModelViewSet):
@@ -41,7 +29,7 @@ class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
 
 
-class DatabaseViewSet(BaseResourceViewSet):
+class DatabaseViewSet(structure_views.BaseResourceViewSet):
     queryset = models.Database.objects.all()
     serializer_class = serializers.DatabaseSerializer
 

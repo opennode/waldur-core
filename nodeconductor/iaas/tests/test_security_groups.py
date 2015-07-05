@@ -81,6 +81,14 @@ class SecurityGroupCreateTest(test.APITransactionTestCase):
         security_group = models.SecurityGroup.objects.get(name=self.valid_data['name'])
         mocked_task.delay.assert_called_once_with(security_group.uuid.hex)
 
+    def test_security_group_raises_validation_error_on_wrong_membership_in_request(self):
+        del self.valid_data['cloud_project_membership']['url']
+
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class SecurityGroupUpdateTest(test.APITransactionTestCase):
 

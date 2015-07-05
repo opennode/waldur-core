@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
+from django.utils.lru_cache import lru_cache
 from celery import shared_task
 import xhtml2pdf.pisa as pisa
 
@@ -61,6 +62,7 @@ def generate_usage_pdf(invoice, usage_data):
         logger.error(pdf.err)
 
 
+@lru_cache(maxsize=1)
 def get_customer_usage_data(customer, start_date, end_date):
     start_date = timestamp_to_datetime(start_date, replace_tz=False)  # XXX replacing TZ info causes nova client to fail
     end_date = timestamp_to_datetime(end_date, replace_tz=False)
