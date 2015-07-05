@@ -10,11 +10,11 @@ from nodeconductor.structure.tests import factories as structure_factories
 
 
 def _get_service_url(service):
-    return 'http://testserver' + reverse('resource-detail', kwargs={'uuid': service.uuid})
+    return 'http://testserver' + reverse('iaas-resource-detail', kwargs={'uuid': service.uuid})
 
 
 def _get_service_list_url():
-    return 'http://testserver' + reverse('resource-list')
+    return 'http://testserver' + reverse('iaas-resource-list')
 
 
 def _service_to_dict(service):
@@ -42,6 +42,7 @@ def _service_to_dict(service):
         'actual_sla': Decimal('99.9'),
         'agreed_sla': service.agreed_sla,
         'service_type': 'IaaS',
+        'resource_type': 'Instance',
         'access_information': [service.external_ips],
     }
 

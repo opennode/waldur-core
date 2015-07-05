@@ -311,6 +311,12 @@ class OpenStackBackend(OpenStackClient):
     def remove_ssh_key(self, public_key, membership):
         return self.remove_ssh_public_key(membership, public_key)
 
+    def add_user(self, user, membership):
+        pass
+
+    def remove_user(self, user, membership):
+        pass
+
     # CloudAccount related methods
     def push_cloud_account(self, cloud_account):
         # There's nothing to push for OpenStack
@@ -827,12 +833,6 @@ class OpenStackBackend(OpenStackClient):
         membership.set_quota_limit('storage', self.get_core_disk_size(cinder_quotas.gigabytes))
         membership.set_quota_limit('security_group_count', neutron_quotas['security_group'])
         membership.set_quota_limit('security_group_rule_count', neutron_quotas['security_group_rule'])
-
-        # XXX Horrible hack -- to be removed once the Portal has moved to new quotas. NC-421
-        membership.project.set_quota_limit('ram', self.get_core_ram_size(nova_quotas.ram))
-        membership.project.set_quota_limit('vcpu', nova_quotas.cores)
-        membership.project.set_quota_limit('max_instances', nova_quotas.instances)
-        membership.project.set_quota_limit('storage', self.get_core_disk_size(cinder_quotas.gigabytes))
 
     def pull_resource_quota_usage(self, membership):
         try:

@@ -13,9 +13,31 @@ Example of a request:
     Host: example.com
 
     {
-        "Oracle": "http://example.com/api/oracle/",
-        "OpenStack": "http://example.com/api/clouds/",
-        "DigitalOcean": "http://example.com/api/digitalocean/"
+        "Oracle": {
+            "url": "http://example.com/api/oracle/",
+            "resources": {
+                "Database": "http://example.com/api/oracle-databases/"
+            }
+        },
+        "OpenStack": {
+            "url": "http://example.com/api/clouds/",
+            "resources": {
+                "Instance": "http://example.com/api/iaas-resources/"
+            }
+        },
+        "GitLab": {
+            "url": "http://example.com/api/gitlab/",
+            "resources": {
+                "Project": "http://example.com/api/gitlab-projects/",
+                "Group": "http://example.com/api/gitlab-groups/"
+            }
+        },
+        "DigitalOcean": {
+            "url": "http://example.com/api/digitalocean/",
+            "resources": {
+                "Droplet": "http://example.com/api/digitalocean-droplets/"
+            }
+        }
     }
 
 Use an endpoint from the returned list in order to create new service.

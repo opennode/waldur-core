@@ -38,6 +38,7 @@ INSTALLED_APPS = (
     'nodeconductor.billing',
     'nodeconductor.oracle',
     'nodeconductor.iaas',
+    'nodeconductor.support',
     'nodeconductor.ldapsync',
 
     'nodeconductor.testdata',
@@ -242,6 +243,7 @@ NODECONDUCTOR = {
             ),
         },
     ),
+    'JIRA_SUPPORT': {'dummy': True},
     'ELASTICSEARCH_DUMMY': True,
     'TOKEN_KEY': 'x-auth-token',
 }
