@@ -6,8 +6,7 @@ from django.apps import apps
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.db import models
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import Q
 from django.utils import six
 from django.utils.lru_cache import lru_cache

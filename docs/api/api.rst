@@ -58,6 +58,11 @@ Jira management
 
 .. include:: jira.rst
 
+Historical data
+===============
+
+.. include:: historical_data.rst
+
 Key management
 ==============
 
