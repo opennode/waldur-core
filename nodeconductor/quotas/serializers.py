@@ -17,13 +17,13 @@ class QuotaSerializer(serializers.HyperlinkedModelSerializer):
         }
 
 
-# XXX: If we will create history for any other endpoint - this serializer has to be moved to core.
+# XXX: This serializer has to be moved to core if we create history for any other endpoint.
 class HistorySerializer(serializers.Serializer):
     """
     Receive datetime as timestamps and converts them to list of datetimes
 
     Support 2 types of input data:
-     - start, end and points_count - interval from <start> to <end> will be automatically splitted to
+     - start, end and points_count - interval from <start> to <end> will be automatically split into
                                      <points_count> pieces
      - point_list - list of timestamps that will be converted to datetime points
 
@@ -41,17 +41,17 @@ class HistorySerializer(serializers.Serializer):
         if ('point_list' not in attrs or not attrs['point_list']) and not autosplit_fields == set(attrs.keys()):
             raise serializers.ValidationError(
                 'Not enough parameters for historical data. '
-                '("point_list" or "start" + "end" + "points_count" parameters has to be provided)')
+                '(Either "point_list" or "start" + "end" + "points_count" parameters have to be provided)')
         if 'point_list' in attrs and autosplit_fields & set(attrs.keys()):
             raise serializers.ValidationError(
-                'To much parameters for historical data. '
-                '("point_list" or "start" + "end" + "points_count" parameters has to be provided)')
+                'Too many parameters for historical data. '
+                '(Either "point_list" or "start" + "end" + "points_count" parameters have to be provided)')
         if 'point_list' not in attrs and not attrs['start'] < attrs['end']:
-            raise serializers.ValidationError('start timestamps has to be greater then end')
+            raise serializers.ValidationError('Start timestamps have to be later than end timestamps')
         return attrs
 
-    # History serializer is used for validation only. To avoid confuses with to_internal_value or to_representation
-    # implementations - lets provide custom method for such serializers.
+    # History serializer is used for validation only. We are providing custom method for such serializers
+    # to avoid confusion with to_internal_value or to_representation DRF methods.
     def get_filter_data(self):
         if 'point_list' in self.validated_data:
             return self.validated_data['point_list']
