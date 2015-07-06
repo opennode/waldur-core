@@ -50,8 +50,9 @@ class QuotaViewSet(mixins.UpdateModelMixin,
             except Version.DoesNotExist:
                 pass
             else:
-                Serializer = self.get_serializer_class()
-                serialized['object'] = Serializer(instance=version.object, context={'request': request}).data
+                serializer = self.get_serializer()
+                serializer.instance = version.object_version.object
+                serialized['object'] = serializer.data
             serialized_versions.append(serialized)
 
         return response.Response(serialized_versions, status=status.HTTP_200_OK)

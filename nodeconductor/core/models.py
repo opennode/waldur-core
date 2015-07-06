@@ -105,6 +105,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         return ('uuid', 'full_name', 'native_name', self.USERNAME_FIELD)
 
     def get_full_name(self):
+        # This method is used in django-reversion as name of revision creator.
         return self.full_name
 
     def email_user(self, subject, message, from_email=None):
