@@ -25,7 +25,7 @@ class HistorySerializer(serializers.Serializer):
     Support 2 types of input data:
      - start, end and points_count - interval from <start> to <end> will be automatically splitted to
                                      <points_count> pieces
-     - points - list of timestamps that will be converted to datetime points
+     - point_list - list of timestamps that will be converted to datetime points
 
     """
     start = TimestampField(required=False)

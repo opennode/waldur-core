@@ -7,8 +7,8 @@ It is available at **<object_endpoint>/history/** (example: **/api/quotas/<uuid>
 There are two ways to define datetime points for historical data.
 
 1. Send ?point=<timestamp> parameter that can list. Response will contain historical data for each given point in the
-   same order
-3. Send ?start=<timestamp>, ?end=<timestamp>, ?points_count=<int> parameters. Result will contain <points_count>
+   same order.
+2. Send ?start=<timestamp>, ?end=<timestamp>, ?points_count=<int> parameters. Result will contain <points_count>
    points from <start> to <end>.
 
 

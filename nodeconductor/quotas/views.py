@@ -36,7 +36,7 @@ class QuotaViewSet(mixins.UpdateModelMixin,
             'start': request.query_params.get('start'),
             'end': request.query_params.get('end'),
             'points_count': request.query_params.get('points_count'),
-            'point': request.query_params.getlist('point'),
+            'point_list': request.query_params.getlist('point'),
         }
         serializer = serializers.HistorySerializer(data={k: v for k, v in mapped.items() if v})
         serializer.is_valid(raise_exception=True)
