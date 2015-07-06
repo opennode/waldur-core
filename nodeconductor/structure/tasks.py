@@ -122,34 +122,50 @@ def sync_service_project_links(service_project_links=None, initial=False):
             obj.schedule_syncing()
             obj.save()
 
-        service_project_link_pk = obj.pk
+        service_project_link_str = obj.to_string()
         begin_syncing_service_project_links.apply_async(
-            args=(service_project_link_pk,),
-            link=sync_service_project_link_succeeded.si(service_project_link_pk),
-            link_error=sync_service_project_link_failed.si(service_project_link_pk))
+            args=(service_project_link_str,),
+            link=sync_service_project_link_succeeded.si(service_project_link_str),
+            link_error=sync_service_project_link_failed.si(service_project_link_str))
 
 
 @shared_task
-@transition(models.ServiceProjectLink, 'begin_syncing')
-def begin_syncing_service_project_links(service_project_link_pk, transition_entity=None):
-    service_project_link = transition_entity
-    try:
-        backend = service_project_link.get_backend()
-        backend.sync_membership()
-    except ServiceBackendNotImplemented:
+def begin_syncing_service_project_links(service_project_link_str, transition_entity=None):
+    spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
+
+    @transition(spl_model, 'begin_syncing')
+    def process(service_project_link_pk, transition_entity=None):
+        service_project_link = transition_entity
+        try:
+            # Get administrative backend session from service instead of tenant session from spl
+            backend = service_project_link.service.get_backend()
+            backend.sync_membership(service_project_link)
+        except ServiceBackendNotImplemented:
+            pass
+
+    process(spl_pk)
+
+
+@shared_task
+def sync_service_project_link_succeeded(service_project_link_str):
+    spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
+
+    @transition(spl_model, 'set_in_sync')
+    def process(service_project_link_pk, transition_entity=None):
         pass
 
-
-@shared_task
-@transition(models.ServiceProjectLink, 'set_in_sync')
-def sync_service_project_link_succeeded(service_project_link_pk, transition_entity=None):
-    pass
+    process(spl_pk)
 
 
 @shared_task
-@transition(models.ServiceProjectLink, 'set_erred')
-def sync_service_project_link_failed(service_project_link_pk, transition_entity=None):
-    pass
+def sync_service_project_link_failed(service_project_link_str):
+    spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
+
+    @transition(spl_model, 'set_erred')
+    def process(service_project_link_pk, transition_entity=None):
+        pass
+
+    process(spl_pk)
 
 
 @shared_task(max_retries=120, default_retry_delay=30)

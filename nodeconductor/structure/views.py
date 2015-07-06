@@ -1238,10 +1238,8 @@ class BaseServiceProjectLinkViewSet(mixins.CreateModelMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
 
     def perform_create(self, serializer):
-        service_project_link = serializer.save()
-        service_project_link.begin_syncing()
-        service_project_link.set_in_sync()
-        service_project_link.save()
+        instance = serializer.save()
+        send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
 
 
 class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):

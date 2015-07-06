@@ -15,6 +15,7 @@ from nodeconductor.backup import urls as backup_urls
 from nodeconductor.billing import urls as billing_urls
 from nodeconductor.iaas import urls as iaas_urls
 from nodeconductor.logging import urls as logging_urls
+from nodeconductor.openstack import urls as openstack_urls
 from nodeconductor.oracle import urls as oracle_urls
 from nodeconductor.quotas import urls as quotas_urls
 from nodeconductor.structure import urls as structure_urls
@@ -30,6 +31,7 @@ backup_urls.register_in(router)
 billing_urls.register_in(router)
 iaas_urls.register_in(router)
 logging_urls.register_in(router)
+openstack_urls.register_in(router)
 oracle_urls.register_in(router)
 quotas_urls.register_in(router)
 structure_urls.register_in(router)
