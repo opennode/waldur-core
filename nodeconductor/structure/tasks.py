@@ -159,16 +159,16 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
         public_key = SshPublicKey.objects.get(uuid=ssh_public_key_uuid)
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
     except SshPublicKey.DoesNotExist:
-        logging.warn('Missing public key %s.', ssh_public_key_uuid)
+        logger.warn('Missing public key %s.', ssh_public_key_uuid)
         return True
 
     if service_project_link.state != SynchronizationStates.IN_SYNC:
-        logging.warn(
+        logger.warn(
             'Not pushing public keys for service project link %s which is in state %s.',
             service_project_link_str, service_project_link.get_state_display())
 
         if service_project_link.state != SynchronizationStates.ERRED:
-            logging.debug(
+            logger.debug(
                 'Rescheduling synchronisation of keys for link %s in state %s.',
                 service_project_link_str, service_project_link.get_state_display())
 
@@ -207,12 +207,12 @@ def add_user(user_uuid, service_project_link_str):
     service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
 
     if service_project_link.state != SynchronizationStates.IN_SYNC:
-        logging.warn(
+        logger.warn(
             'Not adding users for service project link %s which is in state %s.',
             service_project_link_str, service_project_link.get_state_display())
 
         if service_project_link.state != SynchronizationStates.ERRED:
-            logging.debug(
+            logger.debug(
                 'Rescheduling synchronisation of users for link %s in state %s.',
                 service_project_link_str, service_project_link.get_state_display())
 
