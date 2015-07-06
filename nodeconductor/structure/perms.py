@@ -48,5 +48,4 @@ PERMISSION_LOGICS = (
         },
         any_permission=True,
     )),
-    ('structure.Service', StaffPermissionLogic(any_permission=True)),
 )
