@@ -163,8 +163,9 @@ DATABASES = {
     'default': {}
 }
 
-if config.get('openstack', 'username'):
-    warnings.warn("OpenStack credentials in settings.ini are no longer supported and will be ignored")
+for prop in ('password', 'username', 'tenant_name'):
+    if config.get('openstack', prop):
+        warnings.warn("openstack.%s property in settings.ini is no longer supported and will be ignored" % prop)
 
 if config.get('global', 'db_backend') == 'mysql':
     DATABASES['default'] = {
