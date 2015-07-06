@@ -5,6 +5,7 @@ from django.contrib import auth
 from django.db import models as django_models
 from django.conf import settings
 from django.utils import six
+from django.utils.encoding import force_text
 from rest_framework import serializers, exceptions
 
 from nodeconductor.core import serializers as core_serializers
@@ -20,7 +21,13 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 # The regestry of all supported services
 # TODO: Move OpenstackSettings to ServiceSettings and remove this hardcoding
 SUPPORTED_SERVICES = {
-    'OpenStack': 'cloud-list',
+    'iaas.openstack': {
+        'name': 'OpenStack',
+        'view_name': 'cloud-list',
+        'resources': {
+            'iaas.instance': {'name': 'Instance', 'view_name': 'iaas-resource-list'}
+        },
+    },
 }
 
 User = auth.get_user_model()
@@ -660,14 +667,34 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         return fields
 
 
-class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
+class BaseServiceSerializerMetaclass(serializers.SerializerMetaclass):
     TYPES = dict(models.ServiceSettings.Types.CHOICES)
+    _get_list_view = staticmethod(lambda meta: meta.view_name.replace('-detail', '-list'))
+    _get_model_str = staticmethod(lambda meta: force_text(meta.model._meta))
 
+
+class ServiceSerializerMetaclass(BaseServiceSerializerMetaclass):
+    """ Build a list of supported services via serializers definition.
+        Example data structure.
+
+        SUPPORTED_SERVICES = {
+            'gitlab.gitlabservice': {
+                'name': 'GitLab',
+                'view_name': 'gitlab-list',
+                'resources': {
+                    'gitlab.group': {'name': 'Group', 'view_name': 'gitlab-group-list'},
+                    'gitlab.project': {'name': 'Project', 'view_name': 'gitlab-project-list'},
+                },
+            },
+        }
+    """
     def __new__(cls, name, bases, args):
         service_type = args.get('SERVICE_TYPE', NotImplemented)
         if service_type is not NotImplemented:
-            bansename = args['Meta'].view_name.split('-')[0]
-            SUPPORTED_SERVICES[cls.TYPES[service_type]] = '%s-list' % bansename
+            model_str = cls._get_model_str(args['Meta'])
+            SUPPORTED_SERVICES.setdefault(model_str, {'resources': {}})
+            SUPPORTED_SERVICES[model_str]['name'] = cls.TYPES[service_type]
+            SUPPORTED_SERVICES[model_str]['view_name'] = cls._get_list_view(args['Meta'])
         return super(ServiceSerializerMetaclass, cls).__new__(cls, name, bases, args)
 
 
@@ -809,9 +836,28 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         return 'project', 'service'
 
 
-class BaseResourceSerializer(PermissionFieldFilteringMixin,
+class ResourceSerializerMetaclass(BaseServiceSerializerMetaclass):
+    """ Build a list of supported resource via serializers definition.
+        See ServiceSerializerMetaclass for details.
+    """
+    def __new__(cls, name, bases, args):
+        service = args.get('service')
+        if service and service.view_name is not NotImplemented:
+            model_str = cls._get_model_str(args['Meta'])
+            service_view = cls._get_list_view(service)
+            for s in SUPPORTED_SERVICES:
+                if SUPPORTED_SERVICES[s].get('view_name', '') == service_view:
+                    SUPPORTED_SERVICES[s]['resources'].setdefault(model_str, {})
+                    SUPPORTED_SERVICES[s]['resources'][model_str]['name'] = args['Meta'].model.__name__
+                    SUPPORTED_SERVICES[s]['resources'][model_str]['view_name'] = cls._get_list_view(args['Meta'])
+                    break
+        return super(ResourceSerializerMetaclass, cls).__new__(cls, name, bases, args)
+
+
+class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
+                             PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
-                             serializers.HyperlinkedModelSerializer):
+                             serializers.HyperlinkedModelSerializer)):
 
     state = serializers.ReadOnlyField(source='get_state_display')
     project_groups = BasicProjectGroupSerializer(
@@ -851,6 +897,7 @@ class BaseResourceSerializer(PermissionFieldFilteringMixin,
     customer_native_name = serializers.ReadOnlyField(source='service_project_link.project.customer.native_name')
 
     created = serializers.DateTimeField(read_only=True)
+    resource_type = serializers.SerializerMethodField()
 
     class Meta(object):
         model = NotImplemented
@@ -861,9 +908,7 @@ class BaseResourceSerializer(PermissionFieldFilteringMixin,
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups',
-            'state',
-            'created',
-            'service_project_link',
+            'resource_type', 'state', 'created', 'service_project_link',
         )
         read_only_fields = ('start_time',)
         extra_kwargs = {
@@ -872,6 +917,9 @@ class BaseResourceSerializer(PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'service_project_link',
+
+    def get_resource_type(self, obj):
+        return obj._meta.model.__name__
 
     def create(self, validated_data):
         data = validated_data.copy()

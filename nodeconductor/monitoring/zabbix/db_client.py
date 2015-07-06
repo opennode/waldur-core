@@ -171,7 +171,7 @@ class ZabbixDBClient(object):
                        AVG(value) AS value
                   FROM hosts,
                        items,
-                       history_uint USE INDEX (history_uint_1)
+                       history_uint FORCE INDEX (history_uint_1)
                  WHERE hosts.hostid = items.hostid
                    AND items.itemid = history_uint.itemid
                    AND hosts.name IN ({hosts_placeholder})
@@ -205,8 +205,8 @@ class ZabbixDBClient(object):
         try:
             with connections['zabbix'].cursor() as cursor:
                 cursor.execute(query, params)
+                logger.debug('Executed Zabbix SQL query %s with parameters %s', query, params)
                 records = cursor.fetchall()
-                logger.debug('Executed Zabbix SQL query %s', records)
                 return records
         except DatabaseError as e:
             logger.exception('Can not execute query the Zabbix DB %s %s', query, params)

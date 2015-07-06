@@ -8,10 +8,8 @@ import threading
 
 from jira import JIRA, JIRAError
 
-from django.conf import settings as django_settings
 from django.utils import six
 
-from nodeconductor.structure.models import ServiceSettings
 from nodeconductor.structure import ServiceBackend, ServiceBackendError
 
 
@@ -22,37 +20,6 @@ logger = logging.getLogger(__name__)
 
 class JiraBackendError(ServiceBackendError):
     pass
-
-
-class JiraClient(object):
-    # TODO: This should be done as separate resource (NC-549)
-
-    ISSUE_TYPE = 'Support Request'
-    REPORTER_FIELD = 'Original Reporter'
-
-    def __new__(cls):
-        try:
-            base_config = django_settings.NODECONDUCTOR['JIRA_SUPPORT']
-            server = base_config['server']
-            project = base_config['project']
-        except (KeyError, AttributeError):
-            raise JiraBackendError(
-                "Missing JIRA server or project. They must be defined "
-                "within settings.NODECONDUCTOR.JIRA_SUPPORT")
-
-        try:
-            jira_settings = ServiceSettings.objects.filter(
-                type=ServiceSettings.Types.Jira).get(backend_url=server)
-        except ServiceSettings.DoesNotExist as e:
-            logger.exception(
-                "Can't find JIRA credential with backend url %s among ServiceSettings", server)
-            six.reraise(JiraBackendError, e)
-
-        return JiraBackend(
-            jira_settings,
-            core_project=project,
-            reporter_field=cls.REPORTER_FIELD,
-            default_issue_type=cls.ISSUE_TYPE)
 
 
 class JiraBackend(object):
