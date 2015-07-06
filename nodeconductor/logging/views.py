@@ -185,3 +185,15 @@ class AlertViewSet(mixins.CreateModelMixin,
             return response.Response(status=status.HTTP_200_OK)
         else:
             return response.Response({'detail': 'Alert is not acknowledged'}, status=status.HTTP_409_CONFLICT)
+
+
+class HookViewSet(viewsets.ModelViewSet):
+    queryset = models.Hook.objects.all()
+    serializer_class = serializers.HookSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    lookup_field = 'uuid'
+
+    def filter_queryset(self, queryset):
+        if self.request.user.is_staff:
+            return queryset
+        return queryset.filter(user=self.request.user)

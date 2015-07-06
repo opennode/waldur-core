@@ -1,5 +1,6 @@
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from jsonfield import JSONField
@@ -45,3 +46,17 @@ class Alert(TimeStampedModel):
     def cancel_acknowledgment(self):
         self.acknowledged = False
         self.save()
+
+
+class Hook(TimeStampedModel):
+    SERVICES = (('web', 'web'), ('email', 'email'))
+
+    uuid = UUIDField(auto=True, unique=True)
+    is_active = models.BooleanField(default=True, blank=True)
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL)
+    events = JSONField('List of event types')
+
+    name = models.CharField('Name of publishing service', max_length=50, choices=SERVICES)
+    settings = JSONField('Settings of publishing service')
+    last_published = models.DateTimeField(default=timezone.now, blank=True)

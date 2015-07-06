@@ -51,3 +51,51 @@ class ScopeTypeSerializer(serializers.Serializer):
         choices=[(_convert(m.__name__), m.__name__) for m in utils.get_loggable_models()],
         choice_mappings={_convert(m.__name__): m for m in utils.get_loggable_models()},
     )
+
+
+class WebHookSettingsSerializer(serializers.Serializer):
+    url = serializers.URLField()
+    content_type = serializers.ChoiceField(choices=('json', 'form'), default='json')
+
+
+class EmailHookSettingsSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+def get_valid_events():
+    return list(log.event_logger.get_permitted_event_types())
+
+
+class HookSerializer(serializers.HyperlinkedModelSerializer):
+    last_published = serializers.ReadOnlyField()
+    events = serializers.ListField(child=serializers.ChoiceField(choices=get_valid_events()))
+    settings = serializers.DictField()
+    author_uuid = serializers.ReadOnlyField(source='user.uuid')
+
+    class Meta(object):
+        model = models.Hook
+
+        fields = (
+            'url', 'uuid', 'is_active', 'author_uuid',
+            'last_published', 'created', 'modified',
+            'events', 'name', 'settings'
+        )
+
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+            'user': {'lookup_field': 'uuid'},
+        }
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super(HookSerializer, self).create(validated_data)
+
+    def validate_settings(self, value):
+        classes = {
+            'web': WebHookSettingsSerializer,
+            'email': EmailHookSettingsSerializer
+        }
+        cls = classes[self.initial_data['name']]
+        serializer = cls(data=self.initial_data['settings'])
+        serializer.is_valid(raise_exception=True)
+        return serializer.validated_data
