@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
 
-from rest_framework import permissions as rf_permissions, exceptions as rf_exceptions
+from rest_framework import permissions as rf_permissions, exceptions as rf_exceptions, decorators, response, status
 from rest_framework import mixins
 from rest_framework import viewsets
-from nodeconductor.core.pagination import UnlimitedLinkHeaderPagination
+import reversion
+from reversion.models import Version
 
+from nodeconductor.core.pagination import UnlimitedLinkHeaderPagination
+from nodeconductor.core.utils import datetime_to_timestamp
 from nodeconductor.quotas import models, serializers
 
 
@@ -26,6 +29,32 @@ class QuotaViewSet(mixins.UpdateModelMixin,
             raise rf_exceptions.PermissionDenied('You do not have permission to perform this action.')
 
         super(QuotaViewSet, self).perform_update(serializer)
+
+    @decorators.detail_route()
+    def history(self, request, uuid=None):
+        mapped = {
+            'start': request.query_params.get('start'),
+            'end': request.query_params.get('end'),
+            'points_count': request.query_params.get('points_count'),
+            'point': request.query_params.getlist('point'),
+        }
+        serializer = serializers.HistorySerializer(data={k: v for k, v in mapped.items() if v})
+        serializer.is_valid(raise_exception=True)
+
+        quota = self.get_object()
+        serialized_versions = []
+        for point_date in serializer.get_filter_data():
+            serialized = {'point': datetime_to_timestamp(point_date)}
+            try:
+                version = reversion.get_for_date(quota, point_date)
+            except Version.DoesNotExist:
+                pass
+            else:
+                Serializer = self.get_serializer_class()
+                serialized['object'] = Serializer(instance=version.object, context={'request': request}).data
+            serialized_versions.append(serialized)
+
+        return response.Response(serialized_versions, status=status.HTTP_200_OK)
 
 
 class QuotaFilterMixin(object):

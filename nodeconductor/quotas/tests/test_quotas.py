@@ -1,16 +1,19 @@
+from django.utils import timezone
 from rest_framework import test, status
+import reversion
 
+# Dependency from structure and iaas exists only in tests
+from nodeconductor.core import utils
+from nodeconductor.iaas.tests import factories as iaas_factories
 from nodeconductor.quotas import models
 from nodeconductor.quotas.tests import factories
+from nodeconductor.structure import models as structure_models
+from nodeconductor.structure.tests import factories as structure_factories
 
 
 class QuotaListTest(test.APITransactionTestCase):
 
     def setUp(self):
-        from nodeconductor.structure import models as structure_models
-        from nodeconductor.structure.tests import factories as structure_factories
-        from nodeconductor.iaas.tests import factories as iaas_factories
-
         self.customer = structure_factories.CustomerFactory()
         self.owner = structure_factories.UserFactory(username='owner')
         self.customer.add_user(self.owner, structure_models.CustomerRole.OWNER)
