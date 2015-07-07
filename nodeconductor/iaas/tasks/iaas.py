@@ -15,7 +15,7 @@ from nodeconductor.monitoring import utils as monitoring_utils
 logger = logging.getLogger(__name__)
 
 
-@shared_task
+@shared_task(name='nodeconductor.iaas.stop')
 @tracked_processing(models.Instance, processing_state='begin_stopping', desired_state='set_offline')
 def schedule_stopping(instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)

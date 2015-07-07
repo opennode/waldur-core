@@ -1218,7 +1218,14 @@ class ResourceViewSet(viewsets.GenericViewSet):
         return response.Response(data)
 
 
-class BaseServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
+class BaseServiceViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+                         core_mixins.UserContextMixin,
+                         viewsets.ModelViewSet):
+
+    class PaidControl:
+        customer_path = 'customer'
+        settings_path = 'settings'
+
     queryset = NotImplemented
     serializer_class = NotImplemented
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
@@ -1226,11 +1233,16 @@ class BaseServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
     lookup_field = 'uuid'
 
 
-class BaseServiceProjectLinkViewSet(mixins.CreateModelMixin,
+class BaseServiceProjectLinkViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+                                    mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
                                     viewsets.GenericViewSet):
+
+    class PaidControl:
+        customer_path = 'service__customer'
+        settings_path = 'service__settings'
 
     queryset = NotImplemented
     serializer_class = NotImplemented
@@ -1244,7 +1256,14 @@ class BaseServiceProjectLinkViewSet(mixins.CreateModelMixin,
         service_project_link.save()
 
 
-class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
+class BaseResourceViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+                          core_mixins.UserContextMixin,
+                          viewsets.ModelViewSet):
+
+    class PaidControl:
+        customer_path = 'service_project_link__service__customer'
+        settings_path = 'service_project_link__service__settings'
+
     queryset = NotImplemented
     serializer_class = NotImplemented
     lookup_field = 'uuid'

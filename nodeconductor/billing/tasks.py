@@ -1,23 +1,26 @@
 import StringIO
 import logging
+import itertools
+import xhtml2pdf.pisa as pisa
 
 from datetime import date, timedelta, datetime
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
 from django.utils.lru_cache import lru_cache
 from celery import shared_task
-import xhtml2pdf.pisa as pisa
 
 from nodeconductor.backup.models import Backup
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.billing.models import PriceList
 from nodeconductor.core.utils import timestamp_to_datetime
-from nodeconductor.iaas.models import CloudProjectMembership, Instance
+from nodeconductor.iaas.models import Cloud, CloudProjectMembership, Instance
 from nodeconductor.logging.elasticsearch_client import ElasticsearchResultList
-from nodeconductor.structure.models import Customer
+from nodeconductor.structure.models import Customer, Service
+from nodeconductor.structure.serializers import SUPPORTED_SERVICES
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +29,62 @@ logger = logging.getLogger(__name__)
 def sync_pricelist():
     backend = BillingBackend()
     backend.sync_pricelist()
+
+
+@shared_task(name='nodeconductor.billing.debit_customers')
+def debit_customers():
+    """ Fetch a list of shared services (services based on shared settings).
+        Calculate the amount of consumed resources "yesterday" (make sure this task executed only once a day)
+        Reduce customer's balance accordingly
+        Stop online resource if needed
+    """
+
+    if not settings.NODECONDUCTOR.get('SUSPEND_UNPAID_CUSTOMERS'):
+        return
+
+    date = datetime.now() - timedelta(days=1)
+    start_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_date = start_date + timedelta(days=1, microseconds=-1)
+
+    debtors = set()
+
+    for service in Service.objects.filter(settings__shared=True).select_related('customer'):
+        try:
+            usage_data = service.get_usage_data(start_date, end_date)
+        except NotImplementedError:
+            continue
+        else:
+            service.customer.debit_account(usage_data['total_amount'])
+            # Fully prepaid mode
+            # TODO: Introduce threshold value to allow over-usage
+            if service.customer.balance <= 0:
+                debtors.add(service.customer)
+
+    # Consider all IaaS services as shared
+    # This code to be deprecated when IaaS app moves to OpenStack app (NC-645)
+    customers = set(s.customer for s in Cloud.objects.select_related('customer').all())
+    for customer in customers:
+        usage_data, data, projected_total = get_customer_usage_data(customer, start_date, end_date)
+        customer.debit_account(projected_total)
+        if customer.balance <= 0:
+            debtors.add(customer)
+
+    # Shutdown active resources for debtors
+    # TODO: Consider supporting another states (like 'STARTING')
+    if debtors:
+        resources = itertools.chain(*[s['resources'].keys() for s in SUPPORTED_SERVICES.values()])
+        for model_name in resources:
+            model = apps.get_model(model_name)
+            resources = model.objects.filter(
+                state=model.States.ONLINE,
+                service_project_link__service__customer__in=debtors)
+
+            for resource in resources:
+                try:
+                    backend = resource.get_backend()
+                    backend.stop()
+                except NotImplementedError:
+                    continue
 
 
 def generate_usage_pdf(invoice, usage_data):

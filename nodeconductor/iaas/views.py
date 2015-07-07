@@ -249,7 +249,8 @@ class InstanceFilter(django_filters.FilterSet):
         }
 
 
-class InstanceViewSet(mixins.CreateModelMixin,
+class InstanceViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+                      mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       mixins.UpdateModelMixin,
                       mixins.ListModelMixin,
@@ -257,6 +258,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     """List of VM instances that are accessible by this user.
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#vm-instance-management
     """
+
+    class PaidControl:
+        customer_path = 'cloud_project_membership__cloud__customer'
 
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
@@ -1011,11 +1015,16 @@ class CloudFilter(django_filters.FilterSet):
         ]
 
 
-class CloudViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
+class CloudViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+                   core_mixins.UpdateOnlyStableMixin,
+                   viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#cloud-model
     """
+
+    class PaidControl:
+        customer_path = 'customer'
 
     queryset = models.Cloud.objects.all().prefetch_related('flavors')
     serializer_class = serializers.CloudSerializer
@@ -1064,7 +1073,8 @@ class CloudProjectMembershipFilter(django_filters.FilterSet):
         ]
 
 
-class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
+class CloudProjectMembershipViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+                                    mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
@@ -1075,6 +1085,10 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#link-cloud-to-a-project
     """
+
+    class PaidControl:
+        customer_path = 'cloud__customer'
+
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)

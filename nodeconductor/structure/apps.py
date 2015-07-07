@@ -209,3 +209,15 @@ class StructureConfig(AppConfig):
             sender=Project,
             dispatch_uid='nodeconductor.structure.handlers.remove_stale_user_from_services_of_revoked_project',
         )
+
+        structure_signals.customer_account_credited.connect(
+            handlers.log_customer_account_credited,
+            sender=Customer,
+            dispatch_uid='nodeconductor.structure.handlers.log_customer_account_credited',
+        )
+
+        structure_signals.customer_account_debited.connect(
+            handlers.log_customer_account_debited,
+            sender=Customer,
+            dispatch_uid='nodeconductor.structure.handlers.log_customer_account_debited',
+        )

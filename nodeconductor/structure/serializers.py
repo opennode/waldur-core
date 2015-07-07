@@ -196,7 +196,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             'uuid',
             'name', 'native_name', 'abbreviation', 'contact_details',
             'projects', 'project_groups',
-            'owners',
+            'owners', 'balance',
             'registration_code',
             'quotas',
             'image'
@@ -834,6 +834,11 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
 
     def get_related_paths(self):
         return 'project', 'service'
+
+    def validate(self, attrs):
+        if attrs['service'].customer != attrs['project'].customer:
+            raise serializers.ValidationError("Service customer doesn't match project customer")
+        return attrs
 
 
 class ResourceSerializerMetaclass(BaseServiceSerializerMetaclass):

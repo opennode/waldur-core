@@ -21,6 +21,15 @@ class CustomerEventLogger(EventLogger):
         return {'customer_uuid': filter_queryset_for_user(customer_queryset, user).values_list('uuid', flat=True)}
 
 
+class BalanceEventLogger(EventLogger):
+    customer = models.Customer
+    amount = float
+
+    class Meta:
+        event_types = ('customer_account_credited',
+                       'customer_account_debited')
+
+
 class ProjectEventLogger(EventLogger):
     project = models.Project
     project_group = models.ProjectGroup
@@ -108,3 +117,4 @@ event_logger.register('user_organization', UserOrganizationEventLogger)
 event_logger.register('customer', CustomerEventLogger)
 event_logger.register('project', ProjectEventLogger)
 event_logger.register('project_group', ProjectGroupEventLogger)
+event_logger.register('balance', BalanceEventLogger)

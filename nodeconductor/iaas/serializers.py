@@ -125,6 +125,11 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
     def get_related_paths(self):
         return 'project', 'cloud'
 
+    def validate(self, attrs):
+        if attrs['cloud'].customer != attrs['project'].customer:
+            raise serializers.ValidationError("Cloud customer doesn't match project customer")
+        return attrs
+
     def save(self, **kwargs):
         try:
             return super(CloudProjectMembershipSerializer, self).save(**kwargs)

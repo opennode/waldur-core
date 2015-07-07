@@ -1,9 +1,11 @@
 """
 Django base settings for nodeconductor project.
 """
+from __future__ import absolute_import
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 from datetime import timedelta
+from celery.schedules import crontab
 import os
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
@@ -156,6 +158,12 @@ CELERYBEAT_SCHEDULE = {
         'args': ('yearly',),
     },
 
+    'debit-customers': {
+        'task': 'nodeconductor.billing.debit_customers',
+        'schedule': crontab(hour=0, minute=30),
+        'args': (),
+    },
+
     'sync-services': {
         'task': 'nodeconductor.iaas.sync_services',
         'schedule': timedelta(minutes=60),
@@ -247,5 +255,6 @@ NODECONDUCTOR = {
     ),
     'JIRA_SUPPORT': {'dummy': True},
     'ELASTICSEARCH_DUMMY': True,
+    'SUSPEND_UNPAID_CUSTOMERS': False,
     'TOKEN_KEY': 'x-auth-token',
 }
