@@ -139,7 +139,7 @@ def begin_syncing_service_project_links(service_project_link_str, transition_ent
         try:
             # Get administrative backend session from service instead of tenant session from spl
             backend = service_project_link.service.get_backend()
-            backend.sync_membership(service_project_link)
+            backend.sync_link(service_project_link)
         except ServiceBackendNotImplemented:
             pass
 

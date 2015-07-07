@@ -69,7 +69,7 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info('Successfully synchronized OpenStack service %s', self.settings.backend_url)
 
-    def sync_membership(self, service_project_link):
+    def sync_link(self, service_project_link):
         # Migration status:
         # [x] push_membership()
         # [ ] push_security_groups() (TODO: NC-638)

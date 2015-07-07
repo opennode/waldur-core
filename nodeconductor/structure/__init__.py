@@ -19,7 +19,7 @@ class ServiceBackend(object):
     def sync(self):
         raise ServiceBackendNotImplemented
 
-    def sync_membership(self, service_project_link):
+    def sync_link(self, service_project_link):
         raise ServiceBackendNotImplemented
 
     def provision(self, resource, *args, **kwargs):
