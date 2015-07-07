@@ -17,11 +17,11 @@ def _can_manage_organization(candidate_user, approving_user):
         if organization.has_user(approving_user):
             return True
     except Customer.DoesNotExist:
-        logging.warning('Approval was attempted for a Customer with abbreviation %s that does not exist.',
-                        candidate_user.organization)
+        logger.warning('Approval was attempted for a customer with abbreviation %s that does not exist.',
+                       candidate_user.organization)
     except Customer.MultipleObjectsReturned:
-        logging.error('More than one Customer with abbreviation %s exists. Breaks approval flow.',
-                      candidate_user.organization)
+        logger.error('More than one customer with abbreviation %s exists. Breaks approval flow.',
+                     candidate_user.organization)
 
     return False
 
