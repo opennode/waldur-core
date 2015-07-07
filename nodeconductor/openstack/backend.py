@@ -64,10 +64,10 @@ class OpenStackBackend(ServiceBackend):
             self.pull_flavors()
             self.pull_images()
         except (nova_exceptions.ClientException, glance_exceptions.ClientException) as e:
-            logger.exception('Failed to synchronize Service %s', self.settings.backend_url)
+            logger.exception('Failed to synchronize OpenStack service %s', self.settings.backend_url)
             six.reraise(OpenStackBackendError, e)
         else:
-            logger.info('Successfully synchronized Service %s', self.settings.backend_url)
+            logger.info('Successfully synchronized OpenStack service %s', self.settings.backend_url)
 
     def sync_membership(self, service_project_link):
         # Migration status:

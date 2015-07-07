@@ -4,7 +4,7 @@ from django.db.models import signals
 from nodeconductor.openstack import handlers
 
 
-class IaasConfig(AppConfig):
+class OpenStackConfig(AppConfig):
     name = 'nodeconductor.openstack'
     verbose_name = "NodeConductor OpenStack"
 
