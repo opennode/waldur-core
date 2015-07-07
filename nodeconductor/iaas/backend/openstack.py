@@ -2019,8 +2019,9 @@ class OpenStackBackend(OpenStackClient):
                 logger.info('Network with id %s exists', membership.internal_network_id)
 
                 network_name = response['network']['name']
+                tenant_name = self.get_tenant_name(membership)
                 subnet_id = response['network']['subnets'][0]
-                self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id)
+                self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id, tenant_name)
 
             return membership.internal_network_id
 
@@ -2054,17 +2055,22 @@ class OpenStackBackend(OpenStackClient):
             'enable_dhcp': True,
         }
         create_response = neutron.create_subnet({'subnets': [subnet_data]})
-        self.get_or_create_router(neutron, network_name, create_response['subnets'][0]['id'], membership.tenant_id)
+        tenant_name = self.get_tenant_name(membership)
+        self.get_or_create_router(neutron, network_name, create_response['subnets'][0]['id'],
+                                  membership.tenant_id, tenant_name)
 
         return membership.internal_network_id
 
-    def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id):
-        router_name = '{0}-router'.format(network_name)
-        logger.info('Find or create router %s', router_name)
+    def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id, tenant_name):
+        router_network_name = '{0}-router'.format(network_name)
+        router_tenant_name = '{0}-router'.format(tenant_name)
         try:
-            router = next(r for r in neutron.list_routers()['routers'] if r['name'] == router_name)
+            router = next(r for r in neutron.list_routers()['routers']
+                          if r['name'] in (router_network_name, router_tenant_name))
+            logger.info('Router with name %s already exists.', router['name'])
         except StopIteration:
-            router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
+            router = neutron.create_router({'router': {'name': router_network_name, 'tenant_id': tenant_id}})['router']
+            logger.info('Router with name %s has been created.', router['name'])
 
         try:
             neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
