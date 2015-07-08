@@ -76,7 +76,7 @@ class OpenStackBackend(ServiceBackend):
         # [ ] pull_resource_quota() & pull_resource_quota_usage() (TODO: NC-634)
 
         try:
-            self.push_membership(service_project_link)
+            self.push_link(service_project_link)
         except (keystone_exceptions.ClientException, neutron_exceptions.NeutronException) as e:
             logger.exception('Failed to synchronize ServiceProjectLink %s', service_project_link.to_string())
             six.reraise(OpenStackBackendError, e)
@@ -120,7 +120,7 @@ class OpenStackBackend(ServiceBackend):
 
             map(lambda i: i.delete(), cur_images.values())
 
-    def push_membership(self, service_project_link):
+    def push_link(self, service_project_link):
         keystone = self.keystone_client
         tenant = self._old_backend.get_or_create_tenant(service_project_link, keystone)
 
