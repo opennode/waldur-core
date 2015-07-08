@@ -82,7 +82,6 @@ def get_customer_usage_data(customer, start_date, end_date):
     for membership in memberships:
         backend = membership.cloud.get_backend()
         try:
-            raise CloudBackendError
             usage = backend.get_nova_usage(membership, start_date, end_date)
         except CloudBackendError:
             usage = {}
