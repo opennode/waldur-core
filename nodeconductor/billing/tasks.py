@@ -15,6 +15,7 @@ from nodeconductor.backup.models import Backup
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.billing.models import PriceList
 from nodeconductor.core.utils import timestamp_to_datetime
+from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.models import CloudProjectMembership, Instance
 from nodeconductor.logging.elasticsearch_client import ElasticsearchResultList
 from nodeconductor.structure.models import Customer
@@ -80,7 +81,11 @@ def get_customer_usage_data(customer, start_date, end_date):
     usage_data = {'reporting_period': (start_date, end_date), 'customer_name': customer.name, 'usage': {}}
     for membership in memberships:
         backend = membership.cloud.get_backend()
-        usage = backend.get_nova_usage(membership, start_date, end_date)
+        try:
+            raise CloudBackendError
+            usage = backend.get_nova_usage(membership, start_date, end_date)
+        except CloudBackendError:
+            usage = {}
 
         billing_category_name = membership.project.name
         # XXX a specific hack to support case when project resides in project_group
@@ -93,7 +98,7 @@ def get_customer_usage_data(customer, start_date, end_date):
         # populate billing data with content
         billing_data = {}
         for field in ['cpu', 'disk', 'memory', 'servers']:
-            billing_data[field] = usage[field]
+            billing_data[field] = usage.get(field, 0)
 
         # process and aggregate license usage
         server_usage = usage.get('server_usages', [])
