@@ -61,9 +61,6 @@ config_defaults = {
     },
     'openstack': {
         'auth_url': '',
-        'password': '',
-        'tenant_name': '',
-        'username': '',
         'cpu_overcommit_ratio': 1,
     },
     'saml2': {
@@ -165,6 +162,10 @@ DATABASES = {
     #
     'default': {}
 }
+
+for prop in ('password', 'username', 'tenant_name'):
+    if config.get('openstack', prop):
+        warnings.warn("openstack.%s property in settings.ini is no longer supported and will be ignored" % prop)
 
 if config.get('global', 'db_backend') == 'mysql':
     DATABASES['default'] = {
@@ -711,20 +712,6 @@ NODECONDUCTOR = {
                     'to_port': 7025,
                 },
             ),
-        },
-    ),
-    'OPENSTACK_CREDENTIALS': (
-        {
-            'auth_url': config.get('openstack', 'auth_url'),
-            'username': config.get('openstack', 'username'),
-            'password': config.get('openstack', 'password'),
-            'tenant_name': config.get('openstack', 'tenant_name'),
-        },
-        {
-            'auth_url': 'http://localhost:55000',
-            'username': 'nodeconductor',
-            'password': 'nodeconductor',
-            'tenant_name': 'test',
         },
     ),
     'OPENSTACK_OVERCOMMIT': (
