@@ -705,6 +705,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     SERVICE_TYPE = NotImplemented
     SERVICE_ACCOUNT_FIELDS = NotImplemented
+    SERVICE_ACCOUNT_EXTRA_FIELDS = NotImplemented
 
     projects = BasicProjectSerializer(many=True, read_only=True)
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
@@ -726,9 +727,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         fields = (
             'uuid',
             'url',
-            'name', 'projects', 'settings',
+            'name', 'projects',
             'customer', 'customer_name', 'customer_native_name',
-            'backend_url', 'username', 'password', 'token', 'dummy',
+            'settings', 'dummy',
+            'backend_url', 'username', 'password', 'token',
         )
         protected_fields = (
             'customer', 'settings',
@@ -739,6 +741,11 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'customer': {'lookup_field': 'uuid'},
             'settings': {'lookup_field': 'uuid'},
         }
+
+    def __new__(cls, *args, **kwargs):
+        if cls.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
+            cls.Meta.fields += tuple(cls.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
+        return super(BaseServiceSerializer, cls).__new__(cls, *args, **kwargs)
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -759,6 +766,17 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     del fields[field]
 
         return fields
+
+    def build_unknown_field(self, field_name, model_class):
+        if self.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
+            if field_name in self.SERVICE_ACCOUNT_EXTRA_FIELDS:
+                return serializers.CharField, {
+                    'write_only': True,
+                    'required': False,
+                    'allow_blank': True,
+                    'help_text': self.SERVICE_ACCOUNT_EXTRA_FIELDS[field_name]}
+
+        return super(BaseServiceSerializer, self).build_unknown_field(field_name, model_class)
 
     def validate_empty_values(self, data):
         # required=False is ignored for settings FK, deal with it here
@@ -783,9 +801,16 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 raise serializers.ValidationError(
                     "Either service settings or credentials must be supplied.")
 
+            extra_fields = tuple()
+            if self.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
+                extra_fields += tuple(self.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
+
             settings_fields += 'dummy',
             if create_settings:
                 args = {f: attrs.get(f) for f in settings_fields if f in attrs}
+                if extra_fields:
+                    args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
+
                 settings = models.ServiceSettings.objects.create(
                     type=self.SERVICE_TYPE,
                     name=attrs['name'],
@@ -795,7 +820,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 send_task('structure', 'sync_service_settings')(settings.uuid.hex, initial=True)
                 attrs['settings'] = settings
 
-            for f in settings_fields:
+            for f in settings_fields + extra_fields:
                 if f in attrs:
                     del attrs[f]
 
