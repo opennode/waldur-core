@@ -1,11 +1,9 @@
 import StringIO
 import logging
-import itertools
 import xhtml2pdf.pisa as pisa
 
 from datetime import date, timedelta, datetime
 
-from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.base import ContentFile
@@ -20,7 +18,6 @@ from nodeconductor.core.utils import timestamp_to_datetime
 from nodeconductor.iaas.models import Cloud, CloudProjectMembership, Instance
 from nodeconductor.logging.elasticsearch_client import ElasticsearchResultList
 from nodeconductor.structure.models import Customer, Service
-from nodeconductor.structure.serializers import SUPPORTED_SERVICES
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +36,9 @@ def debit_customers():
         Stop online resource if needed
     """
 
-    if not settings.NODECONDUCTOR.get('SUSPEND_UNPAID_CUSTOMERS'):
-        return
-
     date = datetime.now() - timedelta(days=1)
     start_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
     end_date = start_date + timedelta(days=1, microseconds=-1)
-
-    debtors = set()
 
     for service in Service.objects.filter(settings__shared=True).select_related('customer'):
         try:
@@ -55,10 +47,6 @@ def debit_customers():
             continue
         else:
             service.customer.debit_account(usage_data['total_amount'])
-            # Fully prepaid mode
-            # TODO: Introduce threshold value to allow over-usage
-            if service.customer.balance <= 0:
-                debtors.add(service.customer)
 
     # Consider all IaaS services as shared
     # This code to be deprecated when IaaS app moves to OpenStack app (NC-645)
@@ -66,25 +54,6 @@ def debit_customers():
     for customer in customers:
         usage_data, data, projected_total = get_customer_usage_data(customer, start_date, end_date)
         customer.debit_account(projected_total)
-        if customer.balance <= 0:
-            debtors.add(customer)
-
-    # Shutdown active resources for debtors
-    # TODO: Consider supporting another states (like 'STARTING')
-    if debtors:
-        resources = itertools.chain(*[s['resources'].keys() for s in SUPPORTED_SERVICES.values()])
-        for model_name in resources:
-            model = apps.get_model(model_name)
-            resources = model.objects.filter(
-                state=model.States.ONLINE,
-                service_project_link__service__customer__in=debtors)
-
-            for resource in resources:
-                try:
-                    backend = resource.get_backend()
-                    backend.stop()
-                except NotImplementedError:
-                    continue
 
 
 def generate_usage_pdf(invoice, usage_data):

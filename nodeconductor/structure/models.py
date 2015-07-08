@@ -17,6 +17,7 @@ from model_utils.models import TimeStampedModel
 from polymorphic import PolymorphicModel
 
 from nodeconductor.core import models as core_models
+from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
@@ -66,6 +67,11 @@ class Customer(core_models.UuidMixin,
         self.balance = F('balance') - amount
         self.save(update_fields=['balance'])
         customer_account_debited.send(sender=Customer, instance=self, amount=float(amount))
+
+        # Fully prepaid mode
+        # TODO: Introduce threshold value to allow over-usage
+        if self.balance <= 0:
+            send_task('structure', 'stop_customer_resources')(self.uuid.hex)
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
