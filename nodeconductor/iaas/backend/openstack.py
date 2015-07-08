@@ -2060,13 +2060,14 @@ class OpenStackBackend(OpenStackClient):
         return membership.internal_network_id
 
     def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id):
-        try:
-            router = next(r for r in neutron.list_routers()['routers'] if r['tenant_id'] == tenant_id)
+        routers = neutron.list_routers(tenant_id=tenant_id)['routers']
+        if routers:
             logger.info('Router(s) in tenant with id %s already exist(s).', tenant_id)
-        except StopIteration:
-            router_name = '{0}-router'.format(network_name)
-            router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
-            logger.info('Router with name %s has been created.', router['name'])
+            return routers[0]['id']
+
+        router_name = '{0}-router'.format(network_name)
+        router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
+        logger.info('Router with name %s has been created.', router['name'])
 
         try:
             neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
