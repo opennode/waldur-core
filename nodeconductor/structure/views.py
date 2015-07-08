@@ -7,6 +7,7 @@ import time
 from datetime import datetime, timedelta
 
 from django import http
+from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db import connection
 from django.db.models import Q, Sum
@@ -1218,7 +1219,54 @@ class ResourceViewSet(viewsets.GenericViewSet):
         return response.Response(data)
 
 
-class BaseServiceViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+class UpdateOnlyByPaidCustomerMixin(object):
+    """ Allow modification of entities if their customer's balance is positive. """
+
+    @staticmethod
+    def _check_paid_status(settings, customer):
+        # Check for shared settings only or missed settings in case of IaaS
+        if settings is None or settings.shared:
+            if customer and customer.balance is not None and customer.balance <= 0:
+                raise PermissionDenied(
+                    "Your balance is %s. Action disabled." % customer.balance)
+
+    def initial(self, request, *args, **kwargs):
+        if hasattr(self, 'PaidControl') and self.action not in ('list', 'retrieve', 'create'):
+            if django_settings.NODECONDUCTOR.get('SUSPEND_UNPAID_CUSTOMERS'):
+                entity = self.get_object()
+
+                def get_obj(name):
+                    try:
+                        args = getattr(self.PaidControl, '%s_path' % name).split('__')
+                    except AttributeError:
+                        return None
+                    return reduce(getattr, args, entity)
+
+                self._check_paid_status(get_obj('settings'), get_obj('customer'))
+
+        return super(UpdateOnlyByPaidCustomerMixin, self).initial(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        if django_settings.NODECONDUCTOR.get('SUSPEND_UNPAID_CUSTOMERS'):
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            def get_obj(name):
+                try:
+                    args = getattr(self.PaidControl, '%s_path' % name).split('__')
+                except AttributeError:
+                    return None
+                obj = serializer.validated_data[args[0]]
+                if len(args) > 1:
+                    obj = reduce(getattr, args[1:], obj)
+                return obj
+
+            self._check_paid_status(get_obj('settings'), get_obj('customer'))
+
+        return super(UpdateOnlyByPaidCustomerMixin, self).create(request, *args, **kwargs)
+
+
+class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                          core_mixins.UserContextMixin,
                          viewsets.ModelViewSet):
 
@@ -1233,7 +1281,7 @@ class BaseServiceViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
     lookup_field = 'uuid'
 
 
-class BaseServiceProjectLinkViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
                                     mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
@@ -1254,7 +1302,7 @@ class BaseServiceProjectLinkViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
         send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
 
 
-class BaseResourceViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
                           core_mixins.UserContextMixin,
                           viewsets.ModelViewSet):
 

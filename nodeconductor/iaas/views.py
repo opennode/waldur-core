@@ -38,6 +38,7 @@ from nodeconductor.iaas.serializers import QuotaTimelineStatsSerializer
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.logging import models as logging_models, serializers as logging_serializers
 from nodeconductor.structure import filters as structure_filters
+from nodeconductor.structure.views import UpdateOnlyByPaidCustomerMixin
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
 
@@ -249,7 +250,7 @@ class InstanceFilter(django_filters.FilterSet):
         }
 
 
-class InstanceViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
                       mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       mixins.UpdateModelMixin,
@@ -1015,7 +1016,7 @@ class CloudFilter(django_filters.FilterSet):
         ]
 
 
-class CloudViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+class CloudViewSet(UpdateOnlyByPaidCustomerMixin,
                    core_mixins.UpdateOnlyStableMixin,
                    viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
@@ -1073,7 +1074,7 @@ class CloudProjectMembershipFilter(django_filters.FilterSet):
         ]
 
 
-class CloudProjectMembershipViewSet(core_mixins.UpdateOnlyByPaidCustomerMixin,
+class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
                                     mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
