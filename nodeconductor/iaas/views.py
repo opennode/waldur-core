@@ -170,7 +170,7 @@ class InstanceFilter(django_filters.FilterSet):
     )
 
     name = django_filters.CharFilter(lookup_type='icontains')
-    state = django_filters.CharFilter()
+    state = django_filters.NumberFilter()
     description = django_filters.CharFilter(
         lookup_type='icontains',
     )
