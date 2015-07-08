@@ -183,7 +183,7 @@ def log_customer_delete(sender, instance, **kwargs):
 
 def log_customer_account_credited(sender, instance, amount, **kwargs):
     event_logger.balance.info(
-        'Balance has been increased on {amount} for customer {customer_name}.',
+        'Balance has been increased by {amount} for customer {customer_name}.',
         event_type='customer_account_credited',
         event_context={
             'customer': instance,
@@ -193,7 +193,7 @@ def log_customer_account_credited(sender, instance, amount, **kwargs):
 
 def log_customer_account_debited(sender, instance, amount, **kwargs):
     event_logger.balance.info(
-        'Balance has been decreased on {amount} for customer {customer_name}.',
+        'Balance has been decreased by {amount} for customer {customer_name}.',
         event_type='customer_account_debited',
         event_context={
             'customer': instance,
