@@ -2060,18 +2060,20 @@ class OpenStackBackend(OpenStackClient):
         return membership.internal_network_id
 
     def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id):
-        routers = neutron.list_routers()['routers']
-        if len(routers) > 0:
-            logger.info('Router(s) in tenant %s already exist(s).', tenant_id)
-            return
-
-        router = neutron.create_router({'router': {'name': network_name, 'tenant_id': tenant_id}})['router']
-        logger.info('Router with name %s has been created.', router['name'])
+        try:
+            router = next(r for r in neutron.list_routers()['routers'] if r['tenant_id'] == tenant_id)
+            logger.info('Router(s) in tenant with id %s already exist(s).', tenant_id)
+        except StopIteration:
+            router_name = '{0}-router'.format(network_name)
+            router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
+            logger.info('Router with name %s has been created.', router['name'])
 
         try:
             neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
         except neutron_exceptions.NeutronClientException:
             pass
+
+        return router['id']
 
     def get_hypervisors_statistics(self, nova):
         return nova.hypervisors.statistics()._info
