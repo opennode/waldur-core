@@ -164,7 +164,7 @@ DATABASES = {
 }
 
 for prop in ('password', 'username', 'tenant_name'):
-    if config.get('openstack', prop):
+    if config.has_option('openstack', prop):
         warnings.warn("openstack.%s property in settings.ini is no longer supported and will be ignored" % prop)
 
 if config.get('global', 'db_backend') == 'mysql':
