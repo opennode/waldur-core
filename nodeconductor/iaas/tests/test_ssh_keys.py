@@ -40,13 +40,13 @@ class SshKeyPropagationTest(test.APITransactionTestCase):
         # Test user add/remove key
         with patch('celery.app.base.Celery.send_task') as mocked_task:
             ssh_key = structure_factories.SshPublicKeyFactory(user=self.owner)
-            mocked_task.assert_any_call(
+            mocked_task.assert_called_with(
                 'nodeconductor.structure.sync_users',
                 (PUSH_KEY, [ssh_key.uuid.hex], [membership.to_string()]), {})
 
             with patch('nodeconductor.iaas.backend.openstack.OpenStackBackend.remove_ssh_public_key') as mocked_task:
                 self.client.delete(self._get_ssh_key_url(ssh_key))
-                mocked_task.assert_any_call(Any(membership), Any(ssh_key))
+                mocked_task.assert_called_with(Any(membership), Any(ssh_key))
 
         user = structure_factories.UserFactory()
         user_key = structure_factories.SshPublicKeyFactory(user=user)
