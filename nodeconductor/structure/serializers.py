@@ -21,7 +21,7 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 # The regestry of all supported services
 # TODO: Move OpenstackSettings to ServiceSettings and remove this hardcoding
 SUPPORTED_SERVICES = {
-    'iaas.openstack': {
+    'iaas.cloud': {
         'name': 'OpenStack',
         'view_name': 'cloud-list',
         'resources': {

@@ -59,19 +59,25 @@ class Customer(core_models.UuidMixin,
 
     def credit_account(self, amount):
         # Increase customer's balance by specified amount
-        self.balance = F('balance') + amount
-        self.save(update_fields=['balance'])
+        new_balance = (self.balance or 0) + amount
+        self._meta.model.objects.filter(uuid=self.uuid).update(
+            balance=new_balance if self.balance is None else F('balance') + amount)
+
+        self.balance = new_balance
         customer_account_credited.send(sender=Customer, instance=self, amount=float(amount))
 
     def debit_account(self, amount):
         # Reduce customer's balance at specified amount
-        self.balance = F('balance') - amount
-        self.save(update_fields=['balance'])
+        new_balance = (self.balance or 0) - amount
+        self._meta.model.objects.filter(uuid=self.uuid).update(
+            balance=new_balance if self.balance is None else F('balance') - amount)
+
+        self.balance = new_balance
         customer_account_debited.send(sender=Customer, instance=self, amount=float(amount))
 
         # Fully prepaid mode
         # TODO: Introduce threshold value to allow over-usage
-        if self.balance <= 0:
+        if new_balance <= 0:
             send_task('structure', 'stop_customer_resources')(self.uuid.hex)
 
     def add_user(self, user, role_type):
