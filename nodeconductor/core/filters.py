@@ -164,6 +164,5 @@ class TimestampFilter(django_filters.NumberFilter):
         if value:
             field = core_fields.TimestampField()
             datetime_value = field.to_internal_value(value)
-            print 'datetime_value', datetime_value
             return super(TimestampFilter, self).filter(qs, datetime_value)
         return qs

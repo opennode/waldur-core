@@ -51,7 +51,7 @@ class EventListView(generics.GenericAPIView):
 class AlertFilter(django_filters.FilterSet):
     """ Basic filters for alerts """
 
-    acknowledged = django_filters.BooleanFilter(name='acknowledged', distinct=True,)
+    acknowledged = django_filters.BooleanFilter(name='acknowledged', distinct=True)
     scope = core_filters.GenericKeyFilter(related_models=utils.get_loggable_models())
     closed_from = core_filters.TimestampFilter(name='closed', lookup_type='gte')
     closed_to = core_filters.TimestampFilter(name='closed', lookup_type='lt')
@@ -78,7 +78,7 @@ class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
     """
     Additional filters for alerts.
 
-    Support for filters that are related to more then one field or provides unusual query.
+    Support for filters that are related to more than one field or provides unusual query.
     """
 
     def filter_queryset(self, request, queryset, view):

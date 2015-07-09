@@ -126,7 +126,7 @@ event_logger.register('quota', QuotaEventLogger)
 
 
 # XXX: This filter should be moved to structure application and support alerts filtering for all customer-related
-# resources - not only OpenStack instances and memberships.
+# resources - not only OpenStack instances and memberships. (this should be done in issue NC-640)
 class AggregateAlertFilter(BaseExternalFilter):
     """
     Filter alerts by instances/projects/memberships
