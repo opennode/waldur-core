@@ -1,16 +1,16 @@
 from __future__ import unicode_literals
 
-import datetime
+import re
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.utils import timezone
+import django_filters
 from rest_framework import generics, response, settings, viewsets, permissions, filters, status, decorators, mixins
 from rest_framework.serializers import ValidationError
 
-from nodeconductor.core import utils as core_utils
-from nodeconductor.logging import elasticsearch_client, models, serializers
+from nodeconductor.core import serializers as core_serializers, filters as core_filters
+from nodeconductor.logging import elasticsearch_client, models, serializers, utils
 
 
 class EventListView(generics.GenericAPIView):
@@ -48,61 +48,53 @@ class EventListView(generics.GenericAPIView):
         return self.list(request, *args, **kwargs)
 
 
-class AlertFilter(filters.BaseFilterBackend):
-    """  """
+class AlertFilter(django_filters.FilterSet):
+    """ Basic filters for alerts """
+
+    acknowledged = django_filters.BooleanFilter(name='acknowledged', distinct=True)
+    scope = core_filters.GenericKeyFilter(related_models=utils.get_loggable_models())
+    closed_from = core_filters.TimestampFilter(name='closed', lookup_type='gte')
+    closed_to = core_filters.TimestampFilter(name='closed', lookup_type='lt')
+    created_from = core_filters.TimestampFilter(name='created', lookup_type='gte')
+    created_to = core_filters.TimestampFilter(name='created', lookup_type='lt')
+
+    class Meta:
+        model = models.Alert
+        fields = [
+            'acknowledged',
+            'scope',
+            'closed_from',
+            'closed_to',
+            'created_from',
+            'created_to',
+        ]
+        order_by = [
+            'severity',
+            '-severity',
+        ]
+
+
+class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
+    """
+    Additional filters for alerts.
+
+    Support for filters that are related to more than one field or provides unusual query.
+    """
 
     def filter_queryset(self, request, queryset, view):
-        # TODO: get rid of circular dependency between iaas, structure and logging.
-        from nodeconductor.iaas import serializers as iaas_serializers, models as iaas_models
-        from nodeconductor.structure import models as structure_models
-
-        aggregate_serializer = iaas_serializers.StatsAggregateSerializer(data=request.query_params)
-        aggregate_serializer.is_valid(raise_exception=True)
-
-        projects_ids = aggregate_serializer.get_projects(request.user).values_list('id', flat=True)
-        instances_ids = aggregate_serializer.get_instances(request.user).values_list('id', flat=True)
-        memebersips_ids = aggregate_serializer.get_memberships(request.user).values_list('id', flat=True)
-
-        aggregate_query = Q(
-            content_type=ContentType.objects.get_for_model(structure_models.Project),
-            object_id__in=projects_ids
-        )
-        aggregate_query |= Q(
-            content_type=ContentType.objects.get_for_model(iaas_models.Instance),
-            object_id__in=instances_ids
-        )
-        aggregate_query |= Q(
-            content_type=ContentType.objects.get_for_model(iaas_models.CloudProjectMembership),
-            object_id__in=memebersips_ids
-        )
-        queryset = queryset.filter(aggregate_query)
-
         mapped = {
             'start': request.query_params.get('from'),
             'end': request.query_params.get('to'),
         }
-        time_interval_serializer = iaas_serializers.TimeIntervalSerializer(data={k: v for k, v in mapped.items() if v})
-        time_interval_serializer.is_valid(raise_exception=True)
-
-        if 'start' in time_interval_serializer.validated_data:
+        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(
+            data={k: v for k, v in mapped.items() if v})
+        timestamp_interval_serializer.is_valid(raise_exception=True)
+        filter_data = timestamp_interval_serializer.get_filter_data()
+        if 'start' in filter_data:
             queryset = queryset.filter(
-                Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True))
-        if 'end' in time_interval_serializer.validated_data:
-            queryset = queryset.filter(created__lte=time_interval_serializer.validated_data['end'])
-
-        if 'scope' in request.query_params:
-            scope_serializer = serializers.ScopeSerializer(data=request.query_params)
-            scope_serializer.is_valid(raise_exception=True)
-            scope = scope_serializer.validated_data['scope']
-            ct = ContentType.objects.get_for_model(scope)
-            queryset = queryset.filter(content_type=ct, object_id=scope.id)
-
-        if 'scope_type' in request.query_params:
-            scope_type_serializer = serializers.ScopeTypeSerializer(data=request.query_params)
-            scope_type_serializer.is_valid(raise_exception=True)
-            scope_type = scope_type_serializer.validated_data['scope_type']
-            ct = ContentType.objects.get_for_model(scope_type)
-            queryset = queryset.filter(content_type=ct)
+                Q(closed__gte=filter_data['start']) | Q(closed__isnull=True))
+        if 'end' in filter_data:
+            queryset = queryset.filter(created__lte=filter_data['end'])
 
         if 'opened' in request.query_params:
             queryset = queryset.filter(closed__isnull=True)
@@ -113,35 +105,53 @@ class AlertFilter(filters.BaseFilterBackend):
                 severity_codes.get(severity_name) for severity_name in request.query_params.getlist('severity')]
             queryset = queryset.filter(severity__in=severities)
 
-        if 'alert_type' in request.query_params:
-            queryset = queryset.filter(alert_type__in=request.query_params.getlist('alert_type'))
+        if 'scope_type' in request.query_params:
+            def _convert(name):
+                """ Converts CamelCase to underscore """
+                s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+                return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
-        if 'acknowledged' in request.query_params:
-            if request.query_params['acknowledged'] == 'False':
-                queryset = queryset.filter(acknowledged=False)
+            choices = {_convert(m.__name__): m for m in utils.get_loggable_models()}
+            try:
+                scope_type = choices[request.query_params['scope_type']]
+            except KeyError:
+                raise ValidationError(
+                    'Scope type "{}" is not valid. Has to be one from list: {}'.format(
+                        request.query_params['scope_type'], ', '.join(choices.keys()))
+                )
             else:
-                queryset = queryset.filter(acknowledged=True)
+                ct = ContentType.objects.get_for_model(scope_type)
+                queryset = queryset.filter(content_type=ct)
 
-        time_search_parameters_map = {
-            'closed_from': 'closed__gte',
-            'closed_to': 'closed__lt',
-            'created_from': 'created__gte',
-            'created_to': 'created__lt',
-        }
+        return queryset
 
-        for parameter, filter_field in time_search_parameters_map.items():
-            if parameter in request.query_params:
-                try:
-                    queryset = queryset.filter(
-                        **{filter_field: core_utils.timestamp_to_datetime(int(request.query_params[parameter]))})
-                except ValueError:
-                    raise ValidationError(
-                        'Parameter {} is not valid. (It has to be valid timestamp)'.format(parameter))
 
-        if ('o' in request.query_params and
-                (request.query_params['o'] == 'severity' or request.query_params['o'] == '-severity')):
-            queryset = queryset.order_by(request.query_params['o'])
+class BaseExternalFilter(object):
+    """ Interface for external alert filter """
+    def filter(self, request, queryset, view):
+        raise NotImplementedError
 
+
+class ExternalAlertFilterBackend(filters.BaseFilterBackend):
+    """
+    Support external filters registered in other apps
+    """
+
+    @classmethod
+    def get_registered_filters(cls):
+        return getattr(cls, '_filters', [])
+
+    @classmethod
+    def register(cls, external_filter):
+        assert isinstance(external_filter, BaseExternalFilter), 'Registered filter has to inherit BaseExternalFilter'
+        if hasattr(cls, '_filters'):
+            cls._filters.append(external_filter)
+        else:
+            cls._filters = [external_filter]
+
+    def filter_queryset(self, request, queryset, view):
+        for filt in self.__class__.get_registered_filters():
+            queryset = filt.filter(request, queryset, view)
         return queryset
 
 
@@ -152,7 +162,8 @@ class AlertViewSet(mixins.CreateModelMixin,
     serializer_class = serializers.AlertSerializer
     lookup_field = 'uuid'
     permission_classes = (permissions.IsAuthenticated,)
-    filter_backends = (AlertFilter,)
+    filter_backends = (filters.DjangoFilterBackend, AdditionalAlertFilterBackend, ExternalAlertFilterBackend)
+    filter_class = AlertFilter
 
     def get_queryset(self):
         return models.Alert.objects.filtered_for_user(self.request.user)

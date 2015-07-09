@@ -1009,24 +1009,6 @@ class StatsAggregateSerializer(serializers.Serializer):
         return models.Instance.objects.filter(cloud_project_membership__project__in=projects).all()
 
 
-class TimeIntervalSerializer(serializers.Serializer):
-    MAX_TIMESTAMP_VALUE = 2 ** 32  # This is quick fix. TODO: implement TimestampField with validation
-    start = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE, required=False)
-    end = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE, required=False)
-
-    def validate(self, data):
-        """
-        Check that the start is before the end.
-        """
-        if 'start' in data and 'end' in data and data['start'] >= data['end']:
-            raise serializers.ValidationError("End must occur after start")
-        return data
-
-    def to_internal_value(self, data):
-        internal_value = super(TimeIntervalSerializer, self).to_internal_value(data)
-        return {key: core_utils.timestamp_to_datetime(value) for key, value in internal_value.items()}
-
-
 class QuotaTimelineStatsSerializer(serializers.Serializer):
 
     INTERVAL_CHOICES = ('day', 'week', 'month')
