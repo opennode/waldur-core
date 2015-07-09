@@ -53,7 +53,7 @@ class InstanceCreateSerializer2Test(TestCase):
         self.template = factories.TemplateFactory()
         self.flavor = factories.FlavorFactory()
         self.project = structure_factories.ProjectFactory()
-        self.ssh_public_key = factories.SshPublicKeyFactory()
+        self.ssh_public_key = structure_factories.SshPublicKeyFactory()
         self.membership = factories.CloudProjectMembershipFactory(
             cloud=self.flavor.cloud,
             project=self.project,
@@ -116,7 +116,7 @@ class InstanceCreateSerializer2Test(TestCase):
             'external_ips': [],
 
             'flavor': factories.FlavorFactory.get_url(self.flavor),
-            'ssh_public_key': factories.SshPublicKeyFactory.get_url(self.ssh_public_key)
+            'ssh_public_key': structure_factories.SshPublicKeyFactory.get_url(self.ssh_public_key)
         }
 
 

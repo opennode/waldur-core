@@ -590,7 +590,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     # Helpers method
     def _get_valid_payload(self, resource=None):
         resource = resource or factories.InstanceFactory()
-        ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
+        ssh_public_key = structure_factories.SshPublicKeyFactory(user=self.user)
         membership = resource.cloud_project_membership
 
         flavor = factories.FlavorFactory(cloud=membership.cloud)
@@ -629,7 +629,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         self.flavor = factories.FlavorFactory(cloud=self.cloud)
         self.project = structure_factories.ProjectFactory()
         self.membership = factories.CloudProjectMembershipFactory(cloud=self.cloud, project=self.project)
-        self.ssh_public_key = factories.SshPublicKeyFactory(user=self.user)
+        self.ssh_public_key = structure_factories.SshPublicKeyFactory(user=self.user)
 
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
