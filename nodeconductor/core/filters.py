@@ -4,7 +4,7 @@ from urlparse import urlparse
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import resolve
 import django_filters
-from rest_framework import filters, serializers
+from rest_framework import filters
 
 from nodeconductor.core import serializers as core_serializers, fields as core_fields
 
@@ -156,7 +156,6 @@ class GenericKeyFilter(django_filters.CharFilter):
         return qs
 
 
-# TODO add time interval filter
 class TimestampFilter(django_filters.NumberFilter):
     """
     Filter for dates in timestamp format
