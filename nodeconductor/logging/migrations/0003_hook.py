@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
                 ('is_active', models.BooleanField(default=True)),
-                ('events', jsonfield.fields.JSONField(verbose_name=b'List of event types', blank=True)),
+                ('events', jsonfield.fields.JSONField(verbose_name=b'List of event types')),
                 ('name', models.CharField(max_length=50, verbose_name=b'Name of publishing service', choices=[(b'web', b'web'), (b'email', b'email')])),
                 ('settings', jsonfield.fields.JSONField(verbose_name=b'Settings of publishing service')),
                 ('last_published', models.DateTimeField(default=django.utils.timezone.now, blank=True)),
