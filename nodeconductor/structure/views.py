@@ -16,6 +16,7 @@ import django_filters
 from rest_framework import filters as rf_filters
 from rest_framework import mixins
 from rest_framework import permissions as rf_permissions
+from rest_framework import serializers as rf_serializers
 from rest_framework import status
 from rest_framework import views
 from rest_framework import viewsets
@@ -1121,6 +1122,63 @@ class CreationTimeStatsView(views.APIView):
 
         stats = serializer.get_stats(request.user)
         return Response(stats, status=status.HTTP_200_OK)
+
+
+class SshKeyFilter(django_filters.FilterSet):
+    uuid = django_filters.CharFilter()
+    user_uuid = django_filters.CharFilter(
+        name='user__uuid'
+    )
+    name = django_filters.CharFilter(lookup_type='icontains')
+
+    class Meta(object):
+        model = core_models.SshPublicKey
+        fields = [
+            'name',
+            'fingerprint',
+            'uuid',
+            'user_uuid'
+        ]
+        order_by = [
+            'name',
+            '-name',
+        ]
+
+
+class SshKeyViewSet(mixins.CreateModelMixin,
+                    mixins.RetrieveModelMixin,
+                    mixins.DestroyModelMixin,
+                    mixins.ListModelMixin,
+                    viewsets.GenericViewSet):
+    """
+    List of SSH public keys that are accessible by this user.
+
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#key-management
+    """
+
+    queryset = core_models.SshPublicKey.objects.all()
+    serializer_class = serializers.SshKeySerializer
+    lookup_field = 'uuid'
+    filter_backends = (rf_filters.DjangoFilterBackend,)
+    filter_class = SshKeyFilter
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        name = serializer.validated_data['name']
+
+        if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
+            raise rf_serializers.ValidationError({'name': ['This field must be unique.']})
+
+        serializer.save(user=user)
+
+    def get_queryset(self):
+        queryset = super(SshKeyViewSet, self).get_queryset()
+        user = self.request.user
+
+        if user.is_staff:
+            return queryset
+
+        return queryset.filter(user=user)
 
 
 class ServiceSettingsFilter(django_filters.FilterSet):

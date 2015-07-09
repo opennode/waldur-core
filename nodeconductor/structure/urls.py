@@ -18,6 +18,7 @@ def register_in(router):
     router.register(r'services', views.ServiceViewSet, base_name='service')
     router.register(r'resources', views.ResourceViewSet, base_name='resource')
     router.register(r'users', views.UserViewSet)
+    router.register(r'keys', views.SshKeyViewSet)
 
 
 urlpatterns = patterns(

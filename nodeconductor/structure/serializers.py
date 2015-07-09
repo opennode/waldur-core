@@ -22,7 +22,7 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 # TODO: Move OpenstackSettings to ServiceSettings and remove this hardcoding
 SUPPORTED_SERVICES = {
     'iaas.openstack': {
-        'name': 'OpenStack',
+        'name': 'IaaS',
         'view_name': 'cloud-list',
         'resources': {
             'iaas.instance': {'name': 'Instance', 'view_name': 'iaas-resource-list'}
@@ -617,6 +617,31 @@ class PasswordSerializer(serializers.Serializer):
             message='Ensure this field has at least one latin letter.',
         ),
     ])
+
+
+class SshKeySerializer(serializers.HyperlinkedModelSerializer):
+    user_uuid = serializers.ReadOnlyField(source='user.uuid')
+
+    class Meta(object):
+        model = core_models.SshPublicKey
+        fields = ('url', 'uuid', 'name', 'public_key', 'fingerprint', 'user_uuid')
+        read_only_fields = ('fingerprint',)
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+    def get_fields(self):
+        fields = super(SshKeySerializer, self).get_fields()
+
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return fields
+
+        if not user.is_staff:
+            del fields['user_uuid']
+
+        return fields
 
 
 class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
