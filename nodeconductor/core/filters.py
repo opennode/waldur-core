@@ -1,10 +1,12 @@
 import six
-import django_filters
-
 from urlparse import urlparse
-from rest_framework import filters
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import resolve
+import django_filters
+from rest_framework import filters, serializers
+
+from nodeconductor.core import serializers as core_serializers, fields as core_fields
 
 
 class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
@@ -130,3 +132,39 @@ class URLFilter(django_filters.CharFilter):
                 uuid = url.kwargs.get(pk_name)
 
         return super(URLFilter, self).filter(qs, uuid)
+
+
+class GenericKeyFilter(django_filters.CharFilter):
+    """
+    Filter by generic key.
+
+    Filter analog for GenericRelatedField.
+    """
+
+    def __init__(self, content_type_field='content_type', object_id_field='object_id', related_models=(), **kwargs):
+        super(GenericKeyFilter, self).__init__(**kwargs)
+        self.content_type_field = content_type_field
+        self.object_id_field = object_id_field
+        self.related_models = related_models
+
+    def filter(self, qs, value):
+        if value:
+            field = core_serializers.GenericRelatedField(related_models=self.related_models)
+            obj = field.to_internal_value(value)
+            ct = ContentType.objects.get_for_model(obj)
+            return qs.filter(**{self.object_id_field: obj.id, self.content_type_field: ct})
+        return qs
+
+
+# TODO add time interval filter
+class TimestampFilter(django_filters.NumberFilter):
+    """
+    Filter for dates in timestamp format
+    """
+    def filter(self, qs, value):
+        if value:
+            field = core_fields.TimestampField()
+            datetime_value = field.to_internal_value(value)
+            print 'datetime_value', datetime_value
+            return super(TimestampFilter, self).filter(qs, datetime_value)
+        return qs

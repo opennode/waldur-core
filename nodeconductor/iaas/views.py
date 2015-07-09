@@ -27,6 +27,7 @@ from rest_framework.serializers import ValidationError
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
+from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict, datetime_to_timestamp, timestamp_to_datetime
@@ -489,14 +490,15 @@ class InstanceViewSet(mixins.CreateModelMixin,
                             status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
         default_start = timezone.now() - datetime.timedelta(hours=1)
-        time_interval_serializer = serializers.TimeIntervalSerializer(data={
+        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(data={
             'start': request.query_params.get('from', datetime_to_timestamp(default_start)),
             'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
         })
-        time_interval_serializer.is_valid(raise_exception=True)
+        timestamp_interval_serializer.is_valid(raise_exception=True)
 
-        start = datetime_to_timestamp(time_interval_serializer.validated_data['start'])
-        end = datetime_to_timestamp(time_interval_serializer.validated_data['end'])
+        filter_data = timestamp_interval_serializer.get_filter_data()
+        start = datetime_to_timestamp(filter_data['start'])
+        end = datetime_to_timestamp(filter_data['end'])
 
         mapped = {
             'items': request.query_params.getlist('item'),
@@ -1298,14 +1300,16 @@ class OpenstackAlertStatsView(views.APIView):
             'start': request.query_params.get('from'),
             'end': request.query_params.get('to'),
         }
-        time_interval_serializer = serializers.TimeIntervalSerializer(data={k: v for k, v in mapped.items() if v})
-        time_interval_serializer.is_valid(raise_exception=True)
+        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(
+            data={k: v for k, v in mapped.items() if v})
+        timestamp_interval_serializer.is_valid(raise_exception=True)
+        filter_data = timestamp_interval_serializer.get_filter_data()
 
-        if 'start' in time_interval_serializer.validated_data:
+        if 'start' in filter_data:
             queryset = queryset.filter(
-                Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True))
-        if 'end' in time_interval_serializer.validated_data:
-            queryset = queryset.filter(created__lte=time_interval_serializer.validated_data['end'])
+                Q(closed__gte=filter_data['start']) | Q(closed__isnull=True))
+        if 'end' in filter_data:
+            queryset = queryset.filter(created__lte=filter_data['end'])
 
         if 'scope' in request.query_params:
             scope_serializer = logging_serializers.ScopeSerializer(data=request.query_params)

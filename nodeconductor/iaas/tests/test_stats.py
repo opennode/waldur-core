@@ -620,6 +620,7 @@ class QuotaTimelineStatsTest(test.APITransactionTestCase):
 
             self.client.force_authenticate(self.staff)
             response = self.client.get(self.url)
+            print 'self.url', self.url
 
             self.assertEqual(expected, response.data)
             obj.assert_called_once()

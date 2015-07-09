@@ -94,5 +94,5 @@ class TimestampFieldTest(unittest.TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn('content', serializer.errors,
                       'There should be errors for content field')
-        self.assertIn('This field should be valid UNIX timestamp.',
+        self.assertIn('Value "NOT_A_UNIX_TIMESTAMP" should be valid UNIX timestamp.',
                       serializer.errors['content'])

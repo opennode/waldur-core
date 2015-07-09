@@ -1,4 +1,9 @@
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
+
 from nodeconductor.logging.log import EventLogger, event_logger
+from nodeconductor.logging.views import ExternalAlertFilterBackend, BaseExternalFilter
+from nodeconductor.structure import models as structure_models
 
 
 class InstanceEventLogger(EventLogger):
@@ -118,3 +123,38 @@ event_logger.register('instance_licenses', InstanceLicensesEventLogger)
 event_logger.register('cloud', CloudEventLogger)
 event_logger.register('membership', MembershipEventLogger)
 event_logger.register('quota', QuotaEventLogger)
+
+
+# XXX: This filter should be moved to structure application and support alerts filtering for all customer-related
+# resources - not only OpenStack instances and memberships.
+class AggregateAlertFilter(BaseExternalFilter):
+    """
+    Filter alerts by instances/projects/memberships
+    """
+
+    def filter(self, request, queryset, view):
+        from nodeconductor.iaas import serializers as iaas_serializers, models as iaas_models
+
+        aggregate_serializer = iaas_serializers.StatsAggregateSerializer(data=request.query_params)
+        aggregate_serializer.is_valid(raise_exception=True)
+
+        projects_ids = aggregate_serializer.get_projects(request.user).values_list('id', flat=True)
+        instances_ids = aggregate_serializer.get_instances(request.user).values_list('id', flat=True)
+        memebersips_ids = aggregate_serializer.get_memberships(request.user).values_list('id', flat=True)
+
+        aggregate_query = Q(
+            content_type=ContentType.objects.get_for_model(structure_models.Project),
+            object_id__in=projects_ids
+        )
+        aggregate_query |= Q(
+            content_type=ContentType.objects.get_for_model(iaas_models.Instance),
+            object_id__in=instances_ids
+        )
+        aggregate_query |= Q(
+            content_type=ContentType.objects.get_for_model(iaas_models.CloudProjectMembership),
+            object_id__in=memebersips_ids
+        )
+        queryset = queryset.filter(aggregate_query)
+        return queryset
+
+ExternalAlertFilterBackend.register(AggregateAlertFilter())
