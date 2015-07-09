@@ -1,6 +1,7 @@
 import re
 
 from rest_framework import serializers
+from django.utils.lru_cache import lru_cache
 
 from nodeconductor.core.serializers import GenericRelatedField
 from nodeconductor.core.fields import MappedChoiceField, JsonField
@@ -62,6 +63,7 @@ class EmailHookSettingsSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
+@lru_cache()
 def get_valid_events():
     return list(log.event_logger.get_permitted_event_types())
 
