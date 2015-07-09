@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
                 ('events', jsonfield.fields.JSONField(verbose_name=b'List of event types', blank=True)),
                 ('name', models.CharField(max_length=50, verbose_name=b'Name of publishing service', choices=[(b'web', b'web'), (b'email', b'email')])),
                 ('settings', jsonfield.fields.JSONField(verbose_name=b'Settings of publishing service')),
-                ('last_published', models.DateTimeField(default=django.utils.timezone.now)),
+                ('last_published', models.DateTimeField(default=django.utils.timezone.now, blank=True)),
                 ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
             ],
             options={
