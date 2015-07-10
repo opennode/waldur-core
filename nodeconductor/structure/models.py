@@ -25,7 +25,7 @@ from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
-from nodeconductor.structure import ServiceBackendError
+from nodeconductor.structure import ServiceBackendError, ServiceTypes
 
 
 @python_2_unicode_compatible
@@ -385,26 +385,11 @@ class ProjectGroup(core_models.UuidMixin,
 @python_2_unicode_compatible
 class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.SynchronizableMixin):
 
-    class Types(object):
-        OpenStack = 1
-        DigitalOcean = 2
-        Amazon = 3
-        Jira = 4
-        GitLab = 5
-        Oracle = 6
-
-        CHOICES = (
-            (OpenStack, 'OpenStack'),
-            (DigitalOcean, 'DigitalOcean'),
-            (Amazon, 'Amazon'),
-            (Jira, 'Jira'),
-            (GitLab, 'GitLab'),
-            (Oracle, 'Oracle'),
-        )
-
     class Permissions(object):
         customer_path = 'customer'
         extra_query = dict(shared=True)
+
+    Types = ServiceTypes
 
     customer = models.ForeignKey(Customer, related_name='service_settings', blank=True, null=True)
     backend_url = models.URLField(max_length=200, blank=True, null=True)
