@@ -21,8 +21,8 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 # The regestry of all supported services
 # TODO: Move OpenstackSettings to ServiceSettings and remove this hardcoding
 SUPPORTED_SERVICES = {
-    'iaas.openstack': {
-        'name': 'IaaS',
+    'iaas.cloud': {
+        'name': 'OpenStack',
         'view_name': 'cloud-list',
         'resources': {
             'iaas.instance': {'name': 'Instance', 'view_name': 'iaas-resource-list'}
@@ -196,7 +196,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             'uuid',
             'name', 'native_name', 'abbreviation', 'contact_details',
             'projects', 'project_groups',
-            'owners',
+            'owners', 'balance',
             'registration_code',
             'quotas',
             'image'
@@ -884,6 +884,11 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
 
     def get_related_paths(self):
         return 'project', 'service'
+
+    def validate(self, attrs):
+        if attrs['service'].customer != attrs['project'].customer:
+            raise serializers.ValidationError("Service customer doesn't match project customer")
+        return attrs
 
 
 class ResourceSerializerMetaclass(BaseServiceSerializerMetaclass):

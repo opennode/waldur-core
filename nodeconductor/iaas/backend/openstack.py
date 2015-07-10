@@ -35,6 +35,7 @@ from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.core.tasks import send_task
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 from nodeconductor.iaas.backend import dummy as dummy_clients
@@ -305,6 +306,11 @@ class OpenStackBackend(OpenStackClient):
         return backend_ram_size
 
     # ServiceBackend compability methods
+    def stop(self, instance):
+        instance.schedule_stopping()
+        instance.save()
+        send_task('iaas', 'stop')(instance.uuid.hex)
+
     def add_ssh_key(self, public_key, membership):
         return self.push_ssh_public_key(membership, public_key)
 

@@ -2,15 +2,11 @@ from __future__ import unicode_literals
 
 import unittest
 
-from mock import patch
 from rest_framework import test, status
-from django.core.urlresolvers import reverse
 
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import serializers
 from nodeconductor.structure import views
-from nodeconductor.structure.handlers import PUSH_KEY, REMOVE_KEY
-from nodeconductor.structure.models import CustomerRole, ProjectRole
 from nodeconductor.structure.tests import factories
 
 

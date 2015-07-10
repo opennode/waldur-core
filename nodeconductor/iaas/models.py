@@ -386,6 +386,9 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
     def __str__(self):
         return self.name
 
+    def get_backend(self):
+        return self.cloud_project_membership.get_backend()
+
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)
 
