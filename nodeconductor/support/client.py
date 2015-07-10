@@ -23,8 +23,7 @@ class SupportClient(object):
                 jira_settings = ServiceSettings(
                     backend_url=base_config['server'],
                     username=base_config['username'],
-                    password=base_config['password'],
-                    type=ServiceSettings.Types.Jira)
+                    password=base_config['password'])
             except (KeyError, AttributeError):
                 raise JiraBackendError("Missed JIRA_SUPPORT settings or improperly configured")
 

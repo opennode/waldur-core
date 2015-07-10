@@ -1186,22 +1186,8 @@ class SshKeyViewSet(mixins.CreateModelMixin,
 class ServiceSettingsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_type='icontains')
     type = core_filters.MappedChoiceFilter(
-        choices=(
-            ('OpenStack', 'OpenStack'),
-            ('DigitalOcean', 'DigitalOcean'),
-            ('Amazon', 'Amazon'),
-            ('Jira', 'Jira'),
-            ('GitLab', 'GitLab'),
-            ('Oracle', 'Oracle'),
-        ),
-        choice_mappings={
-            'OpenStack': models.ServiceSettings.Types.OpenStack,
-            'DigitalOcean': models.ServiceSettings.Types.DigitalOcean,
-            'Amazon': models.ServiceSettings.Types.Amazon,
-            'Jira': models.ServiceSettings.Types.Jira,
-            'GitLab': models.ServiceSettings.Types.GitLab,
-            'Oracle': models.ServiceSettings.Types.Oracle,
-        },
+        choices=SupportedServices.Types.get_direct_filter_mapping(),
+        choice_mappings=SupportedServices.Types.get_reverse_filter_mapping(),
     )
     state = core_filters.MappedChoiceFilter(
         choices=(

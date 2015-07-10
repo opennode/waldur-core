@@ -2,8 +2,7 @@ from __future__ import unicode_literals
 
 from rest_framework import serializers
 
-from nodeconductor.structure import models as structure_models
-from nodeconductor.structure import serializers as structure_serializers
+from nodeconductor.structure import SupportedServices, serializers as structure_serializers
 from nodeconductor.oracle import models
 
 
@@ -33,7 +32,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 
 class ServiceSerializer(structure_serializers.BaseServiceSerializer):
 
-    SERVICE_TYPE = structure_models.ServiceSettings.Types.Oracle
+    SERVICE_TYPE = SupportedServices.Types.Oracle
 
     class Meta(structure_serializers.BaseServiceSerializer.Meta):
         model = models.OracleService

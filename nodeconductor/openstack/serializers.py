@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
-from nodeconductor.structure import models as structure_models
-from nodeconductor.structure import serializers as structure_serializers
+from nodeconductor.structure import SupportedServices, serializers as structure_serializers
 from nodeconductor.openstack import models
 
 
@@ -29,7 +28,7 @@ class ImageSerializer(serializers.HyperlinkedModelSerializer):
 
 class ServiceSerializer(structure_serializers.BaseServiceSerializer):
 
-    SERVICE_TYPE = structure_models.ServiceSettings.Types.OpenStack
+    SERVICE_TYPE = SupportedServices.Types.OpenStack
     SERVICE_ACCOUNT_FIELDS = {
         'backend_url': 'Keystone auth URL (e.g. http://keystone.example.com:5000/v2.0)',
         'username': 'Administrative user',

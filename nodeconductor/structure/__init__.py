@@ -34,6 +34,8 @@ class SupportedServices(object):
                 'name': 'GitLab',
                 'list_view': 'gitlab-list',
                 'detail_view': 'gitlab-detail',
+                'service_type': 5,
+                'backend': nodeconductor_plus.gitlab.backend.GitLabBackend,
                 'resources': {
                     'gitlab.group': {
                         'name': 'Group',
@@ -52,11 +54,24 @@ class SupportedServices(object):
     """
 
     # TODO: Drop support of iaas application
+    class Types(ServiceTypes):
+        IaaS = -1
+
+        @classmethod
+        def get_direct_filter_mapping(cls):
+            return tuple((name, name) for _, name in cls.CHOICES)
+
+        @classmethod
+        def get_reverse_filter_mapping(cls):
+            return {name: code for code, name in cls.CHOICES}
+
     _registry = {
         'iaas.cloud': {
             'name': 'IaaS',
             'list_view': 'cloud-list',
             'detail_view': 'cloud-detail',
+            'service_type': Types.IaaS,
+            'backend': NotImplemented,
             'resources': {
                 'iaas.instance': {
                     'name': 'Instance',
@@ -67,8 +82,11 @@ class SupportedServices(object):
         },
     }
 
-    class Types(ServiceTypes):
-        IaaS = -1
+    @classmethod
+    def register_backend(cls, service_model, backend_class):
+        model_str = cls._get_model_srt(service_model)
+        cls._registry.setdefault(model_str, {'resources': {}})
+        cls._registry[model_str]['backend'] = backend_class
 
     @classmethod
     def register_service(cls, service_type, metadata):
@@ -79,6 +97,7 @@ class SupportedServices(object):
         cls._registry.setdefault(model_str, {'resources': {}})
         cls._registry[model_str].update({
             'name': dict(cls.Types.CHOICES)[service_type],
+            'service_type': service_type,
             'detail_view': metadata.view_name,
             'list_view': metadata.view_name.replace('-detail', '-list'),
         })
@@ -98,6 +117,13 @@ class SupportedServices(object):
                     'list_view': metadata.view_name.replace('-detail', '-list'),
                 })
                 break
+
+    @classmethod
+    def get_service_backend(cls, service_type):
+        for service in cls._registry.values():
+            if service['service_type'] == service_type:
+                return service['backend']
+        raise ServiceBackendNotImplemented
 
     @classmethod
     def get_services(cls, request=None):
@@ -173,20 +199,11 @@ class SupportedServices(object):
         data = {}
         for service_model_name, service in cls._registry.items():
             service_model = apps.get_model(service_model_name)
-            if service_model_name.startswith('iaas'):
-                service_type = cls.Types.IaaS
-            else:
-                for k, v in cls.Types.CHOICES:
-                    if v == service['name']:
-                        service_type = k
-                        break
-
-            if service_type:
-                data[service_type] = {
-                    'service': service_model,
-                    'service_project_link': service_model._meta.get_all_related_objects_with_model()[0][0].model,
-                    'resources': [apps.get_model(r) for r in service['resources'].keys()],
-                }
+            data[service['service_type']] = {
+                'service': service_model,
+                'service_project_link': service_model._meta.get_all_related_objects_with_model()[0][0].model,
+                'resources': [apps.get_model(r) for r in service['resources'].keys()],
+            }
 
         return data
 
