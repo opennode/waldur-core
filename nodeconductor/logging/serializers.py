@@ -54,50 +54,48 @@ class ScopeTypeSerializer(serializers.Serializer):
     )
 
 
-class WebHookSettingsSerializer(serializers.Serializer):
-    url = serializers.URLField()
-    content_type = serializers.ChoiceField(choices=('json', 'form'), default='json')
-
-
-class EmailHookSettingsSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-
-
-@lru_cache()
+@lru_cache(maxsize=1)
 def get_valid_events():
     return list(log.event_logger.get_permitted_event_types())
 
 
-class HookSerializer(serializers.HyperlinkedModelSerializer):
-    last_published = serializers.ReadOnlyField()
-    events = serializers.ListField(child=serializers.ChoiceField(choices=get_valid_events()))
-    settings = serializers.DictField()
+class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
+    event_types = serializers.ListField(child=serializers.ChoiceField(choices=get_valid_events()))
     author_uuid = serializers.ReadOnlyField(source='user.uuid')
 
     class Meta(object):
-        model = models.Hook
+        model = models.BaseHook
 
         fields = (
-            'url', 'uuid', 'is_active', 'author_uuid',
-            'last_published', 'created', 'modified',
-            'events', 'name', 'settings'
+            'url', 'is_active', 'author_uuid', 'event_types',
+            'last_published', 'created', 'modified', 
         )
 
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
-            'user': {'lookup_field': 'uuid'},
         }
+
+        read_only_fields = ('last_published',)
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
-        return super(HookSerializer, self).create(validated_data)
+        return super(BaseHookSerializer, self).create(validated_data)
 
-    def validate_settings(self, value):
-        classes = {
-            'web': WebHookSettingsSerializer,
-            'email': EmailHookSettingsSerializer
-        }
-        cls = classes[self.initial_data['name']]
-        serializer = cls(data=self.initial_data['settings'])
-        serializer.is_valid(raise_exception=True)
-        return serializer.validated_data
+
+class WebHookSerializer(BaseHookSerializer):
+    content_type = MappedChoiceField(
+        choices=[(v, k) for k, v in models.WebHook.ContentTypeChoices.CHOICES],
+        choice_mappings={v: k for k, v in models.WebHook.ContentTypeChoices.CHOICES},
+        required=False
+    )
+
+    class Meta(BaseHookSerializer.Meta):
+        model = models.WebHook
+        fields = BaseHookSerializer.Meta.fields + ('destination_url', 'content_type')
+
+
+class EmailHookSerializer(BaseHookSerializer):
+
+    class Meta(BaseHookSerializer.Meta):
+        model = models.EmailHook
+        fields = BaseHookSerializer.Meta.fields + ('email', )
