@@ -11,7 +11,7 @@ from nodeconductor.structure.handlers import PUSH_KEY, REMOVE_KEY
 class SshKeyPropagationTest(test.APITransactionTestCase):
 
     def setUp(self):
-        self.owner = structure_factories.UserFactory(is_staff=True, is_superuser=True)
+        self.owner = structure_factories.UserFactory()
 
     def _get_ssh_key_url(self, ssh_key):
         return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': ssh_key.uuid})
