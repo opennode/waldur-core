@@ -6,8 +6,7 @@ from django.apps import apps
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.db import models
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import Q
 from django.utils import six
 from django.utils.lru_cache import lru_cache
@@ -16,6 +15,7 @@ from django_fsm import FSMIntegerField
 from django_fsm import transition
 from model_utils.models import TimeStampedModel
 from polymorphic import PolymorphicModel
+from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
 from nodeconductor.quotas import models as quotas_models
@@ -388,15 +388,18 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
     token = models.CharField(max_length=255, blank=True, null=True)
     type = models.SmallIntegerField(choices=Types.CHOICES)
 
+    options = JSONField(blank=True, help_text='Extra options')
+
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
     dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
 
-    def get_backend(self):
+    def get_backend(self, **kwargs):
         # TODO: Find a way to register backend form the other side, perhaps within NC-519
         BACKEND_MAPPING = {
             self.Types.DigitalOcean: 'nodeconductor_plus.digitalocean.backend.DigitalOceanBackend',
             self.Types.Jira: 'nodeconductor.jira.backend.JiraBackend',
             self.Types.GitLab: 'nodeconductor_plus.gitlab.backend.GitLabBackend',
+            self.Types.OpenStack: 'nodeconductor.openstack.backend.OpenStackBackend',
             self.Types.Oracle: 'nodeconductor.oracle.backend.OracleBackend',
         }
 
@@ -412,7 +415,7 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
             except ImportError as e:
                 six.reraise(ServiceBackendError, e)
             else:
-                return backend_cls(self)
+                return backend_cls(self, **kwargs)
 
         raise NotImplementedError
 
@@ -436,8 +439,8 @@ class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
     customer = models.ForeignKey(Customer, related_name='services')
     projects = NotImplemented
 
-    def get_backend(self):
-        return self.settings.get_backend()
+    def get_backend(self, **kwargs):
+        return self.settings.get_backend(**kwargs)
 
     def __str__(self):
         return self.name
@@ -477,21 +480,26 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
     def get_quota_parents(self):
         return [self.project]
 
-    def get_backend(self):
-        return self.service.get_backend()
+    def get_backend(self, **kwargs):
+        return self.service.get_backend(**kwargs)
 
     def to_string(self):
         """ Dump an instance into a string preserving class name and PK """
         return ':'.join([force_text(self._meta), str(self.pk)])
 
     @staticmethod
-    def from_string(objects):
-        """ Recover objects from string """
+    def parse_model_string(string):
+        """ Recover class and PK from a stirng"""
+        cls, pk = string.split(':')
+        return apps.get_model(cls), int(pk)
+
+    @classmethod
+    def from_string(cls, objects):
+        """ Recover objects from s string """
         if not isinstance(objects, (list, tuple)):
             objects = [objects]
         for obj in objects:
-            cls, pk = obj.split(':')
-            model = apps.get_model(cls)
+            model, pk = cls.parse_model_string(obj)
             yield model._default_manager.get(pk=pk)
 
     @classmethod

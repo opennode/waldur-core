@@ -20,8 +20,6 @@ class IaasConfig(AppConfig):
 
         from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
 
-        signals.post_migrate.connect(handlers.sync_openstack_settings, sender=self)
-
         pre_serializer_fields.connect(
             handlers.add_clouds_to_related_model,
             sender=CustomerSerializer,

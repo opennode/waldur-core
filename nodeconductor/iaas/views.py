@@ -18,7 +18,6 @@ from rest_framework import exceptions
 from rest_framework import filters
 from rest_framework import mixins
 from rest_framework import permissions, status
-from rest_framework import serializers as rf_serializers
 from rest_framework import viewsets, views
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route, list_route
@@ -27,6 +26,7 @@ from rest_framework.serializers import ValidationError
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
+from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict, datetime_to_timestamp, timestamp_to_datetime
@@ -170,7 +170,7 @@ class InstanceFilter(django_filters.FilterSet):
     )
 
     name = django_filters.CharFilter(lookup_type='icontains')
-    state = django_filters.CharFilter()
+    state = django_filters.NumberFilter()
     description = django_filters.CharFilter(
         lookup_type='icontains',
     )
@@ -489,14 +489,15 @@ class InstanceViewSet(mixins.CreateModelMixin,
                             status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
         default_start = timezone.now() - datetime.timedelta(hours=1)
-        time_interval_serializer = serializers.TimeIntervalSerializer(data={
+        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(data={
             'start': request.query_params.get('from', datetime_to_timestamp(default_start)),
             'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
         })
-        time_interval_serializer.is_valid(raise_exception=True)
+        timestamp_interval_serializer.is_valid(raise_exception=True)
 
-        start = datetime_to_timestamp(time_interval_serializer.validated_data['start'])
-        end = datetime_to_timestamp(time_interval_serializer.validated_data['end'])
+        filter_data = timestamp_interval_serializer.get_filter_data()
+        start = datetime_to_timestamp(filter_data['start'])
+        end = datetime_to_timestamp(filter_data['end'])
 
         mapped = {
             'items': request.query_params.getlist('item'),
@@ -566,63 +567,6 @@ class TemplateViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(images__cloud=cloud)
 
         return queryset
-
-
-class SshKeyFilter(django_filters.FilterSet):
-    uuid = django_filters.CharFilter()
-    user_uuid = django_filters.CharFilter(
-        name='user__uuid'
-    )
-    name = django_filters.CharFilter(lookup_type='icontains')
-
-    class Meta(object):
-        model = core_models.SshPublicKey
-        fields = [
-            'name',
-            'fingerprint',
-            'uuid',
-            'user_uuid'
-        ]
-        order_by = [
-            'name',
-            '-name',
-        ]
-
-
-class SshKeyViewSet(mixins.CreateModelMixin,
-                    mixins.RetrieveModelMixin,
-                    mixins.DestroyModelMixin,
-                    mixins.ListModelMixin,
-                    viewsets.GenericViewSet):
-    """
-    List of SSH public keys that are accessible by this user.
-
-    http://nodeconductor.readthedocs.org/en/latest/api/api.html#key-management
-    """
-
-    queryset = core_models.SshPublicKey.objects.all()
-    serializer_class = serializers.SshKeySerializer
-    lookup_field = 'uuid'
-    filter_backends = (filters.DjangoFilterBackend,)
-    filter_class = SshKeyFilter
-
-    def perform_create(self, serializer):
-        user = self.request.user
-        name = serializer.validated_data['name']
-
-        if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
-            raise rf_serializers.ValidationError({'name': ['This field must be unique.']})
-
-        serializer.save(user=user)
-
-    def get_queryset(self):
-        queryset = super(SshKeyViewSet, self).get_queryset()
-        user = self.request.user
-
-        if user.is_staff:
-            return queryset
-
-        return queryset.filter(user=user)
 
 
 class TemplateLicenseViewSet(viewsets.ModelViewSet):
@@ -1298,14 +1242,16 @@ class OpenstackAlertStatsView(views.APIView):
             'start': request.query_params.get('from'),
             'end': request.query_params.get('to'),
         }
-        time_interval_serializer = serializers.TimeIntervalSerializer(data={k: v for k, v in mapped.items() if v})
-        time_interval_serializer.is_valid(raise_exception=True)
+        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(
+            data={k: v for k, v in mapped.items() if v})
+        timestamp_interval_serializer.is_valid(raise_exception=True)
+        filter_data = timestamp_interval_serializer.get_filter_data()
 
-        if 'start' in time_interval_serializer.validated_data:
+        if 'start' in filter_data:
             queryset = queryset.filter(
-                Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True))
-        if 'end' in time_interval_serializer.validated_data:
-            queryset = queryset.filter(created__lte=time_interval_serializer.validated_data['end'])
+                Q(closed__gte=filter_data['start']) | Q(closed__isnull=True))
+        if 'end' in filter_data:
+            queryset = queryset.filter(created__lte=filter_data['end'])
 
         if 'scope' in request.query_params:
             scope_serializer = logging_serializers.ScopeSerializer(data=request.query_params)

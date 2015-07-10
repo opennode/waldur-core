@@ -6,11 +6,11 @@ from django.utils.encoding import python_2_unicode_compatible
 
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.quotas import exceptions, managers
-from nodeconductor.core.models import UuidMixin, NameMixin
+from nodeconductor.core.models import UuidMixin, NameMixin, ReversionMixin
 
 
 @python_2_unicode_compatible
-class Quota(UuidMixin, NameMixin, LoggableMixin, models.Model):
+class Quota(UuidMixin, NameMixin, LoggableMixin, ReversionMixin, models.Model):
     """
     Abstract quota for any resource
 

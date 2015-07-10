@@ -790,31 +790,6 @@ class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
         view_name = 'floating_ip-detail'
 
 
-class SshKeySerializer(serializers.HyperlinkedModelSerializer):
-    user_uuid = serializers.ReadOnlyField(source='user.uuid')
-
-    class Meta(object):
-        model = core_models.SshPublicKey
-        fields = ('url', 'uuid', 'name', 'public_key', 'fingerprint', 'user_uuid')
-        read_only_fields = ('fingerprint',)
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
-        }
-
-    def get_fields(self):
-        fields = super(SshKeySerializer, self).get_fields()
-
-        try:
-            user = self.context['request'].user
-        except (KeyError, AttributeError):
-            return fields
-
-        if not user.is_staff:
-            del fields['user_uuid']
-
-        return fields
-
-
 class ServiceSerializer(serializers.Serializer):
     url = serializers.SerializerMethodField('get_service_url')
     service_type = serializers.SerializerMethodField()
@@ -1007,24 +982,6 @@ class StatsAggregateSerializer(serializers.Serializer):
     def get_instances(self, user):
         projects = self.get_projects(user)
         return models.Instance.objects.filter(cloud_project_membership__project__in=projects).all()
-
-
-class TimeIntervalSerializer(serializers.Serializer):
-    MAX_TIMESTAMP_VALUE = 2 ** 32  # This is quick fix. TODO: implement TimestampField with validation
-    start = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE, required=False)
-    end = serializers.IntegerField(min_value=0, max_value=MAX_TIMESTAMP_VALUE, required=False)
-
-    def validate(self, data):
-        """
-        Check that the start is before the end.
-        """
-        if 'start' in data and 'end' in data and data['start'] >= data['end']:
-            raise serializers.ValidationError("End must occur after start")
-        return data
-
-    def to_internal_value(self, data):
-        internal_value = super(TimeIntervalSerializer, self).to_internal_value(data)
-        return {key: core_utils.timestamp_to_datetime(value) for key, value in internal_value.items()}
 
 
 class QuotaTimelineStatsSerializer(serializers.Serializer):

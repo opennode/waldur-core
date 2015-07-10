@@ -42,7 +42,7 @@ def _instance_data(user, instance=None):
     if instance is None:
         instance = factories.InstanceFactory()
     flavor = factories.FlavorFactory(cloud=instance.cloud_project_membership.cloud)
-    ssh_public_key = factories.SshPublicKeyFactory(user=user)
+    ssh_public_key = structure_factories.SshPublicKeyFactory(user=user)
     return {
         'name': 'test_host',
         'description': 'test description',
