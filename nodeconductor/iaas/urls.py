@@ -6,7 +6,6 @@ from nodeconductor.iaas import views
 def register_in(router):
     router.register(r'instances', views.InstanceViewSet)
     router.register(r'iaas-templates', views.TemplateViewSet, base_name='iaastemplate')
-    router.register(r'keys', views.SshKeyViewSet)
     router.register(r'template-licenses', views.TemplateLicenseViewSet)
     router.register(r'iaas-resources', views.ServiceViewSet, base_name='iaas-resource')
     router.register(r'clouds', views.CloudViewSet)
@@ -23,5 +22,4 @@ urlpatterns = patterns(
     url(r'^stats/resource/$', views.ResourceStatsView.as_view(), name='stats_resource'),
     url(r'^stats/quota/$', views.QuotaStatsView.as_view(), name='stats_quota'),
     url(r'^stats/quota/timeline/$', views.QuotaTimelineStatsView.as_view(), name='stats_quota_timeline'),
-    url(r'^stats/alerts/$', views.OpenstackAlertStatsView.as_view(), name='stats_alerts'),
 )

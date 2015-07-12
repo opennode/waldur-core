@@ -1,13 +1,9 @@
 from __future__ import unicode_literals
 
-from mock import patch
-
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.iaas import tasks
-from nodeconductor.iaas.models import Cloud
-from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.iaas.models import Cloud, OpenStackSettings
 from nodeconductor.iaas.tests import factories
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
@@ -63,6 +59,14 @@ class CloudPermissionTest(test.APITransactionTestCase):
         factories.CloudProjectMembershipFactory(cloud=self.clouds['managed'], project=self.projects['managed'])
         factories.CloudProjectMembershipFactory(
             cloud=self.clouds['managed_by_group_manager'], project=self.projects['managed_by_group_manager'])
+
+        OpenStackSettings.objects.update_or_create(
+            auth_url='http://example.com:5000/v2',
+            defaults={
+                'username': 'admin',
+                'password': 'password',
+                'tenant_name': 'admin',
+            })
 
     # List filtration tests
     def test_anonymous_user_cannot_list_clouds(self):

@@ -54,6 +54,31 @@ class UserFactory(factory.DjangoModelFactory):
         return 'http://testserver' + reverse('user-list')
 
 
+class SshPublicKeyFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = core_models.SshPublicKey
+
+    user = factory.SubFactory(UserFactory)
+    name = factory.Sequence(lambda n: 'ssh_public_key%s' % n)
+    public_key = (
+        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28"
+        "TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY"
+        "dknWoMoArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9du"
+        "D2C05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
+        "vEAFdOJcqjyyH4FOGYa8usP1 test"
+    )
+
+    @classmethod
+    def get_url(self, key):
+        if key is None:
+            key = SshPublicKeyFactory()
+        return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': str(key.uuid)})
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('sshpublickey-list')
+
+
 class CustomerFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.Customer

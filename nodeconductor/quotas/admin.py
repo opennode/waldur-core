@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.contenttypes import models as ct_models, generic
 
+from nodeconductor.core.admin import ReversionAdmin
 from nodeconductor.quotas import models, utils
 
 
@@ -22,7 +23,7 @@ class QuotaScopeClassListFilter(admin.SimpleListFilter):
         return queryset
 
 
-class QuotaAdmin(admin.ModelAdmin):
+class QuotaAdmin(ReversionAdmin):
     list_display = ['scope', 'name', 'limit', 'usage']
     list_filter = ['name', QuotaScopeClassListFilter]
 

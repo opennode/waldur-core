@@ -1,11 +1,13 @@
 import base64
 
 from django.core import validators
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse, resolve, Resolver404
 from rest_framework import serializers
 from rest_framework.fields import Field, ReadOnlyField
 
+from nodeconductor.core import utils
+from nodeconductor.core.fields import TimestampField
 from nodeconductor.core.signals import pre_serializer_fields
 
 
@@ -136,9 +138,9 @@ class GenericRelatedField(Field):
             model = self._get_model_from_resolve_match(match)
             obj = model.objects.get(**match.kwargs)
         except (Resolver404, AttributeError):
-            raise ValidationError("Can`t restore object from url: %s" % data)
+            raise serializers.ValidationError("Can`t restore object from url: %s" % data)
         if model not in self.related_models:
-            raise ValidationError('%s object does not support such relationship' % str(obj))
+            raise serializers.ValidationError('%s object does not support such relationship' % str(obj))
         return obj
 
 
@@ -320,3 +322,22 @@ class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):
         )
 
         return url.to_internal_value(data['url'])
+
+
+class TimestampIntervalSerializer(serializers.Serializer):
+    start = TimestampField(required=False)
+    end = TimestampField(required=False)
+
+    def validate(self, data):
+        """
+        Check that the start is before the end.
+        """
+        if 'start' in data and 'end' in data and data['start'] >= data['end']:
+            raise serializers.ValidationError("End must occur after start")
+        return data
+
+    # TimeInterval serializer is used for validation only. We are providing custom method for such serializers
+    # to avoid confusion with to_internal_value or to_representation DRF methods.
+    def get_filter_data(self):
+        """ Return start and end as datetime """
+        return self.validated_data

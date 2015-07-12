@@ -65,15 +65,6 @@ Therefore configuration might look like this:
 .. code-block:: python
 
     NODECONDUCTOR = {
-        'OPENSTACK_CREDENTIALS': (
-            {
-                'auth_url': 'http://keystone.example.com:5000/v2.0',
-                'username': 'node',
-                'password': 'conductor',
-                'tenant_name': 'admin',
-                'default_availability_zone': 'default-zone',
-            },
-        ),
         'DEFAULT_SECURITY_GROUPS': (
             {
                 'name': 'ssh',
@@ -110,30 +101,6 @@ Therefore configuration might look like this:
 **Available settings**
 
 .. glossary::
-
-    OPENSTACK_CREDENTIALS
-      A list of all known OpenStack deployments.
-
-      Only those OpenStack deployments that are listed here can be managed by NodeConductor.
-
-      Each entry is a dictionary with the following keys:
-
-      auth_url
-        URL of the Keystone endpoint including version. Note, that public endpoint is to be used,
-        typically it is exposed on port 5000.
-
-      username
-        Username of an admin account.
-        This user must be able to create tenants within OpenStack.
-
-      password
-        Password of an admin account.
-
-      tenant_name
-        Name of administrative tenant. Typically this is set to 'admin'.
-
-      default_availability_zone
-        Availability zone which will be set by default.
 
     DEFAULT_SECURITY_GROUPS
       A list of security groups that will be created in IaaS backend for each cloud.

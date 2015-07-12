@@ -13,10 +13,13 @@ class ServiceBackendNotImplemented(NotImplementedError):
 class ServiceBackend(object):
     """ Basic service backed with only common methods pre-defined. """
 
+    def __init__(self, settings, **kwargs):
+        pass
+
     def sync(self):
         raise ServiceBackendNotImplemented
 
-    def sync_membership(self):
+    def sync_link(self, service_project_link):
         raise ServiceBackendNotImplemented
 
     def provision(self, resource, *args, **kwargs):

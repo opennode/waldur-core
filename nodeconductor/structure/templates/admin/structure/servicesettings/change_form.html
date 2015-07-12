@@ -2,6 +2,16 @@
 {% block form_top %}
 <div class="module">
     <h3>Supported credentials depending on service type:</h3>
+    <p>OpenStack</p>
+    <ul>
+        <li>Backend url — Keystone auth URL (e.g. http://keystone.example.com:5000/v2.0)</li>
+        <li>Username</li>
+        <li>Password</li>
+    </ul>
+    <p>
+        Supported OpenStack options are: "<code>tenant_name</code>" (default: "admin"),
+        "<code>availability_zone</code>" and "<code>cpu_overcommit_ratio</code>" (default: 1)
+    </p>
     <p>DigitalOcean</p>
     <ul>
         <li>Token — DigitalOcean personal access token</li>

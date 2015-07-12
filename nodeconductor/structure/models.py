@@ -6,9 +6,8 @@ from django.apps import apps
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.db import models
-from django.db import transaction
-from django.db.models import Q
+from django.db import models, transaction
+from django.db.models import Q, F
 from django.utils import six
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible, force_text
@@ -16,12 +15,15 @@ from django_fsm import FSMIntegerField
 from django_fsm import transition
 from model_utils.models import TimeStampedModel
 from polymorphic import PolymorphicModel
+from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
+from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
+from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import ServiceBackendError
 
@@ -54,6 +56,29 @@ class Customer(core_models.UuidMixin,
 
     def get_log_fields(self):
         return ('uuid', 'name', 'abbreviation', 'contact_details')
+
+    def credit_account(self, amount):
+        # Increase customer's balance by specified amount
+        new_balance = (self.balance or 0) + amount
+        self._meta.model.objects.filter(uuid=self.uuid).update(
+            balance=new_balance if self.balance is None else F('balance') + amount)
+
+        self.balance = new_balance
+        customer_account_credited.send(sender=Customer, instance=self, amount=float(amount))
+
+    def debit_account(self, amount):
+        # Reduce customer's balance at specified amount
+        new_balance = (self.balance or 0) - amount
+        self._meta.model.objects.filter(uuid=self.uuid).update(
+            balance=new_balance if self.balance is None else F('balance') - amount)
+
+        self.balance = new_balance
+        customer_account_debited.send(sender=Customer, instance=self, amount=float(amount))
+
+        # Fully prepaid mode
+        # TODO: Introduce threshold value to allow over-usage
+        if new_balance <= 0:
+            send_task('structure', 'stop_customer_resources')(self.uuid.hex)
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
@@ -388,15 +413,18 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
     token = models.CharField(max_length=255, blank=True, null=True)
     type = models.SmallIntegerField(choices=Types.CHOICES)
 
+    options = JSONField(blank=True, help_text='Extra options')
+
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
     dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
 
-    def get_backend(self):
+    def get_backend(self, **kwargs):
         # TODO: Find a way to register backend form the other side, perhaps within NC-519
         BACKEND_MAPPING = {
             self.Types.DigitalOcean: 'nodeconductor_plus.digitalocean.backend.DigitalOceanBackend',
             self.Types.Jira: 'nodeconductor.jira.backend.JiraBackend',
             self.Types.GitLab: 'nodeconductor_plus.gitlab.backend.GitLabBackend',
+            self.Types.OpenStack: 'nodeconductor.openstack.backend.OpenStackBackend',
             self.Types.Oracle: 'nodeconductor.oracle.backend.OracleBackend',
         }
 
@@ -412,7 +440,7 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
             except ImportError as e:
                 six.reraise(ServiceBackendError, e)
             else:
-                return backend_cls(self)
+                return backend_cls(self, **kwargs)
 
         raise NotImplementedError
 
@@ -436,8 +464,12 @@ class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
     customer = models.ForeignKey(Customer, related_name='services')
     projects = NotImplemented
 
-    def get_backend(self):
-        return self.settings.get_backend()
+    def get_backend(self, **kwargs):
+        return self.settings.get_backend(**kwargs)
+
+    def get_usage_data(start_date, end_date):
+        # Please refer to nodeconductor.billing.tasks.debit_customers while implementing it
+        raise NotImplementedError
 
     def __str__(self):
         return self.name
@@ -477,21 +509,26 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
     def get_quota_parents(self):
         return [self.project]
 
-    def get_backend(self):
-        return self.service.get_backend()
+    def get_backend(self, **kwargs):
+        return self.service.get_backend(**kwargs)
 
     def to_string(self):
         """ Dump an instance into a string preserving class name and PK """
         return ':'.join([force_text(self._meta), str(self.pk)])
 
     @staticmethod
-    def from_string(objects):
-        """ Recover objects from string """
+    def parse_model_string(string):
+        """ Recover class and PK from a stirng"""
+        cls, pk = string.split(':')
+        return apps.get_model(cls), int(pk)
+
+    @classmethod
+    def from_string(cls, objects):
+        """ Recover objects from s string """
         if not isinstance(objects, (list, tuple)):
             objects = [objects]
         for obj in objects:
-            cls, pk = obj.split(':')
-            model = apps.get_model(cls)
+            model, pk = cls.parse_model_string(obj)
             yield model._default_manager.get(pk=pk)
 
     @classmethod

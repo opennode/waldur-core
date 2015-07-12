@@ -3,6 +3,7 @@ from django.contrib import admin
 from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
 from django.utils.translation import ugettext_lazy as _
+import reversion
 
 from nodeconductor.core import models
 
@@ -62,3 +63,15 @@ class SshPublicKeyAdmin(admin.ModelAdmin):
 admin.site.register(models.User, UserAdmin)
 admin.site.register(models.SshPublicKey, SshPublicKeyAdmin)
 admin.site.unregister(Group)
+
+
+class ReversionAdmin(reversion.VersionAdmin):
+    ignore_duplicate_revisions = True
+
+    def log_change(self, request, object, message):
+        # Revision creation is ignored in this method because it has to be implemented in model.save method
+        super(reversion.VersionAdmin, self).log_change(request, object, message)
+
+    def log_addition(self, request, object):
+        # Revision creation is ignored in this method because it has to be implemented in model.save method
+        super(reversion.VersionAdmin, self).log_addition(request, object)

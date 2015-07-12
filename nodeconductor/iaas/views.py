@@ -18,7 +18,6 @@ from rest_framework import exceptions
 from rest_framework import filters
 from rest_framework import mixins
 from rest_framework import permissions, status
-from rest_framework import serializers as rf_serializers
 from rest_framework import viewsets, views
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route, list_route
@@ -27,6 +26,7 @@ from rest_framework.serializers import ValidationError
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
+from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict, datetime_to_timestamp, timestamp_to_datetime
@@ -38,6 +38,7 @@ from nodeconductor.iaas.serializers import QuotaTimelineStatsSerializer
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.logging import models as logging_models, serializers as logging_serializers
 from nodeconductor.structure import filters as structure_filters
+from nodeconductor.structure.views import UpdateOnlyByPaidCustomerMixin
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
 
@@ -170,7 +171,7 @@ class InstanceFilter(django_filters.FilterSet):
     )
 
     name = django_filters.CharFilter(lookup_type='icontains')
-    state = django_filters.CharFilter()
+    state = django_filters.NumberFilter()
     description = django_filters.CharFilter(
         lookup_type='icontains',
     )
@@ -249,7 +250,8 @@ class InstanceFilter(django_filters.FilterSet):
         }
 
 
-class InstanceViewSet(mixins.CreateModelMixin,
+class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
+                      mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       mixins.UpdateModelMixin,
                       mixins.ListModelMixin,
@@ -257,6 +259,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     """List of VM instances that are accessible by this user.
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#vm-instance-management
     """
+
+    class PaidControl:
+        customer_path = 'cloud_project_membership__cloud__customer'
 
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
@@ -489,14 +494,15 @@ class InstanceViewSet(mixins.CreateModelMixin,
                             status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
         default_start = timezone.now() - datetime.timedelta(hours=1)
-        time_interval_serializer = serializers.TimeIntervalSerializer(data={
+        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(data={
             'start': request.query_params.get('from', datetime_to_timestamp(default_start)),
             'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
         })
-        time_interval_serializer.is_valid(raise_exception=True)
+        timestamp_interval_serializer.is_valid(raise_exception=True)
 
-        start = datetime_to_timestamp(time_interval_serializer.validated_data['start'])
-        end = datetime_to_timestamp(time_interval_serializer.validated_data['end'])
+        filter_data = timestamp_interval_serializer.get_filter_data()
+        start = datetime_to_timestamp(filter_data['start'])
+        end = datetime_to_timestamp(filter_data['end'])
 
         mapped = {
             'items': request.query_params.getlist('item'),
@@ -566,63 +572,6 @@ class TemplateViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(images__cloud=cloud)
 
         return queryset
-
-
-class SshKeyFilter(django_filters.FilterSet):
-    uuid = django_filters.CharFilter()
-    user_uuid = django_filters.CharFilter(
-        name='user__uuid'
-    )
-    name = django_filters.CharFilter(lookup_type='icontains')
-
-    class Meta(object):
-        model = core_models.SshPublicKey
-        fields = [
-            'name',
-            'fingerprint',
-            'uuid',
-            'user_uuid'
-        ]
-        order_by = [
-            'name',
-            '-name',
-        ]
-
-
-class SshKeyViewSet(mixins.CreateModelMixin,
-                    mixins.RetrieveModelMixin,
-                    mixins.DestroyModelMixin,
-                    mixins.ListModelMixin,
-                    viewsets.GenericViewSet):
-    """
-    List of SSH public keys that are accessible by this user.
-
-    http://nodeconductor.readthedocs.org/en/latest/api/api.html#key-management
-    """
-
-    queryset = core_models.SshPublicKey.objects.all()
-    serializer_class = serializers.SshKeySerializer
-    lookup_field = 'uuid'
-    filter_backends = (filters.DjangoFilterBackend,)
-    filter_class = SshKeyFilter
-
-    def perform_create(self, serializer):
-        user = self.request.user
-        name = serializer.validated_data['name']
-
-        if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
-            raise rf_serializers.ValidationError({'name': ['This field must be unique.']})
-
-        serializer.save(user=user)
-
-    def get_queryset(self):
-        queryset = super(SshKeyViewSet, self).get_queryset()
-        user = self.request.user
-
-        if user.is_staff:
-            return queryset
-
-        return queryset.filter(user=user)
 
 
 class TemplateLicenseViewSet(viewsets.ModelViewSet):
@@ -1011,11 +960,16 @@ class CloudFilter(django_filters.FilterSet):
         ]
 
 
-class CloudViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
+class CloudViewSet(UpdateOnlyByPaidCustomerMixin,
+                   core_mixins.UpdateOnlyStableMixin,
+                   viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#cloud-model
     """
+
+    class PaidControl:
+        customer_path = 'customer'
 
     queryset = models.Cloud.objects.all().prefetch_related('flavors')
     serializer_class = serializers.CloudSerializer
@@ -1064,7 +1018,8 @@ class CloudProjectMembershipFilter(django_filters.FilterSet):
         ]
 
 
-class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
+class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
+                                    mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
@@ -1075,6 +1030,10 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#link-cloud-to-a-project
     """
+
+    class PaidControl:
+        customer_path = 'cloud__customer'
+
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
@@ -1263,109 +1222,6 @@ class QuotaStatsView(views.APIView):
         sum_of_quotas = models.CloudProjectMembership.get_sum_of_quotas_as_dict(
             memberships, ['vcpu', 'ram', 'storage', 'max_instances'])
         return Response(sum_of_quotas, status=status.HTTP_200_OK)
-
-
-class OpenstackAlertStatsView(views.APIView):
-
-    # XXX: This method uses same filter parameters as alerts filtering. It is not DRY. Has to be fixed in nc-560
-    def get(self, request, format=None):
-        aggregate_serializer = serializers.StatsAggregateSerializer(data=request.query_params)
-        aggregate_serializer.is_valid(raise_exception=True)
-
-        projects_ids = aggregate_serializer.get_projects(request.user).values_list('id', flat=True)
-        memberships_ids = aggregate_serializer.get_memberships(request.user).values_list('id', flat=True)
-        instances_ids = aggregate_serializer.get_instances(request.user).values_list('id', flat=True)
-
-        aggregate_query = Q()
-        # XXX: We need to include projects, because we have openstack-related quotas that are connected to projects,
-        #      so openstack-related alerts can appear with project as scope.
-        aggregate_query |= Q(
-            content_type=ContentType.objects.get_for_model(Project),
-            object_id__in=projects_ids
-        )
-        aggregate_query |= Q(
-            content_type=ContentType.objects.get_for_model(models.CloudProjectMembership),
-            object_id__in=memberships_ids
-        )
-        aggregate_query |= Q(
-            content_type=ContentType.objects.get_for_model(models.Instance),
-            object_id__in=instances_ids
-        )
-
-        queryset = logging_models.Alert.objects.filter(aggregate_query)
-
-        mapped = {
-            'start': request.query_params.get('from'),
-            'end': request.query_params.get('to'),
-        }
-        time_interval_serializer = serializers.TimeIntervalSerializer(data={k: v for k, v in mapped.items() if v})
-        time_interval_serializer.is_valid(raise_exception=True)
-
-        if 'start' in time_interval_serializer.validated_data:
-            queryset = queryset.filter(
-                Q(closed__gte=time_interval_serializer.validated_data['start']) | Q(closed__isnull=True))
-        if 'end' in time_interval_serializer.validated_data:
-            queryset = queryset.filter(created__lte=time_interval_serializer.validated_data['end'])
-
-        if 'scope' in request.query_params:
-            scope_serializer = logging_serializers.ScopeSerializer(data=request.query_params)
-            scope_serializer.is_valid(raise_exception=True)
-            scope = scope_serializer.validated_data['scope']
-            ct = ContentType.objects.get_for_model(scope)
-            queryset = queryset.filter(content_type=ct, object_id=scope.id)
-
-        if 'scope_type' in request.query_params:
-            scope_type_serializer = logging_serializers.ScopeTypeSerializer(data=request.query_params)
-            scope_type_serializer.is_valid(raise_exception=True)
-            scope_type = scope_type_serializer.validated_data['scope_type']
-            ct = ContentType.objects.get_for_model(scope_type)
-            queryset = queryset.filter(content_type=ct)
-
-        if 'opened' in request.query_params:
-            queryset = queryset.filter(closed__isnull=True)
-
-        if 'severity' in request.query_params:
-            severity_codes = {v: k for k, v in models.Alert.SeverityChoices.CHOICES}
-            severities = [
-                severity_codes.get(severity_name) for severity_name in request.query_params.getlist('severity')]
-            queryset = queryset.filter(severity__in=severities)
-
-        if 'alert_type' in request.query_params:
-            queryset = queryset.filter(alert_type__in=request.query_params.getlist('alert_type'))
-
-        if 'acknowledged' in request.query_params:
-            if request.query_params['acknowledged'] == 'False':
-                queryset = queryset.filter(acknowledged=False)
-            else:
-                queryset = queryset.filter(acknowledged=True)
-
-        alerts_severities_count = queryset.values('severity').annotate(count=Count('severity'))
-
-        time_search_parameters_map = {
-            'closed_from': 'closed__gte',
-            'closed_to': 'closed__lt',
-            'created_from': 'created__gte',
-            'created_to': 'created__lt',
-        }
-
-        for parameter, filter_field in time_search_parameters_map.items():
-            if parameter in request.query_params:
-                try:
-                    queryset = queryset.filter(
-                        **{filter_field: timestamp_to_datetime(int(request.query_params[parameter]))})
-                except ValueError:
-                    raise ValidationError(
-                        'Parameter {} is not valid. (It has to be valid timestamp)'.format(parameter))
-
-        severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
-        # For consistency with all other endpoint we need to return severity names in lower case.
-        alerts_severities_count = {
-            severity_names[asc['severity']].lower(): asc['count'] for asc in alerts_severities_count}
-        for severity_name in severity_names.values():
-            if severity_name.lower() not in alerts_severities_count:
-                alerts_severities_count[severity_name.lower()] = 0
-
-        return Response(alerts_severities_count, status=status.HTTP_200_OK)
 
 
 class QuotaTimelineStatsView(views.APIView):
