@@ -7,6 +7,7 @@ import time
 from datetime import datetime, timedelta
 
 from django import http
+from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db import connection
 from django.db.models import Q, Sum
@@ -16,6 +17,7 @@ import django_filters
 from rest_framework import filters as rf_filters
 from rest_framework import mixins
 from rest_framework import permissions as rf_permissions
+from rest_framework import serializers as rf_serializers
 from rest_framework import status
 from rest_framework import views
 from rest_framework import viewsets
@@ -1123,6 +1125,63 @@ class CreationTimeStatsView(views.APIView):
         return Response(stats, status=status.HTTP_200_OK)
 
 
+class SshKeyFilter(django_filters.FilterSet):
+    uuid = django_filters.CharFilter()
+    user_uuid = django_filters.CharFilter(
+        name='user__uuid'
+    )
+    name = django_filters.CharFilter(lookup_type='icontains')
+
+    class Meta(object):
+        model = core_models.SshPublicKey
+        fields = [
+            'name',
+            'fingerprint',
+            'uuid',
+            'user_uuid'
+        ]
+        order_by = [
+            'name',
+            '-name',
+        ]
+
+
+class SshKeyViewSet(mixins.CreateModelMixin,
+                    mixins.RetrieveModelMixin,
+                    mixins.DestroyModelMixin,
+                    mixins.ListModelMixin,
+                    viewsets.GenericViewSet):
+    """
+    List of SSH public keys that are accessible by this user.
+
+    http://nodeconductor.readthedocs.org/en/latest/api/api.html#key-management
+    """
+
+    queryset = core_models.SshPublicKey.objects.all()
+    serializer_class = serializers.SshKeySerializer
+    lookup_field = 'uuid'
+    filter_backends = (rf_filters.DjangoFilterBackend,)
+    filter_class = SshKeyFilter
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        name = serializer.validated_data['name']
+
+        if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
+            raise rf_serializers.ValidationError({'name': ['This field must be unique.']})
+
+        serializer.save(user=user)
+
+    def get_queryset(self):
+        queryset = super(SshKeyViewSet, self).get_queryset()
+        user = self.request.user
+
+        if user.is_staff:
+            return queryset
+
+        return queryset.filter(user=user)
+
+
 class ServiceSettingsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_type='icontains')
     type = core_filters.MappedChoiceFilter(
@@ -1218,7 +1277,61 @@ class ResourceViewSet(viewsets.GenericViewSet):
         return response.Response(data)
 
 
-class BaseServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
+class UpdateOnlyByPaidCustomerMixin(object):
+    """ Allow modification of entities if their customer's balance is positive. """
+
+    @staticmethod
+    def _check_paid_status(settings, customer):
+        # Check for shared settings only or missed settings in case of IaaS
+        if settings is None or settings.shared:
+            if customer and customer.balance is not None and customer.balance <= 0:
+                raise PermissionDenied(
+                    "Your balance is %s. Action disabled." % customer.balance)
+
+    def initial(self, request, *args, **kwargs):
+        if hasattr(self, 'PaidControl') and self.action not in ('list', 'retrieve', 'create'):
+            if django_settings.NODECONDUCTOR.get('SUSPEND_UNPAID_CUSTOMERS'):
+                entity = self.get_object()
+
+                def get_obj(name):
+                    try:
+                        args = getattr(self.PaidControl, '%s_path' % name).split('__')
+                    except AttributeError:
+                        return None
+                    return reduce(getattr, args, entity)
+
+                self._check_paid_status(get_obj('settings'), get_obj('customer'))
+
+        return super(UpdateOnlyByPaidCustomerMixin, self).initial(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        if django_settings.NODECONDUCTOR.get('SUSPEND_UNPAID_CUSTOMERS'):
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            def get_obj(name):
+                try:
+                    args = getattr(self.PaidControl, '%s_path' % name).split('__')
+                except AttributeError:
+                    return None
+                obj = serializer.validated_data[args[0]]
+                if len(args) > 1:
+                    obj = reduce(getattr, args[1:], obj)
+                return obj
+
+            self._check_paid_status(get_obj('settings'), get_obj('customer'))
+
+        return super(UpdateOnlyByPaidCustomerMixin, self).create(request, *args, **kwargs)
+
+
+class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
+                         core_mixins.UserContextMixin,
+                         viewsets.ModelViewSet):
+
+    class PaidControl:
+        customer_path = 'customer'
+        settings_path = 'settings'
+
     queryset = NotImplemented
     serializer_class = NotImplemented
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
@@ -1226,11 +1339,16 @@ class BaseServiceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
     lookup_field = 'uuid'
 
 
-class BaseServiceProjectLinkViewSet(mixins.CreateModelMixin,
+class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
+                                    mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
                                     viewsets.GenericViewSet):
+
+    class PaidControl:
+        customer_path = 'service__customer'
+        settings_path = 'service__settings'
 
     queryset = NotImplemented
     serializer_class = NotImplemented
@@ -1238,13 +1356,18 @@ class BaseServiceProjectLinkViewSet(mixins.CreateModelMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
 
     def perform_create(self, serializer):
-        service_project_link = serializer.save()
-        service_project_link.begin_syncing()
-        service_project_link.set_in_sync()
-        service_project_link.save()
+        instance = serializer.save()
+        send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
 
 
-class BaseResourceViewSet(core_mixins.UserContextMixin, viewsets.ModelViewSet):
+class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
+                          core_mixins.UserContextMixin,
+                          viewsets.ModelViewSet):
+
+    class PaidControl:
+        customer_path = 'service_project_link__service__customer'
+        settings_path = 'service_project_link__service__settings'
+
     queryset = NotImplemented
     serializer_class = NotImplemented
     lookup_field = 'uuid'

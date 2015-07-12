@@ -2,34 +2,8 @@ OpenStack configuration
 =======================
 
 In order to link OpenStack with NodeConductor you need to set credentials of an OpenStack
-administrative user in NodeConductor settings.
-
-**NodeConductor configuration examples**
-
-1. Django settings if installed from sources.
-
-    .. code-block:: python
-
-        NODECONDUCTOR = {
-            'OPENSTACK_CREDENTIALS': (
-                {
-                    'auth_url': 'http://keystone.example.com:5000/v2.0',
-                    'username': 'node',
-                    'password': 'conductor',
-                    'tenant_name': 'admin',
-                },
-            ),
-        }
-
-2. Configuration file if installed from package.
-
-    .. code-block:: ini
-
-        [openstack]
-        auth_url = http://keystone.example.com:5000/v2.0
-        username = nodeconductor
-        password = nodeconductor
-        tenant_name = admin
+administrative user in NodeConductor settings. This could be done in corresponding Django admin section:
+**/admin/iaas/openstacksettings/**
 
 Create OpenStack Instance
 -------------------------

@@ -21,7 +21,7 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 # The regestry of all supported services
 # TODO: Move OpenstackSettings to ServiceSettings and remove this hardcoding
 SUPPORTED_SERVICES = {
-    'iaas.openstack': {
+    'iaas.cloud': {
         'name': 'OpenStack',
         'view_name': 'cloud-list',
         'resources': {
@@ -196,7 +196,7 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
             'uuid',
             'name', 'native_name', 'abbreviation', 'contact_details',
             'projects', 'project_groups',
-            'owners',
+            'owners', 'balance',
             'registration_code',
             'quotas',
             'image'
@@ -619,6 +619,31 @@ class PasswordSerializer(serializers.Serializer):
     ])
 
 
+class SshKeySerializer(serializers.HyperlinkedModelSerializer):
+    user_uuid = serializers.ReadOnlyField(source='user.uuid')
+
+    class Meta(object):
+        model = core_models.SshPublicKey
+        fields = ('url', 'uuid', 'name', 'public_key', 'fingerprint', 'user_uuid')
+        read_only_fields = ('fingerprint',)
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+    def get_fields(self):
+        fields = super(SshKeySerializer, self).get_fields()
+
+        try:
+            user = self.context['request'].user
+        except (KeyError, AttributeError):
+            return fields
+
+        if not user.is_staff:
+            del fields['user_uuid']
+
+        return fields
+
+
 class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
                                 core_serializers.AugmentedSerializerMixin,
                                 serializers.HyperlinkedModelSerializer):
@@ -705,6 +730,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     SERVICE_TYPE = NotImplemented
     SERVICE_ACCOUNT_FIELDS = NotImplemented
+    SERVICE_ACCOUNT_EXTRA_FIELDS = NotImplemented
 
     projects = BasicProjectSerializer(many=True, read_only=True)
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
@@ -726,9 +752,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         fields = (
             'uuid',
             'url',
-            'name', 'projects', 'settings',
+            'name', 'projects',
             'customer', 'customer_name', 'customer_native_name',
-            'backend_url', 'username', 'password', 'token', 'dummy',
+            'settings', 'dummy',
+            'backend_url', 'username', 'password', 'token',
         )
         protected_fields = (
             'customer', 'settings',
@@ -739,6 +766,11 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'customer': {'lookup_field': 'uuid'},
             'settings': {'lookup_field': 'uuid'},
         }
+
+    def __new__(cls, *args, **kwargs):
+        if cls.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
+            cls.Meta.fields += tuple(cls.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
+        return super(BaseServiceSerializer, cls).__new__(cls, *args, **kwargs)
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -759,6 +791,17 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     del fields[field]
 
         return fields
+
+    def build_unknown_field(self, field_name, model_class):
+        if self.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
+            if field_name in self.SERVICE_ACCOUNT_EXTRA_FIELDS:
+                return serializers.CharField, {
+                    'write_only': True,
+                    'required': False,
+                    'allow_blank': True,
+                    'help_text': self.SERVICE_ACCOUNT_EXTRA_FIELDS[field_name]}
+
+        return super(BaseServiceSerializer, self).build_unknown_field(field_name, model_class)
 
     def validate_empty_values(self, data):
         # required=False is ignored for settings FK, deal with it here
@@ -783,9 +826,16 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 raise serializers.ValidationError(
                     "Either service settings or credentials must be supplied.")
 
+            extra_fields = tuple()
+            if self.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
+                extra_fields += tuple(self.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
+
             settings_fields += 'dummy',
             if create_settings:
                 args = {f: attrs.get(f) for f in settings_fields if f in attrs}
+                if extra_fields:
+                    args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
+
                 settings = models.ServiceSettings.objects.create(
                     type=self.SERVICE_TYPE,
                     name=attrs['name'],
@@ -795,7 +845,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 send_task('structure', 'sync_service_settings')(settings.uuid.hex, initial=True)
                 attrs['settings'] = settings
 
-            for f in settings_fields:
+            for f in settings_fields + extra_fields:
                 if f in attrs:
                     del attrs[f]
 
@@ -834,6 +884,11 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
 
     def get_related_paths(self):
         return 'project', 'service'
+
+    def validate(self, attrs):
+        if attrs['service'].customer != attrs['project'].customer:
+            raise serializers.ValidationError("Service customer doesn't match project customer")
+        return attrs
 
 
 class ResourceSerializerMetaclass(BaseServiceSerializerMetaclass):

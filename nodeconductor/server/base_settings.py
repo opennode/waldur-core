@@ -1,9 +1,11 @@
 """
 Django base settings for nodeconductor project.
 """
+from __future__ import absolute_import
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 from datetime import timedelta
+from celery.schedules import crontab
 import os
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
@@ -36,6 +38,7 @@ INSTALLED_APPS = (
     'nodeconductor.quotas',
     'nodeconductor.structure',
     'nodeconductor.billing',
+    'nodeconductor.openstack',
     'nodeconductor.oracle',
     'nodeconductor.iaas',
     'nodeconductor.support',
@@ -51,6 +54,7 @@ INSTALLED_APPS = (
 
     'permission',
     'django_fsm',
+    'reversion',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -61,6 +65,7 @@ MIDDLEWARE_CLASSES = (
     'nodeconductor.logging.middleware.CaptureEventContextMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'reversion.middleware.RevisionMiddleware',
 )
 
 REST_FRAMEWORK = {
@@ -154,6 +159,12 @@ CELERYBEAT_SCHEDULE = {
         'args': ('yearly',),
     },
 
+    'debit-customers': {
+        'task': 'nodeconductor.billing.debit_customers',
+        'schedule': crontab(hour=0, minute=30),
+        'args': (),
+    },
+
     'sync-services': {
         'task': 'nodeconductor.iaas.sync_services',
         'schedule': timedelta(minutes=60),
@@ -245,5 +256,6 @@ NODECONDUCTOR = {
     ),
     'JIRA_SUPPORT': {'dummy': True},
     'ELASTICSEARCH_DUMMY': True,
+    'SUSPEND_UNPAID_CUSTOMERS': False,
     'TOKEN_KEY': 'x-auth-token',
 }

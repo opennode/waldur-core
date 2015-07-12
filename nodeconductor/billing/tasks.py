@@ -1,5 +1,6 @@
 import StringIO
 import logging
+import xhtml2pdf.pisa as pisa
 
 from datetime import date, timedelta, datetime
 
@@ -9,15 +10,15 @@ from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
 from django.utils.lru_cache import lru_cache
 from celery import shared_task
-import xhtml2pdf.pisa as pisa
 
 from nodeconductor.backup.models import Backup
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.billing.models import PriceList
 from nodeconductor.core.utils import timestamp_to_datetime
-from nodeconductor.iaas.models import CloudProjectMembership, Instance
+from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.iaas.models import Cloud, CloudProjectMembership, Instance
 from nodeconductor.logging.elasticsearch_client import ElasticsearchResultList
-from nodeconductor.structure.models import Customer
+from nodeconductor.structure.models import Customer, Service
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,34 @@ logger = logging.getLogger(__name__)
 def sync_pricelist():
     backend = BillingBackend()
     backend.sync_pricelist()
+
+
+@shared_task(name='nodeconductor.billing.debit_customers')
+def debit_customers():
+    """ Fetch a list of shared services (services based on shared settings).
+        Calculate the amount of consumed resources "yesterday" (make sure this task executed only once a day)
+        Reduce customer's balance accordingly
+        Stop online resource if needed
+    """
+
+    date = datetime.now() - timedelta(days=1)
+    start_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_date = start_date + timedelta(days=1, microseconds=-1)
+
+    for service in Service.objects.filter(settings__shared=True).select_related('customer'):
+        try:
+            usage_data = service.get_usage_data(start_date, end_date)
+        except NotImplementedError:
+            continue
+        else:
+            service.customer.debit_account(usage_data['total_amount'])
+
+    # Consider all IaaS services as shared
+    # This code to be deprecated when IaaS app moves to OpenStack app (NC-645)
+    customers = set(s.customer for s in Cloud.objects.select_related('customer').all())
+    for customer in customers:
+        usage_data, data, projected_total = get_customer_usage_data(customer, start_date, end_date)
+        customer.debit_account(projected_total)
 
 
 def generate_usage_pdf(invoice, usage_data):
@@ -80,7 +109,10 @@ def get_customer_usage_data(customer, start_date, end_date):
     usage_data = {'reporting_period': (start_date, end_date), 'customer_name': customer.name, 'usage': {}}
     for membership in memberships:
         backend = membership.cloud.get_backend()
-        usage = backend.get_nova_usage(membership, start_date, end_date)
+        try:
+            usage = backend.get_nova_usage(membership, start_date, end_date)
+        except CloudBackendError:
+            usage = {}
 
         billing_category_name = membership.project.name
         # XXX a specific hack to support case when project resides in project_group
@@ -93,7 +125,7 @@ def get_customer_usage_data(customer, start_date, end_date):
         # populate billing data with content
         billing_data = {}
         for field in ['cpu', 'disk', 'memory', 'servers']:
-            billing_data[field] = usage[field]
+            billing_data[field] = usage.get(field, 0)
 
         # process and aggregate license usage
         server_usage = usage.get('server_usages', [])

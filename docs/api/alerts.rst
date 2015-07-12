@@ -16,8 +16,8 @@ Alerts can be filtered by:
  - ?created_to=<timestamp>
  - ?closed_from=<timestamp>
  - ?closed_to=<timestamp>
- - ?from=timestamp
- - ?to=timestamp
+ - ?from=<timestamp> - filter alerts that was active from given date
+ - ?to=<timestamp> - filter alerts that was active to given date
  - ?opened - if this argument is in GET request endpoint will return only alerts that are not closed
  - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
  - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
@@ -107,3 +107,21 @@ Cancel alert acknowledgment
 To cancel alert acknowledgment - run POST against */api/alerts/<alert_uuid>/cancel_acknowledgment/*.
 No payload is required. All users that can see alerts can also cancel it acknowledgment. If alert is not acknowledged
 endpoint will return error with code 409(conflict).
+
+
+Statistics
+----------
+
+To get count of alerts per severities - run GET request against **/api/alerts/stats/**. This endpoint supports all
+filters that are available for alerts list (/api/alerts/).
+
+Response example:
+
+.. code-block:: javascript
+
+    {
+        "debug": 2,
+        "error": 1,
+        "info": 1,
+        "warning": 1
+    }

@@ -5,7 +5,7 @@ import logging
 from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.db import models, router, DEFAULT_DB_ALIAS
+from django.db import models
 from django.utils.lru_cache import lru_cache
 
 from nodeconductor.core.serializers import UnboundSerializerMethodField
@@ -14,31 +14,6 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 
 
 logger = logging.getLogger('nodeconductor.iaas')
-
-
-def sync_openstack_settings(app_config, using=DEFAULT_DB_ALIAS, **kwargs):
-    OpenStackSettings = app_config.get_model('OpenStackSettings')
-
-    if not router.allow_migrate(using, OpenStackSettings):
-        return
-
-    nc_settings = getattr(settings, 'NODECONDUCTOR', {})
-    openstacks = nc_settings.get('OPENSTACK_CREDENTIALS', ())
-
-    if openstacks:
-        import warnings
-        logger.info("Sync OpenStack credentials")
-        warnings.warn(
-            "OPENSTACK_CREDENTIALS setting is deprecated. "
-            "Create OpenStackSetting model instance instead.",
-            DeprecationWarning,
-        )
-
-    for opts in openstacks:
-        opts['availability_zone'] = opts.pop('default_availability_zone', '')
-        queryset = OpenStackSettings._default_manager.using(using)
-        if not queryset.filter(auth_url=opts['auth_url']).exists():
-            queryset.create(**opts)
 
 
 def filter_clouds(clouds, request):

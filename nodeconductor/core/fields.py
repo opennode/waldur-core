@@ -151,4 +151,4 @@ class TimestampField(serializers.Field):
         try:
             return utils.timestamp_to_datetime(value)
         except ValueError:
-            raise serializers.ValidationError('This field should be valid UNIX timestamp.')
+            raise serializers.ValidationError('Value "{}" should be valid UNIX timestamp.'.format(value))
