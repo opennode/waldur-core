@@ -22,5 +22,4 @@ urlpatterns = patterns(
     url(r'^stats/resource/$', views.ResourceStatsView.as_view(), name='stats_resource'),
     url(r'^stats/quota/$', views.QuotaStatsView.as_view(), name='stats_quota'),
     url(r'^stats/quota/timeline/$', views.QuotaTimelineStatsView.as_view(), name='stats_quota_timeline'),
-    url(r'^stats/alerts/$', views.OpenstackAlertStatsView.as_view(), name='stats_alerts'),
 )

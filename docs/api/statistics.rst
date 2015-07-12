@@ -251,7 +251,9 @@ Example result:
 
 
 Alerts statistics
-------------------------
+-----------------
+
+Warning! This endpoint is *deprecated* use **/alerts/stats/** instead of it.
 
 Health statistics based on the alert number and severity. You may also narrow down statistics by instances aggregated
 by specific projects/project_groups/customers.
