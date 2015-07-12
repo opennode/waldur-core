@@ -107,3 +107,21 @@ Cancel alert acknowledgment
 To cancel alert acknowledgment - run POST against */api/alerts/<alert_uuid>/cancel_acknowledgment/*.
 No payload is required. All users that can see alerts can also cancel it acknowledgment. If alert is not acknowledged
 endpoint will return error with code 409(conflict).
+
+
+Statistics
+----------
+
+To get count of alerts per severities - run GET request against **/api/alerts/stats/**. This endpoint supports all
+filters that are available for alerts list (/api/alerts/).
+
+Response example:
+
+.. code-block:: javascript
+
+    {
+        "debug": 2,
+        "error": 1,
+        "info": 1,
+        "warning": 1
+    }
