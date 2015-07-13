@@ -5,6 +5,7 @@ import time
 import uuid
 import logging
 import datetime
+from netaddr import IPNetwork
 import pkg_resources
 import dateutil.parser
 
@@ -468,7 +469,7 @@ class OpenStackBackend(OpenStackClient):
 
             self.ensure_user_is_tenant_admin(username, tenant, keystone)
 
-            self.get_or_create_network(membership, neutron)
+            self.get_or_create_internal_network(membership, neutron)
 
             membership.save()
 
@@ -2004,7 +2005,7 @@ class OpenStackBackend(OpenStackClient):
             logger.info('User %s already has admin role within tenant %s',
                         username, tenant.name)
 
-    def get_or_create_network(self, membership, neutron):
+    def get_or_create_internal_network(self, membership, neutron):
 
         logger.info('Checking internal network of tenant %s', membership.tenant_id)
         if membership.internal_network_id:
@@ -2012,11 +2013,11 @@ class OpenStackBackend(OpenStackClient):
                 # check if the network actually exists
                 response = neutron.show_network(membership.internal_network_id)
             except neutron_exceptions.NeutronClientException as e:
-                logger.exception('Network with id %s does not exist. Stale data in database?',
+                logger.exception('Internal network with id %s does not exist. Stale data in database?',
                                  membership.internal_network_id)
                 six.reraise(CloudBackendError, e)
             else:
-                logger.info('Network with id %s exists', membership.internal_network_id)
+                logger.info('Internal network with id %s exists.', membership.internal_network_id)
 
                 network_name = response['network']['name']
                 subnet_id = response['network']['subnets'][0]
@@ -2056,6 +2057,76 @@ class OpenStackBackend(OpenStackClient):
         create_response = neutron.create_subnet({'subnets': [subnet_data]})
         self.get_or_create_router(neutron, network_name, create_response['subnets'][0]['id'],
                                   membership.tenant_id)
+
+        return membership.internal_network_id
+
+    def get_or_create_external_network(self, membership, neutron, network_ip, network_prefix,
+                                       vlan_id=None, vxlan_id=None, ips_count=None):
+        if membership.external_network_id:
+            try:
+                # check if the network actually exists
+                response = neutron.show_network(membership.external_network_id)
+            except neutron_exceptions.NeutronClientException as e:
+                logger.exception('External network with id %s does not exist. Stale data in database?',
+                                 membership.external_network_id)
+                six.reraise(CloudBackendError, e)
+            else:
+                logger.info('External network with id %s exists.', membership.external_network_id)
+
+                network_name = response['network']['name']
+                subnet_id = response['network']['subnets'][0]
+                self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id)
+
+                return membership.external_network_id
+
+        network_name = '{0}-ext-net'.format(self.create_backend_name())
+        network = {
+            'name': network_name,
+            'tenant_id': membership.tenant_id,
+            'router:external': True
+        }
+
+        if vlan_id:
+            network['provider:network_type'] = 'vlan'
+            network['provider:segmentation_id'] = vlan_id
+            network['provider:physical_network'] = 'physnet1'
+        elif vxlan_id:
+            network['provider:network_type'] = 'vxlan'
+            network['provider:segmentation_id'] = vxlan_id
+        else:
+            raise ValueError('VLAND or VXLAN ID should be provided.')
+
+        logger.info('Creating external network %s', network_name)
+        create_response = neutron.create_network({'networks': [network]})
+        network_id = create_response['networks'][0]['id']
+        membership.external_network_id = network_id
+        membership.save()
+
+        subnet_name = '{0}-sn01'.format(network_name)
+
+        logger.info('Creating subnet %s', subnet_name)
+        cidr = '{0}/{1}'.format(network_ip, network_prefix)
+        subnet_data = {
+            'network_id': membership.external_network_id,
+            'tenant_id': membership.tenant_id,
+            'cidr': cidr,
+            'name': subnet_name,
+            'ip_version': 4,
+            'enable_dhcp': False,
+        }
+        create_response = neutron.create_subnet({'subnets': [subnet_data]})
+        self.get_or_create_router(neutron, network_name, create_response['subnets'][0]['id'],
+                                  membership.tenant_id)
+
+        floating_ip = {
+            'floating_network_id': membership.external_network_id,
+        }
+
+        if vlan_id is not None and ips_count is not None:
+            for i in range(ips_count):
+                ip = neutron.create_floatingip({'floatingip': floating_ip})['floatingip']
+                logger.info('Floating ip %s for external network %s has been created.',
+                            ip['floating_ip_address'], network_name)
 
         return membership.internal_network_id
 

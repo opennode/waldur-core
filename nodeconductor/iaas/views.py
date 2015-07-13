@@ -1135,6 +1135,20 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
         return Response({'status': 'Instance import was scheduled'},
                         status=status.HTTP_202_ACCEPTED)
 
+    @detail_route(methods=['post'])
+    def create_ext_network(self, request, pk=None):
+        serializer = serializers.ExternalNetworkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        tasks.create_external_network(pk, serializer.validated_data)
+
+        return Response({'status': 'External network creation has been scheduled.'},
+                        status=status.HTTP_202_ACCEPTED)
+
+    @detail_route(methods=['post'])
+    def delete_ext_network(self, request, pk=None):
+        pass
+
 
 class SecurityGroupFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
