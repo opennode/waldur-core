@@ -38,6 +38,7 @@ from nodeconductor.iaas.serializers import QuotaTimelineStatsSerializer
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.logging import models as logging_models, serializers as logging_serializers
 from nodeconductor.structure import filters as structure_filters
+from nodeconductor.structure.views import UpdateOnlyByPaidCustomerMixin
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
 
@@ -249,7 +250,8 @@ class InstanceFilter(django_filters.FilterSet):
         }
 
 
-class InstanceViewSet(mixins.CreateModelMixin,
+class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
+                      mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       mixins.UpdateModelMixin,
                       mixins.ListModelMixin,
@@ -257,6 +259,9 @@ class InstanceViewSet(mixins.CreateModelMixin,
     """List of VM instances that are accessible by this user.
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#vm-instance-management
     """
+
+    class PaidControl:
+        customer_path = 'cloud_project_membership__cloud__customer'
 
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
@@ -955,11 +960,16 @@ class CloudFilter(django_filters.FilterSet):
         ]
 
 
-class CloudViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
+class CloudViewSet(UpdateOnlyByPaidCustomerMixin,
+                   core_mixins.UpdateOnlyStableMixin,
+                   viewsets.ModelViewSet):
     """List of clouds that are accessible by this user.
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#cloud-model
     """
+
+    class PaidControl:
+        customer_path = 'customer'
 
     queryset = models.Cloud.objects.all().prefetch_related('flavors')
     serializer_class = serializers.CloudSerializer
@@ -1008,7 +1018,8 @@ class CloudProjectMembershipFilter(django_filters.FilterSet):
         ]
 
 
-class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
+class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
+                                    mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
@@ -1019,6 +1030,10 @@ class CloudProjectMembershipViewSet(mixins.CreateModelMixin,
 
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#link-cloud-to-a-project
     """
+
+    class PaidControl:
+        customer_path = 'cloud__customer'
+
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
@@ -1207,111 +1222,6 @@ class QuotaStatsView(views.APIView):
         sum_of_quotas = models.CloudProjectMembership.get_sum_of_quotas_as_dict(
             memberships, ['vcpu', 'ram', 'storage', 'max_instances'])
         return Response(sum_of_quotas, status=status.HTTP_200_OK)
-
-
-class OpenstackAlertStatsView(views.APIView):
-
-    # XXX: This method uses same filter parameters as alerts filtering. It is not DRY. Has to be fixed in nc-560
-    def get(self, request, format=None):
-        aggregate_serializer = serializers.StatsAggregateSerializer(data=request.query_params)
-        aggregate_serializer.is_valid(raise_exception=True)
-
-        projects_ids = aggregate_serializer.get_projects(request.user).values_list('id', flat=True)
-        memberships_ids = aggregate_serializer.get_memberships(request.user).values_list('id', flat=True)
-        instances_ids = aggregate_serializer.get_instances(request.user).values_list('id', flat=True)
-
-        aggregate_query = Q()
-        # XXX: We need to include projects, because we have openstack-related quotas that are connected to projects,
-        #      so openstack-related alerts can appear with project as scope.
-        aggregate_query |= Q(
-            content_type=ContentType.objects.get_for_model(Project),
-            object_id__in=projects_ids
-        )
-        aggregate_query |= Q(
-            content_type=ContentType.objects.get_for_model(models.CloudProjectMembership),
-            object_id__in=memberships_ids
-        )
-        aggregate_query |= Q(
-            content_type=ContentType.objects.get_for_model(models.Instance),
-            object_id__in=instances_ids
-        )
-
-        queryset = logging_models.Alert.objects.filter(aggregate_query)
-
-        mapped = {
-            'start': request.query_params.get('from'),
-            'end': request.query_params.get('to'),
-        }
-        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(
-            data={k: v for k, v in mapped.items() if v})
-        timestamp_interval_serializer.is_valid(raise_exception=True)
-        filter_data = timestamp_interval_serializer.get_filter_data()
-
-        if 'start' in filter_data:
-            queryset = queryset.filter(
-                Q(closed__gte=filter_data['start']) | Q(closed__isnull=True))
-        if 'end' in filter_data:
-            queryset = queryset.filter(created__lte=filter_data['end'])
-
-        if 'scope' in request.query_params:
-            scope_serializer = logging_serializers.ScopeSerializer(data=request.query_params)
-            scope_serializer.is_valid(raise_exception=True)
-            scope = scope_serializer.validated_data['scope']
-            ct = ContentType.objects.get_for_model(scope)
-            queryset = queryset.filter(content_type=ct, object_id=scope.id)
-
-        if 'scope_type' in request.query_params:
-            scope_type_serializer = logging_serializers.ScopeTypeSerializer(data=request.query_params)
-            scope_type_serializer.is_valid(raise_exception=True)
-            scope_type = scope_type_serializer.validated_data['scope_type']
-            ct = ContentType.objects.get_for_model(scope_type)
-            queryset = queryset.filter(content_type=ct)
-
-        if 'opened' in request.query_params:
-            queryset = queryset.filter(closed__isnull=True)
-
-        if 'severity' in request.query_params:
-            severity_codes = {v: k for k, v in models.Alert.SeverityChoices.CHOICES}
-            severities = [
-                severity_codes.get(severity_name) for severity_name in request.query_params.getlist('severity')]
-            queryset = queryset.filter(severity__in=severities)
-
-        if 'alert_type' in request.query_params:
-            queryset = queryset.filter(alert_type__in=request.query_params.getlist('alert_type'))
-
-        if 'acknowledged' in request.query_params:
-            if request.query_params['acknowledged'] == 'False':
-                queryset = queryset.filter(acknowledged=False)
-            else:
-                queryset = queryset.filter(acknowledged=True)
-
-        alerts_severities_count = queryset.values('severity').annotate(count=Count('severity'))
-
-        time_search_parameters_map = {
-            'closed_from': 'closed__gte',
-            'closed_to': 'closed__lt',
-            'created_from': 'created__gte',
-            'created_to': 'created__lt',
-        }
-
-        for parameter, filter_field in time_search_parameters_map.items():
-            if parameter in request.query_params:
-                try:
-                    queryset = queryset.filter(
-                        **{filter_field: timestamp_to_datetime(int(request.query_params[parameter]))})
-                except ValueError:
-                    raise ValidationError(
-                        'Parameter {} is not valid. (It has to be valid timestamp)'.format(parameter))
-
-        severity_names = dict(logging_models.Alert.SeverityChoices.CHOICES)
-        # For consistency with all other endpoint we need to return severity names in lower case.
-        alerts_severities_count = {
-            severity_names[asc['severity']].lower(): asc['count'] for asc in alerts_severities_count}
-        for severity_name in severity_names.values():
-            if severity_name.lower() not in alerts_severities_count:
-                alerts_severities_count[severity_name.lower()] = 0
-
-        return Response(alerts_severities_count, status=status.HTTP_200_OK)
 
 
 class QuotaTimelineStatsView(views.APIView):

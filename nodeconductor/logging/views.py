@@ -4,7 +4,7 @@ import re
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Q, Count
 import django_filters
 from rest_framework import generics, response, settings, viewsets, permissions, filters, status, decorators, mixins
 from rest_framework.serializers import ValidationError
@@ -197,6 +197,21 @@ class AlertViewSet(mixins.CreateModelMixin,
         else:
             return response.Response({'detail': 'Alert is not acknowledged'}, status=status.HTTP_409_CONFLICT)
 
+    @decorators.list_route()
+    def stats(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        alerts_severities_count = queryset.values('severity').annotate(count=Count('severity'))
+
+        severity_names = dict(models.Alert.SeverityChoices.CHOICES)
+        # For consistency with all other endpoint we need to return severity names in lower case.
+        alerts_severities_count = {
+            severity_names[asc['severity']].lower(): asc['count'] for asc in alerts_severities_count}
+        for severity_name in severity_names.values():
+            if severity_name.lower() not in alerts_severities_count:
+                alerts_severities_count[severity_name.lower()] = 0
+
+        return response.Response(alerts_severities_count, status=status.HTTP_200_OK)
+
 
 class StaffOrUserFilter(object):
     def filter_queryset(self, request, queryset, view):
@@ -219,3 +234,4 @@ class WebHookViewSet(BaseHookViewSet):
 class EmailHookViewSet(BaseHookViewSet):
     queryset = models.EmailHook.objects.all()
     serializer_class = serializers.EmailHookSerializer
+

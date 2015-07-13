@@ -7,7 +7,7 @@ from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models, transaction
-from django.db.models import Q
+from django.db.models import Q, F
 from django.utils import six
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible, force_text
@@ -18,10 +18,12 @@ from polymorphic import PolymorphicModel
 from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
+from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
+from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import ServiceBackendError
 
@@ -54,6 +56,29 @@ class Customer(core_models.UuidMixin,
 
     def get_log_fields(self):
         return ('uuid', 'name', 'abbreviation', 'contact_details')
+
+    def credit_account(self, amount):
+        # Increase customer's balance by specified amount
+        new_balance = (self.balance or 0) + amount
+        self._meta.model.objects.filter(uuid=self.uuid).update(
+            balance=new_balance if self.balance is None else F('balance') + amount)
+
+        self.balance = new_balance
+        customer_account_credited.send(sender=Customer, instance=self, amount=float(amount))
+
+    def debit_account(self, amount):
+        # Reduce customer's balance at specified amount
+        new_balance = (self.balance or 0) - amount
+        self._meta.model.objects.filter(uuid=self.uuid).update(
+            balance=new_balance if self.balance is None else F('balance') - amount)
+
+        self.balance = new_balance
+        customer_account_debited.send(sender=Customer, instance=self, amount=float(amount))
+
+        # Fully prepaid mode
+        # TODO: Introduce threshold value to allow over-usage
+        if new_balance <= 0:
+            send_task('structure', 'stop_customer_resources')(self.uuid.hex)
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
@@ -441,6 +466,10 @@ class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
 
     def get_backend(self, **kwargs):
         return self.settings.get_backend(**kwargs)
+
+    def get_usage_data(start_date, end_date):
+        # Please refer to nodeconductor.billing.tasks.debit_customers while implementing it
+        raise NotImplementedError
 
     def __str__(self):
         return self.name
