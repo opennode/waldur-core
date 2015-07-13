@@ -377,6 +377,32 @@ class TCPEventHandler(logging.handlers.SocketHandler, object):
         return self.formatter.format(record) + b'\n'
 
 
+class HookHandler(logging.Handler):
+    def get_hooks(self):
+        for model in models.get_hook_models():
+            for hook in model.objects.filter(is_active=True):
+                yield hook
+
+    def can_user_see_event(self, user, event):
+        permitted_uuids = event_logger.get_permitted_objects_uuids(user)
+        for key, uuids in permitted_uuids.items():
+            if key in event and event[key] in uuids:
+                return True
+        return False
+
+    def check_event(self, record, hook):
+        if record.event_type not in hook.event_types:
+            return False
+        if not self.can_user_see_event(hook.user, record.event_context):
+            return False
+        return True
+
+    def emit(self, record):
+        for hook in self.get_hooks():
+            if self.check_event(record, hook):
+                hook.process([record])
+
+
 class BaseLoggerRegistry(object):
 
     def get_loggers(self):

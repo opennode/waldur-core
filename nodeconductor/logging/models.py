@@ -1,11 +1,13 @@
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
+from django.core.mail import send_mail
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from jsonfield import JSONField
 from model_utils.models import TimeStampedModel
 from uuidfield import UUIDField
+import requests
 
 from nodeconductor.logging import managers
 
@@ -67,6 +69,10 @@ class BaseHook(UuidMixin, TimeStampedModel):
     last_published = models.DateTimeField(default=timezone.now)
 
 
+def get_hook_models():
+    return [m for m in models.get_models() if issubclass(m, BaseHook)]
+
+
 class WebHook(BaseHook):
     class ContentTypeChoices(object):
         JSON = 1
@@ -79,6 +85,21 @@ class WebHook(BaseHook):
         default=ContentTypeChoices.JSON
     )
 
+    def process(self, events):
+        for event in events:
+            if self.content_type == ContentTypeChoices.JSON:
+                requests.post(self.destination_url, json=event.event_context, verify=False)
+            elif self.content_type == ContentTypeChoices.FORM:
+                requests.post(self.destination_url, data=event.event_context, verify=False)
+
 
 class EmailHook(BaseHook):
     email = models.EmailField()
+
+    def process(self, events):
+        subject = 'Notifications from NodeConductor'
+        body = self.format_email_body(events)
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [self.email])
+
+    def format_email_body(self, events):
+        return "\n".join(event.message for event in events)
