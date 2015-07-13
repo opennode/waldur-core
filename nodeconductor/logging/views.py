@@ -211,3 +211,20 @@ class AlertViewSet(mixins.CreateModelMixin,
                 alerts_severities_count[severity_name.lower()] = 0
 
         return response.Response(alerts_severities_count, status=status.HTTP_200_OK)
+
+
+class BaseHookViewSet(viewsets.ModelViewSet):
+    permission_classes = (permissions.IsAuthenticated,)
+    filter_backends = (core_filters.StaffOrUserFilter,)
+    lookup_field = 'uuid'
+
+
+class WebHookViewSet(BaseHookViewSet):
+    queryset = models.WebHook.objects.all()
+    serializer_class = serializers.WebHookSerializer
+
+
+class EmailHookViewSet(BaseHookViewSet):
+    queryset = models.EmailHook.objects.all()
+    serializer_class = serializers.EmailHookSerializer
+

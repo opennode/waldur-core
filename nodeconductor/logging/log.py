@@ -399,6 +399,12 @@ class EventLoggerRegistry(BaseLoggerRegistry):
             permitted_objects_uuids.update(elogger.get_permitted_objects_uuids(user))
         return permitted_objects_uuids
 
+    def get_permitted_event_types(self):
+        events = set()
+        for elogger in self.get_loggers():
+            events.update(elogger.get_supported_types())
+        return events
+
 
 class AlertLoggerRegistry(BaseLoggerRegistry):
 
