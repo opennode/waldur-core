@@ -6,6 +6,7 @@ from django.core.urlresolvers import reverse
 from django.core.validators import MaxLengthValidator
 from django.db import IntegrityError
 from django.db.models import Max
+from netaddr import IPNetwork
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
@@ -1063,3 +1064,36 @@ class QuotaTimelineStatsSerializer(serializers.Serializer):
             key = key.replace("project_", "")
             results.append((start, end, key, value))
         return zabbix_utils.format_timeline(results)
+
+
+class ExternalNetworkSerializer(serializers.Serializer):
+    vlan_id = serializers.CharField(required=False)
+    vxlan_id = serializers.CharField(required=False)
+    network_ip = core_serializers.IPAddressField()
+    network_prefix = serializers.IntegerField(min_value=0, max_value=32)
+    ips_count = serializers.IntegerField(min_value=1, required=False)
+
+    def validate(self, attrs):
+        vlan_id = attrs.get('vlan_id')
+        vxlan_id = attrs.get('vxlan_id')
+
+        if vlan_id is None and vxlan_id is None:
+            raise serializers.ValidationError("VLAN or VXLAN ID should be provided.")
+        elif vlan_id and vxlan_id:
+            raise serializers.ValidationError("VLAN and VXLAN networks cannot be created simultaneously.")
+
+        ips_count = attrs.get('ips_count')
+        if ips_count is None:
+            return attrs
+
+        network_ip = attrs.get('network_ip')
+        network_prefix = attrs.get('network_prefix')
+
+        cidr = IPNetwork(network_ip)
+        cidr.prefixlen = network_prefix
+
+        # subtract router and broadcast IPs
+        if cidr.size < ips_count - 2:
+            raise serializers.ValidationError("Not enough Floating IP Addresses available.")
+
+        return attrs

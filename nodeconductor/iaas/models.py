@@ -118,6 +118,7 @@ class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink)
 
     tenant_id = models.CharField(max_length=64, blank=True)
     internal_network_id = models.CharField(max_length=64, blank=True)
+    external_network_id = models.CharField(max_length=64, blank=True)
 
     availability_zone = models.CharField(
         max_length=100, blank=True,
