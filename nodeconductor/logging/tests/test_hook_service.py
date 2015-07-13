@@ -1,5 +1,6 @@
 import mock
 from django.core import mail
+from django import setup
 from django.test import TestCase
 from django.test.utils import override_settings
 
@@ -11,9 +12,24 @@ from nodeconductor.logging import models as logging_models
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
+@override_settings(LOGGING={
+    'version': 1,
 
+    'handlers': {
+        'hook': {
+            'class': 'nodeconductor.logging.log.HookHandler'
+        }
+    },
+    'loggers': {
+        'nodeconductor': {
+            'level': 'DEBUG',
+            'handlers': ['hook']
+        }
+    }
+})
 class TestHook(TestCase):
     def setUp(self):
+        setup()
         self.owner = structure_factories.UserFactory()
         self.instance = iaas_factories.InstanceFactory()
         self.customer = self.instance.cloud_project_membership.project.customer
@@ -60,4 +76,4 @@ class TestHook(TestCase):
 
             # Event is captured and POST request is triggered
             # because event_type and user_uuid match
-            post.assert_called_once_with(self.web_hook.destination_url, json=mock.ANY)
+            post.assert_called_once_with(self.web_hook.destination_url, json=mock.ANY, verify=False)
