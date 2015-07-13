@@ -213,16 +213,9 @@ class AlertViewSet(mixins.CreateModelMixin,
         return response.Response(alerts_severities_count, status=status.HTTP_200_OK)
 
 
-class StaffOrUserFilter(object):
-    def filter_queryset(self, request, queryset, view):
-        if request.user.is_staff:
-            return queryset
-        return queryset.filter(user=request.user)
-
-
 class BaseHookViewSet(viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated,)
-    filter_backends = (StaffOrUserFilter, )
+    filter_backends = (core_filters.StaffOrUserFilter,)
     lookup_field = 'uuid'
 
 

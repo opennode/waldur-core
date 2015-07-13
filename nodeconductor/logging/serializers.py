@@ -60,7 +60,7 @@ def get_valid_events():
 
 
 class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
-    event_types = serializers.ListField(child=serializers.ChoiceField(choices=get_valid_events()))
+    event_types = serializers.MultipleChoiceField(choices=get_valid_events(), allow_blank=False)
     author_uuid = serializers.ReadOnlyField(source='user.uuid')
 
     class Meta(object):
@@ -81,10 +81,14 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
         validated_data['user'] = self.context['request'].user
         return super(BaseHookSerializer, self).create(validated_data)
 
+    def validate(self, validated_data):
+        validated_data['event_types'] = list(validated_data['event_types'])
+        return validated_data
+
 
 class WebHookSerializer(BaseHookSerializer):
     content_type = MappedChoiceField(
-        choices=[(v, k) for k, v in models.WebHook.ContentTypeChoices.CHOICES],
+        choices=[(v, v) for k, v in models.WebHook.ContentTypeChoices.CHOICES],
         choice_mappings={v: k for k, v in models.WebHook.ContentTypeChoices.CHOICES},
         required=False
     )

@@ -59,7 +59,7 @@ class HookPermisssionsViewTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND, response.data)
 
     def test_author_can_update_hook(self):
-        new_events = serializers.get_valid_events()[:2]
+        new_events = set(serializers.get_valid_events()[:2])
         self.client.force_authenticate(user=self.author)
         data = {
             'event_types': new_events,

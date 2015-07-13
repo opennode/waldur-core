@@ -24,7 +24,7 @@ Hooks
 -----
 
 Hooks API allows user to receive event notifications via different channel, like email or webhook.
-To get a list of your hooks, run GET against **/api/hooks/** as an authenticated user.
+To get a list of your web hooks, run GET against **/api/hooks-web/** as an authenticated user.
 Example of a response:
 
 .. code-block:: javascript
@@ -41,28 +41,23 @@ Example of a response:
             "events": [
                 "iaas_instance_start_succeeded"
             ],
-            "name": "web",
-            "settings": {
-                "url": "http://example.com",
-                "content_type": "json"
-            }
+            "url": "http://example.com",
+            "content_type": "json"
         }
     ]
 
-To create new hook issue POST against **/api/hooks/** as an authenticated user.
+To create new web hook issue POST against **/api/hooks-web/** as an authenticated user.
 Request should contain fields:
 
-- name: name of publishing service; currently web and email are supported
-- settings: dictionary of settings for publishing service
-- events: list of events you are interested in
-- is_active: optional boolean field used if you want to temporarily disable hook without deleting it
+- events: list of event types you are interested in
+- url: destination URL for webhook
+- content_type: optional value, which may be "json" or "form", default is "json"
 
-For web hook the following settings are supported:
+To create new email hook issue POST against **/api/hooks-web/** as an authenticated user.
+Request should contain fields:
 
-- url: destionation url
-- content_type: may be "json" or "form"
-
-If you create email hook, the email field should be specified in settings as well.
+- events: list of event types you are interested in
+- email: destination email address
 
 Example of a request:
 
@@ -71,8 +66,12 @@ Example of a request:
         "events": [
             "iaas_instance_start_succeeded"
         ],
-        "name": "email",
-        "settings": {
-            "email": "test@example.com"
-        }
+        "email": "test@example.com"
+    }
+
+You may temporarily disable hook without deleting it by issuing following PATCH request against hook URL:
+
+.. code-block:: javascript
+    {
+        "is_active": "false"
     }

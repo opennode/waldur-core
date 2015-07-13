@@ -166,3 +166,10 @@ class TimestampFilter(django_filters.NumberFilter):
             datetime_value = field.to_internal_value(value)
             return super(TimestampFilter, self).filter(qs, datetime_value)
         return qs
+
+
+class StaffOrUserFilter(object):
+    def filter_queryset(self, request, queryset, view):
+        if request.user.is_staff:
+            return queryset
+        return queryset.filter(user=request.user)
