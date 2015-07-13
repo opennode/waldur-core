@@ -12,22 +12,23 @@ from nodeconductor.logging import models as logging_models
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
-@override_settings(LOGGING={
-    'version': 1,
 
-    'handlers': {
-        'hook': {
-            'class': 'nodeconductor.logging.log.HookHandler'
-        }
-    },
-    'loggers': {
-        'nodeconductor': {
-            'level': 'DEBUG',
-            'handlers': ['hook']
-        }
-    }
-})
 class TestHook(TestCase):
+    @override_settings(LOGGING={
+        'version': 1,
+
+        'handlers': {
+            'hook': {
+                'class': 'nodeconductor.logging.log.HookHandler'
+            }
+        },
+        'loggers': {
+            'nodeconductor': {
+                'level': 'DEBUG',
+                'handlers': ['hook']
+            }
+        }
+    })
     def setUp(self):
         setup()
         self.owner = structure_factories.UserFactory()
