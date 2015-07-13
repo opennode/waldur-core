@@ -53,7 +53,7 @@ Request should contain fields:
 - url: destination URL for webhook
 - content_type: optional value, which may be "json" or "form", default is "json"
 
-To create new email hook issue POST against **/api/hooks-web/** as an authenticated user.
+To create new email hook issue POST against **/api/hooks-email/** as an authenticated user.
 Request should contain fields:
 
 - events: list of event types you are interested in
