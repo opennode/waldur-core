@@ -316,7 +316,7 @@ class EventFormatter(logging.Formatter):
         else:
             return 'critical'
 
-    def format(self, record):
+    def format_dict(self, record):
         message = {
             # basic
             '@timestamp': self.format_timestamp(record.created),
@@ -336,7 +336,10 @@ class EventFormatter(logging.Formatter):
         if hasattr(record, 'event_context'):
             message.update(record.event_context)
 
-        return json.dumps(message)
+        return message
+
+    def format(self, record):
+        return json.dumps(self.format_dict(record))
 
 
 class EventLoggerAdapter(logging.LoggerAdapter, object):
@@ -378,6 +381,10 @@ class TCPEventHandler(logging.handlers.SocketHandler, object):
 
 
 class HookHandler(logging.Handler):
+    def __init__(self):
+        super(HookHandler, self).__init__()
+        self.formatter = EventFormatter()
+
     def get_hooks(self):
         for model in models.get_hook_models():
             for hook in model.objects.filter(is_active=True):
@@ -400,7 +407,7 @@ class HookHandler(logging.Handler):
     def emit(self, record):
         for hook in self.get_hooks():
             if self.check_event(record, hook):
-                hook.process([record])
+                hook.process([self.formatter.format_dict(record)])
 
 
 class BaseLoggerRegistry(object):

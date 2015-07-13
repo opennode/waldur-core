@@ -35,13 +35,12 @@ Example of a response:
             "uuid": "81ad8f069202487cbd87cda843d27d6a",
             "is_active": true,
             "author_uuid": "1c3323fc4ae44120b57ec40dea1be6e6",
-            "last_published": "2015-07-09T13:22:11.301Z",
             "created": "2015-07-09T13:22:11.301Z",
             "modified": "2015-07-09T13:22:11.303Z",
             "events": [
                 "iaas_instance_start_succeeded"
             ],
-            "url": "http://example.com",
+            "destination_url": "http://example.com",
             "content_type": "json"
         }
     ]
@@ -50,7 +49,7 @@ To create new web hook issue POST against **/api/hooks-web/** as an authenticate
 Request should contain fields:
 
 - events: list of event types you are interested in
-- url: destination URL for webhook
+- destination_url: when hook is activated, POST request is issued against destination URL
 - content_type: optional value, which may be "json" or "form", default is "json"
 
 To create new email hook issue POST against **/api/hooks-email/** as an authenticated user.

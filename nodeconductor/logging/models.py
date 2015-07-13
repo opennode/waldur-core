@@ -87,10 +87,13 @@ class WebHook(BaseHook):
 
     def process(self, events):
         for event in events:
-            if self.content_type == ContentTypeChoices.JSON:
-                requests.post(self.destination_url, json=event.event_context, verify=False)
-            elif self.content_type == ContentTypeChoices.FORM:
-                requests.post(self.destination_url, data=event.event_context, verify=False)
+            # encode event as JSON
+            if self.content_type == WebHook.ContentTypeChoices.JSON:
+                requests.post(self.destination_url, json=event, verify=False)
+
+            # encode event as form
+            elif self.content_type == WebHook.ContentTypeChoices.FORM:
+                requests.post(self.destination_url, data=event, verify=False)
 
 
 class EmailHook(BaseHook):
@@ -102,4 +105,4 @@ class EmailHook(BaseHook):
         send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [self.email])
 
     def format_email_body(self, events):
-        return "\n".join(event.message for event in events)
+        return "\n".join(event['message'] for event in events)
