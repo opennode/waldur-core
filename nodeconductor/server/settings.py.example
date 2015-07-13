@@ -105,6 +105,10 @@ LOGGING = {
         #'null': {
         #    'class': 'logging.NullHandler',
         #,
+
+        'hook': {
+            'class': 'nodeconductor.logging.log.HookHandler'
+        },
     },
 
     # Loggers
@@ -124,7 +128,7 @@ LOGGING = {
             #'level': 'WARNING',
         },
         'nodeconductor': {
-            #'handlers': ['file', 'tcp'],
+            #'handlers': ['file', 'tcp', 'hook'],
             #'level': 'DEBUG',
         },
         # Loggers for plugins
