@@ -133,7 +133,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
         self.backend.create_cinder_client = mock.Mock(return_value=self.cinder_client)
         self.backend.get_or_create_tenant = mock.Mock(return_value=self.tenant)
         self.backend.get_or_create_user = mock.Mock(return_value=('john', 'doe'))
-        self.backend.get_or_create_network = mock.Mock()
+        self.backend.get_or_create_internal_network = mock.Mock()
         self.backend.ensure_user_is_tenant_admin = mock.Mock()
         self.backend.create_security_group = mock.Mock()
         self.backend.update_security_group = mock.Mock()
@@ -154,7 +154,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
     def test_push_membership_synchronizes_network(self):
         self.backend.push_membership(self.membership)
 
-        self.backend.get_or_create_network.assert_called_once_with(self.membership, self.neutron_client)
+        self.backend.get_or_create_internal_network.assert_called_once_with(self.membership, self.neutron_client)
 
     def test_push_membership_synchronizes_users_role_in_tenant(self):
         self.backend.push_membership(self.membership)
@@ -251,7 +251,7 @@ class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
         self.backend.create_neutron_client = mock.Mock(return_value=self.neutron_client)
         self.backend.get_or_create_tenant = mock.Mock(return_value=self.tenant)
         self.backend.get_or_create_user = mock.Mock(return_value=('john', 'doe'))
-        self.backend.get_or_create_network = mock.Mock()
+        self.backend.get_or_create_internal_network = mock.Mock()
         self.backend.ensure_user_is_tenant_admin = mock.Mock()
         self.backend.push_security_group = mock.Mock()
         self.backend.create_security_group = mock.Mock()
@@ -407,7 +407,7 @@ class OpenStackBackendFloatingIPTest(TransactionTestCase):
         self.backend.create_neutron_client = mock.Mock(return_value=self.neutron_client)
         self.backend.get_or_create_tenant = mock.Mock(return_value=self.tenant)
         self.backend.get_or_create_user = mock.Mock(return_value=('john', 'doe'))
-        self.backend.get_or_create_network = mock.Mock()
+        self.backend.get_or_create_internal_network = mock.Mock()
         self.backend.ensure_user_is_tenant_admin = mock.Mock()
         self.floating_ips = [
             {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.163', 'id': '063795b7-23ac-4a0d-82f0-4326e73ee1bc', 'port_id': 'fakeport'},
