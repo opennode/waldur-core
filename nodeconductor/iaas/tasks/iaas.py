@@ -343,3 +343,16 @@ def create_external_network(membership_pk, network_data):
         backend.get_or_create_external_network(membership, neutron, **network_data)
     except CloudBackendError:
         logger.info('Failed to create external network for cloud project membership with id %s.', membership_pk)
+
+@shared_task
+def delete_external_network(membership_pk):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+    backend = membership.cloud.get_backend()
+
+    try:
+        session = backend.create_session(keystone_url=membership.cloud.auth_url, dummy=backend.dummy)
+        neutron = backend.create_neutron_client(session)
+
+        backend.delete_external_network(membership, neutron)
+    except CloudBackendError:
+        logger.info('Failed to delete external network for cloud project membership with id %s.', membership_pk)

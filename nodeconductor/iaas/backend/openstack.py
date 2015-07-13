@@ -2079,33 +2079,34 @@ class OpenStackBackend(OpenStackClient):
 
                 return membership.external_network_id
 
+        # External network creation
         network_name = '{0}-ext-net'.format(self.create_backend_name())
         network = {
             'name': network_name,
             'tenant_id': membership.tenant_id,
-            'router:external': True
+            'router:external': True,
+            'provider:physical_network': 'physnet1'
         }
 
         if vlan_id:
             network['provider:network_type'] = 'vlan'
             network['provider:segmentation_id'] = vlan_id
-            network['provider:physical_network'] = 'physnet1'
         elif vxlan_id:
             network['provider:network_type'] = 'vxlan'
             network['provider:segmentation_id'] = vxlan_id
         else:
-            raise ValueError('VLAND or VXLAN ID should be provided.')
+            raise CloudBackendError('VLAN or VXLAN ID should be provided.')
 
-        logger.info('Creating external network %s', network_name)
         create_response = neutron.create_network({'networks': [network]})
         network_id = create_response['networks'][0]['id']
+        logger.info('External network with name %s has been created.', network_name)
         membership.external_network_id = network_id
         membership.save()
 
+        # Subnet creation
         subnet_name = '{0}-sn01'.format(network_name)
-
-        logger.info('Creating subnet %s', subnet_name)
         cidr = '{0}/{1}'.format(network_ip, network_prefix)
+
         subnet_data = {
             'network_id': membership.external_network_id,
             'tenant_id': membership.tenant_id,
@@ -2115,9 +2116,13 @@ class OpenStackBackend(OpenStackClient):
             'enable_dhcp': False,
         }
         create_response = neutron.create_subnet({'subnets': [subnet_data]})
+        logger.info('Subnet with name %s has been created.', subnet_name)
+
+        # Router creation
         self.get_or_create_router(neutron, network_name, create_response['subnets'][0]['id'],
                                   membership.tenant_id)
 
+        # Floating IPs creation
         floating_ip = {
             'floating_network_id': membership.external_network_id,
         }
@@ -2129,6 +2134,23 @@ class OpenStackBackend(OpenStackClient):
                             ip['floating_ip_address'], network_name)
 
         return membership.internal_network_id
+
+    def delete_external_network(self, membership, neutron):
+        floating_ips = neutron.list_floatingips(floating_network_id=membership.external_network_id)['floatingips']
+
+        for ip in floating_ips:
+            neutron.delete_floatingip(ip['id'])
+            logger.info('Floating IP with id %s has been deleted.', ip['id'])
+
+        subnets = neutron.list_subnets(network_id=membership.external_network_id)['subnets']
+        for subnet in subnets:
+            neutron.delete_subnet(subnet['id'])
+            logger.info('Subnet with id %s has been deleted.', subnet['id'])
+
+        neutron.delete_network(membership.external_network_id)
+        logger.info('External network wit id %s has been deleted.', membership.external_network_id)
+        membership.external_network_id = ''
+        membership.save()
 
     def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id):
         routers = neutron.list_routers(tenant_id=tenant_id)['routers']
@@ -2142,6 +2164,7 @@ class OpenStackBackend(OpenStackClient):
 
         try:
             neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
+            logger.info('Subnet with id %s added to the router with name %s.', subnet_id, router_name)
         except neutron_exceptions.NeutronClientException:
             pass
 
