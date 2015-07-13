@@ -1,9 +1,6 @@
-import logging
-
 from django.contrib.contenttypes import models as ct_models
 
 from nodeconductor.logging import models
-from nodeconductor.logging.log import event_logger
 
 
 def remove_related_alerts(sender, instance, **kwargs):

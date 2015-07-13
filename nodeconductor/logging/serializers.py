@@ -74,8 +74,6 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
             'url': {'lookup_field': 'uuid'},
         }
 
-        read_only_fields = ('last_published',)
-
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
         return super(BaseHookSerializer, self).create(validated_data)
