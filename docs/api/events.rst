@@ -31,7 +31,7 @@ Example of a response:
 
     [
         {
-            "url": "http://localhost:8080/api/hooks/81ad8f069202487cbd87cda843d27d6a/",
+            "url": "http://example.com/api/hooks/81ad8f069202487cbd87cda843d27d6a/",
             "uuid": "81ad8f069202487cbd87cda843d27d6a",
             "is_active": true,
             "author_uuid": "1c3323fc4ae44120b57ec40dea1be6e6",
