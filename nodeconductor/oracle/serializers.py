@@ -35,14 +35,14 @@ class ServiceSerializer(structure_serializers.BaseServiceSerializer):
     SERVICE_TYPE = SupportedServices.Types.Oracle
 
     class Meta(structure_serializers.BaseServiceSerializer.Meta):
-        model = models.OracleService
+        model = models.Service
         view_name = 'oracle-detail'
 
 
 class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkSerializer):
 
     class Meta(structure_serializers.BaseServiceProjectLinkSerializer.Meta):
-        model = models.OracleServiceProjectLink
+        model = models.ServiceProjectLink
         view_name = 'oracle-spl-detail'
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': 'oracle-detail'},
@@ -59,7 +59,7 @@ class DatabaseSerializer(structure_serializers.BaseResourceSerializer):
 
     service_project_link = serializers.HyperlinkedRelatedField(
         view_name='oracle-spl-detail',
-        queryset=models.OracleServiceProjectLink.objects.all(),
+        queryset=models.ServiceProjectLink.objects.all(),
         write_only=True)
 
     zone = serializers.HyperlinkedRelatedField(

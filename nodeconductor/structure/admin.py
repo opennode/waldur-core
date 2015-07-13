@@ -189,5 +189,5 @@ class HiddenServiceAdmin(admin.ModelAdmin):
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ProjectGroup, ProjectGroupAdmin)
-admin.site.register(models.Service, ServiceAdmin)
+# admin.site.register(models.Service, ServiceAdmin)
 admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)

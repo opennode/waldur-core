@@ -5,10 +5,10 @@ from django.utils.translation import ungettext
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure.admin import HiddenServiceAdmin
-from nodeconductor.openstack.models import OpenStackService, OpenStackServiceProjectLink
+from nodeconductor.openstack.models import Service, ServiceProjectLink
 
 
-class OpenStackServiceProjectLinkAdmin(admin.ModelAdmin):
+class ServiceProjectLinkAdmin(admin.ModelAdmin):
     readonly_fields = ('service', 'project')
     list_display = ('get_service_name', 'get_customer_name', 'get_project_name', 'state', 'tenant_id')
     ordering = ('service__customer__name', 'project__name', 'service__name')
@@ -18,7 +18,7 @@ class OpenStackServiceProjectLinkAdmin(admin.ModelAdmin):
     actions = ['sync_with_backend']
 
     def get_queryset(self, request):
-        queryset = super(OpenStackServiceProjectLinkAdmin, self).get_queryset(request)
+        queryset = super(ServiceProjectLinkAdmin, self).get_queryset(request)
         return queryset.select_related('service', 'project', 'project__customer')
 
     def sync_with_backend(self, request, queryset):
@@ -53,5 +53,5 @@ class OpenStackServiceProjectLinkAdmin(admin.ModelAdmin):
     get_customer_name.short_description = 'Customer'
 
 
-admin.site.register(OpenStackService, HiddenServiceAdmin)
-admin.site.register(OpenStackServiceProjectLink, OpenStackServiceProjectLinkAdmin)
+admin.site.register(Service, HiddenServiceAdmin)
+admin.site.register(ServiceProjectLink, ServiceProjectLinkAdmin)

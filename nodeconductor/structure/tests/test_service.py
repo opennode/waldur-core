@@ -98,6 +98,7 @@ class SuspendServiceTest(test.APITransactionTestCase):
             response = self.client.delete(service_url)
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+            settings = factories.ServiceSettingsFactory(customer=self.customer, type=service_type)
             response = self.client.post(
                 self._get_url(SupportedServices.get_list_view_for_model(models['service'])),
                 {
@@ -106,7 +107,7 @@ class SuspendServiceTest(test.APITransactionTestCase):
                     'settings': factories.ServiceSettingsFactory.get_url(settings),
                     'auth_url': 'http://example.com:5000/v2',
                 })
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.data)
 
             for resource_model in models['resources']:
                 if service_type == SupportedServices.Types.IaaS:

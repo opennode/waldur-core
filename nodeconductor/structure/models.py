@@ -406,11 +406,12 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
 
 
 @python_2_unicode_compatible
-class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
+class Service(core_models.UuidMixin, core_models.NameMixin):
     """ Base service class. """
 
     class Meta(object):
-        unique_together = ('customer', 'settings', 'polymorphic_ctype')
+        abstract = True
+        unique_together = ('customer', 'settings')
 
     class Permissions(object):
         customer_path = 'customer'
@@ -418,7 +419,7 @@ class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
         project_group_path = 'customer__projects__project_groups'
 
     settings = models.ForeignKey(ServiceSettings, related_name='+')
-    customer = models.ForeignKey(Customer, related_name='services')
+    customer = models.ForeignKey(Customer, related_name='+')
     projects = NotImplemented
 
     def get_backend(self, **kwargs):
@@ -461,7 +462,7 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
         project_group_path = 'project__project_groups'
 
     service = NotImplemented
-    project = models.ForeignKey(Project)
+    project = models.ForeignKey(Project, related_name='+')
 
     def get_quota_parents(self):
         return [self.project]

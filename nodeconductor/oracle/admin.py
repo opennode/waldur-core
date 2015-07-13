@@ -3,7 +3,7 @@ from django.contrib import admin
 
 from nodeconductor.structure.admin import HiddenServiceAdmin
 
-from nodeconductor.oracle.models import OracleService, Database
+from nodeconductor.oracle.models import Service, Database
 
 
 class DatabaseAdmin(admin.ModelAdmin):
@@ -11,5 +11,5 @@ class DatabaseAdmin(admin.ModelAdmin):
     list_filter = ('state',)
 
 
-admin.site.register(OracleService, HiddenServiceAdmin)
+admin.site.register(Service, HiddenServiceAdmin)
 admin.site.register(Database, DatabaseAdmin)
