@@ -398,6 +398,10 @@ class HookHandler(logging.Handler):
         return False
 
     def check_event(self, record, hook):
+        if not hasattr(record, 'event_type'):
+            return False
+        if not hasattr(record, 'event_context'):
+            return False
         if record.event_type not in hook.event_types:
             return False
         if not self.can_user_see_event(hook.user, record.event_context):
