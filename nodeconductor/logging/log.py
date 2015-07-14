@@ -9,9 +9,9 @@ from django.apps import apps
 from django.utils import six
 from django.contrib.contenttypes import models as ct_models
 
+from nodeconductor.core.tasks import send_task
 from nodeconductor.logging import models
 from nodeconductor.logging.middleware import get_event_context
-from nodeconductor.core.tasks import send_task
 
 
 logger = logging.getLogger(__name__)

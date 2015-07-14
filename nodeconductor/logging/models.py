@@ -10,8 +10,8 @@ from model_utils.models import TimeStampedModel
 import requests
 from uuidfield import UUIDField
 
-from nodeconductor.logging import managers
 from nodeconductor.core.utils import timestamp_to_datetime
+from nodeconductor.logging import managers
 
 
 class UuidMixin(models.Model):

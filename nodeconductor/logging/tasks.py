@@ -1,7 +1,7 @@
 from celery import shared_task
 
-from nodeconductor.logging.models import BaseHook
 from nodeconductor.logging.log import event_logger
+from nodeconductor.logging.models import BaseHook
 
 
 @shared_task(name='nodeconductor.logging.process_event')
