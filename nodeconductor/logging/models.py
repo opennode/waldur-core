@@ -8,7 +8,6 @@ from django.utils import timezone
 from jsonfield import JSONField
 from model_utils.models import TimeStampedModel
 import requests
-import logging
 from uuidfield import UUIDField
 
 from nodeconductor.logging import managers
@@ -103,7 +102,6 @@ class EmailHook(BaseHook):
 
     def process(self, event):
         subject = 'Notifications from NodeConductor'
-        logging.warning(event)
         event['timestamp'] = timestamp_to_datetime(event['timestamp'])
         text_message = event['message']
         html_message = render_to_string('logging/email.html', {'events': [event]})
