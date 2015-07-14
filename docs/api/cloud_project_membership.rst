@@ -85,3 +85,39 @@ Example of a valid request (token is user specific):
 
 If a project-cloud link is in a erred state, operation will return **409 CONFLICT**.
 If an instance with a specified backend id already exists, the response will raise **400 BAD REQUEST**.
+
+Creating external network
+-------------------------
+
+In order to create external network a person with admin role or staff should issue a POST
+request to **/api/project-cloud-memberships/<pk>/external_network/**. The body of the request should consist
+of following parameters:
+
+- vlan_id (required if vxlan_id is not provided) - VLAN ID of the external network.
+- vxlan_id (required if vlan_id is not provided) - VXLAN ID of the external network.
+- network_ip (required) - network IP address for floating IP range.
+- network_prefix (required) - prefix of the network address for the floating IP range.
+- ips_count (optional) - number of floating IPs to create automatically.
+
+Example of a valid request (token is user specific):
+
+.. code-block:: http
+
+    POST /api/project-cloud-memberships/1/external_network/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "vlan_id": "a325e56a-4689-4d10-abdb-f35918125af7",
+        "network_ip": "10.7.122.0",
+        "network_prefix": "26",
+        "ips_count": "6"
+    }
+
+Deleting external network
+-------------------------
+
+In order to delete external network, a person with admin role or staff should issue a DELETE request
+to **/api/project-cloud-memberships/<pk>/external_network/** without any parameters in the request body.

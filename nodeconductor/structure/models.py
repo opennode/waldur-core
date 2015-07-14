@@ -11,7 +11,6 @@ from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 from model_utils.models import TimeStampedModel
-from polymorphic import PolymorphicModel
 from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
@@ -142,6 +141,16 @@ class Customer(core_models.UuidMixin,
 
     def can_user_update_quotas(self, user):
         return user.is_staff
+
+    @classmethod
+    def get_permitted_objects_uuids(cls, user):
+        from nodeconductor.structure.filters import filter_queryset_for_user
+        if user.is_staff:
+            customer_queryset = cls.objects.all()
+        else:
+            customer_queryset = cls.objects.filter(
+                roles__permission_group__user=user, roles__role_type=CustomerRole.OWNER)
+        return {'customer_uuid': filter_queryset_for_user(customer_queryset, user).values_list('uuid', flat=True)}
 
     def __str__(self):
         return '%(name)s (%(abbreviation)s)' % {
@@ -282,6 +291,11 @@ class Project(core_models.DescribableMixin,
     def get_log_fields(self):
         return ('uuid', 'customer', 'name', 'group')
 
+    @classmethod
+    def get_permitted_objects_uuids(cls, user):
+        from nodeconductor.structure.filters import filter_queryset_for_user
+        return {'project_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
+
 
 @python_2_unicode_compatible
 class ProjectGroupRole(core_models.UuidMixin, models.Model):
@@ -377,6 +391,11 @@ class ProjectGroup(core_models.UuidMixin,
 
     def get_log_fields(self):
         return ('uuid', 'customer', 'name')
+
+    @classmethod
+    def get_permitted_objects_uuids(cls, user):
+        from nodeconductor.structure.filters import filter_queryset_for_user
+        return {'project_group_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
 
 
 @python_2_unicode_compatible
