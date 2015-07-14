@@ -1160,7 +1160,7 @@ class SshKeyViewSet(mixins.CreateModelMixin,
     queryset = core_models.SshPublicKey.objects.all()
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
-    filter_backends = (rf_filters.DjangoFilterBackend,)
+    filter_backends = (rf_filters.DjangoFilterBackend, core_filters.StaffOrUserFilter)
     filter_class = SshKeyFilter
 
     def perform_create(self, serializer):
@@ -1171,15 +1171,6 @@ class SshKeyViewSet(mixins.CreateModelMixin,
             raise rf_serializers.ValidationError({'name': ['This field must be unique.']})
 
         serializer.save(user=user)
-
-    def get_queryset(self):
-        queryset = super(SshKeyViewSet, self).get_queryset()
-        user = self.request.user
-
-        if user.is_staff:
-            return queryset
-
-        return queryset.filter(user=user)
 
 
 class ServiceSettingsFilter(django_filters.FilterSet):

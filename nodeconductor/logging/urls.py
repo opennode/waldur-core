@@ -6,6 +6,9 @@ from nodeconductor.logging import views
 def register_in(router):
     router.register(r'alerts', views.AlertViewSet)
     router.register(r'events', views.EventViewSet, base_name='event')
+    router.register(r'hooks-web', views.WebHookViewSet, base_name='webhook')
+    router.register(r'hooks-email', views.EmailHookViewSet, base_name='emailhook')
+
 
 events_count_history = views.EventViewSet.as_view({'get': 'count_history'})
 stats_alerts = views.AlertViewSet.as_view({'get': 'stats'})
