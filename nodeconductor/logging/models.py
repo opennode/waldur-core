@@ -74,6 +74,10 @@ class BaseHook(UuidMixin, TimeStampedModel):
     def get_hooks(cls):
         return [obj for hook in cls.__subclasses__() for obj in hook.objects.filter(is_active=True)]
 
+    @classmethod
+    def has_hooks(cls):
+        return any(hook.objects.exists() for hook in cls.__subclasses__())
+
 
 class WebHook(BaseHook):
     class ContentTypeChoices(object):

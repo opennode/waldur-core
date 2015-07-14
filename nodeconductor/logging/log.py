@@ -391,8 +391,9 @@ class HookHandler(logging.Handler):
                 'context': record.event_context
             }
 
-            # Perform hook processing in background thread
-            send_task('logging', 'process_event')(event)
+            if models.BaseHook.has_hooks():
+                # Perform hook processing in background thread
+                send_task('logging', 'process_event')(event)
 
 
 class BaseLoggerRegistry(object):

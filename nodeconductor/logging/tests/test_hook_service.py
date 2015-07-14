@@ -1,10 +1,10 @@
 import mock
 import time
 
+from django.conf import settings
 from django.core import mail
-from django import setup
 from django.test import TestCase
-from django.test.utils import override_settings
+from django.utils.log import configure_logging
 
 from nodeconductor.logging import models as logging_models
 from nodeconductor.logging.tasks import process_event
@@ -14,7 +14,7 @@ from nodeconductor.structure.tests import factories as structure_factories
 
 
 class TestHookService(TestCase):
-    @override_settings(LOGGING={
+    LOGGING = {
         'version': 1,
 
         'handlers': {
@@ -28,9 +28,9 @@ class TestHookService(TestCase):
                 'handlers': ['hook']
             }
         }
-    })
+    }
+
     def setUp(self):
-        setup()
         self.owner = structure_factories.UserFactory()
         self.customer = structure_factories.CustomerFactory()
         self.customer.add_user(self.owner, structure_models.CustomerRole.OWNER)
@@ -46,6 +46,17 @@ class TestHookService(TestCase):
             'timestamp': time.time()
         }
 
+        # Create email hook for another user
+        self.other_hook = logging_models.EmailHook.objects.create(user=self.other_user,
+                                                                  email=self.owner.email,
+                                                                  event_types=[self.event_type])
+
+        configure_logging(settings.LOGGING_CONFIG, self.LOGGING)
+
+    def tearDown(self):
+        # Restore original logging config so that other tests won't depend on it
+        configure_logging(settings.LOGGING_CONFIG, settings.LOGGING)
+
     @mock.patch('celery.app.base.Celery.send_task')
     def test_logger_handler_sends_task(self, mocked_task):
         event_logger.customer.warning(self.message,
@@ -57,11 +68,6 @@ class TestHookService(TestCase):
     def test_email_hook_filters_events_by_user_and_event_type(self):
         # Create email hook for customer owner
         email_hook = logging_models.EmailHook.objects.create(user=self.owner,
-                                                             email=self.owner.email,
-                                                             event_types=[self.event_type])
-
-        # Create email hook for another user
-        other_hook = logging_models.EmailHook.objects.create(user=self.other_user,
                                                              email=self.owner.email,
                                                              event_types=[self.event_type])
 
