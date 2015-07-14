@@ -32,6 +32,7 @@ install_requires = [
     'elasticsearch>=1.0.0,<2.0.0',
     'jira>=0.47',
     'jsonfield==1.0.0',
+    'oslo.config < 1.15.0',
     'Pillow>=2.0.0',
     'python-ceilometerclient==1.0.10',
     'python-cinderclient==1.0.9',

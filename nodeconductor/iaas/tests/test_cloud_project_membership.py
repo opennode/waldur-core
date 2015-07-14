@@ -104,6 +104,41 @@ class CloudProjectMembershipActionsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         mocked_task.delay.assert_called_once_with(self.cloud_project_membership.pk, quotas=quotas_data)
 
+    @patch('nodeconductor.iaas.tasks.create_external_network')
+    def test_staff_user_can_create_external_network(self, mocked_task):
+        self.client.force_authenticate(user=self.staff)
+        url = factories.CloudProjectMembershipFactory.get_url(self.cloud_project_membership, 'external_network')
+        data = {
+            'vlan_id': '2007',
+            'network_ip': '10.7.122.0',
+            'network_prefix': 26,
+            'ips_count': 6
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        mocked_task.delay.assert_called_once_with(str(self.cloud_project_membership.pk), data)
+
+    @patch('nodeconductor.iaas.tasks.delete_external_network')
+    def test_staff_user_can_delete_existent_external_network(self, mocked_task):
+        self.cloud_project_membership.external_network_id = 'abcd1234'
+        self.cloud_project_membership.save()
+        self.client.force_authenticate(user=self.staff)
+
+        url = factories.CloudProjectMembershipFactory.get_url(self.cloud_project_membership, 'external_network')
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        mocked_task.delay.assert_called_once_with(str(self.cloud_project_membership.pk))
+
+    @patch('nodeconductor.iaas.tasks.delete_external_network')
+    def test_staff_user_cannot_delete_not_existent_external_network(self, mocked_task):
+        self.client.force_authenticate(user=self.staff)
+
+        url = factories.CloudProjectMembershipFactory.get_url(self.cloud_project_membership, 'external_network')
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(mocked_task.delay.called)
 
 # XXX: this have to be reworked to permissions test
 

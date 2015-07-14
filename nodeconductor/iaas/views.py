@@ -1094,6 +1094,25 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
         return Response({'status': 'Instance import was scheduled'},
                         status=status.HTTP_202_ACCEPTED)
 
+    @detail_route(methods=['post', 'delete'])
+    def external_network(self, request, pk=None):
+        if request.method == 'DELETE':
+            membership = self.get_object()
+            if membership.external_network_id:
+                tasks.delete_external_network.delay(pk)
+                return Response({'status': 'External network deletion has been scheduled.'},
+                                status=status.HTTP_202_ACCEPTED)
+            else:
+                return Response({'status': 'External network does not exist.'},
+                                status=status.HTTP_204_NO_CONTENT)
+
+        serializer = serializers.ExternalNetworkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        tasks.create_external_network.delay(pk, serializer.data)
+
+        return Response({'status': 'External network creation has been scheduled.'},
+                        status=status.HTTP_202_ACCEPTED)
+
 
 class SecurityGroupFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
