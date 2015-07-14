@@ -2142,6 +2142,11 @@ class OpenStackBackend(OpenStackClient):
             neutron.delete_floatingip(ip['id'])
             logger.info('Floating IP with id %s has been deleted.', ip['id'])
 
+        ports = neutron.list_ports(network_id=membership.external_network_id)['ports']
+        for port in ports:
+            neutron.remove_interface_router(port['device_id'], {'port_id': port['id']})
+            logger.info('Port with id %s has been deleted.', port['id'])
+
         subnets = neutron.list_subnets(network_id=membership.external_network_id)['subnets']
         for subnet in subnets:
             neutron.delete_subnet(subnet['id'])
@@ -2153,18 +2158,19 @@ class OpenStackBackend(OpenStackClient):
         membership.save()
 
     def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id):
+        router_name = '{0}-router'.format(network_name)
         routers = neutron.list_routers(tenant_id=tenant_id)['routers']
+
         if routers:
             logger.info('Router(s) in tenant with id %s already exist(s).', tenant_id)
-            return routers[0]['id']
-
-        router_name = '{0}-router'.format(network_name)
-        router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
-        logger.info('Router with name %s has been created.', router['name'])
+            router = routers[0]
+        else:
+            router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
+            logger.info('Router with name %s has been created.', router['name'])
 
         try:
             neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
-            logger.info('Subnet with id %s added to the router with name %s.', subnet_id, router_name)
+            logger.info('Subnet with id %s was added to the router with name %s.', subnet_id, router_name)
         except neutron_exceptions.NeutronClientException:
             pass
 
