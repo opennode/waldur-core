@@ -3,12 +3,8 @@ from datetime import datetime
 from django.contrib import admin, messages
 from django.core.management import call_command, CommandError
 from django.db import models as django_models
-from django.db.models import get_models
 from django.http import HttpResponseRedirect
 from django.utils.translation import ungettext
-from polymorphic.admin import (
-    PolymorphicParentModelAdmin, PolymorphicChildModelAdmin,
-    PolymorphicChildModelFilter)
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
@@ -167,27 +163,62 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     sync.short_description = "Sync selected service settings with backend"
 
 
-class ServiceAdmin(PolymorphicParentModelAdmin):
-    list_display = ('name', 'customer', 'settings', 'polymorphic_ctype')
+class ServiceAdmin(admin.ModelAdmin):
+    list_display = ('name', 'customer', 'settings')
     ordering = ('name', 'customer')
-    list_filter = (PolymorphicChildModelFilter,)
-    base_model = models.Service
-
-    def get_child_models(self):
-        class BaseAdminClass(PolymorphicChildModelAdmin):
-            base_model = models.Service
-
-        return [(model, BaseAdminClass) for model in get_models()
-                if model is not models.Service and issubclass(model, models.Service)]
 
 
-class HiddenServiceAdmin(admin.ModelAdmin):
-    def get_model_perms(self, request):
-        return {}
+class ServiceProjectLinkAdmin(admin.ModelAdmin):
+    readonly_fields = ('service', 'project')
+    list_display = ('get_service_name', 'get_customer_name', 'get_project_name', 'state')
+    ordering = ('service__customer__name', 'project__name', 'service__name')
+    list_display_links = ('get_service_name',)
+    search_fields = ('service__customer__name', 'project__name', 'service__name')
+
+    actions = ['sync_with_backend']
+
+    def get_queryset(self, request):
+        queryset = super(ServiceProjectLinkAdmin, self).get_queryset(request)
+        return queryset.select_related('service', 'project', 'project__customer')
+
+    def sync_with_backend(self, request, queryset):
+        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
+        send_task('structure', 'sync_service_project_links')([spl.to_string() for spl in queryset])
+
+        tasks_scheduled = queryset.count()
+        message = ungettext(
+            'One service project link scheduled for update',
+            '%(tasks_scheduled)d service project links scheduled for update',
+            tasks_scheduled
+        )
+        message = message % {'tasks_scheduled': tasks_scheduled}
+
+        self.message_user(request, message)
+
+    sync_with_backend.short_description = "Sync selected service project links with backend"
+
+    def get_service_name(self, obj):
+        return obj.service.name
+
+    get_service_name.short_description = 'Service'
+
+    def get_project_name(self, obj):
+        return obj.project.name
+
+    get_project_name.short_description = 'Project'
+
+    def get_customer_name(self, obj):
+        return obj.service.customer.name
+
+    get_customer_name.short_description = 'Customer'
+
+
+class ResourceAdmin(admin.ModelAdmin):
+    list_display = ('name', 'backend_id', 'state')
+    list_filter = ('state',)
 
 
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ProjectGroup, ProjectGroupAdmin)
-# admin.site.register(models.Service, ServiceAdmin)
 admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)
