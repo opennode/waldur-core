@@ -51,6 +51,14 @@ class Migration(migrations.Migration):
             "INSERT INTO oracle_serviceprojectlink (id, state, project_id, service_id) "
             "SELECT id, state, project_id, service_id FROM oracle_oracleserviceprojectlink;"
         ),
+        migrations.RemoveField(
+            model_name='oracleserviceprojectlink',
+            name='project',
+        ),
+        migrations.RemoveField(
+            model_name='oracleserviceprojectlink',
+            name='service',
+        ),
         migrations.AddField(
             model_name='oracleservice',
             name='tmp',
@@ -63,14 +71,6 @@ class Migration(migrations.Migration):
         migrations.RemoveField(
             model_name='oracleservice',
             name='service_ptr',
-        ),
-        migrations.RemoveField(
-            model_name='oracleserviceprojectlink',
-            name='project',
-        ),
-        migrations.RemoveField(
-            model_name='oracleserviceprojectlink',
-            name='service',
         ),
         migrations.DeleteModel(
             name='OracleService',

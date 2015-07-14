@@ -54,6 +54,14 @@ class Migration(migrations.Migration):
             "INSERT INTO openstack_serviceprojectlink (id, state, tenant_id, internal_network_id, availability_zone, project_id, service_id) "
             "SELECT id, state, tenant_id, internal_network_id, availability_zone, project_id, service_id FROM openstack_openstackserviceprojectlink;"
         ),
+        migrations.RemoveField(
+            model_name='openstackserviceprojectlink',
+            name='project',
+        ),
+        migrations.RemoveField(
+            model_name='openstackserviceprojectlink',
+            name='service',
+        ),
         migrations.AddField(
             model_name='openstackservice',
             name='tmp',
@@ -66,14 +74,6 @@ class Migration(migrations.Migration):
         migrations.RemoveField(
             model_name='openstackservice',
             name='service_ptr',
-        ),
-        migrations.RemoveField(
-            model_name='openstackserviceprojectlink',
-            name='project',
-        ),
-        migrations.RemoveField(
-            model_name='openstackserviceprojectlink',
-            name='service',
         ),
         migrations.DeleteModel(
             name='OpenStackService',
