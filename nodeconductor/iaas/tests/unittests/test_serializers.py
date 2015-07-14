@@ -188,7 +188,7 @@ class CloudProjectMembershipQuotaSerializerTest(TestCase):
 
 
 class ExternalNetworkSerializerTest(TestCase):
-    def test_external_network_serializer_accepts_right_values(self):
+    def test_external_network_serializer_accepts_valid_values(self):
         data = {
             'vlan_id': '2007',
             'network_ip': '10.7.122.0',
@@ -199,30 +199,19 @@ class ExternalNetworkSerializerTest(TestCase):
         self.assertTrue(serializer.is_valid())
         self.assertEqual(data, serializer.data)
 
-    def test_external_network_serializer_does_not_accept_wrong_values(self):
+    def test_external_network_serializer_fail_with_vlan_and_vxlan_ids(self):
         data = {
-            'vlan_id': '2007',
-            'vxlan_id': '2008',
-            'network_ip': '10.7.122.0',
-            'network_prefix': 26,
+            'vlan_id': 1234,
+            'vxlan_id': 2008,
+            'network_ip': '10.7.122.0.125',
+            'network_prefix': 15,
             'ips_count': 6
         }
         serializer = serializers.ExternalNetworkSerializer(data=data)
         self.assertFalse(serializer.is_valid())
 
-    def test_external_network_serializer_fail_with_both_vlan_and_vxlan_ids(self):
+    def test_external_network_serializer_fail_without_vlan_and_vxlan_ids(self):
         data = {
-            'vlan_id': 1234,
-            'network_ip': '10.7.122.0.125',
-            'network_prefix': 'ab',
-            'ips_count': 'cd'
-        }
-        serializer = serializers.ExternalNetworkSerializer(data=data)
-        self.assertFalse(serializer.is_valid())
-
-    def test_external_network_serializer_fail_without_both_vlan_and_vxlan_ids(self):
-        data = {
-            'vlan_id': 1234,
             'network_ip': '10.7.122.0.125',
             'network_prefix': 'ab',
             'ips_count': 'cd'
