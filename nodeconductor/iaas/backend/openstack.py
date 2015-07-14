@@ -2085,7 +2085,6 @@ class OpenStackBackend(OpenStackClient):
             'name': network_name,
             'tenant_id': membership.tenant_id,
             'router:external': True,
-            'provider:physical_network': 'physnet1'
         }
 
         if vlan_id:
@@ -2133,7 +2132,7 @@ class OpenStackBackend(OpenStackClient):
                 logger.info('Floating ip %s for external network %s has been created.',
                             ip['floating_ip_address'], network_name)
 
-        return membership.internal_network_id
+        return membership.external_network_id
 
     def delete_external_network(self, membership, neutron):
         floating_ips = neutron.list_floatingips(floating_network_id=membership.external_network_id)['floatingips']
@@ -2153,7 +2152,7 @@ class OpenStackBackend(OpenStackClient):
             logger.info('Subnet with id %s has been deleted.', subnet['id'])
 
         neutron.delete_network(membership.external_network_id)
-        logger.info('External network wit id %s has been deleted.', membership.external_network_id)
+        logger.info('External network with id %s has been deleted.', membership.external_network_id)
         membership.external_network_id = ''
         membership.save()
 
