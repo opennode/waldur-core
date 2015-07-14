@@ -6,11 +6,10 @@ from django import setup
 from django.test import TestCase
 from django.test.utils import override_settings
 
-from nodeconductor.iaas.log import event_logger
-from nodeconductor.iaas.tests import factories as iaas_factories
 from nodeconductor.logging import models as logging_models
 from nodeconductor.logging.tasks import process_event
 from nodeconductor.structure import models as structure_models
+from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -33,26 +32,25 @@ class TestHookService(TestCase):
     def setUp(self):
         setup()
         self.owner = structure_factories.UserFactory()
-        self.instance = iaas_factories.InstanceFactory()
-        self.customer = self.instance.cloud_project_membership.project.customer
+        self.customer = structure_factories.CustomerFactory()
         self.customer.add_user(self.owner, structure_models.CustomerRole.OWNER)
         self.other_user = structure_factories.UserFactory()
 
-        self.event_type = 'iaas_instance_creation_scheduled'
-        self.other_event = 'iaas_instance_creation_succeeded'
-        self.message = 'Virtual machine creation has been scheduled.'
+        self.event_type = 'customer_update_succeeded'
+        self.other_event = 'customer_deletion_succeeded'
+        self.message = 'Customer {customer_name} has been updated.'
         self.event = {
             'message': self.message,
             'type': self.event_type,
-            'context': event_logger.instance.compile_context(instance=self.instance),
+            'context': event_logger.customer.compile_context(customer=self.customer),
             'timestamp': time.time()
         }
 
     @mock.patch('celery.app.base.Celery.send_task')
     def test_logger_handler_sends_task(self, mocked_task):
-        event_logger.instance.warning(self.message,
+        event_logger.customer.warning(self.message,
                                       event_type=self.event_type,
-                                      event_context={'instance': self.instance})
+                                      event_context={'customer': self.customer})
 
         mocked_task.assert_called_with('nodeconductor.logging.process_event', mock.ANY, {})
 
