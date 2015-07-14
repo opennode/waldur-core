@@ -7,6 +7,7 @@ import reversion
 from reversion.models import Version
 
 from nodeconductor.core.pagination import UnlimitedLinkHeaderPagination
+from nodeconductor.core.serializers import HistorySerializer
 from nodeconductor.core.utils import datetime_to_timestamp
 from nodeconductor.quotas import models, serializers
 
@@ -38,7 +39,7 @@ class QuotaViewSet(mixins.UpdateModelMixin,
             'points_count': request.query_params.get('points_count'),
             'point_list': request.query_params.getlist('point'),
         }
-        serializer = serializers.HistorySerializer(data={k: v for k, v in mapped.items() if v})
+        serializer = HistorySerializer(data={k: v for k, v in mapped.items() if v})
         serializer.is_valid(raise_exception=True)
 
         quota = self.get_object()

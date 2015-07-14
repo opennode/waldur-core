@@ -36,11 +36,6 @@ class BaseLogger(object):
     def get_supported_types(self):
         raise NotImplemented('Method is not implemented')
 
-    def get_permitted_objects_uuids(self, user):
-        # XXX: this has to be moved to Loggable mixin
-        permitted_objects_uuids = getattr(self._meta, 'permitted_objects_uuids', None)
-        return permitted_objects_uuids(user) if permitted_objects_uuids else {}
-
     def get_nullable_fields(self):
         return getattr(self._meta, 'nullable_fields', [])
 
@@ -298,6 +293,10 @@ class LoggableMixin(object):
 
         return context
 
+    @classmethod
+    def get_permitted_objects_uuids(self, user):
+        return {}
+
 
 class EventFormatter(logging.Formatter):
 
@@ -394,9 +393,10 @@ class EventLoggerRegistry(BaseLoggerRegistry):
         return [l for l in self.__dict__.values() if isinstance(l, EventLogger)]
 
     def get_permitted_objects_uuids(self, user):
+        from nodeconductor.logging.utils import get_loggable_models
         permitted_objects_uuids = {}
-        for elogger in self.get_loggers():
-            permitted_objects_uuids.update(elogger.get_permitted_objects_uuids(user))
+        for model in get_loggable_models():
+            permitted_objects_uuids.update(model.get_permitted_objects_uuids(user))
         return permitted_objects_uuids
 
 

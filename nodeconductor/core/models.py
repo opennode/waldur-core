@@ -114,6 +114,13 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         """
         send_mail(subject, message, from_email, [self.email])
 
+    @classmethod
+    def get_permitted_objects_uuids(cls, user):
+        if user.is_staff:
+            return {'user_uuid': cls.objects.all().values_list('uuid', flat=True)}
+        else:
+            return {'user_uuid': [user.uuid.hex]}
+
 
 def validate_ssh_public_key(ssh_key):
     # http://stackoverflow.com/a/2494645
