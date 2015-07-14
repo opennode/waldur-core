@@ -4,16 +4,16 @@ from nodeconductor.structure import models as structure_models
 from nodeconductor.logging.log import LoggableMixin
 
 
-class OpenStackService(LoggableMixin, structure_models.Service):
+class Service(LoggableMixin, structure_models.Service):
     projects = models.ManyToManyField(
-        structure_models.Project, related_name='openstack_services', through='OpenStackServiceProjectLink')
+        structure_models.Project, related_name='+', through='ServiceProjectLink')
 
 
-class OpenStackServiceProjectLink(LoggableMixin, structure_models.ServiceProjectLink):
+class ServiceProjectLink(LoggableMixin, structure_models.ServiceProjectLink):
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances',
                     'security_group_count', 'security_group_rule_count']
 
-    service = models.ForeignKey(OpenStackService)
+    service = models.ForeignKey(Service)
 
     tenant_id = models.CharField(max_length=64, blank=True)
     internal_network_id = models.CharField(max_length=64, blank=True)
@@ -30,7 +30,7 @@ class OpenStackServiceProjectLink(LoggableMixin, structure_models.ServiceProject
         return ('project', 'cloud',)
 
     def get_backend(self):
-        return super(OpenStackServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)
+        return super(ServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)
 
 
 class Flavor(LoggableMixin, structure_models.ServiceProperty):

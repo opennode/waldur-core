@@ -44,6 +44,7 @@ install_requires = [
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
     'requests>=2.6.0',
+    'sqlparse>=0.1.11',
     'xhtml2pdf>=0.0.6',
 ]
 
