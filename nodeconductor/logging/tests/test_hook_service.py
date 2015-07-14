@@ -13,7 +13,7 @@ from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
 
-class TestHook(TestCase):
+class TestHookService(TestCase):
     @override_settings(LOGGING={
         'version': 1,
 
@@ -63,7 +63,7 @@ class TestHook(TestCase):
         # Verify that destination address of message is correct
         self.assertEqual(mail.outbox[0].to, [self.email_hook.email])
 
-    def test_webhook(self):
+    def test_webhook_makes_post_request_against_destination_url(self):
         # Create web hook for customer owner
         self.web_hook = logging_models.WebHook.objects.create(user=self.owner,
             destination_url='http://example.com/', event_types=[self.event_type])
