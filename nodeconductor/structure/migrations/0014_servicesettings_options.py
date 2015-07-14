@@ -18,7 +18,4 @@ class Migration(migrations.Migration):
             field=jsonfield.fields.JSONField(help_text='Extra options', blank=True),
             preserve_default=True,
         ),
-        migrations.RunSQL(
-            "UPDATE structure_servicesettings SET options='\"\"' WHERE options=''"
-        ),
     ]

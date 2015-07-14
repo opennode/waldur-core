@@ -45,5 +45,8 @@ class Migration(migrations.Migration):
         migrations.DeleteModel(
             name='Service',
         ),
+        migrations.RunSQL(
+            "UPDATE structure_servicesettings SET options='\"\"' WHERE options=''"
+        ),
         migrations.RunPython(lambda apps, schema_editor: None),
     ]
