@@ -425,7 +425,7 @@ class Service(core_models.UuidMixin, core_models.NameMixin):
     def get_backend(self, **kwargs):
         return self.settings.get_backend(**kwargs)
 
-    def get_usage_data(start_date, end_date):
+    def get_usage_data(self, start_date, end_date):
         # Please refer to nodeconductor.billing.tasks.debit_customers while implementing it
         raise NotImplementedError
 
