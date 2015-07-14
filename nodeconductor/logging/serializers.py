@@ -1,5 +1,3 @@
-import re
-
 from rest_framework import serializers
 from django.utils.lru_cache import lru_cache
 
@@ -37,23 +35,6 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
         return alert
 
 
-class ScopeSerializer(serializers.Serializer):
-    scope = GenericRelatedField(related_models=utils.get_loggable_models())
-
-
-def _convert(name):
-    """ Converts CamelCase to underscore """
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
-class ScopeTypeSerializer(serializers.Serializer):
-    scope_type = MappedChoiceField(
-        choices=[(_convert(m.__name__), m.__name__) for m in utils.get_loggable_models()],
-        choice_mappings={_convert(m.__name__): m for m in utils.get_loggable_models()},
-    )
-
-
 @lru_cache(maxsize=1)
 def get_valid_events():
     return list(log.event_logger.get_permitted_event_types())
@@ -68,7 +49,7 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
 
         fields = (
             'url', 'is_active', 'author_uuid', 'event_types',
-            'last_published', 'created', 'modified', 
+            'last_published', 'created', 'modified',
         )
 
         extra_kwargs = {

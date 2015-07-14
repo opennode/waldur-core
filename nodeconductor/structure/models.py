@@ -22,9 +22,9 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
+from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
-from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import ServiceBackendError
 
 
@@ -145,6 +145,16 @@ class Customer(core_models.UuidMixin,
 
     def can_user_update_quotas(self, user):
         return user.is_staff
+
+    @classmethod
+    def get_permitted_objects_uuids(cls, user):
+        from nodeconductor.structure.filters import filter_queryset_for_user
+        if user.is_staff:
+            customer_queryset = cls.objects.all()
+        else:
+            customer_queryset = cls.objects.filter(
+                roles__permission_group__user=user, roles__role_type=CustomerRole.OWNER)
+        return {'customer_uuid': filter_queryset_for_user(customer_queryset, user).values_list('uuid', flat=True)}
 
     def __str__(self):
         return '%(name)s (%(abbreviation)s)' % {
@@ -285,6 +295,11 @@ class Project(core_models.DescribableMixin,
     def get_log_fields(self):
         return ('uuid', 'customer', 'name', 'group')
 
+    @classmethod
+    def get_permitted_objects_uuids(cls, user):
+        from nodeconductor.structure.filters import filter_queryset_for_user
+        return {'project_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
+
 
 @python_2_unicode_compatible
 class ProjectGroupRole(core_models.UuidMixin, models.Model):
@@ -380,6 +395,11 @@ class ProjectGroup(core_models.UuidMixin,
 
     def get_log_fields(self):
         return ('uuid', 'customer', 'name')
+
+    @classmethod
+    def get_permitted_objects_uuids(cls, user):
+        from nodeconductor.structure.filters import filter_queryset_for_user
+        return {'project_group_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
 
 
 @python_2_unicode_compatible

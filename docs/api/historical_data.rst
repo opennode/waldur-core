@@ -2,7 +2,7 @@ Historical data
 ---------------
 
 Historical data endpoints could be available for any objects (currently
-implemented for quotas only). The data is available at **<object_endpoint>/history/**,
+implemented for quotas and events count). The data is available at **<object_endpoint>/history/**,
 for example: **/api/quotas/<uuid>/history/**.
 
 There are two ways to define datetime points for historical data.
