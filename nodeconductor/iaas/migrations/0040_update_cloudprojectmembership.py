@@ -7,7 +7,7 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('iaas', '0038_securitygroup_state'),
+        ('iaas', '0039_cloudprojectmembership_external_network_id'),
     ]
 
     operations = [
