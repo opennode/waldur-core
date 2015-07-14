@@ -1,5 +1,3 @@
-import re
-
 from rest_framework import serializers
 from django.utils.lru_cache import lru_cache
 
@@ -35,23 +33,6 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
             alert_type=validated_data['alert_type'],
         )
         return alert
-
-
-class ScopeSerializer(serializers.Serializer):
-    scope = GenericRelatedField(related_models=utils.get_loggable_models())
-
-
-def _convert(name):
-    """ Converts CamelCase to underscore """
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
-class ScopeTypeSerializer(serializers.Serializer):
-    scope_type = MappedChoiceField(
-        choices=[(_convert(m.__name__), m.__name__) for m in utils.get_loggable_models()],
-        choice_mappings={_convert(m.__name__): m for m in utils.get_loggable_models()},
-    )
 
 
 @lru_cache(maxsize=1)
@@ -100,3 +81,4 @@ class EmailHookSerializer(BaseHookSerializer):
     class Meta(BaseHookSerializer.Meta):
         model = models.EmailHook
         fields = BaseHookSerializer.Meta.fields + ('email', )
+
