@@ -1,15 +1,18 @@
+from django.conf import settings
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
 from django.core.mail import send_mail
-from django.conf import settings
 from django.db import models
+from django.template.loader import render_to_string
 from django.utils import timezone
 from jsonfield import JSONField
 from model_utils.models import TimeStampedModel
-from uuidfield import UUIDField
 import requests
+import logging
+from uuidfield import UUIDField
 
 from nodeconductor.logging import managers
+from nodeconductor.core.utils import timestamp_to_datetime
 
 
 class UuidMixin(models.Model):
@@ -68,9 +71,9 @@ class BaseHook(UuidMixin, TimeStampedModel):
     # This timestamp would be updated periodically when event is sent via this hook
     last_published = models.DateTimeField(default=timezone.now)
 
-
-def get_hook_models():
-    return [m for m in models.get_models() if issubclass(m, BaseHook)]
+    @classmethod
+    def get_hooks(cls):
+        return [obj for hook in cls.__subclasses__() for obj in hook.objects.filter(is_active=True)]
 
 
 class WebHook(BaseHook):
@@ -85,24 +88,23 @@ class WebHook(BaseHook):
         default=ContentTypeChoices.JSON
     )
 
-    def process(self, events):
-        for event in events:
-            # encode event as JSON
-            if self.content_type == WebHook.ContentTypeChoices.JSON:
-                requests.post(self.destination_url, json=event, verify=False)
+    def process(self, event):
+        # encode event as JSON
+        if self.content_type == WebHook.ContentTypeChoices.JSON:
+            requests.post(self.destination_url, json=event, verify=False)
 
-            # encode event as form
-            elif self.content_type == WebHook.ContentTypeChoices.FORM:
-                requests.post(self.destination_url, data=event, verify=False)
+        # encode event as form
+        elif self.content_type == WebHook.ContentTypeChoices.FORM:
+            requests.post(self.destination_url, data=event, verify=False)
 
 
 class EmailHook(BaseHook):
     email = models.EmailField()
 
-    def process(self, events):
+    def process(self, event):
         subject = 'Notifications from NodeConductor'
-        body = self.format_email_body(events)
-        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [self.email])
-
-    def format_email_body(self, events):
-        return "\n".join(event['message'] for event in events)
+        logging.warning(event)
+        event['timestamp'] = timestamp_to_datetime(event['timestamp'])
+        text_message = event['message']
+        html_message = render_to_string('logging/email.html', {'events': [event]})
+        send_mail(subject, text_message, settings.DEFAULT_FROM_EMAIL, [self.email], html_message=html_message)

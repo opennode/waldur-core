@@ -81,8 +81,31 @@ To create new web hook issue POST against **/api/hooks-web/** as an authenticate
 Request should contain fields:
 
 - events: list of event types you are interested in
-- destination_url: when hook is activated, POST request is issued against destination URL
+- destination_url: valid URL endpoint
 - content_type: optional value, which may be "json" or "form", default is "json"
+
+When hook is activated, POST request is issued against destination URL with the following data:
+
+.. code-block:: javascript
+    {
+        "timestamp": "2015-07-14T12:12:56.000000",
+        "message": "Customer ABC LLC has been updated.",
+        "type": "customer_update_succeeded",
+        "context": {
+            "user_native_name": "Walter Leb\u00f6wski",
+            "customer_contact_details": "",
+            "user_username": "Walter",
+            "user_uuid": "1c3323fc4ae44120b57ec40dea1be6e6",
+            "customer_uuid": "4633bbbb0b3a4b91bffc0e18f853de85",
+            "ip_address": "8.8.8.8",
+            "user_full_name": "Walter Lebowski",
+            "customer_abbreviation": "ABC LLC",
+            "customer_name": "ABC LLC"
+        },
+        "levelname": "INFO"
+    }
+
+Note that context depends on event type.
 
 To create new email hook issue POST against **/api/hooks-email/** as an authenticated user.
 Request should contain fields:

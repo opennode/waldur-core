@@ -2,7 +2,6 @@ from django.core.urlresolvers import reverse
 from rest_framework import status, test
 
 from nodeconductor.logging import serializers
-from nodeconductor.logging.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
 
 

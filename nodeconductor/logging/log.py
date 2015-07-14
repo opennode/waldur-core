@@ -11,6 +11,7 @@ from django.contrib.contenttypes import models as ct_models
 
 from nodeconductor.logging import models
 from nodeconductor.logging.middleware import get_event_context
+from nodeconductor.core.tasks import send_task
 
 
 logger = logging.getLogger(__name__)
@@ -315,7 +316,7 @@ class EventFormatter(logging.Formatter):
         else:
             return 'critical'
 
-    def format_dict(self, record):
+    def format(self, record):
         message = {
             # basic
             '@timestamp': self.format_timestamp(record.created),
@@ -335,10 +336,7 @@ class EventFormatter(logging.Formatter):
         if hasattr(record, 'event_context'):
             message.update(record.event_context)
 
-        return message
-
-    def format(self, record):
-        return json.dumps(self.format_dict(record))
+        return json.dumps(message)
 
 
 class EventLoggerAdapter(logging.LoggerAdapter, object):
@@ -380,37 +378,21 @@ class TCPEventHandler(logging.handlers.SocketHandler, object):
 
 
 class HookHandler(logging.Handler):
-    def __init__(self):
-        super(HookHandler, self).__init__()
-        self.formatter = EventFormatter()
-
-    def get_hooks(self):
-        for model in models.get_hook_models():
-            for hook in model.objects.filter(is_active=True):
-                yield hook
-
-    def can_user_see_event(self, user, event):
-        permitted_uuids = event_logger.get_permitted_objects_uuids(user)
-        for key, uuids in permitted_uuids.items():
-            if key in event and event[key] in uuids:
-                return True
-        return False
-
-    def check_event(self, record, hook):
-        if not hasattr(record, 'event_type'):
-            return False
-        if not hasattr(record, 'event_context'):
-            return False
-        if record.event_type not in hook.event_types:
-            return False
-        if not self.can_user_see_event(hook.user, record.event_context):
-            return False
-        return True
-
     def emit(self, record):
-        for hook in self.get_hooks():
-            if self.check_event(record, hook):
-                hook.process([self.formatter.format_dict(record)])
+        # Check that record contains event
+        if hasattr(record, 'event_type') and hasattr(record, 'event_context'):
+
+            # Convert record to plain dictionary
+            event = {
+                'timestamp': record.created,
+                'levelname': record.levelname,
+                'message': record.getMessage(),
+                'type': record.event_type,
+                'context': record.event_context
+            }
+
+            # Perform hook processing in background thread
+            send_task('logging', 'process_event')(event)
 
 
 class BaseLoggerRegistry(object):
