@@ -1,35 +1,19 @@
+import logging
 import mock
 import time
 
-from django.conf import settings
 from django.core import mail
-from django.test import TestCase
-from django.utils.log import configure_logging
+from rest_framework import test
 
 from nodeconductor.logging import models as logging_models
+from nodeconductor.logging.log import HookHandler
 from nodeconductor.logging.tasks import process_event
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.tests import factories as structure_factories
 
 
-class TestHookService(TestCase):
-    LOGGING = {
-        'version': 1,
-
-        'handlers': {
-            'hook': {
-                'class': 'nodeconductor.logging.log.HookHandler'
-            }
-        },
-        'loggers': {
-            'nodeconductor': {
-                'level': 'DEBUG',
-                'handlers': ['hook']
-            }
-        }
-    }
-
+class TestHookService(test.APITransactionTestCase):
     def setUp(self):
         self.owner = structure_factories.UserFactory()
         self.customer = structure_factories.CustomerFactory()
@@ -51,19 +35,33 @@ class TestHookService(TestCase):
                                                                   email=self.owner.email,
                                                                   event_types=[self.event_type])
 
-        configure_logging(settings.LOGGING_CONFIG, self.LOGGING)
-
-    def tearDown(self):
-        # Restore original logging config so that other tests won't depend on it
-        configure_logging(settings.LOGGING_CONFIG, settings.LOGGING)
-
     @mock.patch('celery.app.base.Celery.send_task')
-    def test_logger_handler_sends_task(self, mocked_task):
+    def test_logger_handler_sends_task_if_handler_attached(self, mocked_task):
+        # Prepare logger
+        logger = logging.getLogger('nodeconductor')
+        logger.setLevel(logging.DEBUG)
+
+        # Inject handler
+        handler = HookHandler()
+        logger.addHandler(handler)
+
         event_logger.customer.warning(self.message,
                                       event_type=self.event_type,
                                       event_context={'customer': self.customer})
 
-        mocked_task.assert_called_with('nodeconductor.logging.process_event', mock.ANY, {})
+        mocked_task.assert_called_once_with('nodeconductor.logging.process_event', mock.ANY, {})
+        mocked_task.reset_mock()
+
+        # Remove hook handler so that other tests won't depend on it
+        logger.removeHandler(handler)
+
+        # Trigger an event
+        event_logger.customer.warning(self.message,
+                                      event_type=self.event_type,
+                                      event_context={'customer': self.customer})
+
+        # If hook handler is not attached hook is not processed
+        self.assertFalse(mocked_task.called)
 
     def test_email_hook_filters_events_by_user_and_event_type(self):
         # Create email hook for customer owner
