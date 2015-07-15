@@ -221,7 +221,7 @@ class Project(core_models.DescribableMixin,
         project_path = 'self'
         project_group_path = 'project_groups'
 
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances', 'nc_resource_count', 'nc_service_count']
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
 
@@ -299,6 +299,9 @@ class Project(core_models.DescribableMixin,
     def get_permitted_objects_uuids(cls, user):
         from nodeconductor.structure.filters import filter_queryset_for_user
         return {'project_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
+
+    def get_quota_parents(self):
+        return [self.customer]
 
 
 @python_2_unicode_compatible
