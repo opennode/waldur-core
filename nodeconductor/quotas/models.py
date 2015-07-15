@@ -128,7 +128,8 @@ class QuotaModelMixin(models.Model):
                 errors.append('%s quota limit: %s, requires %s (%s)\n' % (
                     quota.name, quota.limit, quota.usage + delta, quota.scope))
         for parent in self.get_quota_parents():
-            errors += parent.validate_quota_change(quota_deltas)
+            if parent.quotas.filter(name=name).exists():
+                errors += parent.validate_quota_change(quota_deltas)
         if not raise_exception:
             return errors
         else:
