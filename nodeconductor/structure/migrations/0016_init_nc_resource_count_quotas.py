@@ -31,7 +31,7 @@ def create_quotas(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('structure', '0014_servicesettings_options'),
+        ('structure', '0015_drop_service_polymorphic'),
         ('quotas', '0002_inherit_namemixin'),
     ]
 
