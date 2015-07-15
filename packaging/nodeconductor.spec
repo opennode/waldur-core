@@ -50,6 +50,7 @@ Requires: python-pillow >= 2.0.0
 Requires: python-redis = 2.10.3
 Requires: python-reportlab >= 2.5
 Requires: python-requests = 2.6.0
+Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 = 1.10.1
 Requires: python-xhtml2pdf >= 0.0.6
