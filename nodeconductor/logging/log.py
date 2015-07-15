@@ -9,6 +9,7 @@ from django.apps import apps
 from django.utils import six
 from django.contrib.contenttypes import models as ct_models
 
+from nodeconductor.core.tasks import send_task
 from nodeconductor.logging import models
 from nodeconductor.logging.middleware import get_event_context
 
@@ -35,11 +36,6 @@ class BaseLogger(object):
 
     def get_supported_types(self):
         raise NotImplemented('Method is not implemented')
-
-    def get_permitted_objects_uuids(self, user):
-        # XXX: this has to be moved to Loggable mixin
-        permitted_objects_uuids = getattr(self._meta, 'permitted_objects_uuids', None)
-        return permitted_objects_uuids(user) if permitted_objects_uuids else {}
 
     def get_nullable_fields(self):
         return getattr(self._meta, 'nullable_fields', [])
@@ -298,6 +294,10 @@ class LoggableMixin(object):
 
         return context
 
+    @classmethod
+    def get_permitted_objects_uuids(self, user):
+        return {}
+
 
 class EventFormatter(logging.Formatter):
 
@@ -377,6 +377,24 @@ class TCPEventHandler(logging.handlers.SocketHandler, object):
         return self.formatter.format(record) + b'\n'
 
 
+class HookHandler(logging.Handler):
+    def emit(self, record):
+        # Check that record contains event
+        if hasattr(record, 'event_type') and hasattr(record, 'event_context'):
+
+            # Convert record to plain dictionary
+            event = {
+                'timestamp': record.created,
+                'levelname': record.levelname,
+                'message': record.getMessage(),
+                'type': record.event_type,
+                'context': record.event_context
+            }
+
+            # Perform hook processing in background thread
+            send_task('logging', 'process_event')(event)
+
+
 class BaseLoggerRegistry(object):
 
     def get_loggers(self):
@@ -394,10 +412,17 @@ class EventLoggerRegistry(BaseLoggerRegistry):
         return [l for l in self.__dict__.values() if isinstance(l, EventLogger)]
 
     def get_permitted_objects_uuids(self, user):
+        from nodeconductor.logging.utils import get_loggable_models
         permitted_objects_uuids = {}
-        for elogger in self.get_loggers():
-            permitted_objects_uuids.update(elogger.get_permitted_objects_uuids(user))
+        for model in get_loggable_models():
+            permitted_objects_uuids.update(model.get_permitted_objects_uuids(user))
         return permitted_objects_uuids
+
+    def get_permitted_event_types(self):
+        events = set()
+        for elogger in self.get_loggers():
+            events.update(elogger.get_supported_types())
+        return events
 
 
 class AlertLoggerRegistry(BaseLoggerRegistry):

@@ -5,7 +5,6 @@ from django.db.models import signals
 
 from nodeconductor.core import handlers as core_handlers
 from nodeconductor.core.signals import pre_serializer_fields
-from nodeconductor.iaas import handlers
 from nodeconductor.quotas import handlers as quotas_handlers
 
 
@@ -18,6 +17,7 @@ class IaasConfig(AppConfig):
         Instance = self.get_model('Instance')
         CloudProjectMembership = self.get_model('CloudProjectMembership')
 
+        from nodeconductor.iaas import handlers
         from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
 
         pre_serializer_fields.connect(

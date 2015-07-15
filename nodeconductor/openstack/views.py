@@ -5,12 +5,12 @@ from nodeconductor.openstack import models, serializers
 
 
 class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
-    queryset = models.OpenStackService.objects.all()
+    queryset = models.Service.objects.all()
     serializer_class = serializers.ServiceSerializer
 
 
 class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkViewSet):
-    queryset = models.OpenStackServiceProjectLink.objects.all()
+    queryset = models.ServiceProjectLink.objects.all()
     serializer_class = serializers.ServiceProjectLinkSerializer
 
 

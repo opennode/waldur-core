@@ -1,15 +1,9 @@
-
 from django.contrib import admin
 
-from nodeconductor.structure.admin import HiddenServiceAdmin
-
-from nodeconductor.oracle.models import OracleService, Database
-
-
-class DatabaseAdmin(admin.ModelAdmin):
-    list_display = ('name', 'backend_id', 'state')
-    list_filter = ('state',)
+from nodeconductor.structure import admin as structure_admin
+from nodeconductor.oracle.models import Service, ServiceProjectLink, Database
 
 
-admin.site.register(OracleService, HiddenServiceAdmin)
-admin.site.register(Database, DatabaseAdmin)
+admin.site.register(Database, structure_admin.ResourceAdmin)
+admin.site.register(Service, structure_admin.ServiceAdmin)
+admin.site.register(ServiceProjectLink, structure_admin.ServiceProjectLinkAdmin)
