@@ -8,7 +8,7 @@ from nodeconductor.oracle import models
 
 class OracleServiceFactory(factory.DjangoModelFactory):
     class Meta(object):
-        model = models.OracleService
+        model = models.Service
 
     name = factory.Sequence(lambda n: 'service%s' % n)
     settings = factory.SubFactory(structure_factories.ServiceSettingsFactory)
@@ -27,7 +27,7 @@ class OracleServiceFactory(factory.DjangoModelFactory):
 
 class OracleServiceProjectLingFactory(factory.DjangoModelFactory):
     class Meta(object):
-        model = models.OracleServiceProjectLink
+        model = models.ServiceProjectLink
 
     service = factory.SubFactory(OracleServiceFactory)
     project = factory.SubFactory(structure_factories.ProjectFactory)

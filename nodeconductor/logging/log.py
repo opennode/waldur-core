@@ -9,6 +9,7 @@ from django.apps import apps
 from django.utils import six
 from django.contrib.contenttypes import models as ct_models
 
+from nodeconductor.core.tasks import send_task
 from nodeconductor.logging import models
 from nodeconductor.logging.middleware import get_event_context
 
@@ -374,6 +375,24 @@ class TCPEventHandler(logging.handlers.SocketHandler, object):
 
     def makePickle(self, record):
         return self.formatter.format(record) + b'\n'
+
+
+class HookHandler(logging.Handler):
+    def emit(self, record):
+        # Check that record contains event
+        if hasattr(record, 'event_type') and hasattr(record, 'event_context'):
+
+            # Convert record to plain dictionary
+            event = {
+                'timestamp': record.created,
+                'levelname': record.levelname,
+                'message': record.getMessage(),
+                'type': record.event_type,
+                'context': record.event_context
+            }
+
+            # Perform hook processing in background thread
+            send_task('logging', 'process_event')(event)
 
 
 class BaseLoggerRegistry(object):

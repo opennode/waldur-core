@@ -2091,6 +2091,8 @@ class OpenStackBackend(OpenStackClient):
             'name': network_name,
             'tenant_id': membership.tenant_id,
             'router:external': True,
+            # XXX: provider:physical_network should be configurable.
+            'provider:physical_network': 'physnet1'
         }
 
         if vlan_id:

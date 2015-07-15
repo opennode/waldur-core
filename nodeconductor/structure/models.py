@@ -1,20 +1,16 @@
 from __future__ import unicode_literals
 
-import importlib
-
 from django.apps import apps
 from django.core.validators import MaxLengthValidator
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models, transaction
 from django.db.models import Q, F
-from django.utils import six
 from django.utils.lru_cache import lru_cache
-from django.utils.encoding import python_2_unicode_compatible, force_text
+from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 from model_utils.models import TimeStampedModel
-from polymorphic import PolymorphicModel
 from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
@@ -22,10 +18,10 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
-from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
-from nodeconductor.structure import ServiceBackendError
+from nodeconductor.structure.images import ImageModelMixin
+from nodeconductor.structure import SupportedServices
 
 
 @python_2_unicode_compatible
@@ -408,23 +404,6 @@ class ProjectGroup(core_models.UuidMixin,
 @python_2_unicode_compatible
 class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.SynchronizableMixin):
 
-    class Types(object):
-        OpenStack = 1
-        DigitalOcean = 2
-        Amazon = 3
-        Jira = 4
-        GitLab = 5
-        Oracle = 6
-
-        CHOICES = (
-            (OpenStack, 'OpenStack'),
-            (DigitalOcean, 'DigitalOcean'),
-            (Amazon, 'Amazon'),
-            (Jira, 'Jira'),
-            (GitLab, 'GitLab'),
-            (Oracle, 'Oracle'),
-        )
-
     class Permissions(object):
         customer_path = 'customer'
         extra_query = dict(shared=True)
@@ -434,7 +413,7 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
     username = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100, blank=True, null=True)
     token = models.CharField(max_length=255, blank=True, null=True)
-    type = models.SmallIntegerField(choices=Types.CHOICES)
+    type = models.SmallIntegerField(choices=SupportedServices.Types.CHOICES)
 
     options = JSONField(blank=True, help_text='Extra options')
 
@@ -442,41 +421,19 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
     dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
 
     def get_backend(self, **kwargs):
-        # TODO: Find a way to register backend form the other side, perhaps within NC-519
-        BACKEND_MAPPING = {
-            self.Types.DigitalOcean: 'nodeconductor_plus.digitalocean.backend.DigitalOceanBackend',
-            self.Types.Jira: 'nodeconductor.jira.backend.JiraBackend',
-            self.Types.GitLab: 'nodeconductor_plus.gitlab.backend.GitLabBackend',
-            self.Types.OpenStack: 'nodeconductor.openstack.backend.OpenStackBackend',
-            self.Types.Oracle: 'nodeconductor.oracle.backend.OracleBackend',
-        }
-
-        backend_path = BACKEND_MAPPING.get(self.type)
-        if backend_path:
-            try:
-                path_bits = backend_path.split('.')
-                class_name = path_bits.pop()
-                backend = importlib.import_module('.'.join(path_bits))
-                backend_cls = getattr(backend, class_name)
-            except (AttributeError, IndexError):
-                raise ServiceBackendError("Invalid backend supplied: %s" % backend_path)
-            except ImportError as e:
-                six.reraise(ServiceBackendError, e)
-            else:
-                return backend_cls(self, **kwargs)
-
-        raise NotImplementedError
+        return SupportedServices.get_service_backend(self.type)(self, **kwargs)
 
     def __str__(self):
         return '%s (%s)' % (self.name, self.get_type_display())
 
 
 @python_2_unicode_compatible
-class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
+class Service(core_models.UuidMixin, core_models.NameMixin):
     """ Base service class. """
 
     class Meta(object):
-        unique_together = ('customer', 'settings', 'polymorphic_ctype')
+        abstract = True
+        unique_together = ('customer', 'settings')
 
     class Permissions(object):
         customer_path = 'customer'
@@ -484,13 +441,13 @@ class Service(PolymorphicModel, core_models.UuidMixin, core_models.NameMixin):
         project_group_path = 'customer__projects__project_groups'
 
     settings = models.ForeignKey(ServiceSettings, related_name='+')
-    customer = models.ForeignKey(Customer, related_name='services')
+    customer = models.ForeignKey(Customer, related_name='+')
     projects = NotImplemented
 
     def get_backend(self, **kwargs):
         return self.settings.get_backend(**kwargs)
 
-    def get_usage_data(start_date, end_date):
+    def get_usage_data(self, start_date, end_date):
         # Please refer to nodeconductor.billing.tasks.debit_customers while implementing it
         raise NotImplementedError
 
@@ -527,7 +484,7 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
         project_group_path = 'project__project_groups'
 
     service = NotImplemented
-    project = models.ForeignKey(Project)
+    project = models.ForeignKey(Project, related_name='+')
 
     def get_quota_parents(self):
         return [self.project]
@@ -537,7 +494,7 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
 
     def to_string(self):
         """ Dump an instance into a string preserving class name and PK """
-        return ':'.join([force_text(self._meta), str(self.pk)])
+        return ':'.join([SupportedServices._get_model_srt(self), str(self.pk)])
 
     @staticmethod
     def parse_model_string(string):

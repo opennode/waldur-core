@@ -1,9 +1,7 @@
 from __future__ import unicode_literals
 
 import logging
-import itertools
 
-from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from celery import shared_task
@@ -12,8 +10,9 @@ from nodeconductor.core.tasks import transition, retry_if_false
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
-from nodeconductor.structure.serializers import SUPPORTED_SERVICES
-from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented, models, handlers
+from nodeconductor.structure import (SupportedServices, ServiceBackendError,
+                                     ServiceBackendNotImplemented, models, handlers)
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,15 +31,11 @@ def stop_customer_resources(customer_uuid):
         return
 
     customer = models.Customer.objects.get(uuid=customer_uuid)
-    resources = itertools.chain(*[s['resources'].keys() for s in SUPPORTED_SERVICES.values()])
-
-    for model_name in resources:
-        model = apps.get_model(model_name)
-
+    for model_name, model in SupportedServices.get_resource_models().items():
         # Shutdown active resources for debtors
         # TODO: Consider supporting another states (like 'STARTING')
         # TODO: Remove IaaS support (NC-645)
-        if 'cloud_project_membership' in model._meta.get_all_field_names():
+        if model_name == 'IaaS.Instance':
             resources = model.objects.filter(
                 state=model.States.ONLINE,
                 cloud_project_membership__cloud__customer=customer)

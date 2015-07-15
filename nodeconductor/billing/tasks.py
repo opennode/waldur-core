@@ -18,7 +18,8 @@ from nodeconductor.core.utils import timestamp_to_datetime
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.models import Cloud, CloudProjectMembership, Instance
 from nodeconductor.logging.elasticsearch_client import ElasticsearchResultList
-from nodeconductor.structure.models import Customer, Service
+from nodeconductor.structure.models import Customer
+from nodeconductor.structure import SupportedServices
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +42,18 @@ def debit_customers():
     start_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
     end_date = start_date + timedelta(days=1, microseconds=-1)
 
-    for service in Service.objects.filter(settings__shared=True).select_related('customer'):
-        try:
-            usage_data = service.get_usage_data(start_date, end_date)
-        except NotImplementedError:
-            continue
-        else:
-            service.customer.debit_account(usage_data['total_amount'])
+    for service_type, models in SupportedServices.get_service_models().items():
+        if service_type != SupportedServices.Types.IaaS:
+            services = models['service'].objects.filter(
+                settings__shared=True).select_related('customer')
+
+            for service in services:
+                try:
+                    usage_data = service.get_usage_data(start_date, end_date)
+                except NotImplementedError:
+                    continue
+                else:
+                    service.customer.debit_account(usage_data['total_amount'])
 
     # Consider all IaaS services as shared
     # This code to be deprecated when IaaS app moves to OpenStack app (NC-645)
