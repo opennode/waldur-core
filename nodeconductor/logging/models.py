@@ -71,12 +71,8 @@ class BaseHook(UuidMixin, TimeStampedModel):
     last_published = models.DateTimeField(default=timezone.now)
 
     @classmethod
-    def get_hooks(cls):
+    def get_active_hooks(cls):
         return [obj for hook in cls.__subclasses__() for obj in hook.objects.filter(is_active=True)]
-
-    @classmethod
-    def has_hooks(cls):
-        return any(hook.objects.exists() for hook in cls.__subclasses__())
 
 
 class WebHook(BaseHook):

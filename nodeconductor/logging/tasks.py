@@ -6,7 +6,7 @@ from nodeconductor.logging.models import BaseHook
 
 @shared_task(name='nodeconductor.logging.process_event')
 def process_event(event):
-    for hook in BaseHook.get_hooks():
+    for hook in BaseHook.get_active_hooks():
         if check_event(event, hook):
             hook.process(event)
 
