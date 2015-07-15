@@ -48,15 +48,12 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
         model = models.BaseHook
 
         fields = (
-            'url', 'is_active', 'author_uuid', 'event_types',
-            'last_published', 'created', 'modified',
+            'url', 'is_active', 'author_uuid', 'event_types', 'created', 'modified'
         )
 
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
-
-        read_only_fields = ('last_published',)
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
@@ -84,3 +81,4 @@ class EmailHookSerializer(BaseHookSerializer):
     class Meta(BaseHookSerializer.Meta):
         model = models.EmailHook
         fields = BaseHookSerializer.Meta.fields + ('email', )
+
