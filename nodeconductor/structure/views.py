@@ -36,6 +36,7 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.utils import request_api
 from nodeconductor.quotas import views as quotas_views
+from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
 from nodeconductor.structure import models
@@ -1160,7 +1161,7 @@ class SshKeyViewSet(mixins.CreateModelMixin,
     queryset = core_models.SshPublicKey.objects.all()
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
-    filter_backends = (rf_filters.DjangoFilterBackend,)
+    filter_backends = (rf_filters.DjangoFilterBackend, core_filters.StaffOrUserFilter)
     filter_class = SshKeyFilter
 
     def perform_create(self, serializer):
@@ -1172,35 +1173,12 @@ class SshKeyViewSet(mixins.CreateModelMixin,
 
         serializer.save(user=user)
 
-    def get_queryset(self):
-        queryset = super(SshKeyViewSet, self).get_queryset()
-        user = self.request.user
-
-        if user.is_staff:
-            return queryset
-
-        return queryset.filter(user=user)
-
 
 class ServiceSettingsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_type='icontains')
     type = core_filters.MappedChoiceFilter(
-        choices=(
-            ('OpenStack', 'OpenStack'),
-            ('DigitalOcean', 'DigitalOcean'),
-            ('Amazon', 'Amazon'),
-            ('Jira', 'Jira'),
-            ('GitLab', 'GitLab'),
-            ('Oracle', 'Oracle'),
-        ),
-        choice_mappings={
-            'OpenStack': models.ServiceSettings.Types.OpenStack,
-            'DigitalOcean': models.ServiceSettings.Types.DigitalOcean,
-            'Amazon': models.ServiceSettings.Types.Amazon,
-            'Jira': models.ServiceSettings.Types.Jira,
-            'GitLab': models.ServiceSettings.Types.GitLab,
-            'Oracle': models.ServiceSettings.Types.Oracle,
-        },
+        choices=SupportedServices.Types.get_direct_filter_mapping(),
+        choice_mappings=SupportedServices.Types.get_reverse_filter_mapping(),
     )
     state = core_filters.MappedChoiceFilter(
         choices=(
@@ -1242,13 +1220,7 @@ class ServiceViewSet(viewsets.GenericViewSet):
     """ The list of supported services and resources. """
 
     def list(self, request):
-        return Response({
-            service['name']: {
-                'url': reverse(service['view_name'], request=request),
-                'resources': {resource['name']: reverse(resource['view_name'], request=request)
-                              for resource in service['resources'].values()},
-            } for service in serializers.SUPPORTED_SERVICES.values()
-        })
+        return Response(SupportedServices.get_services_with_resources(request))
 
 
 class ResourceViewSet(viewsets.GenericViewSet):
@@ -1257,19 +1229,17 @@ class ResourceViewSet(viewsets.GenericViewSet):
     def list(self, request):
 
         def fetch_data(view_name, querystring=None):
-            response = request_api(request, resource['view_name'], querystring=querystring)
+            response = request_api(request, view_name, querystring=querystring)
             if not response.success:
                 raise APIException(response.data)
             return response
 
         data = []
-        for service in serializers.SUPPORTED_SERVICES.values():
-            for resource in service['resources'].values():
-                response = fetch_data(resource['view_name'])
-                if response.total and response.total > len(response.data):
-                    response = fetch_data(
-                        resource['view_name'], querystring='page_size=%d' % response.total)
-                data += response.data
+        for resources_url in SupportedServices.get_resources(request).values():
+            response = fetch_data(resources_url)
+            if response.total and response.total > len(response.data):
+                response = fetch_data(resources_url, querystring='page_size=%d' % response.total)
+            data += response.data
 
         page = self.paginate_queryset(data)
         if page is not None:

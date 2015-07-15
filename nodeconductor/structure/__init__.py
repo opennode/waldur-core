@@ -1,4 +1,254 @@
+from django.utils.lru_cache import lru_cache
+from django.utils.encoding import force_text
+from rest_framework.reverse import reverse
+
+
 default_app_config = 'nodeconductor.structure.apps.StructureConfig'
+
+
+class ServiceTypes(object):
+    OpenStack = 1
+    DigitalOcean = 2
+    Amazon = 3
+    Jira = 4
+    GitLab = 5
+    Oracle = 6
+
+    CHOICES = (
+        (OpenStack, 'OpenStack'),
+        (DigitalOcean, 'DigitalOcean'),
+        (Amazon, 'Amazon'),
+        (Jira, 'Jira'),
+        (GitLab, 'GitLab'),
+        (Oracle, 'Oracle'),
+    )
+
+
+class SupportedServices(object):
+    """ Comprehensive list of currently supported services and resources.
+        Build the list via serializers definition on application start.
+        Example data structure of registry:
+
+        {
+            'gitlab.gitlabservice': {
+                'name': 'GitLab',
+                'list_view': 'gitlab-list',
+                'detail_view': 'gitlab-detail',
+                'service_type': 5,
+                'backend': nodeconductor_plus.gitlab.backend.GitLabBackend,
+                'resources': {
+                    'gitlab.group': {
+                        'name': 'Group',
+                        'list_view': 'gitlab-group-list',
+                        'detail_view': 'gitlab-group-detail',
+                    },
+                    'gitlab.project': {
+                        'name': 'Project',
+                        'list_view': 'gitlab-project-list',
+                        'detail_view': 'gitlab-project-detail',
+                    },
+                },
+            },
+        }
+
+    """
+
+    # TODO: Drop support of iaas application
+    class Types(ServiceTypes):
+        IaaS = -1
+
+        @classmethod
+        def get_direct_filter_mapping(cls):
+            return tuple((name, name) for _, name in cls.CHOICES)
+
+        @classmethod
+        def get_reverse_filter_mapping(cls):
+            return {name: code for code, name in cls.CHOICES}
+
+    _registry = {
+        'iaas.cloud': {
+            'name': 'IaaS',
+            'list_view': 'cloud-list',
+            'detail_view': 'cloud-detail',
+            'service_type': Types.IaaS,
+            'backend': NotImplemented,
+            'resources': {
+                'iaas.instance': {
+                    'name': 'Instance',
+                    'list_view': 'iaas-resource-list',
+                    'detail_view': 'iaas-resource-detail',
+                }
+            },
+        },
+    }
+
+    @classmethod
+    def register_backend(cls, service_model, backend_class):
+        model_str = cls._get_model_srt(service_model)
+        cls._registry.setdefault(model_str, {'resources': {}})
+        cls._registry[model_str]['backend'] = backend_class
+
+    @classmethod
+    def register_service(cls, service_type, metadata):
+        if service_type is NotImplemented:
+            return
+
+        model_str = cls._get_model_srt(metadata.model)
+        cls._registry.setdefault(model_str, {'resources': {}})
+        cls._registry[model_str].update({
+            'name': dict(cls.Types.CHOICES)[service_type],
+            'service_type': service_type,
+            'detail_view': metadata.view_name,
+            'list_view': metadata.view_name.replace('-detail', '-list'),
+        })
+
+    @classmethod
+    def register_resource(cls, service, metadata):
+        if not service or service.view_name is NotImplemented:
+            return
+
+        model_str = cls._get_model_srt(metadata.model)
+        for s in cls._registry:
+            if cls._registry[s].get('detail_view') == service.view_name:
+                cls._registry[s]['resources'].setdefault(model_str, {})
+                cls._registry[s]['resources'][model_str].update({
+                    'name': metadata.model.__name__,
+                    'detail_view': metadata.view_name,
+                    'list_view': metadata.view_name.replace('-detail', '-list'),
+                })
+                break
+
+    @classmethod
+    def get_service_backend(cls, service_type):
+        for service in cls._registry.values():
+            if service['service_type'] == service_type:
+                return service['backend']
+        raise ServiceBackendNotImplemented
+
+    @classmethod
+    def get_services(cls, request=None):
+        """ Get a list of services endpoints.
+            {
+                "Oracle": "/api/oracle/",
+                "OpenStack": "/api/openstack/",
+                "GitLab": "/api/gitlab/",
+                "DigitalOcean": "/api/digitalocean/"
+            }
+        """
+        return {service['name']: reverse(service['list_view'], request=request)
+                for service in cls._registry.values()}
+
+    @classmethod
+    def get_resources(cls, request=None):
+        """ Get a list of resources endpoints.
+            {
+                "IaaS.Instance": "/api/iaas-resources/",
+                "DigitalOcean.Droplet": "/api/digitalocean-droplets/",
+                "Oracle.Database": "/api/oracle-databases/",
+                "GitLab.Group": "/api/gitlab-groups/",
+                "GitLab.Project": "/api/gitlab-projects/"
+            }
+        """
+        return {'.'.join([service['name'], resource['name']]): reverse(resource['list_view'], request=request)
+                for service in cls._registry.values()
+                for resource in service['resources'].values()}
+
+    @classmethod
+    def get_services_with_resources(cls, request=None):
+        """ Get a list of services and resources endpoints.
+            {
+                ...
+                "GitLab": {
+                    "url": "/api/gitlab/",
+                    "resources": {
+                        "Project": "/api/gitlab-projects/",
+                        "Group": "/api/gitlab-groups/"
+                    }
+                },
+                ...
+            }
+        """
+        return {
+            service['name']: {
+                'url': reverse(service['list_view'], request=request),
+                'resources': {resource['name']: reverse(resource['list_view'], request=request)
+                              for resource in service['resources'].values()},
+            } for service in cls._registry.values()
+        }
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_service_models(cls):
+        """ Get a list of service models.
+            {
+                ...
+                5: {
+                    "service": nodeconductor_plus.gitlab.models.GitLabService,
+                    "service_project_link": nodeconductor_plus.gitlab.models.GitLabServiceProjectLink,
+                    "resources": [
+                        nodeconductor_plus.gitlab.models.Group,
+                        nodeconductor_plus.gitlab.models.Project
+                    ],
+                },
+                ...
+            }
+
+        """
+        from django.apps import apps
+
+        data = {}
+        for service_model_name, service in cls._registry.items():
+            service_model = apps.get_model(service_model_name)
+            data[service['service_type']] = {
+                'service': service_model,
+                'service_project_link': service_model._meta.get_all_related_objects_with_model()[0][0].model,
+                'resources': [apps.get_model(r) for r in service['resources'].keys()],
+            }
+
+        return data
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_resource_models(cls):
+        """ Get a list of resource models.
+            {
+                'DigitalOcean.Droplet': nodeconductor_plus.digitalocean.models.Droplet,
+                'GitLab.Group': nodeconductor_plus.gitlab.models.Group,
+                'GitLab.Project': nodeconductor_plus.gitlab.models.Project,
+                'IaaS.Instance': nodeconductor.iaas.models.Instance,
+                'Oracle.Database': nodeconductor.oracle.models.Database
+            }
+
+        """
+        from django.apps import apps
+
+        return {'.'.join([service['name'], attrs['name']]): apps.get_model(resource)
+                for service in cls._registry.values()
+                for resource, attrs in service['resources'].items()}
+
+    @classmethod
+    def get_list_view_for_model(cls, model):
+        return cls._get_view_for_model(model, view_type='list_view')
+
+    @classmethod
+    def get_detail_view_for_model(cls, model):
+        return cls._get_view_for_model(model, view_type='detail_view')
+
+    @classmethod
+    def _get_model_srt(cls, model):
+        return force_text(model._meta)
+
+    @classmethod
+    def _get_view_for_model(cls, model, view_type=''):
+        if not isinstance(model, basestring):
+            model = cls._get_model_srt(model)
+
+        for service_model, service in cls._registry.items():
+            if service_model == model:
+                return service.get(view_type, None)
+            for resource_model, resource in service['resources'].items():
+                if resource_model == model:
+                    return resource.get(view_type, None)
 
 
 class ServiceBackendError(Exception):

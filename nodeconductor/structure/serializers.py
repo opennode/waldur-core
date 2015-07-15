@@ -5,7 +5,6 @@ from django.contrib import auth
 from django.db import models as django_models
 from django.conf import settings
 from django.utils import six
-from django.utils.encoding import force_text
 from rest_framework import serializers, exceptions
 
 from nodeconductor.core import serializers as core_serializers
@@ -14,21 +13,9 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.quotas import serializers as quotas_serializers
-from nodeconductor.structure import models, filters
+from nodeconductor.structure import models, filters, SupportedServices
 from nodeconductor.structure.filters import filter_queryset_for_user
 
-
-# The regestry of all supported services
-# TODO: Move OpenstackSettings to ServiceSettings and remove this hardcoding
-SUPPORTED_SERVICES = {
-    'iaas.cloud': {
-        'name': 'OpenStack',
-        'view_name': 'cloud-list',
-        'resources': {
-            'iaas.instance': {'name': 'Instance', 'view_name': 'iaas-resource-list'}
-        },
-    },
-}
 
 User = auth.get_user_model()
 
@@ -692,34 +679,13 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         return fields
 
 
-class BaseServiceSerializerMetaclass(serializers.SerializerMetaclass):
-    TYPES = dict(models.ServiceSettings.Types.CHOICES)
-    _get_list_view = staticmethod(lambda meta: meta.view_name.replace('-detail', '-list'))
-    _get_model_str = staticmethod(lambda meta: force_text(meta.model._meta))
-
-
-class ServiceSerializerMetaclass(BaseServiceSerializerMetaclass):
+class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
     """ Build a list of supported services via serializers definition.
-        Example data structure.
-
-        SUPPORTED_SERVICES = {
-            'gitlab.gitlabservice': {
-                'name': 'GitLab',
-                'view_name': 'gitlab-list',
-                'resources': {
-                    'gitlab.group': {'name': 'Group', 'view_name': 'gitlab-group-list'},
-                    'gitlab.project': {'name': 'Project', 'view_name': 'gitlab-project-list'},
-                },
-            },
-        }
+        See SupportedServices for details.
     """
     def __new__(cls, name, bases, args):
         service_type = args.get('SERVICE_TYPE', NotImplemented)
-        if service_type is not NotImplemented:
-            model_str = cls._get_model_str(args['Meta'])
-            SUPPORTED_SERVICES.setdefault(model_str, {'resources': {}})
-            SUPPORTED_SERVICES[model_str]['name'] = cls.TYPES[service_type]
-            SUPPORTED_SERVICES[model_str]['view_name'] = cls._get_list_view(args['Meta'])
+        SupportedServices.register_service(service_type, args['Meta'])
         return super(ServiceSerializerMetaclass, cls).__new__(cls, name, bases, args)
 
 
@@ -891,21 +857,12 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         return attrs
 
 
-class ResourceSerializerMetaclass(BaseServiceSerializerMetaclass):
+class ResourceSerializerMetaclass(serializers.SerializerMetaclass):
     """ Build a list of supported resource via serializers definition.
-        See ServiceSerializerMetaclass for details.
+        See SupportedServices for details.
     """
     def __new__(cls, name, bases, args):
-        service = args.get('service')
-        if service and service.view_name is not NotImplemented:
-            model_str = cls._get_model_str(args['Meta'])
-            service_view = cls._get_list_view(service)
-            for s in SUPPORTED_SERVICES:
-                if SUPPORTED_SERVICES[s].get('view_name', '') == service_view:
-                    SUPPORTED_SERVICES[s]['resources'].setdefault(model_str, {})
-                    SUPPORTED_SERVICES[s]['resources'][model_str]['name'] = args['Meta'].model.__name__
-                    SUPPORTED_SERVICES[s]['resources'][model_str]['view_name'] = cls._get_list_view(args['Meta'])
-                    break
+        SupportedServices.register_resource(args.get('service'), args['Meta'])
         return super(ResourceSerializerMetaclass, cls).__new__(cls, name, bases, args)
 
 

@@ -6,38 +6,64 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q, Count
 import django_filters
-from rest_framework import generics, response, settings, viewsets, permissions, filters, status, decorators, mixins
+from rest_framework import response, settings, viewsets, permissions, filters, status, decorators, mixins
 from rest_framework.serializers import ValidationError
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
 from nodeconductor.logging import elasticsearch_client, models, serializers, utils
+from nodeconductor.logging.log import event_logger
 
 
-class EventListView(generics.GenericAPIView):
+def _convert(name):
+    """ Converts CamelCase to underscore """
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
-    ADDITIONAL_SEARCH_FIELDS = ['user_uuid', 'customer_uuid', 'project_uuid', 'project_group_uuid']
 
-    def get_queryset(self, request):
-        return elasticsearch_client.ElasticsearchResultList(request.user)
+class EventFilterBackend(filters.BaseFilterBackend):
 
-    def filter(self, request):
-        search_text = request.query_params.get(settings.api_settings.SEARCH_PARAM)
-        event_types = request.query_params.getlist('event_type')
-        search_kwargs = {field: request.query_params.get(field)
-                         for field in self.ADDITIONAL_SEARCH_FIELDS if field in request.query_params}
-        self.queryset = self.queryset.filter(
-            event_types=event_types,
-            search_text=search_text,
-            **search_kwargs)
+    def filter_queryset(self, request, queryset, view):
+        search_text = request.query_params.get(settings.api_settings.SEARCH_PARAM, '')
+        must_terms = {}
+        should_terms = {}
+        if 'event_type' in request.query_params:
+            must_terms['event_type'] = request.query_params.getlist('event_type')
 
-    def order(self, request):
+        if 'scope' in request.query_params:
+            field = core_serializers.GenericRelatedField(related_models=utils.get_loggable_models())
+            obj = field.to_internal_value(request.query_params['scope'])
+            must_terms[_convert(obj.__class__.__name__ + '_uuid')] = [obj.uuid.hex]
+        elif 'scope_type' in request.query_params:
+            choices = {_convert(m.__name__): m for m in utils.get_loggable_models()}
+            try:
+                scope_type = choices[request.query_params['scope_type']]
+            except KeyError:
+                raise ValidationError(
+                    'Scope type "{}" is not valid. Has to be one from list: {}'.format(
+                        request.query_params['scope_type'], ', '.join(choices.keys()))
+                )
+            else:
+                must_terms.update(scope_type.get_permitted_objects_uuids(request.user))
+        else:
+            should_terms.update(event_logger.get_permitted_objects_uuids(request.user))
+
+        queryset = queryset.filter(search_text=search_text, should_terms=should_terms, must_terms=must_terms)
+
         order_by = request.query_params.get('o', '-@timestamp')
-        self.queryset = self.queryset.order_by(order_by)
+        queryset = queryset.order_by(order_by)
+
+        return queryset
+
+
+class EventViewSet(viewsets.GenericViewSet):
+
+    filter_backends = (EventFilterBackend,)
+
+    def get_queryset(self):
+        return elasticsearch_client.ElasticsearchResultList()
 
     def list(self, request, *args, **kwargs):
-        self.queryset = self.get_queryset(request)
-        self.filter(request)
-        self.order(request)
+        self.queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(self.queryset)
         if page is not None:
@@ -46,6 +72,31 @@ class EventListView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
+
+    @decorators.list_route()
+    def count(self, request, *args, **kwargs):
+        self.queryset = self.filter_queryset(self.get_queryset())
+        return response.Response({'count': self.queryset.count()}, status=status.HTTP_200_OK)
+
+    @decorators.list_route()
+    def count_history(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        mapped = {
+            'start': request.query_params.get('start'),
+            'end': request.query_params.get('end'),
+            'points_count': request.query_params.get('points_count'),
+            'point_list': request.query_params.getlist('point'),
+        }
+        serializer = core_serializers.HistorySerializer(data={k: v for k, v in mapped.items() if v})
+        serializer.is_valid(raise_exception=True)
+
+        timestamp_ranges = [{'end': point_date} for point_date in serializer.get_filter_data()]
+        aggregated_count = queryset.aggregated_count(timestamp_ranges)
+
+        return response.Response(
+            [{'point': int(ac['end']), 'object': {'count': ac['count']}} for ac in aggregated_count],
+            status=status.HTTP_200_OK)
 
 
 class AlertFilter(django_filters.FilterSet):
@@ -106,11 +157,6 @@ class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
             queryset = queryset.filter(severity__in=severities)
 
         if 'scope_type' in request.query_params:
-            def _convert(name):
-                """ Converts CamelCase to underscore """
-                s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-                return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
             choices = {_convert(m.__name__): m for m in utils.get_loggable_models()}
             try:
                 scope_type = choices[request.query_params['scope_type']]
@@ -211,3 +257,20 @@ class AlertViewSet(mixins.CreateModelMixin,
                 alerts_severities_count[severity_name.lower()] = 0
 
         return response.Response(alerts_severities_count, status=status.HTTP_200_OK)
+
+
+class BaseHookViewSet(viewsets.ModelViewSet):
+    permission_classes = (permissions.IsAuthenticated,)
+    filter_backends = (core_filters.StaffOrUserFilter,)
+    lookup_field = 'uuid'
+
+
+class WebHookViewSet(BaseHookViewSet):
+    queryset = models.WebHook.objects.all()
+    serializer_class = serializers.WebHookSerializer
+
+
+class EmailHookViewSet(BaseHookViewSet):
+    queryset = models.EmailHook.objects.all()
+    serializer_class = serializers.EmailHookSerializer
+

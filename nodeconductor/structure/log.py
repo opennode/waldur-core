@@ -12,14 +12,6 @@ class CustomerEventLogger(EventLogger):
                        'customer_update_succeeded',
                        'customer_creation_succeeded')
 
-    def get_permitted_objects_uuids(self, user):
-        if user.is_staff:
-            customer_queryset = models.Customer.objects.all()
-        else:
-            customer_queryset = models.Customer.objects.filter(
-                roles__permission_group__user=user, roles__role_type=models.CustomerRole.OWNER)
-        return {'customer_uuid': filter_queryset_for_user(customer_queryset, user).values_list('uuid', flat=True)}
-
 
 class BalanceEventLogger(EventLogger):
     customer = models.Customer
@@ -40,10 +32,6 @@ class ProjectEventLogger(EventLogger):
                        'project_update_succeeded',
                        'project_creation_succeeded')
 
-    def get_permitted_objects_uuids(self, user):
-        return {'project_uuid': filter_queryset_for_user(
-            models.Project.objects.all(), user).values_list('uuid', flat=True)}
-
 
 class ProjectGroupEventLogger(EventLogger):
     project_group = models.ProjectGroup
@@ -52,10 +40,6 @@ class ProjectGroupEventLogger(EventLogger):
         event_types = ('project_group_deletion_succeeded',
                        'project_group_update_succeeded',
                        'project_group_creation_succeeded')
-
-    def get_permitted_objects_uuids(self, user):
-        return {'project_group_uuid': filter_queryset_for_user(
-            models.ProjectGroup.objects.all(), user).values_list('uuid', flat=True)}
 
 
 class CustomerRoleEventLogger(EventLogger):
