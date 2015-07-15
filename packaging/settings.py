@@ -45,6 +45,7 @@ config_defaults = {
         'logserver_host': '',
         'logserver_port': 5959,
         'syslog': 'false',
+        'hook': 'false'
     },
     'logging': {
         'log_file': '',  # empty to disable logging to file
@@ -256,6 +257,11 @@ LOGGING = {
             'filters': ['is-event'],
             'level': config.get('events', 'log_level').upper(),
         },
+        'hook': {
+            'class': 'nodeconductor.logging.log.HookHandler',
+            'filters': ['is-event'],
+            'level': config.get('events', 'log_level').upper()
+        }
     },
 
     # Loggers
@@ -307,6 +313,9 @@ if config.get('events', 'logserver_host') != '':
 if config.getboolean('events', 'syslog'):
     LOGGING['handlers']['syslog-event']['address'] = '/dev/log'
     LOGGING['loggers']['nodeconductor']['handlers'].append('syslog-event')
+
+if config.getboolean('events', 'hook'):
+    LOGGING['loggers']['nodeconductor']['handlers'].append('hook')
 
 if config.get('saml2', 'log_file') != '':
     LOGGING['handlers']['file-saml2']['filename'] = config.get('saml2', 'log_file')
