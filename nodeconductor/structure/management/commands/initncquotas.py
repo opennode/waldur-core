@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand
 from django.db import models as django_models
 
 from nodeconductor.quotas import models as quotas_models
-from nodeconductor.structure import models
+from nodeconductor.structure import models, SupportedServices
 
 
 # noinspection PyMethodMayBeStatic
@@ -26,7 +26,7 @@ class Command(BaseCommand):
         self.stdout.write('... Done')
 
         self.stdout.write('Calculating new nc_resource_count quotas values ...')
-        resource_models = [m for m in django_models.get_models() if issubclass(m, models.Resource)]
+        resource_models = SupportedServices.get_resource_models().values()
         for model in resource_models:
             for resource in model.objects.all():
                 resource.service_project_link.project.add_quota_usage('nc_resource_count', 1)
