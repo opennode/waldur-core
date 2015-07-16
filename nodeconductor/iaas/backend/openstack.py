@@ -5,7 +5,6 @@ import time
 import uuid
 import logging
 import datetime
-from netaddr import IPNetwork
 import pkg_resources
 import dateutil.parser
 
@@ -505,12 +504,11 @@ class OpenStackBackend(OpenStackClient):
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
 
-            if isinstance(membership, models.CloudProjectMembership):
-                event_logger.membership.warning(
-                    'Failed to push public key to cloud {cloud_name}.',
-                    event_type='iaas_membership_sync_failed',
-                    event_context={'membership': membership}
-                )
+            event_logger.membership.warning(
+                'Failed to push public key to cloud {cloud_name}.',
+                event_type='iaas_membership_sync_failed',
+                event_context={'membership': membership}
+            )
 
             six.reraise(CloudBackendError, e)
 
@@ -531,12 +529,11 @@ class OpenStackBackend(OpenStackClient):
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to delete ssh public key %s from backend', public_key.name)
 
-            if isinstance(membership, models.CloudProjectMembership):
-                event_logger.membership.warning(
-                    'Failed to delete public key from cloud {cloud_name}.',
-                    event_type='iaas_membership_sync_failed',
-                    event_context={'membership': membership}
-                )
+            event_logger.membership.warning(
+                'Failed to delete public key from cloud {cloud_name}.',
+                event_type='iaas_membership_sync_failed',
+                event_context={'membership': membership}
+            )
 
             six.reraise(CloudBackendError, e)
 
@@ -1227,41 +1224,37 @@ class OpenStackBackend(OpenStackClient):
                 instance.start_time = timezone.now()
                 instance.save()
                 logger.info('Successfully started instance %s', instance.uuid)
-                if isinstance(instance, models.Instance):
-                    event_logger.instance.info(
-                        'Virtual machine {instance_name} has been started.',
-                        event_type='iaas_instance_start_succeeded',
-                        event_context={'instance': instance})
+                event_logger.instance.info(
+                    'Virtual machine {instance_name} has been started.',
+                    event_type='iaas_instance_start_succeeded',
+                    event_context={'instance': instance})
                 return
 
             nova.servers.start(instance.backend_id)
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
                 logger.error('Failed to start instance %s', instance.uuid)
-                if isinstance(instance, models.Instance):
-                    event_logger.instance.error(
-                        'Virtual machine {instance_name} start has failed.',
-                        event_type='iaas_instance_start_failed',
-                        event_context={'instance': instance})
-                raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
-        except nova_exceptions.ClientException as e:
-            logger.exception('Failed to start instance %s', instance.uuid)
-            if isinstance(instance, models.Instance):
                 event_logger.instance.error(
                     'Virtual machine {instance_name} start has failed.',
                     event_type='iaas_instance_start_failed',
                     event_context={'instance': instance})
+                raise CloudBackendError('Timed out waiting for instance %s to start' % instance.uuid)
+        except nova_exceptions.ClientException as e:
+            logger.exception('Failed to start instance %s', instance.uuid)
+            event_logger.instance.error(
+                'Virtual machine {instance_name} start has failed.',
+                event_type='iaas_instance_start_failed',
+                event_context={'instance': instance})
             six.reraise(CloudBackendError, e)
         else:
             instance.start_time = timezone.now()
             instance.save()
 
             logger.info('Successfully started instance %s', instance.uuid)
-            if isinstance(instance, models.Instance):
-                event_logger.instance.info(
-                    'Virtual machine {instance_name} has been started.',
-                    event_type='iaas_instance_start_succeeded',
-                    event_context={'instance': instance})
+            event_logger.instance.info(
+                'Virtual machine {instance_name} has been started.',
+                event_type='iaas_instance_start_succeeded',
+                event_context={'instance': instance})
 
     def stop_instance(self, instance):
         logger.debug('About to stop instance %s', instance.uuid)
@@ -1281,40 +1274,36 @@ class OpenStackBackend(OpenStackClient):
                 instance.start_time = None
                 instance.save()
                 logger.info('Successfully stopped instance %s', instance.uuid)
-                if isinstance(instance, models.Instance):
-                    event_logger.instance.info(
-                        'Virtual machine {instance_name} has been stopped.',
-                        event_type='iaas_instance_stop_succeeded',
-                        event_context={'instance': instance})
+                event_logger.instance.info(
+                    'Virtual machine {instance_name} has been stopped.',
+                    event_type='iaas_instance_stop_succeeded',
+                    event_context={'instance': instance})
                 return
 
             nova.servers.stop(instance.backend_id)
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
                 logger.error('Failed to stop instance %s', instance.uuid)
-                if isinstance(instance, models.Instance):
-                    event_logger.instance.error(
-                        'Virtual machine {instance_name} stop has failed.',
-                        event_type='iaas_instance_stop_failed',
-                        event_context={'instance': instance})
-                raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
-        except nova_exceptions.ClientException as e:
-            logger.exception('Failed to stop instance %s', instance.uuid)
-            if isinstance(instance, models.Instance):
                 event_logger.instance.error(
                     'Virtual machine {instance_name} stop has failed.',
                     event_type='iaas_instance_stop_failed',
                     event_context={'instance': instance})
+                raise CloudBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
+        except nova_exceptions.ClientException as e:
+            logger.exception('Failed to stop instance %s', instance.uuid)
+            event_logger.instance.error(
+                'Virtual machine {instance_name} stop has failed.',
+                event_type='iaas_instance_stop_failed',
+                event_context={'instance': instance})
             six.reraise(CloudBackendError, e)
         else:
             instance.start_time = None
             instance.save()
             logger.info('Successfully stopped instance %s', instance.uuid)
-            if isinstance(instance, models.Instance):
-                event_logger.instance.info(
-                    'Virtual machine {instance_name} has been stopped.',
-                    event_type='iaas_instance_stop_succeeded',
-                    event_context={'instance': instance})
+            event_logger.instance.info(
+                'Virtual machine {instance_name} has been stopped.',
+                event_type='iaas_instance_stop_succeeded',
+                event_context={'instance': instance})
 
     def restart_instance(self, instance):
         logger.debug('About to restart instance %s', instance.uuid)
@@ -1328,27 +1317,24 @@ class OpenStackBackend(OpenStackClient):
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE', retries=80):
                 logger.error('Failed to restart instance %s', instance.uuid)
-                if isinstance(instance, models.Instance):
-                    event_logger.instance.error(
-                        'Virtual machine {instance_name} restart has failed.',
-                        event_type='iaas_instance_restart_failed',
-                        event_context={'instance': instance})
-                raise CloudBackendError('Timed out waiting for instance %s to restart' % instance.uuid)
-        except nova_exceptions.ClientException as e:
-            logger.exception('Failed to restart instance %s', instance.uuid)
-            if isinstance(instance, models.Instance):
                 event_logger.instance.error(
                     'Virtual machine {instance_name} restart has failed.',
                     event_type='iaas_instance_restart_failed',
                     event_context={'instance': instance})
+                raise CloudBackendError('Timed out waiting for instance %s to restart' % instance.uuid)
+        except nova_exceptions.ClientException as e:
+            logger.exception('Failed to restart instance %s', instance.uuid)
+            event_logger.instance.error(
+                'Virtual machine {instance_name} restart has failed.',
+                event_type='iaas_instance_restart_failed',
+                event_context={'instance': instance})
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully restarted instance %s', instance.uuid)
-            if isinstance(instance, models.Instance):
-                event_logger.instance.info(
-                    'Virtual machine {instance_name} has been restarted.',
-                    event_type='iaas_instance_restart_succeeded',
-                    event_context={'instance': instance})
+            event_logger.instance.info(
+                'Virtual machine {instance_name} has been restarted.',
+                event_type='iaas_instance_restart_succeeded',
+                event_context={'instance': instance})
 
     def delete_instance(self, instance):
         logger.info('About to delete instance %s', instance.uuid)
@@ -1362,13 +1348,12 @@ class OpenStackBackend(OpenStackClient):
 
             if not self._wait_for_instance_deletion(instance.backend_id, nova):
                 logger.info('Failed to delete instance %s', instance.uuid)
-                if isinstance(instance, models.Instance):
-                    event_logger.instance.error(
-                        'Virtual machine {instance_name} deletion has failed.',
-                        event_type='iaas_instance_deletion_failed',
-                        event_context={'instance': instance})
+                event_logger.instance.error(
+                    'Virtual machine {instance_name} deletion has failed.',
+                    event_type='iaas_instance_deletion_failed',
+                    event_context={'instance': instance})
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
-            elif isinstance(instance, models.Instance):
+            elif isinstance(instance, models.Instance):  # TODO: add quota support for all services (NC-634)
                 membership.add_quota_usage('max_instances', -1)
                 membership.add_quota_usage('vcpu', -instance.cores)
                 membership.add_quota_usage('ram', -instance.ram)
@@ -1379,19 +1364,17 @@ class OpenStackBackend(OpenStackClient):
 
         except nova_exceptions.ClientException as e:
             logger.info('Failed to delete instance %s', instance.uuid)
-            if isinstance(instance, models.Instance):
-                event_logger.instance.error(
-                    'Virtual machine {instance_name} deletion has failed.',
-                    event_type='iaas_instance_deletion_failed',
-                    event_context={'instance': instance})
+            event_logger.instance.error(
+                'Virtual machine {instance_name} deletion has failed.',
+                event_type='iaas_instance_deletion_failed',
+                event_context={'instance': instance})
             six.reraise(CloudBackendError, e)
         else:
             logger.info('Successfully deleted instance %s', instance.uuid)
-            if isinstance(instance, models.Instance):
-                event_logger.instance.info(
-                    'Virtual machine {instance_name} has been deleted.',
-                    event_type='iaas_instance_deletion_succeeded',
-                    event_context={'instance': instance})
+            event_logger.instance.info(
+                'Virtual machine {instance_name} has been deleted.',
+                event_type='iaas_instance_deletion_succeeded',
+                event_context={'instance': instance})
 
     def import_instance(self, membership, instance_id, template_id=None):
         try:

@@ -3,6 +3,7 @@ import uuid
 import types
 import decimal
 import datetime
+import importlib
 import logging
 
 from django.apps import apps
@@ -40,6 +41,20 @@ class BaseLogger(object):
     def get_nullable_fields(self):
         return getattr(self._meta, 'nullable_fields', [])
 
+    def get_field_model(self, model):
+        if not isinstance(model, basestring):
+            return model
+
+        try:
+            return apps.get_model(model)
+        except LookupError:
+            try:
+                app_name, class_name = model.split('.')
+                module = importlib.import_module('nodeconductor.%s.models' % app_name)
+                return getattr(module, class_name)
+            except (ImportError, AttributeError, IndexError):
+                raise LoggerError("Can't find model %s" % model)
+
     def compile_message(self, message_template, context):
         try:
             msg = message_template.format(**context)
@@ -59,7 +74,7 @@ class BaseLogger(object):
         # Get a list of fields here in order to be sure all models already loaded.
         if not hasattr(self, 'fields'):
             self.fields = {
-                k: apps.get_model(v) if isinstance(v, basestring) else v
+                k: self.get_field_model(v)
                 for k, v in self.__class__.__dict__.items()
                 if not k.startswith('_') and not isinstance(v, (types.ClassType, types.FunctionType))}
 
