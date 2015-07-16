@@ -349,6 +349,16 @@ STATIC_ROOT = config.get('global', 'static_root')
 
 # Django CORS headers
 # See also: https://github.com/ottoyiu/django-cors-headers
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_EXPOSE_HEADERS = (
+    'x-result-count',
+    'Link',
+)
+
+CORS_ORIGIN_ALLOW_ALL = True
+
 INSTALLED_APPS = (
     'corsheaders',
 ) + INSTALLED_APPS
@@ -357,8 +367,6 @@ MIDDLEWARE_CLASSES = (
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
 ) + MIDDLEWARE_CLASSES
-
-CORS_ORIGIN_ALLOW_ALL = True
 
 # LDAP
 # Tested on FreeIPA.
