@@ -9,6 +9,11 @@ class Service(LoggableMixin, structure_models.Service):
     projects = models.ManyToManyField(
         structure_models.Project, related_name='+', through='ServiceProjectLink')
 
+    @property
+    def auth_url(self):
+        # XXX: Temporary backward compatibility
+        return self.settings.backend_url
+
 
 class ServiceProjectLink(LoggableMixin, structure_models.ServiceProjectLink):
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances',
@@ -23,6 +28,21 @@ class ServiceProjectLink(LoggableMixin, structure_models.ServiceProjectLink):
         max_length=100, blank=True,
         help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
     )
+
+    @property
+    def cloud(self):
+        # XXX: Temporary backward compatibility
+        return self.service
+
+    @property
+    def username(self):
+        # XXX: Temporary backward compatibility
+        return self.service.settings.username
+
+    @property
+    def password(self):
+        # XXX: Temporary backward compatibility
+        return self.service.settings.password
 
     def get_quota_parents(self):
         return [self.project]
@@ -64,6 +84,11 @@ class Instance(LoggableMixin, structure_models.VirtualMachineMixin, structure_mo
     data_volume_id = models.CharField(max_length=255, blank=True)
     data_volume_size = models.PositiveIntegerField(
         default=DEFAULT_DATA_VOLUME_SIZE, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
+
+    @property
+    def cloud_project_membership(self):
+        # Temporary backward compatibility
+        return self.service_project_link
 
     def get_log_fields(self):
         return (

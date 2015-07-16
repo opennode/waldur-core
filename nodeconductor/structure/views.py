@@ -1435,18 +1435,17 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         raise NotImplementedError
 
     @safe_operation(valid_state=models.Resource.States.OFFLINE)
-    def perform_destroy(self, resource):
+    def destroy(self, request, resource, uuid=None):
         if resource.backend_id:
             backend = resource.get_backend()
             backend.destroy(resource)
         else:
-            resource.delete()
+            self.perform_destroy(resource)
 
     @detail_route(methods=['post'])
-    def unlink(self, request, uuid=None):
-        resource = self.get_object()
-        resource.delete()
-        return Response({'status': 'resource unlinked'}, status=status.HTTP_200_OK)
+    @safe_operation()
+    def unlink(self, request, resource, uuid=None):
+        self.perform_destroy(resource)
 
     @detail_route(methods=['post'])
     @safe_operation(valid_state=models.Resource.States.OFFLINE)
