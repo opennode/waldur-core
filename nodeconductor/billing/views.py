@@ -20,13 +20,6 @@ from nodeconductor.structure.filters import GenericRoleFilter
 from nodeconductor.structure.models import CustomerRole
 
 
-paypal.configure({
-    'mode': settings.NODECONDUCTOR['PAYPAL']['mode'],
-    'client_id': settings.NODECONDUCTOR['PAYPAL']['client_id'],
-    'client_secret': settings.NODECONDUCTOR['PAYPAL']['client_secret'],
-})
-
-
 class PaypalException(Exception):
     pass
 
@@ -158,6 +151,16 @@ class PaymentView(mixins.ListModelMixin,
     lookup_field = 'uuid'
     filter_backends = (GenericRoleFilter, )
 
+    def __init__(self, **kwargs):
+        super(PaymentView, self).__init__(**kwargs)
+        self.paypal_settings = settings.NODECONDUCTOR.get('PAYPAL', {})
+
+        paypal.configure({
+            'mode': self.paypal_settings.get('mode'),
+            'client_id': self.paypal_settings.get('client_id'),
+            'client_secret': self.paypal_settings.get('client_secret'),
+        })
+
     def create(self, request):
         """
         Create new payment via Paypal gateway
@@ -193,7 +196,7 @@ class PaymentView(mixins.ListModelMixin,
                         {
                             'amount': {
                                 'total': str(amount), # serialize decimal
-                                'currency': settings.NODECONDUCTOR['PAYPAL']['currency_name']
+                                'currency': self.paypal_settings.get('currency_name')
                             },
                             'description': 'Replenish account in NodeConductor for %s' % customer.name
                         }
