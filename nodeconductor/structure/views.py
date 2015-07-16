@@ -1,19 +1,24 @@
 from __future__ import unicode_literals
 
-from collections import defaultdict, OrderedDict
-import logging
-import StringIO
 import time
+import logging
+import functools
+import StringIO
+import django_filters
+
+from collections import defaultdict, OrderedDict
 from datetime import datetime, timedelta
 
 from django import http
 from django.conf import settings as django_settings
 from django.contrib import auth
-from django.db import connection
+from django.db import connection, transaction, IntegrityError
 from django.db.models import Q, Sum
 from django.template.loader import render_to_string
 from django.utils import timezone
-import django_filters
+from django_fsm import TransitionNotAllowed
+from xhtml2pdf import pisa
+
 from rest_framework import filters as rf_filters
 from rest_framework import mixins
 from rest_framework import permissions as rf_permissions
@@ -22,11 +27,9 @@ from rest_framework import status
 from rest_framework import views
 from rest_framework import viewsets
 from rest_framework import generics
-from rest_framework.reverse import reverse
 from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import PermissionDenied, APIException
 from rest_framework.response import Response
-from xhtml2pdf import pisa
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins as core_mixins
@@ -36,7 +39,7 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.utils import request_api
 from nodeconductor.quotas import views as quotas_views
-from nodeconductor.structure import SupportedServices
+from nodeconductor.structure import SupportedServices, ServiceBackendError
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
 from nodeconductor.structure import models
@@ -1344,6 +1347,42 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
 
+    def safe_operation(valid_state=None):
+        def decorator(view_fn):
+            @functools.wraps(view_fn)
+            def wrapped(self, request, *args, **kwargs):
+                message = "Performing %s operation is not allowed for resource in its current state"
+                operation_name = view_fn.__name__
+
+                try:
+                    with transaction.atomic():
+                        resource = self.get_object()
+                        is_admin = resource.service_project_link.project.has_user(
+                            request.user, models.ProjectRole.ADMINISTRATOR)
+
+                        if not is_admin and not request.user.is_staff:
+                            raise PermissionDenied(
+                                "Only project administrator or staff allowed to perform this action.")
+
+                        if valid_state and resource.state != valid_state:
+                            raise core_exceptions.IncorrectStateException(message % operation_name)
+
+                        # Important! We are passing back the instance from current transaction to a view
+                        view_fn(self, request, resource, *args, **kwargs)
+
+                except TransitionNotAllowed:
+                    raise core_exceptions.IncorrectStateException(message % operation_name)
+
+                except IntegrityError:
+                    return Response({'status': '%s was not scheduled' % operation_name},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
+                return Response({'status': '%s was scheduled' % operation_name},
+                                status=status.HTTP_202_ACCEPTED)
+
+            return wrapped
+        return decorator
+
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):
             resource = self.get_object()
@@ -1359,12 +1398,30 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
 
         super(BaseResourceViewSet, self).initial(request, *args, **kwargs)
 
+    def get_queryset(self):
+        queryset = super(BaseResourceViewSet, self).get_queryset()
+
+        order = self.request.query_params.get('o', None)
+        if order == 'start_time':
+            queryset = queryset.extra(select={
+                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
+                .order_by('is_null', 'start_time')
+        elif order == '-start_time':
+            queryset = queryset.extra(select={
+                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
+                .order_by('-is_null', '-start_time')
+
+        return queryset
+
     def perform_create(self, serializer):
         if serializer.validated_data['service_project_link'].state == core_models.SynchronizationStates.ERRED:
             raise core_exceptions.IncorrectStateException(
                 detail='Cannot modify resource if its service project link in erred state.')
 
-        self.perform_provision(serializer)
+        try:
+            self.perform_provision(serializer)
+        except ServiceBackendError as e:
+            raise APIException(e)
 
     def perform_update(self, serializer):
         spl = self.get_object().service_project_link
@@ -1377,11 +1434,8 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     def perform_provision(self, serializer):
         raise NotImplementedError
 
+    @safe_operation(valid_state=models.Resource.States.OFFLINE)
     def perform_destroy(self, resource):
-        if resource.state != resource.States.OFFLINE:
-            raise core_exceptions.IncorrectStateException(
-                "Resource must be offline to be deleted")
-
         if resource.backend_id:
             backend = resource.get_backend()
             backend.destroy(resource)
@@ -1395,36 +1449,19 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         return Response({'status': 'resource unlinked'}, status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
-    def start(self, request, uuid=None):
-        resource = self.get_object()
-        if resource.state != resource.States.OFFLINE:
-            raise core_exceptions.IncorrectStateException(
-                "Resource can't be started in its current state")
-
+    @safe_operation(valid_state=models.Resource.States.OFFLINE)
+    def start(self, request, resource, uuid=None):
         backend = resource.get_backend()
         backend.start(resource)
-        return Response({'status': 'start was scheduled'}, status=status.HTTP_202_ACCEPTED)
 
     @detail_route(methods=['post'])
-    def stop(self, request, uuid=None):
-        resource = self.get_object()
-        if resource.state != resource.States.ONLINE:
-            raise core_exceptions.IncorrectStateException(
-                "Resource can't be stopped in its current state")
-
+    @safe_operation(valid_state=models.Resource.States.ONLINE)
+    def stop(self, request, resource, uuid=None):
         backend = resource.get_backend()
         backend.stop(resource)
-        return Response({'status': 'stop was scheduled'}, status=status.HTTP_202_ACCEPTED)
 
     @detail_route(methods=['post'])
-    def restart(self, request, uuid=None):
-        resource = self.get_object()
-        if resource.state == resource.States.OFFLINE:
-            return self.start(request, uuid)
-        elif resource.state != resource.States.ONLINE:
-            raise core_exceptions.IncorrectStateException(
-                "Resource can't be restarted in its current state")
-
+    @safe_operation(valid_state=models.Resource.States.ONLINE)
+    def restart(self, request, resource, uuid=None):
         backend = resource.get_backend()
         backend.restart(resource)
-        return Response({'status': 'restart was scheduled'}, status=status.HTTP_202_ACCEPTED)

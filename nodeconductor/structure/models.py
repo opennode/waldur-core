@@ -1,7 +1,10 @@
 from __future__ import unicode_literals
 
+import yaml
+
 from django.apps import apps
 from django.core.validators import MaxLengthValidator
+from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models, transaction
@@ -518,6 +521,25 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
+
+
+def validate_yaml(value):
+    try:
+        yaml.load(value)
+    except yaml.error.YAMLError:
+        raise ValidationError('A valid YAML value is required.')
+
+
+class VirtualMachineMixin(models.Model):
+    key_name = models.CharField(max_length=50, blank=True)
+    key_fingerprint = models.CharField(max_length=47, blank=True)
+
+    user_data = models.TextField(
+        blank=True, validators=[validate_yaml],
+        help_text='Additional data that will be added to instance on provisioning')
+
+    class Meta(object):
+        abstract = True
 
 
 @python_2_unicode_compatible

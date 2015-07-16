@@ -199,9 +199,12 @@ class SupportedServices(object):
         data = {}
         for service_model_name, service in cls._registry.items():
             service_model = apps.get_model(service_model_name)
+            service_project_link = next(
+                m[0].model for m in service_model._meta.get_all_related_objects_with_model()
+                if m[0].var_name in ('cloudprojectmembership', 'serviceprojectlink'))
             data[service['service_type']] = {
                 'service': service_model,
-                'service_project_link': service_model._meta.get_all_related_objects_with_model()[0][0].model,
+                'service_project_link': service_project_link,
                 'resources': [apps.get_model(r) for r in service['resources'].keys()],
             }
 
