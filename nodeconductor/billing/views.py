@@ -233,7 +233,8 @@ class PaymentView(mixins.ListModelMixin,
     @decorators.detail_route()
     def approve(self, request, uuid):
         """
-        Callback view for Paypal payment approval
+        Callback view for Paypal payment approval.
+        Do not use it directly. It is internal API.
         """
         db_payment = self.get_object()
 
@@ -282,7 +283,8 @@ class PaymentView(mixins.ListModelMixin,
     @decorators.detail_route()
     def cancel(self, request, uuid):
         """
-        Callback view for Paypal payment cancel
+        Callback view for Paypal payment cancel.
+        Do not use it directly. It is internal API.
         """
         payment = self.get_object()
         try:
