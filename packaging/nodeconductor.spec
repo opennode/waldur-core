@@ -20,6 +20,7 @@ Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # openssl package is needed to generate SAML2 keys during NodeConductor install
+# python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 # xmlsec1-openssl package is needed for SAML2 features to work
 Requires: logrotate
 Requires: MySQL-python
@@ -30,9 +31,10 @@ Requires: python-cinderclient = 1.0.9
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.7.1
 Requires: python-django-auth-ldap = 1.2.0
-Requires: python-django-model-utils = 2.2
+Requires: python-django-cors-headers
 Requires: python-django-filter = 0.7
 Requires: python-django-fsm = 2.2.0
+Requires: python-django-model-utils = 2.2
 Requires: python-django-permission = 0.8.2
 Requires: python-django-polymorphic >= 0.7.0
 Requires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0

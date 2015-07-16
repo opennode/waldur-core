@@ -347,6 +347,19 @@ if config.get('saml2', 'log_file') != '':
 
 STATIC_ROOT = config.get('global', 'static_root')
 
+# Django CORS headers
+# See also: https://github.com/ottoyiu/django-cors-headers
+INSTALLED_APPS = (
+    'corsheaders',
+) + INSTALLED_APPS
+
+MIDDLEWARE_CLASSES = (
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+) + MIDDLEWARE_CLASSES
+
+CORS_ORIGIN_ALLOW_ALL = True
+
 # LDAP
 # Tested on FreeIPA.
 #See also: https://pythonhosted.org/django-auth-ldap/
