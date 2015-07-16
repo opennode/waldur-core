@@ -298,6 +298,5 @@ class PaymentView(mixins.ListModelMixin,
                 return redirect(payment.error_url)
 
         except TransitionNotAllowed:
-            message = "Performing %s operation from state '%s' is not allowed"
-            return response.Response({'detail': message % ('cancel', payment.get_state_display())},
-                                     status=status.HTTP_409_CONFLICT)
+            logging.warning('Unable to cancel payment because of invalid state')
+            return redirect(payment.error_url)
