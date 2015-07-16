@@ -387,6 +387,11 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
     def __str__(self):
         return self.name
 
+    @property
+    def service_project_link(self):
+        # For consistency with other resources
+        return self.cloud_project_membership
+
     def get_backend(self):
         return self.cloud_project_membership.get_backend()
 
