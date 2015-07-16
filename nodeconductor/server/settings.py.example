@@ -219,4 +219,11 @@ NODECONDUCTOR['BILLING'] = {
     }
 }
 
+NODECONDUCTOR['PAYPAL'] = {
+    'mode': 'sandbox',
+    'client_id': '',
+    'client_secret': '',
+    'currency_name': 'USD',
+}
+
 DEFAULT_FROM_EMAIL='noreply@example.com'
