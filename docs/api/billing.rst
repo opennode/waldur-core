@@ -43,8 +43,6 @@ It contains the following fields:
 
 - amount: specify total amount of money; the currency is specified in application's settings
 - customer: URL of customer, because balance is related to particular customer
-- success_url: after successfull approval of the payment user will be redirected to the specified URL
-- error_url: if user has cancelled payment or error occurred during payment processing, he will be redirected to the specified URL
 
 Example response:
 
@@ -52,15 +50,14 @@ Example response:
 
     [
         {
-            "url": "http://www.example.com/api/payments/7d75f0ac023043e5822669af3e8b1931/",
-            "uuid": "7d75f0ac023043e5822669af3e8b1931",
+            "url": "http://example.com/api/payments/f85d62886e2d4947a9276d517f9516f3/",
+            "uuid": "f85d62886e2d4947a9276d517f9516f3",
+            "created": "2015-07-17T14:42:32.348Z",
+            "modified": "2015-07-17T14:42:37.168Z",
+            "state": "Created",
             "amount": "99.99",
-            "created": "2015-07-16T09:05:27.113Z",
-            "modified": "2015-07-16T09:10:51.463Z",
-            "state": "Approved",
-            "customer": "http://www.example.com/api/customers/211ca3327de945899375749bd55dae4a/",
-            "success_url": "http://www.example.com/api/payments/success",
-            "error_url": "http://www.example.com/api/payments/error"
+            "customer": "http://example.com/api/customers/211ca3327de945899375749bd55dae4a/",
+            "approval_url": "https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=EC-7YY98098HC144311S"
         }
     ]
 

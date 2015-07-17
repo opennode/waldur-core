@@ -13,4 +13,12 @@ PERMISSION_LOGICS = (
 
         any_permission=True,
     )),
+    ('billing.Payment', FilteredCollaboratorsPermissionLogic(
+        collaborators_query='customer__roles__permission_group__user',
+        collaborators_filter={
+            'customer__roles__role_type': structure_models.CustomerRole.OWNER,
+        },
+
+        any_permission=True,
+    )),
 )

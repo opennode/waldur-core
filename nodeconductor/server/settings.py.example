@@ -219,11 +219,15 @@ NODECONDUCTOR['BILLING'] = {
     }
 }
 
-NODECONDUCTOR['PAYPAL'] = {
+"""
+NODECONDUCTOR['BILLING'] = {
+    'backend': 'nodeconductor.billing.backend.paypal.PaypalBackend',
     'mode': 'sandbox',
     'client_id': '',
     'client_secret': '',
     'currency_name': 'USD',
+    'return_url': 'http://example.com/payment/return'
 }
+"""
 
 DEFAULT_FROM_EMAIL='noreply@example.com'

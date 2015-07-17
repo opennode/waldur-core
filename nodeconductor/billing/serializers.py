@@ -37,12 +37,12 @@ class PaymentSerializer(core_serializers.AugmentedSerializerMixin,
         model = Payment
 
         fields = (
-            'url', 'uuid', 'amount', 'created', 'modified', 'state', 'customer',
-            'success_url', 'error_url'
+            'url', 'uuid', 'created', 'modified', 'state',
+            'amount', 'customer', 'approval_url'
         )
 
-        read_only_fields = ('amount', 'created', 'modified', 'state')
-        protected_fields = ('success_url', 'error_url', 'customer')
+        read_only_fields = ('approval_url',)
+        protected_fields = ('customer', 'amount')
 
         extra_kwargs = {
             'url': {'lookup_field': 'uuid', 'view_name': 'payment-detail'},

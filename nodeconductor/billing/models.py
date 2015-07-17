@@ -48,29 +48,29 @@ class Payment(LoggableMixin, TimeStampedModel, core_models.UuidMixin):
         customer_path = 'customer'
 
     class States(object):
+        INIT = 0
         CREATED = 1
         APPROVED = 2
         CANCELLED = 3
+        ERRED = 4
 
     STATE_CHOICES = (
+        (States.INIT, 'Initial'),
         (States.CREATED, 'Created'),
         (States.APPROVED, 'Approved'),
-        (States.CANCELLED, 'Cancelled'),
+        (States.ERRED, 'Erred'),
     )
 
-    state = FSMIntegerField(default=States.CREATED, choices=STATE_CHOICES)
+    state = FSMIntegerField(default=States.INIT, choices=STATE_CHOICES)
 
     customer = models.ForeignKey('structure.Customer')
     amount = models.DecimalField(max_digits=9, decimal_places=2)
 
-    # Payment ID from Paypal. Field is required and fetched from backend
+    # Payment ID is required and fetched from backend
     backend_id = models.CharField(max_length=255, null=True)
 
-    # When approval succeded redirect from paypal gateway to the URL inside of our web app
-    success_url = models.URLField()
-
-    # When approval fails redirect from paypal gateway to the URL inside of our web app
-    error_url = models.URLField()
+    # URL is fetched from backend
+    approval_url = models.URLField()
 
     def __str__(self):
         return "%s %.2f %s" % (self.modified, self.amount, self.customer.name)
@@ -78,10 +78,18 @@ class Payment(LoggableMixin, TimeStampedModel, core_models.UuidMixin):
     def get_log_fields(self):
         return ('uuid', 'customer', 'amount', 'modified', 'status')
 
+    @transition(field=state, source=States.INIT, target=States.CREATED)
+    def set_created(self):
+        pass
+
     @transition(field=state, source=States.CREATED, target=States.APPROVED)
-    def approve(self):
+    def set_approved(self):
         pass
 
     @transition(field=state, source=States.CREATED, target=States.CANCELLED)
-    def cancel(self):
+    def set_cancelled(self):
+        pass
+
+    @transition(field=state, source='*', target=States.ERRED)
+    def set_erred(self):
         pass

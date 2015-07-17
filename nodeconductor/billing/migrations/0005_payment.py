@@ -24,11 +24,10 @@ class Migration(migrations.Migration):
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
-                ('state', django_fsm.FSMIntegerField(default=1, choices=[(1, b'Created'), (2, b'Approved'), (3, b'Cancelled')])),
+                ('state', django_fsm.FSMIntegerField(default=0, choices=[(0, b'Initial'), (1, b'Created'), (2, b'Approved'), (4, b'Erred')])),
                 ('amount', models.DecimalField(max_digits=9, decimal_places=2)),
                 ('backend_id', models.CharField(max_length=255, null=True)),
-                ('success_url', models.URLField()),
-                ('error_url', models.URLField()),
+                ('approval_url', models.URLField()),
                 ('customer', models.ForeignKey(to='structure.Customer')),
             ],
             options={

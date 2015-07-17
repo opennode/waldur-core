@@ -1,6 +1,7 @@
 import decimal
 import mock
 
+from django.test.utils import override_settings
 from rest_framework import test, status
 from rest_framework.reverse import reverse
 
@@ -9,6 +10,16 @@ from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
 
+@override_settings(NODECONDUCTOR={
+    'BILLING':{
+        'backend': 'nodeconductor.billing.backend.paypal.PaypalBackend',
+        'mode': 'sandbox',
+        'client_id': '',
+        'client_secret': '',
+        'currency_name': 'USD',
+        'return_url': 'http://example.com/payment/return'
+    }
+})
 class PaypalPaymentTest(test.APISimpleTestCase):
 
     def setUp(self):
@@ -23,8 +34,6 @@ class PaypalPaymentTest(test.APISimpleTestCase):
         self.request_data = {
             'amount': decimal.Decimal('9.99'),
             'customer': structure_factories.CustomerFactory.get_url(self.customer),
-            'success_url': 'http://www.example.com/payment/success_callback',
-            'error_url': 'http://www.example.com/payment/error_callback'
         }
 
         self.response_data = {
@@ -79,8 +88,6 @@ class PaypalPaymentTest(test.APISimpleTestCase):
             payment = billing_models.Payment.objects.create(
                 customer=self.customer,
                 amount=self.request_data['amount'],
-                success_url=self.request_data['success_url'],
-                error_url=self.request_data['error_url'],
                 backend_id=self.response_data['payment_id'],
             )
 
@@ -95,8 +102,6 @@ class PaypalPaymentTest(test.APISimpleTestCase):
             payment = billing_models.Payment.objects.create(
                 customer=self.customer,
                 amount=self.request_data['amount'],
-                success_url=self.request_data['success_url'],
-                error_url=self.request_data['error_url'],
                 backend_id=self.response_data['payment_id'],
             )
 
@@ -123,15 +128,13 @@ class PaypalPaymentTest(test.APISimpleTestCase):
 
         payment = billing_models.Payment.objects.get(backend_id=self.response_data['payment_id'])
         self.assertEqual(payment.amount, self.request_data['amount'])
-        self.assertEqual(payment.success_url, self.request_data['success_url'])
-        self.assertEqual(payment.error_url, self.request_data['error_url'])
 
     def test_when_backend_fails_database_object_not_created(self):
         self.response_data['create_ok'] = False
 
         response = self.create_payment(self.owner)
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertFalse(billing_models.Payment.objects.filter(
             backend_id=self.response_data['payment_id']).exists())
 
@@ -143,7 +146,7 @@ class PaypalPaymentTest(test.APISimpleTestCase):
         response = self.approve_payment(self.owner)
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response['Location'], self.request_data['success_url'])
+        self.assertEqual(response['Location'], self.customer.get_billing_backend().api.return_url)
 
         customer = structure_models.Customer.objects.get(id=self.customer.id)
         self.assertEqual(customer.balance, self.customer.balance + self.request_data['amount'])
@@ -156,7 +159,7 @@ class PaypalPaymentTest(test.APISimpleTestCase):
         response = self.cancel_payment(self.owner)
 
         self.assertEqual(response.status_code, status.HTTP_302_FOUND)
-        self.assertEqual(response['Location'], self.request_data['error_url'])
+        self.assertEqual(response['Location'], self.customer.get_billing_backend().api.return_url)
 
         customer = structure_models.Customer.objects.get(id=self.customer.id)
         self.assertEqual(customer.balance, self.customer.balance)
