@@ -35,10 +35,10 @@ To group invoices by month use **?group_by=month** parameter. Otherwise they wil
 In order to force browser to download and save PDF use **?download=1** parameter.
 
 
-List PayPal payments
+List payments
 --------------------
 
-To get a list of PayPal payments, run GET against **/api/payments/** as an authenticated user.
+To get a list of payments, run GET against **/api/payments/** as an authenticated user.
 It contains the following fields:
 
 - amount: specify total amount of money; the currency is specified in application's settings
@@ -61,10 +61,17 @@ Example response:
         }
     ]
 
-Create new PayPal payment
+Create new payment
 -------------------------
 
-In order to create new PayPal payment, run POST against **/api/payments/** as an authenticated user.
-Request should contain the following fields: amount, customer, success_url, error_url
+In order to create new payment, run POST against **/api/payments/** as an authenticated user.
+Request should contain the following fields: amount, customer. Exampler request:
+
+.. code-block:: javascript
+
+    {
+        "amount": "99.99",
+        "customer": "http://example.com/api/customers/211ca3327de945899375749bd55dae4a/"
+    }
 
 Response contains dictionary with single field named "approval_url". You should redirect to this URL in order to approve or cancel payment.
