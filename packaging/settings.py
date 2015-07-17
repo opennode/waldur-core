@@ -19,34 +19,41 @@ config_defaults = {
     'global': {
         'db_backend': 'sqlite3',
         'debug': 'false',
+        'media_root': work_dir,
         'secret_key': '',
         'static_root': os.path.join(data_dir, 'static'),
         'template_debug': 'false',
-        'media_root': work_dir,
     },
     'celery': {
         'backup_schedule_execute_period': 600,
         'broker_url': 'redis://localhost',
         'cloud_account_pull_period': 3600,
-        'recover_erred_services_period': 1800,
         'cloud_project_membership_pull_period': 1800,
         'cloud_project_membership_quota_check_period': 86400,
-        'recover_erred_cloud_memberships_period': 1800,
         'expired_backup_delete_period': 600,
         'instance_monthly_sla_update_period': 300,
+        'instance_provisioning_concurrency': 3,
         'instance_yearly_sla_update_period': 600,
         'instance_zabbix_sync_period': 1800,
-        'instance_provisioning_concurrency': 3,
-        'service_statistics_update_period': 600,
+        'recover_erred_cloud_memberships_period': 1800,
+        'recover_erred_services_period': 1800,
         'result_backend_url': 'redis://localhost',
+        'service_statistics_update_period': 600,
+    },
+    'elasticsearch': {
+        'host': '',
+        'password': '',
+        'port': '443',
+        'protocol': 'https',
+        'username': '',
     },
     'events': {
+        'hook': 'false',
         'log_file': '',  # empty to disable logging events to file
         'log_level': 'INFO',
         'logserver_host': '',
         'logserver_port': 5959,
         'syslog': 'false',
-        'hook': 'false'
     },
     'logging': {
         'log_file': '',  # empty to disable logging to file
@@ -63,6 +70,9 @@ config_defaults = {
     'openstack': {
         'auth_url': '',
         'cpu_overcommit_ratio': 1,
+    },
+    'rest_api': {
+        'cors_allowed_domains': 'localhost,127.0.0.1',
     },
     'saml2': {
         'acs_url': '',
@@ -86,10 +96,10 @@ config_defaults = {
     },
     'whmcs': {
         'api_url': '',
-        'username': '',
-        'password': '',
         'currency_code': 1,
         'currency_name': 'USD',
+        'password': '',
+        'username': '',
     },
     'zabbix': {
         'db_host': '',  # empty to disable Zabbix database access
@@ -100,19 +110,12 @@ config_defaults = {
         'host_group_id': '',
         'host_template_id': '',
         'password': '',
+        'postgresql_template_id': '',
         'server_url': '',
         'username': '',
         'wordpress_template_id': '',
         'zimbra_template_id': '',
-        'postgresql_template_id': '',
     },
-    'elasticsearch': {
-        'username': '',
-        'password': '',
-        'host': '',
-        'port': '443',
-        'protocol': 'https',
-    }
 }
 
 for section, options in config_defaults.items():
@@ -346,6 +349,28 @@ if config.get('saml2', 'log_file') != '':
 # See also: https://docs.djangoproject.com/en/1.7/ref/settings/#static-files
 
 STATIC_ROOT = config.get('global', 'static_root')
+
+# Django CORS headers
+# See also: https://github.com/ottoyiu/django-cors-headers
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_EXPOSE_HEADERS = (
+    'x-result-count',
+    'Link',
+)
+
+CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_WHITELIST = tuple(i.strip() for i in config.get('rest_api', 'cors_allowed_domains').split(','))
+
+INSTALLED_APPS = (
+    'corsheaders',
+) + INSTALLED_APPS
+
+MIDDLEWARE_CLASSES = (
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+) + MIDDLEWARE_CLASSES
 
 # LDAP
 # Tested on FreeIPA.
