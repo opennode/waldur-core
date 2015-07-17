@@ -65,7 +65,7 @@ Create new payment
 -------------------------
 
 In order to create new payment, run POST against **/api/payments/** as an authenticated user.
-Request should contain the following fields: amount, customer. Exampler request:
+Request should contain the following fields: amount, customer. Example request:
 
 .. code-block:: javascript
 
