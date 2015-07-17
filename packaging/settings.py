@@ -71,6 +71,9 @@ config_defaults = {
         'auth_url': '',
         'cpu_overcommit_ratio': 1,
     },
+    'rest_api': {
+        'cors_allowed_domains': 'localhost,127.0.0.1',
+    },
     'saml2': {
         'acs_url': '',
         'attribute_map_civil_number': 'Civil number',
@@ -357,7 +360,8 @@ CORS_EXPOSE_HEADERS = (
     'Link',
 )
 
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_WHITELIST = tuple(i.strip() for i in config.get('rest_api', 'cors_allowed_domains').split(','))
 
 INSTALLED_APPS = (
     'corsheaders',
