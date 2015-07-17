@@ -102,6 +102,32 @@ class OpenStackBackend(ServiceBackend):
             backend_flavor_id=flavor.backend_id,
             backend_image_id=image.backend_id)
 
+    def destroy(self, instance):
+        instance.schedule_deletion()
+        instance.save()
+        send_task('openstack', 'destroy')(instance.uuid.hex)
+
+    def start(self, instance):
+        instance.schedule_starting()
+        instance.save()
+        send_task('openstack', 'start')(instance.uuid.hex)
+
+    def stop(self, instance):
+        instance.schedule_stopping()
+        instance.save()
+        send_task('openstack', 'stop')(instance.uuid.hex)
+
+    def restart(self, instance):
+        instance.schedule_restarting()
+        instance.save()
+        send_task('openstack', 'restart')(instance.uuid.hex)
+
+    def add_ssh_key(self, ssh_key, service_project_link):
+        return self._old_backend.remove_ssh_public_key(service_project_link, ssh_key)
+
+    def remove_ssh_key(self, ssh_key, service_project_link):
+        return self._old_backend.remove_ssh_public_key(service_project_link, ssh_key)
+
     def _get_current_properties(self, model):
         return {p.backend_id: p for p in model.objects.filter(settings=self.settings)}
 
