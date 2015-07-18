@@ -11,4 +11,14 @@ class InvoiceEventLogger(EventLogger):
                        'invoice_creation_succeeded')
 
 
+class PaymentEventLogger(EventLogger):
+    payment = models.Payment
+
+    class Meta:
+        event_types = ('payment_creation_succeeded',
+                       'payment_approval_succeeded',
+                       'payment_cancel_succeeded')
+
+
 event_logger.register('invoice', InvoiceEventLogger)
+event_logger.register('payment', PaymentEventLogger)

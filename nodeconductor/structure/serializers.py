@@ -191,6 +191,8 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+        # Balance should be modified by paypal in billing
+        read_only_fields = ('balance', )
 
     def _get_filtered_data(self, objects, serializer):
         try:
