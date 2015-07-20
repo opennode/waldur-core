@@ -1231,8 +1231,8 @@ class ResourceViewSet(viewsets.GenericViewSet):
 
     def list(self, request):
 
-        def fetch_data(view_name, querystring=None):
-            response = request_api(request, view_name, querystring=querystring)
+        def fetch_data(view_name, params):
+            response = request_api(request, view_name, params=params)
             if not response.success:
                 raise APIException(response.data)
             return response
@@ -1242,9 +1242,11 @@ class ResourceViewSet(viewsets.GenericViewSet):
         for resource_type, resources_url in SupportedServices.get_resources(request).items():
             if types != [] and resource_type not in types:
                 continue
-            response = fetch_data(resources_url)
+            response = fetch_data(resources_url, request.query_params)
             if response.total and response.total > len(response.data):
-                response = fetch_data(resources_url, querystring='page_size=%d' % response.total)
+                params = request.query_params.copy()
+                params.set('page_size', response.total)
+                response = fetch_data(resources_url, params)
             data += response.data
 
         page = self.paginate_queryset(data)
