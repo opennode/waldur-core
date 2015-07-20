@@ -77,7 +77,7 @@ def timeshift(**kwargs):
     return timezone.now().replace(microsecond=0) + timedelta(**kwargs)
 
 
-def request_api(request, url_or_view_name, method='GET', data=None, querystring=None):
+def request_api(request, url_or_view_name, method='GET', data=None, params=None):
     """ Make a request to API internally.
         Use 'request.user' for authentication.
         Return a JSON response.
@@ -89,10 +89,8 @@ def request_api(request, url_or_view_name, method='GET', data=None, querystring=
         url = url_or_view_name
     else:
         url = request.build_absolute_uri(reverse(url_or_view_name))
-    if querystring:
-        url += '?' + querystring
 
-    response = method(url, headers={'Authorization': 'Token %s' % token.key}, data=data)
+    response = method(url, headers={'Authorization': 'Token %s' % token.key}, data=data, params=params)
 
     result = type('Result', (object,), {})
     result.data = response.json()
