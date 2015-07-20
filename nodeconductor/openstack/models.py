@@ -74,10 +74,6 @@ class Instance(LoggableMixin, structure_models.VirtualMachineMixin, structure_mo
     external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
 
-    # fields, defined by flavor
-    cores = models.PositiveSmallIntegerField(default=0, help_text='Number of cores in a VM')
-    ram = models.PositiveIntegerField(default=0, help_text='Memory size in MiB')
-
     # OpenStack backend specific fields
     system_volume_id = models.CharField(max_length=255, blank=True)
     system_volume_size = models.PositiveIntegerField(default=0, help_text='Root disk size in MiB')

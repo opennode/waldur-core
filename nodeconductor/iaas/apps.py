@@ -59,12 +59,6 @@ class IaasConfig(AppConfig):
             dispatch_uid='nodeconductor.iaas.handlers.check_instance_name_update',
         )
 
-        signals.post_save.connect(
-            quotas_handlers.add_quotas_to_scope,
-            sender=CloudProjectMembership,
-            dispatch_uid='nodeconductor.iaas.handlers.add_quotas_to_membership',
-        )
-
         signals.pre_save.connect(
             handlers.set_cpm_default_availability_zone,
             sender=CloudProjectMembership,

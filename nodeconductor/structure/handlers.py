@@ -350,6 +350,12 @@ change_project_nc_service_quota = quotas_handlers.quantity_quota_handler_factory
 )
 
 
+def update_resource_quota_usage(sender, instance, **kwargs):
+    change_project_nc_resource_quota(sender, instance, **kwargs)
+    if hasattr(instance, 'update_quota_usage'):
+        instance.update_quota_usage(**kwargs)
+
+
 def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwargs):
     """ Modify nc_user_count quota usage on structure role grant or revoke """
     assert signal in (signals.structure_role_granted, signals.structure_role_revoked), \
