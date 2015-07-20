@@ -1176,6 +1176,13 @@ class SshKeyViewSet(mixins.CreateModelMixin,
 
         serializer.save(user=user)
 
+    def perform_destroy(self, instance):
+        try:
+            instance.delete()
+        except Exception as e:
+            logger.exception("Can't remove SSH public key from backend")
+            raise APIException(e)
+
 
 class ServiceSettingsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_type='icontains')
