@@ -16,9 +16,6 @@ class Service(LoggableMixin, structure_models.Service):
 
 
 class ServiceProjectLink(LoggableMixin, structure_models.ServiceProjectLink):
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances',
-                    'security_group_count', 'security_group_rule_count']
-
     service = models.ForeignKey(Service)
 
     tenant_id = models.CharField(max_length=64, blank=True)
@@ -73,10 +70,6 @@ class Instance(LoggableMixin, structure_models.VirtualMachineMixin, structure_mo
 
     external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
-
-    # fields, defined by flavor
-    cores = models.PositiveSmallIntegerField(default=0, help_text='Number of cores in a VM')
-    ram = models.PositiveIntegerField(default=0, help_text='Memory size in MiB')
 
     # OpenStack backend specific fields
     system_volume_id = models.CharField(max_length=255, blank=True)

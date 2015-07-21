@@ -2,16 +2,15 @@ from __future__ import unicode_literals
 
 from django.apps import AppConfig
 from django.contrib.auth import get_user_model
-from django.db import models as django_models
 from django.db.models import signals
 
+from nodeconductor.core import handlers as core_handlers
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
-from nodeconductor.structure.models import ServiceProjectLink
+from nodeconductor.structure.models import Resource, ServiceProjectLink
 from nodeconductor.structure import filters
 from nodeconductor.structure import handlers
 from nodeconductor.structure import signals as structure_signals
-from nodeconductor.structure import SupportedServices
 
 
 class StructureConfig(AppConfig):
@@ -174,12 +173,49 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.log_project_group_role_revoked',
         )
 
+        for model in Resource.get_all_models():
+            signals.pre_save.connect(
+                core_handlers.preserve_fields_before_update,
+                sender=model,
+                dispatch_uid='nodeconductor.core.handlers.preserve_fields_before_update_%s' % model.__name__,
+            )
+
+            signals.post_save.connect(
+                handlers.update_resource_quota_usage,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_resource_quota_%s' % model.__name__,
+            )
+
+            signals.post_delete.connect(
+                handlers.update_resource_quota_usage,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_resource_quota_%s' % model.__name__,
+            )
+
         for model in ServiceProjectLink.get_all_models():
             name = 'propagate_ssh_keys_for_%s' % model.__name__
             signals.post_save.connect(
                 handlers.propagate_user_to_his_projects_services,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.%s' % name,
+            )
+
+            signals.post_save.connect(
+                quotas_handlers.add_quotas_to_scope,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.add_quotas_to_service_project_link_%s' % model.__name__,
+            )
+
+            signals.post_save.connect(
+                handlers.change_project_nc_service_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_service_quota_%s' % model.__name__,
+            )
+
+            signals.post_delete.connect(
+                handlers.change_project_nc_service_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_service_quota_%s' % model.__name__,
             )
 
         signals.pre_delete.connect(
@@ -223,31 +259,3 @@ class StructureConfig(AppConfig):
             sender=Customer,
             dispatch_uid='nodeconductor.structure.handlers.log_customer_account_debited',
         )
-
-        resource_models = SupportedServices.get_resource_models().values()
-        for model in resource_models:
-            signals.post_save.connect(
-                handlers.change_project_nc_resource_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_resource_quota_%s' % model.__name__,
-            )
-
-            signals.post_delete.connect(
-                handlers.change_project_nc_resource_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_resource_quota_%s' % model.__name__,
-            )
-
-        links_models = [m for m in django_models.get_models() if issubclass(m, ServiceProjectLink)]
-        for model in links_models:
-            signals.post_save.connect(
-                handlers.change_project_nc_service_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_service_quota_%s' % model.__name__,
-            )
-
-            signals.post_delete.connect(
-                handlers.change_project_nc_service_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_service_quota_%s' % model.__name__,
-            )

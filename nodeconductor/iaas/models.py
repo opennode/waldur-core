@@ -313,7 +313,7 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
-class Instance(LoggableMixin, structure_models.VirtualMachineMixin, structure_models.Resource):
+class Instance(LoggableMixin, structure_models.BaseVirtualMachineMixin, structure_models.Resource):
     """
     A generalization of a single virtual machine.
 

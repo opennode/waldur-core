@@ -90,6 +90,8 @@ class QuotaModelMixin(models.Model):
         """
         Add to usage_delta to current quota usage
         """
+        if not usage_delta:
+            return
         with transaction.atomic():
             original_quota = self.quotas.get(name=quota_name)
             original_quota.usage += usage_delta
