@@ -1238,16 +1238,15 @@ class ResourceViewSet(viewsets.GenericViewSet):
             return response
 
         data = []
-        types = self.request.query_params.getlist('resource_type', [])
+        types = request.query_params.getlist('resource_type', [])
+
         for resource_type, resources_url in SupportedServices.get_resources(request).items():
             if types != [] and resource_type not in types:
                 continue
 
-            params = request.query_params.copy()
-            if 'page' in params:
-                params.pop('page')
-            if 'page_size' in params:
-                params.pop('page_size')
+            params = {}
+            if 'name' in request.query_params:
+                params['name'] = request.query_params.get('name')
 
             response = fetch_data(resources_url, params)
             if response.total and response.total > len(response.data):
