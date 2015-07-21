@@ -16,9 +16,6 @@ class Service(LoggableMixin, structure_models.Service):
 
 
 class ServiceProjectLink(LoggableMixin, structure_models.ServiceProjectLink):
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances',
-                    'security_group_count', 'security_group_rule_count']
-
     service = models.ForeignKey(Service)
 
     tenant_id = models.CharField(max_length=64, blank=True)

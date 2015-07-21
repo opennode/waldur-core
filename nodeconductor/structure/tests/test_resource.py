@@ -19,9 +19,6 @@ class ResourceQuotasTest(test.APITransactionTestCase):
 
     def test_auto_quotas_update(self):
         for service_type, models in SupportedServices.get_service_models().items():
-            if not hasattr(models['service_project_link'], 'update_quota_usage'):
-                continue
-
             settings = factories.ServiceSettingsFactory(customer=self.customer, type=service_type)
 
             class ServiceFactory(factory.DjangoModelFactory):
@@ -46,7 +43,7 @@ class ResourceQuotasTest(test.APITransactionTestCase):
                 service = ServiceFactory(customer=self.customer, settings=settings)
 
             for resource_model in models['resources']:
-                if service_type == SupportedServices.Types.IaaS:
+                if not hasattr(resource_model, 'update_quota_usage'):
                     continue
 
                 class ResourceFactory(factory.DjangoModelFactory):
@@ -59,18 +56,19 @@ class ResourceQuotasTest(test.APITransactionTestCase):
                 resource = ResourceFactory(service_project_link=service_project_link, cores=data['cores'])
 
                 self.assertEqual(service_project_link.quotas.get(name='instances').usage, 1)
-                self.assertEqual(service_project_link.quotas.get(name='cores').usage, data['cores'])
+                self.assertEqual(service_project_link.quotas.get(name='vcpu').usage, data['cores'])
                 self.assertEqual(service_project_link.quotas.get(name='ram').usage, 0)
-                self.assertEqual(service_project_link.quotas.get(name='disk').usage, 0)
+                self.assertEqual(service_project_link.quotas.get(name='storage').usage, 0)
 
                 resource.ram = data['ram']
                 resource.disk = data['disk']
+                resource.save()
 
                 self.assertEqual(service_project_link.quotas.get(name='ram').usage, data['ram'])
-                self.assertEqual(service_project_link.quotas.get(name='disk').usage, data['disk'])
+                self.assertEqual(service_project_link.quotas.get(name='storage').usage, data['disk'])
 
                 resource.delete()
                 self.assertEqual(service_project_link.quotas.get(name='instances').usage, 0)
-                self.assertEqual(service_project_link.quotas.get(name='cores').usage, 0)
+                self.assertEqual(service_project_link.quotas.get(name='vcpu').usage, 0)
                 self.assertEqual(service_project_link.quotas.get(name='ram').usage, 0)
-                self.assertEqual(service_project_link.quotas.get(name='disk').usage, 0)
+                self.assertEqual(service_project_link.quotas.get(name='storage').usage, 0)

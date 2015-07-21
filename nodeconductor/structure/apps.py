@@ -2,17 +2,15 @@ from __future__ import unicode_literals
 
 from django.apps import AppConfig
 from django.contrib.auth import get_user_model
-from django.db import models as django_models
 from django.db.models import signals
 
 from nodeconductor.core import handlers as core_handlers
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
-from nodeconductor.structure.models import ServiceProjectLink
+from nodeconductor.structure.models import Resource, ServiceProjectLink
 from nodeconductor.structure import filters
 from nodeconductor.structure import handlers
 from nodeconductor.structure import signals as structure_signals
-from nodeconductor.structure import SupportedServices
 
 
 class StructureConfig(AppConfig):
@@ -175,7 +173,7 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.log_project_group_role_revoked',
         )
 
-        for model in SupportedServices.get_resource_models().values():
+        for model in Resource.get_all_models():
             signals.pre_save.connect(
                 core_handlers.preserve_fields_before_update,
                 sender=model,

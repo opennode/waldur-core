@@ -478,6 +478,8 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin):
     """ Base service-project link class. See Service class for usage example. """
 
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances']
+
     class Meta(object):
         abstract = True
 
@@ -544,8 +546,6 @@ class BaseVirtualMachineMixin(models.Model):
 
 class VirtualMachineMixin(BaseVirtualMachineMixin):
     # This extra class required in order not to get into a mess with current iaas implementation
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances']
-
     cores = models.PositiveSmallIntegerField(default=0, help_text='Number of cores in a VM')
     ram = models.PositiveIntegerField(default=0, help_text='Memory size in MiB')
     disk = models.PositiveIntegerField(default=0, help_text='Disk size in MiB')
@@ -553,6 +553,7 @@ class VirtualMachineMixin(BaseVirtualMachineMixin):
     def update_quota_usage(self, **kwargs):
         signal = kwargs['signal']
         add_quota = self.service_project_link.add_quota_usage
+
         if signal == signals.post_save:
             if kwargs.get('created'):
                 add_quota('instances', 1)
@@ -562,11 +563,11 @@ class VirtualMachineMixin(BaseVirtualMachineMixin):
             else:
                 old_values = self._old_values
                 add_quota('ram', self.ram - old_values['ram'])
-                add_quota('vcpu', self.cores - old_values['vcpu'])
-                add_quota('storage', self.disk - old_values['storage'])
+                add_quota('vcpu', self.cores - old_values['cores'])
+                add_quota('storage', self.disk - old_values['disk'])
 
         elif signal == signals.post_delete:
-            add_quota('selfs', -1)
+            add_quota('instances', -1)
             add_quota('ram', -self.ram)
             add_quota('vcpu', -self.cores)
             add_quota('storage', -self.disk)
@@ -661,6 +662,11 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
 
     def get_backend(self):
         return self.service_project_link.get_backend()
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
 
     def __str__(self):
         return self.name
