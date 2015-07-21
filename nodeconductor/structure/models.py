@@ -1,11 +1,14 @@
 from __future__ import unicode_literals
 
+import yaml
+
 from django.apps import apps
 from django.core.validators import MaxLengthValidator
+from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models, transaction
-from django.db.models import Q, F
+from django.db.models import Q, F, signals
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
@@ -217,7 +220,7 @@ class Project(core_models.DescribableMixin,
         project_path = 'self'
         project_group_path = 'project_groups'
 
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances']
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances', 'nc_resource_count', 'nc_service_count']
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
 
@@ -295,6 +298,9 @@ class Project(core_models.DescribableMixin,
     def get_permitted_objects_uuids(cls, user):
         from nodeconductor.structure.filters import filter_queryset_for_user
         return {'project_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
+
+    def get_quota_parents(self):
+        return [self.customer]
 
 
 @python_2_unicode_compatible
@@ -472,6 +478,8 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin):
     """ Base service-project link class. See Service class for usage example. """
 
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances']
+
     class Meta(object):
         abstract = True
 
@@ -515,6 +523,57 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
+
+
+def validate_yaml(value):
+    try:
+        yaml.load(value)
+    except yaml.error.YAMLError:
+        raise ValidationError('A valid YAML value is required.')
+
+
+class BaseVirtualMachineMixin(models.Model):
+    key_name = models.CharField(max_length=50, blank=True)
+    key_fingerprint = models.CharField(max_length=47, blank=True)
+
+    user_data = models.TextField(
+        blank=True, validators=[validate_yaml],
+        help_text='Additional data that will be added to instance on provisioning')
+
+    class Meta(object):
+        abstract = True
+
+
+class VirtualMachineMixin(BaseVirtualMachineMixin):
+    # This extra class required in order not to get into a mess with current iaas implementation
+    cores = models.PositiveSmallIntegerField(default=0, help_text='Number of cores in a VM')
+    ram = models.PositiveIntegerField(default=0, help_text='Memory size in MiB')
+    disk = models.PositiveIntegerField(default=0, help_text='Disk size in MiB')
+
+    def update_quota_usage(self, **kwargs):
+        signal = kwargs['signal']
+        add_quota = self.service_project_link.add_quota_usage
+
+        if signal == signals.post_save:
+            if kwargs.get('created'):
+                add_quota('instances', 1)
+                add_quota('ram', self.ram)
+                add_quota('vcpu', self.cores)
+                add_quota('storage', self.disk)
+            else:
+                old_values = self._old_values
+                add_quota('ram', self.ram - old_values['ram'])
+                add_quota('vcpu', self.cores - old_values['cores'])
+                add_quota('storage', self.disk - old_values['disk'])
+
+        elif signal == signals.post_delete:
+            add_quota('instances', -1)
+            add_quota('ram', -self.ram)
+            add_quota('vcpu', -self.cores)
+            add_quota('storage', -self.disk)
+
+    class Meta(object):
+        abstract = True
 
 
 @python_2_unicode_compatible
@@ -603,6 +662,11 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
 
     def get_backend(self):
         return self.service_project_link.get_backend()
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
 
     def __str__(self):
         return self.name

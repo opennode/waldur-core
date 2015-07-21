@@ -59,28 +59,8 @@ class IaasConfig(AppConfig):
             dispatch_uid='nodeconductor.iaas.handlers.check_instance_name_update',
         )
 
-        signals.post_save.connect(
-            quotas_handlers.add_quotas_to_scope,
-            sender=CloudProjectMembership,
-            dispatch_uid='nodeconductor.iaas.handlers.add_quotas_to_membership',
-        )
-
         signals.pre_save.connect(
             handlers.set_cpm_default_availability_zone,
             sender=CloudProjectMembership,
             dispatch_uid='nodeconductor.iaas.handlers.set_cpm_default_availability_zone',
-        )
-
-        # increase nc_resource_count quota usage on instance creation
-        signals.post_save.connect(
-            handlers.change_customer_nc_instances_quota,
-            sender=Instance,
-            dispatch_uid='nodeconductor.iaas.handlers.increase_cutomer_nc_instances_quota',
-        )
-
-        # decrease nc_resource_count quota usage on instance deletion
-        signals.post_delete.connect(
-            handlers.change_customer_nc_instances_quota,
-            sender=Instance,
-            dispatch_uid='nodeconductor.iaas.handlers.decrease_cutomer_nc_instances_quota',
         )
