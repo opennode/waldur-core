@@ -5,7 +5,6 @@ import time
 import uuid
 import logging
 import datetime
-from netaddr import IPNetwork
 import pkg_resources
 import dateutil.parser
 
@@ -1354,7 +1353,7 @@ class OpenStackBackend(OpenStackClient):
                     event_type='iaas_instance_deletion_failed',
                     event_context={'instance': instance})
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
-            else:
+            elif isinstance(instance, models.Instance):  # TODO: add quota support for all services (NC-634)
                 membership.add_quota_usage('max_instances', -1)
                 membership.add_quota_usage('vcpu', -instance.cores)
                 membership.add_quota_usage('ram', -instance.ram)

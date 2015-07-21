@@ -7,7 +7,7 @@ from nodeconductor.structure import models as structure_models
 
 
 class InstanceEventLogger(EventLogger):
-    instance = 'iaas.Instance'
+    instance = 'structure.Resource'
 
     class Meta:
         event_types = (
@@ -85,7 +85,7 @@ class InstanceImportEventLogger(EventLogger):
 
 
 class MembershipEventLogger(EventLogger):
-    membership = 'iaas.CloudProjectMembership'
+    membership = 'structure.ServiceProjectLink'
 
     class Meta:
         event_types = (

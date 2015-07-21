@@ -1,3 +1,5 @@
+import importlib
+
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import force_text
 from rest_framework.reverse import reverse
@@ -87,6 +89,12 @@ class SupportedServices(object):
         model_str = cls._get_model_srt(service_model)
         cls._registry.setdefault(model_str, {'resources': {}})
         cls._registry[model_str]['backend'] = backend_class
+
+        try:
+            # Forcely import service serialize to run services auto-discovery
+            importlib.import_module(service_model.__module__.replace('models', 'serializers'))
+        except ImportError:
+            pass
 
     @classmethod
     def register_service(cls, service_type, metadata):
@@ -199,9 +207,12 @@ class SupportedServices(object):
         data = {}
         for service_model_name, service in cls._registry.items():
             service_model = apps.get_model(service_model_name)
+            service_project_link = next(
+                m[0].model for m in service_model._meta.get_all_related_objects_with_model()
+                if m[0].var_name in ('cloudprojectmembership', 'serviceprojectlink'))
             data[service['service_type']] = {
                 'service': service_model,
-                'service_project_link': service_model._meta.get_all_related_objects_with_model()[0][0].model,
+                'service_project_link': service_project_link,
                 'resources': [apps.get_model(r) for r in service['resources'].keys()],
             }
 

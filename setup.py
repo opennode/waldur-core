@@ -33,6 +33,7 @@ install_requires = [
     'jira>=0.47',
     'jsonfield==1.0.0',
     'oslo.config < 1.15.0',
+    'paypalrestsdk>=1.10.0',
     'Pillow>=2.0.0',
     'python-ceilometerclient==1.0.10',
     'python-cinderclient==1.0.9',
@@ -51,7 +52,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.65.0',
+    version='0.66.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

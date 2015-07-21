@@ -191,6 +191,8 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+        # Balance should be modified by paypal in billing
+        read_only_fields = ('balance', )
 
     def _get_filtered_data(self, objects, serializer):
         try:
@@ -652,15 +654,13 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state')
         write_only_fields = ('backend_url', 'username', 'token', 'password')
+        related_paths = ('customer',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
         }
 
     def get_filtered_field_names(self):
-        return 'customer',
-
-    def get_related_paths(self):
         return 'customer',
 
     def get_fields(self):
@@ -727,6 +727,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'customer', 'settings',
             'backend_url', 'username', 'password', 'token', 'dummy'
         )
+        related_paths = ('customer',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
@@ -739,9 +740,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return super(BaseServiceSerializer, cls).__new__(cls, *args, **kwargs)
 
     def get_filtered_field_names(self):
-        return 'customer',
-
-    def get_related_paths(self):
         return 'customer',
 
     def get_fields(self):
@@ -841,14 +839,12 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
             'service', 'service_name', 'service_uuid',
             'state',
         )
+        related_paths = ('project', 'service')
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': NotImplemented},
         }
 
     def get_filtered_field_names(self):
-        return 'project', 'service'
-
-    def get_related_paths(self):
         return 'project', 'service'
 
     def validate(self, attrs):

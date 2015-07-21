@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='instance',
             name='user_data',
-            field=models.TextField(help_text='Additional data that will be added to instance on provisioning', blank=True, validators=[nodeconductor.iaas.models.validate_yaml]),
+            field=models.TextField(help_text='Additional data that will be added to instance on provisioning', blank=True, validators=[nodeconductor.structure.models.validate_yaml]),
             preserve_default=True,
         ),
     ]

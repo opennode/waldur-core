@@ -8,7 +8,6 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
-import yaml
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
@@ -314,26 +313,7 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
-def validate_yaml(value):
-    try:
-        yaml.load(value)
-    except yaml.error.YAMLError:
-        raise ValidationError('A valid YAML value is required.')
-
-
-class VirtualMachineMixin(models.Model):
-    key_name = models.CharField(max_length=50, blank=True)
-    key_fingerprint = models.CharField(max_length=47, blank=True)
-
-    user_data = models.TextField(
-        blank=True, validators=[validate_yaml],
-        help_text='Additional data that will be added to instance on provisioning')
-
-    class Meta(object):
-        abstract = True
-
-
-class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
+class Instance(LoggableMixin, structure_models.BaseVirtualMachineMixin, structure_models.Resource):
     """
     A generalization of a single virtual machine.
 
@@ -387,6 +367,11 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
     def __str__(self):
         return self.name
 
+    @property
+    def service_project_link(self):
+        # For consistency with other resources
+        return self.cloud_project_membership
+
     def get_backend(self):
         return self.cloud_project_membership.get_backend()
 
@@ -416,7 +401,6 @@ class Instance(LoggableMixin, VirtualMachineMixin, structure_models.Resource):
             'uuid', 'name', 'type', 'cloud_project_membership', 'ram',
             'cores', 'data_volume_size', 'system_volume_size', 'installation_state', 'template',
         )
-
 
 
 @python_2_unicode_compatible
