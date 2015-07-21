@@ -49,6 +49,7 @@ Requires: python-keystoneclient = 1:0.9.0
 Requires: python-neutronclient = 2.3.4
 Requires: python-novaclient = 1:2.17.0
 Requires: python-pillow >= 2.0.0
+Requires: python-paypal-rest-sdk >= 1.10.0
 Requires: python-redis = 2.10.3
 Requires: python-reportlab >= 2.5
 Requires: python-requests = 2.6.0
