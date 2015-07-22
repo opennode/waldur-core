@@ -20,6 +20,7 @@ Price estimates in response are sorted from latest to earliest.
     GET /api/price-estimate/
     Accept: application/json
     Content-Type: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
     Host: example.com
 
     [
@@ -28,7 +29,7 @@ Price estimates in response are sorted from latest to earliest.
             "uuid": "3c3542c614a744df961fea8dc13e3d7c",
             "scope": "http://example.com/api/instances/0424c7746059458ab9a5ad4d097c1d31/",
             "total": 1114.0,
-            "details": "{u'disk': 52, u'ram': 84, u'memory': 192}",
+            "details": "{u'disk': 52, u'ram': 84, u'cpu': 192}",
             "month": 7,
             "year": 2015,
             "is_manually_inputed": false
@@ -49,6 +50,7 @@ Request example:
     POST /api/alerts/
     Accept: application/json
     Content-Type: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
     Host: example.com
 
     {

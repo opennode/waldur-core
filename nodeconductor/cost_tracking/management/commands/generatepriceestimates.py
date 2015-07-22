@@ -33,7 +33,7 @@ class Command(BaseCommand):
                             details={
                                 'ram': random.randint(50, 200),
                                 'disk': random.randint(50, 200),
-                                'memory': random.randint(50, 200),
+                                'cpu': random.randint(50, 200),
                             },
                             year=year,
                             month=month,
