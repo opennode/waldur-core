@@ -1250,7 +1250,7 @@ class ResourceViewSet(viewsets.GenericViewSet):
 
             response = fetch_data(resources_url, params)
             if response.total and response.total > len(response.data):
-                params.set('page_size', response.total)
+                params['page_size'] = response.total
                 response = fetch_data(resources_url, params)
             data += response.data
 
