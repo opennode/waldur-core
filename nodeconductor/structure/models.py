@@ -457,6 +457,11 @@ class Service(core_models.UuidMixin, core_models.NameMixin):
     def __str__(self):
         return self.name
 
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
+
 
 @python_2_unicode_compatible
 class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
