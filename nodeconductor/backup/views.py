@@ -48,6 +48,23 @@ class BackupSourceFilter(object):
         return queryset.filter(content_type=ct, object_id=backup_source.id)
 
 
+class BackupProjectFilter(object):
+    def filter_queryset(self, request, queryset, view):
+        project_uuid = request.query_params.get('project_uuid')
+
+        if not project_uuid:
+            return queryset
+
+        query = Q()
+        for strategy in utils.get_backup_strategies().values():
+            model = strategy.get_model()
+            content_type = ct_models.ContentType.objects.get_for_model(model)
+
+            key = model.Permissions.project_path + '__uuid'
+            ids = model.objects.filter(**{key: project_uuid}).values_list('pk', flat=True)
+            query |= Q(content_type=content_type, object_id__in=ids)
+        return queryset.filter(query)
+
 
 class BackupScheduleFilter(django_filters.FilterSet):
     description = django_filters.CharFilter(
@@ -141,7 +158,12 @@ class BackupViewSet(mixins.CreateModelMixin,
     queryset = models.Backup.objects.all()
     serializer_class = serializers.BackupSerializer
     lookup_field = 'uuid'
-    filter_backends = (BackupPermissionFilter, BackupSourceFilter, DjangoMappingFilterBackend)
+    filter_backends = (
+        BackupPermissionFilter,
+        BackupSourceFilter,
+        BackupProjectFilter,
+        DjangoMappingFilterBackend
+    )
     filter_class = BackupFilter
     permission_classes = (rf_permissions.IsAuthenticated,)
 
