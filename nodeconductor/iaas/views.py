@@ -663,6 +663,9 @@ class ServiceFilter(django_filters.FilterSet):
         distinct=True,
         lookup_type='icontains',
     )
+    project_uuid = django_filters.CharFilter(
+        name='cloud_project_membership__project__uuid'
+    )
 
     # FIXME: deprecated, use project_group_name instead
     project_groups = django_filters.CharFilter(
@@ -705,6 +708,7 @@ class ServiceFilter(django_filters.FilterSet):
             'customer_native_name',
             'customer_abbreviation',
             'project_name',
+            'project_uuid',
             'project_groups',
             'agreed_sla',
             'actual_sla',
