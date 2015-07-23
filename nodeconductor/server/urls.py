@@ -11,6 +11,7 @@ from django.contrib import admin
 from django.views.generic import TemplateView
 
 from nodeconductor.core.routers import SortedDefaultRouter as DefaultRouter
+from nodeconductor.cost_tracking import urls as cost_tracking_urls
 from nodeconductor.backup import urls as backup_urls
 from nodeconductor.billing import urls as billing_urls
 from nodeconductor.iaas import urls as iaas_urls
@@ -29,6 +30,7 @@ permission.autodiscover()
 router = DefaultRouter()
 backup_urls.register_in(router)
 billing_urls.register_in(router)
+cost_tracking_urls.register_in(router)
 iaas_urls.register_in(router)
 logging_urls.register_in(router)
 openstack_urls.register_in(router)

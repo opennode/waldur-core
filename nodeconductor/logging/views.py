@@ -273,4 +273,3 @@ class WebHookViewSet(BaseHookViewSet):
 class EmailHookViewSet(BaseHookViewSet):
     queryset = models.EmailHook.objects.all()
     serializer_class = serializers.EmailHookSerializer
-

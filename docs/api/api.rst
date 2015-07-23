@@ -89,6 +89,12 @@ Permissions
 .. include:: permission_management.rst
 
 
+Price estimates
+===============
+
+.. include:: price_estimates.rst
+
+
 Project group management
 ========================
 

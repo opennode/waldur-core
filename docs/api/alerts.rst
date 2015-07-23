@@ -34,6 +34,7 @@ Alerts can be ordered by:
     GET /api/alerts/
     Accept: application/json
     Content-Type: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
     Host: example.com
 
     [
@@ -76,6 +77,7 @@ Request example:
     POST /api/alerts/
     Accept: application/json
     Content-Type: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
     Host: example.com
 
     {
