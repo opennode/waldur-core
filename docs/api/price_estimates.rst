@@ -6,7 +6,6 @@ To get a list of price estimates, run GET against **/api/price-estimate/** as au
 
 Price estimates can be filtered by:
  - ?scope=<object URL> URL of object that was estimated
- - ?scope_type=<string> name of scope type (Ex.: instance, cloud_project_membership, project...)
  - ?date=<string in format YYYY.MM> can be list. Filters price estimates for given months
  - ?start=<string in format YYYY.MM> filter price estimates that was after given months (excluding given)
  - ?end=<string in format YYYY.MM> filter price estimates that was before end months (including given)

@@ -2,11 +2,11 @@ from __future__ import unicode_literals
 
 from rest_framework import serializers
 
-from nodeconductor.core.serializers import GenericRelatedField
+from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin
 from nodeconductor.cost_tracking import models
 
 
-class PriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
+class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
     scope = GenericRelatedField(related_models=models.PriceEstimate.get_editable_estimated_models())
 
     class Meta(object):
@@ -16,6 +16,7 @@ class PriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+        protected_fields = ('scope', 'year', 'month')
 
     def validate(self, data):
         if self.instance is None and models.PriceEstimate.objects.filter(
@@ -23,22 +24,6 @@ class PriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
             raise serializers.ValidationError(
                 'Estimate for given month already exists. Use PATCH request to update it.')
         return data
-
-    # TODO: redo this validation - mark fields as read_only on update
-    def validate_scope(self, value):
-        if self.instance is not None and self.instance.scope != value:
-            raise serializers.ValidationError('Field scope can not be updated.')
-        return value
-
-    def validate_month(self, value):
-        if self.instance is not None and self.instance.month != value:
-            raise serializers.ValidationError('Field month can not be updated.')
-        return value
-
-    def validate_year(self, value):
-        if self.instance is not None and self.instance.year != value:
-            raise serializers.ValidationError('Field month can not be updated.')
-        return value
 
     def create(self, validated_data):
         validated_data['is_manually_inputed'] = True
@@ -54,6 +39,8 @@ class YearMonthField(serializers.CharField):
             year, month = [int(el) for el in value.split('.')]
         except ValueError:
             raise serializers.ValidationError('Value "{}" should be valid be in format YYYY.MM'.format(value))
+        if not 0 < month < 13:
+            raise serializers.ValidationError('Month has to be from 1 to 12')
         return year, month
 
 
@@ -67,3 +54,8 @@ class PriceEstimateDateFilterSerializer(serializers.Serializer):
 class PriceEstimateDateRangeFilterSerializer(serializers.Serializer):
     start = YearMonthField(required=False)
     end = YearMonthField(required=False)
+
+    def validate(self, data):
+        if data['start'] >= data['end']:
+            raise serializers.ValidationError('Start has to be earlier than end.')
+        return data

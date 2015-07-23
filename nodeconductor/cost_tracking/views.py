@@ -35,19 +35,6 @@ class PriceEstimateFilter(django_filters.FilterSet):
 class AdditionalPriceEstimateFilterBackend(filters.BaseFilterBackend):
 
     def filter_queryset(self, request, queryset, view):
-        if 'scope_type' in request.query_params:
-            choices = {_convert(m.__name__): m for m in models.PriceEstimate.get_estimated_models()}
-            try:
-                scope_type = choices[request.query_params['scope_type']]
-            except KeyError:
-                raise ValidationError(
-                    'Scope type "{}" is not valid. Has to be one from list: {}'.format(
-                        request.query_params['scope_type'], ', '.join(choices.keys()))
-                )
-            else:
-                ct = ContentType.objects.get_for_model(scope_type)
-                queryset = queryset.filter(content_type=ct)
-
         if 'date' in request.query_params:
             date_serializer = serializers.PriceEstimateDateFilterSerializer(
                 data={'date_list': request.query_params.getlist('date')})
@@ -107,5 +94,7 @@ class PriceEstimateViewSet(viewsets.ModelViewSet):
         price_estimate = instance
         if not price_estimate.is_manually_inputed:
             raise exceptions.MethodNotAllowed('Auto calculated price estimate can not be edited or deleted')
+        if not self.can_user_modify_price_estimate(price_estimate.scope):
+            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
 
         super(PriceEstimateViewSet, self).perform_destroy(instance)
