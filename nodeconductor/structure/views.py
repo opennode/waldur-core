@@ -1334,6 +1334,13 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     lookup_field = 'uuid'
 
 
+class BaseServiceProjectLinkFilter(django_filters.FilterSet):
+    project_uuid = django_filters.CharFilter(name='project__uuid')
+
+    class Meta(object):
+        model = models.ServiceProjectLink
+
+
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
                                     mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
@@ -1349,6 +1356,7 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
     serializer_class = NotImplemented
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_class = BaseServiceProjectLinkFilter
 
     def perform_create(self, serializer):
         instance = serializer.save()
