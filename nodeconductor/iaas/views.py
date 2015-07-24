@@ -1012,6 +1012,7 @@ class CloudProjectMembershipFilter(django_filters.FilterSet):
     project = django_filters.CharFilter(
         name='project__uuid',
     )
+    project_uuid = django_filters.CharFilter(name='project__uuid')
 
     class Meta(object):
         model = models.CloudProjectMembership
