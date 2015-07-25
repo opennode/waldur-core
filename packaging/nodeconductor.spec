@@ -55,7 +55,7 @@ Requires: python-reportlab >= 2.5
 Requires: python-requests = 2.6.0
 Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
-Requires: python-urllib3 = 1.10.1
+Requires: python-urllib3 >= 1.10.1
 Requires: python-xhtml2pdf >= 0.0.6
 Requires: python-zabbix >= 0.7.2
 Requires: PyYAML
