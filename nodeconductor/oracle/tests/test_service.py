@@ -53,9 +53,9 @@ class ServicePermissionTest(test.APITransactionTestCase):
         project_group.projects.add(self.projects['managed_by_group_manager'])
         project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
-        factories.OracleServiceProjectLingFactory(service=self.services['admined'], project=self.projects['admined'])
-        factories.OracleServiceProjectLingFactory(service=self.services['managed'], project=self.projects['managed'])
-        factories.OracleServiceProjectLingFactory(
+        factories.OracleServiceProjectLinkFactory(service=self.services['admined'], project=self.projects['admined'])
+        factories.OracleServiceProjectLinkFactory(service=self.services['managed'], project=self.projects['managed'])
+        factories.OracleServiceProjectLinkFactory(
             service=self.services['managed_by_group_manager'], project=self.projects['managed_by_group_manager'])
 
     # List filtration tests

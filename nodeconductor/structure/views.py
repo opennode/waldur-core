@@ -1244,6 +1244,13 @@ class ResourceViewSet(viewsets.GenericViewSet):
                 raise APIException(response.data)
             return response
 
+        def clear_query(keys):
+            params = {}
+            for key in keys:
+                if key in request.query_params:
+                    params[key] = request.query_params.get(key)
+            return params
+
         data = []
         types = request.query_params.getlist('resource_type', [])
 
@@ -1251,13 +1258,11 @@ class ResourceViewSet(viewsets.GenericViewSet):
             if types != [] and resource_type not in types:
                 continue
 
-            params = {}
-            if 'name' in request.query_params:
-                params['name'] = request.query_params.get('name')
-
+            params = clear_query(('name', 'project_uuid'))
             response = fetch_data(resources_url, params)
+
             if response.total and response.total > len(response.data):
-                params.set('page_size', response.total)
+                params['page_size'] = response.total
                 response = fetch_data(resources_url, params)
             data += response.data
 
@@ -1329,6 +1334,13 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     lookup_field = 'uuid'
 
 
+class BaseServiceProjectLinkFilter(django_filters.FilterSet):
+    project_uuid = django_filters.CharFilter(name='project__uuid')
+
+    class Meta(object):
+        model = models.ServiceProjectLink
+
+
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
                                     mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
@@ -1344,10 +1356,19 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
     serializer_class = NotImplemented
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_class = BaseServiceProjectLinkFilter
 
     def perform_create(self, serializer):
         instance = serializer.save()
         send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
+
+
+class BaseResourceProjectFilter(object):
+    def filter_queryset(self, request, queryset, view):
+        project_uuid = request.query_params.get('project_uuid')
+        if project_uuid:
+            return queryset.filter(service_project_link__project__uuid=project_uuid)
+        return queryset
 
 
 class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
@@ -1362,7 +1383,11 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     serializer_class = NotImplemented
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_backends = (
+        filters.GenericRoleFilter,
+        rf_filters.DjangoFilterBackend,
+        BaseResourceProjectFilter
+    )
 
     def safe_operation(valid_state=None):
         def decorator(view_fn):

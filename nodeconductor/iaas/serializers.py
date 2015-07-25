@@ -103,6 +103,8 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
         read_only=True,
     )
+    service_name = serializers.ReadOnlyField(source='cloud.name')
+    service_uuid = serializers.ReadOnlyField(source='cloud.uuid')
 
     class Meta(object):
         model = models.CloudProjectMembership
@@ -113,6 +115,7 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             'quotas',
             'state',
             'tenant_id',
+            'service_name', 'service_uuid', 
         )
         view_name = 'cloudproject_membership-detail'
         extra_kwargs = {

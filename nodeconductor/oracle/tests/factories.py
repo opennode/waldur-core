@@ -25,7 +25,7 @@ class OracleServiceFactory(factory.DjangoModelFactory):
         return 'http://testserver' + reverse('oracle-list')
 
 
-class OracleServiceProjectLingFactory(factory.DjangoModelFactory):
+class OracleServiceProjectLinkFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.ServiceProjectLink
 
