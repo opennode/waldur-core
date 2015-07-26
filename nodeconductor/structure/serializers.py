@@ -535,12 +535,14 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'civil_number',
             'description',
             'is_staff', 'is_active',
+            'date_joined',
         )
         read_only_fields = (
             'uuid',
             'civil_number',
             'organization',
             'organization_approved',
+            'date_joined',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
