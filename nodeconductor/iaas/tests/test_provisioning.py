@@ -274,6 +274,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         instance.cores = 5
         instance.save()
         membership = instance.cloud_project_membership
+        membership.set_quota_usage('vcpu', instance.cores)
         membership.set_quota_limit('vcpu', instance.cores)
         membership.set_quota_limit('max_instances', 0)
         membership.set_quota_limit('storage', 0)
@@ -299,6 +300,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         instance.cores = 5
         instance.save()
         membership = instance.cloud_project_membership
+        membership.set_quota_usage('vcpu', instance.cores)
         membership.set_quota_limit('ram', instance.ram)
         membership.set_quota_limit('vcpu', instance.cores)
         membership.set_quota_limit('max_instnces', 0)
@@ -321,6 +323,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def test_user_cannot_change_flavor_of_stopped_instance_he_is_administrator_of_if_quota_would_be_exceeded(self):
         self.client.force_authenticate(user=self.user)
         membership = self.admined_instance.cloud_project_membership
+        membership.set_quota_limit('ram', 1024)
 
         # check for ram
         big_ram_flavor = factories.FlavorFactory(
@@ -960,6 +963,18 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
             'flavor': self._get_flavor_url(self.flavor),
             'ssh_public_key': self._get_ssh_public_key_url(self.ssh_public_key)
         }
+
+    def test_quotas_increase_on_instance_creation(self):
+        data = self.get_valid_data()
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        instance = Instance.objects.get(uuid=response.data['uuid'])
+        self.assertEqual(self.membership.quotas.get(name='max_instances').usage, 1)
+        self.assertEqual(self.membership.quotas.get(name='vcpu').usage, instance.cores)
+        self.assertEqual(self.membership.quotas.get(name='ram').usage, instance.ram)
+        self.assertEqual(
+            self.membership.quotas.get(name='storage').usage, instance.data_volume_size + instance.system_volume_size)
 
 
 class InstanceListRetrieveTest(test.APITransactionTestCase):
