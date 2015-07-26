@@ -168,3 +168,21 @@ def check_instance_name_update(sender, instance=None, created=False, **kwargs):
     if old_name != instance.name:
         from nodeconductor.iaas.tasks.zabbix import zabbix_update_host_visible_name
         zabbix_update_host_visible_name.delay(instance.uuid.hex)
+
+
+# This signal has to be connected to all resources (NC-634)
+def increase_quotas_usage_on_instance_creation(sender, instance=None, created=False, **kwargs):
+    if created:
+        instance.service_project_link.add_quota_usage('max_instances', 1)
+        instance.service_project_link.add_quota_usage('ram', instance.ram)
+        instance.service_project_link.add_quota_usage('vcpu', instance.cores)
+        instance.service_project_link.add_quota_usage(
+            'storage', instance.system_volume_size + instance.data_volume_size)
+
+
+def decrease_quotas_usage_on_instances_deletion(sender, instance=None, **kwargs):
+    instance.service_project_link.add_quota_usage('max_instances', -1)
+    instance.service_project_link.add_quota_usage('vcpu', -instance.cores)
+    instance.service_project_link.add_quota_usage('ram', -instance.ram)
+    instance.service_project_link.add_quota_usage(
+        'storage', -(instance.system_volume_size + instance.data_volume_size))

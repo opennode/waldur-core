@@ -240,10 +240,15 @@ class ResourceStatsTest(test.APITransactionTestCase):
         self.project2 = structure_factories.ProjectFactory()
 
         self.cloud = factories.CloudFactory(auth_url=self.auth_url)
+        quotas = [
+            {'name': 'storage', 'limit': 20*1024},
+            {'name': 'ram', 'limit': 20*1024},
+            {'name': 'vcpu', 'limit': 20},
+        ]
         self.membership1 = factories.CloudProjectMembershipFactory(
-            cloud=self.cloud, project=self.project1, tenant_id='1')
+            cloud=self.cloud, project=self.project1, tenant_id='1', quotas=quotas)
         self.membership2 = factories.CloudProjectMembershipFactory(
-            cloud=self.cloud, project=self.project2, tenant_id='2')
+            cloud=self.cloud, project=self.project2, tenant_id='2', quotas=quotas)
 
         self.user = structure_factories.UserFactory()
         self.staff = structure_factories.UserFactory(is_staff=True)

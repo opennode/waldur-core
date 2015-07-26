@@ -228,8 +228,8 @@ def create_invoices(customer_uuid, start_date, end_date):
 
 def lookup_instance_licenses_from_event_log(instance_uuid):
     try:
-        event = ElasticsearchResultList(None).filter(
-            event_types=['iaas_instance_licenses_added'], instance_uuid=instance_uuid)[0][0]
+        event = ElasticsearchResultList().filter(
+            must_terms={'event_type': 'iaas_instance_licenses_added', 'instance_uuid': instance_uuid})[0][0]
     except IndexError:
         return []
 

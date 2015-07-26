@@ -83,10 +83,10 @@ class CloudProjectMembershipFactory(factory.DjangoModelFactory):
                     if 'usage' in quota:
                         self.set_quota_usage(quota['name'], quota['usage'])
             else:
-                self.set_quota_limit('storage', 10 * 1024 * 1024)
-                self.set_quota_limit('vcpu', 20)
-                self.set_quota_limit('max_instances', 10)
-                self.set_quota_limit('ram', 20 * 1024)
+                self.set_quota_limit('storage', -1)
+                self.set_quota_limit('vcpu', -1)
+                self.set_quota_limit('max_instances', -1)
+                self.set_quota_limit('ram', -1)
 
 
 class SecurityGroupFactory(factory.DjangoModelFactory):

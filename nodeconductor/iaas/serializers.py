@@ -115,7 +115,7 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             'quotas',
             'state',
             'tenant_id',
-            'service_name', 'service_uuid', 
+            'service_name', 'service_uuid',
         )
         view_name = 'cloudproject_membership-detail'
         extra_kwargs = {
