@@ -5,7 +5,6 @@ from django.db.models import signals
 
 from nodeconductor.core import handlers as core_handlers
 from nodeconductor.core.signals import pre_serializer_fields
-from nodeconductor.quotas import handlers as quotas_handlers
 
 
 class IaasConfig(AppConfig):
@@ -63,4 +62,16 @@ class IaasConfig(AppConfig):
             handlers.set_cpm_default_availability_zone,
             sender=CloudProjectMembership,
             dispatch_uid='nodeconductor.iaas.handlers.set_cpm_default_availability_zone',
+        )
+
+        signals.post_save.connect(
+            handlers.increase_quotas_usage_on_instance_creation,
+            sender=Instance,
+            dispatch_uid='nodeconductor.iaas.handlers.increase_quotas_usage_on_instance_creation',
+        )
+
+        signals.post_delete.connect(
+            handlers.decrease_quotas_usage_on_instances_deletion,
+            sender=Instance,
+            dispatch_uid='nodeconductor.iaas.handlers.decrease_quotas_usage_on_instances_deletion',
         )
