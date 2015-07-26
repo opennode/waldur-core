@@ -1057,7 +1057,6 @@ class OpenStackBackend(OpenStackClient):
                     imageRef=backend_image.id,
                 )
                 system_volume_id = system_volume.id
-                membership.add_quota_usage('storage', self.get_core_disk_size(size))
 
             if not data_volume_id:
                 data_volume_name = '{0}-data'.format(instance.name)
@@ -1070,7 +1069,6 @@ class OpenStackBackend(OpenStackClient):
                     display_description='',
                 )
                 data_volume_id = data_volume.id
-                membership.add_quota_usage('storage', self.get_core_disk_size(size))
 
             if not self._wait_for_volume_status(system_volume_id, cinder, 'available', 'error'):
                 logger.error(
@@ -1139,10 +1137,6 @@ class OpenStackBackend(OpenStackClient):
             instance.system_volume_id = system_volume_id
             instance.data_volume_id = data_volume_id
             instance.save()
-
-            membership.add_quota_usage('max_instances', 1)
-            membership.add_quota_usage('ram', self.get_core_ram_size(backend_flavor.ram))
-            membership.add_quota_usage('vcpu', backend_flavor.vcpus)
 
             if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
                 logger.error(
@@ -1354,12 +1348,6 @@ class OpenStackBackend(OpenStackClient):
                     event_context={'instance': instance})
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
             elif isinstance(instance, models.Instance):  # TODO: add quota support for all services (NC-634)
-                membership.add_quota_usage('max_instances', -1)
-                membership.add_quota_usage('vcpu', -instance.cores)
-                membership.add_quota_usage('ram', -instance.ram)
-                membership.add_quota_usage(
-                    'storage', -(instance.system_volume_size + instance.data_volume_size))
-
                 self.release_floating_ip_from_instance(instance)
 
         except nova_exceptions.ClientException as e:
