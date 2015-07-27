@@ -73,7 +73,7 @@ class PriceEstimateListTest(test.APITransactionTestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['uuid'], self.link_price_estimate.uuid.hex)
 
-    def test_user_can_filter_price_estimates_by_price_range(self):
+    def test_user_can_filter_price_estimates_by_date_range(self):
         self.client.force_authenticate(self.users['manager'])
         response = self.client.get(
             factories.PriceEstimateFactory.get_list_url(),
@@ -130,7 +130,7 @@ class PriceEstimateCreateTest(test.APITransactionTestCase):
         )
 
     @data('manager', 'administrator')
-    def test_without_permissions_can_not_create_price_estimate(self, user):
+    def test_user_without_permissions_can_not_create_price_estimate(self, user):
         self.client.force_authenticate(self.users[user])
         response = self.client.post(factories.PriceEstimateFactory.get_list_url(), data=self.valid_data)
 
