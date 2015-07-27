@@ -56,6 +56,6 @@ class PriceEstimateDateRangeFilterSerializer(serializers.Serializer):
     end = YearMonthField(required=False)
 
     def validate(self, data):
-        if data['start'] >= data['end']:
+        if 'start' in data and 'end' in data and data['start'] >= data['end']:
             raise serializers.ValidationError('Start has to be earlier than end.')
         return data

@@ -18,6 +18,7 @@ tests_requires = [
 install_requires = [
     'Celery>=3.1.15,<3.2',
     'croniter>=0.3.4,<0.3.6',
+    'ddt>=1.0.0',
     'Django>=1.7.1,<1.8',
     'django-auth-ldap==1.2.0',
     'django-filter==0.7',
