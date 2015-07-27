@@ -5,9 +5,9 @@ from nodeconductor.structure import models as structure_models
 from nodeconductor.logging.log import LoggableMixin
 
 
-class Service(LoggableMixin, structure_models.Service):
+class OpenStackService(LoggableMixin, structure_models.Service):
     projects = models.ManyToManyField(
-        structure_models.Project, related_name='+', through='ServiceProjectLink')
+        structure_models.Project, related_name='openstack_services', through='OpenStackServiceProjectLink')
 
     @property
     def auth_url(self):
@@ -15,8 +15,8 @@ class Service(LoggableMixin, structure_models.Service):
         return self.settings.backend_url
 
 
-class ServiceProjectLink(LoggableMixin, structure_models.ServiceProjectLink):
-    service = models.ForeignKey(Service)
+class OpenStackServiceProjectLink(LoggableMixin, structure_models.ServiceProjectLink):
+    service = models.ForeignKey(OpenStackService)
 
     tenant_id = models.CharField(max_length=64, blank=True)
     internal_network_id = models.CharField(max_length=64, blank=True)
@@ -48,7 +48,7 @@ class ServiceProjectLink(LoggableMixin, structure_models.ServiceProjectLink):
         return ('project', 'cloud',)
 
     def get_backend(self):
-        return super(ServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)
+        return super(OpenStackServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)
 
 
 class Flavor(LoggableMixin, structure_models.ServiceProperty):
@@ -66,7 +66,7 @@ class Instance(LoggableMixin, structure_models.VirtualMachineMixin, structure_mo
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
     service_project_link = models.ForeignKey(
-        ServiceProjectLink, related_name='instances', on_delete=models.PROTECT)
+        OpenStackServiceProjectLink, related_name='instances', on_delete=models.PROTECT)
 
     external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')

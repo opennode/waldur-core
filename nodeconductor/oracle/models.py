@@ -5,13 +5,13 @@ from django.core.validators import RegexValidator
 from nodeconductor.structure import models as structure_models
 
 
-class Service(structure_models.Service):
+class OracleService(structure_models.Service):
     projects = models.ManyToManyField(
-        structure_models.Project, related_name='+', through='ServiceProjectLink')
+        structure_models.Project, related_name='oracle_services', through='OracleServiceProjectLink')
 
 
-class ServiceProjectLink(structure_models.ServiceProjectLink):
-    service = models.ForeignKey(Service)
+class OracleServiceProjectLink(structure_models.ServiceProjectLink):
+    service = models.ForeignKey(OracleService)
 
 
 class Zone(structure_models.ServiceProperty):
@@ -34,7 +34,7 @@ class Template(structure_models.ServiceProperty):
 
 class Database(structure_models.Resource):
     service_project_link = models.ForeignKey(
-        ServiceProjectLink, related_name='databases', on_delete=models.PROTECT)
+        OracleServiceProjectLink, related_name='databases', on_delete=models.PROTECT)
 
     backend_database_sid = models.CharField(
         max_length=8,

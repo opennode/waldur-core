@@ -10,14 +10,14 @@ class OpenStackConfig(AppConfig):
     verbose_name = "NodeConductor OpenStack"
 
     def ready(self):
-        Service = self.get_model('Service')
-        ServiceProjectLink = self.get_model('ServiceProjectLink')
+        OpenStackService = self.get_model('OpenStackService')
+        OpenStackServiceProjectLink = self.get_model('OpenStackServiceProjectLink')
 
         from nodeconductor.openstack.backend import OpenStackBackend
-        SupportedServices.register_backend(Service, OpenStackBackend)
+        SupportedServices.register_backend(OpenStackService, OpenStackBackend)
 
         signals.pre_save.connect(
             handlers.set_spl_default_availability_zone,
-            sender=ServiceProjectLink,
+            sender=OpenStackServiceProjectLink,
             dispatch_uid='nodeconductor.openstack.handlers.set_spl_default_availability_zone',
         )
