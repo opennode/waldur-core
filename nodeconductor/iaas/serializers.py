@@ -854,7 +854,7 @@ class ServiceSerializer(serializers.Serializer):
         return 'IaaS'
 
     def get_resource_type(self, obj):
-        return 'Instance'
+        return 'IaaS.Instance'
 
     def get_actual_sla(self, obj):
         try:

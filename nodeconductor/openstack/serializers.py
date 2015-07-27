@@ -1,10 +1,8 @@
 from django.db.models import Max
-from django.core.validators import MaxLengthValidator
 
 from rest_framework import serializers
 
 from nodeconductor.core import models as core_models
-from nodeconductor.core import serializers as core_serializers
 from nodeconductor.structure import SupportedServices, serializers as structure_serializers
 from nodeconductor.openstack import models
 
@@ -60,11 +58,7 @@ class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkS
         }
 
 
-class IpCountValidator(MaxLengthValidator):
-    message = 'Only %(limit_value)s ip address is supported.'
-
-
-class InstanceSerializer(structure_serializers.BaseResourceSerializer):
+class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     service = serializers.HyperlinkedRelatedField(
         source='service_project_link.service',
@@ -89,47 +83,15 @@ class InstanceSerializer(structure_serializers.BaseResourceSerializer):
         queryset=models.Image.objects.all().select_related('settings'),
         write_only=True)
 
-    ssh_public_key = serializers.HyperlinkedRelatedField(
-        view_name='sshpublickey-detail',
-        lookup_field='uuid',
-        queryset=core_models.SshPublicKey.objects.all(),
-        required=False,
-        write_only=True)
-
-    external_ips = serializers.ListField(
-        child=core_serializers.IPAddressField(),
-        allow_null=True,
-        required=False,
-        validators=[IpCountValidator(1)])
-
-    class Meta(structure_serializers.BaseResourceSerializer.Meta):
+    class Meta(structure_serializers.VirtualMachineSerializer.Meta):
         model = models.Instance
         view_name = 'openstack-instance-detail'
-        read_only_fields = ('start_time', 'cores', 'ram')
-        fields = structure_serializers.BaseResourceSerializer.Meta.fields + (
-            'cores', 'ram', 'external_ips',
-            'flavor', 'image', 'ssh_public_key',
-            'system_volume_size', 'data_volume_size',
-            'user_data',
+        fields = structure_serializers.VirtualMachineSerializer.Meta.fields + (
+            'flavor', 'image', 'system_volume_size', 'data_volume_size',
         )
-
-    def get_fields(self):
-        user = self.context['user']
-        fields = super(InstanceSerializer, self).get_fields()
-        fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(user=user)
-        return fields
-
-    def to_internal_value(self, data):
-        if 'external_ips' in data and not data['external_ips']:
-            data['external_ips'] = []
-        internal_value = super(InstanceSerializer, self).to_internal_value(data)
-        if 'external_ips' in internal_value:
-            if not internal_value['external_ips']:
-                internal_value['external_ips'] = None
-            else:
-                internal_value['external_ips'] = internal_value['external_ips'][0]
-
-        return internal_value
+        protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
+            'flavor', 'image', 'system_volume_size', 'data_volume_size',
+        )
 
     def validate(self, attrs):
         settings = attrs['service_project_link'].service.settings
