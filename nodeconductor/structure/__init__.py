@@ -246,6 +246,10 @@ class SupportedServices(object):
         return cls._get_view_for_model(model, view_type='detail_view')
 
     @classmethod
+    def get_name_for_model(cls, model):
+        return cls._registry[cls._get_model_srt(model)]['name']
+
+    @classmethod
     def _get_model_srt(cls, model):
         return force_text(model._meta)
 

@@ -6,6 +6,7 @@ from django.db import models as django_models
 from django.conf import settings
 from django.utils import six
 from rest_framework import serializers, exceptions
+from rest_framework.reverse import reverse
 
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import models as core_models
@@ -102,6 +103,8 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
     resource_quota = serializers.SerializerMethodField('get_resource_quotas')
     resource_quota_usage = serializers.SerializerMethodField('get_resource_quotas_usage')
 
+    services = serializers.SerializerMethodField()
+
     class Meta(object):
         model = models.Project
         fields = (
@@ -111,6 +114,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'project_groups',
             'description',
             'quotas',
+            'services',
             'resource_quota', 'resource_quota_usage',
             'created',
         )
@@ -150,6 +154,31 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             instance.project_groups.clear()
             instance.project_groups.add(*project_groups)
         return super(ProjectSerializer, self).update(instance, validated_data)
+
+    def get_services(self, project):
+        services = []
+        request = self.context['request']
+
+        for model in SupportedServices.get_service_models().values():
+            service_model = model['service']
+            link_model = model['service_project_link']
+
+            view_name = SupportedServices.get_detail_view_for_model(service_model)
+            service_type = SupportedServices.get_name_for_model(service_model)
+            queryset = link_model.objects.filter(project=project)
+
+            for link in queryset:
+                service_uuid = link.service.uuid.hex
+                service_url = reverse(view_name, kwargs={'uuid': service_uuid}, request=request)
+                service_name = link.service.name
+                services.append({
+                    'uuid': service_uuid,
+                    'url': service_url,
+                    'name': service_name,
+                    'type': service_type,
+                    'state': link.get_state_display()
+                })
+        return services
 
 
 class DefaultImageField(serializers.ImageField):
