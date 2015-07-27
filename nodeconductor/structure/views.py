@@ -762,7 +762,7 @@ class ProjectPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
-        lookup_type='icontains',
+        lookup_type='exact',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
@@ -879,7 +879,7 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
-        lookup_type='icontains',
+        lookup_type='exact',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
@@ -1000,7 +1000,7 @@ class CustomerPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
-        lookup_type='icontains',
+        lookup_type='exact',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
