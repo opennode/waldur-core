@@ -28,7 +28,7 @@ from rest_framework import views
 from rest_framework import viewsets
 from rest_framework import generics
 from rest_framework.decorators import detail_route, list_route
-from rest_framework.exceptions import PermissionDenied, APIException
+from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, APIException
 from rest_framework.response import Response
 
 from nodeconductor.core import filters as core_filters
@@ -39,7 +39,7 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.utils import request_api
 from nodeconductor.quotas import views as quotas_views
-from nodeconductor.structure import SupportedServices, ServiceBackendError
+from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
 from nodeconductor.structure import models
@@ -762,7 +762,7 @@ class ProjectPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
-        lookup_type='icontains',
+        lookup_type='exact',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
@@ -879,7 +879,7 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
-        lookup_type='icontains',
+        lookup_type='exact',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
@@ -1000,7 +1000,7 @@ class CustomerPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
-        lookup_type='icontains',
+        lookup_type='exact',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
@@ -1284,7 +1284,7 @@ class UpdateOnlyByPaidCustomerMixin(object):
                     "Your balance is %s. Action disabled." % customer.balance)
 
     def initial(self, request, *args, **kwargs):
-        if hasattr(self, 'PaidControl') and self.action not in ('list', 'retrieve', 'create'):
+        if hasattr(self, 'PaidControl') and self.action and self.action not in ('list', 'retrieve', 'create'):
             if django_settings.NODECONDUCTOR.get('SUSPEND_UNPAID_CUSTOMERS'):
                 entity = self.get_object()
 
@@ -1329,9 +1329,38 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     queryset = NotImplemented
     serializer_class = NotImplemented
+    import_serializer_class = NotImplemented
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     lookup_field = 'uuid'
+
+    def get_serializer_class(self):
+        if self.action == 'link':
+            return self.import_serializer_class
+        return super(BaseServiceViewSet, self).get_serializer_class()
+
+    def get_serializer_context(self):
+        context = super(BaseServiceViewSet, self).get_serializer_context()
+        if self.action == 'link':
+            context['service'] = self.get_object()
+        return context
+
+    @detail_route(methods=['get', 'post'])
+    def link(self, request, uuid=None):
+        if self.request.method == 'GET':
+            backend = self.get_object().get_backend()
+            return Response(backend.get_resources_for_import())
+        else:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            customer = serializer.validated_data['project'].customer
+            if not request.user.is_staff and not customer.has_user(request.user):
+                raise PermissionDenied(
+                    "Only customer owner or staff are allowed to perform this action.")
+
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):
@@ -1410,7 +1439,10 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
                             raise core_exceptions.IncorrectStateException(message % operation_name)
 
                         # Important! We are passing back the instance from current transaction to a view
-                        view_fn(self, request, resource, *args, **kwargs)
+                        try:
+                            view_fn(self, request, resource, *args, **kwargs)
+                        except ServiceBackendNotImplemented:
+                            raise MethodNotAllowed(operation_name)
 
                 except TransitionNotAllowed:
                     raise core_exceptions.IncorrectStateException(message % operation_name)

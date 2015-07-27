@@ -8,12 +8,12 @@ from nodeconductor.oracle import serializers
 
 
 class OracleServiceViewSet(structure_views.BaseServiceViewSet):
-    queryset = models.Service.objects.all()
+    queryset = models.OracleService.objects.all()
     serializer_class = serializers.ServiceSerializer
 
 
 class OracleServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkViewSet):
-    queryset = models.ServiceProjectLink.objects.all()
+    queryset = models.OracleServiceProjectLink.objects.all()
     serializer_class = serializers.ServiceProjectLinkSerializer
 
 

@@ -22,7 +22,7 @@ class GenericKeyManager(django_models.Manager):
             kwargs[self.content_type_field] = generic_key_content_type
         return super(GenericKeyManager, self).filter(**kwargs)
 
-    # TODO: This filter duplicates quota filter manager - they need to be moved to core
+    # TODO: This filter duplicates quota filter manager - they need to be moved to core (NC-686)
     def filtered_for_user(self, user, queryset=None):
         from nodeconductor.cost_tracking import models
 
