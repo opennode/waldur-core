@@ -144,6 +144,11 @@ class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink)
     def get_log_fields(self):
         return ('project', 'cloud',)
 
+    @property
+    def service(self):
+        # XXX: Temporary backward compatibility
+        return self.cloud
+
 
 class CloudProjectMember(models.Model):
     class Meta(object):
