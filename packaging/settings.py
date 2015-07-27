@@ -823,3 +823,7 @@ if config.get('sentry', 'dsn') != '':
         'dsn': config.get('sentry', 'dsn'),
     }
 
+# optionally load extension configurations
+plus_configuration = os.path.join(conf_dir, 'nodeconductor_plus.py')
+if os.path.isfile(plus_configuration):
+    execfile(plus_configuration)
