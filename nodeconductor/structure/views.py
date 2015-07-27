@@ -1357,7 +1357,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             customer = serializer.validated_data['project'].customer
             if not request.user.is_staff and not customer.has_user(request.user):
                 raise PermissionDenied(
-                    "Only project administrator or staff allowed to perform this action.")
+                    "Only customer owner or staff are allowed to perform this action.")
 
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
