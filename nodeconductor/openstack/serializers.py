@@ -44,14 +44,14 @@ class ServiceSerializer(structure_serializers.BaseServiceSerializer):
     }
 
     class Meta(structure_serializers.BaseServiceSerializer.Meta):
-        model = models.Service
+        model = models.OpenStackService
         view_name = 'openstack-detail'
 
 
 class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkSerializer):
 
     class Meta(structure_serializers.BaseServiceProjectLinkSerializer.Meta):
-        model = models.ServiceProjectLink
+        model = models.OpenStackServiceProjectLink
         view_name = 'openstack-spl-detail'
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': 'openstack-detail'},
@@ -68,7 +68,7 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     service_project_link = serializers.HyperlinkedRelatedField(
         view_name='openstack-spl-detail',
-        queryset=models.ServiceProjectLink.objects.all(),
+        queryset=models.OpenStackServiceProjectLink.objects.all(),
         write_only=True)
 
     flavor = serializers.HyperlinkedRelatedField(
