@@ -260,3 +260,10 @@ NODECONDUCTOR = {
     'SUSPEND_UNPAID_CUSTOMERS': False,
     'TOKEN_KEY': 'x-auth-token',
 }
+
+# import optional extension settings from supported modules
+try:
+    from nodeconductor_plus.settings import *
+    INSTALLED_APPS += NODECONDUCTOR_PLUS_APPS
+except ImportError:
+    pass
