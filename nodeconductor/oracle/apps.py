@@ -8,7 +8,7 @@ class OracleConfig(AppConfig):
     verbose_name = "NodeConductor Oracle"
 
     def ready(self):
-        Service = self.get_model('Service')
+        OracleService = self.get_model('OracleService')
 
         from nodeconductor.oracle.backend import OracleBackend
-        SupportedServices.register_backend(Service, OracleBackend)
+        SupportedServices.register_backend(OracleService, OracleBackend)

@@ -8,6 +8,7 @@ dev_requires = [
 ]
 
 tests_requires = [
+    'ddt>=1.0.0',
     'factory_boy==2.4.1',
     'mock==1.0.1',
     'mock-django==0.6.6',
@@ -52,7 +53,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.68.0',
+    version='0.69.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

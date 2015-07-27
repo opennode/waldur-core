@@ -129,7 +129,7 @@ class SupportedServices(object):
     @classmethod
     def get_service_backend(cls, service_type):
         for service in cls._registry.values():
-            if service['service_type'] == service_type:
+            if service.get('service_type', 0) == service_type:
                 return service['backend']
         raise ServiceBackendNotImplemented
 
@@ -209,7 +209,8 @@ class SupportedServices(object):
             service_model = apps.get_model(service_model_name)
             service_project_link = next(
                 m[0].model for m in service_model._meta.get_all_related_objects_with_model()
-                if m[0].var_name in ('cloudprojectmembership', 'serviceprojectlink'))
+                if m[0].var_name == 'cloudprojectmembership' or
+                m[0].var_name.endswith('serviceprojectlink'))
             data[service['service_type']] = {
                 'service': service_model,
                 'service_project_link': service_project_link,
@@ -244,6 +245,10 @@ class SupportedServices(object):
     @classmethod
     def get_detail_view_for_model(cls, model):
         return cls._get_view_for_model(model, view_type='detail_view')
+
+    @classmethod
+    def get_name_for_model(cls, model):
+        return cls._registry[cls._get_model_srt(model)]['name']
 
     @classmethod
     def _get_model_srt(cls, model):
@@ -309,6 +314,9 @@ class ServiceBackend(object):
 
     def remove_user(self, user, service_project_link):
         raise ServiceBackendNotImplemented
+
+    def get_resources_for_import(self):
+        return []
 
     @staticmethod
     def gb2mb(val):

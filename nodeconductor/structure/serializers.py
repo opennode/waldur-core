@@ -6,6 +6,7 @@ from django.db import models as django_models
 from django.conf import settings
 from django.utils import six
 from rest_framework import serializers, exceptions
+from rest_framework.reverse import reverse
 
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import models as core_models
@@ -102,6 +103,8 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
     resource_quota = serializers.SerializerMethodField('get_resource_quotas')
     resource_quota_usage = serializers.SerializerMethodField('get_resource_quotas_usage')
 
+    services = serializers.SerializerMethodField()
+
     class Meta(object):
         model = models.Project
         fields = (
@@ -111,6 +114,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'project_groups',
             'description',
             'quotas',
+            'services',
             'resource_quota', 'resource_quota_usage',
             'created',
         )
@@ -150,6 +154,31 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             instance.project_groups.clear()
             instance.project_groups.add(*project_groups)
         return super(ProjectSerializer, self).update(instance, validated_data)
+
+    def get_services(self, project):
+        services = []
+        request = self.context['request']
+
+        for model in SupportedServices.get_service_models().values():
+            service_model = model['service']
+            link_model = model['service_project_link']
+
+            view_name = SupportedServices.get_detail_view_for_model(service_model)
+            service_type = SupportedServices.get_name_for_model(service_model)
+            queryset = link_model.objects.filter(project=project)
+
+            for link in queryset:
+                service_uuid = link.service.uuid.hex
+                service_url = reverse(view_name, kwargs={'uuid': service_uuid}, request=request)
+                service_name = link.service.name
+                services.append({
+                    'uuid': service_uuid,
+                    'url': service_url,
+                    'name': service_name,
+                    'type': service_type,
+                    'state': link.get_state_display()
+                })
+        return services
 
 
 class DefaultImageField(serializers.ImageField):
@@ -739,6 +768,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def __new__(cls, *args, **kwargs):
         if cls.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
             cls.Meta.fields += tuple(cls.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
+            cls.Meta.protected_fields += tuple(cls.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
         return super(BaseServiceSerializer, cls).__new__(cls, *args, **kwargs)
 
     def get_filtered_field_names(self):
@@ -929,7 +959,10 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         return 'service_project_link',
 
     def get_resource_type(self, obj):
-        return obj._meta.model.__name__
+        for name, model in SupportedServices.get_resource_models().items():
+            if model == obj._meta.model:
+                return name
+        return None
 
     def create(self, validated_data):
         data = validated_data.copy()
@@ -940,3 +973,86 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                 del data[prop]
 
         return super(BaseResourceSerializer, self).create(data)
+
+
+class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
+                                   serializers.HyperlinkedModelSerializer):
+
+    backend_id = serializers.CharField(write_only=True)
+    project = serializers.HyperlinkedRelatedField(
+        queryset=models.Project.objects.all(),
+        view_name='project-detail',
+        lookup_field='uuid',
+        write_only=True)
+
+    state = serializers.ReadOnlyField(source='get_state_display')
+    created = serializers.DateTimeField(read_only=True)
+
+    class Meta(object):
+        model = NotImplemented
+        view_name = NotImplemented
+        fields = (
+            'url', 'uuid', 'name', 'state', 'created',
+            'backend_id', 'project'
+        )
+        read_only_fields = ('name',)
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+    def get_filtered_field_names(self):
+        return 'project',
+
+    def get_fields(self):
+        fields = super(BaseResourceImportSerializer, self).get_fields()
+        fields['project'].queryset = self.context['service'].projects.all()
+        return fields
+
+    def validate_backend_id(self, backend_id):
+        if self.Meta.model.objects.filter(backend_id=backend_id).exists():
+            raise serializers.ValidationError("This resource is already linked to NodeConductor")
+        return backend_id
+
+    def create(self, validated_data):
+        for service in SupportedServices.get_service_models().values():
+            if service['resources'] and self.Meta.model in service['resources']:
+                validated_data['service_project_link'] = service['service_project_link'].objects.get(
+                    service=self.context['service'], project=validated_data.pop('project'))
+
+        return super(BaseResourceImportSerializer, self).create(validated_data)
+
+
+class VirtualMachineSerializer(BaseResourceSerializer):
+
+    ssh_public_key = serializers.HyperlinkedRelatedField(
+        view_name='sshpublickey-detail',
+        lookup_field='uuid',
+        queryset=core_models.SshPublicKey.objects.all(),
+        required=False,
+        write_only=True)
+
+    external_ips = serializers.ListField(
+        child=core_serializers.IPAddressField(),
+        allow_null=True,
+        read_only=True)
+
+    class Meta(BaseResourceSerializer.Meta):
+        read_only_fields = ('start_time', 'cores', 'ram', 'disk')
+        protected_fields = ('service', 'service_project_link', 'user_data', 'ssh_public_key')
+        write_only_fields = ('user_data',)
+        fields = BaseResourceSerializer.Meta.fields + (
+            'cores', 'ram', 'disk',
+            'external_ips', 'ssh_public_key', 'user_data'
+        )
+
+    def get_fields(self):
+        fields = super(VirtualMachineSerializer, self).get_fields()
+        fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
+            user=self.context['user'])
+        return fields
+
+    def to_representation(self, instance):
+        # We need this hook, because ips have to be represented as list
+        instance.external_ips = [instance.external_ips] if instance.external_ips else []
+        instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
+        return super(VirtualMachineSerializer, self).to_representation(instance)

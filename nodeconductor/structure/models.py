@@ -443,8 +443,8 @@ class Service(core_models.UuidMixin, core_models.NameMixin):
         project_path = 'projects'
         project_group_path = 'customer__projects__project_groups'
 
-    settings = models.ForeignKey(ServiceSettings, related_name='+')
-    customer = models.ForeignKey(Customer, related_name='+')
+    settings = models.ForeignKey(ServiceSettings)
+    customer = models.ForeignKey(Customer)
     projects = NotImplemented
 
     def get_backend(self, **kwargs):
@@ -494,7 +494,7 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
         project_group_path = 'project__project_groups'
 
     service = NotImplemented
-    project = models.ForeignKey(Project, related_name='+')
+    project = models.ForeignKey(Project)
 
     def get_quota_parents(self):
         return [self.project]

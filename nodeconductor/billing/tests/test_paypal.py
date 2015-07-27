@@ -11,13 +11,13 @@ from nodeconductor.structure.tests import factories as structure_factories
 
 
 @override_settings(NODECONDUCTOR={
-    'BILLING':{
+    'BILLING': {
         'backend': 'nodeconductor.billing.backend.paypal.PaypalBackend',
         'mode': 'sandbox',
         'client_id': '',
         'client_secret': '',
         'currency_name': 'USD',
-        'return_url': 'http://example.com/payment/return'
+        'return_url': 'http://example.com/payment/return',
     }
 })
 class PaypalPaymentTest(test.APISimpleTestCase):
@@ -37,13 +37,13 @@ class PaypalPaymentTest(test.APISimpleTestCase):
         }
 
         self.response_data = {
-           'amount': self.request_data['amount'],
-           'approval_url': 'https://www.sandbox.paypal.com/webscr?cmd=_express-checkout&token=EC-60U79048BN7719609',
-           'payment_id': 'PAY-6RV70583SB702805EKEYSZ6Y',
-           'payer_id': '7E7MGXCWTTKK2',
-           'create_ok': True,
-           'execute_ok': True,
-           'error_message': ''
+            'amount': self.request_data['amount'],
+            'approval_url': 'https://www.sandbox.paypal.com/webscr?cmd=_express-checkout&token=EC-60U79048BN7719609',
+            'payment_id': 'PAY-6RV70583SB702805EKEYSZ6Y',
+            'payer_id': '7E7MGXCWTTKK2',
+            'create_ok': True,
+            'execute_ok': True,
+            'error_message': '',
         }
 
         self.mock = self.paypal_payment_factory()
