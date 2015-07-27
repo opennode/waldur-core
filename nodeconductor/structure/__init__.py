@@ -129,7 +129,7 @@ class SupportedServices(object):
     @classmethod
     def get_service_backend(cls, service_type):
         for service in cls._registry.values():
-            if service['service_type'] == service_type:
+            if service.get('service_type', 0) == service_type:
                 return service['backend']
         raise ServiceBackendNotImplemented
 
@@ -309,6 +309,9 @@ class ServiceBackend(object):
 
     def remove_user(self, user, service_project_link):
         raise ServiceBackendNotImplemented
+
+    def get_resources_for_import(self):
+        return []
 
     @staticmethod
     def gb2mb(val):

@@ -2,6 +2,15 @@
 {% block form_top %}
 <div class="module">
     <h3>Supported credentials depending on service type:</h3>
+    <p>Amazon</p>
+    <ul>
+        <li>Username — AWS access key ID</li>
+        <li>Token — AWS secret access key</li>
+    </ul>
+    <p>* make sure your AWS user have proper permission policy attached, e.g. "AmazonEC2FullAccess"</p>
+    <p>
+        Supported Amazon options are: "<code>region</code>" (default: "us-east-1")
+    </p>
     <p>OpenStack</p>
     <ul>
         <li>Backend url — Keystone auth URL (e.g. http://keystone.example.com:5000/v2.0)</li>
