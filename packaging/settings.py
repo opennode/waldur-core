@@ -524,7 +524,7 @@ CELERYBEAT_SCHEDULE.update({
         'args': (),
     },
     'recover-erred-services': {
-        'task': 'nodeconductor.iaas.recover_erred_services',
+        'task': 'nodeconductor.structure.recover_erred_services',
         'schedule': timedelta(seconds=config.getint('celery', 'recover_erred_services_period')),
         'args': (),
     },
