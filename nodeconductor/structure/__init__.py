@@ -300,6 +300,9 @@ class ServiceBackend(object):
     def __init__(self, settings, **kwargs):
         pass
 
+    def ping(self):
+        raise ServiceBackendNotImplemented
+
     def sync(self):
         raise ServiceBackendNotImplemented
 

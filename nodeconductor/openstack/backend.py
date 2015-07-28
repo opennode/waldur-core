@@ -59,6 +59,11 @@ class OpenStackBackend(ServiceBackend):
 
         return super(OpenStackBackend, self).__getattr__(name)
 
+    def ping(self):
+        # Session validation occurs on class creation so assume it's active
+        # TODO: Consider validating session depending on tenant permissions
+        return True
+
     def sync(self):
         # Migration status:
         # [x] pull_flavors()

@@ -114,7 +114,7 @@ class OpenStackClient(object):
             try:
                 # This will eagerly sign in throwing AuthorizationFailure on bad credentials
                 self.keystone_session.get_token()
-            except keystone_exceptions.AuthorizationFailure as e:
+            except (keystone_exceptions.AuthorizationFailure, keystone_exceptions.ConnectionRefused) as e:
                 six.reraise(CloudBackendError, e)
 
             # Preserve session parameters
