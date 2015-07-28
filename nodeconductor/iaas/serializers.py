@@ -409,6 +409,13 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
             raise serializers.ValidationError(
                 'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
 
+        for security_group_data in attrs.get('security_groups', []):
+            security_group = security_group_data['security_group']
+            if security_group.cloud_project_membership != membership:
+                raise serializers.ValidationError(
+                    'Security group {} has wrong cloud or project.New instance and its security groups'
+                    ' have to belong to same project and cloud'.format(security_group.name))
+
         return attrs
 
     def create(self, validated_data):
