@@ -1,7 +1,7 @@
 import logging
 
 from django.db import transaction
-from django.utils import six, timezone
+from django.utils import six, dateparse, timezone
 
 from ceilometerclient import exc as ceilometer_exceptions
 from cinderclient import exceptions as cinder_exceptions
@@ -178,6 +178,54 @@ class OpenStackBackend(ServiceBackend):
         service_project_link.tenant_id = tenant.id
         service_project_link.save()
 
+    def get_instance(self, instance_id):
+        try:
+            nova = self.nova_client
+            cinder = self.cinder_client
+
+            instance = nova.servers.get(instance_id)
+            system_volume, data_volume = self._old_backend._get_instance_volumes(nova, cinder, instance_id)
+            cores, ram = self._old_backend._get_flavor_info(nova, instance)
+            ips = self._old_backend._get_instance_ips(instance)
+
+            instance.nc_model_data = dict(
+                name=instance.name or instance.id,
+                key_name=instance.key_name or '',
+                start_time=self._old_backend._get_instance_start_time(instance),
+                state=self._old_backend._get_instance_state(instance),
+                created=dateparse.parse_datetime(instance.created),
+
+                cores=cores,
+                ram=ram,
+                disk=self.gb2mb(system_volume.size + data_volume.size),
+
+                system_volume_id=system_volume.id,
+                system_volume_size=self.gb2mb(system_volume.size),
+                data_volume_id=data_volume.id,
+                data_volume_size=self.gb2mb(data_volume.size),
+
+                internal_ips=ips.get('internal', ''),
+                external_ips=ips.get('external', ''),
+            )
+        except (glance_exceptions.ClientException,
+                cinder_exceptions.ClientException,
+                nova_exceptions.ClientException,
+                neutron_exceptions.NeutronClientException) as e:
+            six.reraise(OpenStackBackendError, e)
+
+        return instance
+
+    def get_resources_for_import(self):
+        cur_instances = models.Instance.objects.all().values_list('backend_id', flat=True)
+        return [{
+            'id': instance.id,
+            'name': instance.name or instance.id,
+            'created_at': instance.created,
+            'status': instance.status,
+        } for instance in self.nova_client.servers.list()
+            if instance.id not in cur_instances and
+            self._old_backend._get_instance_state(instance) != models.Instance.States.ERRED]
+
     def provision_instance(self, instance, backend_flavor_id=None, backend_image_id=None):
         logger.info('About to provision instance %s', instance.uuid)
         try:
@@ -316,7 +364,7 @@ class OpenStackBackend(ServiceBackend):
                 nova_exceptions.ClientException,
                 neutron_exceptions.NeutronClientException) as e:
             logger.exception("Failed to provision instance %s", instance.uuid)
-            six.reraise(OpenStackBackend, e)
+            six.reraise(OpenStackBackendError, e)
         else:
             logger.info("Successfully provisioned instance %s", instance.uuid)
 
