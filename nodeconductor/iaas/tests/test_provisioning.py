@@ -757,6 +757,15 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_cannot_create_instance_with_security_groups_from_other_project(self):
+        security_groups = [factories.SecurityGroupFactory() for _ in range(3)]
+        data = self.get_valid_data()
+        data['security_groups'] = [{'url': factories.SecurityGroupFactory.get_url(sg)} for sg in security_groups]
+
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     # instance external and internal ips fields tests
     def test_instance_factory_generates_valid_internal_ips_field(self):
         instance = factories.InstanceFactory()
