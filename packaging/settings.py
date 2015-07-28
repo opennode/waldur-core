@@ -35,7 +35,6 @@ config_defaults = {
         'instance_provisioning_concurrency': 3,
         'instance_yearly_sla_update_period': 600,
         'instance_zabbix_sync_period': 1800,
-        'recover_erred_cloud_memberships_period': 1800,
         'recover_erred_services_period': 1800,
         'result_backend_url': 'redis://localhost',
         'service_statistics_update_period': 600,
@@ -170,6 +169,11 @@ DATABASES = {
 for prop in ('password', 'username', 'tenant_name'):
     if config.has_option('openstack', prop):
         warnings.warn("openstack.%s property in settings.ini is no longer supported and will be ignored" % prop)
+
+if config.has_option('celery', 'recover_erred_cloud_memberships_period'):
+    warnings.warn(
+        "celery.recover_erred_cloud_memberships_period property in settings.ini is "
+        "no longer supported and will be ignored in favor of celery.recover_erred_services_period")
 
 if config.get('global', 'db_backend') == 'mysql':
     DATABASES['default'] = {
@@ -520,18 +524,13 @@ CELERYBEAT_SCHEDULE.update({
         'args': (),
     },
     'recover-erred-services': {
-        'task': 'nodeconductor.iaas.recover_erred_services',
+        'task': 'nodeconductor.structure.recover_erred_services',
         'schedule': timedelta(seconds=config.getint('celery', 'recover_erred_services_period')),
         'args': (),
     },
     'pull-cloud-project-memberships': {
         'task': 'nodeconductor.iaas.tasks.iaas.pull_cloud_memberships',
         'schedule': timedelta(seconds=config.getint('celery', 'cloud_project_membership_pull_period')),
-        'args': (),
-    },
-    'recover-erred-cloud-project-memberships': {
-        'task': 'nodeconductor.iaas.tasks.iaas.recover_erred_cloud_memberships',
-        'schedule': timedelta(seconds=config.getint('celery', 'recover_erred_cloud_memberships_period')),
         'args': (),
     },
     'pull-service-statistics': {
