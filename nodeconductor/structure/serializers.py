@@ -1008,18 +1008,23 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
         fields['project'].queryset = self.context['service'].projects.all()
         return fields
 
-    def validate_backend_id(self, backend_id):
-        if self.Meta.model.objects.filter(backend_id=backend_id).exists():
-            raise serializers.ValidationError("This resource is already linked to NodeConductor")
-        return backend_id
+    def run_validation(self, data):
+        validated_data = super(BaseResourceImportSerializer, self).run_validation(data)
 
-    def create(self, validated_data):
-        for service in SupportedServices.get_service_models().values():
-            if service['resources'] and self.Meta.model in service['resources']:
-                validated_data['service_project_link'] = service['service_project_link'].objects.get(
-                    service=self.context['service'], project=validated_data.pop('project'))
+        if self.Meta.model.objects.filter(backend_id=validated_data['backend_id']).exists():
+            raise serializers.ValidationError(
+                {'backend_id': "This resource is already linked to NodeConductor"})
 
-        return super(BaseResourceImportSerializer, self).create(validated_data)
+        spl_class = SupportedServices.get_related_models(self.Meta.model)['service_project_link']
+        spl = spl_class.objects.get(service=self.context['service'], project=validated_data['project'])
+
+        if spl.state == core_models.SynchronizationStates.ERRED:
+            raise serializers.ValidationError(
+                {'project': "Service project link must be in non-erred state"})
+
+        validated_data['service_project_link'] = spl
+
+        return validated_data
 
 
 class VirtualMachineSerializer(BaseResourceSerializer):

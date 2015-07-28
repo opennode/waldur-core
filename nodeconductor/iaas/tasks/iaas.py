@@ -6,7 +6,7 @@ import logging
 from celery import shared_task
 
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeError, transition
+from nodeconductor.core.tasks import tracked_processing, set_state, StateChangeError
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas import models
 from nodeconductor.iaas.backend import CloudBackendError
@@ -308,30 +308,6 @@ def sync_instance_with_zabbix(instance_uuid):
 
 
 @shared_task
-def recover_erred_cloud_memberships(membership_pks=None):
-    memberships = models.CloudProjectMembership.objects.filter(state=SynchronizationStates.ERRED)
-
-    if membership_pks and isinstance(membership_pks, (list, tuple)):
-        memberships = memberships.filter(pk__in=membership_pks)
-
-    for membership in memberships:
-        recover_erred_cloud_membership.delay(membership.pk)
-
-
-@shared_task
-@transition(models.CloudProjectMembership, 'set_in_sync_from_erred')
-def recover_erred_cloud_membership(membership_pk, transition_entity=None):
-    membership = transition_entity
-    backend = membership.cloud.get_backend()
-
-    try:
-        backend.create_session(membership=membership, dummy=membership.cloud.dummy)
-        logger.info('Cloud project membership with id %s has been recovered.' % membership.pk)
-    except CloudBackendError:
-        logger.info('Failed to recover cloud project membership with id %s.' % membership.pk)
-
-
-@shared_task
 def create_external_network(membership_pk, network_data):
     membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
     backend = membership.cloud.get_backend()
@@ -343,6 +319,7 @@ def create_external_network(membership_pk, network_data):
         backend.get_or_create_external_network(membership, neutron, **network_data)
     except CloudBackendError:
         logger.info('Failed to create external network for cloud project membership with id %s.', membership_pk)
+
 
 @shared_task
 def delete_external_network(membership_pk):
