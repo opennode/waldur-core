@@ -60,7 +60,7 @@ class PriceList(core_models.UuidMixin, models.Model):
 
 
 class PriceListItem(core_models.NameMixin, core_models.UuidMixin, models.Model):
-    value = models.FloatField(default=0)
+    value = models.DecimalField(default=0, max_digits=16, decimal_places=8)
     units = models.CharField(max_length=30, blank=True)
     price_list = models.ForeignKey(PriceList, related_name='items')
 

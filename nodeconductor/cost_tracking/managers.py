@@ -25,10 +25,6 @@ class GenericKeyMixin(object):
             kwargs[self.content_type_field] = generic_key_content_type
         return super(GenericKeyMixin, self).filter(**kwargs)
 
-    def get_available_models(self):
-        """ Return list of models that are acceptable """
-        raise NotImplementedError()
-
 
 # TODO: This mixin duplicates quota filter manager - they need to be moved to core (NC-686)
 class UserFilterMixin(object):
@@ -44,6 +40,10 @@ class UserFilterMixin(object):
             query |= Q(object_id__in=user_object_ids, content_type_id=content_type_id)
 
         return queryset.filter(query)
+
+    def get_available_models(self):
+        """ Return list of models that are acceptable """
+        raise NotImplementedError()
 
 
 class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manager):

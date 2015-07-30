@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.db import transaction
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin
@@ -90,15 +91,18 @@ class PriceListSerializer(serializers.HyperlinkedModelSerializer):
     def create(self, validated_data):
         items = validated_data.pop('items', [])
         price_list = super(PriceListSerializer, self).create(validated_data)
-        for item in items:
-            price_list.items.add(models.PriceListItem(**item))
+        if items:
+            price_list_items = [models.PriceListItem(**item) for item in items]
+            price_list.items.add(*price_list_items)
         return price_list
 
     def update(self, instance, validated_data):
+        items_in_validated_data = 'items' in validated_data
         items = validated_data.pop('items', [])
         price_list = super(PriceListSerializer, self).update(instance, validated_data)
-        if items:
+        if items_in_validated_data:
             price_list.items.all().delete()
-        for item in items:
-            price_list.items.add(models.PriceListItem(**item))
+        if items:
+            price_list_items = [models.PriceListItem(**item) for item in items]
+            price_list.items.add(*price_list_items)
         return price_list

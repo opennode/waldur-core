@@ -53,7 +53,18 @@ class AdditionalPriceEstimateFilterBackend(filters.BaseFilterBackend):
         return queryset
 
 
-class PriceEstimateViewSet(viewsets.ModelViewSet):
+class PriceEditPermissionMixin(object):
+
+    def can_user_modify_price_object(self, scope):
+        if self.request.user.is_staff:
+            return True
+        customer = reduce(getattr, scope.Permissions.customer_path.split('__'), scope)
+        if customer.has_user(self.request.user, structure_models.CustomerRole.OWNER):
+            return True
+        return False
+
+
+class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     queryset = models.PriceEstimate.objects.all()
     serializer_class = serializers.PriceEstimateSerializer
     lookup_field = 'uuid'
@@ -65,26 +76,18 @@ class PriceEstimateViewSet(viewsets.ModelViewSet):
         return models.PriceEstimate.objects.filtered_for_user(self.request.user).filter(is_visible=True).order_by(
             '-year', '-month')
 
-    def can_user_modify_price_estimate(self, scope):
-        if self.request.user.is_staff:
-            return True
-        customer = reduce(getattr, scope.Permissions.customer_path.split('__'), scope)
-        if customer.has_user(self.request.user, structure_models.CustomerRole.OWNER):
-            return True
-        return False
-
     def perform_create(self, serializer):
-        if not self.can_user_modify_price_estimate(serializer.validated_data['scope']):
+        if not self.can_user_modify_price_object(serializer.validated_data['scope']):
             raise exceptions.PermissionDenied('You do not have permission to perform this action.')
 
         super(PriceEstimateViewSet, self).perform_create(serializer)
 
     def initial(self, request, *args, **kwargs):
-        if self.action in ('partial_update', 'destroy'):
+        if self.action in ('partial_update', 'destroy', 'update'):
             price_estimate = self.get_object()
             if not price_estimate.is_manually_inputed:
                 raise exceptions.MethodNotAllowed('Auto calculated price estimate can not be edited or deleted')
-            if not self.can_user_modify_price_estimate(price_estimate.scope):
+            if not self.can_user_modify_price_object(price_estimate.scope):
                 raise exceptions.PermissionDenied('You do not have permission to perform this action.')
 
         return super(PriceEstimateViewSet, self).initial(request, *args, **kwargs)
@@ -100,7 +103,7 @@ class PriceListFilter(django_filters.FilterSet):
         ]
 
 
-class PriceListViewSet(viewsets.ModelViewSet):
+class PriceListViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     queryset = models.PriceList.objects.all().select_related('items')
     serializer_class = serializers.PriceListSerializer
     lookup_field = 'uuid'
@@ -111,24 +114,16 @@ class PriceListViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return models.PriceList.objects.filtered_for_user(self.request.user).select_related('items')
 
-    def can_user_modify_price_list(self, service):
-        if self.request.user.is_staff:
-            return True
-        customer = reduce(getattr, service.Permissions.customer_path.split('__'), service)
-        if customer.has_user(self.request.user, structure_models.CustomerRole.OWNER):
-            return True
-        return False
-
     def initial(self, request, *args, **kwargs):
-        if self.action in ('partial_update', 'destroy'):
+        if self.action in ('partial_update', 'destroy', 'update'):
             price_estimate = self.get_object()
-            if not self.can_user_modify_price_list(price_estimate.service):
+            if not self.can_user_modify_price_object(price_estimate.service):
                 raise exceptions.PermissionDenied('You do not have permission to perform this action.')
 
         return super(PriceListViewSet, self).initial(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        if not self.can_user_modify_price_list(serializer.validated_data['service']):
+        if not self.can_user_modify_price_object(serializer.validated_data['service']):
             raise exceptions.PermissionDenied('You do not have permission to perform this action.')
 
         super(PriceListViewSet, self).perform_create(serializer)
