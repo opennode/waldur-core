@@ -226,7 +226,7 @@ class Project(core_models.DescribableMixin,
 
     # XXX: Hack for gcloud and logging
     @property
-    def group(self):
+    def project_group(self):
         return self.project_groups.first()
 
     def add_user(self, user, role_type):
@@ -292,7 +292,7 @@ class Project(core_models.DescribableMixin,
         return user.is_staff
 
     def get_log_fields(self):
-        return ('uuid', 'customer', 'name', 'group')
+        return ('uuid', 'customer', 'name', 'project_group')
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
