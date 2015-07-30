@@ -41,12 +41,13 @@ Manually create price estimate
 
 Run POST against */api/price-estimate/* to create price estimate. Manually created price estimate will replace
 auto calculated estimate. Manual creation is available only for estimates for resources and service-project-links.
+Only customer owner and staff can edit price estimates.
 
 Request example:
 
 .. code-block:: javascript
 
-    POST /api/alerts/
+    POST /api/price-estimate/
     Accept: application/json
     Content-Type: application/json
     Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
@@ -65,11 +66,12 @@ Update manually created price estimate
 --------------------------------------
 
 Run PATCH request against */api/price-estimate/<uuid>/* to update manually created price estimate. Only fields "total"
-and "details" could be updated.
+and "details" could be updated. Only customer owner and staff can update price estimates.
 
 
 Delete manually created price estimate
 --------------------------------------
 
 Run DELETE request against */api/price-estimate/<uuid>/* to delete price estimate. Estimate will be
-replaced with auto calculated (if it exists).
+replaced with auto calculated (if it exists). Only customer owner and staff can delete price estimates.
+
