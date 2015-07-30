@@ -462,6 +462,12 @@ class Service(core_models.UuidMixin, core_models.NameMixin):
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
 
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        """ This name will be used by generic relationships to membership model for URL creation """
+        return cls._meta.app_label
+
 
 @python_2_unicode_compatible
 class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
@@ -477,6 +483,12 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 
     def __str__(self):
         return '{0} | {1}'.format(self.name, self.settings)
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        """ This name will be used by generic relationships to membership model for URL creation """
+        return '{}-{}'.format(cls._meta.app_label, cls.__name__)
 
 
 @python_2_unicode_compatible
@@ -525,6 +537,12 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
     @lru_cache(maxsize=1)
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        """ This name will be used by generic relationships to membership model for URL creation """
+        return cls._meta.app_label + '-spl'
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
@@ -672,6 +690,12 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
     @lru_cache(maxsize=1)
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        """ This name will be used by generic relationships to membership model for URL creation """
+        return '{}-{}'.format(cls._meta.app_label, cls.__name__)
 
     def __str__(self):
         return self.name

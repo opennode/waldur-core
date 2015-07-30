@@ -2,11 +2,9 @@ from __future__ import unicode_literals
 
 import re
 
-from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 import django_filters
 from rest_framework import viewsets, permissions, exceptions, filters
-from rest_framework.serializers import ValidationError
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.cost_tracking import models, serializers
@@ -81,20 +79,56 @@ class PriceEstimateViewSet(viewsets.ModelViewSet):
 
         super(PriceEstimateViewSet, self).perform_create(serializer)
 
-    def perform_update(self, serializer):
-        price_estimate = self.get_object()
-        if not price_estimate.is_manually_inputed:
-            raise exceptions.MethodNotAllowed('Auto calculated price estimate can not be edited or deleted')
-        if not self.can_user_modify_price_estimate(price_estimate.scope):
+    def initial(self, request, *args, **kwargs):
+        if self.action in ('partial_update', 'destroy'):
+            price_estimate = self.get_object()
+            if not price_estimate.is_manually_inputed:
+                raise exceptions.MethodNotAllowed('Auto calculated price estimate can not be edited or deleted')
+            if not self.can_user_modify_price_estimate(price_estimate.scope):
+                raise exceptions.PermissionDenied('You do not have permission to perform this action.')
+
+        return super(PriceEstimateViewSet, self).initial(request, *args, **kwargs)
+
+
+class PriceListFilter(django_filters.FilterSet):
+    service = core_filters.GenericKeyFilter(related_models=structure_models.Service.get_all_models())
+
+    class Meta:
+        model = models.PriceList
+        fields = [
+            'service',
+        ]
+
+
+class PriceListViewSet(viewsets.ModelViewSet):
+    queryset = models.PriceList.objects.all().select_related('items')
+    serializer_class = serializers.PriceListSerializer
+    lookup_field = 'uuid'
+    filter_backends = (filters.DjangoFilterBackend,)
+    filter_class = PriceListFilter
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return models.PriceList.objects.filtered_for_user(self.request.user).select_related('items')
+
+    def can_user_modify_price_list(self, service):
+        if self.request.user.is_staff:
+            return True
+        customer = reduce(getattr, service.Permissions.customer_path.split('__'), service)
+        if customer.has_user(self.request.user, structure_models.CustomerRole.OWNER):
+            return True
+        return False
+
+    def initial(self, request, *args, **kwargs):
+        if self.action in ('partial_update', 'destroy'):
+            price_estimate = self.get_object()
+            if not self.can_user_modify_price_list(price_estimate.service):
+                raise exceptions.PermissionDenied('You do not have permission to perform this action.')
+
+        return super(PriceListViewSet, self).initial(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        if not self.can_user_modify_price_list(serializer.validated_data['service']):
             raise exceptions.PermissionDenied('You do not have permission to perform this action.')
 
-        super(PriceEstimateViewSet, self).perform_update(serializer)
-
-    def perform_destroy(self, instance):
-        price_estimate = instance
-        if not price_estimate.is_manually_inputed:
-            raise exceptions.MethodNotAllowed('Auto calculated price estimate can not be edited or deleted')
-        if not self.can_user_modify_price_estimate(price_estimate.scope):
-            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
-
-        super(PriceEstimateViewSet, self).perform_destroy(instance)
+        super(PriceListViewSet, self).perform_create(serializer)

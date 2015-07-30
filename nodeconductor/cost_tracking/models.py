@@ -24,7 +24,7 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
     is_manually_inputed = models.BooleanField(default=False)
     is_visible = models.BooleanField(default=True)
 
-    objects = managers.GenericKeyManager('scope')
+    objects = managers.PriceEstimateManager('scope')
 
     class Meta:
         unique_together = ('content_type', 'object_id', 'month', 'year', 'is_manually_inputed')
@@ -46,3 +46,23 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
             structure_models.Resource.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models()
         )
+
+
+class PriceList(core_models.UuidMixin, models.Model):
+    content_type = models.ForeignKey(ContentType)
+    object_id = models.PositiveIntegerField()
+    service = GenericForeignKey('content_type', 'object_id')
+
+    objects = managers.PriceListManager('service')
+
+    class Meta:
+        unique_together = ('content_type', 'object_id')
+
+
+class PriceListItem(core_models.NameMixin, core_models.UuidMixin, models.Model):
+    value = models.FloatField(default=0)
+    units = models.CharField(max_length=30, blank=True)
+    price_list = models.ForeignKey(PriceList, related_name='items')
+
+    class Meta:
+        unique_together = ('name', 'price_list')
