@@ -259,5 +259,6 @@ NODECONDUCTOR = {
 try:
     from nodeconductor_plus.settings import *
     INSTALLED_APPS += NODECONDUCTOR_PLUS_APPS
+    CELERYBEAT_SCHEDULE.update(NODECONDUCTOR_PLUS_CELERYBEAT_SCHEDULE)
 except ImportError:
     pass
