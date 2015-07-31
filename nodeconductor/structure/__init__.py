@@ -15,6 +15,7 @@ class ServiceTypes(object):
     Jira = 4
     GitLab = 5
     Oracle = 6
+    Azure = 7
 
     CHOICES = (
         (OpenStack, 'OpenStack'),
@@ -23,6 +24,7 @@ class ServiceTypes(object):
         (Jira, 'Jira'),
         (GitLab, 'GitLab'),
         (Oracle, 'Oracle'),
+        (Azure, 'Azure'),
     )
 
 
