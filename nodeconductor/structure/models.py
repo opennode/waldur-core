@@ -431,7 +431,7 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
 
 
 @python_2_unicode_compatible
-class Service(core_models.UuidMixin, core_models.NameMixin):
+class Service(core_models.UuidMixin, core_models.NameMixin, LoggableMixin):
     """ Base service class. """
 
     class Meta(object):

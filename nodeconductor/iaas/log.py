@@ -133,6 +133,10 @@ class AggregateAlertFilter(BaseExternalFilter):
     """
 
     def filter(self, request, queryset, view):
+        # Don't apply filter if aggregate is not specified
+        if 'aggregate' not in request.query_params:
+            return queryset
+
         from nodeconductor.iaas import serializers as iaas_serializers, models as iaas_models
 
         aggregate_serializer = iaas_serializers.StatsAggregateSerializer(data=request.query_params)
