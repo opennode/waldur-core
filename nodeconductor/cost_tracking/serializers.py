@@ -90,19 +90,21 @@ class PriceListSerializer(serializers.HyperlinkedModelSerializer):
 
     def create(self, validated_data):
         items = validated_data.pop('items', [])
-        price_list = super(PriceListSerializer, self).create(validated_data)
-        if items:
-            price_list_items = [models.PriceListItem(**item) for item in items]
-            price_list.items.add(*price_list_items)
+        with transaction.atomic():
+            price_list = super(PriceListSerializer, self).create(validated_data)
+            if items:
+                price_list_items = [models.PriceListItem(**item) for item in items]
+                price_list.items.add(*price_list_items)
         return price_list
 
     def update(self, instance, validated_data):
         items_in_validated_data = 'items' in validated_data
         items = validated_data.pop('items', [])
-        price_list = super(PriceListSerializer, self).update(instance, validated_data)
-        if items_in_validated_data:
-            price_list.items.all().delete()
-        if items:
-            price_list_items = [models.PriceListItem(**item) for item in items]
-            price_list.items.add(*price_list_items)
+        with transaction.atomic():
+            price_list = super(PriceListSerializer, self).update(instance, validated_data)
+            if items_in_validated_data:
+                price_list.items.all().delete()
+            if items:
+                price_list_items = [models.PriceListItem(**item) for item in items]
+                price_list.items.add(*price_list_items)
         return price_list
