@@ -140,7 +140,7 @@ class PriceListUpdateTest(test.APITransactionTestCase):
     @data('staff', 'owner')
     def test_user_with_permissions_can_update_price_list(self, user):
         self.client.force_authenticate(self.users[user])
-        data = {'items': [{'name': 'cpu', 'value': 1000, 'units': 'USD per CPU'}, {'name': 'memory', 'value': 1000, 'units': 'USD per CPU'}]}
+        data = {'items': [{'name': 'cpu', 'value': 1000, 'units': 'USD per CPU'}]}
         response = self.client.patch(factories.PriceListFactory.get_url(self.price_list), data=data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
