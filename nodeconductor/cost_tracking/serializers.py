@@ -1,9 +1,11 @@
 from __future__ import unicode_literals
 
+from django.db import transaction
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin
 from nodeconductor.cost_tracking import models
+from nodeconductor.structure import models as structure_models
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
@@ -59,3 +61,50 @@ class PriceEstimateDateRangeFilterSerializer(serializers.Serializer):
         if 'start' in data and 'end' in data and data['start'] >= data['end']:
             raise serializers.ValidationError('Start has to be earlier than end.')
         return data
+
+
+class PriceListItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.PriceListItem
+        lookup_field = 'uuid'
+        fields = ('name', 'value', 'units')
+
+
+class PriceListSerializer(serializers.HyperlinkedModelSerializer):
+    items = PriceListItemSerializer(
+        many=True,
+        required=False,
+        default=(),
+    )
+    service = GenericRelatedField(related_models=structure_models.Service.get_all_models())
+
+    class Meta:
+        model = models.PriceList
+        lookup_field = 'uuid'
+        fields = ('url', 'uuid', 'service', 'items')
+
+    def validate_service(self, value):
+        if models.PriceList.objects.filter(service=value).exists():
+            raise serializers.ValidationError('Service can not have more than one price list')
+        return value
+
+    def create(self, validated_data):
+        items = validated_data.pop('items', [])
+        with transaction.atomic():
+            price_list = super(PriceListSerializer, self).create(validated_data)
+            if items:
+                price_list_items = [models.PriceListItem(**item) for item in items]
+                price_list.items.add(*price_list_items)
+        return price_list
+
+    def update(self, instance, validated_data):
+        items_in_validated_data = 'items' in validated_data
+        items = validated_data.pop('items', [])
+        with transaction.atomic():
+            price_list = super(PriceListSerializer, self).update(instance, validated_data)
+            if items_in_validated_data:
+                price_list.items.all().delete()
+            if items:
+                price_list_items = [models.PriceListItem(**item) for item in items]
+                price_list.items.add(*price_list_items)
+        return price_list
