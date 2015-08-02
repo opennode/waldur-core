@@ -488,7 +488,7 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
     @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
-        return '{}-{}'.format(cls._meta.app_label, cls.__name__)
+        return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
 
 
 @python_2_unicode_compatible
@@ -695,7 +695,7 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
     @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
-        return '{}-{}'.format(cls._meta.app_label, cls.__name__)
+        return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
 
     def __str__(self):
         return self.name
