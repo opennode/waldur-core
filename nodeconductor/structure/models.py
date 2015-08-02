@@ -430,8 +430,30 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
         return '%s (%s)' % (self.name, self.get_type_display())
 
 
+class SerializableAbstractMixin(object):
+
+    def to_string(self):
+        """ Dump an instance into a string preserving class name and PK """
+        return ':'.join([SupportedServices._get_model_srt(self), str(self.pk)])
+
+    @staticmethod
+    def parse_model_string(string):
+        """ Recover class and PK from a stirng"""
+        cls, pk = string.split(':')
+        return apps.get_model(cls), int(pk)
+
+    @classmethod
+    def from_string(cls, objects):
+        """ Recover objects from s string """
+        if not isinstance(objects, (list, tuple)):
+            objects = [objects]
+        for obj in objects:
+            model, pk = cls.parse_model_string(obj)
+            yield model._default_manager.get(pk=pk)
+
+
 @python_2_unicode_compatible
-class Service(core_models.UuidMixin, core_models.NameMixin, LoggableMixin):
+class Service(SerializableAbstractMixin, core_models.UuidMixin, core_models.NameMixin, LoggableMixin):
     """ Base service class. """
 
     class Meta(object):
@@ -492,7 +514,7 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 
 
 @python_2_unicode_compatible
-class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin):
+class ServiceProjectLink(SerializableAbstractMixin, core_models.SynchronizableMixin, quotas_models.QuotaModelMixin):
     """ Base service-project link class. See Service class for usage example. """
 
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances']
@@ -513,25 +535,6 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
 
     def get_backend(self, **kwargs):
         return self.service.get_backend(**kwargs)
-
-    def to_string(self):
-        """ Dump an instance into a string preserving class name and PK """
-        return ':'.join([SupportedServices._get_model_srt(self), str(self.pk)])
-
-    @staticmethod
-    def parse_model_string(string):
-        """ Recover class and PK from a stirng"""
-        cls, pk = string.split(':')
-        return apps.get_model(cls), int(pk)
-
-    @classmethod
-    def from_string(cls, objects):
-        """ Recover objects from s string """
-        if not isinstance(objects, (list, tuple)):
-            objects = [objects]
-        for obj in objects:
-            model, pk = cls.parse_model_string(obj)
-            yield model._default_manager.get(pk=pk)
 
     @classmethod
     @lru_cache(maxsize=1)
