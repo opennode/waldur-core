@@ -260,6 +260,15 @@ def sync_cloud_membership(membership_pk):
             exc_info=1,
         )
 
+    monitoring_utils.create_host_and_service.delay(membership.pk, warn_if_exists=False)
+
+
+@shared_task
+def sync_cloud_project_membership_with_zabbix(membership_pk):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+    logger.debug('Synchronizing cloud project membership %s with zabbix', membership.pk, exc_info=1)
+    monitoring_utils.create_host(membership, warn_if_exists=False)
+
 
 @shared_task
 def check_cloud_memberships_quotas():

@@ -174,7 +174,7 @@ class ZabbixDBClient(object):
                        history_uint FORCE INDEX (history_uint_1)
                  WHERE hosts.hostid = items.hostid
                    AND items.itemid = history_uint.itemid
-                   AND hosts.name IN ({hosts_placeholder})
+                   AND hosts.host IN ({hosts_placeholder})
                    AND items.key_ IN ({items_placeholder})
                    AND clock >= %s
                    AND clock <= %s

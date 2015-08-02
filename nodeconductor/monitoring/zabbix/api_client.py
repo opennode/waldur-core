@@ -82,12 +82,12 @@ class ZabbixApiClient(object):
         return [host['hostid'] for host in hosts]
 
     @_exception_decorator('Can not create Zabbix host for instance {1}. {exception_name}: {exception}')
-    def create_host(self, instance, warn_if_host_exists=True):
+    def create_host(self, instance, warn_if_host_exists=True, is_tenant=False):
         api = self.get_zabbix_api()
         _, created = self.get_or_create_host(
             api, instance,
             groupid=self._settings['groupid'],
-            templateid=self._settings['templateid'],
+            templateid=self._settings['templateid'] if not is_tenant else self._settings['openstack-templateid'],
             interface_parameters=self._settings['interface_parameters'],
             application_templateid=self._settings.get("%s-templateid" % instance.template.application_type.lower())
         )
