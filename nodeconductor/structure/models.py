@@ -7,6 +7,7 @@ from django.core.validators import MaxLengthValidator
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.db.models import Q, F, signals
 from django.utils.lru_cache import lru_cache
@@ -433,14 +434,16 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
 class SerializableAbstractMixin(object):
 
     def to_string(self):
-        """ Dump an instance into a string preserving class name and PK """
-        return ':'.join([SupportedServices._get_model_srt(self), str(self.pk)])
+        """ Dump an instance into a string preserving content type id and object id """
+        content_type = ContentType.objects.get_for_model(self)
+        return '{}:{}'.format(content_type.pk, self.pk)
 
     @staticmethod
     def parse_model_string(string):
-        """ Recover class and PK from a stirng"""
-        cls, pk = string.split(':')
-        return apps.get_model(cls), int(pk)
+        """ Recover model class and object id from a string"""
+        content_type_id, object_id = string.split(':')
+        content_type = ContentType.objects.get_for_id(content_type_id)
+        return content_type.model_class(), int(object_id)
 
     @classmethod
     def from_string(cls, objects):
