@@ -225,7 +225,7 @@ class OpenStackBackend(ServiceBackend):
 
     def get_resources_for_import(self):
         if self.is_admin:
-            ServiceBackendNotImplemented(
+            raise ServiceBackendNotImplemented(
                 "You should use tenant session in order to get resources list")
 
         cur_instances = models.Instance.objects.all().values_list('backend_id', flat=True)
