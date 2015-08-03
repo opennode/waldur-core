@@ -1,7 +1,7 @@
 # Configure repositories
-rpm -Uvh https://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-5.noarch.rpm
-rpm -Uvh https://repos.fedorapeople.org/repos/openstack/openstack-icehouse/rdo-release-icehouse-4.noarch.rpm
-rpm -Uvh http://opennodecloud.com/centos/7/nodeconductor-release.rpm
+yum -y install epel-release
+yum -y install https://repos.fedorapeople.org/repos/openstack/openstack-icehouse/rdo-release-icehouse-4.noarch.rpm
+yum -y install http://opennodecloud.com/centos/7/nodeconductor-release.rpm
 
 # Install and enable services
 yum -y install mariadb-server nodeconductor-wsgi redis
