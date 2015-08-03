@@ -130,6 +130,26 @@ class WHMCSAPI(object):
         url_parts[4] = urllib.urlencode(args)
         return urlparse.urlunparse(url_parts)
 
+    def _do_login(self):
+        if not hasattr(self, 'session'):
+            self.session = requests.Session()
+            self.session.verify = False
+            self.session.get(self._get_backend_url('/admin/login.php'))
+            self.session.post(
+                self._get_backend_url('/admin/dologin.php'),
+                data={'username': self.username, 'password': self.password},
+                headers={'Content-Type': 'application/x-www-form-urlencoded'})
+
+    def _get_token(self, html_text):
+        match_string = 'type="hidden" name="token" value=\"(\w*)\"'
+        token = re.findall(match_string, html_text)[0]
+        return token
+
+    def _extract_id(self, url, id_field='id'):
+        q = urlparse.urlsplit(url).query
+        print q
+        return int(urlparse.parse_qs(q)[id_field][0])
+
     def request(self, action, resultset_path=None, **kwargs):
         data = {'action': action, 'responsetype': 'json'}
         data.update(kwargs)
@@ -191,14 +211,7 @@ class WHMCSAPI(object):
                 for item in data['items']['item']]
 
     def get_invoice_pdf(self, invoice_id):
-        if not hasattr(self, 'session'):
-            self.session = requests.Session()
-            self.session.verify = False
-            self.session.get(self._get_backend_url('/admin/login.php'))
-            self.session.post(
-                self._get_backend_url('/admin/dologin.php'),
-                data={'username': self.username, 'password': self.password},
-                headers={'Content-Type': 'application/x-www-form-urlencoded'})
+        self._do_login()
 
         pdf = self.session.get(self._get_backend_url('/dl.php', {'type': 'i', 'id': invoice_id}))
         return pdf.content
@@ -215,3 +228,72 @@ class WHMCSAPI(object):
         response = self.request('createinvoice', paymentmethod=payment_method, **items)
 
         return response['invoiceid']
+
+    def create_configurable_options_group(self, name, description, assigned_products_ids):
+        self._do_login()
+
+        # get unique token
+        response = self.session.get(self._get_backend_url('admin/configproductoptions.php?action=managegroup'))
+        token = self._get_token(response.text)
+
+        response = self.session.post(
+            self._get_backend_url('/admin/configproductoptions.php?action=savegroup&id='),
+            data={
+                'name': name,
+                'description': description,
+                'productlinks[]': assigned_products_ids,
+                'token': token,
+            },
+            headers={'Content-Type': 'application/x-www-form-urlencoded'}
+        )
+        return self._extract_id(response.url)
+
+    def create_configurable_option(self, group_id, name, option_type='dropdown', option_values=None):
+        self._do_login()
+        response = self.session.get(
+            self._get_backend_url('admin/configproductoptions.php?manageoptions=true&gid=%s' % group_id))
+        token = self._get_token(response.text)
+
+        # encoding from human to whmcs
+        available_option_types = {
+            'dropdown': 1,
+            'radio': 2,
+            'yesno': 3,
+            'quantity': 4,
+        }
+
+        if option_values:
+            component_id = ''  # cid during the first run, causes creation of a new group
+
+            # first iteration is to create all the relevant flavors so that WHMCS would assign pk's to the ite,s
+            for ov_name in option_values.keys():
+                response = self.session.post(
+                    self._get_backend_url(
+                        '/admin/configproductoptions.php?manageoptions=true&cid=%s&gid=%s&save=true' %
+                        (component_id, group_id)),
+                    data={
+                        'configoptionname': name,
+                        'configoptiontype': available_option_types[option_type],
+                        'token': token,
+                        'addoptionname': ov_name
+                    },
+                    headers={'Content-Type': 'application/x-www-form-urlencoded'}
+                )
+                component_id = self._extract_id(response.url, id_field='cid')
+                token = self._get_token(response.text)
+
+            # second iteration to set prices of the option values
+            response = self.session.get(
+                self._get_backend_url(
+                    '/admin/configproductoptions.php?manageoptions=true&cid=%s&gid=%s' %
+                    (component_id, group_id)
+                )
+            )
+            token = self._get_token(response.text)
+            print response.text
+            exp = r'<input type="text" name="optionname\[(\d*)\]" value="(\w*)"'
+            print re.findall(exp, response.text)
+
+        return
+
+
