@@ -339,7 +339,7 @@ class ServiceBackend(object):
         raise ServiceBackendNotImplemented
 
     def get_resources_for_import(self):
-        return []
+        raise ServiceBackendNotImplemented
 
     @staticmethod
     def gb2mb(val):

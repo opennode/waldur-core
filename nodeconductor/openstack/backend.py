@@ -11,7 +11,7 @@ from neutronclient.client import exceptions as neutron_exceptions
 from novaclient import exceptions as nova_exceptions
 
 from nodeconductor.core.tasks import send_task
-from nodeconductor.structure import ServiceBackend, ServiceBackendError
+from nodeconductor.structure import ServiceBackend, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.iaas.backend.openstack import OpenStackClient, CloudBackendError
 from nodeconductor.iaas.backend.openstack import OpenStackBackend as OldOpenStackBackend
 from nodeconductor.openstack import models
@@ -29,19 +29,22 @@ class OpenStackBackend(ServiceBackend):
     DEFAULT_TENANT = 'admin'
 
     def __init__(self, settings, tenant_id=None):
+        self.settings = settings
+        self.is_admin = True
+
         credentials = {
             'auth_url': settings.backend_url,
             'username': settings.username,
             'password': settings.password,
         }
         if tenant_id:
+            self.is_admin = False
             credentials['tenant_id'] = tenant_id
         elif settings.options:
             credentials['tenant_name'] = settings.options.get('tenant_name', self.DEFAULT_TENANT)
         else:
             credentials['tenant_name'] = self.DEFAULT_TENANT
 
-        self.settings = settings
         try:
             self.session = OpenStackClient(dummy=settings.dummy).create_tenant_session(credentials)
         except CloudBackendError as e:
@@ -221,6 +224,10 @@ class OpenStackBackend(ServiceBackend):
         return instance
 
     def get_resources_for_import(self):
+        if self.is_admin:
+            raise ServiceBackendNotImplemented(
+                "You should use tenant session in order to get resources list")
+
         cur_instances = models.Instance.objects.all().values_list('backend_id', flat=True)
         return [{
             'id': instance.id,

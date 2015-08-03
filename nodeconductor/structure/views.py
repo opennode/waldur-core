@@ -1364,7 +1364,12 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                 else:
                     backend = service.get_backend()
 
-                return Response(backend.get_resources_for_import())
+                try:
+                    resources = backend.get_resources_for_import()
+                except ServiceBackendNotImplemented:
+                    resources = []
+
+                return Response(resources)
             except ServiceBackendError as e:
                 raise APIException(e)
         else:

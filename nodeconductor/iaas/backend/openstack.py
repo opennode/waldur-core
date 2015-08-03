@@ -36,6 +36,7 @@ from novaclient.v1_1 import client as nova_client
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
+from nodeconductor.structure import ServiceBackendNotImplemented
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 from nodeconductor.iaas.backend import dummy as dummy_clients
@@ -322,6 +323,9 @@ class OpenStackBackend(OpenStackClient):
 
     def remove_user(self, user, membership):
         pass
+
+    def get_resources_for_import(self):
+        raise ServiceBackendNotImplemented
 
     # CloudAccount related methods
     def push_cloud_account(self, cloud_account):
