@@ -7,7 +7,6 @@ from django.core.validators import MaxLengthValidator
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.db.models import Q, F, signals
 from django.utils.lru_cache import lru_cache
@@ -431,32 +430,11 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
         return '%s (%s)' % (self.name, self.get_type_display())
 
 
-class SerializableAbstractMixin(object):
-
-    def to_string(self):
-        """ Dump an instance into a string preserving content type id and object id """
-        content_type = ContentType.objects.get_for_model(self)
-        return '{}:{}'.format(content_type.pk, self.pk)
-
-    @staticmethod
-    def parse_model_string(string):
-        """ Recover model class and object id from a string"""
-        content_type_id, object_id = string.split(':')
-        content_type = ContentType.objects.get_for_id(content_type_id)
-        return content_type.model_class(), int(object_id)
-
-    @classmethod
-    def from_string(cls, objects):
-        """ Recover objects from s string """
-        if not isinstance(objects, (list, tuple)):
-            objects = [objects]
-        for obj in objects:
-            model, pk = cls.parse_model_string(obj)
-            yield model._default_manager.get(pk=pk)
-
-
 @python_2_unicode_compatible
-class Service(SerializableAbstractMixin, core_models.UuidMixin, core_models.NameMixin, LoggableMixin):
+class Service(core_models.SerializableAbstractMixin,
+              core_models.UuidMixin,
+              core_models.NameMixin,
+              LoggableMixin):
     """ Base service class. """
 
     class Meta(object):
@@ -517,7 +495,9 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 
 
 @python_2_unicode_compatible
-class ServiceProjectLink(SerializableAbstractMixin, core_models.SynchronizableMixin, quotas_models.QuotaModelMixin):
+class ServiceProjectLink(core_models.SerializableAbstractMixin,
+                         core_models.SynchronizableMixin,
+                         quotas_models.QuotaModelMixin):
     """ Base service-project link class. See Service class for usage example. """
 
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances']
