@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from django.db import transaction
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin
@@ -13,8 +12,8 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
 
     class Meta(object):
         model = models.PriceEstimate
-        fields = ('url', 'uuid', 'scope', 'total', 'details', 'month', 'year', 'is_manually_inputed')
-        read_only_fields = ('is_manually_inputed',)
+        fields = ('url', 'uuid', 'scope', 'total', 'details', 'month', 'year', 'is_manually_input')
+        read_only_fields = ('is_manually_input',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -22,13 +21,13 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
 
     def validate(self, data):
         if self.instance is None and models.PriceEstimate.objects.filter(
-                scope=data['scope'], year=data['year'], month=data['month'], is_manually_inputed=True).exists():
+                scope=data['scope'], year=data['year'], month=data['month'], is_manually_input=True).exists():
             raise serializers.ValidationError(
                 'Estimate for given month already exists. Use PATCH request to update it.')
         return data
 
     def create(self, validated_data):
-        validated_data['is_manually_inputed'] = True
+        validated_data['is_manually_input'] = True
         price_estimate = super(PriceEstimateSerializer, self).create(validated_data)
         return price_estimate
 
@@ -63,48 +62,11 @@ class PriceEstimateDateRangeFilterSerializer(serializers.Serializer):
         return data
 
 
-class PriceListItemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = models.PriceListItem
-        lookup_field = 'uuid'
-        fields = ('name', 'value', 'units')
-
-
-class PriceListSerializer(serializers.HyperlinkedModelSerializer):
-    items = PriceListItemSerializer(
-        many=True,
-        required=False,
-        default=(),
-    )
+class PriceListItemSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
     service = GenericRelatedField(related_models=structure_models.Service.get_all_models())
 
     class Meta:
-        model = models.PriceList
+        model = models.PriceListItem
         lookup_field = 'uuid'
-        fields = ('url', 'uuid', 'service', 'items')
-
-    def validate_service(self, value):
-        if models.PriceList.objects.filter(service=value).exists():
-            raise serializers.ValidationError('Service can not have more than one price list')
-        return value
-
-    def create(self, validated_data):
-        items = validated_data.pop('items', [])
-        with transaction.atomic():
-            price_list = super(PriceListSerializer, self).create(validated_data)
-            if items:
-                price_list_items = [models.PriceListItem(**item) for item in items]
-                price_list.items.add(*price_list_items)
-        return price_list
-
-    def update(self, instance, validated_data):
-        items_in_validated_data = 'items' in validated_data
-        items = validated_data.pop('items', [])
-        with transaction.atomic():
-            price_list = super(PriceListSerializer, self).update(instance, validated_data)
-            if items_in_validated_data:
-                price_list.items.all().delete()
-            if items:
-                price_list_items = [models.PriceListItem(**item) for item in items]
-                price_list.items.add(*price_list_items)
-        return price_list
+        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'service')
+        protected_fields = ('key', 'item_type', 'service')

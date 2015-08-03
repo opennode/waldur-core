@@ -28,38 +28,27 @@ class PriceEstimateFactory(factory.DjangoModelFactory):
         return url if action is None else url + action + '/'
 
 
-class PriceListFactory(factory.DjangoModelFactory):
-    class Meta(object):
-        model = models.PriceList
-
-    service = factory.SubFactory(oracle_factories.OracleServiceFactory)
-
-    @factory.post_generation
-    def items(self, create, extracted, **kwargs):
-        if create:
-            if extracted:
-                for item in extracted:
-                    self.items.create(**item)
-            else:
-                for _ in range(2):
-                    PriceListItemFactory(price_list=self)
-
-    @classmethod
-    def get_list_url(self):
-        return 'http://testserver' + reverse('pricelist-list')
-
-    @classmethod
-    def get_url(self, price_list, action=None):
-        if price_list is None:
-            price_list = PriceListFactory()
-        url = 'http://testserver' + reverse('pricelist-detail', kwargs={'uuid': price_list.uuid})
-        return url if action is None else url + action + '/'
-
-
 class PriceListItemFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.PriceListItem
 
-    price_list = factory.SubFactory(PriceListFactory)
-    name = factory.Iterator(['cpu', 'memory', 'storage'])
+    key = factory.Sequence(lambda n: 'price list item %s' % n)
     value = factory.Iterator([10, 100, 1000, 10000, 1313, 13])
+    service = factory.SubFactory(oracle_factories.OracleServiceFactory)
+    item_type = factory.Iterator([
+        models.PriceListItem.Types.FLAVOR,
+        models.PriceListItem.Types.STORAGE,
+        models.PriceListItem.Types.SUPPORTED,
+        models.PriceListItem.Types.LICENSE
+    ])
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('pricelistitem-list')
+
+    @classmethod
+    def get_url(self, price_list_item, action=None):
+        if price_list_item is None:
+            price_list_item = PriceListItemFactory()
+        url = 'http://testserver' + reverse('pricelistitem-detail', kwargs={'uuid': price_list_item.uuid})
+        return url if action is None else url + action + '/'

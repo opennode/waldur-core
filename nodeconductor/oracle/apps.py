@@ -12,3 +12,7 @@ class OracleConfig(AppConfig):
 
         from nodeconductor.oracle.backend import OracleBackend
         SupportedServices.register_backend(OracleService, OracleBackend)
+
+        # XXX: I am not sure that this is right place for app registration in cost_tracking
+        from nodeconductor.oracle.cost_tracking import register
+        register()

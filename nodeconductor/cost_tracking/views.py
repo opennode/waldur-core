@@ -2,11 +2,12 @@ from __future__ import unicode_literals
 
 import re
 
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 import django_filters
-from rest_framework import viewsets, permissions, exceptions, filters
+from rest_framework import viewsets, permissions, exceptions, filters, mixins
 
-from nodeconductor.core import filters as core_filters
+from nodeconductor.core import filters as core_filters, serializers as core_serializers
 from nodeconductor.cost_tracking import models, serializers
 from nodeconductor.structure import models as structure_models
 
@@ -20,13 +21,13 @@ def _convert(name):
 
 class PriceEstimateFilter(django_filters.FilterSet):
     scope = core_filters.GenericKeyFilter(related_models=models.PriceEstimate.get_estimated_models())
-    is_manually_inputed = django_filters.BooleanFilter()
+    is_manually_input = django_filters.BooleanFilter()
 
     class Meta:
         model = models.PriceEstimate
         fields = [
             'scope',
-            'is_manually_inputed',
+            'is_manually_input',
         ]
 
 
@@ -85,7 +86,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     def initial(self, request, *args, **kwargs):
         if self.action in ('partial_update', 'destroy', 'update'):
             price_estimate = self.get_object()
-            if not price_estimate.is_manually_inputed:
+            if not price_estimate.is_manually_input:
                 raise exceptions.MethodNotAllowed('Auto calculated price estimate can not be edited or deleted')
             if not self.can_user_modify_price_object(price_estimate.scope):
                 raise exceptions.PermissionDenied('You do not have permission to perform this action.')
@@ -93,37 +94,49 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         return super(PriceEstimateViewSet, self).initial(request, *args, **kwargs)
 
 
-class PriceListFilter(django_filters.FilterSet):
+class ResourceFilter(django_filters.CharFilter):
+    """ Filter by price list items for concrete resource. """
+
+    def filter(self, qs, value):
+        if value:
+            field = core_serializers.GenericRelatedField(related_models=structure_models.Resource.get_all_models())
+            resource = field.to_internal_value(value)
+            ct = ContentType.objects.get_for_model(resource)
+            resource_price_items_ids = models.ResourcePriceItem.objects.filter(
+                object_id=resource.id, content_type=ct).values_list('id', flat=True)
+            return qs.filter(resource_price_items__in=resource_price_items_ids)
+        return qs
+
+
+class PriceListItemFilter(django_filters.FilterSet):
     service = core_filters.GenericKeyFilter(related_models=structure_models.Service.get_all_models())
+    resource = ResourceFilter()
 
     class Meta:
-        model = models.PriceList
+        model = models.PriceListItem
         fields = [
             'service',
+            'resource',
         ]
 
 
-class PriceListViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
-    queryset = models.PriceList.objects.all().select_related('items')
-    serializer_class = serializers.PriceListSerializer
+class PriceListItemViewSet(PriceEditPermissionMixin,
+                           mixins.UpdateModelMixin,
+                           viewsets.ReadOnlyModelViewSet):
+    queryset = models.PriceListItem.objects.all()
+    serializer_class = serializers.PriceListItemSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.DjangoFilterBackend,)
-    filter_class = PriceListFilter
+    filter_class = PriceListItemFilter
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
-        return models.PriceList.objects.filtered_for_user(self.request.user).select_related('items')
+        return models.PriceListItem.objects.filtered_for_user(self.request.user)
 
     def initial(self, request, *args, **kwargs):
-        if self.action in ('partial_update', 'destroy', 'update'):
-            price_estimate = self.get_object()
-            if not self.can_user_modify_price_object(price_estimate.service):
+        if self.action in ('partial_update', 'update'):
+            price_list_item = self.get_object()
+            if not self.can_user_modify_price_object(price_list_item.service):
                 raise exceptions.PermissionDenied('You do not have permission to perform this action.')
 
-        return super(PriceListViewSet, self).initial(request, *args, **kwargs)
-
-    def perform_create(self, serializer):
-        if not self.can_user_modify_price_object(serializer.validated_data['service']):
-            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
-
-        super(PriceListViewSet, self).perform_create(serializer)
+        return super(PriceListItemViewSet, self).initial(request, *args, **kwargs)
