@@ -147,7 +147,6 @@ class WHMCSAPI(object):
 
     def _extract_id(self, url, id_field='id'):
         q = urlparse.urlsplit(url).query
-        print q
         return int(urlparse.parse_qs(q)[id_field][0])
 
     def request(self, action, resultset_path=None, **kwargs):
@@ -249,6 +248,16 @@ class WHMCSAPI(object):
         return self._extract_id(response.url)
 
     def create_configurable_option(self, group_id, name, option_type='dropdown', option_values=None):
+        """
+            Create new configurable options in WHMCS of a defined option_type with option values and prices
+            defined by the option_values dict. The prices are set to monthly prices of the configured
+            currency.
+
+            Example call:
+
+                create_configurable_option(gid, 'flavor', option_values={'small': 1, 'big': 2})
+                create_configurable_option(gid, 'support', option_type='yesno', option_values={'MO': 100})
+        """
         self._do_login()
         response = self.session.get(
             self._get_backend_url('admin/configproductoptions.php?manageoptions=true&gid=%s' % group_id))
@@ -289,11 +298,37 @@ class WHMCSAPI(object):
                     (component_id, group_id)
                 )
             )
-            token = self._get_token(response.text)
-            print response.text
+            # get all the whmcs ids of configuration options
             exp = r'<input type="text" name="optionname\[(\d*)\]" value="(\w*)"'
-            print re.findall(exp, response.text)
+            options = re.findall(exp, response.text)
 
-        return
+            #
+            prepared_price_data = {}
+            for option in options:
+                pk, option_name = option
+                prepared_price_data['optionname[%s]' % pk] = option_name
+                price = 0
+                if option_name in option_values:
+                    price = option_values[option_name]
+                prepared_price_data['price[%s][%s][6]' % (self.currency_code, pk)] = price  # '6' corresponds to the monthly price
+
+            token = self._get_token(response.text)
+            prepared_price_data.update({
+                'configoptionname': name,
+                'configoptiontype': available_option_types[option_type],
+                'token': token,
+                'addoptionname': ''
+            })
+
+            # update options with prices
+            self.session.post(
+                self._get_backend_url(
+                    '/admin/configproductoptions.php?manageoptions=true&cid=%s&gid=%s&save=true' %
+                    (component_id, group_id)),
+                data=prepared_price_data,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'}
+            )
+
+        return component_id
 
 
