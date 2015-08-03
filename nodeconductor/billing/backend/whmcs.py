@@ -331,4 +331,14 @@ class WHMCSAPI(object):
 
         return component_id
 
+    def create_server_product(self, product_name, product_group_id=1):
+        data = self.request(
+            'addproduct',
+            name=product_name,
+            gid=product_group_id,
+            type='server',
+            paytype='recurring',
+        )
+
+        return data.get('pid')
 
