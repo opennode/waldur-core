@@ -7,6 +7,7 @@ from nodeconductor.structure.models import Service
 
 
 class GenericKeyMixin(object):
+    """ Filtering by generic key field """
 
     def __init__(
             self, generic_key_field,
@@ -17,13 +18,25 @@ class GenericKeyMixin(object):
         self.content_type_field = content_type_field
         self.available_models = available_models
 
-    def filter(self, **kwargs):
+    def _preprocess_kwargs(self, kwargs):
         if self.generic_key_field in kwargs:
             generic_key_value = kwargs.pop(self.generic_key_field)
             kwargs[self.object_id_field] = generic_key_value.id
             generic_key_content_type = ContentType.objects.get_for_model(generic_key_value)
             kwargs[self.content_type_field] = generic_key_content_type
+        if self.generic_key_field + '__isnull' in kwargs:
+            is_null = kwargs.pop(self.generic_key_field + '__isnull')
+            kwargs[self.object_id_field + '__isnull'] = is_null
+            kwargs[self.content_type_field + '__isnull'] = is_null
+        return kwargs
+
+    def filter(self, **kwargs):
+        kwargs = self._preprocess_kwargs(kwargs)
         return super(GenericKeyMixin, self).filter(**kwargs)
+
+    def get(self, **kwargs):
+        kwargs = self._preprocess_kwargs(kwargs)
+        return super(GenericKeyMixin, self).get(**kwargs)
 
 
 # TODO: This mixin duplicates quota filter manager - they need to be moved to core (NC-686)
@@ -54,8 +67,12 @@ class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
         return PriceEstimate.get_estimated_models()
 
 
-class PriceListManager(GenericKeyMixin, UserFilterMixin, django_models.Manager):
+class PriceListItemManager(GenericKeyMixin, UserFilterMixin, django_models.Manager):
 
     def get_available_models(self):
         """ Return list of models that are acceptable """
         return Service.get_all_models()
+
+
+class ResourcePriceItemManager(GenericKeyMixin, django_models.Manager):
+    pass

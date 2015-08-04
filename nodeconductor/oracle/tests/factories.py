@@ -49,3 +49,18 @@ class ZoneFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'zone%s' % n)
     settings = factory.SubFactory(structure_factories.ServiceSettingsFactory)
     backend_id = factory.Sequence(lambda n: 'zone-id%s' % n)
+
+
+class DatabaseFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.Database
+
+    service_project_link = factory.SubFactory(OracleServiceProjectLinkFactory)
+    backend_database_sid = factory.Sequence(lambda n: 'database_sid%s' % n)
+    backend_service_name = factory.Sequence(lambda n: 'service_name%s' % n)
+
+    @classmethod
+    def get_url(self, database=None):
+        if database is None:
+            database = DatabaseFactory()
+        return 'http://testserver' + reverse('oracle-database-detail', kwargs={'uuid': database.uuid})
