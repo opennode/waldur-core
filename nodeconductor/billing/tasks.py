@@ -93,7 +93,7 @@ def generate_usage_pdf(invoice, usage_data):
     # generate a new file
     if not pdf.err:
         now = timezone.now()
-        name = '{}-{}-{}-invoice#-{}.pdf'.format(now.year, now.month, now.day, invoice.backend_id)
+        name = '{}-{}-{}-invoicenr-{}.pdf'.format(now.year, now.month, now.day, invoice.backend_id)
         invoice.usage_pdf.save(name, ContentFile(result.getvalue()))
         invoice.save(update_fields=['usage_pdf'])
     else:
