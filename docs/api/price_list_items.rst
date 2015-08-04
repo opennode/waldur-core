@@ -6,7 +6,6 @@ To get a list of price list items, run GET against **/api/price-list-items/** as
 
 Price lists can be filtered by:
  - ?service=<object URL> URL of service
- - ?resource>=<object URL> URL of resource
 
 
 Response example:
