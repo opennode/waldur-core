@@ -47,7 +47,7 @@ install_requires = [
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
-    'stevedore>=1.4.0,<1.7.0',
+    'stevedore>=1.4.0,<1.5.0',
     'xhtml2pdf>=0.0.6',
 ]
 
