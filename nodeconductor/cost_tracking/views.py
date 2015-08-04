@@ -31,6 +31,25 @@ class PriceEstimateFilter(django_filters.FilterSet):
         ]
 
 
+class PriceEstimateCustomerFilter(filters.BaseFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+        if 'customer' not in request.query_params:
+            return queryset
+
+        customer_uuid = request.query_params['customer']
+        qs = Q()
+        for model in models.PriceEstimate.get_estimated_models():
+            content_type = ContentType.objects.get_for_model(model)
+            if model == structure_models.Customer:
+                query = {'uuid': customer_uuid}
+            else:
+                query = {model.Permissions.customer_path + '__uuid': customer_uuid}
+            ids = model.objects.filter(**query).values_list('pk', flat=True)
+            qs |= Q(content_type=content_type, object_id__in=ids)
+
+        return queryset.filter(qs)
+
+
 class AdditionalPriceEstimateFilterBackend(filters.BaseFilterBackend):
 
     def filter_queryset(self, request, queryset, view):
@@ -69,7 +88,11 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     queryset = models.PriceEstimate.objects.all()
     serializer_class = serializers.PriceEstimateSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.DjangoFilterBackend, AdditionalPriceEstimateFilterBackend)
+    filter_backends = (
+        filters.DjangoFilterBackend,
+        AdditionalPriceEstimateFilterBackend,
+        PriceEstimateCustomerFilter
+    )
     filter_class = PriceEstimateFilter
     permission_classes = (permissions.IsAuthenticated,)
 
