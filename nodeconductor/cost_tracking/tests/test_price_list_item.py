@@ -59,21 +59,6 @@ class PriceListItemListTest(test.APITransactionTestCase):
         self.assertIn(self.price_list_item.uuid.hex, [el['uuid'] for el in response.data])
         self.assertNotIn(other_price_list_item.uuid.hex, [el['uuid'] for el in response.data])
 
-    def test_price_list_can_be_filtered_by_resource(self):
-        resource = oracle_factories.DatabaseFactory()
-        models.ResourcePriceItem.objects.create(item=self.price_list_item, resource=resource)
-        other_price_list_item = factories.PriceListItemFactory()
-
-        self.client.force_authenticate(self.users['staff'])
-        response = self.client.get(
-            factories.PriceListItemFactory.get_list_url(),
-            data={'resource': oracle_factories.DatabaseFactory.get_url(resource)}
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn(self.price_list_item.uuid.hex, [el['uuid'] for el in response.data])
-        self.assertNotIn(other_price_list_item.uuid.hex, [el['uuid'] for el in response.data])
-
 
 @ddt
 class PriceListUpdateTest(test.APITransactionTestCase):

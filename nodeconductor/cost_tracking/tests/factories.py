@@ -1,8 +1,10 @@
 import factory
 
 from django.core.urlresolvers import reverse
+from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.cost_tracking import models
+from nodeconductor.oracle import models as oracle_models
 from nodeconductor.oracle.tests import factories as oracle_factories
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -28,19 +30,22 @@ class PriceEstimateFactory(factory.DjangoModelFactory):
         return url if action is None else url + action + '/'
 
 
-class PriceListItemFactory(factory.DjangoModelFactory):
+class AbstractPriceListItemFactory(factory.DjangoModelFactory):
     class Meta(object):
-        model = models.PriceListItem
+        model = models.AbstractPriceListItem
+        abstract = True
 
     key = factory.Sequence(lambda n: 'price list item %s' % n)
     value = factory.Iterator([10, 100, 1000, 10000, 1313, 13])
+    item_type = factory.Iterator([models.PriceListItem.Types.FLAVOR, models.PriceListItem.Types.STORAGE])
+    units = factory.Iterator(['USD', 'EUR', 'UAH', 'OMR'])
+
+
+class PriceListItemFactory(AbstractPriceListItemFactory):
+    class Meta(object):
+        model = models.PriceListItem
+
     service = factory.SubFactory(oracle_factories.OracleServiceFactory)
-    item_type = factory.Iterator([
-        models.PriceListItem.Types.FLAVOR,
-        models.PriceListItem.Types.STORAGE,
-        models.PriceListItem.Types.SUPPORTED,
-        models.PriceListItem.Types.LICENSE
-    ])
 
     @classmethod
     def get_list_url(self):
@@ -52,3 +57,11 @@ class PriceListItemFactory(factory.DjangoModelFactory):
             price_list_item = PriceListItemFactory()
         url = 'http://testserver' + reverse('pricelistitem-detail', kwargs={'uuid': price_list_item.uuid})
         return url if action is None else url + action + '/'
+
+
+class DefaultPriceListItemFactory(AbstractPriceListItemFactory):
+    class Meta(object):
+        model = models.DefaultPriceListItem
+
+    service_content_type = factory.LazyAttribute(
+        lambda _: ContentType.objects.get_for_model(oracle_models.OracleService))

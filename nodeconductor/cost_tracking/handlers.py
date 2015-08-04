@@ -37,33 +37,54 @@ def create_price_list_items_for_service(sender, instance, created=False, **kwarg
     if created:
         service = instance
         service_content_type = ContentType.objects.get_for_model(service)
-        for key, item_type in models.PriceKeysRegister.get_keys_with_types_for_service(service):
-            default_item = models.DefaultPriceListItem.objects.get(
-                key=key, item_type=item_type, service_content_type=service_content_type)
+        for default_item in models.DefaultPriceListItem.objects.filter(service_content_type=service_content_type):
             models.PriceListItem.objects.create(
                 service=service,
-                key=key,
-                item_type=item_type,
+                key=default_item.key,
+                item_type=default_item.item_type,
                 value=default_item.value,
                 units=default_item.units,
             )
 
 
-def create_resource_price_items_for_resource(sender, instance, created=False, **kwargs):
+def change_price_list_items_if_default_was_changed(sender, instance, created=False, **kwargs):
+    default_item = instance
     if created:
-        resource = instance
-        service = resource.service_project_link.service
-        for key, item_type in models.PriceKeysRegister.get_keys_with_types_for_resource(resource):
-            price_list_item = models.PriceListItem.objects.get(key=key, item_type=item_type, service=service)
-            models.ResourcePriceItem.objects.create(item=price_list_item, resource=resource)
-
-
-def create_default_price_list_items(**kwargs):
-    for service in models.PriceKeysRegister.services:
-        service_content_type = ContentType.objects.get_for_model(service)
-        for key, item_type in models.PriceKeysRegister.get_keys_with_types_for_service(service):
-            models.DefaultPriceListItem.objects.get_or_create(
-                key=key,
-                item_type=item_type,
-                service_content_type=service_content_type,
+        # if new default item added - we create such item in for each service
+        model = default_item.service_content_type.model_class()
+        for service in model.objects.all():
+            models.PriceListItem.objects.create(
+                service=service,
+                key=default_item.key,
+                item_type=default_item.item_type,
+                units=default_item.units,
+                value=default_item.value
             )
+    else:
+        if default_item.tracker.has_changed('key') or default_item.tracker.has_changed('item_type'):
+            # if default item key or item type was changed - it will be changed in each connected item
+            connected_items = models.PriceListItem.objects.filter(
+                key=default_item.tracker.previous('key'),
+                item_type=default_item.tracker.previous('item_type'),
+                content_type=default_item.service_content_type,
+            )
+        else:
+            # if default value or units changed - it will be changed in each connected item
+            # that was not edited manually
+            connected_items = models.PriceListItem.objects.filter(
+                key=default_item.key,
+                item_type=default_item.item_type,
+                content_type=default_item.service_content_type,
+                is_manually_input=False,
+            )
+        connected_items.update(
+            key=default_item.key, item_type=default_item.item_type, units=default_item.units, value=default_item.value)
+
+
+def delete_price_list_items_if_default_was_deleted(sender, instance, **kwargs):
+    default_item = instance
+    models.PriceListItem.objects.filter(
+        key=default_item.tracker.previous('key'),
+        item_type=default_item.item_type.previous('item_type'),
+        content_type=default_item.service_content_type,
+    ).delete()

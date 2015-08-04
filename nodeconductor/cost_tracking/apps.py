@@ -13,6 +13,7 @@ class CostTrackingConfig(AppConfig):
 
     def ready(self):
         PriceEstimate = self.get_model('PriceEstimate')
+        DefaultPriceListItem = self.get_model('DefaultPriceListItem')
 
         signals.post_save.connect(
             handlers.make_autocalculate_price_estimate_invisible_on_manual_estimate_creation,
@@ -44,16 +45,14 @@ class CostTrackingConfig(AppConfig):
                     .format(service.__name__, index))
             )
 
-        for index, resource in enumerate(structure_models.Resource.get_all_models()):
-            signals.post_save.connect(
-                handlers.create_resource_price_items_for_resource,
-                sender=resource,
-                dispatch_uid=(
-                    'nodeconductor.cost_tracking.handlers.create_resource_price_items_for_resource_{}_{}'
-                    .format(resource.__name__, index))
-            )
+        signals.post_save.connect(
+            handlers.change_price_list_items_if_default_was_changed,
+            sender=DefaultPriceListItem,
+            dispatch_uid='nodeconductor.cost_tracking.handlers.change_price_list_items_if_default_was_changed'
+        )
 
-        signals.post_migrate.connect(
-            handlers.create_default_price_list_items,
-            dispatch_uid="nodeconductor.cost_tracking.create_default_price_list_items"
+        signals.post_delete.connect(
+            handlers.delete_price_list_items_if_default_was_deleted,
+            sender=DefaultPriceListItem,
+            dispatch_uid='nodeconductor.cost_tracking.handlers.delete_price_list_items_if_default_was_deleted'
         )
