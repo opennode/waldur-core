@@ -228,7 +228,7 @@ class WHMCSAPI(object):
 
         return response['invoiceid']
 
-    def create_configurable_options_group(self, name, description, assigned_products_ids):
+    def create_configurable_options_group(self, name, description="", assigned_products_ids=None):
         self._do_login()
 
         # get unique token
@@ -247,7 +247,7 @@ class WHMCSAPI(object):
         )
         return self._extract_id(response.url)
 
-    def create_configurable_option(self, group_id, name, option_type='dropdown', option_values=None):
+    def create_configurable_options(self, group_id, name, option_type='dropdown', option_values=None):
         """
             Create new configurable options in WHMCS of a defined option_type with option values and prices
             defined by the option_values dict. The prices are set to monthly prices of the configured
@@ -342,3 +342,46 @@ class WHMCSAPI(object):
 
         return data.get('pid')
 
+    def propagate_pricelist(self):
+        category = 'openstack-instance'  ## content_type
+
+        # 1. create a product of a particular type
+        pid = self.create_server_product(category)
+
+        # 2. define configuration options
+
+        type_mapping = {
+            'flavor': 'dropdown',
+            'storage': 'quantity',
+            'support': 'yesno',
+            'license-os': 'dropdown',
+            'license-application': 'dropdown',
+        }
+
+
+        gid = self.create_configurable_options_group("Configuration of %s" % category, assigned_products_ids=[pid])
+        for pricelist_item_type in ['flavor', 'storage', 'support', 'license-os', 'license-application']:
+            option_type = type_mapping[pricelist_item_type]  # TODO: derive from pricelist
+            option_values = {  # TODO: derive from pricelist
+                'flavor': {
+                    'small': 10,
+                    'big': 20,
+                    'offline': 0,
+                },
+                'storage': {
+                    '1 GB': 1,
+                },
+                'support': {
+                    'MO support': 100,
+                },
+                'license-os': {
+                    'centos7': 10,
+                    'rhel7': 20,
+                    'windows': 30,
+                },
+                'license-application': {
+                    'wordpress': 10,
+                    'postgresql': 20,
+                }
+            }
+            cid = self.create_configurable_options(gid, pricelist_item_type, option_type, option_values[pricelist_item_type])
