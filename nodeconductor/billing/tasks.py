@@ -8,6 +8,7 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.utils.lru_cache import lru_cache
 from celery import shared_task
 
@@ -91,7 +92,9 @@ def generate_usage_pdf(invoice, usage_data):
     )
     # generate a new file
     if not pdf.err:
-        invoice.usage_pdf.save('Usage-%d.pdf' % invoice.uuid, ContentFile(result.getvalue()))
+        now = timezone.now()
+        name = '{}-{}-{}-invoice#-{}.pdf'.format(now.year, now.month, now.day, invoice.backend_id)
+        invoice.usage_pdf.save(name, ContentFile(result.getvalue()))
         invoice.save(update_fields=['usage_pdf'])
     else:
         logger.error(pdf.err)

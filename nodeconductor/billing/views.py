@@ -96,8 +96,9 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
 
         response = serve(request, invoice.pdf.name, document_root=settings.MEDIA_ROOT)
         if request.query_params.get('download'):
+            filename = '{}-{}-invoice#-{}.pdf'.format(invoice.date.year, invoice.date.month, invoice.backend_id)
             response['Content-Type'] = 'application/pdf'
-            response['Content-Disposition'] = 'attachment; filename="invoice.pdf"'
+            response['Content-Disposition'] = 'attachment; filename="{}"'.format(filename)
 
         return response
 
