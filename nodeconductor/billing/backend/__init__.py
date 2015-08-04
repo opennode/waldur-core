@@ -49,6 +49,9 @@ class BillingBackend(object):
             else:
                 self.api = backend_cls(**config)
 
+    def __getattr__(self, name):
+        return getattr(self.api, name)
+
     def get_or_create_client(self):
         if self.customer.billing_backend_id:
             return self.customer.billing_backend_id
@@ -121,6 +124,22 @@ class BillingBackend(object):
 
     def get_invoice_items(self, invoice_id):
         return self.api.get_invoice_items(invoice_id)
+
+    def add_order(self, product_name, **options):
+        client_id = self.get_or_create_client()
+        try:
+            product = PriceList.objects.get(product_name)
+        except PriceList.DoesNotExist as e:
+            six.reraise(BillingBackendError, e)
+        return self.api.add_order(product.backend_id, client_id, **options)
+
+    def update_order(self, product_name, **options):
+        client_id = self.get_or_create_client()
+        try:
+            product = PriceList.objects.get(product_name)
+        except PriceList.DoesNotExist as e:
+            six.reraise(BillingBackendError, e)
+        return self.api.update_order(product.backend_id, client_id, **options)
 
 
 class DummyBillingAPI(object):

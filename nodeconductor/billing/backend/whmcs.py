@@ -215,3 +215,27 @@ class WHMCSAPI(object):
         response = self.request('createinvoice', paymentmethod=payment_method, **items)
 
         return response['invoiceid']
+
+    def add_order(self, product_id, client_id, **options):
+        data = self.request(
+            'addorder',
+            pid=product_id,
+            clientid=client_id,
+            configoptions=options,
+            billingcycle='monthly',
+            paymentmethod='authorize',
+        )
+
+        return data['orderid']
+
+    def update_order(self, product_id, client_id, **options):
+        raise NotImplementedError
+
+    def accept_order(self, order_id):
+        self.request('acceptorder', orderid=order_id)
+
+    def cancel_order(self, order_id):
+        self.request('cancelorder', orderid=order_id)
+
+    def delete_order(self, order_id):
+        self.request('deleteorder', orderid=order_id)

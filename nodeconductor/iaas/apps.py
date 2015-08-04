@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.apps import AppConfig
 from django.db.models import signals
+from django_fsm.signals import post_transition
 
 from nodeconductor.core import handlers as core_handlers
 from nodeconductor.core.signals import pre_serializer_fields
@@ -74,4 +75,16 @@ class IaasConfig(AppConfig):
             handlers.decrease_quotas_usage_on_instances_deletion,
             sender=Instance,
             dispatch_uid='nodeconductor.iaas.handlers.decrease_quotas_usage_on_instances_deletion',
+        )
+
+        signals.post_delete.connect(
+            handlers.delete_order,
+            sender=Instance,
+            dispatch_uid='nodeconductor.iaas.handlers.delete_order',
+        )
+
+        post_transition.connect(
+            handlers.track_order,
+            sender=Instance,
+            dispatch_uid='nodeconductor.iaas.handlers.track_order',
         )

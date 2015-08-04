@@ -16,11 +16,11 @@ class BillingConfig(AppConfig):
         signals.post_save.connect(
             handlers.log_invoice_save,
             sender=Invoice,
-            dispatch_uid='nodeconductor.structure.handlers.log_invoice_save',
+            dispatch_uid='nodeconductor.billing.handlers.log_invoice_save',
         )
 
         signals.post_delete.connect(
             handlers.log_invoice_delete,
             sender=Invoice,
-            dispatch_uid='nodeconductor.structure.handlers.log_invoice_delete',
+            dispatch_uid='nodeconductor.billing.handlers.log_invoice_delete',
         )

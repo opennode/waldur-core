@@ -321,7 +321,63 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
-class Instance(LoggableMixin, structure_models.BaseVirtualMachineMixin, structure_models.Resource):
+class PaidResource(models.Model):
+
+    class Meta(object):
+        abstract = True
+
+    class Order(object):
+        def __init__(self, instance):
+            self.instance = instance
+            self.product_name = "{}-{}".format(instance._meta.app_label,
+                                               instance._meta.model_name)
+
+        @property
+        def id(self):
+            return self.instance.billing_backend_id
+
+        @id.setter
+        def id(self, val):
+            self.instance.billing_backend_id = val
+            self.instance.save(update_fields=['billing_backend_id'])
+
+        @property
+        def backend(self):
+            return self.service_project_link.service.customer.get_billing_backend()
+
+        def add(self):
+            options = {
+                'flavor': self.instance.flavor_type,
+                'storage': self.instance.system_volume_size + self.instance.data_volume_size,
+                'license-os': self.instance.template.get_os_type_display(),
+                'license-application': self.instance.template.get_application_type_display(),
+            }
+            self.id = self.backend.add_order(self.product_name, **options)
+
+        def update(self, **options):
+            self.id = self.backend.update_order(self.product_name, **options)
+
+        def accept(self):
+            self.backend.accept_order(self.id)
+
+        def cancel(self):
+            self.backend.cancel_order(self.id)
+
+        def delete(self):
+            self.backend.delete_order(self.id)
+
+    billing_backend_id = models.CharField(max_length=255, blank=True)
+
+    @property
+    def flavor_type(self):
+        return 'small' if self.cores <= 2 else 'big'
+
+    def __init__(self, *args, **kwargs):
+        self.order = self.Order(self)
+        super(PaidResource, self).__init__(*args, **kwargs)
+
+
+class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineMixin, structure_models.Resource):
     """
     A generalization of a single virtual machine.
 

@@ -186,3 +186,29 @@ def decrease_quotas_usage_on_instances_deletion(sender, instance=None, **kwargs)
     instance.service_project_link.add_quota_usage('ram', -instance.ram)
     instance.service_project_link.add_quota_usage(
         'storage', -(instance.system_volume_size + instance.data_volume_size))
+
+
+def track_order(sender, instance, name=None, source=None, **kwargs):
+    if name == instance.begin_provisioning.__name__:
+        instance.order.place()
+
+    if name == instance.set_online.__name__:
+        if source == instance.States.PROVISIONING:
+            instance.order.accept()
+        if source == instance.States.STARTING:
+            instance.order.update(flavor=instance.flavor_type)
+
+    if name == instance.set_offline.__name__:
+        if source == instance.States.STOPPING:
+            instance.order.update(flavor='offline')
+
+    if name == instance.set_erred.__name__:
+        if source == instance.States.PROVISIONING:
+            instance.order.cancel()
+
+    if name == instance.set_resized.__name__:
+        instance.order.update(flavor='offline')
+
+
+def delete_order(sender, instance=None, **kwargs):
+    instance.order.delete()
