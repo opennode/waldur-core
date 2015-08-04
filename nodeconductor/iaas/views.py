@@ -621,6 +621,10 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
                 'instance__cloud_project_membership__project__project_groups__uuid',
                 'instance__cloud_project_membership__project__project_groups__name',
             ],
+            'customer': [
+                'instance__cloud_project_membership__project__customer__uuid',
+                'instance__cloud_project_membership__project__customer__name',
+            ],
             'type': ['template_license__license_type'],
             'name': ['template_license__name'],
         }
@@ -640,6 +644,8 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
             'instance__cloud_project_membership__project__name': 'project_name',
             'instance__cloud_project_membership__project__project_groups__uuid': 'project_group_uuid',
             'instance__cloud_project_membership__project__project_groups__name': 'project_group_name',
+            'instance__cloud_project_membership__project__customer__uuid': 'customer_uuid',
+            'instance__cloud_project_membership__project__customer__name': 'customer_name',
             'template_license__license_type': 'type',
             'template_license__name': 'name',
         }
