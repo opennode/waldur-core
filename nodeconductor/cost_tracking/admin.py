@@ -3,11 +3,12 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils.lru_cache import lru_cache
 
 from nodeconductor.cost_tracking import models
-from nodeconductor.structure import models as structure_models
+from nodeconductor.structure import models as structure_models, admin as structure_admin
 
 
 @lru_cache(maxsize=1)
 def _get_service_content_type_queryset():
+    """ Get list of services content types """
     services = structure_models.Service.get_all_models()
     service_content_type_ids = [ContentType.objects.get_for_model(s).id for s in services]
     return ContentType.objects.filter(id__in=service_content_type_ids)
@@ -22,14 +23,9 @@ class PriceListItemAdmin(admin.ModelAdmin):
         return super(PriceListItemAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
 
-class DefaultPriceListItemAdmin(admin.ModelAdmin):
+class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ('uuid', 'key', 'item_type', 'value', 'units', 'service_content_type')
-
-    def get_readonly_fields(self, request, obj=None):
-        if obj:
-            return ['service_content_type']
-        else:
-            return []
+    change_readonly_fields = ('service_content_type',)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "service_content_type":
