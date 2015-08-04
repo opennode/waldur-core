@@ -432,12 +432,15 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
                                           response.data)
 
     # Creation tests
-    def test_user_cannot_create_customer_if_he_is_not_staff(self):
+    def test_user_can_create_customer_if_he_is_not_staff(self):
         self.client.force_authenticate(user=self.users['not_owner'])
 
         response = self.client.post(reverse('customer-list'), self._get_valid_payload())
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # User became owner of created customer
+        self.assertEqual(response.data['owners'][0]['uuid'], self.users['not_owner'].uuid.hex)
 
     def test_user_can_create_customer_if_he_is_staff(self):
         self.client.force_authenticate(user=self.users['staff'])
