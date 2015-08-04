@@ -94,29 +94,13 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         return super(PriceEstimateViewSet, self).initial(request, *args, **kwargs)
 
 
-class ResourceFilter(django_filters.CharFilter):
-    """ Filter by price list items for concrete resource. """
-
-    def filter(self, qs, value):
-        if value:
-            field = core_serializers.GenericRelatedField(related_models=structure_models.Resource.get_all_models())
-            resource = field.to_internal_value(value)
-            ct = ContentType.objects.get_for_model(resource)
-            resource_price_items_ids = models.ResourcePriceItem.objects.filter(
-                object_id=resource.id, content_type=ct).values_list('id', flat=True)
-            return qs.filter(resource_price_items__in=resource_price_items_ids)
-        return qs
-
-
 class PriceListItemFilter(django_filters.FilterSet):
     service = core_filters.GenericKeyFilter(related_models=structure_models.Service.get_all_models())
-    resource = ResourceFilter()
 
     class Meta:
         model = models.PriceListItem
         fields = [
             'service',
-            'resource',
         ]
 
 
