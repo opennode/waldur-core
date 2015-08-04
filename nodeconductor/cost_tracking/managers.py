@@ -7,6 +7,7 @@ from nodeconductor.structure.models import Service
 
 
 class GenericKeyMixin(object):
+    """ Filtering by generic key field """
 
     def __init__(
             self, generic_key_field,
