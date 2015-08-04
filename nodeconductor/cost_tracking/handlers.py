@@ -85,6 +85,6 @@ def delete_price_list_items_if_default_was_deleted(sender, instance, **kwargs):
     default_item = instance
     models.PriceListItem.objects.filter(
         key=default_item.tracker.previous('key'),
-        item_type=default_item.item_type.previous('item_type'),
+        item_type=default_item.tracker.previous('item_type'),
         content_type=default_item.service_content_type,
     ).delete()

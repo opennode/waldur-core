@@ -63,3 +63,12 @@ class PriceListItemsHandlersTest(TestCase):
 
         reread_item = models.PriceListItem.objects.get(id=item.id)
         self.assertEqual(default_item.key, reread_item.key)
+
+    def test_price_list_item_will_be_deleted_if_default_item_deleted(self):
+        default_item = factories.DefaultPriceListItemFactory(service_content_type=self.oracle_service_content_type)
+        item = models.PriceListItem.objects.get(
+            service=self.service, key=default_item.key, item_type=default_item.item_type)
+
+        default_item.delete()
+
+        self.assertFalse(models.PriceListItem.objects.filter(id=item.id).exists())
