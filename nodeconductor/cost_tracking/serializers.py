@@ -62,11 +62,23 @@ class PriceEstimateDateRangeFilterSerializer(serializers.Serializer):
         return data
 
 
-class PriceListItemSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
+class PriceListItemSerializer(serializers.HyperlinkedModelSerializer):
     service = GenericRelatedField(related_models=structure_models.Service.get_all_models())
 
     class Meta:
         model = models.PriceListItem
         lookup_field = 'uuid'
         fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'service')
-        protected_fields = ('key', 'item_type', 'service')
+
+
+class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
+
+    service_content_type = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.DefaultPriceListItem
+        lookup_field = 'uuid'
+        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'service_content_type')
+
+    def get_service_content_type(self, obj):
+        return '{}.{}'.format(obj.service_content_type.app_label, obj.service_content_type.model)
