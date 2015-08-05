@@ -288,5 +288,5 @@ class BackupStrategy(object):
             'Implement delete() that would perform backup of a model.')
 
     @classmethod
-    def update_order(cls, backup_source, number_of_active_backups):
+    def update_order(cls, backup_source, active_backups_qs):
         pass

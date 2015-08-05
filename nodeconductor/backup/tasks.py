@@ -45,7 +45,7 @@ def process_backup_task(backup_uuid):
 
                 backup.erred()
             else:
-                strategy.update_order(source, models.Backup.objects.get_active().count())
+                strategy.update_order(source, models.Backup.objects.get_active())
                 logger.info('Successfully performed backup for backup source: %s', source.name)
                 event_logger.backup.info(
                     'Backup for {iaas_instance_name} has been created.',
@@ -116,7 +116,7 @@ def deletion_task(backup_uuid):
 
                 backup.erred()
             else:
-                strategy.update_order(source, models.Backup.objects.get_active().count())
+                strategy.update_order(source, models.Backup.objects.get_active())
                 logger.info('Successfully deleted backup for backup source: %s', source)
                 event_logger.backup.info(
                     'Backup for {iaas_instance_name} has been deleted.',

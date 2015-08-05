@@ -2,6 +2,7 @@ from django.utils import six
 
 from nodeconductor.backup.models import BackupStrategy
 from nodeconductor.backup.exceptions import BackupStrategyExecutionError
+from nodeconductor.cost_tracking import PriceItemTypes
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas import models
@@ -136,9 +137,11 @@ class InstanceBackupStrategy(BackupStrategy):
             six.reraise(BackupStrategyExecutionError, e)
 
     @classmethod
-    def update_order(cls, instance, backups):
-        # Assume backup size is equal instance storage size
-        instance.order.update(storage=(backups + 1) * instance.get_storage_size())
+    def update_order(cls, instance, backups_qs):
+        backup_size = sum(b.metadata['system_snapshot_size'] +
+                          b.metadata['data_snapshot_size'] for b in backups_qs)
+        instance.order.update(**{
+            PriceItemTypes.STORAGE: instance.get_storage_size(extra=backup_size)})
 
     # Helpers
     @classmethod

@@ -349,8 +349,9 @@ class PaidResource(models.Model):
             self.backend.cancel_order(self.id)
 
         def delete(self):
-            self.backend.delete_order(self.id)
-            self.id = ''
+            if self.id:
+                self.backend.delete_order(self.id)
+                self.id = ''
 
     billing_backend_id = models.CharField(max_length=255, blank=True)
 
@@ -358,8 +359,8 @@ class PaidResource(models.Model):
     def default_flavor_name(self):
         return PriceItemTypes.FLAVOR_OFFLINE
 
-    def get_storage_size(self):
-        return SupportedServices.mb2gb(self.system_volume_size + self.data_volume_size)
+    def get_storage_size(self, extra=0):
+        return SupportedServices.mb2gb(self.system_volume_size + self.data_volume_size + extra)
 
     def __init__(self, *args, **kwargs):
         self.order = self.Order(self)
