@@ -32,7 +32,7 @@ class BillingBackend(object):
             self.api = DummyBillingAPI()
         elif not config:
             raise BillingBackendError(
-                "Can't billing settings. "
+                "Can't find billing settings. "
                 "Please provide settings.NODECONDUCTOR.BILLING dictionary.")
         else:
             backend_path = config.get('backend', '')
