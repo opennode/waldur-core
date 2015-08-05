@@ -12,6 +12,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.utils import request_api
+from nodeconductor.cost_tracking import OsTypes, ApplicationTypes
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
@@ -224,33 +225,11 @@ class Template(core_models.UuidMixin,
     """
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
     """
-    class OsTypes(object):
-        LINUX = 'Linux'
-        WINDOWS = 'Windows'
-        UNIX = 'Unix'
-        OTHER = 'Other'
-
-    # XXX: a hackish solution for the immediate needs. Consider redesigning.
-    class ApplicationTypes(object):
-        WORDPRESS = 'WordPress'
-        POSTGRESQL = 'PostgreSQL'
-        ZIMBRA = 'Zimbra'
-        NONE = 'None'
-
-    SERVICE_TYPES = (
-        (OsTypes.LINUX, 'Linux'), (OsTypes.WINDOWS, 'Windows'), (OsTypes.UNIX, 'Unix'), (OsTypes.OTHER, 'Other'))
-
-    APPLICATION_TYPES = (
-        (ApplicationTypes.WORDPRESS, 'WordPress'),
-        (ApplicationTypes.POSTGRESQL, 'PostgreSQL'),
-        (ApplicationTypes.ZIMBRA, 'Zimbra'),
-        (ApplicationTypes.NONE, 'None')
-    )
 
     # Model doesn't inherit NameMixin, because name field must be unique.
     name = models.CharField(max_length=150, unique=True)
     os = models.CharField(max_length=100, blank=True)
-    os_type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=OsTypes.LINUX)
+    os_type = models.CharField(max_length=10, choices=OsTypes.CHOICES, default=OsTypes.OTHER)
     is_active = models.BooleanField(default=False)
     sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
@@ -264,7 +243,7 @@ class Template(core_models.UuidMixin,
     # fields for categorisation
     # XXX consider changing to tags
     type = models.CharField(max_length=100, blank=True, help_text='Template type')
-    application_type = models.CharField(max_length=100, blank=True, choices=APPLICATION_TYPES,
+    application_type = models.CharField(max_length=100, blank=True, choices=ApplicationTypes.CHOICES,
                                         default=ApplicationTypes.NONE,
                                         help_text='Type of the application inside the template (optional)')
 

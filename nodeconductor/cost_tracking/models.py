@@ -7,7 +7,7 @@ from jsonfield import JSONField
 from model_utils import FieldTracker
 
 from nodeconductor.core import models as core_models
-from nodeconductor.cost_tracking import managers
+from nodeconductor.cost_tracking import managers, PriceItemTypes
 from nodeconductor.structure import models as structure_models
 
 
@@ -53,27 +53,12 @@ class AbstractPriceListItem(models.Model):
     class Meta:
         abstract = True
 
-    class Types(object):
-        FLAVOR = 'flavor'
-        STORAGE = 'storage'
-        LICENSE_APPLICATION = 'license-application'
-        LICENSE_OS = 'license-os'
-        SUPPORT = 'support'
-        NETWORK = 'network'
-
-        CHOICES = (
-            (FLAVOR, 'flavor'),
-            (STORAGE, 'storage'),
-            (LICENSE_APPLICATION, 'license-application'),
-            (LICENSE_OS, 'license-os'),
-            (SUPPORT, 'support'),
-            (NETWORK, 'network'),
-        )
+    Types = PriceItemTypes
 
     key = models.CharField(max_length=50)
     value = models.DecimalField(default=0, max_digits=16, decimal_places=8)
     units = models.CharField(max_length=30, blank=True)
-    item_type = models.CharField(max_length=30, choices=Types.CHOICES, default=Types.FLAVOR)
+    item_type = models.CharField(max_length=30, choices=PriceItemTypes.CHOICES, default=Types.FLAVOR)
 
 
 class DefaultPriceListItem(core_models.UuidMixin, AbstractPriceListItem):
