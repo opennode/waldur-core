@@ -49,7 +49,7 @@ Example of request:
     Host: example.com
 
     {
-        "units": "UAH",
+        "units": "per month",
         "key": "test_key",
         "value": 100,
         "service": "http://testserver/api/oracle/d4060812ca5d4de390e0d7a5062d99f6/",
@@ -69,5 +69,3 @@ Delete price list item
 
 Run DELETE request against */api/price-list-items/<uuid>/* to delete price list item.
 Customer owner and staff can delete price estimates.
-
-
