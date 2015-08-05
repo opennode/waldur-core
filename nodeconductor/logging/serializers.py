@@ -48,7 +48,7 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
         model = models.BaseHook
 
         fields = (
-            'url', 'is_active', 'author_uuid', 'event_types', 'created', 'modified'
+            'url', 'uuid', 'is_active', 'author_uuid', 'event_types', 'created', 'modified'
         )
 
         extra_kwargs = {
