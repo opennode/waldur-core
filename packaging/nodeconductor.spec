@@ -16,7 +16,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.70.0
-Release: 1.el7
+Release: 2.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # openssl package is needed to generate SAML2 keys during NodeConductor install
@@ -204,10 +204,13 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Wed Aug 5 2015 Juri Hudolejev <juri@opennodecloud.com> - 0.70.0-2.el7
+- Dependencies fixed: python-stevedore is no longer required
+
 * Wed Aug 5 2015 Jenkins <jenkins@opennodecloud.com> - 0.70.0-1.el7
 - New upstream release
 
-* Mon Jul 27 2015  <> - 0.69.0-1.el7
+* Mon Jul 27 2015 Jenkins <jenkins@opennodecloud.com> - 0.69.0-1.el7
 - New upstream release
 
 * Sun Jul 26 2015 Jenkins <jenkins@opennodecloud.com> - 0.68.0-1.el7
