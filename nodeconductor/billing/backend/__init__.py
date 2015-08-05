@@ -109,12 +109,14 @@ class BillingBackend(object):
             cur_price = cur_prices.pop(product['backend_id'], None)
             if cur_price:
                 cur_price.price = product['price']
-                cur_price.save(update_fields=['price'])
+                cur_price.options = product['options']
+                cur_price.save(update_fields=['price', 'options'])
             else:
                 if product['name'] in used_names:
                     logger.warn("Product %s already exists in pricelist." % product['name'])
                     pricelist_item = PriceList.objects.get(name=product['name'])
                     pricelist_item.price = product['price']
+                    pricelist_item.options = product['options']
                     pricelist_item.backend_id = product['backend_id']
                     pricelist_item.save()
                     continue
@@ -122,24 +124,18 @@ class BillingBackend(object):
                 PriceList.objects.create(**product)
                 used_names.add(product['name'])
 
+        PriceList.objects.filter(pk__in=[p.pk for p in cur_prices.values()]).update(backend_id='')
+
     def get_invoice_items(self, invoice_id):
         return self.api.get_invoice_items(invoice_id)
 
     def add_order(self, product_name, **options):
         client_id = self.get_or_create_client()
-        try:
-            product = PriceList.objects.get(product_name)
-        except PriceList.DoesNotExist as e:
-            six.reraise(BillingBackendError, e)
-        return self.api.add_order(product.backend_id, client_id, **options)
+        return self.api.add_order(product_name, client_id, **options)
 
-    def update_order(self, product_name, **options):
+    def update_order(self, order_id, **options):
         client_id = self.get_or_create_client()
-        try:
-            product = PriceList.objects.get(product_name)
-        except PriceList.DoesNotExist as e:
-            six.reraise(BillingBackendError, e)
-        return self.api.update_order(product.backend_id, client_id, **options)
+        return self.api.update_order(order_id, client_id, **options)
 
 
 class DummyBillingAPI(object):

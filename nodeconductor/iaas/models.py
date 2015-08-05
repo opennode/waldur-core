@@ -15,7 +15,7 @@ from nodeconductor.core.utils import request_api
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
-from nodeconductor.structure import models as structure_models
+from nodeconductor.structure import models as structure_models, SupportedServices
 
 logger = logging.getLogger(__name__)
 
@@ -332,6 +332,9 @@ class PaidResource(models.Model):
             self.product_name = "{}-{}".format(instance._meta.app_label,
                                                instance._meta.model_name)
 
+            # XXX: remove it
+            self.product_name = "openstack-instance"
+
         @property
         def id(self):
             return self.instance.billing_backend_id
@@ -343,19 +346,22 @@ class PaidResource(models.Model):
 
         @property
         def backend(self):
-            return self.service_project_link.service.customer.get_billing_backend()
+            return self.instance.service_project_link.service.customer.get_billing_backend()
 
         def add(self):
+            storage = SupportedServices.mb2gb(self.instance.system_volume_size +
+                                              self.instance.data_volume_size)
             options = {
                 'flavor': self.instance.flavor_type,
-                'storage': self.instance.system_volume_size + self.instance.data_volume_size,
+                'storage': storage,
                 'license-os': self.instance.template.get_os_type_display(),
                 'license-application': self.instance.template.get_application_type_display(),
+                'support': self.instance.type == self.instance.Services.PAAS,
             }
             self.id = self.backend.add_order(self.product_name, **options)
 
         def update(self, **options):
-            self.id = self.backend.update_order(self.product_name, **options)
+            self.id = self.backend.update_order(self.id, **options)
 
         def accept(self):
             self.backend.accept_order(self.id)
@@ -365,6 +371,7 @@ class PaidResource(models.Model):
 
         def delete(self):
             self.backend.delete_order(self.id)
+            self.id = ''
 
     billing_backend_id = models.CharField(max_length=255, blank=True)
 

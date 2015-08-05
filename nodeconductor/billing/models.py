@@ -2,6 +2,7 @@ from django.db import models
 from django_fsm import transition, FSMIntegerField
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils.models import TimeStampedModel
+from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
 from nodeconductor.logging.log import LoggableMixin
@@ -13,6 +14,7 @@ class PriceList(core_models.UuidMixin, core_models.DescribableMixin):
     # Model doesn't inherit NameMixin, because name field must be unique.
     name = models.CharField(max_length=150, unique=True)
     price = models.DecimalField(max_digits=9, decimal_places=2)
+    options = JSONField(blank=True, editable=False)
     backend_id = models.CharField(max_length=255, blank=True)
 
     def __str__(self):

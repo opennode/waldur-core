@@ -8,8 +8,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.lru_cache import lru_cache
 
+from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.core.serializers import UnboundSerializerMethodField
-from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 
@@ -189,25 +189,32 @@ def decrease_quotas_usage_on_instances_deletion(sender, instance=None, **kwargs)
 
 
 def track_order(sender, instance, name=None, source=None, **kwargs):
-    if name == instance.begin_provisioning.__name__:
-        instance.order.place()
+    order = instance.order
+    try:
+        if name == instance.begin_provisioning.__name__:
+            order.add()
 
-    if name == instance.set_online.__name__:
-        if source == instance.States.PROVISIONING:
-            instance.order.accept()
-        if source == instance.States.STARTING:
-            instance.order.update(flavor=instance.flavor_type)
+        if name == instance.set_online.__name__:
+            if source == instance.States.PROVISIONING:
+                order.accept()
+            if source == instance.States.STARTING:
+                order.update(flavor=instance.flavor_type)
 
-    if name == instance.set_offline.__name__:
-        if source == instance.States.STOPPING:
-            instance.order.update(flavor='offline')
+        if name == instance.set_offline.__name__:
+            if source == instance.States.STOPPING:
+                order.update(flavor='offline')
 
-    if name == instance.set_erred.__name__:
-        if source == instance.States.PROVISIONING:
-            instance.order.cancel()
+        if name == instance.set_erred.__name__:
+            if source == instance.States.PROVISIONING:
+                order.cancel()
 
-    if name == instance.set_resized.__name__:
-        instance.order.update(flavor='offline')
+        if name == instance.set_resized.__name__:
+            order.update(flavor='offline')
+
+    except BillingBackendError:
+        logger.exception("Failed to track order for resource %s" % instance)
+        instance.state = instance.States.ERRED
+        instance.save()
 
 
 def delete_order(sender, instance=None, **kwargs):
