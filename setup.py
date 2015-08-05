@@ -5,7 +5,6 @@ from setuptools import setup, find_packages
 
 dev_requires = [
     'Sphinx==1.2.2',
-    'stevedore==1.4.0',
 ]
 
 tests_requires = [
@@ -14,6 +13,7 @@ tests_requires = [
     'mock==1.0.1',
     'mock-django==0.6.6',
     'six>=1.7.3',
+    'stevedore==1.4.0',
     'django-celery==3.1.16',
 ]
 
