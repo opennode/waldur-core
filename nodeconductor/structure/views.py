@@ -104,6 +104,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = CustomerFilter
 
+    def perform_create(self, serializer):
+        customer = serializer.save()
+        if not self.request.user.is_staff:
+            customer.add_user(self.request.user, models.CustomerRole.OWNER)
+
     # XXX: This detail route should be moved to billing application.
     @detail_route()
     def estimated_price(self, request, uuid):
@@ -1348,18 +1353,44 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     @detail_route(methods=['get', 'post'])
     def link(self, request, uuid=None):
         if self.request.method == 'GET':
-            backend = self.get_object().get_backend()
-            return Response(backend.get_resources_for_import())
+            service = self.get_object()
+            try:
+                # project_uuid can be supplied in order to get a list of resources
+                # available for import (link) based on project, depends on backend implementation
+                project_uuid = request.query_params.get('project_uuid')
+                if project_uuid:
+                    spl_class = SupportedServices.get_related_models(service)['service_project_link']
+                    try:
+                        spl = spl_class.objects.get(project__uuid=project_uuid, service=service)
+                    except:
+                        pass
+                    else:
+                        backend = spl.get_backend()
+                else:
+                    backend = service.get_backend()
+
+                try:
+                    resources = backend.get_resources_for_import()
+                except ServiceBackendNotImplemented:
+                    resources = []
+
+                return Response(resources)
+            except ServiceBackendError as e:
+                raise APIException(e)
         else:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            customer = serializer.validated_data['project'].customer
+            customer = serializer.validated_data.pop('project').customer
             if not request.user.is_staff and not customer.has_user(request.user):
                 raise PermissionDenied(
                     "Only customer owner or staff are allowed to perform this action.")
 
-            serializer.save()
+            try:
+                serializer.save()
+            except ServiceBackendError as e:
+                raise APIException(e)
+
             return Response(serializer.data, status=status.HTTP_200_OK)
 
 

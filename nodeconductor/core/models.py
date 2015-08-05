@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import re
 import logging
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import (
     AbstractBaseUser, PermissionsMixin, UserManager)
@@ -11,7 +12,7 @@ from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone
-from django.utils.encoding import python_2_unicode_compatible
+from django.utils.encoding import force_text, python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from uuidfield import UUIDField
@@ -252,3 +253,26 @@ class ReversionMixin(object):
             with reversion.create_revision():
                 return super(ReversionMixin, self).save(**kwargs)
         return super(ReversionMixin, self).save(**kwargs)
+
+
+class SerializableAbstractMixin(object):
+
+    def to_string(self):
+        """ Dump an instance into a string preserving model name and object id """
+        model_name = force_text(self._meta)
+        return '{}:{}'.format(model_name, self.pk)
+
+    @staticmethod
+    def parse_model_string(string):
+        """ Recover model class and object id from a string"""
+        model_name, pk = string.split(':')
+        return apps.get_model(model_name), int(pk)
+
+    @classmethod
+    def from_string(cls, objects):
+        """ Recover objects from s string """
+        if not isinstance(objects, (list, tuple)):
+            objects = [objects]
+        for obj in objects:
+            model, pk = cls.parse_model_string(obj)
+            yield model._default_manager.get(pk=pk)

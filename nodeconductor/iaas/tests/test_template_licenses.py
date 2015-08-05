@@ -247,6 +247,17 @@ class LicenseStatsTests(test.APITransactionTestCase):
                 })
         self.assertItemsEqual(response.data, expected_result)
 
+    def test_license_stats_aggregated_by_customer(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(self.url, {'aggregate': ['customer']})
+
+        expected_result = [{
+            'customer_name': self.customer.name,
+            'customer_uuid': self.customer.uuid.hex,
+            'count': 4,
+            'customer_abbreviation': self.customer.abbreviation}]
+        self.assertItemsEqual(response.data, expected_result)
+
     def test_owner_can_see_stats_only_for_his_customer(self):
         self.client.force_authenticate(self.owner)
         # instance license for other customer:

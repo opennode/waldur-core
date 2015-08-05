@@ -226,7 +226,7 @@ class Project(core_models.DescribableMixin,
 
     # XXX: Hack for gcloud and logging
     @property
-    def group(self):
+    def project_group(self):
         return self.project_groups.first()
 
     def add_user(self, user, role_type):
@@ -292,7 +292,7 @@ class Project(core_models.DescribableMixin,
         return user.is_staff
 
     def get_log_fields(self):
-        return ('uuid', 'customer', 'name', 'group')
+        return ('uuid', 'customer', 'name', 'project_group')
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
@@ -431,7 +431,10 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
 
 
 @python_2_unicode_compatible
-class Service(core_models.UuidMixin, core_models.NameMixin):
+class Service(core_models.SerializableAbstractMixin,
+              core_models.UuidMixin,
+              core_models.NameMixin,
+              LoggableMixin):
     """ Base service class. """
 
     class Meta(object):
@@ -462,6 +465,12 @@ class Service(core_models.UuidMixin, core_models.NameMixin):
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
 
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        """ This name will be used by generic relationships to membership model for URL creation """
+        return cls._meta.app_label
+
 
 @python_2_unicode_compatible
 class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
@@ -478,9 +487,17 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
     def __str__(self):
         return '{0} | {1}'.format(self.name, self.settings)
 
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        """ This name will be used by generic relationships to membership model for URL creation """
+        return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
+
 
 @python_2_unicode_compatible
-class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaModelMixin):
+class ServiceProjectLink(core_models.SerializableAbstractMixin,
+                         core_models.SynchronizableMixin,
+                         quotas_models.QuotaModelMixin):
     """ Base service-project link class. See Service class for usage example. """
 
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances']
@@ -502,29 +519,16 @@ class ServiceProjectLink(core_models.SynchronizableMixin, quotas_models.QuotaMod
     def get_backend(self, **kwargs):
         return self.service.get_backend(**kwargs)
 
-    def to_string(self):
-        """ Dump an instance into a string preserving class name and PK """
-        return ':'.join([SupportedServices._get_model_srt(self), str(self.pk)])
-
-    @staticmethod
-    def parse_model_string(string):
-        """ Recover class and PK from a stirng"""
-        cls, pk = string.split(':')
-        return apps.get_model(cls), int(pk)
-
-    @classmethod
-    def from_string(cls, objects):
-        """ Recover objects from s string """
-        if not isinstance(objects, (list, tuple)):
-            objects = [objects]
-        for obj in objects:
-            model, pk = cls.parse_model_string(obj)
-            yield model._default_manager.get(pk=pk)
-
     @classmethod
     @lru_cache(maxsize=1)
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        """ This name will be used by generic relationships to membership model for URL creation """
+        return cls._meta.app_label + '-spl'
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
@@ -672,6 +676,12 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
     @lru_cache(maxsize=1)
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        """ This name will be used by generic relationships to membership model for URL creation """
+        return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
 
     def __str__(self):
         return self.name

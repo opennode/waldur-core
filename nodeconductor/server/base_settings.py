@@ -173,8 +173,8 @@ CELERYBEAT_SCHEDULE = {
     },
 
     'recover-erred-services': {
-        'task': 'nodeconductor.iaas.recover_erred_services',
-        'schedule': timedelta(minutes=5),
+        'task': 'nodeconductor.structure.recover_erred_services',
+        'schedule': timedelta(minutes=45),
         'args': (),
     },
 
@@ -192,12 +192,6 @@ CELERYBEAT_SCHEDULE = {
     'check-cloud-project-memberships-quotas': {
         'task': 'nodeconductor.iaas.tasks.iaas.check_cloud_memberships_quotas',
         'schedule': timedelta(minutes=1440),
-        'args': (),
-    },
-
-    'recover-erred-cloud-project-memberships': {
-        'task': 'nodeconductor.iaas.tasks.iaas.recover_erred_cloud_memberships',
-        'schedule': timedelta(minutes=5),
         'args': (),
     },
 
@@ -260,3 +254,11 @@ NODECONDUCTOR = {
     'SUSPEND_UNPAID_CUSTOMERS': False,
     'TOKEN_KEY': 'x-auth-token',
 }
+
+# import optional extension settings from supported modules
+try:
+    from nodeconductor_plus.settings import *
+    INSTALLED_APPS += NODECONDUCTOR_PLUS_APPS
+    CELERYBEAT_SCHEDULE.update(NODECONDUCTOR_PLUS_CELERYBEAT_SCHEDULE)
+except (ImportError, NameError):
+    pass

@@ -5,6 +5,7 @@ from unittest import TestCase
 from django.core.urlresolvers import reverse
 from django.test import TransactionTestCase
 from mock_django import mock_signal_receiver
+from permission.utils.logics import add_permission_logic, remove_permission_logic
 from rest_framework import status
 from rest_framework import test
 
@@ -13,6 +14,7 @@ from nodeconductor.structure.models import Customer
 from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.models import ProjectGroupRole
+from nodeconductor.structure.perms import USER_CAN_CREATE_CUSTOMER_LOGICS
 from nodeconductor.structure.tests import factories
 
 
@@ -432,12 +434,24 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
                                           response.data)
 
     # Creation tests
-    def test_user_cannot_create_customer_if_he_is_not_staff(self):
+    def test_user_can_not_create_customer_if_he_is_not_staff(self):
         self.client.force_authenticate(user=self.users['not_owner'])
 
         response = self.client.post(reverse('customer-list'), self._get_valid_payload())
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_can_create_customer_if_he_is_not_staff_if_settings_are_tweaked(self):
+        add_permission_logic(Customer, USER_CAN_CREATE_CUSTOMER_LOGICS)
+        self.client.force_authenticate(user=self.users['not_owner'])
+
+        response = self.client.post(reverse('customer-list'), self._get_valid_payload())
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # User became owner of created customer
+        self.assertEqual(response.data['owners'][0]['uuid'], self.users['not_owner'].uuid.hex)
+        remove_permission_logic(Customer, USER_CAN_CREATE_CUSTOMER_LOGICS)
 
     def test_user_can_create_customer_if_he_is_staff(self):
         self.client.force_authenticate(user=self.users['staff'])

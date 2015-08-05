@@ -106,8 +106,6 @@ class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink)
     This model represents many to many relationships between project and cloud
     """
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances', 'security_group_count', 'security_group_rule_count']
-    # This name will be used by generic relationships to membership model for URL creation
-    DEFAULT_URL_NAME = 'cloudproject_membership'
 
     cloud = models.ForeignKey(Cloud)
 
@@ -148,6 +146,11 @@ class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink)
     def service(self):
         # XXX: Temporary backward compatibility
         return self.cloud
+
+    @classmethod
+    def get_url_name(cls):
+        """ This name will be used by generic relationships to membership model for URL creation """
+        return 'cloudproject_membership'
 
 
 class CloudProjectMember(models.Model):
@@ -406,6 +409,10 @@ class Instance(LoggableMixin, structure_models.BaseVirtualMachineMixin, structur
             'uuid', 'name', 'type', 'cloud_project_membership', 'ram',
             'cores', 'data_volume_size', 'system_volume_size', 'installation_state', 'template',
         )
+
+    @classmethod
+    def get_url_name(cls):
+        return 'instance'
 
 
 @python_2_unicode_compatible

@@ -9,6 +9,7 @@ from nodeconductor.openstack import models, serializers
 class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
     queryset = models.OpenStackService.objects.all()
     serializer_class = serializers.ServiceSerializer
+    import_serializer_class = serializers.InstanceImportSerializer
 
 
 class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkViewSet):

@@ -4,12 +4,12 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from celery import shared_task
 
 from nodeconductor.core.tasks import transition, retry_if_false
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
-from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models, handlers)
 
@@ -71,26 +71,21 @@ def sync_users(action, entities_uuids, service_project_links):
             task.delay(entity_uuid, spl)
 
 
-@shared_task
-def create_zabbix_hostgroup(project_uuid):
-    project = models.Project.objects.get(uuid=project_uuid)
-    zabbix_client = ZabbixApiClient()
-    zabbix_client.create_hostgroup(project)
+@shared_task(name='nodeconductor.structure.recover_erred_services')
+def recover_erred_services():
+    for service_type, service in SupportedServices.get_service_models().items():
+        # TODO: Remove IaaS support (NC-645)
+        is_iaas = service_type == SupportedServices.Types.IaaS
 
+        query = Q(state=SynchronizationStates.ERRED)
+        if is_iaas:
+            query |= Q(cloud__state=SynchronizationStates.ERRED)
+        else:
+            query |= Q(service__settings__state=SynchronizationStates.ERRED)
 
-@shared_task
-def delete_zabbix_hostgroup(project_uuid):
-    project = models.Project.objects.get(uuid=project_uuid)
-    zabbix_client = ZabbixApiClient()
-    zabbix_client.delete_hostgroup(project)
-
-
-@shared_task
-def sync_billing_customer(customer_uuid):
-    customer = models.Customer.objects.get(uuid=customer_uuid)
-    backend = customer.get_billing_backend()
-    backend.sync_customer()
-    backend.sync_invoices()
+        erred_spls = service['service_project_link'].objects.filter(query)
+        for spl in erred_spls:
+            recover_erred_service.delay(spl.to_string(), is_iaas=is_iaas)
 
 
 @shared_task(name='nodeconductor.structure.sync_service_settings')
@@ -117,6 +112,33 @@ def sync_service_settings(settings_uuids=None, initial=False):
             link_error=sync_service_settings_failed.si(settings_uuid))
 
 
+@shared_task(name='nodeconductor.structure.sync_service_project_links')
+def sync_service_project_links(service_project_links=None, initial=False):
+    if service_project_links and not isinstance(service_project_links, (list, tuple)):
+        service_project_links = [service_project_links]
+
+    for obj in models.ServiceProjectLink.from_string(service_project_links):
+        # Settings are being created in SYNCING_SCHEDULED state,
+        # thus bypass transition during 'initial' sync.
+        if not initial:
+            obj.schedule_syncing()
+            obj.save()
+
+        service_project_link_str = obj.to_string()
+        begin_syncing_service_project_links.apply_async(
+            args=(service_project_link_str,),
+            link=sync_service_project_link_succeeded.si(service_project_link_str),
+            link_error=sync_service_project_link_failed.si(service_project_link_str))
+
+
+@shared_task
+def sync_billing_customer(customer_uuid):
+    customer = models.Customer.objects.get(uuid=customer_uuid)
+    backend = customer.get_billing_backend()
+    backend.sync_customer()
+    backend.sync_invoices()
+
+
 @shared_task
 @transition(models.ServiceSettings, 'begin_syncing')
 def begin_syncing_service_settings(settings_uuid, transition_entity=None):
@@ -138,25 +160,6 @@ def sync_service_settings_succeeded(settings_uuid, transition_entity=None):
 @transition(models.ServiceSettings, 'set_erred')
 def sync_service_settings_failed(settings_uuid, transition_entity=None):
     pass
-
-
-@shared_task(name='nodeconductor.structure.sync_service_project_links')
-def sync_service_project_links(service_project_links=None, initial=False):
-    if service_project_links and not isinstance(service_project_links, (list, tuple)):
-        service_project_links = [service_project_links]
-
-    for obj in models.ServiceProjectLink.from_string(service_project_links):
-        # Settings are being created in SYNCING_SCHEDULED state,
-        # thus bypass transition during 'initial' sync.
-        if not initial:
-            obj.schedule_syncing()
-            obj.save()
-
-        service_project_link_str = obj.to_string()
-        begin_syncing_service_project_links.apply_async(
-            args=(service_project_link_str,),
-            link=sync_service_project_link_succeeded.si(service_project_link_str),
-            link_error=sync_service_project_link_failed.si(service_project_link_str))
 
 
 @shared_task
@@ -196,6 +199,40 @@ def sync_service_project_link_failed(service_project_link_str):
         pass
 
     process(spl_pk)
+
+
+@shared_task
+def recover_erred_service(service_project_link_str, is_iaas=False):
+    spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
+    spl = spl_model.objects.get(pk=spl_pk)
+    settings = spl.cloud if is_iaas else spl.service.settings
+
+    try:
+        backend = spl.get_backend()
+        if is_iaas:
+            try:
+                if spl.state == SynchronizationStates.ERRED:
+                    backend.create_session(membership=spl, dummy=spl.cloud.dummy)
+                if spl.cloud.state == SynchronizationStates.ERRED:
+                    backend.create_session(keystone_url=spl.cloud.auth_url, dummy=spl.cloud.dummy)
+            except CloudBackendError:
+                is_active = False
+            else:
+                is_active = True
+        else:
+            is_active = backend.ping()
+    except (ServiceBackendError, ServiceBackendNotImplemented):
+        is_active = False
+
+    if is_active:
+        for entity in (spl, settings):
+            if entity.state == SynchronizationStates.ERRED:
+                entity.set_in_sync_from_erred()
+                entity.save()
+
+        logger.info('Service settings %s has been recovered.' % settings)
+    else:
+        logger.info('Failed to recover service settings %s.' % settings)
 
 
 @shared_task(max_retries=120, default_retry_delay=30)

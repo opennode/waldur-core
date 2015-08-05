@@ -669,7 +669,7 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.staff)
         response = self.client.get(self.url)
 
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     def test_zabbix_is_called_with_right_parameters(self):
         self.client.force_authenticate(self.staff)
