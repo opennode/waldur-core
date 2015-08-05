@@ -43,6 +43,7 @@ class AdditionalPriceEstimateFilterBackend(filters.BaseFilterBackend):
                 query |= Q(year=year, month=month)
             queryset = queryset.filter(query)
 
+        # Filter by date range
         date_range_serializer = serializers.PriceEstimateDateRangeFilterSerializer(data=request.query_params)
         date_range_serializer.is_valid(raise_exception=True)
         if 'start' in date_range_serializer.validated_data:
@@ -51,6 +52,22 @@ class AdditionalPriceEstimateFilterBackend(filters.BaseFilterBackend):
         if 'end' in date_range_serializer.validated_data:
             year, month = date_range_serializer.validated_data['end']
             queryset = queryset.filter(Q(year__lt=year) | Q(year=year, month__lte=month))
+
+        # Filter by customer
+        if 'customer' in request.query_params:
+            customer_uuid = request.query_params['customer']
+            qs = Q()
+            for model in models.PriceEstimate.get_estimated_models():
+                content_type = ContentType.objects.get_for_model(model)
+                if model == structure_models.Customer:
+                    query = {'uuid': customer_uuid}
+                else:
+                    query = {model.Permissions.customer_path + '__uuid': customer_uuid}
+                ids = model.objects.filter(**query).values_list('pk', flat=True)
+                qs |= Q(content_type=content_type, object_id__in=ids)
+
+            queryset = queryset.filter(qs)
+
         return queryset
 
 

@@ -9,10 +9,13 @@ from nodeconductor.structure import models as structure_models
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
     scope = GenericRelatedField(related_models=models.PriceEstimate.get_editable_estimated_models())
+    scope_name = serializers.SerializerMethodField()
+    scope_type = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.PriceEstimate
-        fields = ('url', 'uuid', 'scope', 'total', 'details', 'month', 'year', 'is_manually_input')
+        fields = ('url', 'uuid', 'scope', 'total', 'details', 'month', 'year',
+                  'is_manually_input', 'scope_name', 'scope_type')
         read_only_fields = ('is_manually_input',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -30,6 +33,19 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
         validated_data['is_manually_input'] = True
         price_estimate = super(PriceEstimateSerializer, self).create(validated_data)
         return price_estimate
+
+    def get_scope_name(self, obj):
+        return str(obj.scope)
+
+    def get_scope_type(self, obj):
+        models = (structure_models.Resource,
+                  structure_models.Service,
+                  structure_models.ServiceProjectLink,
+                  structure_models.Project,
+                  structure_models.Customer)
+        for model in models:
+            if isinstance(obj.scope, model):
+                return model._meta.model_name
 
 
 class YearMonthField(serializers.CharField):

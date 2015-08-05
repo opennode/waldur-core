@@ -34,7 +34,7 @@ install_requires = [
     'jira>=0.47',
     'jsonfield==1.0.0',
     'lxml>=3.2',
-    'oslo.config < 1.15.0',
+    'oslo.config<1.12.0',
     'paypalrestsdk>=1.10.0',
     'Pillow>=2.0.0',
     'python-ceilometerclient==1.0.10',
@@ -48,6 +48,7 @@ install_requires = [
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
+    'stevedore==1.4.0',
     'xhtml2pdf>=0.0.6',
 ]
 
