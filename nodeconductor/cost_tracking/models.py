@@ -73,7 +73,7 @@ class AbstractPriceListItem(models.Model):
     key = models.CharField(max_length=50)
     value = models.DecimalField(default=0, max_digits=16, decimal_places=8)
     units = models.CharField(max_length=30, blank=True)
-    item_type = models.CharField(max_length=10, choices=Types.CHOICES, default=Types.FLAVOR)
+    item_type = models.CharField(max_length=30, choices=Types.CHOICES, default=Types.FLAVOR)
 
 
 class DefaultPriceListItem(core_models.UuidMixin, AbstractPriceListItem):
