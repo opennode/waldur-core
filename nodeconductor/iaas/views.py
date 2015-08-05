@@ -491,7 +491,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         instance = self.get_object()
         if not instance.backend_id:
             return Response({'detail': 'calculated usage is not available for instance without backend_id'},
-                            status=status.HTTP_405_METHOD_NOT_ALLOWED)
+                            status=status.HTTP_409_CONFLICT)
 
         default_start = timezone.now() - datetime.timedelta(hours=1)
         timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(data={
@@ -621,6 +621,11 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
                 'instance__cloud_project_membership__project__project_groups__uuid',
                 'instance__cloud_project_membership__project__project_groups__name',
             ],
+            'customer': [
+                'instance__cloud_project_membership__project__customer__uuid',
+                'instance__cloud_project_membership__project__customer__name',
+                'instance__cloud_project_membership__project__customer__abbreviation',
+            ],
             'type': ['template_license__license_type'],
             'name': ['template_license__name'],
         }
@@ -640,6 +645,9 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
             'instance__cloud_project_membership__project__name': 'project_name',
             'instance__cloud_project_membership__project__project_groups__uuid': 'project_group_uuid',
             'instance__cloud_project_membership__project__project_groups__name': 'project_group_name',
+            'instance__cloud_project_membership__project__customer__uuid': 'customer_uuid',
+            'instance__cloud_project_membership__project__customer__name': 'customer_name',
+            'instance__cloud_project_membership__project__customer__abbreviation': 'customer_abbreviation',
             'template_license__license_type': 'type',
             'template_license__name': 'name',
         }

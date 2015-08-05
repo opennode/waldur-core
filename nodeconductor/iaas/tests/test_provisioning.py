@@ -757,6 +757,15 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_cannot_create_instance_with_security_groups_from_other_project(self):
+        security_groups = [factories.SecurityGroupFactory() for _ in range(3)]
+        data = self.get_valid_data()
+        data['security_groups'] = [{'url': factories.SecurityGroupFactory.get_url(sg)} for sg in security_groups]
+
+        response = self.client.post(self.instance_list_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     # instance external and internal ips fields tests
     def test_instance_factory_generates_valid_internal_ips_field(self):
         instance = factories.InstanceFactory()
@@ -835,6 +844,16 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         for ip in external_ips:
             self.assertTrue(ips_regex.match(ip))
+
+    def test_paas_inctance_cannot_be_created_if_memebership_external_network_id_is_empty(self):
+        data = self.get_valid_data()
+        data['type'] = Instance.Services.PAAS
+        membership = CloudProjectMembership.objects.get(project=self.project, cloud=self.flavor.cloud)
+        membership.external_network_id = ''
+        membership.save()
+
+        response = self.client.post(self.instance_list_url, data=data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_instance_api_contains_valid_internal_ips_field(self):
         instance = factories.InstanceFactory()

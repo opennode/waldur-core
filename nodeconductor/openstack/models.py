@@ -5,7 +5,7 @@ from nodeconductor.structure import models as structure_models
 from nodeconductor.logging.log import LoggableMixin
 
 
-class OpenStackService(LoggableMixin, structure_models.Service):
+class OpenStackService(structure_models.Service):
     projects = models.ManyToManyField(
         structure_models.Project, related_name='openstack_services', through='OpenStackServiceProjectLink')
 

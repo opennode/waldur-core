@@ -67,6 +67,9 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
 
         self.instance_security_groups = factories.InstanceSecurityGroupFactory.create_batch(2, instance=self.instance)
         self.cloud_security_groups = [g.security_group for g in self.instance_security_groups]
+        for security_group in self.cloud_security_groups:
+            security_group.cloud_project_membership = membership
+            security_group.save()
 
     def test_groups_list_in_instance_response(self):
         response = self.client.get(_instance_url(self.instance))

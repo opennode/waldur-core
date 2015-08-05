@@ -1,9 +1,10 @@
-from django.db.models import Max
-
 from rest_framework import serializers
 
-from nodeconductor.core import models as core_models
+from django.db.models import Max
+from django.utils import dateparse
+
 from nodeconductor.structure import SupportedServices, serializers as structure_serializers
+from nodeconductor.openstack.backend import OpenStackBackendError
 from nodeconductor.openstack import models
 
 
@@ -114,3 +115,23 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
                 {'system_volume_size': "System volume size has to be greater than %s" % max_min_disk})
 
         return attrs
+
+
+class InstanceImportSerializer(structure_serializers.BaseResourceImportSerializer):
+
+    class Meta(structure_serializers.BaseResourceImportSerializer.Meta):
+        model = models.Instance
+        view_name = 'openstack-instance-detail'
+
+    def create(self, validated_data):
+        backend = validated_data['service_project_link'].get_backend()
+
+        try:
+            instance = backend.get_instance(validated_data['backend_id'])
+        except OpenStackBackendError:
+            raise serializers.ValidationError(
+                {'backend_id': "Can't import instance with ID %s" % validated_data['backend_id']})
+
+        validated_data.update(instance.nc_model_data)
+
+        return super(InstanceImportSerializer, self).create(validated_data)

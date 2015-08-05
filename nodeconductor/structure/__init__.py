@@ -15,6 +15,7 @@ class ServiceTypes(object):
     Jira = 4
     GitLab = 5
     Oracle = 6
+    Azure = 7
 
     CHOICES = (
         (OpenStack, 'OpenStack'),
@@ -23,6 +24,7 @@ class ServiceTypes(object):
         (Jira, 'Jira'),
         (GitLab, 'GitLab'),
         (Oracle, 'Oracle'),
+        (Azure, 'Azure'),
     )
 
 
@@ -248,7 +250,25 @@ class SupportedServices(object):
 
     @classmethod
     def get_name_for_model(cls, model):
-        return cls._registry[cls._get_model_srt(model)]['name']
+        model_str = cls._get_model_srt(model)
+        for model, service in cls._registry.items():
+            if model == model_str:
+                return service['name']
+            for model, resource in service['resources'].items():
+                if model == model_str:
+                    return '.'.join([service['name'], resource['name']])
+
+    @classmethod
+    def get_related_models(cls, model):
+        model_str = cls._get_model_srt(model)
+        for models in cls.get_service_models().values():
+            if model_str == cls._get_model_srt(models['service']) or \
+               model_str == cls._get_model_srt(models['service_project_link']):
+                return models
+
+            for resource_model in models['resources']:
+                if model_str == cls._get_model_srt(resource_model):
+                    return models
 
     @classmethod
     def _get_model_srt(cls, model):
@@ -281,6 +301,9 @@ class ServiceBackend(object):
 
     def __init__(self, settings, **kwargs):
         pass
+
+    def ping(self):
+        raise ServiceBackendNotImplemented
 
     def sync(self):
         raise ServiceBackendNotImplemented
@@ -316,7 +339,7 @@ class ServiceBackend(object):
         raise ServiceBackendNotImplemented
 
     def get_resources_for_import(self):
-        return []
+        raise ServiceBackendNotImplemented
 
     @staticmethod
     def gb2mb(val):

@@ -1,7 +1,7 @@
 import base64
 
 from django.core import validators
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned
 from django.core.urlresolvers import reverse, resolve, Resolver404
 from rest_framework import serializers
 from rest_framework.fields import Field, ReadOnlyField
@@ -91,7 +91,7 @@ class GenericRelatedField(Field):
             'app_label': obj._meta.app_label,
         }
         try:
-            format_kwargs['model_name'] = getattr(obj, 'DEFAULT_URL_NAME')
+            format_kwargs['model_name'] = getattr(obj.__class__, 'get_url_name')()
         except AttributeError:
             format_kwargs['model_name'] = obj._meta.object_name.lower()
         return self._default_view_name % format_kwargs
@@ -137,7 +137,7 @@ class GenericRelatedField(Field):
             match = resolve(url)
             model = self._get_model_from_resolve_match(match)
             obj = model.objects.get(**match.kwargs)
-        except (Resolver404, AttributeError):
+        except (Resolver404, AttributeError, MultipleObjectsReturned):
             raise serializers.ValidationError("Can`t restore object from url: %s" % data)
         if model not in self.related_models:
             raise serializers.ValidationError('%s object does not support such relationship' % str(obj))

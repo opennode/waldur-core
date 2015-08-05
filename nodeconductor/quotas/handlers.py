@@ -55,7 +55,9 @@ def quantity_quota_handler_factory(path_to_quota_scope, quota_name, count=1):
         if signal == signals.post_save and kwargs.get('created'):
             scope.add_quota_usage(quota_name, count)
         elif signal == signals.post_delete:
-            scope.add_quota_usage(quota_name, -count)
+            scope.add_quota_usage(quota_name, -count, fail_silently=True)
+            # fail silently is enabled for cascade deletion case:
+            # if quotas can be deleted before other related objects
 
     return handler
 

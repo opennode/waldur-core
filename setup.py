@@ -33,7 +33,7 @@ install_requires = [
     'elasticsearch>=1.0.0,<2.0.0',
     'jira>=0.47',
     'jsonfield==1.0.0',
-    'oslo.config < 1.15.0',
+    'oslo.config < 1.12.0',
     'paypalrestsdk>=1.10.0',
     'Pillow>=2.0.0',
     'python-ceilometerclient==1.0.10',
@@ -47,13 +47,14 @@ install_requires = [
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
+    'stevedore==1.4.0',
     'xhtml2pdf>=0.0.6',
 ]
 
 
 setup(
     name='nodeconductor',
-    version='0.69.0',
+    version='0.70.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

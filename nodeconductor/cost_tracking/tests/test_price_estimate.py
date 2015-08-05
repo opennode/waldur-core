@@ -32,7 +32,7 @@ class PriceEstimateListTest(test.APITransactionTestCase):
         self.service_project_link = iaas_factories.CloudProjectMembershipFactory(project=self.project, cloud=cloud)
 
         self.link_price_estimate = factories.PriceEstimateFactory(
-            year=2012, month=10, scope=self.service_project_link, is_manually_inputed=True)
+            year=2012, month=10, scope=self.service_project_link, is_manually_input=True)
         self.project_price_estimate = factories.PriceEstimateFactory(scope=self.project, year=2015, month=7)
 
     @data('owner', 'manager', 'administrator')
@@ -123,7 +123,7 @@ class PriceEstimateCreateTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(models.PriceEstimate.objects.filter(
             scope=self.service_project_link,
-            is_manually_inputed=True,
+            is_manually_input=True,
             month=self.valid_data['month'],
             year=self.valid_data['year'],
             is_visible=True).exists()
@@ -205,7 +205,7 @@ class PriceEstimateUpdateTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         reread_price_estimate = models.PriceEstimate.objects.get(id=self.price_estimate.id)
-        self.assertFalse(reread_price_estimate.is_manually_inputed)
+        self.assertFalse(reread_price_estimate.is_manually_input)
 
 
 class PriceEstimateDeleteTest(test.APITransactionTestCase):
@@ -230,9 +230,9 @@ class PriceEstimateDeleteTest(test.APITransactionTestCase):
         self.service_project_link = iaas_factories.CloudProjectMembershipFactory(project=self.project, cloud=cloud)
 
         self.manual_link_price_estimate = factories.PriceEstimateFactory(
-            scope=self.service_project_link, is_manually_inputed=True)
+            scope=self.service_project_link, is_manually_input=True)
         self.auto_link_price_estimate = factories.PriceEstimateFactory(
-            scope=self.service_project_link, is_manually_inputed=False,
+            scope=self.service_project_link, is_manually_input=False,
             month=self.manual_link_price_estimate.month, year=self.manual_link_price_estimate.year)
         self.project_price_estimate = factories.PriceEstimateFactory(scope=self.project)
 

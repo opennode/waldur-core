@@ -116,7 +116,9 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             'state',
             'tenant_id',
             'service_name', 'service_uuid',
+            'external_network_id', 'internal_network_id',
         )
+        read_only_fields = ('external_network_id', 'internal_network_id',)
         view_name = 'cloudproject_membership-detail'
         extra_kwargs = {
             'cloud': {'lookup_field': 'uuid'},
@@ -370,6 +372,10 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         flavor = attrs['flavor']
         membership = attrs.get('cloud_project_membership')
 
+        if attrs.get('type') == models.Instance.Services.PAAS and not membership.external_network_id:
+            raise serializers.ValidationError(
+                "Connected cloud project does not have external network id required for PaaS instances.")
+
         external_ips = attrs.get('external_ips')
         if external_ips:
             ip_exists = models.FloatingIP.objects.filter(
@@ -408,6 +414,13 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         if quota_errors:
             raise serializers.ValidationError(
                 'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
+
+        for security_group_data in attrs.get('security_groups', []):
+            security_group = security_group_data['security_group']
+            if security_group.cloud_project_membership != membership:
+                raise serializers.ValidationError(
+                    'Security group {} has wrong cloud or project.New instance and its security groups'
+                    ' have to belong to same project and cloud'.format(security_group.name))
 
         return attrs
 
