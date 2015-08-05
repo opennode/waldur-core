@@ -124,7 +124,6 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
 class ServiceContentTypeFilter(django_filters.CharFilter):
 
     def filter(self, qs, value):
-        print 'value', value
         if value:
             try:
                 app_label, model = value.split('.')
