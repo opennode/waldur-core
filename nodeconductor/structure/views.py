@@ -104,6 +104,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = CustomerFilter
 
+    def perform_create(self, serializer):
+        customer = serializer.save()
+        if not self.request.user.is_staff:
+            customer.add_user(self.request.user, models.CustomerRole.OWNER)
+
     # XXX: This detail route should be moved to billing application.
     @detail_route()
     def estimated_price(self, request, uuid):

@@ -1,4 +1,6 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
+
 from nodeconductor.core.permissions import StaffPermissionLogic, FilteredCollaboratorsPermissionLogic
 from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
 
@@ -49,3 +51,16 @@ PERMISSION_LOGICS = (
         any_permission=True,
     )),
 )
+
+USER_CAN_CREATE_CUSTOMER_LOGICS = FilteredCollaboratorsPermissionLogic(
+    collaborators_query='roles__permission_group__user',
+    collaborators_filter={
+        'roles__role_type': CustomerRole.OWNER,
+    },
+    add_permission=True
+)
+
+if settings.NODECONDUCTOR.get('USER_CAN_CREATE_CUSTOMER'):
+    PERMISSION_LOGICS += (
+        ('structure.Customer', USER_CAN_CREATE_CUSTOMER_LOGICS),
+    )
