@@ -427,6 +427,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
             validated_data['key_fingerprint'] = key.fingerprint
 
         flavor = validated_data.pop('flavor')
+        validated_data['flavor_name'] = flavor.flavor_name
         validated_data['cores'] = flavor.cores
         validated_data['ram'] = flavor.ram
 

@@ -332,9 +332,6 @@ class PaidResource(models.Model):
             self.product_name = "{}-{}".format(instance._meta.app_label,
                                                instance._meta.model_name)
 
-            # XXX: remove it
-            self.product_name = "openstack-instance"
-
         @property
         def id(self):
             return self.instance.billing_backend_id
@@ -352,7 +349,7 @@ class PaidResource(models.Model):
             storage = SupportedServices.mb2gb(self.instance.system_volume_size +
                                               self.instance.data_volume_size)
             options = {
-                'flavor': self.instance.flavor_type,
+                'flavor': self.instance.flavor_name or 'offline',
                 'storage': storage,
                 'license-os': self.instance.template.get_os_type_display(),
                 'license-application': self.instance.template.get_application_type_display(),
@@ -374,10 +371,6 @@ class PaidResource(models.Model):
             self.id = ''
 
     billing_backend_id = models.CharField(max_length=255, blank=True)
-
-    @property
-    def flavor_type(self):
-        return 'small' if self.cores <= 2 else 'big'
 
     def __init__(self, *args, **kwargs):
         self.order = self.Order(self)
@@ -421,6 +414,7 @@ class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineM
         max_length=50, default='NO DATA', blank=True, help_text='State of post deploy installation process')
 
     # fields, defined by flavor
+    flavor_name = models.CharField(max_length=255, blank=True)
     cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
     ram = models.PositiveIntegerField(help_text='Memory size in MiB')
 

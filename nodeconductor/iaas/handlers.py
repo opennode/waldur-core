@@ -198,7 +198,7 @@ def track_order(sender, instance, name=None, source=None, **kwargs):
             if source == instance.States.PROVISIONING:
                 order.accept()
             if source == instance.States.STARTING:
-                order.update(flavor=instance.flavor_type)
+                order.update(flavor=instance.flavor_name or 'offline')
 
         if name == instance.set_offline.__name__:
             if source == instance.States.STOPPING:
