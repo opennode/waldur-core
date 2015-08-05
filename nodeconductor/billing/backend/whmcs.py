@@ -141,6 +141,25 @@ class WHMCSAPI(object):
         url_parts[4] = urllib.urlencode(args)
         return urlparse.urlunparse(url_parts)
 
+    def _do_login(self):
+        if not hasattr(self, 'session'):
+            self.session = requests.Session()
+            self.session.verify = False
+            self.session.get(self._get_backend_url('/admin/login.php'))
+            self.session.post(
+                self._get_backend_url('/admin/dologin.php'),
+                data={'username': self.username, 'password': self.password},
+                headers={'Content-Type': 'application/x-www-form-urlencoded'})
+
+    def _get_token(self, html_text):
+        match_string = 'type="hidden" name="token" value=\"(\w*)\"'
+        token = re.findall(match_string, html_text)[0]
+        return token
+
+    def _extract_id(self, url, id_field='id'):
+        q = urlparse.urlsplit(url).query
+        return int(urlparse.parse_qs(q)[id_field][0])
+
     def request(self, action, resultset_path=None, **kwargs):
         data = {'action': action, 'responsetype': 'json'}
         data.update(kwargs)
@@ -202,15 +221,7 @@ class WHMCSAPI(object):
                 for item in data['items']['item']]
 
     def get_invoice_pdf(self, invoice_id):
-        if not hasattr(self, 'session'):
-            self.session = requests.Session()
-            self.session.verify = False
-            self.session.get(self._get_backend_url('/admin/login.php'))
-            self.session.post(
-                self._get_backend_url('/admin/dologin.php'),
-                data={'username': self.username, 'password': self.password},
-                headers={'Content-Type': 'application/x-www-form-urlencoded'})
-
+        self._do_login()
         pdf = self.session.get(self._get_backend_url('/dl.php', {'type': 'i', 'id': invoice_id}))
         return pdf.content
 
@@ -224,14 +235,7 @@ class WHMCSAPI(object):
                    'name': product['name']}
 
     def get_product_configurable_options(self, product_id):
-        # TODO: use _do_login()
-        self.session = requests.Session()
-        self.session.verify = False
-        self.session.get(self._get_backend_url('/admin/login.php'))
-        self.session.post(
-            self._get_backend_url('/admin/dologin.php'),
-            data={'username': self.username, 'password': self.password},
-            headers={'Content-Type': 'application/x-www-form-urlencoded'})
+        self._do_login()
 
         def get_page(url, *opts):
             response = self.session.get(self._get_backend_url('admin/' + url % opts))
@@ -270,7 +274,6 @@ class WHMCSAPI(object):
 
     def create_invoice(self, items, payment_method='banktransfer'):
         response = self.request('createinvoice', paymentmethod=payment_method, **items)
-
         return response['invoiceid']
 
     def _prepare_configurable_options(self, options, template=()):
@@ -353,3 +356,160 @@ class WHMCSAPI(object):
 
     def delete_order(self, order_id):
         self.request('deleteorder', orderid=order_id)
+
+    def create_configurable_options_group(self, name, description="", assigned_products_ids=None):
+        self._do_login()
+
+        # get unique token
+        response = self.session.get(self._get_backend_url('admin/configproductoptions.php?action=managegroup'))
+        token = self._get_token(response.text)
+
+        response = self.session.post(
+            self._get_backend_url('/admin/configproductoptions.php?action=savegroup&id='),
+            data={
+                'name': name,
+                'description': description,
+                'productlinks[]': assigned_products_ids,
+                'token': token,
+            },
+            headers={'Content-Type': 'application/x-www-form-urlencoded'}
+        )
+        return self._extract_id(response.url)
+
+    def create_configurable_options(self, group_id, name, option_type='dropdown', option_values=None):
+        """
+            Create new configurable options in WHMCS of a defined option_type with option values and prices
+            defined by the option_values dict. The prices are set to monthly prices of the configured
+            currency.
+
+            Example call:
+
+                create_configurable_option(gid, 'flavor', option_values={'small': 1, 'big': 2})
+                create_configurable_option(gid, 'support', option_type='yesno', option_values={'MO': 100})
+        """
+        self._do_login()
+        response = self.session.get(
+            self._get_backend_url('admin/configproductoptions.php?manageoptions=true&gid=%s' % group_id))
+        token = self._get_token(response.text)
+
+        # encoding from human to whmcs
+        available_option_types = {
+            'dropdown': 1,
+            'radio': 2,
+            'yesno': 3,
+            'quantity': 4,
+        }
+
+        if option_values:
+            component_id = ''  # cid during the first run, causes creation of a new group
+
+            # first iteration is to create all the relevant flavors so that WHMCS would assign pk's to the ite,s
+            for ov_name in option_values.keys():
+                response = self.session.post(
+                    self._get_backend_url(
+                        '/admin/configproductoptions.php?manageoptions=true&cid=%s&gid=%s&save=true' %
+                        (component_id, group_id)),
+                    data={
+                        'configoptionname': name,
+                        'configoptiontype': available_option_types[option_type],
+                        'token': token,
+                        'addoptionname': ov_name
+                    },
+                    headers={'Content-Type': 'application/x-www-form-urlencoded'}
+                )
+                component_id = self._extract_id(response.url, id_field='cid')
+                token = self._get_token(response.text)
+
+            # second iteration to set prices of the option values
+            response = self.session.get(
+                self._get_backend_url(
+                    '/admin/configproductoptions.php?manageoptions=true&cid=%s&gid=%s' %
+                    (component_id, group_id)
+                )
+            )
+            # get all the whmcs ids of configuration options
+            exp = r'<input type="text" name="optionname\[(\d*)\]" value="(\w*)"'
+            options = re.findall(exp, response.text)
+
+            #
+            prepared_price_data = {}
+            for option in options:
+                pk, option_name = option
+                prepared_price_data['optionname[%s]' % pk] = option_name
+                price = 0
+                if option_name in option_values:
+                    price = option_values[option_name]
+                prepared_price_data['price[%s][%s][6]' % (self.currency_code, pk)] = price  # '6' corresponds to the monthly price
+
+            token = self._get_token(response.text)
+            prepared_price_data.update({
+                'configoptionname': name,
+                'configoptiontype': available_option_types[option_type],
+                'token': token,
+                'addoptionname': ''
+            })
+
+            # update options with prices
+            self.session.post(
+                self._get_backend_url(
+                    '/admin/configproductoptions.php?manageoptions=true&cid=%s&gid=%s&save=true' %
+                    (component_id, group_id)),
+                data=prepared_price_data,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'}
+            )
+
+        return component_id
+
+    def create_server_product(self, product_name, product_group_id=1):
+        data = self.request(
+            'addproduct',
+            name=product_name,
+            gid=product_group_id,
+            type='server',
+            paytype='recurring',
+        )
+
+        return data.get('pid')
+
+    def propagate_pricelist(self):
+        category = 'openstack-instance'  ## content_type
+
+        # 1. create a product of a particular type
+        pid = self.create_server_product(category)
+
+        # 2. define configuration options
+
+        type_mapping = {
+            'flavor': 'dropdown',
+            'storage': 'quantity',
+            'support': 'yesno',
+            'license-os': 'dropdown',
+            'license-application': 'dropdown',
+        }
+
+        gid = self.create_configurable_options_group("Configuration of %s" % category, assigned_products_ids=[pid])
+        for pricelist_item_type in ['flavor', 'storage', 'support', 'license-os', 'license-application']:
+            option_type = type_mapping[pricelist_item_type]  # TODO: derive from pricelist
+            option_values = {  # TODO: derive from pricelist
+                'flavor': {
+                    'small': 10,
+                    'big': 20,
+                    'offline': 0,
+                },
+                'storage': {
+                    '1 GB': 1,
+                },
+                'support': {
+                    'MO support': 100,
+                },
+                'license-os': {
+                    'centos7': 10,
+                    'rhel7': 20,
+                    'windows': 30,
+                },
+                'license-application': {
+                    'wordpress': 10,
+                    'postgresql': 20,
+                }
+            }
+            cid = self.create_configurable_options(gid, pricelist_item_type, option_type, option_values[pricelist_item_type])
