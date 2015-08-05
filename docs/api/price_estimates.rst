@@ -10,6 +10,7 @@ Price estimates can be filtered by:
  - ?start=<string in format YYYY.MM> filter price estimates that was after given months (excluding given)
  - ?end=<string in format YYYY.MM> filter price estimates that was before end months (including given)
  - ?is_manually_input=True|False - show manually created (auto calculated) estimates
+ - ?customer=<UUID> - filter price estimates by objects connected to a specific customer
 
 Price estimates in response are sorted from latest to earliest.
 
@@ -27,6 +28,8 @@ Price estimates in response are sorted from latest to earliest.
             "url": "http://example.com/api/price-estimates/3c3542c614a744df961fea8dc13e3d7c/",
             "uuid": "3c3542c614a744df961fea8dc13e3d7c",
             "scope": "http://example.com/api/instances/0424c7746059458ab9a5ad4d097c1d31/",
+            "scope_name": "Example Virtual Machine #100",
+            "scope_type": "resource",
             "total": 1114.0,
             "details": "{u'disk': 52, u'ram': 84, u'cpu': 192}",
             "month": 7,
@@ -34,6 +37,8 @@ Price estimates in response are sorted from latest to earliest.
             "is_manually_inputed": false
         },
     ]
+
+scope_type is generic type of object for which price estimate is calculated. Currently there are following types: customer, project, serviceprojectlink, service, resource.
 
 
 Manually create price estimate
