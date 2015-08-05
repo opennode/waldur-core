@@ -436,7 +436,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
             # instance.system_volume_size = flavor.disk
             instance.ram = flavor.ram
             instance.cores = flavor.cores
-            instance.flavor_name = flavor.flavor_name
+            instance.flavor_name = flavor.name
             instance.save(update_fields=['ram', 'cores', 'flavor_name'])
 
             event_logger.instance_flavor.info(

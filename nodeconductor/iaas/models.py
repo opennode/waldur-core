@@ -338,8 +338,11 @@ class PaidResource(models.Model):
 
         @id.setter
         def id(self, val):
-            self.instance.billing_backend_id = val
-            self.instance.save(update_fields=['billing_backend_id'])
+            try:
+                self.instance.billing_backend_id = val
+                self.instance.save(update_fields=['billing_backend_id'])
+            except self.instance.DoesNotExist:
+                pass
 
         @property
         def backend(self):

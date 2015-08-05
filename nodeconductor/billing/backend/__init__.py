@@ -139,4 +139,5 @@ class BillingBackend(object):
 
 
 class DummyBillingAPI(object):
-    pass
+    def __getattr__(self, name):
+        return lambda *args, **kwargs: None
