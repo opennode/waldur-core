@@ -346,11 +346,9 @@ class PaidResource(models.Model):
             return self.instance.service_project_link.service.customer.get_billing_backend()
 
         def add(self):
-            storage = SupportedServices.mb2gb(self.instance.system_volume_size +
-                                              self.instance.data_volume_size)
             options = {
                 'flavor': self.instance.flavor_name or 'offline',
-                'storage': storage,
+                'storage': self.instance.get_storage_size(),
                 'license-os': self.instance.template.get_os_type_display(),
                 'license-application': self.instance.template.get_application_type_display(),
                 'support': self.instance.type == self.instance.Services.PAAS,
@@ -371,6 +369,9 @@ class PaidResource(models.Model):
             self.id = ''
 
     billing_backend_id = models.CharField(max_length=255, blank=True)
+
+    def get_storage_size(self):
+        return SupportedServices.mb2gb(self.system_volume_size + self.data_volume_size)
 
     def __init__(self, *args, **kwargs):
         self.order = self.Order(self)
