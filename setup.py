@@ -4,7 +4,8 @@ from setuptools import setup, find_packages
 
 
 dev_requires = [
-    'Sphinx==1.2.2'
+    'Sphinx==1.2.2',
+    'stevedore==1.4.0',
 ]
 
 tests_requires = [
@@ -47,7 +48,6 @@ install_requires = [
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
-    'stevedore==1.4.0',
     'xhtml2pdf>=0.0.6',
 ]
 
