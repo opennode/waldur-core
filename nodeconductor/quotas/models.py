@@ -86,17 +86,24 @@ class QuotaModelMixin(models.Model):
             original_quota.usage = usage
             original_quota.save()
 
-    def add_quota_usage(self, quota_name, usage_delta):
+    def add_quota_usage(self, quota_name, usage_delta, fail_silently=False):
         """
         Add to usage_delta to current quota usage
+
+        If <fail_silently> is True - operation will not fail if quota does not exist
         """
         if not usage_delta:
             return
         with transaction.atomic():
-            original_quota = self.quotas.get(name=quota_name)
-            original_quota.usage += usage_delta
-            original_quota.save()
-            self._add_usage_to_ancestors(quota_name, usage_delta)
+            try:
+                original_quota = self.quotas.get(name=quota_name)
+            except Quota.DoesNotExist, e:
+                if not fail_silently:
+                    raise e
+            else:
+                original_quota.usage += usage_delta
+                original_quota.save()
+                self._add_usage_to_ancestors(quota_name, usage_delta)
 
     def _add_usage_to_ancestors(self, quota_name, usage):
         for ancestor in self._get_quota_ancestors():
