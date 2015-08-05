@@ -374,7 +374,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
 
         if attrs.get('type') == models.Instance.Services.PAAS and not membership.external_network_id:
             raise serializers.ValidationError(
-                "Cloud project network that connects given project and cloud should have external network id")
+                "Connected cloud project does not have external network id required for PaaS instances.")
 
         external_ips = attrs.get('external_ips')
         if external_ips:
