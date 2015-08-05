@@ -12,7 +12,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.utils import request_api
-from nodeconductor.cost_tracking import OsTypes, ApplicationTypes
+from nodeconductor.cost_tracking import PriceItemTypes, OsTypes, ApplicationTypes
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
@@ -329,11 +329,13 @@ class PaidResource(models.Model):
 
         def add(self):
             options = {
-                'flavor': self.instance.flavor_name or 'offline',
-                'storage': self.instance.get_storage_size(),
-                'license-os': self.instance.template.get_os_type_display(),
-                'license-application': self.instance.template.get_application_type_display(),
-                'support': self.instance.type == self.instance.Services.PAAS,
+                PriceItemTypes.FLAVOR: self.instance.flavor_name or self.instance.default_flavor_name,
+                PriceItemTypes.STORAGE: self.instance.get_storage_size(),
+                PriceItemTypes.LICENSE_OS: self.instance.template.os_type,
+                PriceItemTypes.LICENSE_APPLICATION: self.instance.template.application_type,
+                PriceItemTypes.SUPPORT: PriceItemTypes.SUPPORT_PREMIUM
+                                        if self.instance.type == self.instance.Services.PAAS
+                                        else PriceItemTypes.SUPPORT_BASIC,
             }
             self.id = self.backend.add_order(self.product_name, **options)
 
@@ -351,6 +353,10 @@ class PaidResource(models.Model):
             self.id = ''
 
     billing_backend_id = models.CharField(max_length=255, blank=True)
+
+    @property
+    def default_flavor_name(self):
+        return PriceItemTypes.FLAVOR_OFFLINE
 
     def get_storage_size(self):
         return SupportedServices.mb2gb(self.system_volume_size + self.data_volume_size)

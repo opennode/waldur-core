@@ -12,6 +12,7 @@ from nodeconductor.iaas.models import Instance
 
 openstack_options = {
     PriceItemTypes.FLAVOR: [
+        (PriceItemTypes.FLAVOR_OFFLINE, 0),
         ('g1.small1', 1),
         ('g1.small2', 2),
         ('g1.medium1', 3),
@@ -29,8 +30,8 @@ openstack_options = {
         (name, idx) for idx, name in enumerate(dict(OsTypes.CHOICES).keys(), start=1)
     ],
     PriceItemTypes.SUPPORT: [
-        ('basic', 1),
-        ('premium', 2),
+        (PriceItemTypes.SUPPORT_BASIC, 1),
+        (PriceItemTypes.SUPPORT_PREMIUM, 2),
     ],
 }
 

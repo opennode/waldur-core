@@ -198,18 +198,18 @@ def track_order(sender, instance, name=None, source=None, **kwargs):
             if source == instance.States.PROVISIONING:
                 order.accept()
             if source == instance.States.STARTING:
-                order.update(flavor=instance.flavor_name or 'offline')
+                order.update(flavor=instance.flavor_name or instance.default_flavor_name)
 
         if name == instance.set_offline.__name__:
             if source == instance.States.STOPPING:
-                order.update(flavor='offline')
+                order.update(flavor=instance.default_flavor_name)
 
         if name == instance.set_erred.__name__:
             if source == instance.States.PROVISIONING:
                 order.cancel()
 
         if name == instance.set_resized.__name__:
-            order.update(flavor='offline')
+            order.update(flavor=instance.default_flavor_name)
 
     except BillingBackendError:
         logger.exception("Failed to track order for resource %s" % instance)

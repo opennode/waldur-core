@@ -7,9 +7,13 @@ import requests
 import logging
 import lxml.html
 
+from django.apps import apps
 from django.utils import six
 from django.utils.http import urlsafe_base64_encode
+from django.contrib.contenttypes.models import ContentType
 
+from nodeconductor.cost_tracking import PriceItemTypes
+from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.billing.phpserialize import dumps as php_dumps
 from nodeconductor.billing.models import PriceList
@@ -357,7 +361,7 @@ class WHMCSAPI(object):
     def delete_order(self, order_id):
         self.request('deleteorder', orderid=order_id)
 
-    def create_configurable_options_group(self, name, description="", assigned_products_ids=None):
+    def _create_configurable_options_group(self, name, description="", assigned_products_ids=None):
         self._do_login()
 
         # get unique token
@@ -376,7 +380,7 @@ class WHMCSAPI(object):
         )
         return self._extract_id(response.url)
 
-    def create_configurable_options(self, group_id, name, option_type='dropdown', option_values=None):
+    def _create_configurable_options(self, group_id, name, option_type='dropdown', option_values=None):
         """
             Create new configurable options in WHMCS of a defined option_type with option values and prices
             defined by the option_values dict. The prices are set to monthly prices of the configured
@@ -471,45 +475,29 @@ class WHMCSAPI(object):
 
         return data.get('pid')
 
-    def propagate_pricelist(self):
-        category = 'openstack-instance'  ## content_type
-
+    def propagate_pricelist(self, category='iaas-instance'):
         # 1. create a product of a particular type
         pid = self.create_server_product(category)
 
         # 2. define configuration options
-
         type_mapping = {
-            'flavor': 'dropdown',
-            'storage': 'quantity',
-            'support': 'yesno',
-            'license-os': 'dropdown',
-            'license-application': 'dropdown',
+            PriceItemTypes.FLAVOR: 'dropdown',
+            PriceItemTypes.STORAGE: 'quantity',
+            PriceItemTypes.SUPPORT: 'dropdown',
+            PriceItemTypes.LICENSE_OS: 'dropdown',
+            PriceItemTypes.LICENSE_APPLICATION: 'dropdown',
         }
 
-        gid = self.create_configurable_options_group("Configuration of %s" % category, assigned_products_ids=[pid])
-        for pricelist_item_type in ['flavor', 'storage', 'support', 'license-os', 'license-application']:
-            option_type = type_mapping[pricelist_item_type]  # TODO: derive from pricelist
-            option_values = {  # TODO: derive from pricelist
-                'flavor': {
-                    'small': 10,
-                    'big': 20,
-                    'offline': 0,
-                },
-                'storage': {
-                    '1 GB': 1,
-                },
-                'support': {
-                    'MO support': 100,
-                },
-                'license-os': {
-                    'centos7': 10,
-                    'rhel7': 20,
-                    'windows': 30,
-                },
-                'license-application': {
-                    'wordpress': 10,
-                    'postgresql': 20,
-                }
-            }
-            cid = self.create_configurable_options(gid, pricelist_item_type, option_type, option_values[pricelist_item_type])
+        gid = self._create_configurable_options_group("Configuration of %s" % category, assigned_products_ids=[pid])
+        content_type = ContentType.objects.get_for_model(apps.get_model(category.replace('-', '.')))
+
+        # 2. create configuration based on pricelist
+        for pricelist_item_type in type_mapping.keys():
+            pricelist_items = DefaultPriceListItem.objects.filter(
+                service_content_type=content_type,
+                item_type=pricelist_item_type)
+
+            self._create_configurable_options(
+                gid, pricelist_item_type,
+                option_type=type_mapping[pricelist_item_type],
+                option_values={i.key: i.value for i in pricelist_items})

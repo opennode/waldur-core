@@ -18,6 +18,11 @@ class PriceItemTypes(object):
         (NETWORK, 'network'),
     )
 
+    # TODO: Find a better place for these constants
+    FLAVOR_OFFLINE = 'offline'
+    SUPPORT_BASIC = 'basic'
+    SUPPORT_PREMIUM = 'premium'
+
 
 class OsTypes(object):
     CENTOS6 = 'centos6'
