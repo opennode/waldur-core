@@ -29,9 +29,7 @@ Response example:
             "key": "price list item 7",
             "item_type": "flavor",
             "value": "10.00000000",
-            "units": "USD",
+            "units": "per month",
             "service_content_type": "openstack.openstackservice"
         }
     ]
-
-
