@@ -37,7 +37,7 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
             structure_models.Resource.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models() +
             structure_models.Service.get_all_models() +
-            [structure_models.Project]
+            [structure_models.Project, structure_models.Customer]
         )
 
     @classmethod
