@@ -116,7 +116,7 @@ Create a new instance
 ---------------------
 
 A new instance can be created by users with project administrator role or with staff privilege (is_staff=True).
-PAAS instance can be created only if cloud_project_membership that connects its project and flavor
+PaaS instance can be created only if cloud_project_membership that connects its project and flavor
 have external_network_id.
 To create a instance, client must define:
 
