@@ -1,22 +1,13 @@
 from __future__ import unicode_literals
 
-import re
-
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 import django_filters
-from rest_framework import viewsets, permissions, exceptions, filters, mixins
+from rest_framework import viewsets, permissions, exceptions, filters
 
-from nodeconductor.core import filters as core_filters, serializers as core_serializers
+from nodeconductor.core import filters as core_filters
 from nodeconductor.cost_tracking import models, serializers
 from nodeconductor.structure import models as structure_models
-
-
-# XXX: this function is same for logging and cost_tracking - it can be moved to core utils
-def _convert(name):
-    """ Converts CamelCase to underscore """
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
 class PriceEstimateFilter(django_filters.FilterSet):
@@ -111,35 +102,17 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         return super(PriceEstimateViewSet, self).initial(request, *args, **kwargs)
 
 
-class ResourceFilter(django_filters.CharFilter):
-    """ Filter by price list items for concrete resource. """
-
-    def filter(self, qs, value):
-        if value:
-            field = core_serializers.GenericRelatedField(related_models=structure_models.Resource.get_all_models())
-            resource = field.to_internal_value(value)
-            ct = ContentType.objects.get_for_model(resource)
-            resource_price_items_ids = models.ResourcePriceItem.objects.filter(
-                object_id=resource.id, content_type=ct).values_list('id', flat=True)
-            return qs.filter(resource_price_items__in=resource_price_items_ids)
-        return qs
-
-
 class PriceListItemFilter(django_filters.FilterSet):
     service = core_filters.GenericKeyFilter(related_models=structure_models.Service.get_all_models())
-    resource = ResourceFilter()
 
     class Meta:
         model = models.PriceListItem
         fields = [
             'service',
-            'resource',
         ]
 
 
-class PriceListItemViewSet(PriceEditPermissionMixin,
-                           mixins.UpdateModelMixin,
-                           viewsets.ReadOnlyModelViewSet):
+class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     queryset = models.PriceListItem.objects.all()
     serializer_class = serializers.PriceListItemSerializer
     lookup_field = 'uuid'
@@ -151,9 +124,49 @@ class PriceListItemViewSet(PriceEditPermissionMixin,
         return models.PriceListItem.objects.filtered_for_user(self.request.user)
 
     def initial(self, request, *args, **kwargs):
-        if self.action in ('partial_update', 'update'):
+        if self.action in ('partial_update', 'update', 'destroy'):
             price_list_item = self.get_object()
             if not self.can_user_modify_price_object(price_list_item.service):
                 raise exceptions.PermissionDenied('You do not have permission to perform this action.')
 
         return super(PriceListItemViewSet, self).initial(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        if not self.can_user_modify_price_object(serializer.validated_data['service']):
+            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
+
+        super(PriceListItemViewSet, self).perform_create(serializer)
+
+
+class ServiceContentTypeFilter(django_filters.CharFilter):
+
+    def filter(self, qs, value):
+        if value:
+            try:
+                app_label, model = value.split('.')
+                ct = ContentType.objects.get(app_label=app_label, model=model)
+                return super(ServiceContentTypeFilter, self).filter(qs, ct)
+            except (ContentType.DoesNotExist, ValueError):
+                return qs.none()
+        return qs
+
+
+class DefaultPriceListItemFilter(django_filters.FilterSet):
+    service_content_type = ServiceContentTypeFilter()
+
+    class Meta:
+        model = models.DefaultPriceListItem
+        fields = [
+            'key',
+            'item_type',
+            'service_content_type'
+        ]
+
+
+class DefaultPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.DefaultPriceListItem.objects.all()
+    lookup_field = 'uuid'
+    permission_classes = (permissions.IsAuthenticated,)
+    filter_class = DefaultPriceListItemFilter
+    filter_backends = (filters.DjangoFilterBackend,)
+    serializer_class = serializers.DefaultPriceListItemSerializer
