@@ -491,7 +491,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         instance = self.get_object()
         if not instance.backend_id:
             return Response({'detail': 'calculated usage is not available for instance without backend_id'},
-                            status=status.HTTP_405_METHOD_NOT_ALLOWED)
+                            status=status.HTTP_409_CONFLICT)
 
         default_start = timezone.now() - datetime.timedelta(hours=1)
         timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(data={

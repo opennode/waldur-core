@@ -1,12 +1,11 @@
-Price lists
------------
+Price list items
+----------------
 
 To get a list of price list items, run GET against **/api/price-list-items/** as authenticated user.
 
 
 Price lists can be filtered by:
  - ?service=<object URL> URL of service
- - ?resource>=<object URL> URL of resource
 
 
 Response example:
@@ -33,9 +32,40 @@ Response example:
     ]
 
 
-Manually update price list item
--------------------------------
+Create price list item
+----------------------
+
+Run POST request */api/price-list-items/* to create new price list item.
+Customer owner and staff can create price estimates.
+
+Example of request:
+
+.. code-block:: http
+
+    POST /api/customers/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "units": "per month",
+        "key": "test_key",
+        "value": 100,
+        "service": "http://testserver/api/oracle/d4060812ca5d4de390e0d7a5062d99f6/",
+        "item_type": "storage"
+    }
+
+
+Update price list item
+----------------------
 
 Run PATCH request against */api/price-list-items/<uuid>/* to update price list item.
 Only value and units can be updated. Customer owner and staff can update price estimates.
 
+
+Delete price list item
+----------------------
+
+Run DELETE request against */api/price-list-items/<uuid>/* to delete price list item.
+Customer owner and staff can delete price estimates.

@@ -65,3 +65,15 @@ class DefaultPriceListItemFactory(AbstractPriceListItemFactory):
 
     service_content_type = factory.LazyAttribute(
         lambda _: ContentType.objects.get_for_model(oracle_models.OracleService))
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('defaultpricelistitem-list')
+
+    @classmethod
+    def get_url(self, default_price_list_item, action=None):
+        if default_price_list_item is None:
+            default_price_list_item = DefaultPriceListItemFactory()
+        url = 'http://testserver' + reverse(
+            'defaultpricelistitem-detail', kwargs={'uuid': default_price_list_item.uuid})
+        return url if action is None else url + action + '/'
