@@ -116,7 +116,9 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             'state',
             'tenant_id',
             'service_name', 'service_uuid',
+            'external_network_id', 'internal_network_id',
         )
+        read_only_fields = ('external_network_id', 'internal_network_id',)
         view_name = 'cloudproject_membership-detail'
         extra_kwargs = {
             'cloud': {'lookup_field': 'uuid'},
@@ -369,6 +371,10 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
     def validate(self, attrs):
         flavor = attrs['flavor']
         membership = attrs.get('cloud_project_membership')
+
+        if attrs.get('type') == models.Instance.Services.PAAS and not membership.external_network_id:
+            raise serializers.ValidationError(
+                "Connected cloud project does not have external network id required for PaaS instances.")
 
         external_ips = attrs.get('external_ips')
         if external_ips:

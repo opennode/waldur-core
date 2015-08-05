@@ -87,7 +87,6 @@ class PriceListItemCreateTest(test.APITransactionTestCase):
             'key': 'test_key',
             'item_type': models.PriceListItem.Types.STORAGE,
         }
-        print self.valid_data
 
     @data('staff', 'owner')
     def test_user_with_permissions_can_create_price_list_item(self, user):

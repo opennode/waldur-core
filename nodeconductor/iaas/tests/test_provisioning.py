@@ -845,6 +845,16 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
         for ip in external_ips:
             self.assertTrue(ips_regex.match(ip))
 
+    def test_paas_inctance_cannot_be_created_if_memebership_external_network_id_is_empty(self):
+        data = self.get_valid_data()
+        data['type'] = Instance.Services.PAAS
+        membership = CloudProjectMembership.objects.get(project=self.project, cloud=self.flavor.cloud)
+        membership.external_network_id = ''
+        membership.save()
+
+        response = self.client.post(self.instance_list_url, data=data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_instance_api_contains_valid_internal_ips_field(self):
         instance = factories.InstanceFactory()
         instance.cloud_project_membership.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
