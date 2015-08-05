@@ -23,6 +23,7 @@ config_defaults = {
         'secret_key': '',
         'static_root': os.path.join(data_dir, 'static'),
         'template_debug': 'false',
+        'user_can_create_customer': 'false',
     },
     'celery': {
         'backup_schedule_execute_period': 600,
@@ -810,7 +811,7 @@ NODECONDUCTOR = {
         'protocol': config.get('elasticsearch', 'protocol'),
     },
 
-
+    'USER_CAN_CREATE_CUSTOMER': config.getboolean('global', 'user_can_create_customer'),
 
 }
 
