@@ -160,7 +160,7 @@ Arguments:
                         'Whistles Portal': {
                             'managers': ['Harry', 'Gus'],
                             'projects': {
-                                'whistles.org': {
+                                'extranet.whistles.org': {
                                     'admins': ['Dave'],
                                     'managers': ['Erin'],
                                     'connected_clouds': ['Cumulus'],
