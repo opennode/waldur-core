@@ -13,7 +13,7 @@ digraph {
 	ca_f [label="CloudAccount: Fractus"]
 
 	p_bo [label="Project: bells.org"]
-	p_wo [label="Project: whistles.org"]
+	p_ewo [label="Project: extranet.whistles.org"]
 	p_iwo [label="Project: intranet.whistles.org"]
 
 	node [shape="oval"]
@@ -32,11 +32,11 @@ digraph {
 	c_mow -> ca_c
 
 	pg_bp -> p_bo
-	pg_wp -> p_wo
+	pg_wp -> p_ewo
 	pg_wp -> p_iwo
 
 	ca_s -> p_bo
-	ca_c -> p_wo
+	ca_c -> p_ewo
 
 	Gus -> pg_bp [label="role: manager"]
 	Gus -> pg_wp [label="role: manager"]
@@ -46,8 +46,8 @@ digraph {
 
 	p_bo -> Charlie [label="role: admin", dir="back"]
 	p_bo -> Dave [label="role: manager", dir="back"]
-	p_wo -> Dave [label="role: admin", dir="back"]
-	p_wo -> Erin [label="role: manager", dir="back"]
+	p_ewo -> Dave [label="role: admin", dir="back"]
+	p_ewo -> Erin [label="role: manager", dir="back"]
 	p_iwo -> Erin [label="role: admin", dir="back"]
 	p_iwo -> Frank [label="role: manager", dir="back"]
 }
