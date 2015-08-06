@@ -29,8 +29,6 @@ Arguments:
             defaults={
                 'os': template_name,
                 'is_active': True,
-                'monthly_fee': Decimal('20.0'),
-                'setup_fee': Decimal('10.0'),
                 'sla_level': Decimal('95.0'),
                 'description': 'Sample template of %s linked to an image %s' % (template_name, image_id)
             },

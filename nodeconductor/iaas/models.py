@@ -253,12 +253,6 @@ class Template(core_models.UuidMixin,
     os_type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=OsTypes.LINUX)
     is_active = models.BooleanField(default=False)
     sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
-    setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
-                                    validators=[MinValueValidator(Decimal('0.1')),
-                                                MaxValueValidator(Decimal('100000.0'))])
-    monthly_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
-                                      validators=[MinValueValidator(Decimal('0.1')),
-                                                  MaxValueValidator(Decimal('100000.0'))])
     icon_name = models.CharField(max_length=100, blank=True)
 
     # fields for categorisation
@@ -394,8 +388,6 @@ class Instance(LoggableMixin, structure_models.BaseVirtualMachineMixin, structur
             InstanceLicense.objects.create(
                 instance=self,
                 template_license=template_license,
-                setup_fee=template_license.setup_fee,
-                monthly_fee=template_license.monthly_fee,
             )
 
     def save(self, *args, **kwargs):
@@ -456,12 +448,6 @@ class TemplateLicense(core_models.UuidMixin,
     license_type = models.CharField(max_length=127)
     templates = models.ManyToManyField(Template, related_name='template_licenses')
     service_type = models.CharField(max_length=10, choices=SERVICE_TYPES)
-    setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
-                                    validators=[MinValueValidator(Decimal('0.1')),
-                                                MaxValueValidator(Decimal('1000.0'))])
-    monthly_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
-                                      validators=[MinValueValidator(Decimal('0.1')),
-                                                  MaxValueValidator(Decimal('1000.0'))])
 
     def __str__(self):
         return '%s - %s' % (self.license_type, self.name)
@@ -479,12 +465,6 @@ class TemplateLicense(core_models.UuidMixin,
 class InstanceLicense(core_models.UuidMixin, models.Model):
     template_license = models.ForeignKey(TemplateLicense, related_name='instance_licenses')
     instance = models.ForeignKey(Instance, related_name='instance_licenses')
-    setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
-                                    validators=[MinValueValidator(Decimal('0.1')),
-                                                MaxValueValidator(Decimal('1000.0'))])
-    monthly_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
-                                      validators=[MinValueValidator(Decimal('0.1')),
-                                                  MaxValueValidator(Decimal('1000.0'))])
 
     class Permissions(object):
         customer_path = 'instance__cloud_project_membership__project__customer'

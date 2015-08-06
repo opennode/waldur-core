@@ -24,9 +24,7 @@ Example of a valid request:
     {
         "name": "license",
         "license_type": "license_type",
-        "service_type": "IaaS",
-        "setup_fee": 10,
-        "monthly_fee": 10
+        "service_type": "IaaS"
     }
 
 
@@ -46,9 +44,7 @@ Example of a valid request:
     {
         "name": "new license",
         "license_type": "new license type",
-        "service_type": "IaaS",
-        "setup_fee": 10,
-        "monthly_fee": 15
+        "service_type": "IaaS"
     }
 
 

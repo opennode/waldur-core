@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 dev_requires = [
-    'Sphinx==1.2.2'
+    'Sphinx==1.2.2',
 ]
 
 tests_requires = [
@@ -13,11 +13,13 @@ tests_requires = [
     'mock==1.0.1',
     'mock-django==0.6.6',
     'six>=1.7.3',
+    'stevedore==1.4.0',
     'django-celery==3.1.16',
 ]
 
 install_requires = [
     'Celery>=3.1.15,<3.2',
+    'cliff==1.4.4',
     'croniter>=0.3.4,<0.3.6',
     'Django>=1.7.1,<1.8',
     'django-auth-ldap==1.2.0',
@@ -33,7 +35,7 @@ install_requires = [
     'elasticsearch>=1.0.0,<2.0.0',
     'jira>=0.47',
     'jsonfield==1.0.0',
-    'oslo.config < 1.12.0',
+    'oslo.config==1.2.1',
     'paypalrestsdk>=1.10.0',
     'Pillow>=2.0.0',
     'python-ceilometerclient==1.0.10',
@@ -47,14 +49,13 @@ install_requires = [
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
-    'stevedore==1.4.0',
     'xhtml2pdf>=0.0.6',
 ]
 
 
 setup(
     name='nodeconductor',
-    version='0.70.0',
+    version='0.71.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
