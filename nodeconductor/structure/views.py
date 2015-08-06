@@ -1326,7 +1326,7 @@ class UpdateOnlyByPaidCustomerMixin(object):
 
 class BaseServiceFilter(django_filters.FilterSet):
     customer_uuid = django_filters.CharFilter(name='customer__uuid')
-    customer = core_filters.URLFilter(viewset=CustomerViewSet, name='customer__uuid')
+    customer_url = core_filters.URLFilter(viewset=CustomerViewSet, name='customer__uuid')
 
     class Meta(object):
         model = models.Service
@@ -1406,7 +1406,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):
     service_uuid = django_filters.CharFilter(name='service__uuid')
     project_uuid = django_filters.CharFilter(name='project__uuid')
-    project = core_filters.URLFilter(viewset=ProjectViewSet, name='project__uuid')
+    project_url = core_filters.URLFilter(viewset=ProjectViewSet, name='project__uuid')
 
     class Meta(object):
         model = models.ServiceProjectLink

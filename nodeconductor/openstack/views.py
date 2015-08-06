@@ -14,7 +14,7 @@ class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
 
 
 class OpenStackServiceProjectLinkFilter(structure_views.BaseServiceProjectLinkFilter):
-    service = core_filters.URLFilter(viewset=OpenStackServiceViewSet, name='service__uuid')
+    service_url = core_filters.URLFilter(viewset=OpenStackServiceViewSet, name='service__uuid')
 
 
 class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkViewSet):
