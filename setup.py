@@ -19,6 +19,7 @@ tests_requires = [
 
 install_requires = [
     'Celery>=3.1.15,<3.2',
+    'cliff==1.4.4',
     'croniter>=0.3.4,<0.3.6',
     'Django>=1.7.1,<1.8',
     'django-auth-ldap==1.2.0',
@@ -34,7 +35,7 @@ install_requires = [
     'elasticsearch>=1.0.0,<2.0.0',
     'jira>=0.47',
     'jsonfield==1.0.0',
-    'oslo.config < 1.12.0',
+    'oslo.config==1.2.1',
     'paypalrestsdk>=1.10.0',
     'Pillow>=2.0.0',
     'python-ceilometerclient==1.0.10',
