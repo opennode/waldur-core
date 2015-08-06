@@ -23,6 +23,7 @@ class OpenStackServiceFilter(django_filters.FilterSet):
         model = models.OpenStackService
         fields = [
             'name',
+            'customer'
             'customer_url',
         ]
 
