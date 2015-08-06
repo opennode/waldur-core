@@ -1405,7 +1405,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):
     service_uuid = django_filters.CharFilter(name='service__uuid')
-    service = core_filters.URLFilter(viewset=ServiceViewSet, name='service__uuid')
     project_uuid = django_filters.CharFilter(name='project__uuid')
     project = core_filters.URLFilter(viewset=ProjectViewSet, name='project__uuid')
 
