@@ -260,7 +260,7 @@ def sync_cloud_membership(membership_pk):
             exc_info=1,
         )
 
-    monitoring_utils.create_host_and_service.delay(membership.pk, warn_if_exists=False)
+    sync_cloud_project_membership_with_zabbix.delay(membership.pk)
 
 
 @shared_task
