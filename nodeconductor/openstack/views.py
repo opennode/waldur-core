@@ -2,19 +2,66 @@ import django_filters
 
 from rest_framework import viewsets
 
+from nodeconductor.core import filters as core_filters
 from nodeconductor.structure import views as structure_views
 from nodeconductor.openstack import models, serializers
 
+
+class OpenStackServiceFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(
+        name='settings__name'
+    )
+    customer = django_filters.CharFilter(
+        name='settings__customer__uuid'
+    )
+    customer_url = core_filters.URLFilter(
+        viewset=structure_views.CustomerViewSet,
+        name='settings__customer__uuid'
+    )
+
+    class Meta(object):
+        model = models.OpenStackService
+        fields = [
+            'name',
+            'customer_url',
+        ]
 
 class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
     queryset = models.OpenStackService.objects.all()
     serializer_class = serializers.ServiceSerializer
     import_serializer_class = serializers.InstanceImportSerializer
+    filter_class = OpenStackServiceFilter
 
+
+class OpenStackServiceProjectLinkFilter(django_filters.FilterSet):
+    service = django_filters.CharFilter(
+        name='service__uuid'
+    )
+    service_url = core_filters.URLFilter(
+        viewset=OpenStackServiceViewSet,
+        name='service__uuid'
+    )
+    project = django_filters.CharFilter(
+        name='project__uuid'
+    )
+    project_url = core_filters.URLFilter(
+        viewset=structure_views.ProjectViewSet,
+        name='project__uuid'
+    )
+
+    class Meta(object):
+        model = models.OpenStackServiceProjectLink
+        fields = [
+            'service',
+            'service_url',
+            'project',
+            'project_url'
+        ]
 
 class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkViewSet):
     queryset = models.OpenStackServiceProjectLink.objects.all()
     serializer_class = serializers.ServiceProjectLinkSerializer
+    filter_class = OpenStackServiceProjectLinkFilter
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
