@@ -9,10 +9,14 @@ class Command(BaseCommand):
         for vm in Instance.objects.filter(billing_backend_id=''):
             if not vm.flavor_name:
                 flavor = Flavor.objects.filter(cores=vm.cores, ram=vm.ram).first()
-                vm.flavor_name = flavor.name
-                vm.save(update_fields=['flavor_name'])
+                if flavor:
+                    vm.flavor_name = flavor.name
+                    vm.save(update_fields=['flavor_name'])
+                else:
+                    self.stdout.write('! skip instance %s' % vm)
+                    continue
 
-            self.stdout.write('Add order for: %s' % vm)
+            self.stdout.write('+ add order for instance %s' % vm)
             vm.order.add()
 
         self.stdout.write('... Done')
