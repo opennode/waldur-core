@@ -116,6 +116,8 @@ Create a new instance
 ---------------------
 
 A new instance can be created by users with project administrator role or with staff privilege (is_staff=True).
+PaaS instance can be created only if cloud_project_membership that connects its project and flavor
+have external_network_id.
 To create a instance, client must define:
 
 - hostname **deprecated**, use name instead;
@@ -227,17 +229,13 @@ Example rendering of the Instance object:
                     "uuid": "9cda1ecd43004abf8fa398a944fec32d",
                     "name": "Redhat 6 license",
                     "license_type": "RHEL6",
-                    "service_type": "IaaS",
-                    "setup_fee": "10",
-                    "monthly_fee": "5"
+                    "service_type": "IaaS"
                 },
                 {
                     "uuid": "1fcb186b65f7430fb1a3d558d97d1630",
                     "name": "Windows server license",
                     "license_type": "Windows 2012 Server",
-                    "service_type": "IaaS",
-                    "setup_fee": "20",
-                    "monthly_fee": "8"
+                    "service_type": "IaaS"
                 }
             ],
             "agreed_sla": "99.999",

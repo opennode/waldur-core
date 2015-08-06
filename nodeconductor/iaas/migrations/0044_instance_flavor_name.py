@@ -7,7 +7,7 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('iaas', '0042_instance_billing_backend_id'),
+        ('iaas', '0043_instance_billing_backend_id'),
     ]
 
     operations = [

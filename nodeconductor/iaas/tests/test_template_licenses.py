@@ -101,8 +101,6 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
             'name': "license",
             'license_type': 'license type',
             'service_type': models.TemplateLicense.Services.IAAS,
-            'setup_fee': 10,
-            'monthly_fee': 10
         }
         self.client.force_authenticate(self.staff)
         response = self.client.post(_template_license_list_url(), data=data)
@@ -123,8 +121,6 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
             'name': "new license",
             'license_type': 'new license type',
             'service_type': models.TemplateLicense.Services.IAAS,
-            'setup_fee': 10,
-            'monthly_fee': 10
         }
         self.client.force_authenticate(self.staff)
         response = self.client.put(_template_license_url(self.license), data=data)

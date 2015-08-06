@@ -7,7 +7,7 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('iaas', '0041_rename_service_models'),
+        ('iaas', '0042_remove_template_fees'),
     ]
 
     operations = [
