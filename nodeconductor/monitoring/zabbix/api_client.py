@@ -108,7 +108,7 @@ class ZabbixApiClient(object):
         )
         if created:
             object_name = 'tenant' if is_tenant else 'instance'
-            logger.info('Successfully create new Zabbix host for %s %s', object_name, instance)
+            logger.info('Successfully created new Zabbix host for %s %s', object_name, instance)
 
         if not created and warn_if_host_exists:
             logger.warn('Can not create new Zabbix host for instance %s. Already exists.', instance)
