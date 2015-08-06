@@ -591,7 +591,7 @@ class InstanceLicenseSerializer(serializers.ModelSerializer):
     class Meta(object):
         model = models.InstanceLicense
         fields = (
-            'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
+            'uuid', 'name', 'license_type', 'service_type',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -709,7 +709,7 @@ class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.TemplateLicense
         fields = (
-            'url', 'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
+            'url', 'uuid', 'name', 'license_type', 'service_type',
             'projects', 'projects_groups',
         )
         extra_kwargs = {
@@ -742,8 +742,6 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'os', 'os_type',
             'is_active',
             'sla_level',
-            'setup_fee',
-            'monthly_fee',
             'template_licenses', 'images',
             'type', 'application_type',
         )
@@ -788,8 +786,6 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'name', 'description', 'icon_url',
             'os',
             'sla_level',
-            'setup_fee',
-            'monthly_fee',
             'template_licenses',
             'type', 'application_type',
             'is_active',

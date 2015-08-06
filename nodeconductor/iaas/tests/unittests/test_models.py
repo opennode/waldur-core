@@ -43,5 +43,3 @@ class InstanceTest(TestCase):
         self.assertEqual(instance.instance_licenses.count(), 1)
         instance_license = instance.instance_licenses.all()[0]
         self.assertEqual(instance_license.template_license, template_license)
-        self.assertEqual(instance_license.setup_fee, template_license.setup_fee)
-        self.assertEqual(instance_license.monthly_fee, template_license.monthly_fee)
