@@ -795,6 +795,19 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'template_licenses': {'lookup_field': 'uuid'},
         }
 
+    def validate_template_licenses(self, value):
+        licenses = {}
+        for license in value:
+            licenses.setdefault(license.service_type, [])
+            licenses[license.service_type].append(license)
+
+        for service_type, data in licenses.items():
+            if len(data) > 1:
+                raise serializers.ValidationError(
+                    "Only one license of service type %s is allowed" % service_type)
+
+        return value
+
 
 class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
     cloud_project_membership = NestedCloudProjectMembershipSerializer(read_only=True)
