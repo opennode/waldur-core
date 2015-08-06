@@ -598,7 +598,7 @@ class OpenStackBackend(OpenStackClient):
             logger.exception('Failed to update membership %s quotas %s', membership, quotas)
             six.reraise(CloudBackendError, e)
 
-    def push_security_groups(self, membership):
+    def push_security_groups(self, membership, is_membership_creation=False):
         try:
             session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
@@ -610,8 +610,9 @@ class OpenStackBackend(OpenStackClient):
 
         nc_security_groups = SecurityGroup.objects.filter(
             cloud_project_membership=membership,
-            state__in=SynchronizationStates.STABLE_STATES,
         )
+        if not is_membership_creation:
+            nc_security_groups = nc_security_groups.filter(state__in=SynchronizationStates.STABLE_STATES)
 
         try:
             backend_security_groups = dict((str(g.id), g) for g in nova.security_groups.list())

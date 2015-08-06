@@ -213,13 +213,14 @@ def pull_cloud_memberships():
         pull_cloud_membership.delay(membership.pk)
 
 
+# TODO: split this task to smaller and group them in chain
 @shared_task
 @tracked_processing(
     models.CloudProjectMembership,
     processing_state='begin_syncing',
     desired_state='set_in_sync',
 )
-def sync_cloud_membership(membership_pk):
+def sync_cloud_membership(membership_pk, is_membership_creation=False):
     membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
 
     backend = membership.cloud.get_backend()
@@ -236,7 +237,7 @@ def sync_cloud_membership(membership_pk):
 
     # Propagate membership security groups
     try:
-        backend.push_security_groups(membership)
+        backend.push_security_groups(membership, is_membership_creation=is_membership_creation)
     except CloudBackendError:
         logger.warn(
             'Failed to push security groups to cloud membership %s',
