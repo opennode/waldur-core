@@ -1055,7 +1055,7 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
 
     def perform_create(self, serializer):
         membership = serializer.save()
-        tasks.sync_cloud_membership.delay(membership.pk)
+        tasks.sync_cloud_membership.delay(membership.pk, is_membership_creation=True)
 
     @detail_route(methods=['post'])
     def set_quotas(self, request, **kwargs):
