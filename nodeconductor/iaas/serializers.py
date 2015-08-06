@@ -591,7 +591,7 @@ class InstanceLicenseSerializer(serializers.ModelSerializer):
     class Meta(object):
         model = models.InstanceLicense
         fields = (
-            'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
+            'uuid', 'name', 'license_type', 'service_type',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -709,7 +709,7 @@ class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.TemplateLicense
         fields = (
-            'url', 'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
+            'url', 'uuid', 'name', 'license_type', 'service_type',
             'projects', 'projects_groups',
         )
         extra_kwargs = {
@@ -742,8 +742,6 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'os', 'os_type',
             'is_active',
             'sla_level',
-            'setup_fee',
-            'monthly_fee',
             'template_licenses', 'images',
             'type', 'application_type',
         )
@@ -788,8 +786,6 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'name', 'description', 'icon_url',
             'os',
             'sla_level',
-            'setup_fee',
-            'monthly_fee',
             'template_licenses',
             'type', 'application_type',
             'is_active',
@@ -798,6 +794,19 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'url': {'lookup_field': 'uuid'},
             'template_licenses': {'lookup_field': 'uuid'},
         }
+
+    def validate_template_licenses(self, value):
+        licenses = {}
+        for license in value:
+            licenses.setdefault(license.service_type, [])
+            licenses[license.service_type].append(license)
+
+        for service_type, data in licenses.items():
+            if len(data) > 1:
+                raise serializers.ValidationError(
+                    "Only one license of service type %s is allowed" % service_type)
+
+        return value
 
 
 class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):

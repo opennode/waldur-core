@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin
 from django.utils.translation import ungettext, gettext
 
@@ -234,8 +235,24 @@ class TemplateMappingInline(admin.TabularInline):
     extra = 3
 
 
+class LicenseInlineFormSet(forms.models.BaseInlineFormSet):
+    def clean(self):
+        licenses = {}
+        for form in self.forms:
+            license = form.cleaned_data.get('templatelicense')
+            if license:
+                licenses.setdefault(license.service_type, [])
+                licenses[license.service_type].append(license)
+
+        for service_type, data in licenses.items():
+            if len(data) > 1:
+                raise forms.ValidationError(
+                    "Only one license of service type %s is allowed" % service_type)
+
+
 class LicenseInline(admin.TabularInline):
     model = models.TemplateLicense.templates.through
+    formset = LicenseInlineFormSet
     verbose_name_plural = 'Connected licenses'
     extra = 1
 

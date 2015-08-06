@@ -46,7 +46,7 @@ class CloudProjectMembershipCreateDeleteTest(UrlResolverMixin, test.APISimpleTes
             response = self.client.post(url, data)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             membership = models.CloudProjectMembership.objects.get(project=self.project, cloud=self.cloud)
-            mocked_task.assert_called_with(membership.pk)
+            mocked_task.assert_called_with(membership.pk, is_membership_creation=True)
             # duplicate call should result in 400 code
             response = self.client.post(url, data)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
