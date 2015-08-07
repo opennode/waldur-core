@@ -16,7 +16,7 @@ from nodeconductor.cost_tracking.models import PaidResource
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
-from nodeconductor.structure import models as structure_models, SupportedServices
+from nodeconductor.structure import models as structure_models, ServiceBackend
 
 logger = logging.getLogger(__name__)
 
@@ -362,7 +362,7 @@ class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineM
 
     def get_storage_size(self, extra=0):
         # 'extra' is used to calculate totals size (e.g. together with backup snapshots)
-        return SupportedServices.mb2gb(self.system_volume_size + self.data_volume_size + extra)
+        return ServiceBackend.mb2gb(self.system_volume_size + self.data_volume_size + extra)
 
     def get_default_price_options(self):
         return {CostConstants.PriceItem.FLAVOR: CostConstants.Flavor.OFFLINE}
@@ -373,9 +373,9 @@ class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineM
             CostConstants.PriceItem.STORAGE: self.get_storage_size(),
             CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
             CostConstants.PriceItem.LICENSE_APPLICATION: self.template.application_type,
-            CostConstants.PriceItem.SUPPORT: CostConstants.Support.PREMIUM
-                                    if self.type == self.Services.PAAS
-                                    else CostConstants.Support.BASIC,
+            CostConstants.PriceItem.SUPPORT: (CostConstants.Support.PREMIUM
+                                              if self.type == self.Services.PAAS
+                                              else CostConstants.Support.BASIC),
         }
 
     def _init_instance_licenses(self):
