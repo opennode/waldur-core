@@ -1,12 +1,10 @@
 Price list items
 ----------------
 
-To get a list of price list items, run GET against **/api/price-list-items/** as authenticated user.
-
+To get a list of price list items, run GET against **/api/price-list-items/** as an authenticated user.
 
 Price lists can be filtered by:
  - ?service=<object URL> URL of service
-
 
 Response example:
 
@@ -26,7 +24,7 @@ Response example:
             "key": "1 GB",
             "item_type": "storage",
             "value": "0.99",
-            "units": "USD",
+            "units": "per month",
             "service": "http://example.com/api/oracle/1b883f945ec347c6a0df0ddf1741a394/"
         }
     ]
@@ -35,14 +33,14 @@ Response example:
 Create price list item
 ----------------------
 
-Run POST request */api/price-list-items/* to create new price list item.
-Customer owner and staff can create price estimates.
+Run POST request against */api/price-list-items/* to create new price list item.
+Customer owner and staff can create price items.
 
 Example of request:
 
 .. code-block:: http
 
-    POST /api/customers/ HTTP/1.1
+    POST /api/price-list-items/ HTTP/1.1
     Content-Type: application/json
     Accept: application/json
     Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
@@ -52,7 +50,7 @@ Example of request:
         "units": "per month",
         "key": "test_key",
         "value": 100,
-        "service": "http://testserver/api/oracle/d4060812ca5d4de390e0d7a5062d99f6/",
+        "service": "http://example.com/api/oracle/d4060812ca5d4de390e0d7a5062d99f6/",
         "item_type": "storage"
     }
 
@@ -61,11 +59,11 @@ Update price list item
 ----------------------
 
 Run PATCH request against */api/price-list-items/<uuid>/* to update price list item.
-Only value and units can be updated. Customer owner and staff can update price estimates.
+Only value and units can be updated. Customer owner and staff can update price items.
 
 
 Delete price list item
 ----------------------
 
 Run DELETE request against */api/price-list-items/<uuid>/* to delete price list item.
-Customer owner and staff can delete price estimates.
+Customer owner and staff can delete price items.
