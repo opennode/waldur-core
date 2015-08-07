@@ -566,7 +566,7 @@ CELERY_TASK_THROTTLING = {
 
 # NodeConductor internal configuration
 # See also: http://nodeconductor.readthedocs.org/en/stable/guide/intro.html#id1
-NODECONDUCTOR = {
+NODECONDUCTOR.update({
     'DEFAULT_SECURITY_GROUPS': (
         {
             'name': 'icmp',
@@ -815,7 +815,7 @@ NODECONDUCTOR = {
 
     'USER_CAN_CREATE_CUSTOMER': config.getboolean('global', 'user_can_create_customer'),
 
-}
+})
 
 # Sentry integration
 # See also: http://raven.readthedocs.org/en/latest/integrations/django.html#setup
