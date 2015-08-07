@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='pricelistitem',
             name='resource_content_type',
-            field=models.ForeignKey(related_name='+', default=0, to='contenttypes.ContentType'),
+            field=models.ForeignKey(related_name='+', default=1, to='contenttypes.ContentType'),
             preserve_default=False,
         ),
     ]
