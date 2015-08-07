@@ -23,10 +23,10 @@ Response example:
         {
             "url": "http://example.com/api/price-list-items/02033ed510b04fff83e82564f1501fb8/",
             "uuid": "02033ed510b04fff83e82564f1501fb8",
-            "key": "oracle-storage",
+            "key": "1 GB",
             "item_type": "storage",
-            "value": "0.00000000",
-            "units": "",
+            "value": "0.99",
+            "units": "USD",
             "service": "http://example.com/api/oracle/1b883f945ec347c6a0df0ddf1741a394/"
         }
     ]

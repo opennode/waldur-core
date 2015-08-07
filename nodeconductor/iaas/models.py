@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import logging
-from decimal import Decimal
 
 from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
@@ -12,7 +11,8 @@ from django.utils.encoding import python_2_unicode_compatible
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.utils import request_api
-from nodeconductor.cost_tracking import PriceItemTypes, OsTypes, ApplicationTypes
+from nodeconductor.cost_tracking import CostConstants
+from nodeconductor.cost_tracking.models import PaidResource
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
@@ -229,7 +229,7 @@ class Template(core_models.UuidMixin,
     # Model doesn't inherit NameMixin, because name field must be unique.
     name = models.CharField(max_length=150, unique=True)
     os = models.CharField(max_length=100, blank=True)
-    os_type = models.CharField(max_length=10, choices=OsTypes.CHOICES, default=OsTypes.OTHER)
+    os_type = models.CharField(max_length=10, choices=CostConstants.Os.CHOICES, default=CostConstants.Os.OTHER)
     is_active = models.BooleanField(default=False)
     sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     icon_name = models.CharField(max_length=100, blank=True)
@@ -237,8 +237,8 @@ class Template(core_models.UuidMixin,
     # fields for categorisation
     # XXX consider changing to tags
     type = models.CharField(max_length=100, blank=True, help_text='Template type')
-    application_type = models.CharField(max_length=100, blank=True, choices=ApplicationTypes.CHOICES,
-                                        default=ApplicationTypes.NONE,
+    application_type = models.CharField(max_length=100, blank=True, choices=CostConstants.Application.CHOICES,
+                                        default=CostConstants.Application.NONE,
                                         help_text='Type of the application inside the template (optional)')
 
     def __str__(self):
@@ -292,73 +292,6 @@ class IaasTemplateService(TemplateService):
             response = request_api(request, 'backupschedule-list', method='POST', data=options)
             if not response.success:
                 raise TemplateProvisionError(response.data)
-
-
-class PaidResource(models.Model):
-
-    class Meta(object):
-        abstract = True
-
-    class Order(object):
-        def __init__(self, instance):
-            self.instance = instance
-            self.product_name = "{}-{}".format(instance._meta.app_label,
-                                               instance._meta.model_name)
-
-        @property
-        def id(self):
-            return self.instance.billing_backend_id
-
-        @id.setter
-        def id(self, val):
-            try:
-                self.instance.billing_backend_id = val
-                self.instance.save(update_fields=['billing_backend_id'])
-            except self.instance.DoesNotExist:
-                pass
-
-        @property
-        def backend(self):
-            return self.instance.service_project_link.service.customer.get_billing_backend()
-
-        def add(self):
-            options = {
-                PriceItemTypes.FLAVOR: self.instance.flavor_name or self.instance.default_flavor_name,
-                PriceItemTypes.STORAGE: self.instance.get_storage_size(),
-                PriceItemTypes.LICENSE_OS: self.instance.template.os_type,
-                PriceItemTypes.LICENSE_APPLICATION: self.instance.template.application_type,
-                PriceItemTypes.SUPPORT: PriceItemTypes.SUPPORT_PREMIUM
-                                        if self.instance.type == self.instance.Services.PAAS
-                                        else PriceItemTypes.SUPPORT_BASIC,
-            }
-            self.id = self.backend.add_order(self.product_name, **options)
-
-        def update(self, **options):
-            self.id = self.backend.update_order(self.id, **options)
-
-        def accept(self):
-            self.backend.accept_order(self.id)
-
-        def cancel(self):
-            self.backend.cancel_order(self.id)
-
-        def delete(self):
-            if self.id:
-                self.backend.delete_order(self.id)
-                self.id = ''
-
-    billing_backend_id = models.CharField(max_length=255, blank=True)
-
-    @property
-    def default_flavor_name(self):
-        return PriceItemTypes.FLAVOR_OFFLINE
-
-    def get_storage_size(self, extra=0):
-        return SupportedServices.mb2gb(self.system_volume_size + self.data_volume_size + extra)
-
-    def __init__(self, *args, **kwargs):
-        self.order = self.Order(self)
-        super(PaidResource, self).__init__(*args, **kwargs)
 
 
 class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineMixin, structure_models.Resource):
@@ -426,6 +359,24 @@ class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineM
 
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)
+
+    def get_storage_size(self, extra=0):
+        # 'extra' is used to calculate totals size (e.g. together with backup snapshots)
+        return SupportedServices.mb2gb(self.system_volume_size + self.data_volume_size + extra)
+
+    def get_default_price_options(self):
+        return {CostConstants.PriceItem.FLAVOR: CostConstants.Flavor.OFFLINE}
+
+    def get_price_options(self):
+        return {
+            CostConstants.PriceItem.FLAVOR: self.flavor_name,
+            CostConstants.PriceItem.STORAGE: self.get_storage_size(),
+            CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
+            CostConstants.PriceItem.LICENSE_APPLICATION: self.template.application_type,
+            CostConstants.PriceItem.SUPPORT: CostConstants.Support.PREMIUM
+                                    if self.type == self.Services.PAAS
+                                    else CostConstants.Support.BASIC,
+        }
 
     def _init_instance_licenses(self):
         """

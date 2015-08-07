@@ -18,11 +18,6 @@ class PriceItemTypes(object):
         (NETWORK, 'network'),
     )
 
-    # TODO: Find a better place for these constants
-    FLAVOR_OFFLINE = 'offline'
-    SUPPORT_BASIC = 'basic'
-    SUPPORT_PREMIUM = 'premium'
-
 
 class OsTypes(object):
     CENTOS6 = 'centos6'
@@ -58,3 +53,23 @@ class ApplicationTypes(object):
         (ZIMBRA, 'Zimbra'),
         (NONE, 'None'),
     )
+
+
+class SupportTypes(object):
+    BASIC = 'basic'
+    PREMIUM = 'premium'
+
+    CHOICES = (
+        (BASIC, 'Basic'),
+        (PREMIUM, 'Premium'),
+    )
+
+
+class CostConstants(object):
+    PriceItem = PriceItemTypes
+    Application = ApplicationTypes
+    Os = OsTypes
+    Support = SupportTypes
+
+    class Flavor(object):
+        OFFLINE = 'offline'

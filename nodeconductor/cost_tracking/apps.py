@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.apps import AppConfig
 from django.db.models import signals
+from django_fsm.signals import post_transition
 
 from nodeconductor.cost_tracking import handlers
 from nodeconductor.structure import models as structure_models
@@ -43,6 +44,21 @@ class CostTrackingConfig(AppConfig):
                 dispatch_uid=(
                     'nodeconductor.cost_tracking.handlers.create_price_list_items_for_service_{}_{}'
                     .format(service.__name__, index))
+            )
+
+        for index, resource in enumerate(structure_models.Resource.get_all_models()):
+            signals.post_delete.connect(
+                handlers.delete_order,
+                sender=resource,
+                dispatch_uid='nodeconductor.cost_tracking.handlers.delete_order_{}_{}'.format(
+                    resource.__name__, index),
+            )
+
+            post_transition.connect(
+                handlers.track_order,
+                sender=resource,
+                dispatch_uid='nodeconductor.cost_tracking.handlers.track_order_{}_{}'.format(
+                    resource.__name__, index),
             )
 
         signals.post_save.connect(

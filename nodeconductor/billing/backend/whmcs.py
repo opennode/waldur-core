@@ -12,11 +12,10 @@ from django.utils import six
 from django.utils.http import urlsafe_base64_encode
 from django.contrib.contenttypes.models import ContentType
 
-from nodeconductor.cost_tracking import PriceItemTypes
+from nodeconductor.cost_tracking import CostConstants
 from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.billing.phpserialize import dumps as php_dumps
-from nodeconductor.billing.models import PriceList
 from nodeconductor.core.utils import pwgen
 from nodeconductor import __version__
 
@@ -306,16 +305,20 @@ class WHMCSAPI(object):
 
         return new_options
 
-    def add_order(self, product_name, client_id, **options):
-        try:
-            product = PriceList.objects.get(name=product_name)
-        except PriceList.DoesNotExist as e:
-            six.reraise(BillingBackendError, e)
+    def add_order(self, resource_content_type, client_id, **options):
+        # Fetch *any* item of specific content type to get backend id
+        product = DefaultPriceListItem.objects.filter(
+            resource_content_type=resource_content_type).first()
+        template = DefaultPriceListItem.get_options(resource_content_type=resource_content_type)
+        options = self._prepare_configurable_options(options, template=template)
 
-        options = self._prepare_configurable_options(options, template=product.options)
+        if not product:
+            raise BillingBackendError(
+                "Product '%s' is missing on backend" % resource_content_type)
+
         data = self.request(
             'addorder',
-            pid=product.backend_id,
+            pid=product.backend_product_id,
             clientid=client_id,
             configoptions=urlsafe_base64_encode(php_dumps(options)),
             billingcycle='monthly',
@@ -331,13 +334,9 @@ class WHMCSAPI(object):
             resultset_path='products.product')
         backend_product = next(p for p in backend_products if p['orderid'] == str(order_id))
 
-        try:
-            product = PriceList.objects.get(backend_id=backend_product['pid'])
-        except PriceList.DoesNotExist as e:
-            six.reraise(BillingBackendError, e)
-
+        template = DefaultPriceListItem.get_options(backend_product_id=backend_product['pid'])
         options = {'configoptions[%s]' % k: v for k, v in
-                   self._prepare_configurable_options(options, template=product.options).items()}
+                   self._prepare_configurable_options(options, template=template).items()}
 
         data = self.request(
             'upgradeproduct',
@@ -435,7 +434,6 @@ class WHMCSAPI(object):
             exp = r'<input type="text" name="optionname\[(\d*)\]" value="(\w*)"'
             options = re.findall(exp, response.text)
 
-            #
             prepared_price_data = {}
             for option in options:
                 pk, option_name = option
@@ -464,40 +462,60 @@ class WHMCSAPI(object):
 
         return component_id
 
-    def create_server_product(self, product_name, product_group_id=1):
-        data = self.request(
+    def propagate_pricelist(self, resource_content_type):
+        # TODO: Refactor it:
+        #       -- it's impossible to update product's configuration right now
+        #       -- there's overhead in fetching option's IDs (could be fetched right after creating)
+
+        # 1. create a product of a particular type
+        product_name = "{}-{}".format(resource_content_type.app_label, resource_content_type.model)
+        for product in self.request('getproducts', resultset_path='products.product'):
+            if product_name == product['name']:
+                raise BillingBackendError("Product %s already exists on backend" % product_name)
+
+        response = self.request(
             'addproduct',
             name=product_name,
-            gid=product_group_id,
+            gid=1,
             type='server',
             paytype='recurring',
         )
 
-        return data.get('pid')
-
-    def propagate_pricelist(self, category='iaas-instance'):
-        # 1. create a product of a particular type
-        pid = self.create_server_product(category)
+        pid = response['pid']
 
         # 2. define configuration options
         type_mapping = {
-            PriceItemTypes.FLAVOR: 'dropdown',
-            PriceItemTypes.STORAGE: 'quantity',
-            PriceItemTypes.SUPPORT: 'dropdown',
-            PriceItemTypes.LICENSE_OS: 'dropdown',
-            PriceItemTypes.LICENSE_APPLICATION: 'dropdown',
+            CostConstants.PriceItem.FLAVOR: 'dropdown',
+            CostConstants.PriceItem.STORAGE: 'quantity',
+            CostConstants.PriceItem.SUPPORT: 'dropdown',
+            CostConstants.PriceItem.LICENSE_OS: 'dropdown',
+            CostConstants.PriceItem.LICENSE_APPLICATION: 'dropdown',
         }
 
-        gid = self._create_configurable_options_group("Configuration of %s" % category, assigned_products_ids=[pid])
-        content_type = ContentType.objects.get_for_model(apps.get_model(category.replace('-', '.')))
+        gid = self._create_configurable_options_group(
+            "Configuration of %s" % product_name, assigned_products_ids=[pid])
 
-        # 2. create configuration based on pricelist
+        # 3. create configuration based on pricelist
         for pricelist_item_type in type_mapping.keys():
             pricelist_items = DefaultPriceListItem.objects.filter(
-                service_content_type=content_type,
+                resource_content_type=resource_content_type,
                 item_type=pricelist_item_type)
 
             self._create_configurable_options(
                 gid, pricelist_item_type,
                 option_type=type_mapping[pricelist_item_type],
                 option_values={i.key: i.value for i in pricelist_items})
+
+        # 4. pull-up created configuration back to NC
+        options = self.get_product_configurable_options(pid)
+        pricelist_items = DefaultPriceListItem.objects.filter(
+            resource_content_type=resource_content_type)
+
+        for item in pricelist_items:
+            option = options[item.item_type]
+            if 'choices' in option:
+                item.backend_choice_id = option['choices'][item.key]
+
+            item.backend_option_id = option['id']
+            item.backend_product_id = pid
+            item.save()

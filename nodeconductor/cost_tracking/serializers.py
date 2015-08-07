@@ -1,9 +1,11 @@
 from __future__ import unicode_literals
 
 from rest_framework import serializers
+from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin
 from nodeconductor.cost_tracking import models
+from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import models as structure_models
 
 
@@ -86,15 +88,21 @@ class PriceListItemSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = 'uuid'
         fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'service')
 
+    def create(self, validated_data):
+        # XXX: This behavior is wrong for services with several resources, find a better approach
+        resource_class = SupportedServices.get_related_models(validated_data['service'])['resources'][0]
+        validated_data['resource_content_type'] = ContentType.objects.get_for_model(resource_class)
+        return super(PriceListItemSerializer, self).create(validated_data)
+
 
 class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
-    service_content_type = serializers.SerializerMethodField()
+    resource_content_type = serializers.SerializerMethodField()
 
     class Meta:
         model = models.DefaultPriceListItem
         lookup_field = 'uuid'
-        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'service_content_type')
+        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'resource_content_type')
 
-    def get_service_content_type(self, obj):
-        return '{}.{}'.format(obj.service_content_type.app_label, obj.service_content_type.model)
+    def get_resource_content_type(self, obj):
+        return '{}.{}'.format(obj.resource_content_type.app_label, obj.resource_content_type.model)

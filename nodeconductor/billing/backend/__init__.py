@@ -129,9 +129,9 @@ class BillingBackend(object):
     def get_invoice_items(self, invoice_id):
         return self.api.get_invoice_items(invoice_id)
 
-    def add_order(self, product_name, **options):
+    def add_order(self, resource_content_type, **options):
         client_id = self.get_or_create_client()
-        return self.api.add_order(product_name, client_id, **options)
+        return self.api.add_order(resource_content_type, client_id, **options)
 
     def update_order(self, order_id, **options):
         client_id = self.get_or_create_client()

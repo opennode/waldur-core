@@ -152,14 +152,14 @@ class ServiceContentTypeFilter(django_filters.CharFilter):
 
 
 class DefaultPriceListItemFilter(django_filters.FilterSet):
-    service_content_type = ServiceContentTypeFilter()
+    resource_content_type = ServiceContentTypeFilter()
 
     class Meta:
         model = models.DefaultPriceListItem
         fields = [
             'key',
             'item_type',
-            'service_content_type'
+            'resource_content_type'
         ]
 
 
