@@ -431,7 +431,7 @@ class WHMCSAPI(object):
                 )
             )
             # get all the whmcs ids of configuration options
-            exp = r'<input type="text" name="optionname\[(\d*)\]" value="(\w*)"'
+            exp = r'<input type="text" name="optionname\[(\d*)\]" value="([\w\.]*)"'
             options = re.findall(exp, response.text)
 
             prepared_price_data = {}
@@ -441,6 +441,8 @@ class WHMCSAPI(object):
                 price = 0
                 if option_name in option_values:
                     price = option_values[option_name]
+                # convert price to a string
+                price = float(price)
                 prepared_price_data['price[%s][%s][6]' % (self.currency_code, pk)] = price  # '6' corresponds to the monthly price
 
             token = self._get_token(response.text)
