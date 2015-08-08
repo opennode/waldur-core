@@ -433,7 +433,7 @@ class WHMCSAPI(object):
                 )
             )
             # get all the whmcs ids of configuration options
-            exp = r'<input type="text" name="optionname\[(\d*)\]" value="([\w\.\-\_]*)"'
+            exp = r'<input type="text" name="optionname\[(\d*)\]" value="([\w\.\-\_ ]*)"'
             options = re.findall(exp, response.text)
 
             prepared_price_data = {}
