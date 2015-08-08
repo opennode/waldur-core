@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -6,9 +8,13 @@ from django.utils.lru_cache import lru_cache
 from jsonfield import JSONField
 from model_utils import FieldTracker
 
+from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.core import models as core_models
 from nodeconductor.cost_tracking import managers, CostConstants
 from nodeconductor.structure import models as structure_models
+
+
+logger = logging.getLogger(__name__)
 
 
 class PriceEstimate(core_models.UuidMixin, models.Model):
@@ -115,13 +121,37 @@ class PaidResource(models.Model):
 
         @property
         def id(self):
-            return self.instance.billing_backend_id
+            return self.instance.billing_backend_purchase_order_id
 
         @id.setter
         def id(self, val):
             try:
+                self.instance.billing_backend_purchase_order_id = val
+                self.instance.save(update_fields=['billing_backend_purchase_order_id'])
+            except self.instance.DoesNotExist:
+                pass
+
+        @property
+        def product_id(self):
+            return self.instance.billing_backend_id
+
+        @product_id.setter
+        def product_id(self, val):
+            try:
                 self.instance.billing_backend_id = val
                 self.instance.save(update_fields=['billing_backend_id'])
+            except self.instance.DoesNotExist:
+                pass
+
+        @property
+        def template_id(self):
+            return self.instance.billing_backend_template_id
+
+        @template_id.setter
+        def template_id(self, val):
+            try:
+                self.instance.billing_backend_template_id = val
+                self.instance.save(update_fields=['billing_backend_template_id'])
             except self.instance.DoesNotExist:
                 pass
 
@@ -145,11 +175,13 @@ class PaidResource(models.Model):
             options = self.instance.get_price_options()
             options = self._propagate_default_options(options)
             resource_content_type = ContentType.objects.get_for_model(self.instance)
-            self.id = self.backend.add_order(resource_content_type, **options)
+            self.id, self.product_id, self.template_id = self.backend.add_order(resource_content_type,
+                                                                                self.instance.name,
+                                                                                **options)
 
         def update(self, **options):
             options = self._propagate_default_options(options)
-            self.id = self.backend.update_order(self.id, **options)
+            self.backend.update_order(self.product_id, self.template_id, **options)
 
         def accept(self):
             self.backend.accept_order(self.id)
@@ -157,12 +189,23 @@ class PaidResource(models.Model):
         def cancel(self):
             self.backend.cancel_order(self.id)
 
+        def cancel_purchase(self):
+            if self.product_id:
+                try:
+                    self.backend.cancel_purchase(self.product_id)
+                except BillingBackendError as e:
+                    logger.error('Failed to cancel order with a known ID %s: %s', self.id, e.message)
+
         def delete(self):
             if self.id:
                 self.backend.delete_order(self.id)
                 self.id = ''
 
-    billing_backend_id = models.CharField(max_length=255, blank=True)
+    billing_backend_purchase_order_id = models.CharField(
+        max_length=255, blank=True, help_text='ID of a purchase order in backend that created a resource')
+    billing_backend_id = models.CharField(max_length=255, blank=True, help_text='ID of a resource in backend')
+    billing_backend_template_id = models.CharField(max_length=255, blank=True,
+                                                   help_text='ID of a template in backend used for creating a resource')
 
     def get_default_price_options(self):
         raise NotImplementedError

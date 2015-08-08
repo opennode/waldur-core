@@ -305,7 +305,7 @@ class WHMCSAPI(object):
 
         return new_options
 
-    def add_order(self, resource_content_type, client_id, **options):
+    def add_order(self, resource_content_type, client_id, name='', **options):
         # Fetch *any* item of specific content type to get backend id
         product = DefaultPriceListItem.objects.filter(
             resource_content_type=resource_content_type).first()
@@ -319,28 +319,23 @@ class WHMCSAPI(object):
         data = self.request(
             'addorder',
             pid=product.backend_product_id,
+            domain=name,
             clientid=client_id,
             configoptions=urlsafe_base64_encode(php_dumps(options)),
             billingcycle='monthly',
             paymentmethod='banktransfer',
         )
+        logger.info('WHMCS order was added with id %s', data['orderid'])
+        return data['orderid'], data['productids'], product.backend_product_id
 
-        return data['orderid']
-
-    def update_order(self, order_id, client_id, **options):
-        backend_products = self.request(
-            'getclientsproducts',
-            clientid=client_id,
-            resultset_path='products.product')
-        backend_product = next(p for p in backend_products if p['orderid'] == str(order_id))
-
-        template = DefaultPriceListItem.get_options(backend_product_id=backend_product['pid'])
+    def update_order(self, client_id, backend_resource_id, backend_template_id, **options):
+        template = DefaultPriceListItem.get_options(backend_product_id=backend_template_id)
         options = {'configoptions[%s]' % k: v for k, v in
                    self._prepare_configurable_options(options, template=template).items()}
 
         data = self.request(
             'upgradeproduct',
-            serviceid=backend_product['id'],
+            serviceid=backend_resource_id,
             clientid=client_id,
             type='configoptions',
             paymentmethod='banktransfer',
@@ -348,14 +343,21 @@ class WHMCSAPI(object):
         )
 
         self.accept_order(data['orderid'])
-
-        return data['orderid']
+        logger.info('WHMCS update order was added with id %s', data['orderid'])
 
     def accept_order(self, order_id):
         self.request('acceptorder', orderid=order_id)
 
     def cancel_order(self, order_id):
         self.request('cancelorder', orderid=order_id)
+
+    def cancel_purchase(self, backend_resource_id):
+        self.request(
+            'addcancelrequest',
+            serviceid=backend_resource_id,
+            type='Immediate',
+            reason='VM deletion',
+        )
 
     def delete_order(self, order_id):
         self.request('deleteorder', orderid=order_id)

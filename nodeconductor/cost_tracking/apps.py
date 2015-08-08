@@ -48,9 +48,9 @@ class CostTrackingConfig(AppConfig):
 
         for index, resource in enumerate(structure_models.Resource.get_all_models()):
             signals.post_delete.connect(
-                handlers.delete_order,
+                handlers.cancel_purchase,
                 sender=resource,
-                dispatch_uid='nodeconductor.cost_tracking.handlers.delete_order_{}_{}'.format(
+                dispatch_uid='nodeconductor.cost_tracking.handlers.cancel_purchase_{}_{}'.format(
                     resource.__name__, index),
             )
 

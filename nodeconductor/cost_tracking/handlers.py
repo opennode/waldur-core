@@ -132,6 +132,6 @@ def track_order(sender, instance, name=None, source=None, **kwargs):
         instance.save()
 
 
-def delete_order(sender, instance=None, **kwargs):
+def cancel_purchase(sender, instance=None, **kwargs):
     if issubclass(instance.__class__, models.PaidResource):
-        instance.order.delete()
+        instance.order.cancel_purchase()

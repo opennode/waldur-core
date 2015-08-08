@@ -129,13 +129,13 @@ class BillingBackend(object):
     def get_invoice_items(self, invoice_id):
         return self.api.get_invoice_items(invoice_id)
 
-    def add_order(self, resource_content_type, **options):
+    def add_order(self, resource_content_type,  name='', **options):
         client_id = self.get_or_create_client()
-        return self.api.add_order(resource_content_type, client_id, **options)
+        return self.api.add_order(resource_content_type, client_id, name, **options)
 
-    def update_order(self, order_id, **options):
+    def update_order(self, backend_resource_id, backend_template_id, **options):
         client_id = self.get_or_create_client()
-        return self.api.update_order(order_id, client_id, **options)
+        return self.api.update_order(client_id, backend_resource_id, backend_template_id, **options)
 
 
 class DummyBillingAPI(object):
