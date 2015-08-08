@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.utils.translation import ungettext, gettext
+from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
@@ -264,7 +265,13 @@ class TemplateAdmin(admin.ModelAdmin):
         LicenseInline,
     )
     ordering = ('name', )
-    list_display = ['name', 'uuid', 'sla_level']
+    list_display = ['name', 'uuid', 'os_type', 'application_type', 'type', 'sla_level']
+
+    fieldsets = (
+        (_('General'), {'fields': ('name', 'description', 'icon_name', 'is_active',)}),
+        (_('Type'), {'fields': ('os', 'os_type', 'application_type', 'type',)}),
+        (_('Deployment settings'), {'fields': ('sla_level',)}),
+    )
 
 
 class FlavorInline(admin.TabularInline):

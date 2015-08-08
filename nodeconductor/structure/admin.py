@@ -43,7 +43,7 @@ class ProtectedModelMixin(object):
 class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     readonly_fields = ['balance']
     actions = ['sync_with_backend', 'create_last_month_invoices', 'create_current_month_invoices']
-    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation']
+    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created']
 
     def sync_with_backend(self, request, queryset):
         customer_uuids = list(queryset.values_list('uuid', flat=True))
@@ -98,7 +98,7 @@ class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
 
     fields = ('name', 'description', 'customer')
 
-    list_display = ['name', 'uuid', 'customer']
+    list_display = ['name', 'uuid', 'customer', 'created']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
@@ -108,7 +108,7 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
 
     fields = ('name', 'description', 'customer')
 
-    list_display = ['name', 'uuid', 'customer']
+    list_display = ['name', 'uuid', 'customer', 'created']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
 
