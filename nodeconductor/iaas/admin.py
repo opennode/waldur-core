@@ -183,6 +183,19 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
 
     actions = ['pull_installation_state']
 
+    fieldsets = (
+        (_('General'), {'fields': ('name', 'description', 'cloud_project_membership')}),
+        (_('State'), {'fields': ('state', 'installation_state', 'start_time')}),
+        (_('Flavor configuration'), {'fields': ('flavor_name', 'cores', 'ram',)}),
+        (_('Storage configuration'), {'fields': ('system_volume_id', 'system_volume_size', 'data_volume_id', 'data_volume_size',)}),
+        (_('Access configuration'), {'fields': ('key_name', 'key_fingerprint')}),
+        (_('Network configuration'), {'fields': ('internal_ips', 'external_ips')}),
+        (_('Deployment settings'), {'fields': ('template', 'type', 'agreed_sla', 'user_data')}),
+        (_('Backend connections'), {'fields': ('backend_id', 'billing_backend_id',)}),
+
+    )
+
+
     def get_project_name(self, obj):
         return obj.cloud_project_membership.project.name
 
