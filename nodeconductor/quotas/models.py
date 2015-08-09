@@ -2,7 +2,7 @@ from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
-from django.db.models import Sum
+from django.db.models import Sum, F
 from django.utils.encoding import python_2_unicode_compatible
 
 from nodeconductor.logging.log import LoggableMixin
@@ -28,7 +28,7 @@ class Quota(UuidMixin, NameMixin, LoggableMixin, ReversionMixin, models.Model):
     object_id = models.PositiveIntegerField()
     scope = ct_fields.GenericForeignKey('content_type', 'object_id')
 
-    objects = managers.QuotaManager()
+    objects = managers.QuotaManager('scope')
 
     def is_exceeded(self, delta=None, threshold=None):
         """
@@ -82,19 +82,41 @@ class QuotaModelMixin(models.Model):
         self.quotas.filter(name=quota_name).update(limit=limit)
 
     def set_quota_usage(self, quota_name, usage):
-        with transaction.atomic():
-            original_quota = self.quotas.get(name=quota_name)
-            self._add_usage_to_ancestors(quota_name, usage - original_quota.usage)
-            original_quota.usage = usage
-            original_quota.save()
+        self._set_editable_field_value('usage', quota_name, usage)
+
+    def set_quota_utilization(self, quota_name, utilization):
+        self._set_editable_field_value('utilization', quota_name, utilization)
 
     def add_quota_usage(self, quota_name, usage_delta, fail_silently=False):
         """
-        Add to usage_delta to current quota usage
+        Add usage_delta to current quota usage
 
         If <fail_silently> is True - operation will not fail if quota does not exist
         """
-        if not usage_delta:
+        self._add_delta_to_editable_field('usage', quota_name, usage_delta, fail_silently)
+
+    def add_quota_utilization(self, quota_name, utilization_delta, fail_silently=False):
+        """
+        Add utilization_delta to current quota utilization
+
+        If <fail_silently> is True - operation will not fail if quota does not exist
+        """
+        self._add_delta_to_editable_field('utilization', quota_name, utilization_delta, fail_silently)
+
+    def _set_editable_field_value(self, field, quota_name, value):
+        with transaction.atomic():
+            original_quota = self.quotas.get(name=quota_name)
+            self._add_delta_to_ancestors(field, quota_name, value - getattr(original_quota, field))
+            setattr(original_quota, field, value)
+            original_quota.save()
+
+    def _add_delta_to_editable_field(self, field, quota_name, delta, fail_silently=False):
+        """
+        Add delta to quota <field>
+
+        If <fail_silently> is True - operation will not fail if quota does not exist
+        """
+        if not delta:
             return
         with transaction.atomic():
             try:
@@ -103,19 +125,19 @@ class QuotaModelMixin(models.Model):
                 if not fail_silently:
                     raise e
             else:
-                original_quota.usage += usage_delta
+                update_kwargs = {field: F(field) + delta}
+                setattr(original_quota, field, F(field) + delta)
                 original_quota.save()
-                self._add_usage_to_ancestors(quota_name, usage_delta)
+                self._add_delta_to_ancestors(field, quota_name, delta)
 
-    def _add_usage_to_ancestors(self, quota_name, usage):
+    def _add_delta_to_ancestors(self, field, quota_name, delta):
         for ancestor in self._get_quota_ancestors():
             try:
                 quota = ancestor.quotas.get(name=quota_name)
-                quota.usage += usage
-                quota.save()
             except Quota.DoesNotExist:
-                # we do not do anything if ancestor does not have such quota
-                pass
+                quota = Quota.objects.create(scope=ancestor, name=quota_name)
+            setattr(quota, field, F(field) + delta)
+            quota.save()
 
     def validate_quota_change(self, quota_deltas, raise_exception=False):
         """

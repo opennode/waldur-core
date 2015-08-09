@@ -48,3 +48,37 @@ class QuotaModelMixinTest(TestCase):
         sum_of_quotas = iaas_models.CloudProjectMembership.get_sum_of_quotas_as_dict(
             memberships, quota_names=['vcpu'], fields=['limit'])
         self.assertEqual({'vcpu': -1}, sum_of_quotas)
+
+    def test_set_quota_usage_creates_ancestors_quotas(self):
+        membership = iaas_factories.CloudProjectMembershipFactory()
+
+        membership.set_quota_utilization('vcpu', 50)
+
+        self.assertEqual(membership.project.quotas.get(name='vcpu').utilization, 50)
+        self.assertEqual(membership.project.customer.quotas.get(name='vcpu').utilization, 50)
+
+    def test_add_quota_usage_affects_ancestors_quotas(self):
+        membership1 = iaas_factories.CloudProjectMembershipFactory()
+        project = membership1.project
+        membership2 = iaas_factories.CloudProjectMembershipFactory(project=project)
+
+        membership1.add_quota_utilization('vcpu', 50)
+        membership2.add_quota_utilization('vcpu', 20)
+
+        self.assertEqual(project.quotas.get(name='vcpu').utilization, 70)
+
+    def test_child_quotas_are_created_for_parents_too(self):
+        membership = iaas_factories.CloudProjectMembershipFactory()
+
+        self.assertTrue(membership.project.quotas.filter(name='vcpu').exists())
+
+    def test_quotas_are_reseted_on_scope_delete(self):
+        membership1 = iaas_factories.CloudProjectMembershipFactory()
+        project = membership1.project
+        membership2 = iaas_factories.CloudProjectMembershipFactory(project=project)
+
+        membership1.add_quota_utilization('vcpu', 50)
+        membership2.add_quota_utilization('vcpu', 20)
+        membership1.delete()
+
+        self.assertEqual(project.quotas.get(name='vcpu').utilization, 20)
