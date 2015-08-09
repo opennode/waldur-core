@@ -229,6 +229,7 @@ CELERY_TASK_THROTTLING = {
 
 NODECONDUCTOR = {
     'EXTENSIONS_AUTOREGISTER': True,
+    'ENABLE_WHMCS_ORDER_PROCESSING': False,
     'DEFAULT_SECURITY_GROUPS': (
         {
             'name': 'ssh',

@@ -6,10 +6,13 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 
 from nodeconductor.cost_tracking.models import DefaultPriceListItem
+from nodeconductor.cost_tracking import CostConstants
+from nodeconductor.iaas.models import Instance
 
 
 openstack_options = {
-    'flavor': [
+    CostConstants.PriceItem.FLAVOR: [
+        (CostConstants.Flavor.OFFLINE, 0),
         ('g1.small1', 1),
         ('g1.small2', 2),
         ('g1.medium1', 3),
@@ -17,43 +20,35 @@ openstack_options = {
         ('g1.large1', 5),
         ('g1.large2', 6),
     ],
-    'storage': [
-        ('1 GB', 1)
+    CostConstants.PriceItem.STORAGE: [
+        ('1 GB', 1),
     ],
-    'license-os': [
-        ('centos6', 1),
-        ('centos7', 2),
-        ('ubuntu', 3),
-        ('rhel6', 4),
-        ('rhel7', 5),
-        ('windows', 6),
+    CostConstants.PriceItem.LICENSE_APPLICATION: [
+        (name, idx) for idx, name in enumerate(dict(CostConstants.Application.CHOICES).keys(), start=1)
     ],
-    'license-application': [
-        ('wordpress', 1),
-        ('postgresql', 2),
-        ('zimbra', 3)
+    CostConstants.PriceItem.LICENSE_OS: [
+        (name, idx) for idx, name in enumerate(dict(CostConstants.Os.CHOICES).keys(), start=1)
     ],
-    'support': [
-        ('basic', 1),
-        ('premium', 2),
-    ]
+    CostConstants.PriceItem.SUPPORT: [
+        (name, idx) for idx, name in enumerate(dict(CostConstants.Support.CHOICES).keys(), start=1)
+    ],
 }
 
 
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
-        from nodeconductor.openstack.models import OpenStackService
-        os_content_type = ContentType.objects.get_for_model(OpenStackService)
-        for category in ['flavor', 'storage', 'license-os', 'license-application', 'support']:
-            option = openstack_options[category]
+        content_type = ContentType.objects.get_for_model(Instance)
+        for category, option in openstack_options.items():
             for key, value in option:
-                print key, value, os_content_type, category
-                DefaultPriceListItem.objects.create(
-                    service_content_type=os_content_type,
-                    key=key,
-                    value=value,
-                    units='',
-                    item_type=category
+                self.stdout.write("[{}] {} -> {}".format(category, key, value))
+                DefaultPriceListItem.objects.update_or_create(
+                    resource_content_type=content_type,
+                    item_type=category,  # e.g. 'flavor'
+                    key=key,             # e.g. 'g1.small1'
+                    defaults=dict(
+                        value=value,     # e.g. '1'
+                        units='',
+                    )
                 )
         self.stdout.write('... Done')

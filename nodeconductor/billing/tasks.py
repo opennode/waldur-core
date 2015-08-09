@@ -16,6 +16,7 @@ from nodeconductor.backup.models import Backup
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.billing.models import PriceList
 from nodeconductor.core.utils import timestamp_to_datetime
+from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.models import Cloud, CloudProjectMembership, Instance
 from nodeconductor.logging.elasticsearch_client import ElasticsearchResultList
@@ -23,12 +24,6 @@ from nodeconductor.structure.models import Customer
 from nodeconductor.structure import SupportedServices
 
 logger = logging.getLogger(__name__)
-
-
-@shared_task(name='nodeconductor.billing.sync_pricelist')
-def sync_pricelist():
-    backend = BillingBackend()
-    backend.sync_pricelist()
 
 
 @shared_task(name='nodeconductor.billing.debit_customers')
@@ -237,3 +232,15 @@ def lookup_instance_licenses_from_event_log(instance_uuid):
         return []
 
     return zip(event['licenses_types'], event['licenses_services_types'])
+
+
+
+@shared_task(name='nodeconductor.billing.sync_pricelist')
+def sync_pricelist():
+    backend = BillingBackend()
+    priceitems = DefaultPriceListItem.objects.filter(
+        backend_product_id='').values_list('resource_content_type', flat=True).distinct()
+
+    for cid in priceitems:
+        content_type = ContentType.objects.get_for_id(cid)
+        backend.propagate_pricelist(content_type)

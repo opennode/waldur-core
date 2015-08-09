@@ -35,6 +35,7 @@ install_requires = [
     'elasticsearch>=1.0.0,<2.0.0',
     'jira>=0.47',
     'jsonfield==1.0.0',
+    'lxml>=3.2',
     'oslo.config==1.2.1',
     'paypalrestsdk>=1.10.0',
     'Pillow>=2.0.0',

@@ -37,7 +37,7 @@ def resize_flavor(instance_uuid, flavor_uuid, transition_entity=None):
 
 
 @shared_task
-@transition(Instance, 'set_offline')
+@transition(Instance, 'set_resized')
 def flavor_change_succeeded(instance_uuid, flavor_uuid, transition_entity=None):
     instance = transition_entity
     flavor = instance.cloud_project_membership.cloud.flavors.get(uuid=flavor_uuid)
@@ -58,5 +58,5 @@ def flavor_change_failed(instance_uuid, flavor_uuid, transition_entity=None):
     event_logger.instance_flavor.error(
         'Virtual machine {instance_name} flavor change has failed.',
         event_type='iaas_instance_flavor_change_failed',
-        event_context={'instance': instance}
+        event_context={'instance': instance, 'flavor': flavor}
     )

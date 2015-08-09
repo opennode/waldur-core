@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.utils.translation import ungettext, gettext
+from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
@@ -182,6 +183,19 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
 
     actions = ['pull_installation_state']
 
+    fieldsets = (
+        (_('General'), {'fields': ('name', 'description', 'cloud_project_membership')}),
+        (_('State'), {'fields': ('state', 'installation_state', 'start_time')}),
+        (_('Flavor configuration'), {'fields': ('flavor_name', 'cores', 'ram',)}),
+        (_('Storage configuration'), {'fields': ('system_volume_id', 'system_volume_size', 'data_volume_id', 'data_volume_size',)}),
+        (_('Access configuration'), {'fields': ('key_name', 'key_fingerprint')}),
+        (_('Network configuration'), {'fields': ('internal_ips', 'external_ips')}),
+        (_('Deployment settings'), {'fields': ('template', 'type', 'agreed_sla', 'user_data')}),
+        (_('Backend connections'), {'fields': ('backend_id', 'billing_backend_id', 'billing_backend_template_id', 'billing_backend_purchase_order_id')}),
+
+    )
+
+
     def get_project_name(self, obj):
         return obj.cloud_project_membership.project.name
 
@@ -264,7 +278,13 @@ class TemplateAdmin(admin.ModelAdmin):
         LicenseInline,
     )
     ordering = ('name', )
-    list_display = ['name', 'uuid', 'sla_level']
+    list_display = ['name', 'uuid', 'os_type', 'application_type', 'type', 'sla_level']
+
+    fieldsets = (
+        (_('General'), {'fields': ('name', 'description', 'icon_name', 'is_active',)}),
+        (_('Type'), {'fields': ('os', 'os_type', 'application_type', 'type',)}),
+        (_('Deployment settings'), {'fields': ('sla_level',)}),
+    )
 
 
 class FlavorInline(admin.TabularInline):

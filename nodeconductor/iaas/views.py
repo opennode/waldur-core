@@ -5,10 +5,9 @@ import datetime
 import logging
 import time
 
-from django.contrib.contenttypes.models import ContentType
 from django.db import models as django_models
 from django.db import transaction, IntegrityError
-from django.db.models import Q, Count
+from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -21,7 +20,6 @@ from rest_framework import permissions, status
 from rest_framework import viewsets, views
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route, list_route
-from rest_framework.serializers import ValidationError
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
@@ -29,14 +27,13 @@ from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.core.utils import sort_dict, datetime_to_timestamp, timestamp_to_datetime
+from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.iaas.serializers import QuotaTimelineStatsSerializer
 from nodeconductor.iaas.log import event_logger
-from nodeconductor.logging import models as logging_models, serializers as logging_serializers
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.views import UpdateOnlyByPaidCustomerMixin
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
@@ -436,7 +433,8 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
             # instance.system_volume_size = flavor.disk
             instance.ram = flavor.ram
             instance.cores = flavor.cores
-            instance.save(update_fields=['ram', 'cores'])
+            instance.flavor_name = flavor.name
+            instance.save(update_fields=['ram', 'cores', 'flavor_name'])
 
             event_logger.instance_flavor.info(
                 'Virtual machine {instance_name} has been scheduled to change flavor.',
