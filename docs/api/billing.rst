@@ -1,8 +1,3 @@
-Price lookup
-------------
-
-To get a pricelist, run GET against **/api/billing/pricelist/** as an authenticated user.
-
 Invoices
 --------
 
@@ -36,7 +31,7 @@ In order to force browser to download and save PDF use **?download=1** parameter
 
 
 List payments
---------------------
+-------------
 
 To get a list of payments, run GET against **/api/payments/** as an authenticated user.
 It contains the following fields:
@@ -62,7 +57,7 @@ Example response:
     ]
 
 Create new payment
--------------------------
+------------------
 
 In order to create new payment, run POST against **/api/payments/** as an authenticated user.
 Request should contain the following fields: amount, customer. Example request:

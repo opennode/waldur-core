@@ -1324,6 +1324,14 @@ class UpdateOnlyByPaidCustomerMixin(object):
         return super(UpdateOnlyByPaidCustomerMixin, self).create(request, *args, **kwargs)
 
 
+class BaseServiceFilter(django_filters.FilterSet):
+    customer_uuid = django_filters.CharFilter(name='customer__uuid')
+    customer = core_filters.URLFilter(viewset=CustomerViewSet, name='customer__uuid')
+
+    class Meta(object):
+        model = models.Service
+
+
 class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                          core_mixins.UserContextMixin,
                          viewsets.ModelViewSet):
@@ -1337,6 +1345,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     import_serializer_class = NotImplemented
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_class = BaseServiceFilter
     lookup_field = 'uuid'
 
     def get_serializer_class(self):
@@ -1395,7 +1404,9 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):
+    service_uuid = django_filters.CharFilter(name='service__uuid')
     project_uuid = django_filters.CharFilter(name='project__uuid')
+    project = core_filters.URLFilter(viewset=ProjectViewSet, name='project__uuid')
 
     class Meta(object):
         model = models.ServiceProjectLink

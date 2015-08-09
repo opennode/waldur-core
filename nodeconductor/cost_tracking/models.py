@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -7,8 +9,11 @@ from jsonfield import JSONField
 from model_utils import FieldTracker
 
 from nodeconductor.core import models as core_models
-from nodeconductor.cost_tracking import managers
+from nodeconductor.cost_tracking import managers, CostConstants
 from nodeconductor.structure import models as structure_models
+
+
+logger = logging.getLogger(__name__)
 
 
 class PriceEstimate(core_models.UuidMixin, models.Model):
@@ -53,34 +58,39 @@ class AbstractPriceListItem(models.Model):
     class Meta:
         abstract = True
 
-    class Types(object):
-        FLAVOR = 'flavor'
-        STORAGE = 'storage'
-        LICENSE_APPLICATION = 'license-application'
-        LICENSE_OS = 'license-os'
-        SUPPORT = 'support'
-        NETWORK = 'network'
-
-        CHOICES = (
-            (FLAVOR, 'flavor'),
-            (STORAGE, 'storage'),
-            (LICENSE_APPLICATION, 'license-application'),
-            (LICENSE_OS, 'license-os'),
-            (SUPPORT, 'support'),
-            (NETWORK, 'network'),
-        )
-
     key = models.CharField(max_length=50)
     value = models.DecimalField(default=0, max_digits=16, decimal_places=8)
     units = models.CharField(max_length=30, blank=True)
-    item_type = models.CharField(max_length=30, choices=Types.CHOICES, default=Types.FLAVOR)
+    item_type = models.CharField(max_length=30,
+                                 choices=CostConstants.PriceItem.CHOICES,
+                                 default=CostConstants.PriceItem.FLAVOR)
 
 
 class DefaultPriceListItem(core_models.UuidMixin, AbstractPriceListItem):
-    """ Default price list item for all services of connected type """
-    service_content_type = models.ForeignKey(ContentType)
+    """ Default price list item for all resources of supported service types """
+    resource_content_type = models.ForeignKey(ContentType, default=None)
+
+    backend_product_id = models.CharField(max_length=255, blank=True)
+    backend_option_id = models.CharField(max_length=255, blank=True)
+    backend_choice_id = models.CharField(max_length=255, blank=True)
 
     tracker = FieldTracker()
+
+    @classmethod
+    def get_options(cls, **queryset_args):
+        """ Return a dictionary with backend IDs of configurable options
+            for specific product defined by resource_content_type or backend_product_id
+        """
+        options = {}
+        for item in cls.objects.filter(**queryset_args):
+            options.setdefault(item.item_type, {})
+            options[item.item_type]['id'] = item.backend_option_id
+
+            if item.backend_choice_id:
+                options[item.item_type].setdefault('choices', {})
+                options[item.item_type]['choices'][item.key] = item.backend_choice_id
+
+        return options
 
 
 class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
@@ -88,6 +98,7 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
     service = GenericForeignKey('content_type', 'object_id')
+    resource_content_type = models.ForeignKey(ContentType, related_name='+', default=None)
 
     is_manually_input = models.BooleanField(default=False)
 

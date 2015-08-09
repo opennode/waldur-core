@@ -2,6 +2,7 @@ import django_filters
 
 from rest_framework import viewsets
 
+from nodeconductor.core import filters as core_filters
 from nodeconductor.structure import views as structure_views
 from nodeconductor.openstack import models, serializers
 
@@ -12,9 +13,14 @@ class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
     import_serializer_class = serializers.InstanceImportSerializer
 
 
+class OpenStackServiceProjectLinkFilter(structure_views.BaseServiceProjectLinkFilter):
+    service = core_filters.URLFilter(viewset=OpenStackServiceViewSet, name='service__uuid')
+
+
 class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkViewSet):
     queryset = models.OpenStackServiceProjectLink.objects.all()
     serializer_class = serializers.ServiceProjectLinkSerializer
+    filter_class = OpenStackServiceProjectLinkFilter
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):

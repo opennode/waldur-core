@@ -138,28 +138,28 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         super(PriceListItemViewSet, self).perform_create(serializer)
 
 
-class ServiceContentTypeFilter(django_filters.CharFilter):
+class ResourceContentTypeFilter(django_filters.CharFilter):
 
     def filter(self, qs, value):
         if value:
             try:
                 app_label, model = value.split('.')
                 ct = ContentType.objects.get(app_label=app_label, model=model)
-                return super(ServiceContentTypeFilter, self).filter(qs, ct)
+                return super(ResourceContentTypeFilter, self).filter(qs, ct)
             except (ContentType.DoesNotExist, ValueError):
                 return qs.none()
         return qs
 
 
 class DefaultPriceListItemFilter(django_filters.FilterSet):
-    service_content_type = ServiceContentTypeFilter()
+    resource_content_type = ResourceContentTypeFilter()
 
     class Meta:
         model = models.DefaultPriceListItem
         fields = [
             'key',
             'item_type',
-            'service_content_type'
+            'resource_content_type'
         ]
 
 

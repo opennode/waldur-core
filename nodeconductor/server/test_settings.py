@@ -38,4 +38,5 @@ NODECONDUCTOR = {
     },
     'JIRA_SUPPORT': {'dummy': True},
     'ELASTICSEARCH_DUMMY': True,
+    'BILLING_DUMMY': True,
 }
