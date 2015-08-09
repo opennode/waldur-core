@@ -1,14 +1,14 @@
 Default price list items
 ------------------------
 
-To get a list of default price list items, run GET against **/api/price-list-items/** as authenticated user.
+To get a list of default price list items, run GET against **/api/default-price-list-items/** as authenticated user.
 
 
 Price lists can be filtered by:
  - ?key=<string>
  - ?item_type=<string> has to be from list of available item_types
    (available options: 'flavor', 'storage', 'license-os', 'license-application', 'network', 'support')
- - ?service_content_type=<string> name of service type(Examples: 'openstack.openstackservice, 'oracle.oracleservice')
+ - ?resource_content_type=<string> name of resource type, for example: 'iaas.instance, 'oracle.database')
 
 
 Response example:
@@ -30,6 +30,6 @@ Response example:
             "item_type": "flavor",
             "value": "10.00000000",
             "units": "per month",
-            "service_content_type": "openstack.openstackservice"
+            "resource_content_type": "iaas.instance"
         }
     ]

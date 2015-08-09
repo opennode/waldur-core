@@ -200,6 +200,8 @@ def pull_cloud_membership(membership_pk):
             event_context={'membership': membership}
         )
 
+    # XXX not the best idea to register in the function
+    sync_cloud_project_membership_with_zabbix.delay(membership.pk)
 
 @shared_task
 def pull_cloud_memberships():

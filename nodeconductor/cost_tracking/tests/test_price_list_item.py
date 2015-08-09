@@ -1,7 +1,7 @@
 from ddt import ddt, data
 from rest_framework import test, status
 
-from nodeconductor.cost_tracking import models
+from nodeconductor.cost_tracking import models, CostConstants
 from nodeconductor.cost_tracking.tests import factories
 from nodeconductor.oracle.tests import factories as oracle_factories
 from nodeconductor.structure import models as structure_models
@@ -85,7 +85,7 @@ class PriceListItemCreateTest(test.APITransactionTestCase):
             'value': 100,
             'units': 'UAH',
             'key': 'test_key',
-            'item_type': models.PriceListItem.Types.STORAGE,
+            'item_type': CostConstants.PriceItem.STORAGE,
         }
 
     @data('staff', 'owner')
