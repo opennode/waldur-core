@@ -324,6 +324,8 @@ class WHMCSAPI(object):
             configoptions=urlsafe_base64_encode(php_dumps(options)),
             billingcycle='monthly',
             paymentmethod='banktransfer',
+            noinvoice=True,
+            noemail=True,
         )
         logger.info('WHMCS order was added with id %s', data['orderid'])
         return data['orderid'], data['productids'], product.backend_product_id
