@@ -12,7 +12,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.utils import request_api
 from nodeconductor.cost_tracking import CostConstants
-from nodeconductor.cost_tracking.models import PaidResource
+from nodeconductor.billing.models import PaidResource
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError

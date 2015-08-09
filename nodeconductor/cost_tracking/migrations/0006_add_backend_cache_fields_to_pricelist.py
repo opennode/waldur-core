@@ -12,10 +12,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameField(
+        migrations.RemoveField(
             model_name='defaultpricelistitem',
-            old_name='service_content_type',
-            new_name='resource_content_type',
+            name='service_content_type',
         ),
         migrations.AddField(
             model_name='defaultpricelistitem',
@@ -36,9 +35,15 @@ class Migration(migrations.Migration):
             preserve_default=True,
         ),
         migrations.AddField(
+            model_name='defaultpricelistitem',
+            name='resource_content_type',
+            field=models.ForeignKey(default=None, to='contenttypes.ContentType'),
+            preserve_default=True,
+        ),
+        migrations.AddField(
             model_name='pricelistitem',
             name='resource_content_type',
-            field=models.ForeignKey(related_name='+', default=1, to='contenttypes.ContentType'),
-            preserve_default=False,
+            field=models.ForeignKey(related_name='+', default=None, to='contenttypes.ContentType'),
+            preserve_default=True,
         ),
     ]

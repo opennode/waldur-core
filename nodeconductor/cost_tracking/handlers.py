@@ -2,7 +2,6 @@ import logging
 
 from django.contrib.contenttypes.models import ContentType
 
-from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices
 
@@ -98,40 +97,3 @@ def delete_price_list_items_if_default_was_deleted(sender, instance, **kwargs):
         item_type=default_item.tracker.previous('item_type'),
         resource_content_type=default_item.resource_content_type,
     ).delete()
-
-
-def track_order(sender, instance, name=None, source=None, **kwargs):
-    if not issubclass(instance.__class__, models.PaidResource):
-        return
-
-    order = instance.order
-    try:
-        if name == instance.begin_provisioning.__name__:
-            order.add()
-
-        if name == instance.set_online.__name__:
-            if source == instance.States.PROVISIONING:
-                order.accept()
-            if source == instance.States.STARTING:
-                order.update(flavor=instance.flavor_name)
-
-        if name == instance.set_offline.__name__:
-            if source == instance.States.STOPPING:
-                order.update(flavor=None)
-
-        if name == instance.set_erred.__name__:
-            if source == instance.States.PROVISIONING:
-                order.cancel()
-
-        if name == instance.set_resized.__name__:
-            order.update(flavor=None)
-
-    except BillingBackendError:
-        logger.exception("Failed to track order for resource %s" % instance)
-        instance.state = instance.States.ERRED
-        instance.save()
-
-
-def cancel_purchase(sender, instance=None, **kwargs):
-    if issubclass(instance.__class__, models.PaidResource):
-        instance.order.cancel_purchase()

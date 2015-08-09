@@ -39,7 +39,7 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         return my_urls + super(DefaultPriceListItemAdmin, self).get_urls()
 
     def sync(self, request):
-        send_task('cost_tracking', 'sync_pricelist')()
+        send_task('billing', 'sync_pricelist')()
         self.message_user(request, "Pricelists scheduled for sync")
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 

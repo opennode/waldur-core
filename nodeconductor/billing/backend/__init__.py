@@ -5,9 +5,6 @@ from django.utils import six
 from django.conf import settings
 from django.core.files.base import ContentFile
 
-from nodeconductor.billing.models import PriceList
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -100,31 +97,6 @@ class BillingBackend(object):
 
         # Remove stale invoices
         map(lambda i: i.delete(), cur_invoices.values())
-
-    def sync_pricelist(self):
-        # Update or create prices from backend
-        cur_prices = {p.backend_id: p for p in PriceList.objects.all()}
-        used_names = set(p.name for p in cur_prices.values())
-        for product in self.api.get_products():
-            cur_price = cur_prices.pop(product['backend_id'], None)
-            if cur_price:
-                cur_price.price = product['price']
-                cur_price.options = product['options']
-                cur_price.save(update_fields=['price', 'options'])
-            else:
-                if product['name'] in used_names:
-                    logger.warn("Product %s already exists in pricelist." % product['name'])
-                    pricelist_item = PriceList.objects.get(name=product['name'])
-                    pricelist_item.price = product['price']
-                    pricelist_item.options = product['options']
-                    pricelist_item.backend_id = product['backend_id']
-                    pricelist_item.save()
-                    continue
-
-                PriceList.objects.create(**product)
-                used_names.add(product['name'])
-
-        PriceList.objects.filter(pk__in=[p.pk for p in cur_prices.values()]).update(backend_id='')
 
     def get_invoice_items(self, invoice_id):
         return self.api.get_invoice_items(invoice_id)
