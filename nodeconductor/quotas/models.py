@@ -1,5 +1,6 @@
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.db.models import Sum
 from django.utils.encoding import python_2_unicode_compatible
@@ -21,6 +22,7 @@ class Quota(UuidMixin, NameMixin, LoggableMixin, ReversionMixin, models.Model):
 
     limit = models.FloatField(default=-1)
     usage = models.FloatField(default=0)
+    utilization = models.FloatField(default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
 
     content_type = models.ForeignKey(ct_models.ContentType)
     object_id = models.PositiveIntegerField()
