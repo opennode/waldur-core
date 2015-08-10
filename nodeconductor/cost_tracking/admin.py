@@ -46,3 +46,4 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
 
 admin.site.register(models.PriceListItem, PriceListItemAdmin)
 admin.site.register(models.DefaultPriceListItem, DefaultPriceListItemAdmin)
+admin.site.register(models.PriceEstimate)

@@ -527,3 +527,8 @@ class WHMCSAPI(object):
             item.backend_option_id = option['id']
             item.backend_product_id = pid
             item.save()
+
+    def get_total_cost_of_active_products(self, client_id):
+        products = self.request('getclientsproducts', clientid=client_id, resultset_path='products.product')
+        costs = [float(product['recurringamount']) for product in products if product['status'] == 'Active']
+        return sum(costs)
