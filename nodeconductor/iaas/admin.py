@@ -89,7 +89,7 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     search_fields = ('cloud__customer__name', 'project__name', 'cloud__name')
     inlines = [QuotaInline]
 
-    actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships']
+    actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships', 'detect_external_networks']
 
     def get_queryset(self, request):
         queryset = super(CloudProjectMembershipAdmin, self).get_queryset(request)
@@ -145,6 +145,28 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
         self.message_user(request, message)
 
     recover_erred_cloud_memberships.short_description = "Recover selected cloud project memberships"
+
+    def detect_external_networks(self, request, queryset):
+        queryset = queryset.exclude(state=SynchronizationStates.ERRED)
+
+        tasks_scheduled = 0
+
+        for membership in queryset.iterator():
+            tasks.detect_external_network.delay(membership.pk)
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'One cloud project membership scheduled for detection',
+            '%(tasks_scheduled)d cloud project memberships scheduled for detection',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    detect_external_networks.short_description = "Attempt to lookup and set external network id of the connected router"
 
     def get_cloud_name(self, obj):
         return obj.cloud.name
