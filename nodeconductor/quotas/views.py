@@ -58,16 +58,6 @@ class QuotaViewSet(mixins.UpdateModelMixin,
 
         return response.Response(serialized_versions, status=status.HTTP_200_OK)
 
-def test_history_timing():
-    start = datetime.now()
-    for i in range(2):
-        for quota in quotas:
-            try:
-                print reversion.get_for_date(quota, datetime.now() - timedelta(days=i))
-            except Version.DoesNotExist:
-                print 'xxxxxx', quota
-    print 'time: ', datetime.now() - start
-
 
 class QuotaFilterMixin(object):
     """

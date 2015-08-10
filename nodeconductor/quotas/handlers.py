@@ -92,4 +92,4 @@ def reset_quota_values_to_zeros_before_delete(sender, instance=None, **kwargs):
     quotas_names = quotas_scope.quotas.values_list('name', flat=True)
     for name in quotas_names:
         quotas_scope.set_quota_usage(name, 0)
-        quotas_scope.set_quota_utilization(name, 0)
+        quotas_scope.set_quota_limit(name, 0)

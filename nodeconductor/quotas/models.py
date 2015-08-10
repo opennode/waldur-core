@@ -1,6 +1,5 @@
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.db.models import Sum, F
 from django.utils.encoding import python_2_unicode_compatible
@@ -22,7 +21,6 @@ class Quota(UuidMixin, NameMixin, LoggableMixin, ReversionMixin, models.Model):
 
     limit = models.FloatField(default=-1)
     usage = models.FloatField(default=0)
-    utilization = models.FloatField(default=0, validators=[MinValueValidator(0), MaxValueValidator(100)])
 
     content_type = models.ForeignKey(ct_models.ContentType)
     object_id = models.PositiveIntegerField()
@@ -79,13 +77,14 @@ class QuotaModelMixin(models.Model):
     quotas = ct_fields.GenericRelation('quotas.Quota', related_query_name='quotas')
 
     def set_quota_limit(self, quota_name, limit):
-        self.quotas.filter(name=quota_name).update(limit=limit)
+        # XXX: !!! Horrible hack !!! Remove ASAP !!! Propagate limits for backend quotas
+        if quota_name.startswith('nc_'):
+            self.quotas.filter(name=quota_name).update(limit=limit)
+        else:
+            self._set_editable_field_value('limit', quota_name, limit)
 
     def set_quota_usage(self, quota_name, usage):
         self._set_editable_field_value('usage', quota_name, usage)
-
-    def set_quota_utilization(self, quota_name, utilization):
-        self._set_editable_field_value('utilization', quota_name, utilization)
 
     def add_quota_usage(self, quota_name, usage_delta, fail_silently=False):
         """
@@ -94,14 +93,6 @@ class QuotaModelMixin(models.Model):
         If <fail_silently> is True - operation will not fail if quota does not exist
         """
         self._add_delta_to_editable_field('usage', quota_name, usage_delta, fail_silently)
-
-    def add_quota_utilization(self, quota_name, utilization_delta, fail_silently=False):
-        """
-        Add utilization_delta to current quota utilization
-
-        If <fail_silently> is True - operation will not fail if quota does not exist
-        """
-        self._add_delta_to_editable_field('utilization', quota_name, utilization_delta, fail_silently)
 
     def _set_editable_field_value(self, field, quota_name, value):
         with transaction.atomic():
@@ -125,7 +116,6 @@ class QuotaModelMixin(models.Model):
                 if not fail_silently:
                     raise e
             else:
-                update_kwargs = {field: F(field) + delta}
                 setattr(original_quota, field, F(field) + delta)
                 original_quota.save()
                 self._add_delta_to_ancestors(field, quota_name, delta)

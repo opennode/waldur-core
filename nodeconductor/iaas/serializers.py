@@ -934,7 +934,7 @@ class UsageStatsSerializer(serializers.Serializer):
     item = serializers.CharField()
 
     def validate_item(self, value):
-        if not value in ZabbixDBClient.items:
+        if value not in ZabbixDBClient.items:
             raise serializers.ValidationError(
                 "GET parameter 'item' have to be from list: %s" % ZabbixDBClient.items.keys())
         return value
