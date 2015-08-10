@@ -2,8 +2,10 @@ from django.contrib.contenttypes import models as ct_models
 from django.db import models
 from django.db.models import Q
 
+from nodeconductor.core.managers import GenericKeyMixin
 
-class QuotaManager(models.Manager):
+
+class QuotaManager(GenericKeyMixin, models.Manager):
 
     def filtered_for_user(self, user, queryset=None):
         from nodeconductor.quotas import utils

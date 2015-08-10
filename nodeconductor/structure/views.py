@@ -110,17 +110,6 @@ class CustomerViewSet(viewsets.ModelViewSet):
             customer.add_user(self.request.user, models.CustomerRole.OWNER)
 
     # XXX: This detail route should be moved to billing application.
-    @detail_route()
-    def estimated_price(self, request, uuid):
-        from nodeconductor.billing.tasks import get_customer_usage_data
-        customer = self.get_object()
-        start_date = core_utils.datetime_to_timestamp(
-            datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0))
-        end_date = core_utils.datetime_to_timestamp(datetime.now().replace(minute=0, second=0, microsecond=0))
-        _, _, projected_total = get_customer_usage_data(customer, start_date, end_date)
-        return Response(projected_total, status.HTTP_200_OK)
-
-    # XXX: This detail route should be moved to billing application.
     @list_route()
     def annual_report(self, request):
         from nodeconductor.billing.models import Invoice

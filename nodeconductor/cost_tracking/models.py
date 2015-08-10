@@ -53,6 +53,9 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
             structure_models.ServiceProjectLink.get_all_models()
         )
 
+    def __str__(self):
+        return '%s for %s-%s' % (self.scope, self.year, self.month)
+
 
 class AbstractPriceListItem(models.Model):
     class Meta:

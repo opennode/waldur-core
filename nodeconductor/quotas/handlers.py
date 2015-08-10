@@ -1,6 +1,7 @@
 from django.db.models import signals
 
 from nodeconductor.quotas.log import alert_logger
+from nodeconductor.quotas.models import Quota
 
 
 def add_quotas_to_scope(sender, instance, created=False, **kwargs):
@@ -76,3 +77,19 @@ def check_quota_threshold_breach(sender, instance, **kwargs):
             })
     else:
         alert_logger.quota.close(scope=quota, alert_type='quota_usage_is_over_threshold')
+
+
+def propagate_quotas_to_parents(sender, instance, created=False, **kwargs):
+    if created:
+        quota = instance
+        parents = quota.scope.get_quota_parents()
+        for parent in parents:
+            Quota.objects.get_or_create(scope=parent, name=quota.name)
+
+
+def reset_quota_values_to_zeros_before_delete(sender, instance=None, **kwargs):
+    quotas_scope = instance
+    quotas_names = quotas_scope.quotas.values_list('name', flat=True)
+    for name in quotas_names:
+        quotas_scope.set_quota_usage(name, 0)
+        quotas_scope.set_quota_limit(name, 0)

@@ -109,6 +109,10 @@ class BillingBackend(object):
         client_id = self.get_or_create_client()
         return self.api.update_order(client_id, backend_resource_id, backend_template_id, **options)
 
+    def get_total_cost_of_active_products(self):
+        client_id = self.get_or_create_client()
+        return self.api.get_total_cost_of_active_products(client_id)
+
 
 class DummyBillingAPI(object):
     def __getattr__(self, name):

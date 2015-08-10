@@ -218,6 +218,11 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=1),
         'args': (),
     },
+    'update-current-month-cost-projections': {
+        'task': 'nodeconductor.iaas.cost_tracking.tasks.update_current_month_projected_estimate_for_customers',
+        'schedule': timedelta(hours=24),
+        'args': (),
+    }
 }
 
 CELERY_TASK_THROTTLING = {
