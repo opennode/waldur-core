@@ -337,7 +337,7 @@ def create_external_network(membership_pk, network_data):
 
         backend.get_or_create_external_network(membership, neutron, **network_data)
     except CloudBackendError:
-        logger.info('Failed to create external network for cloud project membership with id %s.', membership_pk)
+        logger.warning('Failed to create external network for cloud project membership with id %s.', membership_pk)
 
 
 @shared_task
@@ -364,4 +364,4 @@ def detect_external_network(membership_pk):
 
         backend.detect_external_network(membership, neutron)
     except CloudBackendError:
-        logger.info('Failed to create external network for cloud project membership with id %s.', membership_pk)
+        logger.warning('Failed to detect external network for cloud project membership with id %s.', membership_pk)

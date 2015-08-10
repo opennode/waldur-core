@@ -11,7 +11,6 @@ import dateutil.parser
 from itertools import groupby
 
 from ceilometerclient import client as ceilometer_client
-from ceilometerclient import exc as ceilometer_exceptions
 from cinderclient import exceptions as cinder_exceptions
 from cinderclient.v1 import client as cinder_client
 from django.conf import settings
