@@ -2134,6 +2134,20 @@ class OpenStackBackend(OpenStackClient):
 
         return membership.external_network_id
 
+    def detect_external_network(self, membership, neutron):
+        routers = neutron.list_routers(tenant_id=membership.tenant_id)['routers']
+        if bool(routers):
+            router = routers[0]
+        else:
+            logger.warning('Cloud project membership %s does not have connected routers.', membership)
+            return
+
+        ext_gw = router.get('external_gateway_info', {})
+        if 'network_id' in ext_gw:
+            membership.external_network_id = ext_gw['network_id']
+            membership.save()
+            logger.info('Found and set external network with id %s', ext_gw['network_id'])
+
     def delete_external_network(self, membership, neutron):
         floating_ips = neutron.list_floatingips(floating_network_id=membership.external_network_id)['floatingips']
 

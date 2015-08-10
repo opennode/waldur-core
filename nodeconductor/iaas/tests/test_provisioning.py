@@ -303,7 +303,7 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         membership.set_quota_usage('vcpu', instance.cores)
         membership.set_quota_limit('ram', instance.ram)
         membership.set_quota_limit('vcpu', instance.cores)
-        membership.set_quota_limit('max_instnces', 0)
+        membership.set_quota_limit('max_instances', 0)
         membership.set_quota_limit('storage', 0)
 
         new_flavor = factories.FlavorFactory(
