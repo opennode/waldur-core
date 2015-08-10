@@ -93,6 +93,38 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
 
     create_current_month_invoices.short_description = "Create invoices for current month"
 
+    def update_current_month_projected_estimate(self, request, queryset):
+        # XXX: This method creates dependency between structure and structure.cost_tracking
+        from nodeconductor.structure.cost_tracking.tasks import update_current_month_projected_estimate_for_customer
+
+        customers_without_backend_id = []
+        succeeded_customers = []
+        for customer in queryset:
+            if not customer.backend_id:
+                customers_without_backend_id.append(customer)
+            update_current_month_projected_estimate_for_customer(customer.uuid.hex)
+            succeeded_customers.append(customer)
+
+        if succeeded_customers:
+            message = ungettext(
+                'Projected estimate generation successfully scheduled for customer %(customers_names)s',
+                'Projected estimate generation successfully scheduled for customers: %(customers_names)s',
+                len(succeeded_customers)
+            )
+            message = message % {'customers_names': ', '.join([c.name for c in succeeded_customers])}
+            self.message_user(request, message)
+
+        if customers_without_backend_id:
+            message = ungettext(
+                'Cannot generate estimate for customer without backend id: %(customers_names)s',
+                'Cannot generate estimate for customers without backend id: %(customers_names)s',
+                len(customers_without_backend_id)
+            )
+            message = message % {'customers_names': ', '.join([c.name for c in customers_without_backend_id])}
+            self.message_user(request, message)
+
+    update_current_month_projected_estimate.short_description = "Update current month project estimate"
+
 
 class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
 
