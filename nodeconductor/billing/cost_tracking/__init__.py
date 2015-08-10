@@ -1,0 +1,1 @@
+# XXX This is very billing connected functionality. If it were to reside in iaas, it would bind it to billing even more.
