@@ -129,6 +129,8 @@ class PaypalBackend(object):
         """
         try:
             agreement = paypal.BillingAgreement.execute(payment_token)
+            if not agreement:
+                raise BillingBackendError('Agreement not found')
             return agreement.id
         except paypal.exceptions.ConnectionError as e:
             six.reraise(BillingBackendError, e)
@@ -136,6 +138,8 @@ class PaypalBackend(object):
     def cancel_agreement(self, agreement_id):
         try:
             agreement = BillingAgreement.find(agreement_id)
+            if not agreement:
+                raise BillingBackendError('Agreement not found')
             if agreement.cancel({'note': 'Canceling the agreement by application'}):
                 return True
             else:
@@ -146,6 +150,8 @@ class PaypalBackend(object):
     def get_agreement_transactions(self, agreement_id, start_date, end_date):
         try:
             agreement = paypal.BillingAgreement.find(agreement_id)
+            if not agreement:
+                raise BillingBackendError('Agreement not found')
             formatted_start_date = start_date.strftime('%Y-%m-%d')
             formatted_end_date = end_date.strftime('%Y-%m-%d')
             return agreement.search_transactions(start_date, end_date)
