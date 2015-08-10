@@ -154,6 +154,6 @@ class PaypalBackend(object):
                 raise BillingBackendError('Agreement not found')
             formatted_start_date = start_date.strftime('%Y-%m-%d')
             formatted_end_date = end_date.strftime('%Y-%m-%d')
-            return agreement.search_transactions(start_date, end_date)
+            return agreement.search_transactions(formatted_start_date, formatted_end_date)
         except paypal.exceptions.ConnectionError as e:
             six.reraise(BillingBackendError, e)
