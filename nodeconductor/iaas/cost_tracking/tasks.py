@@ -9,7 +9,7 @@ from nodeconductor.structure.models import Customer
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='nodeconductor.structure.cost_tracking.tasks.update_current_month_projected_estimate_for_customers')
+@shared_task(name='nodeconductor.iaas.cost_tracking.tasks.update_current_month_projected_estimate_for_customers')
 def update_current_month_projected_estimate_for_all_customers():
     for customer in Customer.objects.exclude(billing_backend_id=''):
         update_current_month_projected_estimate_for_customer.delay(customer.uuid)

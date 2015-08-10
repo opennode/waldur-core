@@ -42,7 +42,12 @@ class ProtectedModelMixin(object):
 
 class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     readonly_fields = ['balance']
-    actions = ['sync_with_backend', 'create_last_month_invoices', 'create_current_month_invoices']
+    actions = [
+        'sync_with_backend',
+        'create_last_month_invoices',
+        'create_current_month_invoices',
+        'update_current_month_projected_estimate',
+    ]
     list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created']
 
     def sync_with_backend(self, request, queryset):
@@ -94,15 +99,15 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     create_current_month_invoices.short_description = "Create invoices for current month"
 
     def update_current_month_projected_estimate(self, request, queryset):
-        # XXX: This method creates dependency between structure and structure.cost_tracking
-        from nodeconductor.structure.cost_tracking.tasks import update_current_month_projected_estimate_for_customer
+        # XXX: This method creates dependency between ias and iaas.cost_tracking
+        from nodeconductor.iaas.cost_tracking.tasks import update_current_month_projected_estimate_for_customer
 
         customers_without_backend_id = []
         succeeded_customers = []
         for customer in queryset:
-            if not customer.backend_id:
+            if not customer.billing_backend_id:
                 customers_without_backend_id.append(customer)
-            update_current_month_projected_estimate_for_customer(customer.uuid.hex)
+            update_current_month_projected_estimate_for_customer.delay(customer.uuid.hex)
             succeeded_customers.append(customer)
 
         if succeeded_customers:
