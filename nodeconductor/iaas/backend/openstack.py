@@ -2140,6 +2140,7 @@ class OpenStackBackend(OpenStackClient):
             router = routers[0]
         else:
             logger.warning('Cloud project membership %s does not have connected routers.', membership)
+            return
 
         ext_gw = router.get('external_gateway_info', {})
         if 'network_id' in ext_gw:
