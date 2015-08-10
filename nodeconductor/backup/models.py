@@ -286,3 +286,7 @@ class BackupStrategy(object):
     def delete(cls, backup_source, metadata):
         raise NotImplementedError(
             'Implement delete() that would perform backup of a model.')
+
+    @classmethod
+    def update_order(cls, backup_source, active_backups_qs):
+        pass

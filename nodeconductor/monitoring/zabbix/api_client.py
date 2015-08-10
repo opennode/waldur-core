@@ -284,10 +284,15 @@ class ZabbixApiClient(object):
         except IndexError:
             return False
 
+    @_exception_decorator('Can not create Zabbix host')
     def get_or_create_host(
             self, api, instance, groupid, templateid, interface_parameters,
             application_templateid=None, host_name=None, visible_name=None):
         name = self.get_host_name(instance) if host_name is None else host_name
+        if name.strip() == '':
+            logger.warn('Cannot register host with empty name, host %s', instance)
+            raise ZabbixAPIException('Zabbix host name cannot be empty')
+
         visible_name = self.get_host_visible_name(instance) if visible_name is None else visible_name
 
         if not api.host.exists(host=name):

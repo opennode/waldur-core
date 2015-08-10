@@ -4,7 +4,6 @@ from django.conf import settings
 import django_filters
 from django_fsm import TransitionNotAllowed
 from django.shortcuts import redirect
-from django.utils import six
 from django.views.static import serve
 from rest_framework import mixins, viewsets, permissions, response, decorators, exceptions, status
 from rest_framework.exceptions import APIException
@@ -12,18 +11,11 @@ from rest_framework.reverse import reverse
 
 from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.billing.log import event_logger
-from nodeconductor.billing.models import PriceList, Invoice, Payment
+from nodeconductor.billing.models import Invoice, Payment
 from nodeconductor.billing.serializers import InvoiceSerializer, PaymentSerializer, PaymentApproveSerializer
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.structure.filters import GenericRoleFilter
 from nodeconductor.structure.models import CustomerRole
-
-
-class BillingViewSet(viewsets.GenericViewSet):
-
-    @decorators.list_route()
-    def pricelist(self, request):
-        return response.Response({pl.name: pl.price for pl in PriceList.objects.all()})
 
 
 class InvoiceFilter(django_filters.FilterSet):

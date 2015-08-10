@@ -11,7 +11,6 @@ import dateutil.parser
 from itertools import groupby
 
 from ceilometerclient import client as ceilometer_client
-from ceilometerclient import exc as ceilometer_exceptions
 from cinderclient import exceptions as cinder_exceptions
 from cinderclient.v1 import client as cinder_client
 from django.conf import settings
@@ -1400,7 +1399,7 @@ class OpenStackBackend(OpenStackClient):
                 else:
                     # try to devise from volume image metadata
                     template = self._get_instance_template(system_volume, membership, instance_id)
-                cores, ram = self._get_flavor_info(nova, backend_instance)
+                cores, ram, flavor_name = self._get_flavor_info(nova, backend_instance)
                 state = self._get_instance_state(backend_instance)
             except LookupError as e:
                 logger.exception('Failed to lookup instance %s information', instance_id)
@@ -1421,6 +1420,7 @@ class OpenStackBackend(OpenStackClient):
                 template=template,
                 agreed_sla=template.sla_level,
 
+                flavor_name=flavor_name,
                 cores=cores,
                 ram=ram,
 
@@ -2637,7 +2637,7 @@ class OpenStackBackend(OpenStackClient):
         else:
             cores = flavor.vcpus
             ram = self.get_core_ram_size(flavor.ram)
-            return cores, ram
+            return cores, ram, flavor.name
 
     def _normalize_security_group_rule(self, rule):
         if rule['ip_protocol'] is None:
