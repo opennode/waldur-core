@@ -8,7 +8,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.core import serializers as django_serializers
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-
 import reversion
 from reversion.models import Version, Revision
 
@@ -46,6 +45,15 @@ class Command(BaseCommand):
                 date = start - timedelta(days=i)
                 self.create_revisions_for_customer(customer, date)
         self.stdout.write('... Done')
+
+        # For last revision creation:
+        for customer in structure_models.Customer.objects.all():
+            for quota in customer.quotas.all():
+                quota.save()
+
+        for project in structure_models.Project.objects.all():
+            for quota in project.quotas.all():
+                quota.save()
 
     def create_quotas_for_project(self, project):
         memberships = models.CloudProjectMembership.objects.filter(project=project)

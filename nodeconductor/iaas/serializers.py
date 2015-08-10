@@ -1017,40 +1017,13 @@ class StatsAggregateSerializer(serializers.Serializer):
 
 class QuotaTimelineStatsSerializer(serializers.Serializer):
 
-    INTERVAL_CHOICES = ('day', 'week', 'month')
-    ITEM_CHOICES = ('vcpu', 'storage', 'ram', 'instances')
+    INTERVAL_CHOICES = ('hour', 'day', 'week', 'month')
+    ITEM_CHOICES = ('vcpu', 'storage', 'ram')
 
     start_time = TimestampField(default=lambda: timeshift(days=-1))
     end_time = TimestampField(default=lambda: timeshift())
     interval = serializers.ChoiceField(choices=INTERVAL_CHOICES, default='day')
     item = serializers.ChoiceField(choices=ITEM_CHOICES, required=False)
-
-    def get_stats(self, memberships):
-        # Format request data
-        hosts = list(memberships.exclude(tenant_id='').values_list('tenant_id', flat=True))
-
-        if not hosts:
-            return []
-
-        item_names = [self.validated_data['item']] if 'item' in self.validated_data else self.ITEM_CHOICES
-        items = []
-        for item in item_names:
-            items.append("project_%s_limit" % item)
-            items.append("project_%s_usage" % item)
-
-        start = datetime_to_timestamp(self.validated_data['start_time'])
-        end = datetime_to_timestamp(self.validated_data['end_time'])
-        interval = self.validated_data['interval']
-
-        # Execute request
-        rows = ZabbixDBClient().get_projects_quota_timeline(hosts, items, start, end, interval)
-
-        # Format response data
-        results = []
-        for (start, end, key, value) in rows:
-            key = key.replace("project_", "")
-            results.append((start, end, key, value))
-        return zabbix_utils.format_timeline(results)
 
 
 class ExternalNetworkSerializer(serializers.Serializer):
