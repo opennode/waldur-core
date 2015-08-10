@@ -1,6 +1,7 @@
 import logging
 
 from celery import shared_task
+from django.conf import settings
 from django.utils import timezone
 
 from nodeconductor.backup import models, exceptions
@@ -8,6 +9,13 @@ from nodeconductor.backup.log import event_logger, extract_event_context
 
 
 logger = logging.getLogger(__name__)
+
+
+def update_order(strategy, source):
+    # XXX: Consider introducing 'backup signals' instead
+    nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+    if nc_settings.get('ENABLE_WHMCS_ORDER_PROCESSING', False):
+        strategy.update_order(source, models.Backup.objects.get_active())
 
 
 @shared_task
@@ -45,7 +53,7 @@ def process_backup_task(backup_uuid):
 
                 backup.erred()
             else:
-                strategy.update_order(source, models.Backup.objects.get_active())
+                update_order(strategy, source)
                 logger.info('Successfully performed backup for backup source: %s', source.name)
                 event_logger.backup.info(
                     'Backup for {iaas_instance_name} has been created.',
@@ -116,7 +124,7 @@ def deletion_task(backup_uuid):
 
                 backup.erred()
             else:
-                strategy.update_order(source, models.Backup.objects.get_active())
+                update_order(strategy, source)
                 logger.info('Successfully deleted backup for backup source: %s', source)
                 event_logger.backup.info(
                     'Backup for {iaas_instance_name} has been deleted.',
