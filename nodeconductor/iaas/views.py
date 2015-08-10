@@ -20,6 +20,8 @@ from rest_framework import permissions, status
 from rest_framework import viewsets, views
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route, list_route
+import reversion
+from reversion.models import Version
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
@@ -1254,22 +1256,28 @@ class QuotaStatsView(views.APIView):
         return Response(sum_of_quotas, status=status.HTTP_200_OK)
 
 
+# XXX: This view is deprecated. It has to be replaced with quotas history endpoints
 class QuotaTimelineStatsView(views.APIView):
     """
     Count quota usage and limit history statistics
     """
 
     def get(self, request, format=None):
-        memberships = self.get_memberships(request)
-        stats = self.get_stats(request, memberships)
+        stats = self.get_stats(request)
         return Response(stats, status=status.HTTP_200_OK)
 
-    def get_memberships(self, request):
+    def get_quota_scopes(self, request):
         serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        return serializer.get_memberships(request.user)
+        if serializer.data.get('aggregate') == 'customer':
+            scopes = structure_filters.filter_queryset_for_user(Customer.objects.all(), request.user)
+            if serializer.data.get('uuid'):
+                scopes = scopes.filter(uuid=serializer.data.get('uuid'))
+        else:
+            scopes = serializer.get_projects(request.user)
+        return scopes
 
-    def get_stats(self, request, memberships):
+    def get_stats(self, request):
         mapped = {
             'start_time': request.query_params.get('from'),
             'end_time': request.query_params.get('to'),
@@ -1281,4 +1289,64 @@ class QuotaTimelineStatsView(views.APIView):
         serializer = QuotaTimelineStatsSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
-        return serializer.get_stats(memberships)
+        scopes = self.get_quota_scopes(request)
+        date_points = self.get_date_points(
+            start_time=serializer.validated_data['start_time'],
+            end_time=serializer.validated_data['end_time'],
+            interval=serializer.validated_data['interval']
+        )
+        items = [serializer.validated_data['item']] if 'item' in serializer.validated_data else serializer.ITEM_CHOICES
+
+        stats = []
+        for start, end in zip(date_points[:-1], date_points[1:]):
+            date_stats = {
+                'from': datetime_to_timestamp(start),
+                'to': datetime_to_timestamp(end),
+                'start': start,
+                'end': end,
+            }
+            for item in items:
+                date_stats.update(self.get_quotas_for_date(item, scopes, end))
+            stats.append(date_stats)
+
+        return stats
+
+    def get_date_points(self, start_time, end_time, interval):
+        if interval == 'hour':
+            start_point = start_time.replace(second=0, minute=0, microsecond=0)
+            interval = datetime.timedelta(hours=1)
+        elif interval == 'day':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = datetime.timedelta(days=1)
+        elif interval == 'week':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = datetime.timedelta(days=7)
+        elif interval == 'month':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = datetime.timedelta(days=30)
+
+        points = [start_time]
+        current_point = start_point
+        while current_point <= end_time:
+            points.append(current_point)
+            current_point += interval
+        if points[-1] != end_time:
+            points.append(end_time)
+
+        return [p for p in points if start_time <= p <= end_time]
+
+    def get_quotas_for_date(self, quota_name, scopes, date):
+        quotas_versions = []
+        for scope in scopes:
+            quota = scope.quotas.get(name=quota_name)
+            try:
+                version = reversion.get_for_date(quota, date)
+            except Version.DoesNotExist:
+                pass
+            else:
+                quotas_versions.append(version.object_version.object)
+
+        return {
+            '{}_limit'.format(quota_name): sum([q.limit for q in quotas_versions]),
+            '{}_usage'.format(quota_name): sum([q.usage for q in quotas_versions]),
+        }
