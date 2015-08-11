@@ -71,6 +71,9 @@ setup(
     entry_points={
         'backup_strategies': ('Instance = nodeconductor.iaas.backup.instance_backup:InstanceBackupStrategy',),
         'template_services': ('IaaS = nodeconductor.iaas.template.strategy:IaasTemplateServiceStrategy',),
+        'cost_tracking_strategies': (
+            'iaas = nodeconductor.iaas.cost_tracking:IaaSCostTracking',
+        ),
         'console_scripts': ('nodeconductor = nodeconductor.server.manage:main',),
     },
     tests_require=tests_requires,
