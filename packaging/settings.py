@@ -24,6 +24,7 @@ config_defaults = {
         'static_root': os.path.join(data_dir, 'static'),
         'template_debug': 'false',
         'user_can_create_customer': 'false',
+        'enable_whmcs_order_processing': 'false',
     },
     'celery': {
         'backup_schedule_execute_period': 600,
@@ -814,6 +815,8 @@ NODECONDUCTOR.update({
     },
 
     'USER_CAN_CREATE_CUSTOMER': config.getboolean('global', 'user_can_create_customer'),
+
+    'ENABLE_WHMCS_ORDER_PROCESSING': config.getboolean('global', 'enable_whmcs_order_processing'),
 
 })
 
