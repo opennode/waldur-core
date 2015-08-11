@@ -31,6 +31,12 @@ class StructureModel(models.Model):
     """ Generic structure model.
         Provides filtering by customer (based on permission definition).
 
+        Example:
+
+            .. code-block:: python
+
+                Droplet.objects.filter(customer__name__startswith='A')
+
         .filter(customer=None) -- it's a specific use case which means ignore filtering
     """
 
@@ -51,26 +57,33 @@ class StructureModel(models.Model):
                 args = {}
                 fields = self.model._meta.get_all_field_names()
                 for field, val in kwargs.items():
-                    if field not in fields and field == 'customer':
-                        args.update(self._filter_by_customer(val))
+                    base_field = field.split('__')[0]
+                    if base_field not in fields and base_field == 'customer':
+                        args.update(self._filter_by_customer(field, val))
                     else:
                         args.update(**{field: val})
 
                 return args
 
-            def _filter_by_customer(self, customer):
-                if customer is not None:
-                    try:
-                        customer_path = self.model.Permissions.customer_path
-                    except AttributeError:
-                        return {'customer': customer}
-                    else:
-                        if customer_path == 'self':
-                            return {'pk': customer.pk if isinstance(customer, Customer) else customer}
-                        else:
-                            return {customer_path: customer}
+            def _filter_by_customer(self, field, customer):
+                extra = '__'.join(field.split('__')[1:]) if '__' in field else None
+                if customer is None and extra is None:
+                    return {}
 
-                return {}
+                try:
+                    customer_path = self.model.Permissions.customer_path
+                except AttributeError:
+                    return {field: customer}
+                else:
+                    if customer_path == 'self':
+                        if extra:
+                            return {extra: customer}
+                        else:
+                            return {'pk': customer.pk if isinstance(customer, Customer) else customer}
+                    else:
+                        if extra:
+                            customer_path += '__' + extra
+                        return {customer_path: customer}
 
     objects = Managers.StructureManager()
 
