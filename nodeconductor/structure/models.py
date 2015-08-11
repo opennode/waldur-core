@@ -28,28 +28,49 @@ from nodeconductor.structure import SupportedServices
 
 
 class StructureModel(models.Model):
+    """ Generic structure model.
+        Provides filtering by customer (based on permission definition).
+
+        .filter(customer=None) -- it's a specific use case which means ignore filtering
+    """
 
     class Meta(object):
         abstract = True
 
     class Managers(object):
         class StructureManager(models.Manager):
-            def by_customer(self, customer):
-                queryset = self.get_queryset()
-                if not customer:
-                    return queryset
+            def exclude(self, *args, **kwargs):
+                qs = self.get_queryset().exclude(*args)
+                return qs.exclude(**self._filter_by_custom_fields(**kwargs))
 
-                if queryset.model is Customer:
-                    args = {'uuid': customer.uuid.hex}
-                else:
-                    try:
-                        customer_path = queryset.model.Permissions.customer_path
-                    except AttributeError:
-                        return queryset
+            def filter(self, *args, **kwargs):
+                qs = self.get_queryset().filter(*args)
+                return qs.filter(**self._filter_by_custom_fields(**kwargs))
+
+            def _filter_by_custom_fields(self, **kwargs):
+                args = {}
+                fields = self.model._meta.get_all_field_names()
+                for field, val in kwargs.items():
+                    if field not in fields and field == 'customer':
+                        args.update(self._filter_by_customer(val))
                     else:
-                        args = {customer_path: customer}
+                        args.update(**{field: val})
 
-                return queryset.filter(**args)
+                return args
+
+            def _filter_by_customer(self, customer):
+                if customer is not None:
+                    try:
+                        customer_path = self.model.Permissions.customer_path
+                    except AttributeError:
+                        return {'customer': customer}
+                    else:
+                        if customer_path == 'self':
+                            return {'pk': customer.pk if isinstance(customer, Customer) else customer}
+                        else:
+                            return {customer_path: customer}
+
+                return {}
 
     objects = Managers.StructureManager()
 

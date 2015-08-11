@@ -8,7 +8,7 @@ from django.forms.fields import ChoiceField
 from django_filters import ChoiceFilter
 from rest_framework.filters import BaseFilterBackend
 
-from nodeconductor.structure.models import Customer, CustomerRole
+from nodeconductor.structure.models import CustomerRole
 
 
 def set_permissions_for_model(model, **kwargs):
