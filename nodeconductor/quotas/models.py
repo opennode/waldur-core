@@ -1,7 +1,7 @@
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
 from django.db import models, transaction
-from django.db.models import Sum, F
+from django.db.models import Sum
 from django.utils.encoding import python_2_unicode_compatible
 
 from nodeconductor.logging.log import LoggableMixin
@@ -116,18 +116,16 @@ class QuotaModelMixin(models.Model):
                 if not fail_silently:
                     raise e
             else:
-                setattr(original_quota, field, F(field) + delta)
+                setattr(original_quota, field, getattr(original_quota, field) + delta)
                 original_quota.save()
                 self._add_delta_to_ancestors(field, quota_name, delta)
 
     def _add_delta_to_ancestors(self, field, quota_name, delta):
-        for ancestor in self._get_quota_ancestors():
-            try:
-                quota = ancestor.quotas.get(name=quota_name)
-            except Quota.DoesNotExist:
-                quota = Quota.objects.create(scope=ancestor, name=quota_name)
-            setattr(quota, field, F(field) + delta)
-            quota.save()
+        if delta:
+            for ancestor in self._get_quota_ancestors():
+                quota, _ = Quota.objects.get_or_create(scope=ancestor, name=quota_name)
+                setattr(quota, field, getattr(quota, field) + delta)
+                quota.save()
 
     def validate_quota_change(self, quota_deltas, raise_exception=False):
         """
