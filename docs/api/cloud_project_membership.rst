@@ -23,18 +23,23 @@ to the backend.
 
 The following is a list of supported quotas. All values are expected to be integers:
 
-- max_instance - maximal number of created instances.
+- max_instances - maximal number of created instances.
 - ram - maximal size of ram for allocation. In MiB_.
 - storage - maximal size of storage for allocation. In MiB_.
 - vcpu - maximal number of virtual cores for allocation.
 - security_group_count - maximal number of created security groups.
 - security_group_rule_count - maximal number of created security groups rules.
 
+In addition, NodeConductor will automatically calculate quotas for the **volumes** and **snapshots**,
+when **max_instances** is provided. You can set default values for volumes and snapshots per instance
+in the settings_ file.
+
 It is possible to update quotas by one or by submitting all the fields in one request. NodeConductor will attempt
 to update the provided quotas. Please note, that if provided quotas are conflicting with the backend
 (e.g. requested number of instances is below of the already existing ones), some quotas might not be applied.
 
 .. _MiB: http://en.wikipedia.org/wiki/Mebibyte
+.. _settings: http://nodeconductor.readthedocs.org/en/stable/guide/intro.html#id1
 
 Example of a valid request (token is user specific):
 
