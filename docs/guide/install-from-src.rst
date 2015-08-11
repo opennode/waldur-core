@@ -193,7 +193,7 @@ Therefore configuration might look like this:
             If True - ignores Zabbix API exceptions and do not add any messages to logger
 
     OPENSTACK_QUOTAS_INSTANCE_RATIOS
-      Default quota values per instance.
+      Default ratio values per instance.
 
         volumes
           Number of volumes per instance.

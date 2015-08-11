@@ -1075,11 +1075,11 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
         data = dict(serializer.validated_data)
         if data.get('max_instances') is not None:
             quotas = django_settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS_INSTANCE_RATIOS', {})
-            volume_quota = quotas.get('volumes', 4)
-            snapshots_quota = quotas.get('snapshots', 20)
+            volume_ratio = quotas.get('volumes', 4)
+            snapshots_ratio = quotas.get('snapshots', 20)
 
-            data['volumes'] = volume_quota * data['max_instances']
-            data['snapshots'] = snapshots_quota * data['max_instances']
+            data['volumes'] = volume_ratio * data['max_instances']
+            data['snapshots'] = snapshots_ratio * data['max_instances']
 
         instance.schedule_syncing()
         instance.save()
