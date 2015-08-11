@@ -4,6 +4,7 @@ import functools
 import datetime
 import logging
 import time
+from operator import add
 
 from django.db import models as django_models
 from django.db import transaction, IntegrityError
@@ -1295,21 +1296,45 @@ class QuotaTimelineStatsView(views.APIView):
             end_time=serializer.validated_data['end_time'],
             interval=serializer.validated_data['interval']
         )
+        reversed_dates = date_points[::-1]
+        dates = zip(reversed_dates[:-1], reversed_dates[1:])
         items = [serializer.validated_data['item']] if 'item' in serializer.validated_data else serializer.ITEM_CHOICES
 
-        stats = []
-        for start, end in zip(date_points[:-1], date_points[1:]):
-            date_stats = {
-                'from': datetime_to_timestamp(start),
-                'to': datetime_to_timestamp(end),
-                'start': start,
-                'end': end,
-            }
-            for item in items:
-                date_stats.update(self.get_quotas_for_date(item, scopes, end))
-            stats.append(date_stats)
+        stats = [{'from': datetime_to_timestamp(start), 'to': datetime_to_timestamp(end)} for start, end in dates]
 
-        return stats
+        def _add(*args):
+            return [sum(q) for q in zip(*args)]
+
+        for item in items:
+            item_stats = [self.get_stats_for_scope(item, scope, dates) for scope in scopes]
+            item_stats = map(_add, *item_stats)
+            for date_item_stats, date_stats in zip(item_stats, stats):
+                limit, usage = date_item_stats
+                date_stats['{}_limit'.format(item)] = limit
+                date_stats['{}_usage'.format(item)] = usage
+
+        return stats[::-1]
+
+    def get_stats_for_scope(self, quota_name, scope, dates):
+        stats_data = []
+        quota = scope.quotas.get(name=quota_name)
+        versions = reversion.get_for_object(quota).select_related('reversion').filter(
+            revision__date_created__lte=dates[0][0]).iterator()
+        version = None
+        versions_exists = True
+        for end, start in dates:
+            if versions_exists:
+                try:
+                    while version is None or version.revision.date_created > end:
+                        version = versions.next()
+                    stats_data.append((version.object_version.object.limit, version.object_version.object.usage))
+                except StopIteration:
+                    versions_exists = False
+                    stats_data.append((0, 0))
+            else:
+                stats_data.append((0, 0))
+
+        return stats_data
 
     def get_date_points(self, start_time, end_time, interval):
         if interval == 'hour':
@@ -1334,19 +1359,3 @@ class QuotaTimelineStatsView(views.APIView):
             points.append(end_time)
 
         return [p for p in points if start_time <= p <= end_time]
-
-    def get_quotas_for_date(self, quota_name, scopes, date):
-        quotas_versions = []
-        for scope in scopes:
-            quota = scope.quotas.get(name=quota_name)
-            try:
-                version = reversion.get_for_date(quota, date)
-            except Version.DoesNotExist:
-                pass
-            else:
-                quotas_versions.append(version.object_version.object)
-
-        return {
-            '{}_limit'.format(quota_name): sum([q.limit for q in quotas_versions]),
-            '{}_usage'.format(quota_name): sum([q.usage for q in quotas_versions]),
-        }

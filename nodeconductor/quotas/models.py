@@ -1,7 +1,7 @@
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
 from django.db import models, transaction
-from django.db.models import Sum, F
+from django.db.models import Sum
 from django.utils.encoding import python_2_unicode_compatible
 
 from nodeconductor.logging.log import LoggableMixin
@@ -123,6 +123,9 @@ class QuotaModelMixin(models.Model):
                 self._add_delta_to_ancestors(field, quota_name, delta)
 
     def _add_delta_to_ancestors(self, field, quota_name, delta):
+        if not delta:
+            return
+
         for ancestor in self._get_quota_ancestors():
             with transaction.atomic():
                 try:
