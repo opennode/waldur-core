@@ -1303,6 +1303,7 @@ class QuotaTimelineStatsView(views.APIView):
         stats = [{'from': datetime_to_timestamp(start), 'to': datetime_to_timestamp(end)} for start, end in dates]
 
         def _add(*args):
+            args = [arg if arg is not None else (0, 0) for arg in args]
             return [sum(q) for q in zip(*args)]
 
         for item in items:
@@ -1321,18 +1322,13 @@ class QuotaTimelineStatsView(views.APIView):
         versions = reversion.get_for_object(quota).select_related('reversion').filter(
             revision__date_created__lte=dates[0][0]).iterator()
         version = None
-        versions_exists = True
         for end, start in dates:
-            if versions_exists:
-                try:
-                    while version is None or version.revision.date_created > end:
-                        version = versions.next()
-                    stats_data.append((version.object_version.object.limit, version.object_version.object.usage))
-                except StopIteration:
-                    versions_exists = False
-                    stats_data.append((0, 0))
-            else:
-                stats_data.append((0, 0))
+            try:
+                while version is None or version.revision.date_created > end:
+                    version = versions.next()
+                stats_data.append((version.object_version.object.limit, version.object_version.object.usage))
+            except StopIteration:
+                break
 
         return stats_data
 
