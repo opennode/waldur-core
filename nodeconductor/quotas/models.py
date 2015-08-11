@@ -123,7 +123,7 @@ class QuotaModelMixin(models.Model):
     def _add_delta_to_ancestors(self, field, quota_name, delta):
         if delta:
             for ancestor in self._get_quota_ancestors():
-                quota = Quota.objects.get_or_create(scope=ancestor, name=quota_name)
+                quota, _ = Quota.objects.get_or_create(scope=ancestor, name=quota_name)
                 setattr(quota, field, getattr(quota, field) + delta)
                 quota.save()
 
