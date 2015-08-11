@@ -1074,7 +1074,7 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
 
         data = dict(serializer.validated_data)
         if data.get('max_instances') is not None:
-            quotas = django_settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS', {})
+            quotas = django_settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS_INSTANCE_RATIOS', {})
             volume_quota = quotas.get('volumes', 4)
             snapshots_quota = quotas.get('snapshots', 20)
 

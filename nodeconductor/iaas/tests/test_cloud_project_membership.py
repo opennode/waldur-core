@@ -106,7 +106,7 @@ class CloudProjectMembershipActionsTest(test.APISimpleTestCase):
 
     @patch('nodeconductor.iaas.tasks.push_cloud_membership_quotas')
     def test_volume_and_snapshot_quotas_are_created_with_max_instances_quota(self, mocked_task):
-        nc_settings = {'OPENSTACK_QUOTAS': {'volumes': 2, 'snapshots': 10}}
+        nc_settings = {'OPENSTACK_QUOTAS_INSTANCE_RATIOS': {'volumes': 2, 'snapshots': 10}}
 
         with self.settings(NODECONDUCTOR=nc_settings):
             self.client.force_authenticate(self.staff)

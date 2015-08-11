@@ -96,7 +96,7 @@ Therefore configuration might look like this:
                 'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
             }
         }
-        'OPENSTACK_QUOTAS': {
+        'OPENSTACK_QUOTAS_INSTANCE_RATIOS': {
             'volumes': 4,
             'snapshots': 20,
         }
@@ -192,7 +192,7 @@ Therefore configuration might look like this:
           FAIL_SILENTLY
             If True - ignores Zabbix API exceptions and do not add any messages to logger
 
-    OPENSTACK_QUOTAS
+    OPENSTACK_QUOTAS_INSTANCE_RATIOS
       Default quota values per instance.
 
         volumes
