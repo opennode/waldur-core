@@ -78,23 +78,6 @@ def filter_queryset_for_user(queryset, user):
         return queryset
 
 
-def filter_queryset_for_customer(queryset, customer):
-    if not customer:
-        return queryset
-
-    if queryset.model is Customer:
-        args = {'uuid': customer.uuid.hex}
-    else:
-        try:
-            customer_path = queryset.model.Permissions.customer_path
-        except AttributeError:
-            return queryset
-        else:
-            args = {customer_path: customer}
-
-    return queryset.filter(**args)
-
-
 class GenericRoleFilter(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         return filter_queryset_for_user(queryset, request.user)

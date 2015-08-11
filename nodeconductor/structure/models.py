@@ -27,13 +27,41 @@ from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
 
 
+class StructureModel(models.Model):
+
+    class Meta(object):
+        abstract = True
+
+    class Managers(object):
+        class StructureManager(models.Manager):
+            def by_customer(self, customer):
+                queryset = self.get_queryset()
+                if not customer:
+                    return queryset
+
+                if queryset.model is Customer:
+                    args = {'uuid': customer.uuid.hex}
+                else:
+                    try:
+                        customer_path = queryset.model.Permissions.customer_path
+                    except AttributeError:
+                        return queryset
+                    else:
+                        args = {customer_path: customer}
+
+                return queryset.filter(**args)
+
+    objects = Managers.StructureManager()
+
+
 @python_2_unicode_compatible
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
                quotas_models.QuotaModelMixin,
                LoggableMixin,
                ImageModelMixin,
-               TimeStampedModel):
+               TimeStampedModel,
+               StructureModel):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
@@ -214,7 +242,8 @@ class Project(core_models.DescribableMixin,
               core_models.NameMixin,
               quotas_models.QuotaModelMixin,
               LoggableMixin,
-              TimeStampedModel):
+              TimeStampedModel,
+              StructureModel):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
@@ -434,7 +463,8 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
 class Service(core_models.SerializableAbstractMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
-              LoggableMixin):
+              LoggableMixin,
+              StructureModel):
     """ Base service class. """
 
     class Meta(object):
@@ -497,7 +527,8 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 @python_2_unicode_compatible
 class ServiceProjectLink(core_models.SerializableAbstractMixin,
                          core_models.SynchronizableMixin,
-                         quotas_models.QuotaModelMixin):
+                         quotas_models.QuotaModelMixin,
+                         StructureModel):
     """ Base service-project link class. See Service class for usage example. """
 
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances']
@@ -587,7 +618,7 @@ class VirtualMachineMixin(BaseVirtualMachineMixin):
 
 @python_2_unicode_compatible
 class Resource(core_models.UuidMixin, core_models.DescribableMixin,
-               core_models.NameMixin, TimeStampedModel):
+               core_models.NameMixin, TimeStampedModel, StructureModel):
 
     """ Base resource class. Resource is a provisioned entity of a service,
         for example: a VM in OpenStack or AWS, or a repository in Github.

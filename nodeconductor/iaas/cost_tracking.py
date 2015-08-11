@@ -10,8 +10,8 @@ class IaaSCostTracking(CostTrackingStrategy):
 
     @classmethod
     def get_costs_estimates(cls, customer=None):
-        queryset = Customer.objects.exclude(billing_backend_id='')
-        for customer in cls.filter_queryset_for_customer(queryset, customer):
+        queryset = Customer.objects.by_customer(customer).exclude(billing_backend_id='')
+        for customer in queryset.iterator():
             try:
                 backend = customer.get_billing_backend()
                 monthly_cost = backend.get_total_cost_of_active_products()

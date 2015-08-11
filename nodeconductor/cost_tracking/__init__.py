@@ -2,8 +2,6 @@ import pkg_resources
 
 from django.utils.lru_cache import lru_cache
 
-from nodeconductor.structure.filters import filter_queryset_for_customer
-
 
 default_app_config = 'nodeconductor.cost_tracking.apps.CostTrackingConfig'
 
@@ -84,8 +82,6 @@ class CostConstants(object):
 
 class CostTrackingStrategy(object):
     """ A parent class for the model-specific cost tracking strategies. """
-
-    filter_queryset_for_customer = staticmethod(filter_queryset_for_customer)
 
     @classmethod
     def get_costs_estimates(cls, customer=None):
