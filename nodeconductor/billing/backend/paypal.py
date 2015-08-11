@@ -1,6 +1,8 @@
 import datetime
+import decimal
 import urlparse
 
+import dateutil.parser
 from django.utils import six
 import paypalrestsdk as paypal
 
@@ -103,8 +105,13 @@ class PaypalBackend(object):
         """
         Create billing agreement. On success returns approval_url and token
         """
-        start_date = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
+        # PayPal does not support immediate start of agreement
+        # That's why we need to artifically increase start date by small amount of time
+        start_date = datetime.datetime.utcnow() + datetime.timedelta(minutes=1)
+
+        # PayPal does not fully support ISO 8601 format
         formatted_date = start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+
         agreement = paypal.BillingAgreement({
             'name': name,
             'description': 'Agreement for {}'.format(name),
@@ -117,12 +124,15 @@ class PaypalBackend(object):
                 for link in agreement.links:
                     if link.rel == 'approval_url':
                         approval_url = link.href
+
+                        # PayPal does not return agreement ID until it is approved
+                        # That's why we need to extract token in order to identify it with order in DB
                         parts = urlparse.urlparse(approval_url)
                         params = urlparse.parse_qs(parts.query)
                         token = params.get('token')
                         if not token:
                             raise BillingBackendError('Unable to parse token from approval_url')
-                        return approval_url, token
+                        return approval_url, token[0]
             else:
                 raise BillingBackendError(agreement.error)
         except paypal.exceptions.ConnectionError as e:
@@ -146,6 +156,9 @@ class PaypalBackend(object):
             agreement = BillingAgreement.find(agreement_id)
             if not agreement:
                 raise BillingBackendError('Agreement not found')
+
+            # Because user may cancel agreement via PayPal web UI
+            # we need to distinguish it from cancel done via API
             if agreement.cancel({'note': 'Canceling the agreement by application'}):
                 return True
             else:
@@ -158,8 +171,29 @@ class PaypalBackend(object):
             agreement = paypal.BillingAgreement.find(agreement_id)
             if not agreement:
                 raise BillingBackendError('Agreement not found')
+
+            # If start and end date are the same PayPal raises exceptions
+            # That's why we need to increase end_date by one day
+            end_date += datetime.timedelta(days=1)
+
             formatted_start_date = start_date.strftime('%Y-%m-%d')
             formatted_end_date = end_date.strftime('%Y-%m-%d')
-            return agreement.search_transactions(formatted_start_date, formatted_end_date)
+
+            data = agreement.search_transactions(formatted_start_date, formatted_end_date)
+            txs = data.agreement_transaction_list
+            if not txs:
+                return []
+            results = []
+            for tx in txs:
+                if tx.status != 'Completed':
+                    continue
+                results.append({
+                    'time_stamp': dateutil.parser.parse(tx.time_stamp),
+                    'transaction_id': tx.transaction_id,
+                    'amount': decimal.Decimal(tx.amount.value),
+                    'payer_email': tx.payer_email
+                })
+            return results
+
         except paypal.exceptions.ConnectionError as e:
             six.reraise(BillingBackendError, e)
