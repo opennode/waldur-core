@@ -111,21 +111,30 @@ class QuotaModelMixin(models.Model):
             return
         with transaction.atomic():
             try:
-                original_quota = self.quotas.get(name=quota_name)
+                original_quota = self.quotas.select_for_update().get(name=quota_name)
             except Quota.DoesNotExist, e:
                 if not fail_silently:
                     raise e
             else:
+                # Django's F() expressions makes quota.is_exceeded() unusable in signals
+                # wrap update into a safe transaction instead (may not work with sqlite)
                 setattr(original_quota, field, getattr(original_quota, field) + delta)
-                original_quota.save()
+                original_quota.save(update_fields=[field])
                 self._add_delta_to_ancestors(field, quota_name, delta)
 
     def _add_delta_to_ancestors(self, field, quota_name, delta):
-        if delta:
-            for ancestor in self._get_quota_ancestors():
-                quota, _ = Quota.objects.get_or_create(scope=ancestor, name=quota_name)
-                setattr(quota, field, getattr(quota, field) + delta)
-                quota.save()
+        if not delta:
+            return
+
+        for ancestor in self._get_quota_ancestors():
+            with transaction.atomic():
+                try:
+                    quota = ancestor.quotas.select_for_update().get(name=quota_name)
+                except Quota.DoesNotExist:
+                    quota = Quota.objects.create(scope=ancestor, name=quota_name)
+                else:
+                    setattr(quota, field, getattr(quota, field) + delta)
+                    quota.save(update_fields=[field])
 
     def validate_quota_change(self, quota_deltas, raise_exception=False):
         """

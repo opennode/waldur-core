@@ -305,6 +305,9 @@ class ServiceBackend(object):
     def ping(self):
         raise ServiceBackendNotImplemented
 
+    def ping_resource(self, resource):
+        raise ServiceBackendNotImplemented
+
     def sync(self):
         raise ServiceBackendNotImplemented
 
