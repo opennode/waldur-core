@@ -1,4 +1,5 @@
 import datetime
+import urlparse
 
 from django.utils import six
 import paypalrestsdk as paypal
@@ -100,7 +101,7 @@ class PaypalBackend(object):
 
     def create_agreement(self, plan_id, name):
         """
-        Create billing agreement. On success returns approval_url
+        Create billing agreement. On success returns approval_url and token
         """
         start_date = datetime.datetime.utcnow() + datetime.timedelta(minutes=10)
         formatted_date = start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -116,7 +117,12 @@ class PaypalBackend(object):
                 for link in agreement.links:
                     if link.rel == 'approval_url':
                         approval_url = link.href
-                        return approval_url
+                        parts = urlparse.urlparse(approval_url)
+                        params = urlparse.parse_qs(parts.query)
+                        token = params.get('token')
+                        if not token:
+                            raise BillingBackendError('Unable to parse token from approval_url')
+                        return approval_url, token
             else:
                 raise BillingBackendError(agreement.error)
         except paypal.exceptions.ConnectionError as e:
