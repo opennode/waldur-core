@@ -99,15 +99,13 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     create_current_month_invoices.short_description = "Create invoices for current month"
 
     def update_current_month_projected_estimate(self, request, queryset):
-        # XXX: This method creates dependency between ias and iaas.cost_tracking
-        from nodeconductor.iaas.cost_tracking.tasks import update_current_month_projected_estimate_for_customer
-
         customers_without_backend_id = []
         succeeded_customers = []
         for customer in queryset:
             if not customer.billing_backend_id:
                 customers_without_backend_id.append(customer)
-            update_current_month_projected_estimate_for_customer.delay(customer.uuid.hex)
+                continue
+            send_task('cost_tracking', 'update_current_month_projected_estimate')(customer=customer.uuid.hex)
             succeeded_customers.append(customer)
 
         if succeeded_customers:
@@ -128,7 +126,7 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
             message = message % {'customers_names': ', '.join([c.name for c in customers_without_backend_id])}
             self.message_user(request, message)
 
-    update_current_month_projected_estimate.short_description = "Update current month project estimate"
+    update_current_month_projected_estimate.short_description = "Update current month projected cost estimate"
 
 
 class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):

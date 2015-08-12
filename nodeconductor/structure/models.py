@@ -27,13 +27,75 @@ from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
 
 
+class StructureModel(models.Model):
+    """ Generic structure model.
+        Provides filtering by customer (based on permission definition).
+
+        Example:
+
+            .. code-block:: python
+
+                Droplet.objects.filter(customer__name__startswith='A')
+
+        .filter(customer=None) -- it's a specific use case which means ignore filtering
+    """
+
+    class Meta(object):
+        abstract = True
+
+    class Managers(object):
+        class StructureManager(models.Manager):
+            def exclude(self, *args, **kwargs):
+                qs = self.get_queryset().exclude(*args)
+                return qs.exclude(**self._filter_by_custom_fields(**kwargs))
+
+            def filter(self, *args, **kwargs):
+                qs = self.get_queryset().filter(*args)
+                return qs.filter(**self._filter_by_custom_fields(**kwargs))
+
+            def _filter_by_custom_fields(self, **kwargs):
+                args = {}
+                fields = self.model._meta.get_all_field_names()
+                for field, val in kwargs.items():
+                    base_field = field.split('__')[0]
+                    if base_field not in fields and base_field == 'customer':
+                        args.update(self._filter_by_customer(field, val))
+                    else:
+                        args.update(**{field: val})
+
+                return args
+
+            def _filter_by_customer(self, field, customer):
+                extra = '__'.join(field.split('__')[1:]) if '__' in field else None
+                if customer is None and extra is None:
+                    return {}
+
+                try:
+                    customer_path = self.model.Permissions.customer_path
+                except AttributeError:
+                    return {field: customer}
+                else:
+                    if customer_path == 'self':
+                        if extra:
+                            return {extra: customer}
+                        else:
+                            return {'pk': customer.pk if isinstance(customer, Customer) else customer}
+                    else:
+                        if extra:
+                            customer_path += '__' + extra
+                        return {customer_path: customer}
+
+    objects = Managers.StructureManager()
+
+
 @python_2_unicode_compatible
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
                quotas_models.QuotaModelMixin,
                LoggableMixin,
                ImageModelMixin,
-               TimeStampedModel):
+               TimeStampedModel,
+               StructureModel):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
@@ -214,7 +276,8 @@ class Project(core_models.DescribableMixin,
               core_models.NameMixin,
               quotas_models.QuotaModelMixin,
               LoggableMixin,
-              TimeStampedModel):
+              TimeStampedModel,
+              StructureModel):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
@@ -434,7 +497,8 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
 class Service(core_models.SerializableAbstractMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
-              LoggableMixin):
+              LoggableMixin,
+              StructureModel):
     """ Base service class. """
 
     class Meta(object):
@@ -497,7 +561,8 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 @python_2_unicode_compatible
 class ServiceProjectLink(core_models.SerializableAbstractMixin,
                          core_models.SynchronizableMixin,
-                         quotas_models.QuotaModelMixin):
+                         quotas_models.QuotaModelMixin,
+                         StructureModel):
     """ Base service-project link class. See Service class for usage example. """
 
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances']
@@ -587,7 +652,7 @@ class VirtualMachineMixin(BaseVirtualMachineMixin):
 
 @python_2_unicode_compatible
 class Resource(core_models.UuidMixin, core_models.DescribableMixin,
-               core_models.NameMixin, TimeStampedModel):
+               core_models.NameMixin, TimeStampedModel, StructureModel):
 
     """ Base resource class. Resource is a provisioned entity of a service,
         for example: a VM in OpenStack or AWS, or a repository in Github.
