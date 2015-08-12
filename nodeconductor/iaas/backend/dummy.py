@@ -137,7 +137,7 @@ class OpenStackResourceList(object):
         key = '%ss' % cls.__name__.lower()
         instance = OPENSTACK.get(key)
         if not instance:
-            instance = object.__new__(cls, *args, **kwargs)
+            instance = object.__new__(cls)
             setattr(instance, '_objects', set())
             OPENSTACK[key] = instance
         return instance

@@ -19,20 +19,25 @@ def update_current_month_projected_estimate(customer_uuid=None):
     dt = datetime.datetime.now()
     customer = Customer.objects.get(uuid=customer_uuid) if customer_uuid else None
 
+    finished_items = {}
     for strategy in get_cost_tracking_models():
-        for model, cost in strategy.get_costs_estimates(customer):
+        for model, cost in strategy.get_all_costs_estimates(customer):
             if model.__class__ not in PriceEstimate.get_estimated_models():
                 logger.error(
                     "Model %s can't be used in tracking costs" % model.__class__.__name__)
                 continue
+
+            if model in finished_items:
+                logger.warn(
+                    "Model %s appears second time during tracking costs. "
+                    "Consider optimizing it if it's still valid behavior." % model.__class__.__name__)
 
             for scope in SupportedServices.get_parent_models(model):
                 args = dict(
                     content_type=ContentType.objects.get_for_model(scope),
                     object_id=scope.id,
                     month=dt.month,
-                    year=dt.year,
-                )
+                    year=dt.year)
 
                 try:
                     estimate = PriceEstimate.objects.get(**args)
@@ -41,3 +46,5 @@ def update_current_month_projected_estimate(customer_uuid=None):
                 else:
                     estimate.total = F('total') + cost
                     estimate.save(update_fields=['total'])
+
+            finished_items[model] = cost
