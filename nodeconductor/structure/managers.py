@@ -12,7 +12,7 @@ class StructureManager(models.Manager):
                     customer__name__startswith='A',
                     state=Droplet.States.ONLINE)
 
-                Droplet.objects.filter(Q(customer_name='Alice') | Q(customer_name='Bob'))
+                Droplet.objects.filter(Q(customer__name='Alice') | Q(customer__name='Bob'))
     """
 
     def get(self, *args, **kwargs):
