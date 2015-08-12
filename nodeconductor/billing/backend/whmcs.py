@@ -239,7 +239,6 @@ class WHMCSAPI(object):
         products = self.request(
             'getclientsproducts', clentid=client_id, limitnum=1000, resultset_path='products.product')
         for product in products:
-            print product
             yield {
                 'id': product['id'],
                 'backend_id': product['pid'],
