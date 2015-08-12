@@ -47,7 +47,8 @@ class StructureModel(models.Model):
             except AttributeError:
                 pass
             else:
-                return reduce(getattr, path.split('__'), self)
+                if not path == 'self':
+                    return reduce(getattr, path.split('__'), self)
 
         raise AttributeError(
             "'%s' object has no attribute '%s'" % (self._meta.object_name, name))
