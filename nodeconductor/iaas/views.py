@@ -9,6 +9,7 @@ from operator import add
 from django.db import models as django_models
 from django.db import transaction, IntegrityError
 from django.db.models import Q
+from django.conf import settings as django_settings
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -1071,10 +1072,19 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
         serializer = serializers.CloudProjectMembershipQuotaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        data = dict(serializer.validated_data)
+        if data.get('max_instances') is not None:
+            quotas = django_settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS_INSTANCE_RATIOS', {})
+            volume_ratio = quotas.get('volumes', 4)
+            snapshots_ratio = quotas.get('snapshots', 20)
+
+            data['volumes'] = volume_ratio * data['max_instances']
+            data['snapshots'] = snapshots_ratio * data['max_instances']
+
         instance.schedule_syncing()
         instance.save()
 
-        tasks.push_cloud_membership_quotas.delay(instance.pk, quotas=serializer.data)
+        tasks.push_cloud_membership_quotas.delay(instance.pk, quotas=data)
 
         return Response({'status': 'Quota update was scheduled'},
                         status=status.HTTP_202_ACCEPTED)
@@ -1298,6 +1308,7 @@ class QuotaTimelineStatsView(views.APIView):
         stats = [{'from': datetime_to_timestamp(start), 'to': datetime_to_timestamp(end)} for start, end in dates]
 
         def _add(*args):
+            args = [arg if arg is not None else (0, 0) for arg in args]
             return [sum(q) for q in zip(*args)]
 
         for item in items:
@@ -1316,18 +1327,13 @@ class QuotaTimelineStatsView(views.APIView):
         versions = reversion.get_for_object(quota).select_related('reversion').filter(
             revision__date_created__lte=dates[0][0]).iterator()
         version = None
-        versions_exists = True
         for end, start in dates:
-            if versions_exists:
-                try:
-                    while version is None or version.revision.date_created > end:
-                        version = versions.next()
-                    stats_data.append((version.object_version.object.limit, version.object_version.object.usage))
-                except StopIteration:
-                    versions_exists = False
-                    stats_data.append((0, 0))
-            else:
-                stats_data.append((0, 0))
+            try:
+                while version is None or version.revision.date_created > end:
+                    version = versions.next()
+                stats_data.append((version.object_version.object.limit, version.object_version.object.usage))
+            except StopIteration:
+                break
 
         return stats_data
 

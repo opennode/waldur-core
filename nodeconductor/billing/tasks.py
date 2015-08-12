@@ -15,7 +15,7 @@ from celery import shared_task
 from nodeconductor.backup.models import Backup
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.billing.models import PriceList
-from nodeconductor.core.utils import timestamp_to_datetime
+from nodeconductor.core.utils import timestamp_to_datetime, datetime_to_timestamp
 from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.models import Cloud, CloudProjectMembership, Instance
@@ -55,7 +55,9 @@ def debit_customers():
     # This code to be deprecated when IaaS app moves to OpenStack app (NC-645)
     customers = set(s.customer for s in Cloud.objects.select_related('customer').all())
     for customer in customers:
-        usage_data, data, projected_total = get_customer_usage_data(customer, start_date, end_date)
+        usage_data, data, projected_total = get_customer_usage_data(customer,
+                                                                    datetime_to_timestamp(start_date),
+                                                                    datetime_to_timestamp(end_date))
         customer.debit_account(projected_total)
 
 

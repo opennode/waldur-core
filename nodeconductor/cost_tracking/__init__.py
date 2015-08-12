@@ -1,3 +1,8 @@
+import pkg_resources
+
+from django.utils.lru_cache import lru_cache
+
+
 default_app_config = 'nodeconductor.cost_tracking.apps.CostTrackingConfig'
 
 
@@ -73,3 +78,29 @@ class CostConstants(object):
 
     class Flavor(object):
         OFFLINE = 'offline'
+
+
+class CostTrackingStrategy(object):
+    """ A parent class for the model-specific cost tracking strategies. """
+
+    @classmethod
+    def get_costs_estimates(cls, customer=None):
+        """ Get a list of estimated costs for the current year/month
+            Should return a list of tuples in a form: (entity_obj, monthly_cost)
+
+            Example:
+
+            .. code-block:: python
+
+                for droplet in Droplet.objects.all():
+                    yield droplet, droplet.get_cost_estimate()
+
+                yield droplet.service_project_link.service.customer, 0.99
+
+        """
+        raise NotImplementedError('Implement get_costs_estimates()')
+
+
+@lru_cache(maxsize=1)
+def get_cost_tracking_models():
+    return [m.load() for m in pkg_resources.iter_entry_points('cost_tracking_strategies')]

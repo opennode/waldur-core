@@ -104,6 +104,49 @@ class CloudProjectMembershipActionsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         mocked_task.delay.assert_called_once_with(self.cloud_project_membership.pk, quotas=quotas_data)
 
+    @patch('nodeconductor.iaas.tasks.push_cloud_membership_quotas')
+    def test_volume_and_snapshot_quotas_are_created_with_max_instances_quota(self, mocked_task):
+        nc_settings = {'OPENSTACK_QUOTAS_INSTANCE_RATIOS': {'volumes': 2, 'snapshots': 10}}
+
+        with self.settings(NODECONDUCTOR=nc_settings):
+            self.client.force_authenticate(self.staff)
+            url = factories.CloudProjectMembershipFactory.get_url(self.cloud_project_membership, 'set_quotas')
+            quotas_data = {'max_instances': 10}
+            response = self.client.post(url, data=quotas_data)
+
+            quotas_data['volumes'] = 20
+            quotas_data['snapshots'] = 100
+
+            self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+            mocked_task.delay.assert_called_once_with(self.cloud_project_membership.pk, quotas=quotas_data)
+
+    @patch('nodeconductor.iaas.tasks.push_cloud_membership_quotas')
+    def test_volume_and_snapshot_quotas_are_not_created_without_max_instances_quota(self, mocked_task):
+        self.client.force_authenticate(self.staff)
+
+        url = factories.CloudProjectMembershipFactory.get_url(self.cloud_project_membership, 'set_quotas')
+        quotas_data = {'security_group_count': 100}
+        response = self.client.post(url, data=quotas_data)
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        mocked_task.delay.assert_called_once_with(self.cloud_project_membership.pk, quotas=quotas_data)
+
+    @patch('nodeconductor.iaas.tasks.push_cloud_membership_quotas')
+    def test_volume_and_snapshot_values_not_provided_in_settings_use_default_values(self, mocked_task):
+        nc_settings = {}
+
+        with self.settings(NODECONDUCTOR=nc_settings):
+            self.client.force_authenticate(self.staff)
+            url = factories.CloudProjectMembershipFactory.get_url(self.cloud_project_membership, 'set_quotas')
+            quotas_data = {'max_instances': 10}
+            response = self.client.post(url, data=quotas_data)
+
+            quotas_data['volumes'] = 40
+            quotas_data['snapshots'] = 200
+
+            self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+            mocked_task.delay.assert_called_once_with(self.cloud_project_membership.pk, quotas=quotas_data)
+
     @patch('nodeconductor.iaas.tasks.create_external_network')
     def test_staff_user_can_create_external_network(self, mocked_task):
         self.client.force_authenticate(user=self.staff)

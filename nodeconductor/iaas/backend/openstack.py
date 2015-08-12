@@ -544,6 +544,8 @@ class OpenStackBackend(OpenStackClient):
         # mapping to openstack terminology for quotas
         cinder_quota_mapping = {
             'storage': ('gigabytes', self.get_backend_disk_size),
+            'volumes': ('volumes', lambda x: x),
+            'snapshots': ('snapshots', lambda x: x),
         }
         nova_quota_mapping = {
             'max_instances': ('instances', lambda x: x),
