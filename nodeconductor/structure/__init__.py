@@ -406,6 +406,9 @@ class ServiceBackend(object):
     def get_resources_for_import(self):
         raise ServiceBackendNotImplemented
 
+    def get_cost_estimate(self, resource):
+        raise ServiceBackendNotImplemented
+
     @staticmethod
     def gb2mb(val):
         return int(val * 1024) if val else 0

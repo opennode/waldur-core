@@ -1,9 +1,15 @@
+import types
+import logging
+import itertools
 import pkg_resources
 
 from django.utils.lru_cache import lru_cache
 
+from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented
+
 
 default_app_config = 'nodeconductor.cost_tracking.apps.CostTrackingConfig'
+logger = logging.getLogger(__name__)
 
 
 class PriceItemTypes(object):
@@ -81,11 +87,15 @@ class CostConstants(object):
 
 
 class CostTrackingStrategy(object):
-    """ A parent class for the model-specific cost tracking strategies. """
+    """ A base class for the model-specific cost tracking strategies.
+        If 'RESOURCES' attribute is defined it will be used to calculate resource based costs estimates.
+    """
+
+    RESOURCES = []
 
     @classmethod
     def get_costs_estimates(cls, customer=None):
-        """ Get a list of estimated costs for the current year/month
+        """ Get a list of generic/additional estimated costs for the current year/month
             Should return a list of tuples in a form: (entity_obj, monthly_cost)
 
             Example:
@@ -96,9 +106,48 @@ class CostTrackingStrategy(object):
                     yield droplet, droplet.get_cost_estimate()
 
                 yield droplet.service_project_link.service.customer, 0.99
-
         """
-        raise NotImplementedError('Implement get_costs_estimates()')
+        return
+        yield
+
+    @classmethod
+    def get_all_costs_estimates(cls, customer=None):
+        return itertools.chain(
+            cls._get_common_costs_estimates(customer),
+            cls._get_resources_costs_estimates(customer))
+
+    @classmethod
+    def _get_common_costs_estimates(cls, customer=None):
+        estimates = cls.get_costs_estimates(customer)
+        if isinstance(estimates, types.GeneratorType):
+            return estimates
+        else:
+            return (e for e in estimates)
+
+    @classmethod
+    def _get_resources_costs_estimates(cls, customer=None):
+        models = cls.RESOURCES
+        if not models:
+            return
+        if not isinstance(models, (list, tuple)):
+            models = [models]
+
+        for model in models:
+            queryset = model.objects.exclude(state=model.States.ERRED)
+            if customer:
+                queryset = queryset.filter(customer=customer)
+
+            for instance in queryset.iterator():
+                try:
+                    backend = instance.get_backend()
+                    monthly_cost = backend.get_cost_estimate(instance)
+                except ServiceBackendNotImplemented:
+                    continue
+                except ServiceBackendError as e:
+                    logger.error(
+                        "Failed to get price estimate for resource %s: %s" % (instance, e))
+                else:
+                    yield instance, monthly_cost
 
 
 @lru_cache(maxsize=1)
