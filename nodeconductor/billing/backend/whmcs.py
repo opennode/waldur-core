@@ -487,6 +487,7 @@ class WHMCSAPI(object):
             type='server',
             paytype='recurring',
             module='autorelease',
+            proratabilling=True,
         )
 
         pid = response['pid']
