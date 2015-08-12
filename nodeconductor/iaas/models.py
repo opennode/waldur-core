@@ -362,7 +362,7 @@ class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineM
 
     def get_storage_size(self, extra=0):
         # 'extra' is used to calculate totals size (e.g. together with backup snapshots)
-        return ServiceBackend.mb2gb(self.system_volume_size + self.data_volume_size + extra)
+        return ServiceBackend.mb2gb(self.data_volume_size + extra)
 
     def get_default_price_options(self):
         return {CostConstants.PriceItem.FLAVOR: CostConstants.Flavor.OFFLINE}
