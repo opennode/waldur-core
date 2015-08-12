@@ -71,6 +71,9 @@ class PaypalBackend(object):
     def approve_payment(self, payment_id, payer_id):
         try:
             payment = paypal.Payment.find(payment_id)
+            # When payment is not found PayPal returns empty result instead of raising an exception
+            if not payment:
+                raise BillingBackendError('Payment not found')
             if payment.execute({'payer_id': payer_id}):
                 return True
             else:
@@ -183,18 +186,20 @@ class PaypalBackend(object):
         except paypal.exceptions.ConnectionError as e:
             six.reraise(BillingBackendError, e)
 
-    def get_agreement_transactions(self, agreement_id, start_date, end_date):
+    def get_agreement_transactions(self, agreement_id, start_date, end_date=None):
+        if not end_date:
+            end_date = datetime.datetime.now()
+
+        # If start and end date are the same PayPal raises exceptions
+        # That's why we need to increase end_date by one day
+        if end_date - start_date < datetime.timedelta(days=1):
+            end_date += datetime.timedelta(days=1)
+
+        formatted_start_date = start_date.strftime('%Y-%m-%d')
+        formatted_end_date = end_date.strftime('%Y-%m-%d')
+
         agreement = self.get_agreement(agreement_id)
-
         try:
-            # If start and end date are the same PayPal raises exceptions
-            # That's why we need to increase end_date by one day
-            if end_date - start_date < datetime.timedelta(days=1):
-                end_date += datetime.timedelta(days=1)
-
-            formatted_start_date = start_date.strftime('%Y-%m-%d')
-            formatted_end_date = end_date.strftime('%Y-%m-%d')
-
             data = agreement.search_transactions(formatted_start_date, formatted_end_date)
             txs = data.agreement_transaction_list
             if not txs:
