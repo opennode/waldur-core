@@ -1270,12 +1270,7 @@ class QuotaTimelineStatsView(views.APIView):
     def get_quota_scopes(self, request):
         serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        if serializer.data.get('aggregate') == 'customer':
-            scopes = structure_filters.filter_queryset_for_user(Customer.objects.all(), request.user)
-            if serializer.data.get('uuid'):
-                scopes = scopes.filter(uuid=serializer.data.get('uuid'))
-        else:
-            scopes = serializer.get_projects(request.user)
+        scopes = serializer.get_projects(request.user)
         return scopes
 
     def get_stats(self, request):

@@ -1001,7 +1001,8 @@ class StatsAggregateSerializer(serializers.Serializer):
         if self.data['aggregate'] == 'project':
             return queryset.all()
         elif self.data['aggregate'] == 'project_group':
-            projects = structure_models.Project.objects.filter(project_groups__in=list(queryset))
+            projects = structure_filters.filter_queryset_for_user(
+                structure_models.Project.objects.filter(project_groups__in=list(queryset)), user)
             return structure_filters.filter_queryset_for_user(projects, user)
         else:
             projects = structure_models.Project.objects.filter(customer__in=list(queryset))
