@@ -113,6 +113,11 @@ class BillingBackend(object):
         client_id = self.get_or_create_client()
         return self.api.get_total_cost_of_active_products(client_id)
 
+    def get_orders(self):
+        # XXX: This is fragile - different billing systems can return different orders,
+        # after billing application stabilization we need to provide standard order structure
+        return self.api.get_client_orders(self.customer.billing_backend_id)
+
 
 class DummyBillingAPI(object):
     def __getattr__(self, name):

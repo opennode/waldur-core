@@ -1,16 +1,14 @@
-import re
-import urllib
-import hashlib
 import datetime
-import urlparse
-import requests
+from decimal import Decimal
+import hashlib
 import logging
 import lxml.html
+import re
+import requests
+import urllib
+import urlparse
 
-from django.apps import apps
-from django.utils import six
 from django.utils.http import urlsafe_base64_encode
-from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.cost_tracking import CostConstants
 from nodeconductor.cost_tracking.models import DefaultPriceListItem
@@ -236,6 +234,81 @@ class WHMCSAPI(object):
                    'description': product['description'] or '',
                    'options': self.get_product_configurable_options(product['pid']),
                    'name': product['name']}
+
+    def get_client_products(self, client_id):
+        products = self.request(
+            'getclientsproducts', clentid=client_id, limitnum=1000, resultset_path='products.product')
+        for product in products:
+            print product
+            yield {
+                'id': product['id'],
+                'backend_id': product['pid'],
+                'name': product['name'],
+                'hostname': product['domain'],
+            }
+
+    def get_client_orders(self, client_id):
+        """ Get all orders for given client """
+        whmcs_orders = self.request('getorders', userid=client_id, limitnum=1000, resultset_path='orders.order')
+        client_products = list(self.get_client_products(client_id))
+        for whmcs_order in whmcs_orders:
+            yield self._format_whmcs_order(whmcs_order, client_products)
+
+    def _format_whmcs_order(self, whmcs_order, client_products):
+        """ Take significant data from whmcs_order """
+        whmcs_items = whmcs_order.get('lineitems', {}).get('lineitem', [])
+        currency = whmcs_order['currencysuffix']
+        items = []
+
+        for whmcs_item in whmcs_items:
+            # sometimes WHMCS return amount as <amount><currency> (Ex.: 15.00OMR), we need to handle  this case
+            if whmcs_item['amount'].endswith(currency):
+                whmcs_amount = whmcs_item['amount'][:-len(currency)]
+            else:
+                whmcs_amount = whmcs_item['amount']
+
+            try:
+                product_scope = [cp for cp in client_products if cp['id'] == whmcs_item['relid']][0]
+            except IndexError:
+                product_scope = ''
+
+            items.append({
+                'amount': Decimal(whmcs_amount),
+                'product': re.compile(r'<[^>]+>').sub('', whmcs_item['product']),  # remove tags from product name
+                'status': whmcs_item['status'],
+                'product_type': self._get_product_type_name(whmcs_item['producttype']),
+                'product_scope': product_scope,
+            })
+
+        return {
+            'date': datetime.datetime.strptime(whmcs_order['date'], '%Y-%m-%d %H:%M:%S'),
+            'amount': Decimal(whmcs_order['amount']),
+            'currency': currency,
+            'id': whmcs_order['id'],
+            'status': self._get_status_name(whmcs_order['status']),
+            'payment_status': whmcs_order['paymentstatus'],
+            'items': items,
+            'number': whmcs_order['ordernum'],
+        }
+
+    def _get_product_type_name(self, whmcs_product_type):
+        product_type_map = {
+            'Upgrade': 'Modification',
+            'Dedicated/VPS Server': 'Virtual machine',
+        }
+        try:
+            return product_type_map[whmcs_product_type]
+        except KeyError:
+            return whmcs_product_type
+
+    def _get_status_name(self, whmcs_status):
+        status_map = {
+            'Active': 'Completed',
+        }
+        try:
+            return status_map[whmcs_status]
+        except KeyError:
+            return whmcs_status
 
     def get_product_configurable_options(self, product_id):
         self._do_login()
