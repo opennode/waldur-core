@@ -26,6 +26,20 @@ class PaypalBackend(object):
             'client_secret': client_secret
         })
 
+    def _find_approval_url(self, links):
+        for link in links:
+            if link.rel == 'approval_url':
+                return link.href
+        raise BillingBackendError('Approval URL is not found')
+
+    def _find_token(self, approval_url):
+        parts = urlparse.urlparse(approval_url)
+        params = urlparse.parse_qs(parts.query)
+        token = params.get('token')
+        if not token:
+            raise BillingBackendError('Unable to parse token from approval_url')
+        return token[0]
+
     def make_payment(self, amount, description, return_url, cancel_url):
         payment = paypal.Payment({
             'intent': 'sale',
@@ -47,10 +61,8 @@ class PaypalBackend(object):
 
         try:
             if payment.create():
-                for link in payment.links:
-                    if link.rel == 'approval_url':
-                        approval_url = link.href
-                        return PaypalPayment(payment.id, approval_url)
+                approval_url = self._find_approval_url(payment.links)
+                return PaypalPayment(payment.id, approval_url)
             else:
                 raise BillingBackendError(payment.error)
         except paypal.exceptions.ConnectionError as e:
@@ -121,18 +133,12 @@ class PaypalBackend(object):
         })
         try:
             if agreement.create():
-                for link in agreement.links:
-                    if link.rel == 'approval_url':
-                        approval_url = link.href
+                approval_url = self._find_approval_url(agreement.links)
 
-                        # PayPal does not return agreement ID until it is approved
-                        # That's why we need to extract token in order to identify it with order in DB
-                        parts = urlparse.urlparse(approval_url)
-                        params = urlparse.parse_qs(parts.query)
-                        token = params.get('token')
-                        if not token:
-                            raise BillingBackendError('Unable to parse token from approval_url')
-                        return approval_url, token[0]
+                # PayPal does not return agreement ID until it is approved
+                # That's why we need to extract token in order to identify it with agreement in DB
+                token = self._find_token(approval_url)
+                return approval_url, token
             else:
                 raise BillingBackendError(agreement.error)
         except paypal.exceptions.ConnectionError as e:
@@ -146,17 +152,28 @@ class PaypalBackend(object):
         try:
             agreement = paypal.BillingAgreement.execute(payment_token)
             if not agreement:
-                raise BillingBackendError('Agreement not found')
+                raise BillingBackendError('Can not execute agreement')
             return agreement.id
         except paypal.exceptions.ConnectionError as e:
             six.reraise(BillingBackendError, e)
 
-    def cancel_agreement(self, agreement_id):
+    def get_agreement(self, agreement_id):
+        """
+        Get agreement from PayPal by ID
+        """
         try:
-            agreement = BillingAgreement.find(agreement_id)
+            agreement = paypal.BillingAgreement.find(agreement_id)
+            # When agreement is not found PayPal returns empty result instead of raising an exception
             if not agreement:
                 raise BillingBackendError('Agreement not found')
+            return agreement
+        except paypal.exceptions.ConnectionError as e:
+            six.reraise(BillingBackendError, e)
 
+    def cancel_agreement(self, agreement_id):
+        agreement = self.get_agreement(agreement_id)
+
+        try:
             # Because user may cancel agreement via PayPal web UI
             # we need to distinguish it from cancel done via API
             if agreement.cancel({'note': 'Canceling the agreement by application'}):
@@ -167,14 +184,13 @@ class PaypalBackend(object):
             six.reraise(BillingBackendError, e)
 
     def get_agreement_transactions(self, agreement_id, start_date, end_date):
-        try:
-            agreement = paypal.BillingAgreement.find(agreement_id)
-            if not agreement:
-                raise BillingBackendError('Agreement not found')
+        agreement = self.get_agreement(agreement_id)
 
+        try:
             # If start and end date are the same PayPal raises exceptions
             # That's why we need to increase end_date by one day
-            end_date += datetime.timedelta(days=1)
+            if end_date - start_date < datetime.timedelta(days=1):
+                end_date += datetime.timedelta(days=1)
 
             formatted_start_date = start_date.strftime('%Y-%m-%d')
             formatted_end_date = end_date.strftime('%Y-%m-%d')
@@ -183,6 +199,7 @@ class PaypalBackend(object):
             txs = data.agreement_transaction_list
             if not txs:
                 return []
+
             results = []
             for tx in txs:
                 if tx.status != 'Completed':
