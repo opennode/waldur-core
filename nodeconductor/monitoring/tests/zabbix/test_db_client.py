@@ -1,12 +1,10 @@
 from __future__ import unicode_literals
 
 import unittest
-from datetime import datetime
 
 from django.db import DatabaseError
-from mock import Mock, patch
+from mock import Mock
 
-from nodeconductor.core.utils import datetime_to_timestamp
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 
 
@@ -17,10 +15,11 @@ class ZabbixPublicApiTest(unittest.TestCase):
 
     def test_get_item_stats_returns_time_segments(self):
         self.client.zabbix_api_client.get_host_ids = Mock(return_value=[1])
-        self.client.get_item_time_and_value_list = Mock(
-            return_value=((1415912625L, 1L), (1415912626L, 1L), (1415912627L, 1L), (1415912628L, 1L)))
         start_timestamp = 1415912624L
         end_timestamp = 1415912630L
+        time_and_value_list = Mock()
+        time_and_value_list.fetchone = Mock(return_value=(1415912630L,1))
+        self.client.get_item_time_and_value_list = Mock(return_value=time_and_value_list)
         segments_count = 3
         instance = object
         item_key = 'cpu'

@@ -623,12 +623,12 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
             },
             {
                 'item': 'storage_root_util',
-                'value': 23,
+                'value': 77,
                 'timestamp': 1415910025
             },
             {
                 'item': 'storage_data_util',
-                'value': 33,
+                'value': 67,
                 'timestamp': 1415910025
             },
         ]
@@ -646,7 +646,7 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
 
             client.assert_called_once_with(
                 self.instance.backend_id,
-                ('cpu_util', 'memory_util', 'storage_root_util', 'storage_data_util'),
+                ['cpu_util', 'memory_util', 'storage_root_util', 'storage_data_util'],
                 query_params['from'],
                 query_params['to'],
                 method='MAX',
