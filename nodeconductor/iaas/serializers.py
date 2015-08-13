@@ -942,12 +942,12 @@ class UsageStatsSerializer(serializers.Serializer):
 
     def get_stats(self, instances, is_paas=False):
         self.attrs = self.data
+        item = self.data['item']
         zabbix_db_client = ZabbixDBClient()
-        if is_paas and self.data['item'] == 'memory_util':
-            self.data['item'] = 'memory_util_agent'
+        if is_paas and item == 'memory_util':
+            item = 'memory_util_agent'
         item_stats = zabbix_db_client.get_item_stats(
-            instances, self.data['item'],
-            self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])
+            instances, item, self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])
         # XXX: Quick and dirty fix: zabbix presents percentage of free space(not utilized) for storage
         if self.data['item'] in ('storage_root_util', 'storage_data_util'):
             for stat in item_stats:
@@ -967,13 +967,15 @@ class CalculatedUsageSerializer(serializers.Serializer):
     )
 
     def get_stats(self, instance, start, end):
-        items = self.validated_data['items']
+        items = []
+        for item in self.validated_data['items']:
+            if item == 'memory_util' and instance.type == models.Instance.Services.PAAS:
+                items.append('memory_util_agent')
+            else:
+                items.append(item)
+        items = [item for item in self.validated_data['items']]
         method = self.validated_data['method']
         host = ZabbixApiClient().get_host_name(instance)
-
-        for item in items:
-            if item == 'memory_util' and instance.type == models.Instance.Services.PAAS:
-                item = 'memory_util_agent'
 
         records = ZabbixDBClient().get_host_max_values(host, items, start, end, method=method)
 
