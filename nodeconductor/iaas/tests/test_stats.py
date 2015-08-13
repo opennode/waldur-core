@@ -646,7 +646,7 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
 
             client.assert_called_once_with(
                 self.instance.backend_id,
-                ['cpu_util', 'memory_util', 'storage_root_util', 'storage_data_util'],
+                ['cpu_util', 'memory_util_agent', 'storage_root_util', 'storage_data_util'],
                 query_params['from'],
                 query_params['to'],
                 method='MAX',
