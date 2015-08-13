@@ -940,12 +940,20 @@ class UsageStatsSerializer(serializers.Serializer):
                 "GET parameter 'item' have to be from list: %s" % ZabbixDBClient.items.keys())
         return value
 
-    def get_stats(self, instances):
+    def get_stats(self, instances, is_paas=False):
         self.attrs = self.data
         zabbix_db_client = ZabbixDBClient()
-        return zabbix_db_client.get_item_stats(
+        if is_paas and self.data['item'] == 'memory_util':
+            self.data['item'] = 'memory_util_agent'
+        item_stats = zabbix_db_client.get_item_stats(
             instances, self.data['item'],
             self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])
+        # XXX: Quick and dirty fix: zabbix presents percentage of free space(not utilized) for storage
+        if self.data['item'] in ('storage_root_util', 'storage_data_util'):
+            for stat in item_stats:
+                stat['value'] = 100 - stat['value']
+
+        return item_stats
 
 
 class CalculatedUsageSerializer(serializers.Serializer):
@@ -963,15 +971,27 @@ class CalculatedUsageSerializer(serializers.Serializer):
         method = self.validated_data['method']
         host = ZabbixApiClient().get_host_name(instance)
 
+        for item in items:
+            if item == 'memory_util' and instance.type == models.Instance.Services.PAAS:
+                item = 'memory_util_agent'
+
         records = ZabbixDBClient().get_host_max_values(host, items, start, end, method=method)
 
         results = []
         for timestamp, item, value in records:
-            results.append({
-                'item': item,
-                'timestamp': timestamp,
-                'value': value
-            })
+            # XXX: Quick and dirty fix: zabbix presents percentage of free space(not utilized) for storage
+            if item in ('storage_root_util', 'storage_data_util'):
+                results.append({
+                    'item': item,
+                    'timestamp': timestamp,
+                    'value': 100 - value,
+                })
+            else:
+                results.append({
+                    'item': item,
+                    'timestamp': timestamp,
+                    'value': value,
+                })
         return results
 
 

@@ -482,7 +482,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         serializer = serializers.UsageStatsSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
-        stats = serializer.get_stats([instance])
+        stats = serializer.get_stats([instance], is_paas=instance.type == models.Instance.Services.PAAS)
         return Response(stats, status=status.HTTP_200_OK)
 
     @detail_route()

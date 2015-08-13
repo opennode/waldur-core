@@ -40,6 +40,12 @@ class ZabbixDBClient(object):
             'convert_to_mb': False
         },
 
+        'memory_util_agent': {
+            'key': 'vm.memory.size[pused]',
+            'table': 'history',
+            'convert_to_mb': False,
+        },
+
         'storage': {
             'key': 'openstack.vm.disk.size',
             'table': 'history_uint',
