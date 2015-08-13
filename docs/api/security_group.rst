@@ -46,8 +46,7 @@ Valid response example:
                     "protocol": "tcp",
                     "from_port": 80,
                     "to_port": 80,
-                    "ip_range": "0.0.0.0",
-                    "netmask": 0
+                    "cidr": "0.0.0.0/0",
                 }
             ],
             "cloud_project_membership": {
