@@ -973,7 +973,6 @@ class CalculatedUsageSerializer(serializers.Serializer):
                 items.append('memory_util_agent')
             else:
                 items.append(item)
-        items = [item for item in self.validated_data['items']]
         method = self.validated_data['method']
         host = ZabbixApiClient().get_host_name(instance)
 
