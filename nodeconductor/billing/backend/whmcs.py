@@ -236,20 +236,20 @@ class WHMCSAPI(object):
                    'name': product['name']}
 
     def get_client_products(self, client_id):
-        products = self.request(
-            'getclientsproducts', clentid=client_id, limitnum=1000, resultset_path='products.product')
+        products = self.request('getclientsproducts', clentid=client_id, resultset_path='products.product')
         for product in products:
             yield {
                 'id': product['id'],
                 'backend_id': product['pid'],
                 'name': product['name'],
                 'hostname': product['domain'],
+                'recurring_amount': product['recurringamount'],
             }
 
     def get_client_orders(self, client_id):
         """ Get all orders for given client """
         whmcs_orders = self.request('getorders', userid=client_id, limitnum=1000, resultset_path='orders.order')
-        client_products = list(self.get_client_products(client_id))
+        client_products = {cp['id']: cp for cp in self.get_client_products(client_id)}
         for whmcs_order in whmcs_orders:
             yield self._format_whmcs_order(whmcs_order, client_products)
 
@@ -266,14 +266,12 @@ class WHMCSAPI(object):
             else:
                 whmcs_amount = whmcs_item['amount']
 
-            try:
-                product_scope = [cp for cp in client_products if cp['id'] == whmcs_item['relid']][0]
-            except IndexError:
-                product_scope = ''
+            product_scope = client_products.get(whmcs_item['relid'], '')
 
             items.append({
                 'amount': Decimal(whmcs_amount),
-                'product': re.compile(r'<[^>]+>').sub('', whmcs_item['product']),  # remove tags from product name
+                # remove tags from product name. Example: "Storage: 50->20 GB <br>" -> "Storage: 50->20 GB"
+                'product': re.compile(r'<[^>]+>').sub('', whmcs_item['product']),
                 'status': whmcs_item['status'],
                 'product_type': self._get_product_type_name(whmcs_item['producttype']),
                 'product_scope': product_scope,
@@ -287,7 +285,7 @@ class WHMCSAPI(object):
             'status': self._get_status_name(whmcs_order['status']),
             'payment_status': whmcs_order['paymentstatus'],
             'items': items,
-            'number': whmcs_order['ordernum'],
+            'global_id': whmcs_order['ordernum'],
         }
 
     def _get_product_type_name(self, whmcs_product_type):
@@ -601,6 +599,6 @@ class WHMCSAPI(object):
             item.save()
 
     def get_total_cost_of_active_products(self, client_id):
-        products = self.request('getclientsproducts', clientid=client_id, resultset_path='products.product')
-        costs = [float(product['recurringamount']) for product in products if product['status'] == 'Active']
+        products = self.get_client_products(client_id)
+        costs = [float(product['recurring_amount']) for product in products if product['status'] == 'Active']
         return sum(costs)

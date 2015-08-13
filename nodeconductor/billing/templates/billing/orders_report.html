@@ -7,8 +7,8 @@
             <tr>
                 <th width='10%'>Order ID</th>
                 <th width='15%'>Date</th>
-                <th width='55%'>Items</th>
-                <th width='10%'>Amount</th>
+                <th width='52%'>Items</th>
+                <th width='13%'>Amount</th>
                 <th width='10%'>Status</th>
             </tr>
         </thead>
@@ -18,7 +18,7 @@
         <tbody>
             {% for order in orders %}
             <tr>
-                <td align="center">#{{ order.number }}</td>
+                <td align="center">#{{ order.global_id }}</td>
                 <td align="center">{{ order.date | date:"Y M d H:i"}}</td>
                 <td align="center">{% for item in order.items %} {{ item.product_type }}: {{ item.product_scope.hostname }} {{ item.product }} - {{ item.status }} <br> {% endfor %}</td>
                 <td align="center">{{ order.amount }} {{ order.currency }}</td>

@@ -116,7 +116,7 @@ class BillingBackend(object):
     def get_orders(self):
         # XXX: This is fragile - different billing systems can return different orders,
         # after billing application stabilization we need to provide standard order structure
-        return self.api.get_client_orders(self.customer.billing_backend_id)
+        return self.api.get_client_orders(self.get_or_create_client())
 
 
 class DummyBillingAPI(object):

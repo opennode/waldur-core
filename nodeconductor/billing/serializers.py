@@ -62,13 +62,13 @@ class PaymentApproveSerializer(serializers.Serializer):
 
 
 class OrderCustomerSerializer(serializers.Serializer):
-    uuid = serializers.CharField()
+    customer_uuid = serializers.CharField()
 
     def to_internal_value(self, data):
-        if 'uuid' not in data:
+        if 'customer_uuid' not in data:
             raise serializers.ValidationError(
-                'Parameter <uuid> with customer UUID has to be provided as GET parameter.')
+                'Parameter <customer_uuid> with customer UUID has to be provided as GET parameter.')
         try:
-            return Customer.objects.get(uuid=data['uuid'])
+            return Customer.objects.get(uuid=data['customer_uuid'])
         except Customer.DoesNotExist:
             raise serializers.ValidationError('Customer with given UUID does not exist.')
