@@ -116,97 +116,6 @@ class ZabbixDBClient(object):
     def __init__(self):
         self.zabbix_api_client = api_client.ZabbixApiClient()
 
-    def get_projects_quota_timeline(self, hosts, items, start, end, interval):
-        """
-        hosts: list of tenant UUID
-        items: list of items, such as 'vcpu', 'ram'
-        start, end: timestamp
-        interval: day, week, month
-        Returns list of tuples like
-        (1415912624, 1415912630, 'vcpu_limit', 2048)
-
-        Explanation of the the SQL query.
-        1) Join three tables: hosts, items and history_uint.
-
-        2) Filter rows by host name, item name and time range.
-
-        3) Truncate date. For example, when interval is 'day',
-        2015-06-01 09:56:23 is truncated to 2015-06-01.
-
-        4) Rows are grouped by date and itemid and then averaged.
-        There's distinct itemid for combination of hostid and item.key_.
-        For example:
-        2015-06-01 09:56:23, host1, vcpu, 10,
-        2015-06-01 10:56:23, host1, vcpu, 20,
-        2015-06-01 11:56:23, host1, vcpu, 30,
-        2015-06-01 09:56:23, host1, ram, 100,
-        2015-06-01 10:56:23, host1, ram, 200,
-        2015-06-01 11:56:23, host1, ram, 300,
-
-        is converted to
-        2015-06-01, host1, vcpu, 20
-        2015-06-01, host1, ram, 200
-
-        5) Rows are grouped by date and item name and the sum is applied.
-        For example:
-        2015-06-01, host1, vcpu, 20
-        2015-06-01, host1, ram, 200
-        2015-06-01, host2, vcpu, 40
-        2015-06-01, host2, ram, 400
-
-        is converted to
-        2015-06-01, vcpu, 60
-        2015-06-01, ram,  600
-
-        6) Then we add end time span. For example:
-        2015-06-01, vcpu, 60
-        2015-06-01, ram,  600
-
-        is converted to
-        2015-06-01, 2015-06-02, vcpu, 60
-        2015-06-01, 2015-06-02, ram,  600
-
-        The benefit of this solution is that computations are
-        performed in the database, not in REST server.
-        """
-
-        template = r"""
-          SELECT {date_span}, item, SUM(value)
-            FROM (SELECT {date_trunc} AS date,
-                       items.key_ AS item,
-                       AVG(value) AS value
-                  FROM hosts,
-                       items,
-                       history_uint FORCE INDEX (history_uint_1)
-                 WHERE hosts.hostid = items.hostid
-                   AND items.itemid = history_uint.itemid
-                   AND hosts.host IN ({hosts_placeholder})
-                   AND items.key_ IN ({items_placeholder})
-                   AND clock >= %s
-                   AND clock <= %s
-                 GROUP BY date, items.itemid) AS t
-          GROUP BY date, item
-          """
-
-        try:
-            engine = sql_utils.get_zabbix_engine()
-            date_span = sql_utils.make_date_span(engine, interval, 'date')
-            date_trunc = sql_utils.truncate_date(engine, interval, 'clock')
-        except DatabaseError as e:
-            six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
-
-        query = template.format(
-            date_span=date_span,
-            date_trunc=date_trunc,
-            hosts_placeholder=sql_utils.make_list_placeholder(len(hosts)),
-            items_placeholder=sql_utils.make_list_placeholder(len(items)),
-        )
-        items = [self.items[name]['key'] for name in items]
-        params = hosts + items + [start, end]
-
-        records = self.execute_query(query, params)
-        return self.prepare_result(records)
-
     def execute_query(self, query, params):
         try:
             with connections['zabbix'].cursor() as cursor:
@@ -324,8 +233,29 @@ class ZabbixDBClient(object):
         try:
             time_and_value_list = self.get_item_time_and_value_list(
                 host_ids, [item_key], item_table, start_timestamp, end_timestamp, convert_to_mb)
-            segment_list = core_utils.format_time_and_value_to_segment_list(
-                time_and_value_list, segments_count, start_timestamp, end_timestamp, average=True)
+
+            interval = ((end_timestamp - start_timestamp) / segments_count)
+            points = [start_timestamp + interval * i for i in range(segments_count)][::-1]
+
+            # print points
+            segment_list = []
+            next_value = time_and_value_list.fetchone()
+            for start, end in zip(points[:-1], points[1:]):
+                segment = {'from': start, 'to': end}
+
+                while True:
+                    if next_value is None:
+                        break
+                    time, value = next_value
+
+                    if time <= end:
+                        segment['value'] = value
+                        break
+                    else:
+                        next_value = time_and_value_list.fetchone()
+
+                segment_list.append(segment)
+
             return segment_list
         except DatabaseError as e:
             logger.exception('Can not execute query the Zabbix DB.')
@@ -340,9 +270,9 @@ class ZabbixDBClient(object):
             'SELECT hi.clock time, (%(value_path)s) value '
             'FROM zabbix.items it JOIN zabbix.%(item_table)s hi on hi.itemid = it.itemid '
             'WHERE it.key_ in (%(item_keys)s) AND it.hostid in (%(host_ids)s) '
-            'AND hi.clock < %(end_timestamp)s AND hi.clock >= %(start_timestamp)s '
+            'AND hi.clock < %(end_timestamp)s '
             'GROUP BY hi.clock '
-            'ORDER BY hi.clock'
+            'ORDER BY hi.clock DESC'
         )
         parameters = {
             'item_keys': '"' + '", "'.join(item_keys) + '"',
@@ -356,7 +286,7 @@ class ZabbixDBClient(object):
 
         cursor = connections['zabbix'].cursor()
         cursor.execute(query)
-        return cursor.fetchall()
+        return cursor
 
     def get_storage_stats(self, instances, start_timestamp, end_timestamp, segments_count):
         host_ids = []

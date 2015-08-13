@@ -951,7 +951,8 @@ class UsageStatsSerializer(serializers.Serializer):
         # XXX: Quick and dirty fix: zabbix presents percentage of free space(not utilized) for storage
         if self.data['item'] in ('storage_root_util', 'storage_data_util'):
             for stat in item_stats:
-                stat['value'] = 100 - stat['value']
+                if 'value' in stat:
+                    stat['value'] = 100 - stat['value']
 
         return item_stats
 
