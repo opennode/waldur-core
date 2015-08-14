@@ -2,7 +2,6 @@ import logging
 
 from nodeconductor.billing.log import event_logger
 from nodeconductor.billing.backend import BillingBackendError
-from nodeconductor.cost_tracking import models
 
 
 logger = logging.getLogger('nodeconductor.billing')
@@ -35,9 +34,6 @@ def log_invoice_delete(sender, instance, **kwargs):
 
 
 def track_order(sender, instance, name=None, source=None, **kwargs):
-    if not issubclass(instance.__class__, models.PaidResource):
-        return
-
     order = instance.order
     try:
         if name == instance.begin_provisioning.__name__:
@@ -67,5 +63,4 @@ def track_order(sender, instance, name=None, source=None, **kwargs):
 
 
 def terminate_purchase(sender, instance=None, **kwargs):
-    if issubclass(instance.__class__, models.PaidResource):
-        instance.order.terminate()
+    instance.order.terminate()
