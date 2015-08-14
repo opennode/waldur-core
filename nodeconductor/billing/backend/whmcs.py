@@ -1,13 +1,14 @@
-import datetime
-from decimal import Decimal
-import hashlib
-import logging
-import lxml.html
 import re
+import hashlib
+import datetime
+import calendar
+import lxml.html
 import requests
+import logging
 import urllib
 import urlparse
 
+from decimal import Decimal
 from django.utils.http import urlsafe_base64_encode
 
 from nodeconductor.cost_tracking import CostConstants
@@ -132,6 +133,10 @@ class WHMCSAPI(object):
             return datetime.datetime.strptime(date, '%Y-%m-%d').date()
         except ValueError as e:
             raise BillingBackendError("Can't parse date %s: %s" % (date, e))
+
+    def _parse_price(self, price):
+        # '$54.84 USD' => '54.84'
+        return re.findall(r'([\d.]+)', price)[0]
 
     def _get_backend_url(self, path, args=()):
         url_parts = list(urlparse.urlparse(self.api_url))
@@ -376,7 +381,29 @@ class WHMCSAPI(object):
 
         return new_options
 
+    def _add_invoice_item(self, client_id, invoice_id, info, amount):
+        # TODO: there should be an option of tracking new invoices created during recurring cycle
+        invoice = self.request('getinvoice', invoiceid=invoice_id)
+        if invoice['status'] == 'Unpaid':
+            # a. add new item to the invoice
+            self.request(
+                'updateinvoice',
+                invoiceid=invoice_id,
+                **{
+                    'newitemdescription[0]': info,
+                    'newitemamount[0]': amount,
+                })
+        else:
+            # b. add new billable item with option of adding to upcoming invoice
+            self.request(
+                'addbillableitem',
+                clientid=client_id,
+                description=info,
+                amount=amount,
+                invoiceaction='nextinvoice')
+
     def add_order(self, client_id, template_id, name='', **options):
+        # create order on initial purchase, make sure invoice is also created
         options = self._prepare_configurable_options(template_id, options)
         data = self.request(
             'addorder',
@@ -386,26 +413,79 @@ class WHMCSAPI(object):
             configoptions=urlsafe_base64_encode(php_dumps(options)),
             billingcycle='monthly',
             paymentmethod='banktransfer',
-            noemail=True,
-        )
-        logger.info('WHMCS order was added with id %s', data['orderid'])
-        return data['orderid'], data['productids']
+            noemail=True)
 
-    def update_order(self, client_id, product_id, template_id, **options):
-        # TODO:
-        #   1. get upgrade price via API for specified options ('upgradeproduct' & 'calconly')
-        #   2. find last unpaid invoice for this client product ('product_id')
-        #   3a. found -- add new item to the invoice with price received at p.1
-        #   3b. not found -- ditto but add billable item instead (with option of adding to upcoming invoice)
-        #   4. update product's configurable options and recalculate recurring price (via web GUI)
-        raise NotImplementedError
+        # change invoice due date to the last day of month in order to make upgrades work properly
+        now = datetime.datetime.now()
+        days = calendar.monthrange(now.year, now.month)[1]
+        self.request(
+            'updateinvoice',
+            invoiceid=data['invoiceid'],
+            duedate=now.replace(day=days).strftime('%Y%m%d'))
 
-    def terminate_order(self, client_id, product_id):
-        # TODO:
-        #   1. fetch recurring price for the given product
-        #   2. calculate compensation amount for the remaining days till the end of month
-        #   3. deduct it from the last unpaid invoice (or add billable item)
-        raise NotImplementedError
+        logger.info("WHMCS order was added with id %s and invoice id %s", data['orderid'], data['invoiceid'])
+
+        return data['orderid'], data['invoiceid'], data['productids']
+
+    def update_order(self, client_id, invoice_id, product_id, template_id, **options):
+        # 1. get upgrade price via API for specified options
+        options = {'configoptions[%s]' % k: v for k, v in
+                   self._prepare_configurable_options(template_id, options).items()}
+
+        data = self.request(
+            'upgradeproduct',
+            serviceid=product_id,
+            clientid=client_id,
+            type='configoptions',
+            calconly=True,
+            **options)
+
+        # 2. format upgrade info and price
+        item_price = self._parse_price(data['total'])
+        item_info = ['{} Options:'.format('Upgrade' if item_price > 0 else 'Downgrade')]
+        if item_price == 0:
+            logger.warn("Can't upgrade product id %s, wrong amount: %s", product_id, data)
+            return
+
+        for key in data:
+            if key.startswith('configname'):
+                name = data[key]                        # storage
+                pk = key.replace('configname', '')      # 1
+                old = data.get('originalvalue' + pk)    # 20
+                new = data.get('newvalue' + pk)         # 30 x 1 GB
+                price = data.get('price' + pk)          # $54.84 USD
+                # storage: 20 => 30 x 1 GB = $54.84 USD
+                item_info.append('{}: {} => {} = {}'.format(
+                    name, old, new, price))
+
+        # 3. add upgrade price to current invoice or create billable item
+        self._add_invoice_item(client_id, invoice_id, '\n'.join(item_info), item_price)
+
+        # 4. update product's configurable options and recalculate recurring price (via web GUI)
+        NotImplemented
+
+        logger.info("WHMCS products id %s upgraded cost %s", product_id, item_price)
+
+    def terminate_order(self, client_id, invoice_id, product_id):
+        # 1. fetch recurring price for the given product
+        product = next(prod for prod in self.get_client_products(client_id) if prod['id'] == product_id)
+        price = float(product['recurring_amount'])
+
+        # 2. calculate compensation amount for the remaining days till the end of month
+        now = datetime.datetime.now()
+        days = calendar.monthrange(now.year, now.month)[1]  # XXX: assuming invoice duedate is always end of month
+        amount = -1 * price / days * (days - now.day)
+
+        # 3. add compensation amount to active invoice or create billable item
+        self._add_invoice_item(client_id, invoice_id, 'Compensation for termination', amount)
+
+        # 4. change product status to 'Terminated'
+        self.request(
+            'updateclientproduct',
+            serviceid=product_id,
+            status='Terminated')
+
+        logger.info("WHMCS products id %s terminated with compensation %s", product_id, amount)
 
     def upgrade_order(self, client_id, product_id, template_id, **options):
         options = {'configoptions[%s]' % k: v for k, v in
@@ -417,10 +497,10 @@ class WHMCSAPI(object):
             clientid=client_id,
             type='configoptions',
             paymentmethod='banktransfer',
-            **options
-        )
+            **options)
 
         self.accept_order(data['orderid'])
+
         logger.info('WHMCS update order was added with id %s', data['orderid'])
 
     def accept_order(self, order_id):

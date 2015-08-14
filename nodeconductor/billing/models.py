@@ -174,7 +174,8 @@ class PaidResource(models.Model):
             self.instance.billing_backend_purchase_order_id = ''
             self.instance.save(update_fields=['billing_backend_id',
                                               'billing_backend_template_id',
-                                              'billing_backend_purchase_order_id'])
+                                              'billing_backend_purchase_order_id',
+                                              'billing_backend_active_invoice_id'])
 
         def _propagate_default_options(self, options):
             try:
@@ -190,6 +191,8 @@ class PaidResource(models.Model):
 
     billing_backend_purchase_order_id = models.CharField(
         max_length=255, blank=True, help_text='ID of a purchase order in backend that created a resource')
+    billing_backend_active_invoice_id = models.CharField(
+        max_length=255, blank=True, help_text='ID of an active invoice in backend')
     billing_backend_id = models.CharField(max_length=255, blank=True, help_text='ID of a resource in backend')
     billing_backend_template_id = models.CharField(max_length=255, blank=True,
                                                    help_text='ID of a template in backend used for creating a resource')

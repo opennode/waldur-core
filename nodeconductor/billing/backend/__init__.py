@@ -102,20 +102,22 @@ class BillingBackend(object):
         return self.api.get_invoice_items(invoice_id)
 
     def setup_product(self, resource, product_template_id):
-        # - place an order and generate invoice
+        # - place an order and generate invoice with duedate of the end of month
         options = resource.get_price_options()
         options = resource.order._propagate_default_options(options)
 
         client_id = self.get_or_create_client()
-        order_id, product_id = self.api.add_order(
+        order_id, invoice_id, product_id = self.api.add_order(
             client_id, product_template_id, resource.name, **options)
 
         resource.billing_backend_id = product_id
         resource.billing_backend_template_id = product_template_id
         resource.billing_backend_purchase_order_id = order_id
+        resource.billing_backend_active_invoice_id = invoice_id
         resource.save(update_fields=['billing_backend_id',
                                      'billing_backend_template_id',
-                                     'billing_backend_purchase_order_id'])
+                                     'billing_backend_purchase_order_id',
+                                     'billing_backend_active_invoice_id'])
 
     def confirm_product_setup(self, resource):
         # - accept order
@@ -130,18 +132,20 @@ class BillingBackend(object):
         # - get an upgrade price from API (invoice should be already present?)
         # - add upgrade amount as an item for last unpaid invoice or as billable item otherwise
         options = resource.order._propagate_default_options(options)
-        client_id = self.get_or_create_client()
-
-        # TODO: update product invoce instead of upgrading order
-        self.api.upgrade_order(
-            client_id, resource.billing_backend_id, resource.billing_backend_template_id, **options)
+        self.api.update_order(
+            self.get_or_create_client(),
+            resource.billing_backend_active_invoice_id,
+            resource.billing_backend_id,
+            resource.billing_backend_template_id,
+            **options)
 
     def terminate_product(self, resource):
         # - change billing product status to 'terminated'
         # - deduct a price of remained days from final invoice
-        if resource.billing_backend_id:
-            # TODO: terminate instead of cancel
-            self.api.cancel_purchase(resource.billing_backend_id)
+        self.api.terminate_order(
+            self.get_or_create_client(),
+            resource.billing_backend_active_invoice_id,
+            resource.billing_backend_id)
 
     def get_total_cost_of_active_products(self):
         products = self.api.get_client_products(self.get_or_create_client())
