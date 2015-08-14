@@ -32,9 +32,9 @@ class BillingConfig(AppConfig):
         if nc_settings.get('ENABLE_WHMCS_ORDER_PROCESSING', False):
             for index, resource in enumerate(structure_models.Resource.get_all_models()):
                 signals.post_delete.connect(
-                    handlers.cancel_purchase,
+                    handlers.terminate_purchase,
                     sender=resource,
-                    dispatch_uid='nodeconductor.billing.handlers.cancel_purchase_{}_{}'.format(
+                    dispatch_uid='nodeconductor.billing.handlers.terminate_purchase_{}_{}'.format(
                         resource.__name__, index),
                 )
 

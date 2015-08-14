@@ -349,7 +349,8 @@ class WHMCSAPI(object):
         response = self.request('createinvoice', paymentmethod=payment_method, **items)
         return response['invoiceid']
 
-    def _prepare_configurable_options(self, options, template=()):
+    def _prepare_configurable_options(self, template_id, options):
+        template = DefaultPriceListItem.get_options(template_id)
         if not template:
             return options
 
@@ -375,39 +376,44 @@ class WHMCSAPI(object):
 
         return new_options
 
-    def add_order(self, resource_content_type, client_id, name='', **options):
-        # Fetch *any* item of specific content type to get backend id
-        product = DefaultPriceListItem.objects.filter(
-            resource_content_type=resource_content_type).first()
-        template = DefaultPriceListItem.get_options(resource_content_type=resource_content_type)
-        options = self._prepare_configurable_options(options, template=template)
-
-        if not product:
-            raise BillingBackendError(
-                "Product '%s' is missing on backend" % resource_content_type)
-
+    def add_order(self, client_id, template_id, name='', **options):
+        options = self._prepare_configurable_options(template_id, options)
         data = self.request(
             'addorder',
-            pid=product.backend_product_id,
+            pid=template_id,
             domain=name,
             clientid=client_id,
             configoptions=urlsafe_base64_encode(php_dumps(options)),
             billingcycle='monthly',
             paymentmethod='banktransfer',
-            noinvoice=True,
             noemail=True,
         )
         logger.info('WHMCS order was added with id %s', data['orderid'])
-        return data['orderid'], data['productids'], product.backend_product_id
+        return data['orderid'], data['productids']
 
-    def update_order(self, client_id, backend_resource_id, backend_template_id, **options):
-        template = DefaultPriceListItem.get_options(backend_product_id=backend_template_id)
+    def update_order(self, client_id, product_id, template_id, **options):
+        # TODO:
+        #   1. get upgrade price via API for specified options ('upgradeproduct' & 'calconly')
+        #   2. find last unpaid invoice for this client product ('product_id')
+        #   3a. found -- add new item to the invoice with price received at p.1
+        #   3b. not found -- ditto but add billable item instead (with option of adding to upcoming invoice)
+        #   4. update product's configurable options and recalculate recurring price (via web GUI)
+        raise NotImplementedError
+
+    def terminate_order(self, client_id, product_id):
+        # TODO:
+        #   1. fetch recurring price for the given product
+        #   2. calculate compensation amount for the remaining days till the end of month
+        #   3. deduct it from the last unpaid invoice (or add billable item)
+        raise NotImplementedError
+
+    def upgrade_order(self, client_id, product_id, template_id, **options):
         options = {'configoptions[%s]' % k: v for k, v in
-                   self._prepare_configurable_options(options, template=template).items()}
+                   self._prepare_configurable_options(template_id, options).items()}
 
         data = self.request(
             'upgradeproduct',
-            serviceid=backend_resource_id,
+            serviceid=product_id,
             clientid=client_id,
             type='configoptions',
             paymentmethod='banktransfer',
