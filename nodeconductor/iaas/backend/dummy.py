@@ -700,7 +700,7 @@ class NeutronClient(OpenStackBaseClient):
             response.append(subnet.to_dict())
         return {'subnets': response}
 
-    def list_routers(self):
+    def list_routers(self, tenant_id=None):
         routers = self._get_resources('Router')
         return {'routers': [r.to_dict() for r in routers.list()]}
 
