@@ -178,7 +178,7 @@ class PaidResource(models.Model):
 
         def _propagate_default_options(self, options):
             try:
-                defaults = self.get_default_price_options()
+                defaults = self.instance.get_default_price_options()
             except NotImplementedError:
                 pass
             else:

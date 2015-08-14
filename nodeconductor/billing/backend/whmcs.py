@@ -562,8 +562,9 @@ class WHMCSAPI(object):
             gid=1,
             type='server',
             paytype='recurring',
-            module='autorelease',
-            proratabilling=True,
+            module='autorelease',  # XXX: product gets "hidden" in whmcs admin
+            proratabilling=True,   # XXX: it doesn't work as expected
+            proratadate=1,
         )
 
         pid = response['pid']
