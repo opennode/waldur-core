@@ -183,6 +183,41 @@ class CloudProjectMembershipActionsTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(mocked_task.delay.called)
 
+    @patch('nodeconductor.iaas.tasks.allocate_floating_ip')
+    def test_user_cannot_allocate_floating_ip_from_cpm_without_external_network_id(self, mocked_task):
+        self.client.force_authenticate(user=self.staff)
+
+        url = factories.CloudProjectMembershipFactory.get_url(self.cloud_project_membership, 'allocate_floating_ip')
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['detail'], 'Cloud project membership should have an external network ID.')
+        self.assertFalse(mocked_task.delay.called)
+
+    @patch('nodeconductor.iaas.tasks.allocate_floating_ip')
+    def test_user_cannot_allocate_floating_ip_from_cpm_in_unstable_state(self, mocked_task):
+        self.client.force_authenticate(user=self.staff)
+
+        cpm = factories.CloudProjectMembershipFactory(external_network_id='12345', state=SynchronizationStates.ERRED)
+        url = factories.CloudProjectMembershipFactory.get_url(cpm, 'allocate_floating_ip')
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['detail'], 'Cloud project membership must be in stable state.')
+        self.assertFalse(mocked_task.delay.called)
+
+    @patch('nodeconductor.iaas.tasks.allocate_floating_ip')
+    def test_user_can_allocate_floating_ip_from_cpm_with_external_network_id(self, mocked_task):
+        self.client.force_authenticate(user=self.staff)
+
+        cpm = factories.CloudProjectMembershipFactory(external_network_id='12345', state=SynchronizationStates.IN_SYNC)
+        url = factories.CloudProjectMembershipFactory.get_url(cpm, 'allocate_floating_ip')
+        response = self.client.post(url)
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.data['detail'], 'Floating IP allocation has been scheduled.')
+        self.assertTrue(mocked_task.delay.called)
+
 # XXX: this have to be reworked to permissions test
 
 class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):

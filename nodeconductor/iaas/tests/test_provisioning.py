@@ -7,6 +7,7 @@ from mock import patch, Mock
 from rest_framework import status
 from rest_framework import test
 
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.backup import models as backup_models
 from nodeconductor.backup.tests import factories as backup_factories
 from nodeconductor.core.fields import comma_separated_string_list_re as ips_regex
@@ -34,6 +35,7 @@ class UrlResolverMixin(object):
 class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def setUp(self):
         self.user = structure_factories.UserFactory()
+        self.staff = structure_factories.UserFactory(is_staff=True)
 
         # User admins managed_instance through its project
         # User manages managed_instance through its project group
@@ -589,6 +591,53 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         inaccessible_instance = factories.InstanceFactory()
         self._ensure_cannot_resize_disk_of_flavor(inaccessible_instance, status.HTTP_404_NOT_FOUND)
+
+    @patch('nodeconductor.iaas.tasks.assign_floating_ip')
+    def test_user_cannot_assign_floating_ip_to_instance_in_unstable_state(self, mocked_task):
+        self.client.force_authenticate(user=self.staff)
+
+        cpm = factories.CloudProjectMembershipFactory(external_network_id='12345', state=SynchronizationStates.IN_SYNC)
+        instance = factories.InstanceFactory(state=Instance.States.ERRED, cloud_project_membership=cpm)
+        response = self.client.post(factories.InstanceFactory.get_url(instance, action='assign_floating_ip'))
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['detail'], 'Cannot add floating IP to instance in unstable state.')
+        self.assertFalse(mocked_task.delay.called)
+
+    @patch('nodeconductor.iaas.tasks.assign_floating_ip')
+    def test_user_cannot_assign_floating_ip_to_instance_with_cpm_without_external_network_id(self, mocked_task):
+        self.client.force_authenticate(user=self.staff)
+
+        instance = factories.InstanceFactory(state=Instance.States.ONLINE)
+        response = self.client.post(factories.InstanceFactory.get_url(instance, action='assign_floating_ip'))
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['detail'], 'External network ID of the cloud project membership is missing.')
+        self.assertFalse(mocked_task.delay.called)
+
+    @patch('nodeconductor.iaas.tasks.assign_floating_ip')
+    def test_user_cannot_assign_floating_ip_to_instance_with_cpm_in_erred(self, mocked_task):
+        self.client.force_authenticate(user=self.staff)
+
+        cpm = factories.CloudProjectMembershipFactory(external_network_id='12345', state=SynchronizationStates.ERRED)
+        instance = factories.InstanceFactory(state=Instance.States.ONLINE, cloud_project_membership=cpm)
+        response = self.client.post(factories.InstanceFactory.get_url(instance, action='assign_floating_ip'))
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['detail'], 'Cloud project membership of instance should be in stable state.')
+        self.assertFalse(mocked_task.delay.called)
+
+    @patch('nodeconductor.iaas.tasks.assign_floating_ip')
+    def test_user_can_assign_floating_ip_to_instance_with_satisfied_requirements(self, mocked_task):
+        self.client.force_authenticate(user=self.staff)
+
+        cpm = factories.CloudProjectMembershipFactory(external_network_id='12345', state=SynchronizationStates.IN_SYNC)
+        instance = factories.InstanceFactory(state=Instance.States.OFFLINE, cloud_project_membership=cpm)
+        response = self.client.post(factories.InstanceFactory.get_url(instance, action='assign_floating_ip'))
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.data['detail'], 'Assigning floating IP to the instance has been scheduled.')
+        self.assertTrue(mocked_task.delay.called)
 
     # Helpers method
     def _get_valid_payload(self, resource=None):
