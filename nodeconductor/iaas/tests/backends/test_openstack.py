@@ -477,6 +477,18 @@ class OpenStackBackendFloatingIPTest(TransactionTestCase):
             FloatingIP.objects.filter(id=floating_ip.id, status='ACTIVE').exists()
         )
 
+    def test_assigned_floating_ip_is_added_to_instance(self):
+        nova = mock.Mock()
+        nova.server.add_floating_ip = mock.Mock()
+
+        floating_ip = factories.FloatingIPFactory(status='DOWN')
+        instance = factories.InstanceFactory()
+        self.backend.assign_floating_ip_to_instance(nova, instance, floating_ip)
+        self.assertTrue(
+            Instance.objects.filter(uuid=instance.uuid, external_ips=floating_ip.address).exists()
+        )
+
+
 class OpenStackBackendImageApiTest(TransactionTestCase):
     def setUp(self):
         self.glance_client = mock.Mock()

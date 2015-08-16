@@ -2393,6 +2393,9 @@ class OpenStackBackend(OpenStackClient):
         floating_ip.status = 'ACTIVE'
         floating_ip.save()
 
+        instance.external_ips = floating_ip.address
+        instance.save()
+
         logger.info('Floating IP %s was successfully assigned to the instance with id %s.',
                     floating_ip.address, instance.uuid)
 
