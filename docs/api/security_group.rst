@@ -65,7 +65,7 @@ Create a security group
 -----------------------
 
 To create a new security group, issue a POST with security group details to **/api/security-groups/**. This will
-create new security group and starts its synchronization with OpenStack.
+create new security group and start its synchronization with OpenStack.
 
 Example of a request:
 
@@ -104,7 +104,7 @@ Update a security group
 -----------------------
 
 Security group name, description and rules can be updated. To execute update request make PATCH request with details
-to **/api/security-groups/<security-group-uuid>/**. This will update security group in database and starts its
+to **/api/security-groups/<security-group-uuid>/**. This will update security group in database and start its
 synchronization with OpenStack. To leave old security groups add old rule id to list of new rules (note that exist rule
 cannot be updated, if endpoint receives id and some other attributes, it uses only id for rule identification).
 
