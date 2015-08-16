@@ -51,7 +51,7 @@ class OsTypes(object):
         (OTHER, 'Other'),
     )
 
-    FAMILIES = {
+    CATEGORIES = {
         'linux': (CENTOS6, CENTOS7, UBUNTU, RHEL6, RHEL7)
     }
 

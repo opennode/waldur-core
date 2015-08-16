@@ -521,7 +521,7 @@ class TemplateFilter(django_filters.FilterSet):
     )
 
     os_type = CategoryFilter(
-        categories=CostConstants.Os.FAMILIES
+        categories=CostConstants.Os.CATEGORIES
     )
 
     class Meta(object):
