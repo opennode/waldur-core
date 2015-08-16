@@ -112,7 +112,7 @@ class SecurityGroupRuleFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.SecurityGroupRule
 
-    security_group = factory.SubFactory(SecurityGroupFactory)
+    group = factory.SubFactory(SecurityGroupFactory)
     protocol = models.SecurityGroupRule.tcp
     from_port = factory.fuzzy.FuzzyInteger(1, 65535)
     to_port = factory.fuzzy.FuzzyInteger(1, 65535)

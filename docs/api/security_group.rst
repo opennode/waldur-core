@@ -43,6 +43,7 @@ Valid response example:
             "description": "Security group for web servers",
             "rules": [
                 {
+                    "id": 13,
                     "protocol": "tcp",
                     "from_port": 80,
                     "to_port": 80,
@@ -104,7 +105,8 @@ Update a security group
 
 Security group name, description and rules can be updated. To execute update request make PATCH request with details
 to **/api/security-groups/<security-group-uuid>/**. This will update security group in database and starts its
-synchronization with OpenStack.
+synchronization with OpenStack. To left old security groups add old rule id to list of new rules (note that exist rule
+cannot be updated, if endpoint receives id and some other attributes - it uses only id for rule identification).
 
 .. code-block:: http
 
@@ -116,7 +118,17 @@ synchronization with OpenStack.
 
     {
         "name": "Security group new name",
-        "rules": [],
+        "rules": [
+            {
+                "id": 13,
+            },
+            {
+                "protocol": "udp",
+                "from_port": 10,
+                "to_port": 8000,
+                "cidr": "10.1.1.0/24"
+            }
+        ],
     }
 
 
