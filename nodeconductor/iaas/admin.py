@@ -89,7 +89,8 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     search_fields = ('cloud__customer__name', 'project__name', 'cloud__name')
     inlines = [QuotaInline]
 
-    actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships', 'detect_external_networks']
+    actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships',
+               'detect_external_networks', 'allocate_floating_ip']
 
     def get_queryset(self, request):
         queryset = super(CloudProjectMembershipAdmin, self).get_queryset(request)
@@ -167,6 +168,28 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
         self.message_user(request, message)
 
     detect_external_networks.short_description = "Attempt to lookup and set external network id of the connected router"
+
+    def allocate_floating_ip(self, request, queryset):
+        queryset = queryset.exclude(state=SynchronizationStates.ERRED).exclude(external_network_id='')
+
+        tasks_scheduled = 0
+
+        for membership in queryset.iterator():
+            tasks.allocate_floating_ip.delay(membership.pk)
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'One cloud project membership scheduled for floating IP allocation',
+            '%(tasks_scheduled)d cloud project memberships scheduled for floating IP allocation',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    allocate_floating_ip.short_description = "Allocate floating IPs for selected cloud project memberships"
 
     def get_cloud_name(self, obj):
         return obj.cloud.name
@@ -344,6 +367,7 @@ class InstanceSlaHistoryAdmin(admin.ModelAdmin):
 
 class FloatingIPAdmin(admin.ModelAdmin):
     list_display = ('cloud_project_membership', 'address', 'status')
+    readonly_fields = ('backend_network_id',)
 
 
 admin.site.register(models.Cloud, CloudAdmin)

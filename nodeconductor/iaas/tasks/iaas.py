@@ -365,3 +365,44 @@ def detect_external_network(membership_pk):
         backend.detect_external_network(membership, neutron)
     except CloudBackendError:
         logger.warning('Failed to detect external network for cloud project membership with id %s.', membership_pk)
+
+
+@shared_task
+def allocate_floating_ip(membership_pk):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+    backend = membership.cloud.get_backend()
+
+    try:
+        session = backend.create_session(keystone_url=membership.cloud.auth_url, dummy=backend.dummy)
+        neutron = backend.create_neutron_client(session)
+
+        backend.allocate_floating_ip_address(neutron, membership)
+    except CloudBackendError:
+        logger.warning('Failed to allocate floating IP for cloud project membership with id %s.', membership_pk)
+
+
+@shared_task
+def assign_floating_ip(instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+
+    available_ips = models.FloatingIP.objects.filter(
+        cloud_project_membership=instance.cloud_project_membership,
+        status='DOWN',
+        backend_network_id=instance.cloud_project_membership.external_network_id
+    )
+
+    if available_ips.exists():
+        floating_ip = available_ips.first()
+        backend = instance.cloud_project_membership.cloud.get_backend()
+
+        try:
+            session = backend.create_session(
+                keystone_url=instance.cloud_project_membership.cloud.auth_url,
+                dummy=backend.dummy)
+            nova = backend.create_nova_client(session)
+
+            backend.assign_floating_ip_to_instance(nova, instance, floating_ip)
+        except CloudBackendError:
+            logger.warning('Failed to assign floating IP to the instance with id %s.', instance_uuid)
+    else:
+        logger.warning('There are no available floating IPs in this cloud project membership.')

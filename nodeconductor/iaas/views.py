@@ -515,6 +515,26 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         results = serializer.get_stats(instance, start, end)
         return Response(results, status=status.HTTP_200_OK)
 
+    @detail_route(methods=['post'])
+    def assign_floating_ip(self, request, uuid):
+        """
+        Assign floating IP to the instance.
+        """
+        instance = self.get_object()
+
+        if not instance.cloud_project_membership.external_network_id:
+            return Response({'detail': 'External network ID of the cloud project membership is missing.'},
+                            status=status.HTTP_409_CONFLICT)
+        elif instance.cloud_project_membership.state in SynchronizationStates.UNSTABLE_STATES:
+            return Response({'detail': 'Cloud project membership of instance should be in stable state.'},
+                            status=status.HTTP_409_CONFLICT)
+        elif instance.state in models.Instance.States.UNSTABLE_STATES:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot add floating IP to instance in unstable state.')
+
+        tasks.assign_floating_ip.delay(uuid)
+        return Response({'detail': 'Assigning floating IP to the instance has been scheduled.'},
+                        status=status.HTTP_202_ACCEPTED)
 
 class TemplateFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
@@ -1137,6 +1157,23 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
         return Response({'status': 'External network creation has been scheduled.'},
                         status=status.HTTP_202_ACCEPTED)
 
+    @detail_route(methods=['post'])
+    def allocate_floating_ip(self, request, pk=None):
+        """
+        Allocate floating IP from external network.
+        """
+        membership = self.get_object()
+
+        if not membership.external_network_id:
+            return Response({'detail': 'Cloud project membership should have an external network ID.'},
+                            status=status.HTTP_409_CONFLICT)
+        elif membership.state in core_models.SynchronizationStates.UNSTABLE_STATES:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cloud project membership must be in stable state.')
+
+        tasks.allocate_floating_ip.delay(pk)
+        return Response({'detail': 'Floating IP allocation has been scheduled.'},
+                        status=status.HTTP_202_ACCEPTED)
 
 class SecurityGroupFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(

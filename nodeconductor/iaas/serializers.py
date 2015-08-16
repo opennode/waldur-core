@@ -815,7 +815,8 @@ class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = models.FloatingIP
-        fields = ('url', 'uuid', 'status', 'address', 'cloud_project_membership')
+        fields = ('url', 'uuid', 'status', 'address',
+                  'cloud_project_membership', 'backend_id', 'backend_network_id')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
