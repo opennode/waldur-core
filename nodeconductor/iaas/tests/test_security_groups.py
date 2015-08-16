@@ -175,6 +175,34 @@ class SecurityGroupUpdateTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         mocked_task.delay.assert_called_once_with(self.security_group.uuid.hex)
 
+    def test_user_can_remove_rule_from_security_group(self):
+        rule1 = factories.SecurityGroupRuleFactory(group=self.security_group)
+        factories.SecurityGroupRuleFactory(group=self.security_group)
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.patch(self.url, data={'rules': [{'id': rule1.id}]})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.security_group.rules.count(), 1)
+        self.assertEqual(self.security_group.rules.all()[0], rule1)
+
+    def test_user_can_add_new_security_group_rule_and_left_existant(self):
+        exist_rule = factories.SecurityGroupRuleFactory(group=self.security_group)
+        self.client.force_authenticate(self.admin)
+        new_rule_data = {
+            'protocol': 'udp',
+            'from_port': 100,
+            'to_port': 8001,
+            'cidr': 'test_cidr',
+        }
+
+        response = self.client.patch(self.url, data={'rules': [{'id': exist_rule.id}, new_rule_data]})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.security_group.rules.count(), 2)
+        self.assertTrue(self.security_group.rules.filter(id=exist_rule.id).exists())
+        self.assertTrue(self.security_group.rules.filter(**new_rule_data).exists())
+
 
 class SecurityGroupDeleteTest(test.APITransactionTestCase):
 
