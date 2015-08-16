@@ -4,6 +4,7 @@ import logging
 import sys
 import collections
 
+from django.conf import settings
 from django.db import connections, DatabaseError
 from django.utils import six
 
@@ -235,12 +236,12 @@ class ZabbixDBClient(object):
                 host_ids, [item_key], item_table, start_timestamp, end_timestamp, convert_to_mb)
 
             interval = ((end_timestamp - start_timestamp) / segments_count)
-            points = [start_timestamp + interval * i for i in range(segments_count)][::-1]
+            points = [start_timestamp + interval * i for i in range(segments_count + 1)][::-1]
 
             # print points
             segment_list = []
             next_value = time_and_value_list.fetchone()
-            for start, end in zip(points[:-1], points[1:]):
+            for end, start in zip(points[:-1], points[1:]):
                 segment = {'from': start, 'to': end}
 
                 while True:
@@ -270,13 +271,15 @@ class ZabbixDBClient(object):
             'SELECT hi.clock time, (%(value_path)s) value '
             'FROM zabbix.items it JOIN zabbix.%(item_table)s hi on hi.itemid = it.itemid '
             'WHERE it.key_ in (%(item_keys)s) AND it.hostid in (%(host_ids)s) '
-            'AND hi.clock < %(end_timestamp)s '
+            'AND hi.clock < %(end_timestamp)s AND hi.clock > %(start_timestamp)s '
             'GROUP BY hi.clock '
             'ORDER BY hi.clock DESC'
         )
+        zabbix_settings = getattr(settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {})
+        min_interval = zabbix_settings.get('MAX_USAGE_INTERVAL', 60) * 60
         parameters = {
             'item_keys': '"' + '", "'.join(item_keys) + '"',
-            'start_timestamp': start_timestamp,
+            'start_timestamp': start_timestamp - min_interval,
             'end_timestamp': end_timestamp,
             'host_ids': ','.join(str(host_id) for host_id in host_ids),
             'item_table': item_table,
