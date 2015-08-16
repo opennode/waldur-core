@@ -367,3 +367,10 @@ Answer is list of dictionaries with fields item, value and timestamp, where item
             "timestamp": 1435491159
         }
     ]
+
+Assigning floating IP to the instance
+-------------------------------------
+
+To assign floating IP to the instance, make POST request to
+**/api/instances/<uuid>/assign_floating_ip/** without parameters. Note that instance should be in stable state,
+cloud project membership of the instance should be in stable state and have external network.
