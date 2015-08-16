@@ -4,7 +4,6 @@ import functools
 import datetime
 import logging
 import time
-from operator import add
 
 from django.db import models as django_models
 from django.db import transaction, IntegrityError
@@ -23,15 +22,15 @@ from rest_framework import viewsets, views
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route, list_route
 import reversion
-from reversion.models import Version
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core.filters import DjangoMappingFilterBackend
+from nodeconductor.core.filters import DjangoMappingFilterBackend, CategoryFilter
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
+from nodeconductor.cost_tracking import CostConstants
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
@@ -519,6 +518,10 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
 class TemplateFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
         lookup_type='icontains',
+    )
+
+    os_type = CategoryFilter(
+        categories=CostConstants.Os.FAMILIES
     )
 
     class Meta(object):
