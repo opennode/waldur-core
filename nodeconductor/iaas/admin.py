@@ -299,7 +299,8 @@ class LicenseInlineFormSet(forms.models.BaseInlineFormSet):
         licenses = {}
         for form in self.forms:
             license = form.cleaned_data.get('templatelicense')
-            if license:
+            del_key = form.add_prefix('DELETE')
+            if license and del_key not in form.data:
                 licenses.setdefault(license.service_type, [])
                 licenses[license.service_type].append(license)
 

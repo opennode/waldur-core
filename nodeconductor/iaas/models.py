@@ -366,7 +366,11 @@ class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineM
         return ServiceBackend.mb2gb(self.data_volume_size + extra)
 
     def get_default_price_options(self):
-        return {CostConstants.PriceItem.FLAVOR: CostConstants.Flavor.OFFLINE}
+        return {
+            CostConstants.PriceItem.FLAVOR: CostConstants.Flavor.OFFLINE,
+            CostConstants.PriceItem.LICENSE_OS: CostConstants.Os.OTHER,
+            CostConstants.PriceItem.LICENSE_APPLICATION: CostConstants.Application.NONE,
+        }
 
     def get_price_options(self):
         return {

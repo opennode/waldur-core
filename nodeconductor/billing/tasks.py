@@ -13,7 +13,7 @@ from django.utils.lru_cache import lru_cache
 from celery import shared_task
 
 from nodeconductor.backup.models import Backup
-from nodeconductor.billing.backend import BillingBackend
+from nodeconductor.billing.backend import BillingBackend, BillingBackendError
 from nodeconductor.billing.models import PriceList
 from nodeconductor.core.utils import timestamp_to_datetime, datetime_to_timestamp
 from nodeconductor.cost_tracking.models import DefaultPriceListItem
@@ -236,7 +236,6 @@ def lookup_instance_licenses_from_event_log(instance_uuid):
     return zip(event['licenses_types'], event['licenses_services_types'])
 
 
-
 @shared_task(name='nodeconductor.billing.sync_pricelist')
 def sync_pricelist():
     backend = BillingBackend()
@@ -245,4 +244,7 @@ def sync_pricelist():
 
     for cid in priceitems:
         content_type = ContentType.objects.get_for_id(cid)
-        backend.propagate_pricelist(content_type)
+        try:
+            backend.propagate_pricelist(content_type)
+        except BillingBackendError as e:
+            logger.error("Can't propagade pricelist for %s: %s", content_type, e)
