@@ -372,5 +372,20 @@ Assigning floating IP to the instance
 -------------------------------------
 
 To assign floating IP to the instance, make POST request to
-**/api/instances/<uuid>/assign_floating_ip/** without parameters. Note that instance should be in stable state,
+**/api/instances/<uuid>/assign_floating_ip/** with floating IP UUID parameter. Note that instance should be in stable state,
 cloud project membership of the instance should be in stable state and have external network.
+
+Example of a valid request:
+
+.. code-block:: http
+
+    POST /api/instances/6c9b01c251c24174a6691a1f894fae31/assign_floating_ip/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "floating_ip_uuid": "1fcb186b65f7430fb1a3d558d97d1630"
+    }
+
