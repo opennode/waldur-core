@@ -590,7 +590,7 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
 class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
-        self.instance = factories.InstanceFactory()
+        self.instance = factories.InstanceFactory(type=models.Instance.Services.PAAS)
         self.url = factories.InstanceFactory.get_url(self.instance, action='calculated_usage')
 
     def test_statistic_unavailable_if_instance_does_not_have_backend_id(self):

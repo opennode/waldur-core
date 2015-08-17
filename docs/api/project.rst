@@ -23,10 +23,6 @@ Field filters:
 - ?project_group=<Project Group UUID> - return a list of projects in a specified project group
 - ?project_group_name=<Project group name> - return a list of projects with belonging to groups with matching names
 - ?description=<text> - return a list of projects with description matching a given text
-- ?vcpu=<number> - return a list of projects with a specified vcpu quota
-- ?ram=<number> - return a list of projects with a specified ram quota
-- ?storage=<number> - return a list of projects with a specified storage quota
-- ?max_instances=<number> - return a list of projects with a specified max_instance quota
 
 Sorting can be done by the following fields, specifying field name as a parameter to **?o=<field_name>**. To get a
 descending sorting prefix field name with a **-**.
@@ -37,15 +33,8 @@ descending sorting prefix field name with a **-**.
 - ?o=customer_abbreviation - sort by customer abbreviation
 - ?o=customer_native_name - sort by customer native name
 - ?o=project_group_name - sort by project's group names
-- ?o=vcpu - sort by project's quota of vCPU number
-- ?o=ram - sort by project's quota of RAM
-- ?o=storage - sort by project's quota of storage
-- ?o=max_instances - sort by project's quota of instance number
 - ?o=project_groups__name - **deprecated**, use ?o=project_group instead
-- ?o=resource_quota__vcpu - **deprecated**, use ?=vcpu instead
-- ?o=resource_quota__ram - **deprecated**, use ?=ram instead
-- ?o=resource_quota__storage - **deprecated**, use ?=storage instead
-- ?o=resource_quota__max_instances - **deprecated**, use ?=max_instances instead
+
 
 Project permissions
 -------------------

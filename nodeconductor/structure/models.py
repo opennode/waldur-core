@@ -76,7 +76,7 @@ class Customer(core_models.UuidMixin,
     billing_backend_id = models.CharField(max_length=255, blank=True)
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
 
-    QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count']
+    QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count', 'nc_service_count']
 
     def get_billing_backend(self):
         return BillingBackend(self)
@@ -249,7 +249,7 @@ class Project(core_models.DescribableMixin,
         project_path = 'self'
         project_group_path = 'project_groups'
 
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances', 'nc_resource_count', 'nc_service_count']
+    QUOTAS_NAMES = ['nc_resource_count', 'nc_service_count']
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
 
