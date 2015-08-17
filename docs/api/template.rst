@@ -16,7 +16,9 @@ on a defined cloud are shown.
 In addition, the following filters are supported:
 
 - ?name - case insensitive matching of a template name
-- ?os_type - enum matching of an OS type (supported options are: Linux, Windows, Unix, Other).
+- ?os_type - enum matching of an OS type
+    - Supported OS types: windows, centos6, centos7, redhat6, redhat7, freebsd, ubuntu, other.
+    - You can filter by OS family: linux.
 - ?os - case insensitive matching of a template OS name
 - ?type - exact match of the template type
 - ?application_type - exact match of the application_type (optional)

@@ -677,7 +677,7 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
         )
 
         # Stable instances are the ones for which
-        # no tasks are scheduled or are in progress
+        # tasks are scheduled or are in progress
 
         STABLE_STATES = set([ONLINE, OFFLINE])
         UNSTABLE_STATES = set([

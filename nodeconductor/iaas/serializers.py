@@ -4,23 +4,22 @@ import logging
 
 from django.core.urlresolvers import reverse
 from django.core.validators import MaxLengthValidator
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Max
 from netaddr import IPNetwork
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
-from nodeconductor.core import models as core_models, serializers as core_serializers, utils as core_utils
+from nodeconductor.core import models as core_models, serializers as core_serializers
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
-from nodeconductor.monitoring.zabbix import utils as zabbix_utils
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.core.fields import TimestampField
-from nodeconductor.core.utils import timeshift, datetime_to_timestamp
+from nodeconductor.core.utils import timeshift
 
 
 logger = logging.getLogger(__name__)
@@ -185,7 +184,17 @@ class NestedCloudProjectMembershipSerializer(structure_serializers.PermissionFie
 class NestedSecurityGroupRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.SecurityGroupRule
-        fields = ('protocol', 'from_port', 'to_port', 'cidr')
+        fields = ('id', 'protocol', 'from_port', 'to_port', 'cidr')
+
+    def to_internal_value(self, data):
+        """ Return exist security group as internal value if id is provided """
+        if 'id' in data:
+            try:
+                return models.SecurityGroupRule.objects.get(id=data['id'])
+            except models.SecurityGroup:
+                raise serializers.ValidationError('Security group with id %s does not exist' % data['id'])
+        else:
+            return models.SecurityGroupRule(**data)
 
 
 class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
@@ -234,21 +243,40 @@ class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
 
         return attrs
 
+    def validate_rules(self, value):
+        for rule in value:
+            if rule.id is not None and self.instance is None:
+                raise serializers.ValidationError('Cannot add existed rule with id %s to new security group' % rule.id)
+            elif rule.id is not None and self.instance is not None and rule.group != self.instance:
+                raise serializers.ValidationError('Cannot add rule with id {} to group {} - it already belongs to '
+                                                  'other group' % (rule.id, self.isntance.name))
+        return value
+
     def create(self, validated_data):
         rules = validated_data.pop('rules', [])
-        security_group = super(SecurityGroupSerializer, self).create(validated_data)
-        for rule in rules:
-            rule['group'] = security_group
-            models.SecurityGroupRule.objects.create(**rule)
+        with transaction.atomic():
+            security_group = super(SecurityGroupSerializer, self).create(validated_data)
+            for rule in rules:
+                security_group.rules.add(rule)
+
         return security_group
 
     def update(self, instance, validated_data):
         rules = validated_data.pop('rules', [])
+        new_rules = [rule for rule in rules if rule.id is None]
+        existed_rules = set([rule for rule in rules if rule.id is not None])
+
         security_group = super(SecurityGroupSerializer, self).update(instance, validated_data)
-        security_group.rules.all().delete()
-        for rule in rules:
-            rule['group'] = security_group
-            models.SecurityGroupRule.objects.create(**rule)
+        old_rules = set(security_group.rules.all())
+
+        with transaction.atomic():
+            removed_rules = old_rules - existed_rules
+            for rule in removed_rules:
+                rule.delete()
+
+            for rule in new_rules:
+                security_group.rules.add(rule)
+
         return security_group
 
 
@@ -815,7 +843,8 @@ class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = models.FloatingIP
-        fields = ('url', 'uuid', 'status', 'address', 'cloud_project_membership')
+        fields = ('url', 'uuid', 'status', 'address',
+                  'cloud_project_membership', 'backend_id', 'backend_network_id')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -1079,5 +1108,28 @@ class ExternalNetworkSerializer(serializers.Serializer):
         # subtract router and broadcast IPs
         if cidr.size < ips_count - 2:
             raise serializers.ValidationError("Not enough Floating IP Addresses available.")
+
+        return attrs
+
+
+class AssignFloatingIpSerializer(serializers.Serializer):
+    floating_ip_uuid = serializers.CharField()
+
+    def __init__(self, instance, *args, **kwargs):
+        self.assigned_instance = instance
+        super(AssignFloatingIpSerializer, self).__init__(*args, **kwargs)
+
+    def validate(self, attrs):
+        ip_uuid = attrs.get('floating_ip_uuid')
+
+        try:
+            floating_ip = models.FloatingIP.objects.get(uuid=ip_uuid)
+        except models.FloatingIP.DoesNotExist:
+            raise serializers.ValidationError("Floating IP does not exist.")
+
+        if floating_ip.status == 'ACTIVE':
+            raise serializers.ValidationError("Floating IP status must be DOWN.")
+        elif floating_ip.cloud_project_membership != self.assigned_instance.cloud_project_membership:
+            raise serializers.ValidationError("Floating IP must belong to same cloud project membership.")
 
         return attrs

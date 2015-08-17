@@ -168,6 +168,24 @@ class TimestampFilter(django_filters.NumberFilter):
         return qs
 
 
+class CategoryFilter(django_filters.CharFilter):
+    """
+    Filters queryset by category names.
+    If category name does not match, it will work as CharFilter.
+
+    :param categories: dictionary of category names as keys and category elements as values.
+    """
+    def __init__(self, categories, **kwargs):
+        super(CategoryFilter, self).__init__(**kwargs)
+        self.categories = categories
+
+    def filter(self, qs, value):
+        if value in self.categories.keys():
+            return qs.filter(**{'%s__in' % self.name: self.categories[value]})
+
+        return super(CategoryFilter, self).filter(qs, value)
+
+
 class StaffOrUserFilter(object):
     def filter_queryset(self, request, queryset, view):
         if request.user.is_staff:
