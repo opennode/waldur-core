@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 dev_requires = [
-    'Sphinx==1.2.2'
+    'Sphinx==1.2.2',
 ]
 
 tests_requires = [
@@ -13,11 +13,13 @@ tests_requires = [
     'mock==1.0.1',
     'mock-django==0.6.6',
     'six>=1.7.3',
+    'stevedore==1.4.0',
     'django-celery==3.1.16',
 ]
 
 install_requires = [
     'Celery>=3.1.15,<3.2',
+    'cliff==1.4.4',
     'croniter>=0.3.4,<0.3.6',
     'Django>=1.7.1,<1.8',
     'django-auth-ldap==1.2.0',
@@ -33,7 +35,8 @@ install_requires = [
     'elasticsearch>=1.0.0,<2.0.0',
     'jira>=0.47',
     'jsonfield==1.0.0',
-    'oslo.config < 1.15.0',
+    'lxml>=3.2',
+    'oslo.config==1.2.1',
     'paypalrestsdk>=1.10.0',
     'Pillow>=2.0.0',
     'python-ceilometerclient==1.0.10',
@@ -53,7 +56,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.69.0',
+    version='0.74.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
@@ -68,6 +71,9 @@ setup(
     entry_points={
         'backup_strategies': ('Instance = nodeconductor.iaas.backup.instance_backup:InstanceBackupStrategy',),
         'template_services': ('IaaS = nodeconductor.iaas.template.strategy:IaasTemplateServiceStrategy',),
+        'cost_tracking_strategies': (
+            'iaas = nodeconductor.iaas.cost_tracking:IaaSCostTracking',
+        ),
         'console_scripts': ('nodeconductor = nodeconductor.server.manage:main',),
     },
     tests_require=tests_requires,

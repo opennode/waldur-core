@@ -96,6 +96,10 @@ Therefore configuration might look like this:
                 'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
             }
         }
+        'OPENSTACK_QUOTAS_INSTANCE_RATIOS': {
+            'volumes': 4,
+            'snapshots': 20,
+        }
     }
 
 **Available settings**
@@ -187,6 +191,15 @@ Therefore configuration might look like this:
 
           FAIL_SILENTLY
             If True - ignores Zabbix API exceptions and do not add any messages to logger
+
+    OPENSTACK_QUOTAS_INSTANCE_RATIOS
+      Default ratio values per instance.
+
+        volumes
+          Number of volumes per instance.
+
+        snapshots
+          Number of snapshots per instance.
 
 NodeConductor also needs access to Zabbix database. For that a read-only user needs to be created in Zabbix database.
 

@@ -66,7 +66,6 @@ MIDDLEWARE_CLASSES = (
     'nodeconductor.logging.middleware.CaptureEventContextMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'reversion.middleware.RevisionMiddleware',
 )
 
 REST_FRAMEWORK = {
@@ -218,6 +217,11 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=1),
         'args': (),
     },
+    'update-current-month-cost-projections': {
+        'task': 'nodeconductor.cost_tracking.update_current_month_projected_estimate',
+        'schedule': timedelta(hours=24),
+        'args': (),
+    }
 }
 
 CELERY_TASK_THROTTLING = {
@@ -229,6 +233,7 @@ CELERY_TASK_THROTTLING = {
 
 NODECONDUCTOR = {
     'EXTENSIONS_AUTOREGISTER': True,
+    'ENABLE_WHMCS_ORDER_PROCESSING': False,
     'DEFAULT_SECURITY_GROUPS': (
         {
             'name': 'ssh',

@@ -5,10 +5,10 @@ import datetime
 import logging
 import time
 
-from django.contrib.contenttypes.models import ContentType
 from django.db import models as django_models
 from django.db import transaction, IntegrityError
-from django.db.models import Q, Count
+from django.db.models import Q
+from django.conf import settings as django_settings
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -21,22 +21,22 @@ from rest_framework import permissions, status
 from rest_framework import viewsets, views
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route, list_route
-from rest_framework.serializers import ValidationError
+import reversion
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core.filters import DjangoMappingFilterBackend
+from nodeconductor.core.filters import DjangoMappingFilterBackend, CategoryFilter
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.core.utils import sort_dict, datetime_to_timestamp, timestamp_to_datetime
+from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
+from nodeconductor.cost_tracking import CostConstants
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.iaas.serializers import QuotaTimelineStatsSerializer
 from nodeconductor.iaas.log import event_logger
-from nodeconductor.logging import models as logging_models, serializers as logging_serializers
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.views import UpdateOnlyByPaidCustomerMixin
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
@@ -436,7 +436,8 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
             # instance.system_volume_size = flavor.disk
             instance.ram = flavor.ram
             instance.cores = flavor.cores
-            instance.save(update_fields=['ram', 'cores'])
+            instance.flavor_name = flavor.name
+            instance.save(update_fields=['ram', 'cores', 'flavor_name'])
 
             event_logger.instance_flavor.info(
                 'Virtual machine {instance_name} has been scheduled to change flavor.',
@@ -480,7 +481,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         serializer = serializers.UsageStatsSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
-        stats = serializer.get_stats([instance])
+        stats = serializer.get_stats([instance], is_paas=instance.type == models.Instance.Services.PAAS)
         return Response(stats, status=status.HTTP_200_OK)
 
     @detail_route()
@@ -491,7 +492,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         instance = self.get_object()
         if not instance.backend_id:
             return Response({'detail': 'calculated usage is not available for instance without backend_id'},
-                            status=status.HTTP_405_METHOD_NOT_ALLOWED)
+                            status=status.HTTP_409_CONFLICT)
 
         default_start = timezone.now() - datetime.timedelta(hours=1)
         timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(data={
@@ -513,10 +514,38 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         results = serializer.get_stats(instance, start, end)
         return Response(results, status=status.HTTP_200_OK)
 
+    @detail_route(methods=['post'])
+    def assign_floating_ip(self, request, uuid):
+        """
+        Assign floating IP to the instance.
+        """
+        instance = self.get_object()
+
+        serializer = serializers.AssignFloatingIpSerializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if not instance.cloud_project_membership.external_network_id:
+            return Response({'detail': 'External network ID of the cloud project membership is missing.'},
+                            status=status.HTTP_409_CONFLICT)
+        elif instance.cloud_project_membership.state in SynchronizationStates.UNSTABLE_STATES:
+            return Response({'detail': 'Cloud project membership of instance should be in stable state.'},
+                            status=status.HTTP_409_CONFLICT)
+        elif instance.state in models.Instance.States.UNSTABLE_STATES:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot add floating IP to instance in unstable state.')
+
+        tasks.assign_floating_ip.delay(serializer.validated_data['floating_ip_uuid'], uuid)
+        return Response({'detail': 'Assigning floating IP to the instance has been scheduled.'},
+                        status=status.HTTP_202_ACCEPTED)
+
 
 class TemplateFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
         lookup_type='icontains',
+    )
+
+    os_type = CategoryFilter(
+        categories=CostConstants.Os.CATEGORIES
     )
 
     class Meta(object):
@@ -621,6 +650,11 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
                 'instance__cloud_project_membership__project__project_groups__uuid',
                 'instance__cloud_project_membership__project__project_groups__name',
             ],
+            'customer': [
+                'instance__cloud_project_membership__project__customer__uuid',
+                'instance__cloud_project_membership__project__customer__name',
+                'instance__cloud_project_membership__project__customer__abbreviation',
+            ],
             'type': ['template_license__license_type'],
             'name': ['template_license__name'],
         }
@@ -640,6 +674,9 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
             'instance__cloud_project_membership__project__name': 'project_name',
             'instance__cloud_project_membership__project__project_groups__uuid': 'project_group_uuid',
             'instance__cloud_project_membership__project__project_groups__name': 'project_group_name',
+            'instance__cloud_project_membership__project__customer__uuid': 'customer_uuid',
+            'instance__cloud_project_membership__project__customer__name': 'customer_name',
+            'instance__cloud_project_membership__project__customer__abbreviation': 'customer_abbreviation',
             'template_license__license_type': 'type',
             'template_license__name': 'name',
         }
@@ -1047,7 +1084,7 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
 
     def perform_create(self, serializer):
         membership = serializer.save()
-        tasks.sync_cloud_membership.delay(membership.pk)
+        tasks.sync_cloud_membership.delay(membership.pk, is_membership_creation=True)
 
     @detail_route(methods=['post'])
     def set_quotas(self, request, **kwargs):
@@ -1062,10 +1099,19 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
         serializer = serializers.CloudProjectMembershipQuotaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        data = dict(serializer.validated_data)
+        if data.get('max_instances') is not None:
+            quotas = django_settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS_INSTANCE_RATIOS', {})
+            volume_ratio = quotas.get('volumes', 4)
+            snapshots_ratio = quotas.get('snapshots', 20)
+
+            data['volumes'] = volume_ratio * data['max_instances']
+            data['snapshots'] = snapshots_ratio * data['max_instances']
+
         instance.schedule_syncing()
         instance.save()
 
-        tasks.push_cloud_membership_quotas.delay(instance.pk, quotas=serializer.data)
+        tasks.push_cloud_membership_quotas.delay(instance.pk, quotas=data)
 
         return Response({'status': 'Quota update was scheduled'},
                         status=status.HTTP_202_ACCEPTED)
@@ -1118,6 +1164,23 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
         return Response({'status': 'External network creation has been scheduled.'},
                         status=status.HTTP_202_ACCEPTED)
 
+    @detail_route(methods=['post'])
+    def allocate_floating_ip(self, request, pk=None):
+        """
+        Allocate floating IP from external network.
+        """
+        membership = self.get_object()
+
+        if not membership.external_network_id:
+            return Response({'detail': 'Cloud project membership should have an external network ID.'},
+                            status=status.HTTP_409_CONFLICT)
+        elif membership.state in core_models.SynchronizationStates.UNSTABLE_STATES:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cloud project membership must be in stable state.')
+
+        tasks.allocate_floating_ip.delay(pk)
+        return Response({'detail': 'Floating IP allocation has been scheduled.'},
+                        status=status.HTTP_202_ACCEPTED)
 
 class SecurityGroupFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
@@ -1248,22 +1311,23 @@ class QuotaStatsView(views.APIView):
         return Response(sum_of_quotas, status=status.HTTP_200_OK)
 
 
+# XXX: This view is deprecated. It has to be replaced with quotas history endpoints
 class QuotaTimelineStatsView(views.APIView):
     """
     Count quota usage and limit history statistics
     """
 
     def get(self, request, format=None):
-        memberships = self.get_memberships(request)
-        stats = self.get_stats(request, memberships)
+        stats = self.get_stats(request)
         return Response(stats, status=status.HTTP_200_OK)
 
-    def get_memberships(self, request):
+    def get_quota_scopes(self, request):
         serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        return serializer.get_memberships(request.user)
+        scopes = serializer.get_memberships(request.user)
+        return scopes
 
-    def get_stats(self, request, memberships):
+    def get_stats(self, request):
         mapped = {
             'start_time': request.query_params.get('from'),
             'end_time': request.query_params.get('to'),
@@ -1275,4 +1339,68 @@ class QuotaTimelineStatsView(views.APIView):
         serializer = QuotaTimelineStatsSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
-        return serializer.get_stats(memberships)
+        scopes = self.get_quota_scopes(request)
+        date_points = self.get_date_points(
+            start_time=serializer.validated_data['start_time'],
+            end_time=serializer.validated_data['end_time'],
+            interval=serializer.validated_data['interval']
+        )
+        reversed_dates = date_points[::-1]
+        dates = zip(reversed_dates[:-1], reversed_dates[1:])
+        items = [serializer.validated_data['item']] if 'item' in serializer.validated_data else serializer.ITEM_CHOICES
+
+        stats = [{'from': datetime_to_timestamp(start), 'to': datetime_to_timestamp(end)} for start, end in dates]
+
+        def _add(*args):
+            args = [arg if arg is not None else (0, 0) for arg in args]
+            return [sum(q) for q in zip(*args)]
+
+        for item in items:
+            item_stats = [self.get_stats_for_scope(item, scope, dates) for scope in scopes]
+            item_stats = map(_add, *item_stats)
+            for date_item_stats, date_stats in zip(item_stats, stats):
+                limit, usage = date_item_stats
+                date_stats['{}_limit'.format(item)] = limit
+                date_stats['{}_usage'.format(item)] = usage
+
+        return stats[::-1]
+
+    def get_stats_for_scope(self, quota_name, scope, dates):
+        stats_data = []
+        quota = scope.quotas.get(name=quota_name)
+        versions = reversion.get_for_object(quota).select_related('reversion').filter(
+            revision__date_created__lte=dates[0][0]).iterator()
+        version = None
+        for end, start in dates:
+            try:
+                while version is None or version.revision.date_created > end:
+                    version = versions.next()
+                stats_data.append((version.object_version.object.limit, version.object_version.object.usage))
+            except StopIteration:
+                break
+
+        return stats_data
+
+    def get_date_points(self, start_time, end_time, interval):
+        if interval == 'hour':
+            start_point = start_time.replace(second=0, minute=0, microsecond=0)
+            interval = datetime.timedelta(hours=1)
+        elif interval == 'day':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = datetime.timedelta(days=1)
+        elif interval == 'week':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = datetime.timedelta(days=7)
+        elif interval == 'month':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = datetime.timedelta(days=30)
+
+        points = [start_time]
+        current_point = start_point
+        while current_point <= end_time:
+            points.append(current_point)
+            current_point += interval
+        if points[-1] != end_time:
+            points.append(end_time)
+
+        return [p for p in points if start_time <= p <= end_time]

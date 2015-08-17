@@ -4,23 +4,22 @@ import logging
 
 from django.core.urlresolvers import reverse
 from django.core.validators import MaxLengthValidator
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Max
 from netaddr import IPNetwork
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
-from nodeconductor.core import models as core_models, serializers as core_serializers, utils as core_utils
+from nodeconductor.core import models as core_models, serializers as core_serializers
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
-from nodeconductor.monitoring.zabbix import utils as zabbix_utils
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.core.fields import TimestampField
-from nodeconductor.core.utils import timeshift, datetime_to_timestamp
+from nodeconductor.core.utils import timeshift
 
 
 logger = logging.getLogger(__name__)
@@ -116,7 +115,9 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             'state',
             'tenant_id',
             'service_name', 'service_uuid',
+            'external_network_id', 'internal_network_id',
         )
+        read_only_fields = ('external_network_id', 'internal_network_id',)
         view_name = 'cloudproject_membership-detail'
         extra_kwargs = {
             'cloud': {'lookup_field': 'uuid'},
@@ -183,7 +184,17 @@ class NestedCloudProjectMembershipSerializer(structure_serializers.PermissionFie
 class NestedSecurityGroupRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.SecurityGroupRule
-        fields = ('protocol', 'from_port', 'to_port', 'cidr')
+        fields = ('id', 'protocol', 'from_port', 'to_port', 'cidr')
+
+    def to_internal_value(self, data):
+        """ Return exist security group as internal value if id is provided """
+        if 'id' in data:
+            try:
+                return models.SecurityGroupRule.objects.get(id=data['id'])
+            except models.SecurityGroup:
+                raise serializers.ValidationError('Security group with id %s does not exist' % data['id'])
+        else:
+            return models.SecurityGroupRule(**data)
 
 
 class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
@@ -232,21 +243,40 @@ class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
 
         return attrs
 
+    def validate_rules(self, value):
+        for rule in value:
+            if rule.id is not None and self.instance is None:
+                raise serializers.ValidationError('Cannot add existed rule with id %s to new security group' % rule.id)
+            elif rule.id is not None and self.instance is not None and rule.group != self.instance:
+                raise serializers.ValidationError('Cannot add rule with id {} to group {} - it already belongs to '
+                                                  'other group' % (rule.id, self.isntance.name))
+        return value
+
     def create(self, validated_data):
         rules = validated_data.pop('rules', [])
-        security_group = super(SecurityGroupSerializer, self).create(validated_data)
-        for rule in rules:
-            rule['group'] = security_group
-            models.SecurityGroupRule.objects.create(**rule)
+        with transaction.atomic():
+            security_group = super(SecurityGroupSerializer, self).create(validated_data)
+            for rule in rules:
+                security_group.rules.add(rule)
+
         return security_group
 
     def update(self, instance, validated_data):
         rules = validated_data.pop('rules', [])
+        new_rules = [rule for rule in rules if rule.id is None]
+        existed_rules = set([rule for rule in rules if rule.id is not None])
+
         security_group = super(SecurityGroupSerializer, self).update(instance, validated_data)
-        security_group.rules.all().delete()
-        for rule in rules:
-            rule['group'] = security_group
-            models.SecurityGroupRule.objects.create(**rule)
+        old_rules = set(security_group.rules.all())
+
+        with transaction.atomic():
+            removed_rules = old_rules - existed_rules
+            for rule in removed_rules:
+                rule.delete()
+
+            for rule in new_rules:
+                security_group.rules.add(rule)
+
         return security_group
 
 
@@ -370,6 +400,10 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         flavor = attrs['flavor']
         membership = attrs.get('cloud_project_membership')
 
+        if attrs.get('type') == models.Instance.Services.PAAS and not membership.external_network_id:
+            raise serializers.ValidationError(
+                "Connected cloud project does not have external network id required for PaaS instances.")
+
         external_ips = attrs.get('external_ips')
         if external_ips:
             ip_exists = models.FloatingIP.objects.filter(
@@ -427,6 +461,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
             validated_data['key_fingerprint'] = key.fingerprint
 
         flavor = validated_data.pop('flavor')
+        validated_data['flavor_name'] = flavor.name
         validated_data['cores'] = flavor.cores
         validated_data['ram'] = flavor.ram
 
@@ -585,7 +620,7 @@ class InstanceLicenseSerializer(serializers.ModelSerializer):
     class Meta(object):
         model = models.InstanceLicense
         fields = (
-            'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
+            'uuid', 'name', 'license_type', 'service_type',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -703,7 +738,7 @@ class TemplateLicenseSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.TemplateLicense
         fields = (
-            'url', 'uuid', 'name', 'license_type', 'service_type', 'setup_fee', 'monthly_fee',
+            'url', 'uuid', 'name', 'license_type', 'service_type',
             'projects', 'projects_groups',
         )
         extra_kwargs = {
@@ -736,8 +771,6 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'os', 'os_type',
             'is_active',
             'sla_level',
-            'setup_fee',
-            'monthly_fee',
             'template_licenses', 'images',
             'type', 'application_type',
         )
@@ -782,8 +815,6 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'name', 'description', 'icon_url',
             'os',
             'sla_level',
-            'setup_fee',
-            'monthly_fee',
             'template_licenses',
             'type', 'application_type',
             'is_active',
@@ -793,13 +824,27 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
             'template_licenses': {'lookup_field': 'uuid'},
         }
 
+    def validate_template_licenses(self, value):
+        licenses = {}
+        for license in value:
+            licenses.setdefault(license.service_type, [])
+            licenses[license.service_type].append(license)
+
+        for service_type, data in licenses.items():
+            if len(data) > 1:
+                raise serializers.ValidationError(
+                    "Only one license of service type %s is allowed" % service_type)
+
+        return value
+
 
 class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
     cloud_project_membership = NestedCloudProjectMembershipSerializer(read_only=True)
 
     class Meta:
         model = models.FloatingIP
-        fields = ('url', 'uuid', 'status', 'address', 'cloud_project_membership')
+        fields = ('url', 'uuid', 'status', 'address',
+                  'cloud_project_membership', 'backend_id', 'backend_network_id')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -919,17 +964,26 @@ class UsageStatsSerializer(serializers.Serializer):
     item = serializers.CharField()
 
     def validate_item(self, value):
-        if not value in ZabbixDBClient.items:
+        if value not in ZabbixDBClient.items:
             raise serializers.ValidationError(
                 "GET parameter 'item' have to be from list: %s" % ZabbixDBClient.items.keys())
         return value
 
-    def get_stats(self, instances):
+    def get_stats(self, instances, is_paas=False):
         self.attrs = self.data
+        item = self.data['item']
         zabbix_db_client = ZabbixDBClient()
-        return zabbix_db_client.get_item_stats(
-            instances, self.data['item'],
-            self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])
+        if is_paas and item == 'memory_util':
+            item = 'memory_util_agent'
+        item_stats = zabbix_db_client.get_item_stats(
+            instances, item, self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])
+        # XXX: Quick and dirty fix: zabbix presents percentage of free space(not utilized) for storage
+        if self.data['item'] in ('storage_root_util', 'storage_data_util'):
+            for stat in item_stats:
+                if 'value' in stat:
+                    stat['value'] = 100 - stat['value']
+
+        return item_stats
 
 
 class CalculatedUsageSerializer(serializers.Serializer):
@@ -943,7 +997,12 @@ class CalculatedUsageSerializer(serializers.Serializer):
     )
 
     def get_stats(self, instance, start, end):
-        items = self.validated_data['items']
+        items = []
+        for item in self.validated_data['items']:
+            if item == 'memory_util' and instance.type == models.Instance.Services.PAAS:
+                items.append('memory_util_agent')
+            else:
+                items.append(item)
         method = self.validated_data['method']
         host = ZabbixApiClient().get_host_name(instance)
 
@@ -951,11 +1010,19 @@ class CalculatedUsageSerializer(serializers.Serializer):
 
         results = []
         for timestamp, item, value in records:
-            results.append({
-                'item': item,
-                'timestamp': timestamp,
-                'value': value
-            })
+            # XXX: Quick and dirty fix: zabbix presents percentage of free space(not utilized) for storage
+            if item in ('storage_root_util', 'storage_data_util'):
+                results.append({
+                    'item': item,
+                    'timestamp': timestamp,
+                    'value': 100 - value,
+                })
+            else:
+                results.append({
+                    'item': item,
+                    'timestamp': timestamp,
+                    'value': value,
+                })
         return results
 
 
@@ -985,7 +1052,8 @@ class StatsAggregateSerializer(serializers.Serializer):
         if self.data['aggregate'] == 'project':
             return queryset.all()
         elif self.data['aggregate'] == 'project_group':
-            projects = structure_models.Project.objects.filter(project_groups__in=list(queryset))
+            projects = structure_filters.filter_queryset_for_user(
+                structure_models.Project.objects.filter(project_groups__in=list(queryset)), user)
             return structure_filters.filter_queryset_for_user(projects, user)
         else:
             projects = structure_models.Project.objects.filter(customer__in=list(queryset))
@@ -1002,40 +1070,13 @@ class StatsAggregateSerializer(serializers.Serializer):
 
 class QuotaTimelineStatsSerializer(serializers.Serializer):
 
-    INTERVAL_CHOICES = ('day', 'week', 'month')
-    ITEM_CHOICES = ('vcpu', 'storage', 'ram', 'instances')
+    INTERVAL_CHOICES = ('hour', 'day', 'week', 'month')
+    ITEM_CHOICES = ('vcpu', 'storage', 'ram')
 
     start_time = TimestampField(default=lambda: timeshift(days=-1))
     end_time = TimestampField(default=lambda: timeshift())
     interval = serializers.ChoiceField(choices=INTERVAL_CHOICES, default='day')
     item = serializers.ChoiceField(choices=ITEM_CHOICES, required=False)
-
-    def get_stats(self, memberships):
-        # Format request data
-        hosts = list(memberships.exclude(tenant_id='').values_list('tenant_id', flat=True))
-
-        if not hosts:
-            return []
-
-        item_names = [self.validated_data['item']] if 'item' in self.validated_data else self.ITEM_CHOICES
-        items = []
-        for item in item_names:
-            items.append("project_%s_limit" % item)
-            items.append("project_%s_usage" % item)
-
-        start = datetime_to_timestamp(self.validated_data['start_time'])
-        end = datetime_to_timestamp(self.validated_data['end_time'])
-        interval = self.validated_data['interval']
-
-        # Execute request
-        rows = ZabbixDBClient().get_projects_quota_timeline(hosts, items, start, end, interval)
-
-        # Format response data
-        results = []
-        for (start, end, key, value) in rows:
-            key = key.replace("project_", "")
-            results.append((start, end, key, value))
-        return zabbix_utils.format_timeline(results)
 
 
 class ExternalNetworkSerializer(serializers.Serializer):
@@ -1067,5 +1108,28 @@ class ExternalNetworkSerializer(serializers.Serializer):
         # subtract router and broadcast IPs
         if cidr.size < ips_count - 2:
             raise serializers.ValidationError("Not enough Floating IP Addresses available.")
+
+        return attrs
+
+
+class AssignFloatingIpSerializer(serializers.Serializer):
+    floating_ip_uuid = serializers.CharField()
+
+    def __init__(self, instance, *args, **kwargs):
+        self.assigned_instance = instance
+        super(AssignFloatingIpSerializer, self).__init__(*args, **kwargs)
+
+    def validate(self, attrs):
+        ip_uuid = attrs.get('floating_ip_uuid')
+
+        try:
+            floating_ip = models.FloatingIP.objects.get(uuid=ip_uuid)
+        except models.FloatingIP.DoesNotExist:
+            raise serializers.ValidationError("Floating IP does not exist.")
+
+        if floating_ip.status == 'ACTIVE':
+            raise serializers.ValidationError("Floating IP status must be DOWN.")
+        elif floating_ip.cloud_project_membership != self.assigned_instance.cloud_project_membership:
+            raise serializers.ValidationError("Floating IP must belong to same cloud project membership.")
 
         return attrs

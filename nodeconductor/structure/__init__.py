@@ -250,6 +250,10 @@ class SupportedServices(object):
 
     @classmethod
     def get_name_for_model(cls, model):
+        """ Get a name for given class or model:
+            -- it's a service type for a service
+            -- it's a <service_type>.<resource_model_name> for a resource
+        """
         model_str = cls._get_model_srt(model)
         for model, service in cls._registry.items():
             if model == model_str:
@@ -260,6 +264,18 @@ class SupportedServices(object):
 
     @classmethod
     def get_related_models(cls, model):
+        """ Get a dictionary with related structure models for given class or model:
+
+            >> SupportedServices.get_related_models(gitlab_models.Project)
+            {
+                'service': nodeconductor_plus.gitlab.models.GitLabService,
+                'service_project_link': nodeconductor_plus.gitlab.models.GitLabServiceProjectLink,
+                'resources': [
+                    nodeconductor_plus.gitlab.models.Group,
+                    nodeconductor_plus.gitlab.models.Project,
+                ]
+            }
+        """
         model_str = cls._get_model_srt(model)
         for models in cls.get_service_models().values():
             if model_str == cls._get_model_srt(models['service']) or \
@@ -269,6 +285,52 @@ class SupportedServices(object):
             for resource_model in models['resources']:
                 if model_str == cls._get_model_srt(resource_model):
                     return models
+
+    @classmethod
+    def get_parent_models(cls, entity):
+        """ Get a set of all related models in the ascending structure hierarchy for given entity.
+
+            >> SupportedServices.get_parent_models(Drople.objects.first())
+            {
+                <Customer: Alice (AL)>,
+                <DigitalOceanService: Test Service>,
+                <DigitalOceanServiceProjectLink: Test Service | My Project>,
+                <Droplet: cloud.example.com>,
+                <Project: My Project | Alice>,
+            }
+
+            >> SupportedServices.get_parent_models(Project.objects.first())
+            {
+                <Customer: Alice (AL)>,
+                <Project: My Project | Alice>,
+            }
+
+        """
+
+        from nodeconductor.structure import models
+
+        def get_parent_entities(entity):
+            if isinstance(entity, models.Resource):
+                yield entity
+                for e in get_parent_entities(entity.service_project_link):
+                    yield e
+
+            elif isinstance(entity, models.ServiceProjectLink):
+                yield entity
+                for e in get_parent_entities(entity.project):
+                    yield e
+                for e in get_parent_entities(entity.service):
+                    yield e
+
+            elif isinstance(entity, (models.Service, models.Project)):
+                yield entity
+                for e in get_parent_entities(entity.customer):
+                    yield e
+
+            else:
+                yield entity
+
+        return set(get_parent_entities(entity))
 
     @classmethod
     def _get_model_srt(cls, model):
@@ -305,6 +367,9 @@ class ServiceBackend(object):
     def ping(self):
         raise ServiceBackendNotImplemented
 
+    def ping_resource(self, resource):
+        raise ServiceBackendNotImplemented
+
     def sync(self):
         raise ServiceBackendNotImplemented
 
@@ -339,6 +404,9 @@ class ServiceBackend(object):
         raise ServiceBackendNotImplemented
 
     def get_resources_for_import(self):
+        raise ServiceBackendNotImplemented
+
+    def get_cost_estimate(self, resource):
         raise ServiceBackendNotImplemented
 
     @staticmethod

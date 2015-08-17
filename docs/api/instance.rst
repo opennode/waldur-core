@@ -116,6 +116,8 @@ Create a new instance
 ---------------------
 
 A new instance can be created by users with project administrator role or with staff privilege (is_staff=True).
+PaaS instance can be created only if cloud_project_membership that connects its project and flavor
+have external_network_id.
 To create a instance, client must define:
 
 - hostname **deprecated**, use name instead;
@@ -227,17 +229,13 @@ Example rendering of the Instance object:
                     "uuid": "9cda1ecd43004abf8fa398a944fec32d",
                     "name": "Redhat 6 license",
                     "license_type": "RHEL6",
-                    "service_type": "IaaS",
-                    "setup_fee": "10",
-                    "monthly_fee": "5"
+                    "service_type": "IaaS"
                 },
                 {
                     "uuid": "1fcb186b65f7430fb1a3d558d97d1630",
                     "name": "Windows server license",
                     "license_type": "Windows 2012 Server",
-                    "service_type": "IaaS",
-                    "setup_fee": "20",
-                    "monthly_fee": "8"
+                    "service_type": "IaaS"
                 }
             ],
             "agreed_sla": "99.999",
@@ -369,3 +367,25 @@ Answer is list of dictionaries with fields item, value and timestamp, where item
             "timestamp": 1435491159
         }
     ]
+
+Assigning floating IP to the instance
+-------------------------------------
+
+To assign floating IP to the instance, make POST request to
+**/api/instances/<uuid>/assign_floating_ip/** with floating IP UUID parameter. Note that instance should be in stable state,
+cloud project membership of the instance should be in stable state and have external network.
+
+Example of a valid request:
+
+.. code-block:: http
+
+    POST /api/instances/6c9b01c251c24174a6691a1f894fae31/assign_floating_ip/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "floating_ip_uuid": "1fcb186b65f7430fb1a3d558d97d1630"
+    }
+

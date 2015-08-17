@@ -200,6 +200,8 @@ def pull_cloud_membership(membership_pk):
             event_context={'membership': membership}
         )
 
+    # XXX not the best idea to register in the function
+    sync_cloud_project_membership_with_zabbix.delay(membership.pk)
 
 @shared_task
 def pull_cloud_memberships():
@@ -213,13 +215,14 @@ def pull_cloud_memberships():
         pull_cloud_membership.delay(membership.pk)
 
 
+# TODO: split this task to smaller and group them in chain
 @shared_task
 @tracked_processing(
     models.CloudProjectMembership,
     processing_state='begin_syncing',
     desired_state='set_in_sync',
 )
-def sync_cloud_membership(membership_pk):
+def sync_cloud_membership(membership_pk, is_membership_creation=False):
     membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
 
     backend = membership.cloud.get_backend()
@@ -236,7 +239,7 @@ def sync_cloud_membership(membership_pk):
 
     # Propagate membership security groups
     try:
-        backend.push_security_groups(membership)
+        backend.push_security_groups(membership, is_membership_creation=is_membership_creation)
     except CloudBackendError:
         logger.warn(
             'Failed to push security groups to cloud membership %s',
@@ -260,7 +263,7 @@ def sync_cloud_membership(membership_pk):
             exc_info=1,
         )
 
-    monitoring_utils.create_host_and_service.delay(membership.pk, warn_if_exists=False)
+    sync_cloud_project_membership_with_zabbix.delay(membership.pk)
 
 
 @shared_task
@@ -334,7 +337,7 @@ def create_external_network(membership_pk, network_data):
 
         backend.get_or_create_external_network(membership, neutron, **network_data)
     except CloudBackendError:
-        logger.info('Failed to create external network for cloud project membership with id %s.', membership_pk)
+        logger.warning('Failed to create external network for cloud project membership with id %s.', membership_pk)
 
 
 @shared_task
@@ -349,3 +352,48 @@ def delete_external_network(membership_pk):
         backend.delete_external_network(membership, neutron)
     except CloudBackendError:
         logger.info('Failed to delete external network for cloud project membership with id %s.', membership_pk)
+
+@shared_task
+def detect_external_network(membership_pk):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+    backend = membership.cloud.get_backend()
+
+    try:
+        session = backend.create_session(keystone_url=membership.cloud.auth_url, dummy=backend.dummy)
+        neutron = backend.create_neutron_client(session)
+
+        backend.detect_external_network(membership, neutron)
+    except CloudBackendError:
+        logger.warning('Failed to detect external network for cloud project membership with id %s.', membership_pk)
+
+
+@shared_task
+def allocate_floating_ip(membership_pk):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+    backend = membership.cloud.get_backend()
+
+    try:
+        session = backend.create_session(keystone_url=membership.cloud.auth_url, dummy=backend.dummy)
+        neutron = backend.create_neutron_client(session)
+
+        backend.allocate_floating_ip_address(neutron, membership)
+    except CloudBackendError:
+        logger.warning('Failed to allocate floating IP for cloud project membership with id %s.', membership_pk)
+
+
+@shared_task
+def assign_floating_ip(floating_ip_uuid, instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+    backend = instance.cloud_project_membership.cloud.get_backend()
+
+    floating_ip = models.FloatingIP.objects.get(uuid=floating_ip_uuid)
+
+    try:
+        session = backend.create_session(
+            keystone_url=instance.cloud_project_membership.cloud.auth_url,
+            dummy=backend.dummy)
+        nova = backend.create_nova_client(session)
+
+        backend.assign_floating_ip_to_instance(nova, instance, floating_ip)
+    except CloudBackendError:
+        logger.warning('Failed to assign floating IP to the instance with id %s.', instance_uuid)

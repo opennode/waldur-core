@@ -112,7 +112,7 @@ class SecurityGroupRuleFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.SecurityGroupRule
 
-    security_group = factory.SubFactory(SecurityGroupFactory)
+    group = factory.SubFactory(SecurityGroupFactory)
     protocol = models.SecurityGroupRule.tcp
     from_port = factory.fuzzy.FuzzyInteger(1, 65535)
     to_port = factory.fuzzy.FuzzyInteger(1, 65535)
@@ -149,8 +149,6 @@ class TemplateFactory(factory.DjangoModelFactory):
     icon_url = factory.Sequence(lambda n: 'http://example.com/%d.png' % n)
     is_active = True
     sla_level = factory.LazyAttribute(lambda o: Decimal('99.9'))
-    setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
-    monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
     @classmethod
     def get_url(cls, template=None):
@@ -178,8 +176,6 @@ class TemplateLicenseFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'License%s' % n)
     license_type = factory.Sequence(lambda n: 'LicenseType%s' % n)
     service_type = models.TemplateLicense.Services.IAAS
-    setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
-    monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
     @factory.post_generation
     def templates(self, create, extracted, **kwargs):
@@ -267,8 +263,6 @@ class InstanceLicenseFactory(factory.DjangoModelFactory):
 
     instance = factory.SubFactory(InstanceFactory)
     template_license = factory.SubFactory(TemplateLicenseFactory)
-    setup_fee = factory.fuzzy.FuzzyDecimal(10.0, 50.0, 3)
-    monthly_fee = factory.fuzzy.FuzzyDecimal(0.5, 20.0, 3)
 
 
 class InstanceSecurityGroupFactory(factory.DjangoModelFactory):

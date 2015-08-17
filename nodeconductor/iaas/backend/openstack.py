@@ -11,7 +11,6 @@ import dateutil.parser
 from itertools import groupby
 
 from ceilometerclient import client as ceilometer_client
-from ceilometerclient import exc as ceilometer_exceptions
 from cinderclient import exceptions as cinder_exceptions
 from cinderclient.v1 import client as cinder_client
 from django.conf import settings
@@ -545,6 +544,8 @@ class OpenStackBackend(OpenStackClient):
         # mapping to openstack terminology for quotas
         cinder_quota_mapping = {
             'storage': ('gigabytes', self.get_backend_disk_size),
+            'volumes': ('volumes', lambda x: x),
+            'snapshots': ('snapshots', lambda x: x),
         }
         nova_quota_mapping = {
             'max_instances': ('instances', lambda x: x),
@@ -598,7 +599,7 @@ class OpenStackBackend(OpenStackClient):
             logger.exception('Failed to update membership %s quotas %s', membership, quotas)
             six.reraise(CloudBackendError, e)
 
-    def push_security_groups(self, membership):
+    def push_security_groups(self, membership, is_membership_creation=False):
         try:
             session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
@@ -610,8 +611,9 @@ class OpenStackBackend(OpenStackClient):
 
         nc_security_groups = SecurityGroup.objects.filter(
             cloud_project_membership=membership,
-            state__in=SynchronizationStates.STABLE_STATES,
         )
+        if not is_membership_creation:
+            nc_security_groups = nc_security_groups.filter(state__in=SynchronizationStates.STABLE_STATES)
 
         try:
             backend_security_groups = dict((str(g.id), g) for g in nova.security_groups.list())
@@ -931,6 +933,7 @@ class OpenStackBackend(OpenStackClient):
                     status=ip['status'],
                     backend_id=ip['id'],
                     address=ip['floating_ip_address'],
+                    backend_network_id=ip['floating_network_id']
                 )
                 logger.info('Created new floating IP port %s in database', created_ip.uuid)
 
@@ -1399,7 +1402,7 @@ class OpenStackBackend(OpenStackClient):
                 else:
                     # try to devise from volume image metadata
                     template = self._get_instance_template(system_volume, membership, instance_id)
-                cores, ram = self._get_flavor_info(nova, backend_instance)
+                cores, ram, flavor_name = self._get_flavor_info(nova, backend_instance)
                 state = self._get_instance_state(backend_instance)
             except LookupError as e:
                 logger.exception('Failed to lookup instance %s information', instance_id)
@@ -1420,6 +1423,7 @@ class OpenStackBackend(OpenStackClient):
                 template=template,
                 agreed_sla=template.sla_level,
 
+                flavor_name=flavor_name,
                 cores=cores,
                 ram=ram,
 
@@ -2133,6 +2137,20 @@ class OpenStackBackend(OpenStackClient):
 
         return membership.external_network_id
 
+    def detect_external_network(self, membership, neutron):
+        routers = neutron.list_routers(tenant_id=membership.tenant_id)['routers']
+        if bool(routers):
+            router = routers[0]
+        else:
+            logger.warning('Cloud project membership %s does not have connected routers.', membership)
+            return
+
+        ext_gw = router.get('external_gateway_info', {})
+        if 'network_id' in ext_gw:
+            membership.external_network_id = ext_gw['network_id']
+            membership.save()
+            logger.info('Found and set external network with id %s', ext_gw['network_id'])
+
     def delete_external_network(self, membership, neutron):
         floating_ips = neutron.list_floatingips(floating_network_id=membership.external_network_id)['floatingips']
 
@@ -2305,13 +2323,14 @@ class OpenStackBackend(OpenStackClient):
         if instance.external_ips is None or instance.internal_ips is None:
             return
 
-        logger.debug('About add external ip %s to instance %s',
+        logger.debug('About to add external ip %s to instance %s',
                      instance.external_ips, instance.uuid)
         try:
             floating_ip = models.FloatingIP.objects.get(
                 cloud_project_membership=instance.cloud_project_membership,
                 status='DOWN',
                 address=instance.external_ips,
+                backend_network_id=instance.cloud_project_membership.external_network_id
             )
             server.add_floating_ip(address=instance.external_ips, fixed_address=instance.internal_ips)
         except (
@@ -2326,7 +2345,7 @@ class OpenStackBackend(OpenStackClient):
             instance.set_erred()
             instance.save()
         else:
-            floating_ip.status = 'UP'
+            floating_ip.status = 'ACTIVE'
             floating_ip.save()
             logger.info('Successfully added external ip %s to instance %s',
                         instance.external_ips, instance.uuid)
@@ -2340,6 +2359,7 @@ class OpenStackBackend(OpenStackClient):
                 cloud_project_membership=instance.cloud_project_membership,
                 status='ACTIVE',
                 address=instance.external_ips,
+                backend_network_id=instance.cloud_project_membership.external_network_id
             )
         except (
                 models.FloatingIP.DoesNotExist,
@@ -2352,6 +2372,32 @@ class OpenStackBackend(OpenStackClient):
             floating_ip.save()
             logger.info('Successfully released floating ip %s from instance %s',
                         instance.external_ips, instance.uuid)
+
+    def allocate_floating_ip_address(self, neutron, membership):
+        data = {'floating_network_id': membership.external_network_id, 'tenant_id': membership.tenant_id}
+        ip_address = neutron.create_floatingip({'floatingip': data})['floatingip']
+
+        models.FloatingIP.objects.create(
+            cloud_project_membership=membership,
+            status='DOWN',
+            address=ip_address['floating_ip_address'],
+            backend_id=ip_address['id'],
+            backend_network_id=ip_address['floating_network_id']
+        )
+        logger.info('Floating IP %s for external network with id %s has been created.',
+                    ip_address['floating_ip_address'], membership.external_network_id)
+
+    def assign_floating_ip_to_instance(self, nova, instance, floating_ip):
+        nova.servers.add_floating_ip(server=instance.backend_id, address=floating_ip.address)
+
+        floating_ip.status = 'ACTIVE'
+        floating_ip.save()
+
+        instance.external_ips = floating_ip.address
+        instance.save()
+
+        logger.info('Floating IP %s was successfully assigned to the instance with id %s.',
+                    floating_ip.address, instance.uuid)
 
     def get_attached_volumes(self, server_id, nova):
         """
@@ -2636,7 +2682,7 @@ class OpenStackBackend(OpenStackClient):
         else:
             cores = flavor.vcpus
             ram = self.get_core_ram_size(flavor.ram)
-            return cores, ram
+            return cores, ram, flavor.name
 
     def _normalize_security_group_rule(self, rule):
         if rule['ip_protocol'] is None:

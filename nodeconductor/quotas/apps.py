@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.db.models import signals
 
-from nodeconductor.quotas import handlers
+from nodeconductor.quotas import handlers, utils
 
 
 class QuotasConfig(AppConfig):
@@ -18,3 +18,11 @@ class QuotasConfig(AppConfig):
             sender=Quota,
             dispatch_uid='nodeconductor.quotas.handlers.check_quota_threshold_breach',
         )
+
+        for index, model in enumerate(utils.get_models_with_quotas()):
+            signals.pre_delete.connect(
+                handlers.reset_quota_values_to_zeros_before_delete,
+                sender=model,
+                dispatch_uid=('nodeconductor.quotas.handlers.reset_quota_values_to_zeros_before_delete_%s_%s'
+                              % (model.__name__, index)),
+            )

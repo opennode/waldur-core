@@ -9,7 +9,6 @@ from django.db import models
 from django.utils.lru_cache import lru_cache
 
 from nodeconductor.core.serializers import UnboundSerializerMethodField
-from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 

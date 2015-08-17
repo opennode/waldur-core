@@ -1,8 +1,10 @@
 import factory
 
 from django.core.urlresolvers import reverse
+from django.contrib.contenttypes.models import ContentType
 
-from nodeconductor.cost_tracking import models
+from nodeconductor.cost_tracking import models, CostConstants
+from nodeconductor.oracle import models as oracle_models
 from nodeconductor.oracle.tests import factories as oracle_factories
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -28,38 +30,50 @@ class PriceEstimateFactory(factory.DjangoModelFactory):
         return url if action is None else url + action + '/'
 
 
-class PriceListFactory(factory.DjangoModelFactory):
+class AbstractPriceListItemFactory(factory.DjangoModelFactory):
     class Meta(object):
-        model = models.PriceList
+        model = models.AbstractPriceListItem
+        abstract = True
 
-    service = factory.SubFactory(oracle_factories.OracleServiceFactory)
+    resource_content_type = factory.LazyAttribute(
+        lambda _: ContentType.objects.get_for_model(oracle_models.Database))
 
-    @factory.post_generation
-    def items(self, create, extracted, **kwargs):
-        if create:
-            if extracted:
-                for item in extracted:
-                    self.items.create(**item)
-            else:
-                for _ in range(2):
-                    PriceListItemFactory(price_list=self)
-
-    @classmethod
-    def get_list_url(self):
-        return 'http://testserver' + reverse('pricelist-list')
-
-    @classmethod
-    def get_url(self, price_list, action=None):
-        if price_list is None:
-            price_list = PriceListFactory()
-        url = 'http://testserver' + reverse('pricelist-detail', kwargs={'uuid': price_list.uuid})
-        return url if action is None else url + action + '/'
+    key = factory.Sequence(lambda n: 'price list item %s' % n)
+    value = factory.Iterator([10, 100, 1000, 10000, 1313, 13])
+    item_type = factory.Iterator([CostConstants.PriceItem.FLAVOR, CostConstants.PriceItem.STORAGE])
+    units = factory.Iterator(['USD', 'EUR', 'UAH', 'OMR'])
 
 
-class PriceListItemFactory(factory.DjangoModelFactory):
+class PriceListItemFactory(AbstractPriceListItemFactory):
     class Meta(object):
         model = models.PriceListItem
 
-    price_list = factory.SubFactory(PriceListFactory)
-    name = factory.Iterator(['cpu', 'memory', 'storage'])
-    value = factory.Iterator([10, 100, 1000, 10000, 1313, 13])
+    service = factory.SubFactory(oracle_factories.OracleServiceFactory)
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('pricelistitem-list')
+
+    @classmethod
+    def get_url(self, price_list_item, action=None):
+        if price_list_item is None:
+            price_list_item = PriceListItemFactory()
+        url = 'http://testserver' + reverse('pricelistitem-detail', kwargs={'uuid': price_list_item.uuid})
+        return url if action is None else url + action + '/'
+
+
+class DefaultPriceListItemFactory(AbstractPriceListItemFactory):
+    class Meta(object):
+        model = models.DefaultPriceListItem
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('defaultpricelistitem-list')
+
+    @classmethod
+    def get_url(self, default_price_list_item, action=None):
+        if default_price_list_item is None:
+            default_price_list_item = DefaultPriceListItemFactory()
+        url = 'http://testserver' + reverse(
+            'defaultpricelistitem-detail', kwargs={'uuid': default_price_list_item.uuid})
+        return url if action is None else url + action + '/'

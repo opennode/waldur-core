@@ -95,6 +95,12 @@ Price estimates
 .. include:: price_estimates.rst
 
 
+Price list items
+================
+
+.. include:: price_list_items.rst
+
+
 Project group management
 ========================
 

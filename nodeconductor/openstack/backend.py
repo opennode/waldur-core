@@ -2,6 +2,7 @@ import logging
 
 from django.db import transaction
 from django.utils import six, dateparse, timezone
+from requests import ConnectionError
 
 from ceilometerclient import exc as ceilometer_exceptions
 from cinderclient import exceptions as cinder_exceptions
@@ -66,6 +67,17 @@ class OpenStackBackend(ServiceBackend):
         # Session validation occurs on class creation so assume it's active
         # TODO: Consider validating session depending on tenant permissions
         return True
+
+    def ping_resource(self, instance):
+        if self.is_admin:
+            raise ServiceBackendNotImplemented("You have to use tenant session")
+
+        try:
+            self.nova_client.servers.get(instance.backend_id)
+        except (ConnectionError, nova_exceptions.ClientException):
+            return False
+        else:
+            return True
 
     def sync(self):
         # Migration status:
@@ -193,7 +205,7 @@ class OpenStackBackend(ServiceBackend):
 
             instance = nova.servers.get(instance_id)
             system_volume, data_volume = self._old_backend._get_instance_volumes(nova, cinder, instance_id)
-            cores, ram = self._old_backend._get_flavor_info(nova, instance)
+            cores, ram, _ = self._old_backend._get_flavor_info(nova, instance)
             ips = self._old_backend._get_instance_ips(instance)
 
             instance.nc_model_data = dict(

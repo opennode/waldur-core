@@ -4,6 +4,7 @@ from django.test import TestCase
 
 from nodeconductor.iaas import models as iaas_models
 from nodeconductor.iaas.tests import factories as iaas_factories
+from nodeconductor.structure.tests import factories as structure_factories
 
 
 class QuotaModelMixinTest(TestCase):
@@ -48,3 +49,19 @@ class QuotaModelMixinTest(TestCase):
         sum_of_quotas = iaas_models.CloudProjectMembership.get_sum_of_quotas_as_dict(
             memberships, quota_names=['vcpu'], fields=['limit'])
         self.assertEqual({'vcpu': -1}, sum_of_quotas)
+
+    def test_child_quotas_are_not_created_for_parents(self):
+        membership = iaas_factories.CloudProjectMembershipFactory()
+
+        self.assertFalse(membership.project.quotas.filter(name='vcpu').exists())
+
+    def test_quotas_are_reseted_on_scope_delete(self):
+        customer = structure_factories.CustomerFactory()
+        project1 = structure_factories.ProjectFactory(customer=customer)
+        project2 = structure_factories.ProjectFactory(customer=customer)
+
+        project1.add_quota_usage('nc_resource_count', 50)
+        project2.add_quota_usage('nc_resource_count', 20)
+        project1.delete()
+
+        self.assertEqual(customer.quotas.get(name='nc_resource_count').usage, 20)

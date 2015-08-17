@@ -85,16 +85,20 @@ class ZabbixApiClient(object):
     def create_host(self, instance, warn_if_host_exists=True, is_tenant=False):
         api = self.get_zabbix_api()
         kwargs = {}
-        if not is_tenant:
-            kwargs['templateid'] = self._settings['templateid']
-        else:
-            kwargs['templateid'] = self._settings['openstack-templateid']
-        if not is_tenant:
-            kwargs['application_templateid'] = self._settings.get(
-                "%s-templateid" % instance.template.application_type.lower())
-        if is_tenant:
-            kwargs['host_name'] = instance.tenant_id
-            kwargs['visible_name'] = instance.tenant_id
+        try:
+            if not is_tenant:
+                kwargs['templateid'] = self._settings['templateid']
+            else:
+                kwargs['templateid'] = self._settings['openstack-templateid']
+            if not is_tenant:
+                kwargs['application_templateid'] = self._settings.get(
+                    "%s-templateid" % instance.template.application_type.lower())
+            if is_tenant:
+                kwargs['host_name'] = instance.tenant_id
+                kwargs['visible_name'] = instance.tenant_id
+        except KeyError as e:
+            logger.error('Zabbix is not properly configured %s', e.message)
+            raise ZabbixError('Zabbix is not properly configured %s' % e.message)
 
         _, created = self.get_or_create_host(
             api, instance,
@@ -102,6 +106,10 @@ class ZabbixApiClient(object):
             interface_parameters=self._settings['interface_parameters'],
             **kwargs
         )
+        if created:
+            object_name = 'tenant' if is_tenant else 'instance'
+            logger.info('Successfully created new Zabbix host for %s %s', object_name, instance)
+
         if not created and warn_if_host_exists:
             logger.warn('Can not create new Zabbix host for instance %s. Already exists.', instance)
 
@@ -276,10 +284,15 @@ class ZabbixApiClient(object):
         except IndexError:
             return False
 
+    @_exception_decorator('Can not create Zabbix host')
     def get_or_create_host(
             self, api, instance, groupid, templateid, interface_parameters,
             application_templateid=None, host_name=None, visible_name=None):
         name = self.get_host_name(instance) if host_name is None else host_name
+        if name.strip() == '':
+            logger.warn('Cannot register host with empty name, host %s', instance)
+            raise ZabbixAPIException('Zabbix host name cannot be empty')
+
         visible_name = self.get_host_visible_name(instance) if visible_name is None else visible_name
 
         if not api.host.exists(host=name):

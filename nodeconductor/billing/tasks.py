@@ -8,13 +8,15 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.utils.lru_cache import lru_cache
 from celery import shared_task
 
 from nodeconductor.backup.models import Backup
-from nodeconductor.billing.backend import BillingBackend
+from nodeconductor.billing.backend import BillingBackend, BillingBackendError
 from nodeconductor.billing.models import PriceList
-from nodeconductor.core.utils import timestamp_to_datetime
+from nodeconductor.core.utils import timestamp_to_datetime, datetime_to_timestamp
+from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.models import Cloud, CloudProjectMembership, Instance
 from nodeconductor.logging.elasticsearch_client import ElasticsearchResultList
@@ -22,12 +24,6 @@ from nodeconductor.structure.models import Customer
 from nodeconductor.structure import SupportedServices
 
 logger = logging.getLogger(__name__)
-
-
-@shared_task(name='nodeconductor.billing.sync_pricelist')
-def sync_pricelist():
-    backend = BillingBackend()
-    backend.sync_pricelist()
 
 
 @shared_task(name='nodeconductor.billing.debit_customers')
@@ -59,7 +55,9 @@ def debit_customers():
     # This code to be deprecated when IaaS app moves to OpenStack app (NC-645)
     customers = set(s.customer for s in Cloud.objects.select_related('customer').all())
     for customer in customers:
-        usage_data, data, projected_total = get_customer_usage_data(customer, start_date, end_date)
+        usage_data, data, projected_total = get_customer_usage_data(customer,
+                                                                    datetime_to_timestamp(start_date),
+                                                                    datetime_to_timestamp(end_date))
         customer.debit_account(projected_total)
 
 
@@ -91,7 +89,9 @@ def generate_usage_pdf(invoice, usage_data):
     )
     # generate a new file
     if not pdf.err:
-        invoice.usage_pdf.save('Usage-%d.pdf' % invoice.uuid, ContentFile(result.getvalue()))
+        now = timezone.now()
+        name = '{}-{}-{}-invoicenr-{}.pdf'.format(now.year, now.month, now.day, invoice.backend_id)
+        invoice.usage_pdf.save(name, ContentFile(result.getvalue()))
         invoice.save(update_fields=['usage_pdf'])
     else:
         logger.error(pdf.err)
@@ -234,3 +234,17 @@ def lookup_instance_licenses_from_event_log(instance_uuid):
         return []
 
     return zip(event['licenses_types'], event['licenses_services_types'])
+
+
+@shared_task(name='nodeconductor.billing.sync_pricelist')
+def sync_pricelist():
+    backend = BillingBackend()
+    priceitems = DefaultPriceListItem.objects.filter(
+        backend_product_id='').values_list('resource_content_type', flat=True).distinct()
+
+    for cid in priceitems:
+        content_type = ContentType.objects.get_for_id(cid)
+        try:
+            backend.propagate_pricelist(content_type)
+        except BillingBackendError as e:
+            logger.error("Can't propagade pricelist for %s: %s", content_type, e)

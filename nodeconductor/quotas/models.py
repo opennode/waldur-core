@@ -26,7 +26,7 @@ class Quota(UuidMixin, NameMixin, LoggableMixin, ReversionMixin, models.Model):
     object_id = models.PositiveIntegerField()
     scope = ct_fields.GenericForeignKey('content_type', 'object_id')
 
-    objects = managers.QuotaManager()
+    objects = managers.QuotaManager('scope')
 
     def is_exceeded(self, delta=None, threshold=None):
         """
@@ -80,33 +80,58 @@ class QuotaModelMixin(models.Model):
         self.quotas.filter(name=quota_name).update(limit=limit)
 
     def set_quota_usage(self, quota_name, usage):
+        self._set_editable_field_value('usage', quota_name, usage)
+
+    def add_quota_usage(self, quota_name, usage_delta, fail_silently=False):
+        """
+        Add usage_delta to current quota usage
+
+        If <fail_silently> is True - operation will not fail if quota does not exist
+        """
+        self._add_delta_to_editable_field('usage', quota_name, usage_delta, fail_silently)
+
+    def _set_editable_field_value(self, field, quota_name, value):
         with transaction.atomic():
             original_quota = self.quotas.get(name=quota_name)
-            self._add_usage_to_ancestors(quota_name, usage - original_quota.usage)
-            original_quota.usage = usage
+            self._add_delta_to_ancestors(field, quota_name, value - getattr(original_quota, field))
+            setattr(original_quota, field, value)
             original_quota.save()
 
-    def add_quota_usage(self, quota_name, usage_delta):
+    def _add_delta_to_editable_field(self, field, quota_name, delta, fail_silently=False):
         """
-        Add to usage_delta to current quota usage
+        Add delta to quota <field>
+
+        If <fail_silently> is True - operation will not fail if quota does not exist
         """
-        if not usage_delta:
+        if not delta:
             return
         with transaction.atomic():
-            original_quota = self.quotas.get(name=quota_name)
-            original_quota.usage += usage_delta
-            original_quota.save()
-            self._add_usage_to_ancestors(quota_name, usage_delta)
-
-    def _add_usage_to_ancestors(self, quota_name, usage):
-        for ancestor in self._get_quota_ancestors():
             try:
-                quota = ancestor.quotas.get(name=quota_name)
-                quota.usage += usage
-                quota.save()
-            except Quota.DoesNotExist:
-                # we do not do anything if ancestor does not have such quota
-                pass
+                original_quota = self.quotas.select_for_update().get(name=quota_name)
+            except Quota.DoesNotExist, e:
+                if not fail_silently:
+                    raise e
+            else:
+                # Django's F() expressions makes quota.is_exceeded() unusable in signals
+                # wrap update into a safe transaction instead (may not work with sqlite)
+                setattr(original_quota, field, getattr(original_quota, field) + delta)
+                original_quota.save(update_fields=[field])
+                self._add_delta_to_ancestors(field, quota_name, delta)
+
+    def _add_delta_to_ancestors(self, field, quota_name, delta):
+        if not delta:
+            return
+
+        for ancestor in self._get_quota_ancestors():
+            with transaction.atomic():
+                try:
+                    quota = ancestor.quotas.select_for_update().get(name=quota_name)
+                except Quota.DoesNotExist:
+                    # ignore quotas change if parent does not have such quota
+                    pass
+                else:
+                    setattr(quota, field, getattr(quota, field) + delta)
+                    quota.save(update_fields=[field])
 
     def validate_quota_change(self, quota_deltas, raise_exception=False):
         """

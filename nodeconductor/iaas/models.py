@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import logging
-from decimal import Decimal
 
 from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
@@ -12,10 +11,12 @@ from django.utils.encoding import python_2_unicode_compatible
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.utils import request_api
+from nodeconductor.cost_tracking import CostConstants
+from nodeconductor.billing.models import PaidResource
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
-from nodeconductor.structure import models as structure_models
+from nodeconductor.structure import models as structure_models, ServiceBackend
 
 logger = logging.getLogger(__name__)
 
@@ -224,48 +225,20 @@ class Template(core_models.UuidMixin,
     """
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
     """
-    class OsTypes(object):
-        LINUX = 'Linux'
-        WINDOWS = 'Windows'
-        UNIX = 'Unix'
-        OTHER = 'Other'
-
-    # XXX: a hackish solution for the immediate needs. Consider redesigning.
-    class ApplicationTypes(object):
-        WORDPRESS = 'WordPress'
-        POSTGRESQL = 'PostgreSQL'
-        ZIMBRA = 'Zimbra'
-        NONE = 'None'
-
-    SERVICE_TYPES = (
-        (OsTypes.LINUX, 'Linux'), (OsTypes.WINDOWS, 'Windows'), (OsTypes.UNIX, 'Unix'), (OsTypes.OTHER, 'Other'))
-
-    APPLICATION_TYPES = (
-        (ApplicationTypes.WORDPRESS, 'WordPress'),
-        (ApplicationTypes.POSTGRESQL, 'PostgreSQL'),
-        (ApplicationTypes.ZIMBRA, 'Zimbra'),
-        (ApplicationTypes.NONE, 'None')
-    )
 
     # Model doesn't inherit NameMixin, because name field must be unique.
     name = models.CharField(max_length=150, unique=True)
     os = models.CharField(max_length=100, blank=True)
-    os_type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=OsTypes.LINUX)
+    os_type = models.CharField(max_length=10, choices=CostConstants.Os.CHOICES, default=CostConstants.Os.OTHER)
     is_active = models.BooleanField(default=False)
     sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
-    setup_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
-                                    validators=[MinValueValidator(Decimal('0.1')),
-                                                MaxValueValidator(Decimal('100000.0'))])
-    monthly_fee = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True,
-                                      validators=[MinValueValidator(Decimal('0.1')),
-                                                  MaxValueValidator(Decimal('100000.0'))])
     icon_name = models.CharField(max_length=100, blank=True)
 
     # fields for categorisation
     # XXX consider changing to tags
     type = models.CharField(max_length=100, blank=True, help_text='Template type')
-    application_type = models.CharField(max_length=100, blank=True, choices=APPLICATION_TYPES,
-                                        default=ApplicationTypes.NONE,
+    application_type = models.CharField(max_length=100, blank=True, choices=CostConstants.Application.CHOICES,
+                                        default=CostConstants.Application.NONE,
                                         help_text='Type of the application inside the template (optional)')
 
     def __str__(self):
@@ -296,6 +269,7 @@ class FloatingIP(core_models.UuidMixin, CloudProjectMember):
     address = models.GenericIPAddressField(protocol='IPv4')
     status = models.CharField(max_length=30)
     backend_id = models.CharField(max_length=255)
+    backend_network_id = models.CharField(max_length=255, editable=False)
 
 
 class IaasTemplateService(TemplateService):
@@ -321,7 +295,7 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
-class Instance(LoggableMixin, structure_models.BaseVirtualMachineMixin, structure_models.Resource):
+class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineMixin, structure_models.Resource):
     """
     A generalization of a single virtual machine.
 
@@ -358,6 +332,7 @@ class Instance(LoggableMixin, structure_models.BaseVirtualMachineMixin, structur
         max_length=50, default='NO DATA', blank=True, help_text='State of post deploy installation process')
 
     # fields, defined by flavor
+    flavor_name = models.CharField(max_length=255, blank=True)
     cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
     ram = models.PositiveIntegerField(help_text='Memory size in MiB')
 
@@ -386,6 +361,28 @@ class Instance(LoggableMixin, structure_models.BaseVirtualMachineMixin, structur
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)
 
+    def get_storage_size(self, extra=0):
+        # 'extra' is used to calculate totals size (e.g. together with backup snapshots)
+        return ServiceBackend.mb2gb(self.data_volume_size + extra)
+
+    def get_default_price_options(self):
+        return {
+            CostConstants.PriceItem.FLAVOR: CostConstants.Flavor.OFFLINE,
+            CostConstants.PriceItem.LICENSE_OS: CostConstants.Os.OTHER,
+            CostConstants.PriceItem.LICENSE_APPLICATION: CostConstants.Application.NONE,
+        }
+
+    def get_price_options(self):
+        return {
+            CostConstants.PriceItem.FLAVOR: self.flavor_name,
+            CostConstants.PriceItem.STORAGE: self.get_storage_size(),
+            CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
+            CostConstants.PriceItem.LICENSE_APPLICATION: self.template.application_type,
+            CostConstants.PriceItem.SUPPORT: (CostConstants.Support.PREMIUM
+                                              if self.type == self.Services.PAAS
+                                              else CostConstants.Support.BASIC),
+        }
+
     def _init_instance_licenses(self):
         """
         Create new instance licenses from template licenses
@@ -394,8 +391,6 @@ class Instance(LoggableMixin, structure_models.BaseVirtualMachineMixin, structur
             InstanceLicense.objects.create(
                 instance=self,
                 template_license=template_license,
-                setup_fee=template_license.setup_fee,
-                monthly_fee=template_license.monthly_fee,
             )
 
     def save(self, *args, **kwargs):
@@ -456,12 +451,6 @@ class TemplateLicense(core_models.UuidMixin,
     license_type = models.CharField(max_length=127)
     templates = models.ManyToManyField(Template, related_name='template_licenses')
     service_type = models.CharField(max_length=10, choices=SERVICE_TYPES)
-    setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
-                                    validators=[MinValueValidator(Decimal('0.1')),
-                                                MaxValueValidator(Decimal('1000.0'))])
-    monthly_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
-                                      validators=[MinValueValidator(Decimal('0.1')),
-                                                  MaxValueValidator(Decimal('1000.0'))])
 
     def __str__(self):
         return '%s - %s' % (self.license_type, self.name)
@@ -479,12 +468,6 @@ class TemplateLicense(core_models.UuidMixin,
 class InstanceLicense(core_models.UuidMixin, models.Model):
     template_license = models.ForeignKey(TemplateLicense, related_name='instance_licenses')
     instance = models.ForeignKey(Instance, related_name='instance_licenses')
-    setup_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
-                                    validators=[MinValueValidator(Decimal('0.1')),
-                                                MaxValueValidator(Decimal('1000.0'))])
-    monthly_fee = models.DecimalField(max_digits=7, decimal_places=3, null=True, blank=True,
-                                      validators=[MinValueValidator(Decimal('0.1')),
-                                                  MaxValueValidator(Decimal('1000.0'))])
 
     class Permissions(object):
         customer_path = 'instance__cloud_project_membership__project__customer'

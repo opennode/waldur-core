@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
-from nodeconductor.core import serializers as core_serializers
 from nodeconductor.billing.models import Invoice, Payment
+from nodeconductor.core import serializers as core_serializers
+from nodeconductor.structure.models import Customer
 
 
 class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
@@ -58,3 +59,16 @@ class PaymentApproveSerializer(serializers.Serializer):
         if self.instance.backend_id != validated_data['payment_id']:
             raise serializers.ValidationError('Invalid paymentId')
         return validated_data
+
+
+class OrderCustomerSerializer(serializers.Serializer):
+    customer_uuid = serializers.CharField()
+
+    def to_internal_value(self, data):
+        if 'customer_uuid' not in data:
+            raise serializers.ValidationError(
+                'Parameter <customer_uuid> with customer UUID has to be provided as GET parameter.')
+        try:
+            return Customer.objects.get(uuid=data['customer_uuid'])
+        except Customer.DoesNotExist:
+            raise serializers.ValidationError('Customer with given UUID does not exist.')

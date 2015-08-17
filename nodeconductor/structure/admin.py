@@ -42,8 +42,13 @@ class ProtectedModelMixin(object):
 
 class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     readonly_fields = ['balance']
-    actions = ['sync_with_backend', 'create_last_month_invoices', 'create_current_month_invoices']
-    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation']
+    actions = [
+        'sync_with_backend',
+        'create_last_month_invoices',
+        'create_current_month_invoices',
+        'update_current_month_projected_estimate',
+    ]
+    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created']
 
     def sync_with_backend(self, request, queryset):
         customer_uuids = list(queryset.values_list('uuid', flat=True))
@@ -93,12 +98,42 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
 
     create_current_month_invoices.short_description = "Create invoices for current month"
 
+    def update_current_month_projected_estimate(self, request, queryset):
+        customers_without_backend_id = []
+        succeeded_customers = []
+        for customer in queryset:
+            if not customer.billing_backend_id:
+                customers_without_backend_id.append(customer)
+                continue
+            send_task('cost_tracking', 'update_current_month_projected_estimate')(customer=customer.uuid.hex)
+            succeeded_customers.append(customer)
+
+        if succeeded_customers:
+            message = ungettext(
+                'Projected estimate generation successfully scheduled for customer %(customers_names)s',
+                'Projected estimate generation successfully scheduled for customers: %(customers_names)s',
+                len(succeeded_customers)
+            )
+            message = message % {'customers_names': ', '.join([c.name for c in succeeded_customers])}
+            self.message_user(request, message)
+
+        if customers_without_backend_id:
+            message = ungettext(
+                'Cannot generate estimate for customer without backend id: %(customers_names)s',
+                'Cannot generate estimate for customers without backend id: %(customers_names)s',
+                len(customers_without_backend_id)
+            )
+            message = message % {'customers_names': ', '.join([c.name for c in customers_without_backend_id])}
+            self.message_user(request, message)
+
+    update_current_month_projected_estimate.short_description = "Update current month projected cost estimate"
+
 
 class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
 
     fields = ('name', 'description', 'customer')
 
-    list_display = ['name', 'uuid', 'customer']
+    list_display = ['name', 'uuid', 'customer', 'created']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
@@ -108,7 +143,7 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
 
     fields = ('name', 'description', 'customer')
 
-    list_display = ['name', 'uuid', 'customer']
+    list_display = ['name', 'uuid', 'customer', 'created']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
 

@@ -101,8 +101,6 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
             'name': "license",
             'license_type': 'license type',
             'service_type': models.TemplateLicense.Services.IAAS,
-            'setup_fee': 10,
-            'monthly_fee': 10
         }
         self.client.force_authenticate(self.staff)
         response = self.client.post(_template_license_list_url(), data=data)
@@ -123,8 +121,6 @@ class LicenseApiManipulationTest(test.APISimpleTestCase):
             'name': "new license",
             'license_type': 'new license type',
             'service_type': models.TemplateLicense.Services.IAAS,
-            'setup_fee': 10,
-            'monthly_fee': 10
         }
         self.client.force_authenticate(self.staff)
         response = self.client.put(_template_license_url(self.license), data=data)
@@ -245,6 +241,17 @@ class LicenseStatsTests(test.APITransactionTestCase):
                     'name': template_license.name, 'type': template_license.license_type, 'count': 1,
                     'project_group_name': group.name, 'project_group_uuid': str(group.uuid)
                 })
+        self.assertItemsEqual(response.data, expected_result)
+
+    def test_license_stats_aggregated_by_customer(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(self.url, {'aggregate': ['customer']})
+
+        expected_result = [{
+            'customer_name': self.customer.name,
+            'customer_uuid': self.customer.uuid.hex,
+            'count': 4,
+            'customer_abbreviation': self.customer.abbreviation}]
         self.assertItemsEqual(response.data, expected_result)
 
     def test_owner_can_see_stats_only_for_his_customer(self):

@@ -1,6 +1,7 @@
 from django.db.models import signals
 
 from nodeconductor.quotas.log import alert_logger
+from nodeconductor.quotas.models import Quota
 
 
 def add_quotas_to_scope(sender, instance, created=False, **kwargs):
@@ -55,7 +56,9 @@ def quantity_quota_handler_factory(path_to_quota_scope, quota_name, count=1):
         if signal == signals.post_save and kwargs.get('created'):
             scope.add_quota_usage(quota_name, count)
         elif signal == signals.post_delete:
-            scope.add_quota_usage(quota_name, -count)
+            scope.add_quota_usage(quota_name, -count, fail_silently=True)
+            # fail silently is enabled for cascade deletion case:
+            # if quotas can be deleted before other related objects
 
     return handler
 
@@ -74,3 +77,10 @@ def check_quota_threshold_breach(sender, instance, **kwargs):
             })
     else:
         alert_logger.quota.close(scope=quota, alert_type='quota_usage_is_over_threshold')
+
+
+def reset_quota_values_to_zeros_before_delete(sender, instance=None, **kwargs):
+    quotas_scope = instance
+    quotas_names = quotas_scope.quotas.values_list('name', flat=True)
+    for name in quotas_names:
+        quotas_scope.set_quota_usage(name, 0)

@@ -21,10 +21,37 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
+from nodeconductor.structure.managers import StructureManager
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
+
+
+class StructureModel(models.Model):
+    """ Generic structure model.
+        Provides transparent interaction with base entities and relations like customer.
+    """
+
+    objects = StructureManager()
+
+    class Meta(object):
+        abstract = True
+
+    def __getattr__(self, name):
+        # add additional properties to the object according to defined Permissions class
+        fields = ('customer',)
+        if name in fields:
+            try:
+                path = getattr(self.Permissions, name + '_path')
+            except AttributeError:
+                pass
+            else:
+                if not path == 'self':
+                    return reduce(getattr, path.split('__'), self)
+
+        raise AttributeError(
+            "'%s' object has no attribute '%s'" % (self._meta.object_name, name))
 
 
 @python_2_unicode_compatible
@@ -33,7 +60,8 @@ class Customer(core_models.UuidMixin,
                quotas_models.QuotaModelMixin,
                LoggableMixin,
                ImageModelMixin,
-               TimeStampedModel):
+               TimeStampedModel,
+               StructureModel):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
@@ -48,7 +76,7 @@ class Customer(core_models.UuidMixin,
     billing_backend_id = models.CharField(max_length=255, blank=True)
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
 
-    QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count']
+    QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count', 'nc_service_count']
 
     def get_billing_backend(self):
         return BillingBackend(self)
@@ -214,13 +242,14 @@ class Project(core_models.DescribableMixin,
               core_models.NameMixin,
               quotas_models.QuotaModelMixin,
               LoggableMixin,
-              TimeStampedModel):
+              TimeStampedModel,
+              StructureModel):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
         project_group_path = 'project_groups'
 
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances', 'nc_resource_count', 'nc_service_count']
+    QUOTAS_NAMES = ['nc_resource_count', 'nc_service_count']
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
 
@@ -434,7 +463,8 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
 class Service(core_models.SerializableAbstractMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
-              LoggableMixin):
+              LoggableMixin,
+              StructureModel):
     """ Base service class. """
 
     class Meta(object):
@@ -497,7 +527,8 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 @python_2_unicode_compatible
 class ServiceProjectLink(core_models.SerializableAbstractMixin,
                          core_models.SynchronizableMixin,
-                         quotas_models.QuotaModelMixin):
+                         quotas_models.QuotaModelMixin,
+                         StructureModel):
     """ Base service-project link class. See Service class for usage example. """
 
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances']
@@ -587,7 +618,7 @@ class VirtualMachineMixin(BaseVirtualMachineMixin):
 
 @python_2_unicode_compatible
 class Resource(core_models.UuidMixin, core_models.DescribableMixin,
-               core_models.NameMixin, TimeStampedModel):
+               core_models.NameMixin, TimeStampedModel, StructureModel):
 
     """ Base resource class. Resource is a provisioned entity of a service,
         for example: a VM in OpenStack or AWS, or a repository in Github.
@@ -646,7 +677,7 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
         )
 
         # Stable instances are the ones for which
-        # no tasks are scheduled or are in progress
+        # tasks are scheduled or are in progress
 
         STABLE_STATES = set([ONLINE, OFFLINE])
         UNSTABLE_STATES = set([

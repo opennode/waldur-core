@@ -104,16 +104,10 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = CustomerFilter
 
-    # XXX: This detail route should be moved to billing application.
-    @detail_route()
-    def estimated_price(self, request, uuid):
-        from nodeconductor.billing.tasks import get_customer_usage_data
-        customer = self.get_object()
-        start_date = core_utils.datetime_to_timestamp(
-            datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0))
-        end_date = core_utils.datetime_to_timestamp(datetime.now().replace(minute=0, second=0, microsecond=0))
-        _, _, projected_total = get_customer_usage_data(customer, start_date, end_date)
-        return Response(projected_total, status.HTTP_200_OK)
+    def perform_create(self, serializer):
+        customer = serializer.save()
+        if not self.request.user.is_staff:
+            customer.add_user(self.request.user, models.CustomerRole.OWNER)
 
     # XXX: This detail route should be moved to billing application.
     @list_route()
@@ -259,34 +253,17 @@ class ProjectFilter(quotas_views.QuotaFilterMixin, django_filters.FilterSet):
             '-customer__name',
             'customer__abbreviation',
             '-customer__abbreviation',
-            'quotas__limit__ram',
-            '-quotas__limit__ram',
-            'quotas__limit__vcpu',
-            '-quotas__limit__vcpu',
-            'quotas__limit__storage',
-            '-quotas__limit__storage',
-            'quotas__limit__max_instances',
-            '-quotas__limit__max_instances',
-            'quotas__limit',
-            '-quotas__limit',
         ]
 
         order_by_mapping = {
             # Proper field naming
             'project_group_name': 'project_groups__name',
-            'vcpu': 'quotas__limit__vcpu',
-            'ram': 'quotas__limit__ram',
-            'max_instances': 'quotas__limit__max_instances',
-            'storage': 'quotas__limit__storage',
             'customer_name': 'customer__name',
             'customer_abbreviation': 'customer__abbreviation',
             'customer_native_name': 'customer__native_name',
 
             # Backwards compatibility
             'project_groups__name': 'project_groups__name',
-            'resource_quota__vcpu': 'quotas__limit__vcpu',
-            'resource_quota__ram': 'quotas__limit__ram',
-            'resource_quota__storage': 'quotas__limit__storage',
         }
 
 
@@ -1319,6 +1296,14 @@ class UpdateOnlyByPaidCustomerMixin(object):
         return super(UpdateOnlyByPaidCustomerMixin, self).create(request, *args, **kwargs)
 
 
+class BaseServiceFilter(django_filters.FilterSet):
+    customer_uuid = django_filters.CharFilter(name='customer__uuid')
+    customer = core_filters.URLFilter(viewset=CustomerViewSet, name='customer__uuid')
+
+    class Meta(object):
+        model = models.Service
+
+
 class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                          core_mixins.UserContextMixin,
                          viewsets.ModelViewSet):
@@ -1332,6 +1317,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     import_serializer_class = NotImplemented
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_class = BaseServiceFilter
     lookup_field = 'uuid'
 
     def get_serializer_class(self):
@@ -1390,7 +1376,9 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):
+    service_uuid = django_filters.CharFilter(name='service__uuid')
     project_uuid = django_filters.CharFilter(name='project__uuid')
+    project = core_filters.URLFilter(viewset=ProjectViewSet, name='project__uuid')
 
     class Meta(object):
         model = models.ServiceProjectLink

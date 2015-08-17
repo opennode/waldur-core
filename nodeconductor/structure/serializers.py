@@ -737,7 +737,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         lookup_field='uuid',
         allow_null=True)
 
-    backend_url = serializers.CharField(max_length=200, allow_null=True, write_only=True, required=False)
+    backend_url = serializers.URLField(max_length=200, allow_null=True, write_only=True, required=False)
     username = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
     password = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
     token = serializers.CharField(allow_null=True, write_only=True, required=False)

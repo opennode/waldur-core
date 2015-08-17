@@ -1,4 +1,10 @@
+import logging
+
 from nodeconductor.billing.log import event_logger
+from nodeconductor.billing.backend import BillingBackendError
+
+
+logger = logging.getLogger('nodeconductor.billing')
 
 
 def log_invoice_save(sender, instance, created=False, **kwargs):
@@ -25,3 +31,36 @@ def log_invoice_delete(sender, instance, **kwargs):
         event_context={
             'invoice': instance,
         })
+
+
+def track_order(sender, instance, name=None, source=None, **kwargs):
+    order = instance.order
+    try:
+        if name == instance.begin_provisioning.__name__:
+            order.setup()
+
+        if name == instance.set_online.__name__:
+            if source == instance.States.PROVISIONING:
+                order.confirm()
+            if source == instance.States.STARTING:
+                order.update(flavor=instance.flavor_name)
+
+        if name == instance.set_offline.__name__:
+            if source == instance.States.STOPPING:
+                order.update(flavor=None)
+
+        if name == instance.set_erred.__name__:
+            if source == instance.States.PROVISIONING:
+                order.cancel()
+
+        if name == instance.set_resized.__name__:
+            order.update(flavor=None)
+
+    except BillingBackendError:
+        logger.exception("Failed to track order for resource %s" % instance)
+        instance.state = instance.States.ERRED
+        instance.save()
+
+
+def terminate_purchase(sender, instance=None, **kwargs):
+    instance.order.terminate()

@@ -1,5 +1,7 @@
+from django import forms
 from django.contrib import admin
 from django.utils.translation import ungettext, gettext
+from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
@@ -87,7 +89,8 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     search_fields = ('cloud__customer__name', 'project__name', 'cloud__name')
     inlines = [QuotaInline]
 
-    actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships']
+    actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships',
+               'detect_external_networks', 'allocate_floating_ip']
 
     def get_queryset(self, request):
         queryset = super(CloudProjectMembershipAdmin, self).get_queryset(request)
@@ -144,6 +147,50 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
 
     recover_erred_cloud_memberships.short_description = "Recover selected cloud project memberships"
 
+    def detect_external_networks(self, request, queryset):
+        queryset = queryset.exclude(state=SynchronizationStates.ERRED)
+
+        tasks_scheduled = 0
+
+        for membership in queryset.iterator():
+            tasks.detect_external_network.delay(membership.pk)
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'One cloud project membership scheduled for detection',
+            '%(tasks_scheduled)d cloud project memberships scheduled for detection',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    detect_external_networks.short_description = "Attempt to lookup and set external network id of the connected router"
+
+    def allocate_floating_ip(self, request, queryset):
+        queryset = queryset.exclude(state=SynchronizationStates.ERRED).exclude(external_network_id='')
+
+        tasks_scheduled = 0
+
+        for membership in queryset.iterator():
+            tasks.allocate_floating_ip.delay(membership.pk)
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'One cloud project membership scheduled for floating IP allocation',
+            '%(tasks_scheduled)d cloud project memberships scheduled for floating IP allocation',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    allocate_floating_ip.short_description = "Allocate floating IPs for selected cloud project memberships"
+
     def get_cloud_name(self, obj):
         return obj.cloud.name
 
@@ -180,6 +227,19 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
     list_filter = ['state', 'cloud_project_membership__project', 'template']
 
     actions = ['pull_installation_state']
+
+    fieldsets = (
+        (_('General'), {'fields': ('name', 'description', 'cloud_project_membership')}),
+        (_('State'), {'fields': ('state', 'installation_state', 'start_time')}),
+        (_('Flavor configuration'), {'fields': ('flavor_name', 'cores', 'ram',)}),
+        (_('Storage configuration'), {'fields': ('system_volume_id', 'system_volume_size', 'data_volume_id', 'data_volume_size',)}),
+        (_('Access configuration'), {'fields': ('key_name', 'key_fingerprint')}),
+        (_('Network configuration'), {'fields': ('internal_ips', 'external_ips')}),
+        (_('Deployment settings'), {'fields': ('template', 'type', 'agreed_sla', 'user_data')}),
+        (_('Backend connections'), {'fields': ('backend_id', 'billing_backend_id', 'billing_backend_template_id', 'billing_backend_purchase_order_id')}),
+
+    )
+
 
     def get_project_name(self, obj):
         return obj.cloud_project_membership.project.name
@@ -234,8 +294,25 @@ class TemplateMappingInline(admin.TabularInline):
     extra = 3
 
 
+class LicenseInlineFormSet(forms.models.BaseInlineFormSet):
+    def clean(self):
+        licenses = {}
+        for form in self.forms:
+            license = form.cleaned_data.get('templatelicense')
+            del_key = form.add_prefix('DELETE')
+            if license and del_key not in form.data:
+                licenses.setdefault(license.service_type, [])
+                licenses[license.service_type].append(license)
+
+        for service_type, data in licenses.items():
+            if len(data) > 1:
+                raise forms.ValidationError(
+                    "Only one license of service type %s is allowed" % service_type)
+
+
 class LicenseInline(admin.TabularInline):
     model = models.TemplateLicense.templates.through
+    formset = LicenseInlineFormSet
     verbose_name_plural = 'Connected licenses'
     extra = 1
 
@@ -247,7 +324,13 @@ class TemplateAdmin(admin.ModelAdmin):
         LicenseInline,
     )
     ordering = ('name', )
-    list_display = ['name', 'uuid', 'sla_level']
+    list_display = ['name', 'uuid', 'os_type', 'application_type', 'type', 'sla_level']
+
+    fieldsets = (
+        (_('General'), {'fields': ('name', 'description', 'icon_name', 'is_active',)}),
+        (_('Type'), {'fields': ('os', 'os_type', 'application_type', 'type',)}),
+        (_('Deployment settings'), {'fields': ('sla_level',)}),
+    )
 
 
 class FlavorInline(admin.TabularInline):
@@ -285,6 +368,7 @@ class InstanceSlaHistoryAdmin(admin.ModelAdmin):
 
 class FloatingIPAdmin(admin.ModelAdmin):
     list_display = ('cloud_project_membership', 'address', 'status')
+    readonly_fields = ('backend_network_id',)
 
 
 admin.site.register(models.Cloud, CloudAdmin)
