@@ -387,27 +387,18 @@ def log_resource_created(sender, instance, created=False, **kwargs):
     if instance.backend_id:
         # It is assumed that resource is imported if it already has backend id
         event_logger.resource.info(
-            '%s {resource_name} has been imported' % instance.get_type_display(),
+            'Resource {resource_name} has been imported.',
             event_type='resource_imported',
-            event_context={
-                'resource': instance,
-                'resource_type': str(instance._meta)
-            })
+            event_context={'resource': instance})
     else:
         event_logger.resource.info(
-            '%s {resource_name} has been created' % instance.get_type_display(),
+            'Resource {resource_name} has been created.',
             event_type='resource_created',
-            event_context={
-                'resource': instance,
-                'resource_type': str(instance._meta)
-            })
+            event_context={'resource': instance})
 
 
 def log_resource_deleted(sender, instance, **kwargs):
     event_logger.resource.info(
-        '%s {resource_name} has been deleted' % instance.get_type_display(),
+        'Resource {resource_name} has been deleted.',
         event_type='resource_deleted',
-        event_context={
-            'resource': instance,
-            'resource_type': str(instance._meta)
-        })
+        event_context={'resource': instance})

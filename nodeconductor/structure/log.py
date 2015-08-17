@@ -95,7 +95,6 @@ class UserOrganizationEventLogger(EventLogger):
 
 class ResourceEventLogger(EventLogger):
     resource = models.Resource
-    resource_type = basestring # example: openstack.instance
 
     class Meta:
         event_types = ('resource_imported',
