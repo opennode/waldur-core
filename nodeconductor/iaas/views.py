@@ -508,7 +508,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
             'items': request.query_params.getlist('item'),
             'method': request.query_params.get('method'),
         }
-        serializer = serializers.CalculatedUsageSerializerc(data={k: v for k, v in mapped.items() if v})
+        serializer = serializers.CalculatedUsageSerializer(data={k: v for k, v in mapped.items() if v})
         serializer.is_valid(raise_exception=True)
         results = serializer.get_stats(instance, start, end)
         return Response(results, status=status.HTTP_200_OK)
