@@ -7,7 +7,7 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('iaas', '0043_enhance_resource_and_template_for_billing'),
+        ('iaas', '0044_floatingip_backend_network_id.py'),
     ]
 
     operations = [
