@@ -93,6 +93,15 @@ class UserOrganizationEventLogger(EventLogger):
                        'user_organization_removed')
 
 
+class ResourceEventLogger(EventLogger):
+    resource = models.Resource
+
+    class Meta:
+        event_types = ('resource_imported',
+                       'resource_created',
+                       'resource_deleted')
+
+
 event_logger.register('customer_role', CustomerRoleEventLogger)
 event_logger.register('project_role', ProjectRoleEventLogger)
 event_logger.register('project_group_role', ProjectGroupRoleEventLogger)
@@ -102,3 +111,4 @@ event_logger.register('customer', CustomerEventLogger)
 event_logger.register('project', ProjectEventLogger)
 event_logger.register('project_group', ProjectGroupEventLogger)
 event_logger.register('balance', BalanceEventLogger)
+event_logger.register('resource', ResourceEventLogger)
