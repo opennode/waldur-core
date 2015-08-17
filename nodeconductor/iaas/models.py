@@ -269,6 +269,7 @@ class FloatingIP(core_models.UuidMixin, CloudProjectMember):
     address = models.GenericIPAddressField(protocol='IPv4')
     status = models.CharField(max_length=30)
     backend_id = models.CharField(max_length=255)
+    backend_network_id = models.CharField(max_length=255, editable=False)
 
 
 class IaasTemplateService(TemplateService):

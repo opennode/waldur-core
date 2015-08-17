@@ -538,6 +538,9 @@ class NovaClient(OpenStackBaseClient):
         def reboot(self, server_id):
             pass
 
+        def add_floating_ip(self, server_id, **kwargs):
+            pass
+
     class ServerVolume(OpenStackResourceList):
         pass
 
@@ -700,7 +703,7 @@ class NeutronClient(OpenStackBaseClient):
             response.append(subnet.to_dict())
         return {'subnets': response}
 
-    def list_routers(self):
+    def list_routers(self, tenant_id=None):
         routers = self._get_resources('Router')
         return {'routers': [r.to_dict() for r in routers.list()]}
 
@@ -713,6 +716,14 @@ class NeutronClient(OpenStackBaseClient):
 
     def list_floatingips(self, retrieve_all=True, **kwargs):
         return {'floatingips': []}
+
+    def create_floatingip(self, body=None):
+        return {
+            'floatingip': {
+                'network_ip_address': '10.7.223.15',
+                'id': 'b3cb74a1-b1e7-4fbb-b9cc-989d29cbfe83',
+            }
+        }
 
 
 class CinderClient(OpenStackBaseClient):

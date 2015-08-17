@@ -126,3 +126,10 @@ Deleting external network
 
 In order to delete external network, a person with admin role or staff should issue a DELETE request
 to **/api/project-cloud-memberships/<pk>/external_network/** without any parameters in the request body.
+
+Allocating floating IP
+----------------------
+
+In order to allocate floating IP, make POST request to
+**/api/project-cloud-memberships/<pk>/allocate_floating_ip/**.
+Note that cloud project membership should be in stable state and have external network.

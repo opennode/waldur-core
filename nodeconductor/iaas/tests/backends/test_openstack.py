@@ -410,9 +410,16 @@ class OpenStackBackendFloatingIPTest(TransactionTestCase):
         self.backend.get_or_create_internal_network = mock.Mock()
         self.backend.ensure_user_is_tenant_admin = mock.Mock()
         self.floating_ips = [
-            {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.163', 'id': '063795b7-23ac-4a0d-82f0-4326e73ee1bc', 'port_id': 'fakeport'},
-            {'status': 'DOWN', 'floating_ip_address': '10.7.201.114', 'id': '063795b7-23ac-4a0d-82f0-432as73asdas', 'port_id': 'fakeport'},
-            {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.107', 'id': '063795b7-asds-aq34-3df4-23asdasddssc', 'port_id': 'fakeport'},
+            {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.163',
+             'id': '063795b7-23ac-4a0d-82f0-4326e73ee1bc',
+             'port_id': 'fakeport',
+             'floating_network_id': 'd5e27df4-6754-46ac-903c-5b3fa25e21dd'},
+            {'status': 'DOWN', 'floating_ip_address': '10.7.201.114',
+             'id': '063795b7-23ac-4a0d-82f0-432as73asdas', 'port_id': 'fakeport',
+             'floating_network_id': '83353d4a-a2d2-4f24-a472-57578699a6b1'},
+            {'status': 'ACTIVE', 'floating_ip_address': '10.7.201.107',
+             'id': '063795b7-asds-aq34-3df4-23asdasddssc', 'port_id': 'fakeport',
+             'floating_network_id': '34918c99-de9f-4cd3-b56c-fc982429f481'},
         ]
         self.backend.get_floating_ips = mock.Mock(return_value=self.floating_ips)
 
@@ -430,7 +437,6 @@ class OpenStackBackendFloatingIPTest(TransactionTestCase):
         for ip in self.floating_ips:
             self.assertTrue(
                 FloatingIP.objects.filter(backend_id=ip['id']).exists(), 'Unexisted floating ip should be created')
-            self.assertEqual
 
     def test_pull_floating_ips_updates_existing_ips(self):
         backend_ip = self.floating_ips[0]
@@ -444,6 +450,43 @@ class OpenStackBackendFloatingIPTest(TransactionTestCase):
         self.assertEqual(reread_ip.address, backend_ip['floating_ip_address'])
         self.assertEqual(reread_ip.status, backend_ip['status'])
         self.assertEqual(reread_ip.backend_id, backend_ip['id'])
+
+    def test_floating_ip_allocation_creates_floating_ip_object(self):
+        data = {
+            'floatingip': {
+                'id': '063795b7-23ac-4a0d-82f0-4326e73ee1bc',
+                'floating_ip_address': '10.7.201.114',
+                'floating_network_id': '34918c99-de9f-4cd3-b56c-fc982429f481'
+            }
+        }
+        neutron = mock.Mock()
+        neutron.create_floatingip = mock.Mock(return_value=data)
+
+        self.backend.allocate_floating_ip_address(neutron, self.membership)
+        self.assertTrue(
+            FloatingIP.objects.filter(backend_id=data['floatingip']['id']).exists()
+        )
+
+    def test_assigned_floating_ip_becomes_active(self):
+        nova = mock.Mock()
+        nova.server.add_floating_ip = mock.Mock()
+
+        floating_ip = factories.FloatingIPFactory(status='DOWN')
+        self.backend.assign_floating_ip_to_instance(nova, factories.InstanceFactory(), floating_ip)
+        self.assertTrue(
+            FloatingIP.objects.filter(id=floating_ip.id, status='ACTIVE').exists()
+        )
+
+    def test_assigned_floating_ip_is_added_to_instance(self):
+        nova = mock.Mock()
+        nova.server.add_floating_ip = mock.Mock()
+
+        floating_ip = factories.FloatingIPFactory(status='DOWN')
+        instance = factories.InstanceFactory()
+        self.backend.assign_floating_ip_to_instance(nova, instance, floating_ip)
+        self.assertTrue(
+            Instance.objects.filter(uuid=instance.uuid, external_ips=floating_ip.address).exists()
+        )
 
 
 class OpenStackBackendImageApiTest(TransactionTestCase):

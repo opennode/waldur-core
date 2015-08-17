@@ -51,6 +51,10 @@ class OsTypes(object):
         (OTHER, 'Other'),
     )
 
+    CATEGORIES = {
+        'linux': (CENTOS6, CENTOS7, UBUNTU, RHEL6, RHEL7)
+    }
+
 
 class ApplicationTypes(object):
     WORDPRESS = 'wordpress'

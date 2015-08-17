@@ -933,6 +933,7 @@ class OpenStackBackend(OpenStackClient):
                     status=ip['status'],
                     backend_id=ip['id'],
                     address=ip['floating_ip_address'],
+                    backend_network_id=ip['floating_network_id']
                 )
                 logger.info('Created new floating IP port %s in database', created_ip.uuid)
 
@@ -2322,13 +2323,14 @@ class OpenStackBackend(OpenStackClient):
         if instance.external_ips is None or instance.internal_ips is None:
             return
 
-        logger.debug('About add external ip %s to instance %s',
+        logger.debug('About to add external ip %s to instance %s',
                      instance.external_ips, instance.uuid)
         try:
             floating_ip = models.FloatingIP.objects.get(
                 cloud_project_membership=instance.cloud_project_membership,
                 status='DOWN',
                 address=instance.external_ips,
+                backend_network_id=instance.cloud_project_membership.external_network_id
             )
             server.add_floating_ip(address=instance.external_ips, fixed_address=instance.internal_ips)
         except (
@@ -2343,7 +2345,7 @@ class OpenStackBackend(OpenStackClient):
             instance.set_erred()
             instance.save()
         else:
-            floating_ip.status = 'UP'
+            floating_ip.status = 'ACTIVE'
             floating_ip.save()
             logger.info('Successfully added external ip %s to instance %s',
                         instance.external_ips, instance.uuid)
@@ -2357,6 +2359,7 @@ class OpenStackBackend(OpenStackClient):
                 cloud_project_membership=instance.cloud_project_membership,
                 status='ACTIVE',
                 address=instance.external_ips,
+                backend_network_id=instance.cloud_project_membership.external_network_id
             )
         except (
                 models.FloatingIP.DoesNotExist,
@@ -2369,6 +2372,32 @@ class OpenStackBackend(OpenStackClient):
             floating_ip.save()
             logger.info('Successfully released floating ip %s from instance %s',
                         instance.external_ips, instance.uuid)
+
+    def allocate_floating_ip_address(self, neutron, membership):
+        data = {'floating_network_id': membership.external_network_id, 'tenant_id': membership.tenant_id}
+        ip_address = neutron.create_floatingip({'floatingip': data})['floatingip']
+
+        models.FloatingIP.objects.create(
+            cloud_project_membership=membership,
+            status='DOWN',
+            address=ip_address['floating_ip_address'],
+            backend_id=ip_address['id'],
+            backend_network_id=ip_address['floating_network_id']
+        )
+        logger.info('Floating IP %s for external network with id %s has been created.',
+                    ip_address['floating_ip_address'], membership.external_network_id)
+
+    def assign_floating_ip_to_instance(self, nova, instance, floating_ip):
+        nova.servers.add_floating_ip(server=instance.backend_id, address=floating_ip.address)
+
+        floating_ip.status = 'ACTIVE'
+        floating_ip.save()
+
+        instance.external_ips = floating_ip.address
+        instance.save()
+
+        logger.info('Floating IP %s was successfully assigned to the instance with id %s.',
+                    floating_ip.address, instance.uuid)
 
     def get_attached_volumes(self, server_id, nova):
         """
