@@ -382,27 +382,18 @@ def allocate_floating_ip(membership_pk):
 
 
 @shared_task
-def assign_floating_ip(instance_uuid):
+def assign_floating_ip(floating_ip_uuid, instance_uuid):
     instance = models.Instance.objects.get(uuid=instance_uuid)
+    backend = instance.cloud_project_membership.cloud.get_backend()
 
-    available_ips = models.FloatingIP.objects.filter(
-        cloud_project_membership=instance.cloud_project_membership,
-        status='DOWN',
-        backend_network_id=instance.cloud_project_membership.external_network_id
-    )
+    floating_ip = models.FloatingIP.objects.get(uuid=floating_ip_uuid)
 
-    if available_ips.exists():
-        floating_ip = available_ips.first()
-        backend = instance.cloud_project_membership.cloud.get_backend()
+    try:
+        session = backend.create_session(
+            keystone_url=instance.cloud_project_membership.cloud.auth_url,
+            dummy=backend.dummy)
+        nova = backend.create_nova_client(session)
 
-        try:
-            session = backend.create_session(
-                keystone_url=instance.cloud_project_membership.cloud.auth_url,
-                dummy=backend.dummy)
-            nova = backend.create_nova_client(session)
-
-            backend.assign_floating_ip_to_instance(nova, instance, floating_ip)
-        except CloudBackendError:
-            logger.warning('Failed to assign floating IP to the instance with id %s.', instance_uuid)
-    else:
-        logger.warning('There are no available floating IPs in this cloud project membership.')
+        backend.assign_floating_ip_to_instance(nova, instance, floating_ip)
+    except CloudBackendError:
+        logger.warning('Failed to assign floating IP to the instance with id %s.', instance_uuid)

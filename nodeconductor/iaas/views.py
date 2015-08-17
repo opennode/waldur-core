@@ -522,6 +522,9 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         """
         instance = self.get_object()
 
+        serializer = serializers.AssignFloatingIpSerializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         if not instance.cloud_project_membership.external_network_id:
             return Response({'detail': 'External network ID of the cloud project membership is missing.'},
                             status=status.HTTP_409_CONFLICT)
@@ -532,9 +535,10 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
             raise core_exceptions.IncorrectStateException(
                 detail='Cannot add floating IP to instance in unstable state.')
 
-        tasks.assign_floating_ip.delay(uuid)
+        tasks.assign_floating_ip.delay(serializer.validated_data['floating_ip_uuid'], uuid)
         return Response({'detail': 'Assigning floating IP to the instance has been scheduled.'},
                         status=status.HTTP_202_ACCEPTED)
+
 
 class TemplateFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
