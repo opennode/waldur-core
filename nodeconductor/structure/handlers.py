@@ -386,16 +386,28 @@ def log_resource_created(sender, instance, created=False, **kwargs):
 
     if instance.backend_id:
         # It is assumed that resource is imported if it already has backend id
-        event_logger.resource.info('%s {resource_id} has been imported' % sender.get_type_display(),
-                                   event_type='resource_imported',
-                                   event_context={'resource': instance, 'resource_type': sender._meta})
+        event_logger.resource.info(
+            '%s {resource_name} has been imported' % instance.get_type_display(),
+            event_type='resource_imported',
+            event_context={
+                'resource': instance,
+                'resource_type': str(instance._meta)
+            })
     else:
-        event_logger.resource.info('%s {resource_id} has been created' % sender.get_type_display(),
-                                   event_type='resource_created',
-                                   event_context={'resource': instance, 'resource_type': sender._meta})
+        event_logger.resource.info(
+            '%s {resource_name} has been created' % instance.get_type_display(),
+            event_type='resource_created',
+            event_context={
+                'resource': instance,
+                'resource_type': str(instance._meta)
+            })
 
 
 def log_resource_deleted(sender, instance, **kwargs):
-    event_logger.resource.info('%s {resource_id} has been deleted' % sender.get_type_display(),
-                               event_type='resource_deleted',
-                               event_context={'resource': instance, 'resource_type': sender._meta})
+    event_logger.resource.info(
+        '%s {resource_name} has been deleted' % instance.get_type_display(),
+        event_type='resource_deleted',
+        event_context={
+            'resource': instance,
+            'resource_type': str(instance._meta)
+        })
