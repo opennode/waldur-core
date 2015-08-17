@@ -253,34 +253,17 @@ class ProjectFilter(quotas_views.QuotaFilterMixin, django_filters.FilterSet):
             '-customer__name',
             'customer__abbreviation',
             '-customer__abbreviation',
-            'quotas__limit__ram',
-            '-quotas__limit__ram',
-            'quotas__limit__vcpu',
-            '-quotas__limit__vcpu',
-            'quotas__limit__storage',
-            '-quotas__limit__storage',
-            'quotas__limit__max_instances',
-            '-quotas__limit__max_instances',
-            'quotas__limit',
-            '-quotas__limit',
         ]
 
         order_by_mapping = {
             # Proper field naming
             'project_group_name': 'project_groups__name',
-            'vcpu': 'quotas__limit__vcpu',
-            'ram': 'quotas__limit__ram',
-            'max_instances': 'quotas__limit__max_instances',
-            'storage': 'quotas__limit__storage',
             'customer_name': 'customer__name',
             'customer_abbreviation': 'customer__abbreviation',
             'customer_native_name': 'customer__native_name',
 
             # Backwards compatibility
             'project_groups__name': 'project_groups__name',
-            'resource_quota__vcpu': 'quotas__limit__vcpu',
-            'resource_quota__ram': 'quotas__limit__ram',
-            'resource_quota__storage': 'quotas__limit__storage',
         }
 
 

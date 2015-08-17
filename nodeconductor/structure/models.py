@@ -249,7 +249,7 @@ class Project(core_models.DescribableMixin,
         project_path = 'self'
         project_group_path = 'project_groups'
 
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances', 'nc_resource_count', 'nc_service_count']
+    QUOTAS_NAMES = ['nc_resource_count', 'nc_service_count']
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
 
