@@ -66,7 +66,6 @@ MIDDLEWARE_CLASSES = (
     'nodeconductor.logging.middleware.CaptureEventContextMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'reversion.middleware.RevisionMiddleware',
 )
 
 REST_FRAMEWORK = {
