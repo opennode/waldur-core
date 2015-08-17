@@ -250,8 +250,8 @@ class ReversionMixin(object):
 
     def save(self, save_revision=True, ignore_revision_duplicates=True, **kwargs):
         if save_revision:
-            reversion.revision_context_manager.set_ignore_duplicates(ignore_revision_duplicates)
             with reversion.create_revision():
+                reversion.revision_context_manager.set_ignore_duplicates(ignore_revision_duplicates)
                 return super(ReversionMixin, self).save(**kwargs)
         return super(ReversionMixin, self).save(**kwargs)
 
