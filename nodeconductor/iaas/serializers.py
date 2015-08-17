@@ -843,7 +843,8 @@ class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = models.FloatingIP
-        fields = ('url', 'uuid', 'status', 'address', 'cloud_project_membership')
+        fields = ('url', 'uuid', 'status', 'address',
+                  'cloud_project_membership', 'backend_id', 'backend_network_id')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -1107,5 +1108,28 @@ class ExternalNetworkSerializer(serializers.Serializer):
         # subtract router and broadcast IPs
         if cidr.size < ips_count - 2:
             raise serializers.ValidationError("Not enough Floating IP Addresses available.")
+
+        return attrs
+
+
+class AssignFloatingIpSerializer(serializers.Serializer):
+    floating_ip_uuid = serializers.CharField()
+
+    def __init__(self, instance, *args, **kwargs):
+        self.assigned_instance = instance
+        super(AssignFloatingIpSerializer, self).__init__(*args, **kwargs)
+
+    def validate(self, attrs):
+        ip_uuid = attrs.get('floating_ip_uuid')
+
+        try:
+            floating_ip = models.FloatingIP.objects.get(uuid=ip_uuid)
+        except models.FloatingIP.DoesNotExist:
+            raise serializers.ValidationError("Floating IP does not exist.")
+
+        if floating_ip.status == 'ACTIVE':
+            raise serializers.ValidationError("Floating IP status must be DOWN.")
+        elif floating_ip.cloud_project_membership != self.assigned_instance.cloud_project_membership:
+            raise serializers.ValidationError("Floating IP must belong to same cloud project membership.")
 
         return attrs
