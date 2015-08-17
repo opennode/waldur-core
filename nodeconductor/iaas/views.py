@@ -4,7 +4,6 @@ import functools
 import datetime
 import logging
 import time
-from operator import add
 
 from django.db import models as django_models
 from django.db import transaction, IntegrityError
@@ -23,7 +22,6 @@ from rest_framework import viewsets, views
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route, list_route
 import reversion
-from reversion.models import Version
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
@@ -1280,7 +1278,7 @@ class QuotaTimelineStatsView(views.APIView):
     def get_quota_scopes(self, request):
         serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        scopes = serializer.get_projects(request.user)
+        scopes = serializer.get_memberships(request.user)
         return scopes
 
     def get_stats(self, request):
