@@ -173,23 +173,35 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.log_project_group_role_revoked',
         )
 
-        for model in Resource.get_all_models():
+        for index, model in enumerate(Resource.get_all_models()):
             signals.pre_save.connect(
                 core_handlers.preserve_fields_before_update,
                 sender=model,
-                dispatch_uid='nodeconductor.core.handlers.preserve_fields_before_update_%s' % model.__name__,
+                dispatch_uid='nodeconductor.core.handlers.preserve_fields_before_update_{}_{}'.format(model.__name__, index),
             )
 
             signals.post_save.connect(
                 handlers.update_resource_quota_usage,
                 sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_resource_quota_%s' % model.__name__,
+                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_resource_quota_{}_{}'.format(model.__name__, index),
             )
 
             signals.post_delete.connect(
                 handlers.update_resource_quota_usage,
                 sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_resource_quota_%s' % model.__name__,
+                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_resource_quota_{}_{}'.format(model.__name__, index),
+            )
+
+            signals.post_save.connect(
+                handlers.log_resource_created,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.log_resource_created_{}_{}'.format(model.__name__, index),
+            )
+
+            signals.post_delete.connect(
+                handlers.log_resource_deleted,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.log_resource_deleted_{}_{}'.format(model.__name__, index),
             )
 
         for model in ServiceProjectLink.get_all_models():

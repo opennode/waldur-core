@@ -62,7 +62,7 @@ class Image(structure_models.ServiceProperty):
     min_ram = models.PositiveIntegerField(default=0, help_text='Minimum memory size in MiB')
 
 
-class Instance(LoggableMixin, structure_models.VirtualMachineMixin, structure_models.Resource):
+class Instance(structure_models.VirtualMachineMixin, structure_models.Resource):
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
     service_project_link = models.ForeignKey(
