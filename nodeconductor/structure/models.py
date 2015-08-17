@@ -76,7 +76,7 @@ class Customer(core_models.UuidMixin,
     billing_backend_id = models.CharField(max_length=255, blank=True)
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
 
-    QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count']
+    QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count', 'nc_service_count']
 
     def get_billing_backend(self):
         return BillingBackend(self)
