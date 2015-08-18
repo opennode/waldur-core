@@ -139,7 +139,8 @@ class CostTrackingStrategy(object):
         for model in models:
             queryset = model.objects.exclude(state=model.States.ERRED)
             if customer:
-                queryset = queryset.filter(customer=customer)
+                query = {model.Permissions.customer_path: customer}
+                queryset = queryset.filter(**query)
 
             for instance in queryset.iterator():
                 try:
