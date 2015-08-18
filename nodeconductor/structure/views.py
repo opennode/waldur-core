@@ -191,7 +191,7 @@ class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
         raise PermissionDenied()
 
 
-class ProjectFilter(quotas_views.QuotaFilterMixin, django_filters.FilterSet):
+class ProjectFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='customer__uuid',
         distinct=True,

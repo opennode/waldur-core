@@ -10,9 +10,24 @@ Links list
 List of memberships(links) is available at */api/project-cloud-memberships/* endpoint and support next filters:
 
 - ?cloud=<cloud uuid>
-- ?project=<project uuid>
 - ?tenant_id=<id of tenant that is related to link>
+- ?project=<project uuid>
+- ?project_name=<project name>
+- ?project_group=<project group uuid>
+- ?project_group_name=<project group name>
+- ?ram=<link ram quota usage value>
+- ?vcpu=<link vcpu quota usage value>
+- ?storage=<link storage quota usage value>
+- ?max_instances=<link max_instances quota usage value>
 
+Also endpoint support next ordering:
+
+- ?o=project_name
+- ?o=project_group_name
+- ?o=ram
+- ?o=vcpu
+- ?o=storage
+- ?o=max_instances
 
 Setting a project-cloud link quota
 ----------------------------------
