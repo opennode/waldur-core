@@ -1085,6 +1085,7 @@ class CloudProjectMembershipFilter(quota_filters.QuotaFilterSetMixin, django_fil
         fields = [
             'cloud',
             'project', 'project_name',
+            'project_group', 'project_group_name',
             'ram', 'vcpu', 'storage', 'max_instances',
             'tenant_id',
         ]
