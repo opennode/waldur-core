@@ -20,7 +20,7 @@ class QuotaFilterSetMixin(object):
     Example:
         # enable ordering by quotas "ram" and "vcpu" for MyModel
 
-        class MyModelFilterSet(QuotaFilterMixin, django_filters.FilterSet):
+        class MyModelFilterSet(QuotaFilterSetMixin, django_filters.FilterSet):
             class Meta(object):
                 model = models.MyModel
                 order_by = [
