@@ -5,8 +5,7 @@ import logging
 
 from django.apps import apps
 from django.conf import settings
-from django.contrib.auth.models import (
-    AbstractBaseUser, PermissionsMixin, UserManager)
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 from django.core import validators
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail

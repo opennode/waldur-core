@@ -35,10 +35,8 @@ from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
-from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.utils import request_api
-from nodeconductor.quotas import views as quotas_views
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions

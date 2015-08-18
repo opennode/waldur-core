@@ -104,12 +104,17 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
     )
     service_name = serializers.ReadOnlyField(source='cloud.name')
     service_uuid = serializers.ReadOnlyField(source='cloud.uuid')
+    # XXX: This field is for portal only
+    project_group = serializers.SerializerMethodField()
+    project_group_name = serializers.SerializerMethodField()
+    project_group_uuid = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.CloudProjectMembership
         fields = (
             'url',
             'project', 'project_name', 'project_uuid',
+            'project_group', 'project_group_name', 'project_group_uuid',
             'cloud', 'cloud_name', 'cloud_uuid',
             'quotas',
             'state',
@@ -123,6 +128,25 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             'cloud': {'lookup_field': 'uuid'},
             'project': {'lookup_field': 'uuid'},
         }
+
+    # XXX: This field is for portal only
+    def get_project_group(self, obj):
+        if obj.project.project_group is not None:
+            url = reverse('projectgroup-detail', kwargs={'uuid': obj.project.project_group.uuid})
+            try:
+                return self.context['request'].build_absolute_uri(url)
+            except KeyError:
+                return url
+
+    # XXX: This field is for portal only
+    def get_project_group_name(self, obj):
+        if obj.project.project_group is not None:
+            return obj.project.project_group.name
+
+    # XXX: This field is for portal only
+    def get_project_group_uuid(self, obj):
+        if obj.project.project_group is not None:
+            return obj.project.project_group.uuid.hex
 
     def get_filtered_field_names(self):
         return 'project', 'cloud'
