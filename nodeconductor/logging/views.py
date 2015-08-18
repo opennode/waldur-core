@@ -169,6 +169,9 @@ class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
                 ct = ContentType.objects.get_for_model(scope_type)
                 queryset = queryset.filter(content_type=ct)
 
+        if 'alert_type' in request.query_params:
+            queryset = queryset.filter(alert_type__in=request.query_params.getlist('alert_type'))
+
         return queryset
 
 

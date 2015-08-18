@@ -1065,19 +1065,19 @@ class CloudProjectMembershipFilter(quota_filters.QuotaFilterSetMixin, django_fil
     )
     ram = quota_filters.QuotaFilter(
         quota_name='ram',
-        quota_field='usage',
+        quota_field='limit',
     )
     vcpu = quota_filters.QuotaFilter(
         quota_name='vcpu',
-        quota_field='usage',
+        quota_field='limit',
     )
     storage = quota_filters.QuotaFilter(
         quota_name='storage',
-        quota_field='usage',
+        quota_field='limit',
     )
     max_instances = quota_filters.QuotaFilter(
         quota_name='max_instances',
-        quota_field='usage',
+        quota_field='limit',
     )
 
     class Meta(object):
@@ -1094,24 +1094,24 @@ class CloudProjectMembershipFilter(quota_filters.QuotaFilterSetMixin, django_fil
             '-project__name',
             'project__project_groups__name',
             '-project__project_groups__name',
-            'quotas__usage__ram',
-            '-quotas__usage__ram',
-            'quotas__usage__vcpu',
-            '-quotas__usage__vcpu',
-            'quotas__usage__storage',
-            '-quotas__usage__storage',
-            'quotas__usage__max_instances',
-            '-quotas__usage__max_instances',
-            'quotas__usage',
-            '-quotas__usage',
+            'quotas__limit__ram',
+            '-quotas__limit__ram',
+            'quotas__limit__vcpu',
+            '-quotas__limit__vcpu',
+            'quotas__limit__storage',
+            '-quotas__limit__storage',
+            'quotas__limit__max_instances',
+            '-quotas__limit__max_instances',
+            'quotas__limit',
+            '-quotas__limit',
         ]
         order_by_mapping = {
             'project_name': 'project__name',
             'project_group_name': 'project__project_groups__name',
-            'vcpu': 'quotas__usage__vcpu',
-            'ram': 'quotas__usage__ram',
-            'max_instances': 'quotas__usage__max_instances',
-            'storage': 'quotas__usage__storage',
+            'vcpu': 'quotas__limit__vcpu',
+            'ram': 'quotas__limit__ram',
+            'max_instances': 'quotas__limit__max_instances',
+            'storage': 'quotas__limit__storage',
         }
 
 
@@ -1236,6 +1236,7 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
         tasks.allocate_floating_ip.delay(pk)
         return Response({'detail': 'Floating IP allocation has been scheduled.'},
                         status=status.HTTP_202_ACCEPTED)
+
 
 class SecurityGroupFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
