@@ -295,7 +295,7 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
-class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineMixin, structure_models.Resource):
+class Instance(PaidResource, structure_models.BaseVirtualMachineMixin, structure_models.Resource):
     """
     A generalization of a single virtual machine.
 
@@ -366,7 +366,11 @@ class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineM
         return ServiceBackend.mb2gb(self.data_volume_size + extra)
 
     def get_default_price_options(self):
-        return {CostConstants.PriceItem.FLAVOR: CostConstants.Flavor.OFFLINE}
+        return {
+            CostConstants.PriceItem.FLAVOR: CostConstants.Flavor.OFFLINE,
+            CostConstants.PriceItem.LICENSE_OS: CostConstants.Os.OTHER,
+            CostConstants.PriceItem.LICENSE_APPLICATION: CostConstants.Application.NONE,
+        }
 
     def get_price_options(self):
         return {

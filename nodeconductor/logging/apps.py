@@ -11,9 +11,9 @@ class EventsConfig(AppConfig):
     verbose_name = 'NodeConductor Logging'
 
     def ready(self):
-        for model in utils.get_loggable_models():
+        for index, model in enumerate(utils.get_loggable_models()):
             signals.post_delete.connect(
                 handlers.remove_related_alerts,
                 sender=model,
-                dispatch_uid='nodeconductor.logging.handlers.remove_%s_related_alerts' % model.__name__.lower(),
+                dispatch_uid='nodeconductor.logging.handlers.remove_{}_{}_related_alerts'.format(model.__name__, index),
             )

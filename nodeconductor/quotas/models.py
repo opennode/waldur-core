@@ -77,11 +77,7 @@ class QuotaModelMixin(models.Model):
     quotas = ct_fields.GenericRelation('quotas.Quota', related_query_name='quotas')
 
     def set_quota_limit(self, quota_name, limit):
-        # XXX: !!! Horrible hack !!! Remove ASAP !!! Propagate limits for backend quotas
-        if quota_name.startswith('nc_'):
-            self.quotas.filter(name=quota_name).update(limit=limit)
-        else:
-            self._set_editable_field_value('limit', quota_name, limit)
+        self.quotas.filter(name=quota_name).update(limit=limit)
 
     def set_quota_usage(self, quota_name, usage):
         self._set_editable_field_value('usage', quota_name, usage)
@@ -131,7 +127,8 @@ class QuotaModelMixin(models.Model):
                 try:
                     quota = ancestor.quotas.select_for_update().get(name=quota_name)
                 except Quota.DoesNotExist:
-                    quota = Quota.objects.create(scope=ancestor, name=quota_name)
+                    # ignore quotas change if parent does not have such quota
+                    pass
                 else:
                     setattr(quota, field, getattr(quota, field) + delta)
                     quota.save(update_fields=[field])

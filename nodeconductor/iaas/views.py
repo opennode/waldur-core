@@ -1378,7 +1378,7 @@ class QuotaTimelineStatsView(views.APIView):
     def get_quota_scopes(self, request):
         serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        scopes = serializer.get_projects(request.user)
+        scopes = serializer.get_memberships(request.user)
         return scopes
 
     def get_stats(self, request):

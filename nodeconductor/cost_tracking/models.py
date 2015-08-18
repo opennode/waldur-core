@@ -80,12 +80,12 @@ class DefaultPriceListItem(core_models.UuidMixin, AbstractPriceListItem):
     tracker = FieldTracker()
 
     @classmethod
-    def get_options(cls, **queryset_args):
+    def get_options(cls, product_id):
         """ Return a dictionary with backend IDs of configurable options
             for specific product defined by resource_content_type or backend_product_id
         """
         options = {}
-        for item in cls.objects.filter(**queryset_args):
+        for item in cls.objects.filter(backend_product_id=product_id):
             options.setdefault(item.item_type, {})
             options[item.item_type]['id'] = item.backend_option_id
 

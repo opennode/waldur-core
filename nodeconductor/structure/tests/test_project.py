@@ -142,7 +142,7 @@ class ProjectFilterTest(test.APITransactionTestCase):
             'name', 'description',
             'customer',
             'project_group', 'project_group_name',
-            'vcpu', 'storage', 'backup', 'max_instances', 'ram',
+            'backup',
         ]:
             data = {filter_name: 0}
             response = self.client.get(factories.ProjectFactory.get_list_url(), data)
@@ -152,7 +152,6 @@ class ProjectFilterTest(test.APITransactionTestCase):
         for ordering in [
             'name',
             'project_group_name',
-            'vcpu', 'storage', 'max_instances', 'ram',
         ]:
             data = {'o': ordering}
             response = self.client.get(factories.ProjectFactory.get_list_url(), data)

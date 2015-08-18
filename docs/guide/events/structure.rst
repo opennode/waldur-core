@@ -69,3 +69,16 @@ Structure events
 
     **role_revoked**
         User has lost role.
+
+------------
+
+.. glossary::
+
+    **resource_imported**
+        Existing resource has been imported from service to project.
+
+    **resource_created**
+        New resource has been created.
+
+    **resource_deleted**
+        Resource has been deleted.

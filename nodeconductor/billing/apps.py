@@ -6,6 +6,7 @@ from django_fsm.signals import post_transition
 from django.conf import settings
 
 from nodeconductor.billing import handlers
+from nodeconductor.billing.models import PaidResource
 from nodeconductor.structure import models as structure_models
 
 
@@ -31,16 +32,17 @@ class BillingConfig(AppConfig):
         nc_settings = getattr(settings, 'NODECONDUCTOR', {})
         if nc_settings.get('ENABLE_WHMCS_ORDER_PROCESSING', False):
             for index, resource in enumerate(structure_models.Resource.get_all_models()):
-                signals.post_delete.connect(
-                    handlers.cancel_purchase,
-                    sender=resource,
-                    dispatch_uid='nodeconductor.billing.handlers.cancel_purchase_{}_{}'.format(
-                        resource.__name__, index),
-                )
+                if issubclass(resource, PaidResource):
+                    signals.post_delete.connect(
+                        handlers.terminate_purchase,
+                        sender=resource,
+                        dispatch_uid='nodeconductor.billing.handlers.terminate_purchase_{}_{}'.format(
+                            resource.__name__, index),
+                    )
 
-                post_transition.connect(
-                    handlers.track_order,
-                    sender=resource,
-                    dispatch_uid='nodeconductor.billing.handlers.track_order_{}_{}'.format(
-                        resource.__name__, index),
-                )
+                    post_transition.connect(
+                        handlers.track_order,
+                        sender=resource,
+                        dispatch_uid='nodeconductor.billing.handlers.track_order_{}_{}'.format(
+                            resource.__name__, index),
+                    )
