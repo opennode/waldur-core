@@ -25,6 +25,7 @@ config_defaults = {
         'template_debug': 'false',
         'user_can_create_customer': 'false',
         'enable_whmcs_order_processing': 'false',
+        'show_all_users': 'true'
     },
     'celery': {
         'backup_schedule_execute_period': 600,
@@ -817,6 +818,8 @@ NODECONDUCTOR.update({
     'USER_CAN_CREATE_CUSTOMER': config.getboolean('global', 'user_can_create_customer'),
 
     'ENABLE_WHMCS_ORDER_PROCESSING': config.getboolean('global', 'enable_whmcs_order_processing'),
+
+    'SHOW_ALL_USERS': config.getboolean('global', 'show_all_users'),
 
 })
 
