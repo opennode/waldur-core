@@ -37,6 +37,7 @@ from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.iaas.serializers import QuotaTimelineStatsSerializer
 from nodeconductor.iaas.log import event_logger
+from nodeconductor.quotas import filters as quota_filters
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.views import UpdateOnlyByPaidCustomerMixin
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
@@ -1042,22 +1043,75 @@ class CloudViewSet(UpdateOnlyByPaidCustomerMixin,
         super(CloudViewSet, self).perform_update(serializer)
 
 
-class CloudProjectMembershipFilter(django_filters.FilterSet):
+class CloudProjectMembershipFilter(quota_filters.QuotaFilterSetMixin, django_filters.FilterSet):
     cloud = django_filters.CharFilter(
         name='cloud__uuid',
     )
     project = django_filters.CharFilter(
         name='project__uuid',
     )
-    project_uuid = django_filters.CharFilter(name='project__uuid')
+    project_name = django_filters.CharFilter(
+        name='project__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+    project_group = django_filters.CharFilter(
+        name='project__project_groups__uuid',
+    )
+    project_group_name = django_filters.CharFilter(
+        name='project__project_groups__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+    ram = quota_filters.QuotaFilter(
+        quota_name='ram',
+        quota_field='usage',
+    )
+    vcpu = quota_filters.QuotaFilter(
+        quota_name='vcpu',
+        quota_field='usage',
+    )
+    storage = quota_filters.QuotaFilter(
+        quota_name='storage',
+        quota_field='usage',
+    )
+    max_instances = quota_filters.QuotaFilter(
+        quota_name='max_instances',
+        quota_field='usage',
+    )
 
     class Meta(object):
         model = models.CloudProjectMembership
         fields = [
             'cloud',
-            'project',
+            'project', 'project_name',
+            'ram', 'vcpu', 'storage', 'max_instances',
             'tenant_id',
         ]
+        order_by = [
+            'project__name',
+            '-project__name',
+            'project__project_groups__name',
+            '-project__project_groups__name',
+            'quotas__usage__ram',
+            '-quotas__usage__ram',
+            'quotas__usage__vcpu',
+            '-quotas__usage__vcpu',
+            'quotas__usage__storage',
+            '-quotas__usage__storage',
+            'quotas__usage__max_instances',
+            '-quotas__usage__max_instances',
+            'quotas__usage',
+            '-quotas__usage',
+        ]
+        order_by_mapping = {
+            'project_name': 'project__name',
+            'project_group_name': 'project__project_groups__name',
+            'vcpu': 'quotas__usage__vcpu',
+            'ram': 'quotas__usage__ram',
+            'max_instances': 'quotas__usage__max_instances',
+            'storage': 'quotas__usage__storage',
+        }
 
 
 class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
@@ -1078,7 +1132,7 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
 
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
-    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
+    filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = CloudProjectMembershipFilter
 
