@@ -261,9 +261,9 @@ NODECONDUCTOR = {
 }
 
 # import optional extension settings from supported modules
-try:
-    from nodeconductor_plus.settings import *
-    INSTALLED_APPS += NODECONDUCTOR_PLUS_APPS
-    CELERYBEAT_SCHEDULE.update(NODECONDUCTOR_PLUS_CELERYBEAT_SCHEDULE)
-except (ImportError, NameError):
-    pass
+# try:
+#     from nodeconductor_plus.settings import *
+#     INSTALLED_APPS += NODECONDUCTOR_PLUS_APPS
+#     CELERYBEAT_SCHEDULE.update(NODECONDUCTOR_PLUS_CELERYBEAT_SCHEDULE)
+# except (ImportError, NameError):
+#     pass

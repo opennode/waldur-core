@@ -61,7 +61,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('iaas', '0016_iaastemplateservice'),
-        ('structure', '0004_init_new_quotas'),
+        # ('structure', '0004_init_new_quotas'),
     ]
 
     operations = [
