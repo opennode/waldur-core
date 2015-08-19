@@ -239,12 +239,14 @@ def lookup_instance_licenses_from_event_log(instance_uuid):
 @shared_task(name='nodeconductor.billing.sync_pricelist')
 def sync_pricelist():
     backend = BillingBackend()
+    try:
+        backend.propagate_pricelist()
+    except BillingBackendError as e:
+        logger.error("Can't propagade pricelist to %s: %s", backend, e)
+
+
     priceitems = DefaultPriceListItem.objects.filter(
         backend_product_id='').values_list('resource_content_type', flat=True).distinct()
 
     for cid in priceitems:
         content_type = ContentType.objects.get_for_id(cid)
-        try:
-            backend.propagate_pricelist(content_type)
-        except BillingBackendError as e:
-            logger.error("Can't propagade pricelist for %s: %s", content_type, e)

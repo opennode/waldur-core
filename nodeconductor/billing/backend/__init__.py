@@ -27,6 +27,7 @@ class BillingBackend(object):
                 "Dummy backend for billing is used, "
                 "set BILLING_DUMMY to False to disable dummy backend")
             self.api = DummyBillingAPI()
+            self.api_url = ':dummy:'
         elif not config:
             raise BillingBackendError(
                 "Can't find billing settings. "
@@ -45,9 +46,13 @@ class BillingBackend(object):
                 six.reraise(BillingBackendError, e)
             else:
                 self.api = backend_cls(**config)
+                self.api_url = config['api_url']
 
     def __getattr__(self, name):
         return getattr(self.api, name)
+
+    def __repr__(self):
+        return 'Billing backend %s' % self.api_url
 
     def get_or_create_client(self):
         if self.customer.billing_backend_id:
