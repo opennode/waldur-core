@@ -243,10 +243,3 @@ def sync_pricelist():
         backend.propagate_pricelist()
     except BillingBackendError as e:
         logger.error("Can't propagade pricelist to %s: %s", backend, e)
-
-
-    priceitems = DefaultPriceListItem.objects.filter(
-        backend_product_id='').values_list('resource_content_type', flat=True).distinct()
-
-    for cid in priceitems:
-        content_type = ContentType.objects.get_for_id(cid)
