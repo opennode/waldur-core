@@ -810,10 +810,8 @@ class OpenStackBackend(OpenStackClient):
                     nc_instance.key_fingerprint = ""
 
                 ips = self._get_instance_ips(backend_instance)
-                if 'internal' in ips:
-                    nc_instance.internal_ips = ips['internal']
-                if 'external' in ips:
-                    nc_instance.external_ips = ips['external']
+                nc_instance.internal_ips = ips['internal'] if 'internal' in ips else ''
+                nc_instance.external_ips = ips['external'] if 'external' in ips else ''
 
                 nc_instance.save()
                 # TODO: synchronize also volume sizes
