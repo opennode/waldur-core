@@ -392,7 +392,7 @@ class ZabbixDBClient(object):
             }
             try:
                 value = self.execute_query(query, parameters)[0][0]
-            except KeyError:
+            except IndexError:
                 return 'NO DATA'
             return 'OK' if value == 1 else 'NOT OK'
         else:
