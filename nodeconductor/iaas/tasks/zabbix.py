@@ -9,6 +9,7 @@ from nodeconductor.core.tasks import retry_if_false
 from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
+from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 from nodeconductor.monitoring import utils as monitoring_utils
 
@@ -34,8 +35,8 @@ def zabbix_update_host_visible_name(instance_uuid):
 
 
 def _get_installation_state(instance):
-    zabbix_client = ZabbixApiClient()
-    return zabbix_client.get_application_installation_state(instance)
+    db_client = ZabbixDBClient()
+    return db_client.get_application_installation_state(instance)
 
 
 # XXX: instances pulling and polling has to be refactored (NC-580):
