@@ -61,7 +61,8 @@ class BillingBackend(object):
         self.customer.billing_backend_id = self.api.add_client(
             name=self.customer.name,
             organization=self.customer.name,
-            email="%s@example.com" % self.customer.uuid  # XXX: a fake email address unique to a customer
+            email="%s@example.com" % self.customer.uuid,  # XXX: a fake email address unique to a customer
+            uuid=self.customer.uuid.hex,
         )
 
         self.customer.save(update_fields=['billing_backend_id'])

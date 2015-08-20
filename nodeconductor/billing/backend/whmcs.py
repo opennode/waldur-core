@@ -9,6 +9,7 @@ import urllib
 import urlparse
 
 from decimal import Decimal
+from django.contrib.contenttypes.models import ContentType
 from django.utils.http import urlsafe_base64_encode
 
 from nodeconductor.cost_tracking import CostConstants
@@ -625,7 +626,14 @@ class WHMCSAPI(object):
 
         return component_id
 
-    def propagate_pricelist(self, resource_content_type):
+    def propagate_pricelist(self):
+        priceitems = DefaultPriceListItem.objects.filter(
+            backend_product_id='').values_list('resource_content_type', flat=True).distinct()
+        for cid in priceitems:
+            content_type = ContentType.objects.get_for_id(cid)
+            self._propagate_pricelist(content_type)
+
+    def _propagate_pricelist(self, resource_content_type):
         # TODO: Refactor it:
         #       -- it's impossible to update product's configuration right now
         #       -- there's overhead in fetching option's IDs (could be fetched right after creating)

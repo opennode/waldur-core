@@ -1,9 +1,9 @@
 import re
+import json
 import requests
 import logging
 
 from datetime import datetime
-from lxml.html.clean import Cleaner
 from lxml.builder import E, ElementMaker
 from lxml import etree
 
@@ -37,14 +37,30 @@ class KillBillAPI(object):
                 "Missed billing credentials. They must be supplied explicitly "
                 "or defined within settings.NODECONDUCTOR.BILLING")
 
+        self.currency = 'USD'
         self.credentials = dict(
             api_url=api_url,
             api_key=api_key,
             api_secret=api_secret,
             auth=(username, password))
 
+        self.accounts = KillBill.Account(self.credentials)
         self.catalog = KillBill.Catalog(self.credentials)
         self.test = KillBill.Test(self.credentials)
+
+    def add_client(self, name=None, email=None, uuid=None, **kwargs):
+        self.accounts.create(
+            name=name, email=email, externalKey=uuid, currency=self.currency)
+
+        account = self.get_client_by_uuid(uuid)
+        return account['accountId']
+
+    def get_client_details(self, client_id):
+        account = self.accounts.get(client_id)
+        return {'balance': account['accountBalance']}
+
+    def get_client_by_uuid(self, uuid):
+        return self.accounts.list(externalKey=uuid)
 
     def propagate_pricelist(self):
         # Generate catalog and push it to backend
@@ -70,7 +86,7 @@ class KillBillAPI(object):
                         E.unit('hours'),
                         E.size('1'),
                         E.prices(E.price(
-                            E.currency('USD'),
+                            E.currency(self.currency),
                             E.value(str(priceitem.value)),
                         )),
                         E.max('744'),  # max hours in a month
@@ -93,23 +109,23 @@ class KillBillAPI(object):
             plans.append(plan)
             plannames.append(plan_name)
 
-        EC = ElementMaker(nsmap={'xsi': 'http://www.w3.org/2001/XMLSchema-instance'})
-        catalog = EC.catalog(
+        xsi = 'http://www.w3.org/2001/XMLSchema-instance'
+        catalog = ElementMaker(nsmap={'xsi': xsi}).catalog(
             E.effectiveDate(datetime.utcnow().isoformat("T")),
             E.catalogName('NodeConductor'),
             E.recurringBillingMode('IN_ADVANCE'),
-            E.currencies(E.currency('USD')),
+            E.currencies(E.currency(self.currency)),
             E.units(E.unit(name='hours')),
             prods,
             E.rules(E.priceList(E.priceListCase(E.toPriceList('DEFAULT')))),
             plans,
             E.priceLists(E.defaultPriceList(E.plans(*[E.plan(n) for n in plannames]), name='DEFAULT')),
-            **{'{http://www.w3.org/2001/XMLSchema-instance}schemaLocation': 'CatalogSchema.xsd'})
+            **{'{{{}}}schemaLocation'.format(xsi): 'CatalogSchema.xsd'})
 
         xml = etree.tostring(
             catalog, xml_declaration=True, pretty_print=True, standalone=False, encoding='UTF-8')
 
-        self.catalog.post(xml)
+        self.catalog.create(xml)
 
 
 class KillBill(object):
@@ -124,10 +140,14 @@ class KillBill(object):
         def __repr__(self):
             return self.api_url + self.path
 
-        def get(self):
-            return self.request(self.path, method='GET')
+        def list(self, **kwargs):
+            return self.request(self.path, method='GET', **kwargs)
 
-        def post(self, data):
+        def get(self, uuid, extra=None):
+            return self.request('/'.join([self.path, uuid, extra or '']), method='GET')
+
+        def create(self, raw_data=None, **kwargs):
+            data = raw_data or json.dumps(kwargs)
             return self.request(self.path, method='POST', data=data)
 
         def request(self, url, method='GET', data=None, **kwargs):
@@ -141,8 +161,9 @@ class KillBill(object):
                 headers['Content-Type'] = self.type
                 headers['X-Killbill-CreatedBy'] = 'NodeConductor'
 
+            url = self.api_url + url
             response = getattr(requests, method.lower())(
-                self.api_url + url, data=data, auth=self.auth, headers=headers)
+                url, params=kwargs, data=data, auth=self.auth, headers=headers)
 
             response_type = response_types.get(response.headers.get('content-type'), '')
             if response.status_code not in (200, 201):
@@ -155,7 +176,7 @@ class KillBill(object):
                 elif response.status_code == 500:
                     try:
                         txt = etree.fromstring(response.text)
-                        reason = txt.xpath('.//pre/text()')[1].split('\n')[:5][2]
+                        reason = txt.xpath('.//pre/text()')[1].split('\n')[2]
                     except ValueError:
                         pass
 
@@ -168,7 +189,7 @@ class KillBill(object):
                         response.text.encode('utf-8'),
                         etree.XMLParser(ns_clean=True, recover=True, encoding='utf-8'))
 
-                elif response_type == 'json':
+                elif response_type == 'json' and response.text:
                     data = response.json()
 
                 else:
@@ -176,9 +197,12 @@ class KillBill(object):
 
             except ValueError as e:
                 raise BillingBackendError(
-                    "Incorrect response from Killbill backend %s: e" % (self.url, e))
+                    "Incorrect response from Killbill backend %s: %s" % (url, e))
 
             return data
+
+    class Account(BaseResource):
+        path = 'accounts'
 
     class Catalog(BaseResource):
         path = 'catalog'
