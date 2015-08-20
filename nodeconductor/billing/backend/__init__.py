@@ -76,6 +76,36 @@ class BillingBackend(object):
         self.customer.balance = client_details['balance']
         self.customer.save(update_fields=['balance'])
 
+    def subscribe(self, resource):
+        client_id = self.get_or_create_client()
+        resource.billing_backend_id = self.api.add_subscription(client_id, resource)
+        resource.save(update_fields=['billing_backend_id'])
+
+    def terminate(self, resource):
+        self.api.del_subscription(resource.billing_backend_id)
+        resource.billing_backend_id = ''
+        resource.save(update_fields=['billing_backend_id'])
+
+    # XXX: revise, fix or remove all methods below
+
+    def init_killbill_tenant(self):
+        # XXX: for debugging purporse only
+        class Tenant(self.api.test.__class__):
+            path = 'tenants'
+
+        tenants = Tenant(self.api.credentials)
+        try:
+            tenants.get(apiKey=tenants.api_key)
+        except:
+            tenants.create(apiKey=tenants.api_key, apiSecret=tenants.api_secret)
+            self.customer.billing_backend_id = ''
+            self.sync_customer()
+            self.api.propagate_pricelist()
+
+            # instance = Instance.objects.first()
+            # instance.order.backend.subscribe(instance)
+            # instance.order.backend.add_usage(instance)
+
     def sync_invoices(self):
         backend_id = self.get_or_create_client()
 
@@ -154,9 +184,7 @@ class BillingBackend(object):
             resource.billing_backend_id)
 
     def get_total_cost_of_active_products(self):
-        products = self.api.get_client_products(self.get_or_create_client())
-        costs = [float(prod['recurring_amount']) for prod in products if prod['status'] == 'Active']
-        return sum(costs)
+        return self.api.get_total_cost_of_active_products(self.get_or_create_client())
 
     def get_orders(self):
         # XXX: This is fragile - different billing systems can return different orders,

@@ -2,7 +2,6 @@ import logging
 import datetime
 
 from celery import shared_task
-from django.db.models import F
 from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.cost_tracking import get_cost_tracking_models
@@ -44,7 +43,7 @@ def update_current_month_projected_estimate(customer_uuid=None):
                 except PriceEstimate.DoesNotExist:
                     PriceEstimate.objects.create(total=cost, **args)
                 else:
-                    estimate.total = F('total') + cost
+                    estimate.total = cost
                     estimate.save(update_fields=['total'])
 
             finished_items[model] = cost

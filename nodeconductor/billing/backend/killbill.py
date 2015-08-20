@@ -9,6 +9,7 @@ from lxml import etree
 
 from django.contrib.contenttypes.models import ContentType
 
+from nodeconductor.cost_tracking import CostConstants
 from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor import __version__
@@ -46,13 +47,25 @@ class KillBillAPI(object):
 
         self.accounts = KillBill.Account(self.credentials)
         self.catalog = KillBill.Catalog(self.credentials)
+        self.subscriptions = KillBill.Subscription(self.credentials)
+        self.usages = KillBill.Usage(self.credentials)
         self.test = KillBill.Test(self.credentials)
 
-    def add_client(self, name=None, email=None, uuid=None, **kwargs):
-        self.accounts.create(
-            name=name, email=email, externalKey=uuid, currency=self.currency)
+    def _get_plan_name_for_content_type(self, content_type):
+        return "{}-{}".format(content_type.app_label, content_type.model)
 
-        account = self.get_client_by_uuid(uuid)
+    def _get_product_name_for_content_type(self, content_type):
+        return self._get_plan_name_for_content_type(content_type).title().replace('-', '')
+
+    def _get_usage_name_for_price_item(self, priceitem):
+        return re.sub(r'[\s:;,+%&$@/]+', '', "{}-{}".format(priceitem.item_type, priceitem.key))
+
+    def _get_unit_name_for_price_item(self, priceitem):
+        return "hour-of-%s" % self._get_usage_name_for_price_item(priceitem)
+
+    def add_client(self, name=None, email=None, uuid=None, **kwargs):
+        account = self.accounts.create(
+            name=name, email=email, externalKey=uuid, currency=self.currency)
         return account['accountId']
 
     def get_client_details(self, client_id):
@@ -62,28 +75,82 @@ class KillBillAPI(object):
     def get_client_by_uuid(self, uuid):
         return self.accounts.list(externalKey=uuid)
 
+    def add_subscription(self, client_id, resource):
+        content_type = ContentType.objects.get_for_model(resource)
+        product_name = self._get_product_name_for_content_type(content_type)
+        subscription = self.subscriptions.create(
+            productName=product_name,
+            productCategory='STANDALONE',
+            accountId=client_id,
+            externalKey=resource.uuid.hex,
+            billingPeriod='MONTHLY',
+            priceList='DEFAULT')
+
+        return subscription['subscriptionId']
+
+    def del_subscription(self, subscription_id):
+        self.subscriptions.delete(subscription_id)
+
+    def add_usage(self, resource):
+        # Push info about current resource configuration to backend
+        # http://docs.killbill.io/0.14/consumable_in_arrear.html#_usage_and_metering
+        #
+        # should be called once and hour and used together with https://github.com/killbill/killbill-meter-plugin
+        # otherwise be called once a day and submit daily usage
+
+        options = resource.get_price_options()
+        options = resource.order._propagate_default_options(options)
+
+        numerical = (CostConstants.PriceItem.STORAGE,)
+        content_type = ContentType.objects.get_for_model(resource)
+
+        records = []
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        for opt in options:
+            args = {'resource_content_type': content_type, 'item_type': opt}
+            if opt not in numerical:
+                args['key'] = options[opt]
+
+                if not args['key']:
+                    logger.warning(
+                        "Invalid value of configuration option %s for resource %s", opt, resource)
+                    continue
+
+            unit = self._get_unit_name_for_price_item(DefaultPriceListItem.objects.get(**args))
+            val = options[opt] if opt in numerical else 1
+
+            records.append({
+                'unitType': unit,
+                'usageRecords': [{
+                    'recordDate': today,
+                    'amount': val,
+                }],
+            })
+
+        self.usages.create(subscriptionId=resource.billing_backend_id, unitUsageRecords=records)
+
     def propagate_pricelist(self):
         # Generate catalog and push it to backend
         # http://killbill.github.io/killbill-docs/0.15/userguide_subscription.html#components-catalog
 
         plans = E.plans()
         prods = E.products()
+        units = set()
         plannames = []
-
-        nc_name = lambda name: re.sub(r'[\s:;,+%&$@/]+', '', name)
 
         priceitems = DefaultPriceListItem.objects.values_list('resource_content_type', flat=True).distinct()
         for cid in priceitems:
             content_type = ContentType.objects.get_for_id(cid)
-            plan_name = "{}-{}".format(content_type.app_label, content_type.model)
-            product_name = nc_name(plan_name.title().replace('-', ''))
+            plan_name = self._get_plan_name_for_content_type(content_type)
+            product_name = self._get_product_name_for_content_type(content_type)
 
             usages = E.usages()
             for priceitem in DefaultPriceListItem.objects.filter(resource_content_type=cid):
+                unit_name = self._get_unit_name_for_price_item(priceitem)
                 usage = E.usage(
                     E.billingPeriod('MONTHLY'),
                     E.tiers(E.tier(E.blocks(E.tieredBlock(
-                        E.unit('hours'),
+                        E.unit(unit_name),
                         E.size('1'),
                         E.prices(E.price(
                             E.currency(self.currency),
@@ -91,15 +158,24 @@ class KillBillAPI(object):
                         )),
                         E.max('744'),  # max hours in a month
                     )))),
-                    name=nc_name("{}-{}".format(priceitem.item_type, priceitem.key)),
+                    name=self._get_usage_name_for_price_item(priceitem),
                     billingMode='IN_ARREAR',
                     usageType='CONSUMABLE')
+
                 usages.append(usage)
+                units.add(unit_name)
 
             plan = E.plan(
                 E.product(product_name),
                 E.finalPhase(
                     E.duration(E.unit('UNLIMITED')),
+                    E.recurring(  # recurring must be defined event if it's not used
+                        E.billingPeriod('MONTHLY'),
+                        E.recurringPrice(E.price(
+                            E.currency(self.currency),
+                            E.value('0'),
+                        )),
+                    ),
                     usages,
                     type='EVERGREEN'),
                 name=plan_name)
@@ -115,9 +191,18 @@ class KillBillAPI(object):
             E.catalogName('NodeConductor'),
             E.recurringBillingMode('IN_ADVANCE'),
             E.currencies(E.currency(self.currency)),
-            E.units(E.unit(name='hours')),
+            E.units(*[E.unit(name=u) for u in units]),
             prods,
-            E.rules(E.priceList(E.priceListCase(E.toPriceList('DEFAULT')))),
+            E.rules(
+                E.changePolicy(E.changePolicyCase(E.policy('END_OF_TERM'))),
+                E.changeAlignment(E.changeAlignmentCase(E.alignment('START_OF_SUBSCRIPTION'))),
+                E.cancelPolicy(
+                    E.cancelPolicyCase(E.productCategory('STANDALONE'), E.policy('END_OF_TERM')),
+                    E.cancelPolicyCase(E.policy('END_OF_TERM')),
+                ),
+                E.billingAlignment(E.billingAlignmentCase(E.alignment('ACCOUNT'))),
+                E.priceList(E.priceListCase(E.toPriceList('DEFAULT'))),
+            ),
             plans,
             E.priceLists(E.defaultPriceList(E.plans(*[E.plan(n) for n in plannames]), name='DEFAULT')),
             **{'{{{}}}schemaLocation'.format(xsi): 'CatalogSchema.xsd'})
@@ -126,6 +211,9 @@ class KillBillAPI(object):
             catalog, xml_declaration=True, pretty_print=True, standalone=False, encoding='UTF-8')
 
         self.catalog.create(xml)
+
+    def get_total_cost_of_active_products(self, client_id):
+        return 0.0
 
 
 class KillBill(object):
@@ -143,12 +231,15 @@ class KillBill(object):
         def list(self, **kwargs):
             return self.request(self.path, method='GET', **kwargs)
 
-        def get(self, uuid, extra=None):
-            return self.request('/'.join([self.path, uuid, extra or '']), method='GET')
+        def get(self, uuid, entity=None, **kwargs):
+            return self.request('/'.join([self.path, uuid, entity or '']), method='GET', **kwargs)
 
         def create(self, raw_data=None, **kwargs):
             data = raw_data or json.dumps(kwargs)
             return self.request(self.path, method='POST', data=data)
+
+        def delete(self, uuid):
+            return self.request('/'.join([self.path, uuid]), method='DELETE')
 
         def request(self, url, method='GET', data=None, **kwargs):
             response_types = {'application/json': 'json', 'application/xml': 'xml'}
@@ -157,23 +248,30 @@ class KillBill(object):
                        'X-Killbill-ApiKey': self.api_key,
                        'X-Killbill-ApiSecret': self.api_secret}
 
-            if method.upper() == 'POST':
+            if method.upper() in ('POST', 'DELETE'):
                 headers['Content-Type'] = self.type
                 headers['X-Killbill-CreatedBy'] = 'NodeConductor'
 
-            url = self.api_url + url
+            url = url if url.startswith(self.api_url) else self.api_url + url
             response = getattr(requests, method.lower())(
                 url, params=kwargs, data=data, auth=self.auth, headers=headers)
 
+            codes = requests.status_codes.codes
             response_type = response_types.get(response.headers.get('content-type'), '')
-            if response.status_code not in (200, 201):
+
+            if response.status_code == codes.created:
+                location = response.headers.get('location')
+                if location:
+                    return self.request(location)
+
+            elif response.status_code != codes.ok:
                 reason = response.reason
                 if response_type == 'json':
                     try:
                         reason = response.json()['message']
                     except ValueError:
                         pass
-                elif response.status_code == 500:
+                elif response.status_code == codes.server_error:
                     try:
                         txt = etree.fromstring(response.text)
                         reason = txt.xpath('.//pre/text()')[1].split('\n')[2]
@@ -211,5 +309,11 @@ class KillBill(object):
     class Invoice(BaseResource):
         path = 'invoices'
 
+    class Subscription(BaseResource):
+        path = 'subscriptions'
+
     class Test(BaseResource):
         path = 'test/clock'
+
+    class Usage(BaseResource):
+        path = 'usages'
