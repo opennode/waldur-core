@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('structure', '0015_drop_service_polymorphic'),
-        ('quotas', '0002_inherit_namemixin'),
+        ('quotas', '0001_initial'),
     ]
 
     operations = [
