@@ -44,6 +44,7 @@ template_urls.register_in(router)
 urlpatterns = patterns(
     '',
     url(r'^admin/', include(admin.site.urls), name='admin'),
+    url(r'^admintools/', include('admin_tools.urls')),
 )
 
 if settings.NODECONDUCTOR.get('EXTENSIONS_AUTOREGISTER'):

@@ -108,6 +108,10 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         # This method is used in django-reversion as name of revision creator.
         return self.full_name
 
+    def get_short_name(self):
+        # This method is used in django-reversion as name of revision creator.
+        return self.full_name
+
     def email_user(self, subject, message, from_email=None):
         """
         Sends an email to this User.
