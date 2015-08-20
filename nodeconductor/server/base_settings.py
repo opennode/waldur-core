@@ -8,6 +8,8 @@ from datetime import timedelta
 from celery.schedules import crontab
 import os
 
+from nodeconductor.server.admin.settings import *
+
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
 
 
@@ -47,9 +49,6 @@ INSTALLED_APPS = (
 
     'nodeconductor.testdata',
 
-    # Template overrides need to happen before admin is imported.
-    'django.contrib.admin',
-
     'rest_framework',
     'rest_framework.authtoken',
 
@@ -57,6 +56,8 @@ INSTALLED_APPS = (
     'django_fsm',
     'reversion',
 )
+
+INSTALLED_APPS += ADMIN_APPS
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
