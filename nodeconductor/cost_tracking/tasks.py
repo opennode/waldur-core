@@ -3,10 +3,11 @@ import datetime
 
 from celery import shared_task
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import F
 
-from nodeconductor.cost_tracking import get_cost_tracking_models
-from nodeconductor.cost_tracking.models import PriceEstimate
-from nodeconductor.structure.models import Customer
+from nodeconductor.cost_tracking import CostConstants, get_cost_tracking_models
+from nodeconductor.cost_tracking.models import DefaultPriceListItem, PriceEstimate, ResourceUsage
+from nodeconductor.structure.models import Customer, Resource
 from nodeconductor.structure import SupportedServices
 
 
@@ -47,3 +48,45 @@ def update_current_month_projected_estimate(customer_uuid=None):
                     estimate.save(update_fields=['total'])
 
             finished_items[model] = cost
+
+
+@shared_task(name='nodeconductor.cost_tracking.update_today_usage')
+def update_today_usage():
+    # this task is suppossed to be called every hour and count hourly resource usage
+    # it's exact ammount for numerical options and boolean value for the rest
+    # example:
+    #       2015-08-20 13:00    storage-1Gb         20
+    #       2015-08-20 13:00    flavor-g1.small1    1
+    #       2015-08-20 13:00    license-os-centos7  1
+    #       2015-08-20 13:00    support-basic       1
+
+    from nodeconductor.billing.models import PaidResource
+
+    for resource in Resource.get_all_models():
+        if issubclass(resource, PaidResource):
+            update_today_usage_of_resource.delay(resource.to_string())
+
+
+@shared_task
+def update_today_usage_of_resource(resource_str):
+    resource = next(Resource.from_string(resource_str))
+    options = resource.get_price_options()
+    options = resource.order._propagate_default_options(options)
+
+    numerical = (CostConstants.PriceItem.STORAGE,)
+    content_type = ContentType.objects.get_for_model(resource)
+
+    units = {
+        (item.item_type, None if item.item_type in numerical else item.key): item.units
+        for item in DefaultPriceListItem.objects.filter(resource_content_type=content_type)}
+
+    today = datetime.datetime.utcnow().date()
+    for opt in options:
+        usage, _ = ResourceUsage.objects.get_or_create(
+            date=today,
+            content_type=content_type,
+            object_id=resource.id,
+            units=units[opt, None if opt in numerical else options[opt]])
+
+        usage.value = F('value') + (options[opt] if opt in numerical else 1)
+        usage.save(update_fields=['value'])

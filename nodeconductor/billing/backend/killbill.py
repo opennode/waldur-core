@@ -10,7 +10,7 @@ from lxml import etree
 from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.cost_tracking import CostConstants
-from nodeconductor.cost_tracking.models import DefaultPriceListItem
+from nodeconductor.cost_tracking.models import DefaultPriceListItem, ResourceUsage
 from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor import __version__
 
@@ -47,6 +47,7 @@ class KillBillAPI(object):
 
         self.accounts = KillBill.Account(self.credentials)
         self.catalog = KillBill.Catalog(self.credentials)
+        self.invoices = KillBill.Invoice(self.credentials)
         self.subscriptions = KillBill.Subscription(self.credentials)
         self.usages = KillBill.Usage(self.credentials)
         self.test = KillBill.Test(self.credentials)
@@ -56,12 +57,6 @@ class KillBillAPI(object):
 
     def _get_product_name_for_content_type(self, content_type):
         return self._get_plan_name_for_content_type(content_type).title().replace('-', '')
-
-    def _get_usage_name_for_price_item(self, priceitem):
-        return re.sub(r'[\s:;,+%&$@/]+', '', "{}-{}".format(priceitem.item_type, priceitem.key))
-
-    def _get_unit_name_for_price_item(self, priceitem):
-        return "hour-of-%s" % self._get_usage_name_for_price_item(priceitem)
 
     def add_client(self, name=None, email=None, uuid=None, **kwargs):
         account = self.accounts.create(
@@ -93,41 +88,37 @@ class KillBillAPI(object):
 
     def add_usage(self, resource):
         # Push info about current resource configuration to backend
-        # http://docs.killbill.io/0.14/consumable_in_arrear.html#_usage_and_metering
-        #
-        # should be called once and hour and used together with https://github.com/killbill/killbill-meter-plugin
         # otherwise be called once a day and submit daily usage
+        # http://docs.killbill.io/0.14/consumable_in_arrear.html#_usage_and_metering
 
-        options = resource.get_price_options()
-        options = resource.order._propagate_default_options(options)
-
-        numerical = (CostConstants.PriceItem.STORAGE,)
+        today = datetime.utcnow().date()
         content_type = ContentType.objects.get_for_model(resource)
+        usage_qs = ResourceUsage.objects.filter(
+            date=today,
+            content_type=content_type,
+            object_id=resource.id)
 
         records = []
-        today = datetime.utcnow().strftime('%Y-%m-%d')
-        for opt in options:
-            args = {'resource_content_type': content_type, 'item_type': opt}
-            if opt not in numerical:
-                args['key'] = options[opt]
-
-                if not args['key']:
-                    logger.warning(
-                        "Invalid value of configuration option %s for resource %s", opt, resource)
-                    continue
-
-            unit = self._get_unit_name_for_price_item(DefaultPriceListItem.objects.get(**args))
-            val = options[opt] if opt in numerical else 1
-
+        for usage in usage_qs:
             records.append({
-                'unitType': unit,
+                'unitType': usage.units,
                 'usageRecords': [{
-                    'recordDate': today,
-                    'amount': val,
+                    'recordDate': today.strftime('%Y-%m-%d'),
+                    'amount': str(usage.value),
                 }],
             })
 
         self.usages.create(subscriptionId=resource.billing_backend_id, unitUsageRecords=records)
+
+    def get_dry_invoice(self, client_id, date=None):
+        if not date:
+            date = datetime.utcnow().date()
+
+        return self.invoices.request(
+            'invoices/dryRun',
+            method='POST',
+            accountId=client_id,
+            targetDate=date.strftime('%Y-%m-%d'))
 
     def propagate_pricelist(self):
         # Generate catalog and push it to backend
@@ -146,7 +137,8 @@ class KillBillAPI(object):
 
             usages = E.usages()
             for priceitem in DefaultPriceListItem.objects.filter(resource_content_type=cid):
-                unit_name = self._get_unit_name_for_price_item(priceitem)
+                usage_name = re.sub(r'[\s:;,+%&$@/]+', '', "{}-{}".format(priceitem.item_type, priceitem.key))
+                unit_name = "hour-of-%s" % usage_name
                 usage = E.usage(
                     E.billingPeriod('MONTHLY'),
                     E.tiers(E.tier(E.blocks(E.tieredBlock(
@@ -158,12 +150,15 @@ class KillBillAPI(object):
                         )),
                         E.max('744'),  # max hours in a month
                     )))),
-                    name=self._get_usage_name_for_price_item(priceitem),
+                    name=usage_name,
                     billingMode='IN_ARREAR',
                     usageType='CONSUMABLE')
 
                 usages.append(usage)
                 units.add(unit_name)
+
+                priceitem.units = unit_name
+                priceitem.save(update_fields=['units'])
 
             plan = E.plan(
                 E.product(product_name),

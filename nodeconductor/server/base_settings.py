@@ -221,7 +221,12 @@ CELERYBEAT_SCHEDULE = {
         'task': 'nodeconductor.cost_tracking.update_current_month_projected_estimate',
         'schedule': timedelta(hours=24),
         'args': (),
-    }
+    },
+    'update-today-usage': {
+        'task': 'nodeconductor.cost_tracking.update_today_usage',
+        'schedule': timedelta(minutes=60),
+        'args': (),
+    },
 }
 
 CELERY_TASK_THROTTLING = {

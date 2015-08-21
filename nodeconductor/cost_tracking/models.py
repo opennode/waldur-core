@@ -109,3 +109,16 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
 
     class Meta:
         unique_together = ('key', 'content_type', 'object_id')
+
+
+class ResourceUsage(core_models.UuidMixin):
+    date = models.DateField()
+    content_type = models.ForeignKey(ContentType)
+    object_id = models.PositiveIntegerField()
+    resource = GenericForeignKey('content_type', 'object_id')
+
+    units = models.CharField(max_length=30, blank=True)
+    value = models.DecimalField(default=0, max_digits=16, decimal_places=8)
+
+    class Meta:
+        unique_together = ('date', 'content_type', 'object_id', 'units')

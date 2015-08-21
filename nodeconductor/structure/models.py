@@ -621,6 +621,7 @@ class VirtualMachineMixin(BaseVirtualMachineMixin):
 class Resource(core_models.UuidMixin,
                core_models.DescribableMixin,
                core_models.NameMixin,
+               core_models.SerializableAbstractMixin,
                LoggableMixin,
                TimeStampedModel,
                StructureModel):
