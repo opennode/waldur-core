@@ -557,6 +557,7 @@ class TemplateFilter(django_filters.FilterSet):
             'name',
             'type',
             'application_type',
+            'is_active',
         )
 
 
@@ -584,9 +585,6 @@ class TemplateViewSet(viewsets.ModelViewSet):
         queryset = super(TemplateViewSet, self).get_queryset()
 
         user = self.request.user
-
-        if not user.is_staff:
-            queryset = queryset.exclude(is_active=False)
 
         if self.request.method == 'GET':
             cloud_uuid = self.request.query_params.get('cloud')

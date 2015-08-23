@@ -22,6 +22,7 @@ In addition, the following filters are supported:
 - ?os - case insensitive matching of a template OS name
 - ?type - exact match of the template type
 - ?application_type - exact match of the application_type (optional)
+- ?is_active=True - return only active templates
 
 IaaS Template permissions
 -------------------------
