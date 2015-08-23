@@ -1,25 +1,26 @@
 from __future__ import unicode_literals
 
+from datetime import timedelta
 import logging
 
 from django.core.urlresolvers import reverse
 from django.core.validators import MaxLengthValidator
 from django.db import IntegrityError, transaction
 from django.db.models import Max
+from django.utils import timezone
 from netaddr import IPNetwork
 from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core import models as core_models, serializers as core_serializers
-from nodeconductor.core.fields import MappedChoiceField
+from nodeconductor.core.fields import MappedChoiceField, TimestampField
+from nodeconductor.core.utils import timeshift, datetime_to_timestamp
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
-from nodeconductor.core.fields import TimestampField
-from nodeconductor.core.utils import timeshift
 
 
 logger = logging.getLogger(__name__)
@@ -1007,6 +1008,17 @@ class UsageStatsSerializer(serializers.Serializer):
                 if 'value' in stat:
                     stat['value'] = 100 - stat['value']
 
+        # XXX: temporary hack: show zero as value if one of the instances was created less then 30 minutes ago and
+        # actual value is not available
+        def is_instance_newly_created(instance):
+            return instance.created > timezone.now() - timedelta(minutes=30)
+
+        if any([is_instance_newly_created(i) for i in instances]) and item_stats:
+            last_segment = item_stats[0]
+            if (last_segment['from'] > datetime_to_timestamp(timezone.now() - timedelta(minutes=30)) and
+                    'value' not in last_segment):
+                last_segment['value'] = 0
+
         return item_stats
 
 
@@ -1047,6 +1059,14 @@ class CalculatedUsageSerializer(serializers.Serializer):
                     'timestamp': timestamp,
                     'value': value,
                 })
+        # XXX: temporary hack: show zero as value if instance was created less then 30 minutes ago and actual value
+        # is not available
+        items_with_values = {r['item'] for r in results}
+        items_without_values = set(items) - items_with_values
+        timestamp = datetime_to_timestamp(timezone.now())
+        if items_without_values and instance.created > timezone.now() - timedelta(minutes=30):
+            for item in items_without_values:
+                results.append({'item': item, 'timestamp': timestamp, 'value': 0})
         return results
 
 
