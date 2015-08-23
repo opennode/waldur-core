@@ -76,4 +76,4 @@ IaaS template monthly price should be calculated by the REST client as a sum of:
 
 - flavor parameters multiplied by *cpu*, *ram_gb* and *storage_gb* pricelist items
 - sum of template licenses types multiplied by the pricelist items names in lowercase (i.e. 'WordPress' license type
-corresponds to 'wordpress' pricelist item).
+  corresponds to 'wordpress' pricelist item).

@@ -21,7 +21,7 @@ Alerts can be filtered by:
  - ?opened - if this argument is in GET request endpoint will return only alerts that are not closed
  - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
  - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
- object with given uuid)
+   object with given uuid)
  - ?acknowledged=True|False - show only acknowledged (non-acknowledged) alerts
 
 Alerts can be ordered by:

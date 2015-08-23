@@ -345,6 +345,7 @@ Answer is list of dictionaries with fields item, value and timestamp, where item
 - storage_data_util - data storage usage in percents
 
 .. code-block:: javascript
+
     [
         {
             "item": "cpu_util",
