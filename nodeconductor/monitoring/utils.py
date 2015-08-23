@@ -14,7 +14,7 @@ def create_host(cloud_project_membership, warn_if_exists=True):
             cloud_project_membership, warn_if_host_exists=warn_if_exists, is_tenant=True)
     except ZabbixError as e:
         # task does not have to fail if something is wrong with zabbix
-        logger.error('Zabbix host creation flow has broken %s' % e, exc_info=1)
+        logger.error('Zabbix host creation flow has been broken %s' % e, exc_info=1)
 
 
 def create_host_and_service(instance, warn_if_exists=True):
@@ -24,7 +24,7 @@ def create_host_and_service(instance, warn_if_exists=True):
         zabbix_client.create_service(instance, warn_if_service_exists=warn_if_exists)
     except ZabbixError as e:
         # task does not have to fail if something is wrong with zabbix
-        logger.error('Zabbix host creation flow has broken %s' % e, exc_info=1)
+        logger.error('Zabbix host creation flow has been broken %s' % e, exc_info=1)
         event_logger.zabbix.error(
             'Unable to add instance {instance_name} to Zabbix',
             event_type='zabbix_host_creation_failed',
@@ -45,7 +45,7 @@ def delete_host_and_service(instance):
         zabbix_client.delete_service(instance)
     except ZabbixError as e:
         # task does not have to fail if something is wrong with zabbix
-        logger.error('Zabbix host deletion flow has broken %s' % e, exc_info=1)
+        logger.error('Zabbix host deletion flow has been broken %s' % e, exc_info=1)
         event_logger.zabbix.error(
             'Unable to delete instance {instance_name} from Zabbix',
             event_type='zabbix_host_deletion_failed',
