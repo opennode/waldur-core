@@ -210,7 +210,7 @@ class ZabbixDBClient(object):
                 logger.warning('Invalid item key %s', key)
                 continue
             if self.items[name]['convert_to_mb']:
-                value = value / (1024 * 1024)
+                value /= (1024 * 1024)
             value = int(value)
             results.append((timestamp, name, value))
         return results
