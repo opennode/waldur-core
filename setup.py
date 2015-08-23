@@ -30,6 +30,7 @@ install_requires = [
     'django-polymorphic>=0.7',
     'django-reversion>=1.8.7',
     'django-uuidfield==0.5.0',
+    'django-fluent-dashboard==0.5.1',
     'djangorestframework>=3.1.0,<3.2.0',
     'djangosaml2==0.13.0',
     'elasticsearch>=1.0.0,<2.0.0',

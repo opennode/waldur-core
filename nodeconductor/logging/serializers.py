@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from django.utils.lru_cache import lru_cache
 
 from nodeconductor.core.serializers import GenericRelatedField
 from nodeconductor.core.fields import MappedChoiceField, JsonField
@@ -35,13 +34,8 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
         return alert
 
 
-@lru_cache(maxsize=1)
-def get_valid_events():
-    return list(log.event_logger.get_permitted_event_types())
-
-
 class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
-    event_types = serializers.MultipleChoiceField(choices=get_valid_events(), allow_blank=False)
+    event_types = serializers.MultipleChoiceField(choices=log.get_valid_events(), allow_blank=False)
     author_uuid = serializers.ReadOnlyField(source='user.uuid')
 
     class Meta(object):

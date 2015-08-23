@@ -420,6 +420,12 @@ class BaseLoggerRegistry(object):
             raise EventLoggerError("Logger '%s' already registered." % name)
         self.__dict__[name] = logger() if isinstance(logger, type) else logger
 
+    def get_all_types(self):
+        events = set()
+        for elogger in self.get_loggers():
+            events.update(elogger.get_supported_types())
+        return list(sorted(events))
+
 
 class EventLoggerRegistry(BaseLoggerRegistry):
 
@@ -433,17 +439,19 @@ class EventLoggerRegistry(BaseLoggerRegistry):
             permitted_objects_uuids.update(model.get_permitted_objects_uuids(user))
         return permitted_objects_uuids
 
-    def get_permitted_event_types(self):
-        events = set()
-        for elogger in self.get_loggers():
-            events.update(elogger.get_supported_types())
-        return events
-
 
 class AlertLoggerRegistry(BaseLoggerRegistry):
 
     def get_loggers(self):
         return [l for l in self.__dict__.values() if isinstance(l, AlertLogger)]
+
+
+def get_valid_events():
+    return event_logger.get_all_types()
+
+
+def get_valid_alerts():
+    return alert_logger.get_all_types()
 
 
 # This global objects represent the default loggers registry

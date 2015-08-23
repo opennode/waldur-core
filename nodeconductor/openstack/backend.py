@@ -241,12 +241,16 @@ class OpenStackBackend(ServiceBackend):
                 "You should use tenant session in order to get resources list")
 
         cur_instances = models.Instance.objects.all().values_list('backend_id', flat=True)
+        try:
+            instances = self.nova_client.servers.list()
+        except nova_exceptions.ClientException as e:
+            six.reraise(OpenStackBackendError, e)
         return [{
             'id': instance.id,
             'name': instance.name or instance.id,
             'created_at': instance.created,
             'status': instance.status,
-        } for instance in self.nova_client.servers.list()
+        } for instance in instances
             if instance.id not in cur_instances and
             self._old_backend._get_instance_state(instance) != models.Instance.States.ERRED]
 
