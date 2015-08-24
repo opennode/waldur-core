@@ -8,7 +8,6 @@ from requests.packages.urllib3 import exceptions
 from django.conf import settings as django_settings
 from django.utils import six
 from pyzabbix import ZabbixAPI, ZabbixAPIException
-from nodeconductor.iaas.models import Instance
 
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
@@ -184,6 +183,9 @@ class ZabbixApiClient(object):
         service_name = self.get_service_name(instance)
         api = self.get_zabbix_api()
         service_data = api.service.get(filter={'name': service_name})
+        if len(service_data) == 0:
+            self.create_service(instance)
+            service_data = api.service.get(filter={'name': service_name})
         if len(service_data) != 1:
             raise ZabbixAPIException('Exactly one result is expected for service name %s'
                                      ', instead received %s. Instance: %s'
