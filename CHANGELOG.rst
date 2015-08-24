@@ -6,6 +6,10 @@ Coming in the next release
 
 - <none yet>
 
+Release 0.56.0 - 0.74.0
+-----------------------
+- Dark ages of automated release management
+
 Release 0.55.0
 --------------
 - Bugfixes
