@@ -105,7 +105,8 @@ cp packaging%{__conf_file} %{buildroot}%{__conf_file}
 
 mkdir -p %{buildroot}%{__data_dir}/static
 echo "%{__data_dir}" >> INSTALLED_FILES
-echo "INSTALLED_APPS=('django.contrib.staticfiles','django.contrib.admin','rest_framework','nodeconductor.landing')" >> tmp_settings.py
+echo -n "INSTALLED_APPS=('django.contrib.staticfiles', 'rest_framework', 'nodeconductor.landing'," >> tmp_settings.py
+echo "'django.contrib.admin', 'fluent_dashboard', 'admin_tools', 'admin_tools.theming', 'admin_tools.menu', 'admin_tools.dashboard')" >> tmp_settings.py
 echo "SECRET_KEY='tmp'" >> tmp_settings.py
 echo "STATIC_ROOT='%{buildroot}%{__data_dir}/static'" >> tmp_settings.py
 echo "STATIC_URL='/static/'" >> tmp_settings.py
