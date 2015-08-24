@@ -815,7 +815,7 @@ NODECONDUCTOR.update({
         'protocol': config.get('elasticsearch', 'protocol'),
     },
 
-    'USER_CAN_CREATE_CUSTOMER': config.getboolean('global', 'user_can_create_customer'),
+    'OWNER_CAN_MANAGE_CUSTOMER': config.getboolean('global', 'owner_can_manage_customer'),
 
     'ENABLE_WHMCS_ORDER_PROCESSING': config.getboolean('global', 'enable_whmcs_order_processing'),
 
