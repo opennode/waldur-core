@@ -162,6 +162,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         for model in SupportedServices.get_service_models().values():
             service_model = model['service']
             link_model = model['service_project_link']
+            resource_models = model['resources']
 
             view_name = SupportedServices.get_detail_view_for_model(service_model)
             service_type = SupportedServices.get_name_for_model(service_model)
@@ -171,12 +172,20 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
                 service_uuid = link.service.uuid.hex
                 service_url = reverse(view_name, kwargs={'uuid': service_uuid}, request=request)
                 service_name = link.service.name
+
+                resources_count = 0
+                for resource_model in resource_models:
+                    # Format query path to service project link or cloud project membership
+                    query = {resource_model.Permissions.project_path.split('__')[0]: link}
+                    resources_count += resource_model.objects.filter(**query).count()
+
                 services.append({
                     'uuid': service_uuid,
                     'url': service_url,
                     'name': service_name,
                     'type': service_type,
-                    'state': link.get_state_display()
+                    'state': link.get_state_display(),
+                    'resources_count': resources_count
                 })
         return services
 
