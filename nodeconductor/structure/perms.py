@@ -52,15 +52,15 @@ PERMISSION_LOGICS = (
     )),
 )
 
-USER_CAN_CREATE_CUSTOMER_LOGICS = FilteredCollaboratorsPermissionLogic(
+OWNER_CAN_MANAGE_CUSTOMER_LOGICS = FilteredCollaboratorsPermissionLogic(
     collaborators_query='roles__permission_group__user',
     collaborators_filter={
         'roles__role_type': CustomerRole.OWNER,
     },
-    add_permission=True
+    any_permission=True
 )
 
-if settings.NODECONDUCTOR.get('USER_CAN_CREATE_CUSTOMER'):
+if settings.NODECONDUCTOR.get('OWNER_CAN_MANAGE_CUSTOMER'):
     PERMISSION_LOGICS += (
-        ('structure.Customer', USER_CAN_CREATE_CUSTOMER_LOGICS),
+        ('structure.Customer', OWNER_CAN_MANAGE_CUSTOMER_LOGICS),
     )
