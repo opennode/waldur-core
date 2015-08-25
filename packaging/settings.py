@@ -23,7 +23,7 @@ config_defaults = {
         'secret_key': '',
         'static_root': os.path.join(data_dir, 'static'),
         'template_debug': 'false',
-        'user_can_create_customer': 'false',
+        'owner_can_manage_customer': 'false',
         'enable_whmcs_order_processing': 'false',
         'show_all_users': 'true'
     },
