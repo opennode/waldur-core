@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('contenttypes', '0001_initial'),
-        ('cost_tracking', '0001_squashed_0006_add_backend_cache_fields_to_pricelist'),
+        ('cost_tracking', '0006_add_backend_cache_fields_to_pricelist'),
     ]
 
     operations = [
