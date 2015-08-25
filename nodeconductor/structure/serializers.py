@@ -751,6 +751,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     password = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
     token = serializers.CharField(allow_null=True, write_only=True, required=False)
     dummy = serializers.BooleanField(write_only=True, required=False)
+    resources_count = serializers.SerializerMethodField()
 
     class Meta(object):
         model = NotImplemented
@@ -762,6 +763,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name',
             'settings', 'dummy',
             'backend_url', 'username', 'password', 'token',
+            'resources_count'
         )
         protected_fields = (
             'customer', 'settings',
@@ -855,6 +857,16 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     del attrs[f]
 
         return attrs
+
+    def get_resources_count(self, obj):
+        resources_count = 0
+        resource_models = SupportedServices.get_service_resources(obj)
+        for resource_model in resource_models:
+            # Format query path to service project link
+            query = {resource_model.Permissions.project_path.split('__')[0] + '__service': obj}
+            resources_count += resource_model.objects.filter(**query).count()
+        return resources_count
+
 
 
 class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,

@@ -241,6 +241,15 @@ class SupportedServices(object):
                 for resource, attrs in service['resources'].items()}
 
     @classmethod
+    @lru_cache(maxsize=1)
+    def get_service_resources(cls, model):
+        from django.apps import apps
+        model_str = cls._get_model_srt(model)
+        service = cls._registry[model_str]
+        resources = service['resources'].keys()
+        return [apps.get_model(resource) for resource in resources]
+
+    @classmethod
     def get_list_view_for_model(cls, model):
         return cls._get_view_for_model(model, view_type='list_view')
 
