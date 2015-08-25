@@ -183,9 +183,6 @@ class ZabbixApiClient(object):
         service_name = self.get_service_name(instance)
         api = self.get_zabbix_api()
         service_data = api.service.get(filter={'name': service_name})
-        if len(service_data) == 0:
-            self.create_service(instance)
-            service_data = api.service.get(filter={'name': service_name})
         if len(service_data) != 1:
             raise ZabbixAPIException('Exactly one result is expected for service name %s'
                                      ', instead received %s. Instance: %s'

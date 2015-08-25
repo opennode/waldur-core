@@ -201,6 +201,12 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
+    'create-zabbix-hosts-and-services': {
+        'task': 'nodeconductor.iaas.tasks.zabbix.zabbix_create_host_and_service_for_all_instances',
+        'schedule': timedelta(hours=1),
+        'args': (),
+    },
+
     'execute-backup-schedules': {
         'task': 'nodeconductor.backup.tasks.execute_schedules',
         'schedule': timedelta(minutes=10),
@@ -218,6 +224,7 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=1),
         'args': (),
     },
+
     'update-current-month-cost-projections': {
         'task': 'nodeconductor.cost_tracking.update_current_month_projected_estimate',
         'schedule': timedelta(hours=24),
