@@ -34,6 +34,8 @@ To setup a KillBill integration, add a billing block of configuration as shown i
         # tenant credentials
         'api_key': 'bob',
         'api_secret': 'lazar',
+        # extra options
+        'currency': 'USD',
         # OpenStack service specific checks
         'openstack': {
             'invoice_meters': {
@@ -56,23 +58,4 @@ NodeConductor can populate its pricelist based on the configured products in Kil
 The following conventions are in place:
 
 - KillBill product names and descriptions are taken as pricelist item names in NodeConductor.
-- KillBill monthly price is taken as an item price.
-
-If you install from RPMs, the following monthly pricelist items will be synchronised:
-
-- cpu
-- ram_gb
-- storage_gb
-- server_num
-- postgresql
-- zimbra
-- wordpress
-
-Calculating a price for a IaaS template
-+++++++++++++++++++++++++++++++++++++++
-
-IaaS template monthly price should be calculated by the REST client as a sum of:
-
-- flavor parameters multiplied by *cpu*, *ram_gb* and *storage_gb* pricelist items
-- sum of template licenses types multiplied by the pricelist items names in lowercase (i.e. 'WordPress' license type
-corresponds to 'wordpress' pricelist item).
+- KillBill hourly price is taken as an item price.

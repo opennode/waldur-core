@@ -38,7 +38,7 @@ class KillBillAPI(object):
                 "Missed billing credentials. They must be supplied explicitly "
                 "or defined within settings.NODECONDUCTOR.BILLING")
 
-        self.currency = 'USD'
+        self.currency = kwargs.get('currency', 'USD')
         self.credentials = dict(
             api_url=api_url,
             api_key=api_key,
