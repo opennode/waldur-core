@@ -1,4 +1,5 @@
 import time
+import calendar
 import requests
 
 from collections import OrderedDict
@@ -75,6 +76,17 @@ def timestamp_to_datetime(timestamp, replace_tz=True):
 
 def timeshift(**kwargs):
     return timezone.now().replace(microsecond=0) + timedelta(**kwargs)
+
+
+def hours_in_month(month=None, year=None):
+    now = datetime.now()
+    if not month:
+        month = now.month
+    if not year:
+        year = now.year
+
+    days_in_month = calendar.monthrange(year, month)[1]
+    return 24 * days_in_month
 
 
 def request_api(request, url_or_view_name, method='GET', data=None, params=None):

@@ -9,6 +9,7 @@ from jsonfield import JSONField
 from model_utils import FieldTracker
 
 from nodeconductor.core import models as core_models
+from nodeconductor.core.utils import hours_in_month
 from nodeconductor.cost_tracking import managers, CostConstants
 from nodeconductor.structure import models as structure_models
 
@@ -62,11 +63,15 @@ class AbstractPriceListItem(models.Model):
         abstract = True
 
     key = models.CharField(max_length=50)
-    value = models.DecimalField(default=0, max_digits=16, decimal_places=8)
+    value = models.DecimalField("Hourly rate", default=0, max_digits=9, decimal_places=2)
     units = models.CharField(max_length=30, blank=True)
     item_type = models.CharField(max_length=30,
                                  choices=CostConstants.PriceItem.CHOICES,
                                  default=CostConstants.PriceItem.FLAVOR)
+
+    @property
+    def monthly_rate(self):
+        return '%0.2f' % (self.value * hours_in_month())
 
 
 class DefaultPriceListItem(core_models.UuidMixin, AbstractPriceListItem):
@@ -98,7 +103,7 @@ class ResourceUsage(core_models.UuidMixin):
     resource = GenericForeignKey('content_type', 'object_id')
 
     units = models.CharField(max_length=30, blank=True)
-    value = models.DecimalField(default=0, max_digits=16, decimal_places=8)
+    value = models.DecimalField(default=0, max_digits=9, decimal_places=2)
 
     class Meta:
         unique_together = ('date', 'content_type', 'object_id', 'units')

@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ('date', models.DateField()),
                 ('object_id', models.PositiveIntegerField()),
                 ('units', models.CharField(max_length=30, blank=True)),
-                ('value', models.DecimalField(default=0, max_digits=16, decimal_places=8)),
+                ('value', models.DecimalField(default=0, max_digits=9, decimal_places=2)),
                 ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
             ],
             options={
@@ -43,5 +43,17 @@ class Migration(migrations.Migration):
         migrations.RemoveField(
             model_name='defaultpricelistitem',
             name='backend_product_id',
+        ),
+        migrations.AlterField(
+            model_name='pricelistitem',
+            name='value',
+            field=models.DecimalField(default=0, verbose_name=b'Hourly rate', max_digits=9, decimal_places=2),
+            preserve_default=True,
+        ),
+        migrations.AlterField(
+            model_name='resourceusage',
+            name='value',
+            field=models.DecimalField(default=0, max_digits=16, decimal_places=8),
+            preserve_default=True,
         ),
     ]
