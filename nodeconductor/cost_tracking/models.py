@@ -73,27 +73,7 @@ class DefaultPriceListItem(core_models.UuidMixin, AbstractPriceListItem):
     """ Default price list item for all resources of supported service types """
     resource_content_type = models.ForeignKey(ContentType, default=None)
 
-    backend_product_id = models.CharField(max_length=255, blank=True)
-    backend_option_id = models.CharField(max_length=255, blank=True)
-    backend_choice_id = models.CharField(max_length=255, blank=True)
-
     tracker = FieldTracker()
-
-    @classmethod
-    def get_options(cls, product_id):
-        """ Return a dictionary with backend IDs of configurable options
-            for specific product defined by resource_content_type or backend_product_id
-        """
-        options = {}
-        for item in cls.objects.filter(backend_product_id=product_id):
-            options.setdefault(item.item_type, {})
-            options[item.item_type]['id'] = item.backend_option_id
-
-            if item.backend_choice_id:
-                options[item.item_type].setdefault('choices', {})
-                options[item.item_type]['choices'][item.key] = item.backend_choice_id
-
-        return options
 
 
 class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):

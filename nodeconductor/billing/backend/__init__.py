@@ -86,6 +86,9 @@ class BillingBackend(object):
         resource.billing_backend_id = ''
         resource.save(update_fields=['billing_backend_id'])
 
+    def create_invoice(self, data):
+        raise NotImplementedError
+
     # XXX: revise, fix or remove all methods below
 
     def init_killbill_tenant(self):

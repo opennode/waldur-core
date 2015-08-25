@@ -32,4 +32,16 @@ class Migration(migrations.Migration):
             name='resourceusage',
             unique_together=set([('date', 'content_type', 'object_id', 'units')]),
         ),
+        migrations.RemoveField(
+            model_name='defaultpricelistitem',
+            name='backend_choice_id',
+        ),
+        migrations.RemoveField(
+            model_name='defaultpricelistitem',
+            name='backend_option_id',
+        ),
+        migrations.RemoveField(
+            model_name='defaultpricelistitem',
+            name='backend_product_id',
+        ),
     ]

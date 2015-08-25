@@ -208,7 +208,8 @@ class KillBillAPI(object):
         self.catalog.create(xml)
 
     def get_total_cost_of_active_products(self, client_id):
-        return 0.0
+        # TODO (NC-738)
+        return NotImplemented
 
 
 class KillBill(object):

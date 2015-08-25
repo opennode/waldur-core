@@ -70,8 +70,7 @@ def update_today_usage():
 @shared_task
 def update_today_usage_of_resource(resource_str):
     resource = next(Resource.from_string(resource_str))
-    options = resource.get_price_options()
-    options = resource.order._propagate_default_options(options)
+    options = resource.get_usage_options()
 
     numerical = (CostConstants.PriceItem.STORAGE,)
     content_type = ContentType.objects.get_for_model(resource)
@@ -82,6 +81,9 @@ def update_today_usage_of_resource(resource_str):
 
     today = datetime.datetime.utcnow().date()
     for opt in options:
+        if not options[opt]:
+            continue
+
         usage, _ = ResourceUsage.objects.get_or_create(
             date=today,
             content_type=content_type,
