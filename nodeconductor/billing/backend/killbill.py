@@ -58,9 +58,9 @@ class KillBillAPI(object):
     def _get_product_name_for_content_type(self, content_type):
         return self._get_plan_name_for_content_type(content_type).title().replace('-', '')
 
-    def add_client(self, name=None, email=None, uuid=None, **kwargs):
+    def add_client(self, name=None, uuid=None, **kwargs):
         account = self.accounts.create(
-            name=name, email=email, externalKey=uuid, currency=self.currency)
+            name=name, externalKey=uuid, currency=self.currency)
         return account['accountId']
 
     def get_client_details(self, client_id):
@@ -119,6 +119,12 @@ class KillBillAPI(object):
             method='POST',
             accountId=client_id,
             targetDate=date.strftime('%Y-%m-%d'))
+
+    def get_invoice_items(self, invoice_id):
+        raise NotImplementedError
+
+    def create_invoice(self, data):
+        raise NotImplementedError
 
     def propagate_pricelist(self):
         # Generate catalog and push it to backend
@@ -209,7 +215,10 @@ class KillBillAPI(object):
 
     def get_total_cost_of_active_products(self, client_id):
         # TODO (NC-738)
-        return NotImplemented
+        raise NotImplementedError
+
+    def get_client_orders(self, client_id):
+        raise NotImplementedError
 
 
 class KillBill(object):

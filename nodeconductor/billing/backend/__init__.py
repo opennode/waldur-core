@@ -46,7 +46,7 @@ class BillingBackend(object):
                 six.reraise(BillingBackendError, e)
             else:
                 self.api = backend_cls(**config)
-                self.api_url = config['api_url']
+                self.api_url = config.get('api_url', '???')
 
     def __getattr__(self, name):
         return getattr(self.api, name)
@@ -60,10 +60,7 @@ class BillingBackend(object):
 
         self.customer.billing_backend_id = self.api.add_client(
             name=self.customer.name,
-            organization=self.customer.name,
-            email="%s@example.com" % self.customer.uuid,  # XXX: a fake email address unique to a customer
-            uuid=self.customer.uuid.hex,
-        )
+            uuid=self.customer.uuid.hex)
 
         self.customer.save(update_fields=['billing_backend_id'])
 
@@ -86,112 +83,10 @@ class BillingBackend(object):
         resource.billing_backend_id = ''
         resource.save(update_fields=['billing_backend_id'])
 
-    def create_invoice(self, data):
-        raise NotImplementedError
-
-    # XXX: revise, fix or remove all methods below
-
-    def init_killbill_tenant(self):
-        # XXX: for debugging purporse only
-        class Tenant(self.api.test.__class__):
-            path = 'tenants'
-
-        tenants = Tenant(self.api.credentials)
-        try:
-            tenants.get(apiKey=tenants.api_key)
-        except:
-            tenants.create(apiKey=tenants.api_key, apiSecret=tenants.api_secret)
-            self.customer.billing_backend_id = ''
-            self.sync_customer()
-            self.api.propagate_pricelist()
-
-            # instance = Instance.objects.first()
-            # instance.order.backend.subscribe(instance)
-            # instance.order.backend.add_usage(instance)
-
-    def sync_invoices(self):
-        backend_id = self.get_or_create_client()
-
-        # Update or create invoices from backend
-        cur_invoices = {i.backend_id: i for i in self.customer.invoices.all()}
-        for invoice in self.api.get_invoices(backend_id, with_pdf=True):
-            cur_invoice = cur_invoices.pop(invoice['backend_id'], None)
-            if cur_invoice:
-                cur_invoice.date = invoice['date']
-                cur_invoice.amount = invoice['amount']
-                cur_invoice.status = invoice['status']
-                cur_invoice.save(update_fields=['date', 'amount'])
-            else:
-                cur_invoice = self.customer.invoices.create(
-                    backend_id=invoice['backend_id'],
-                    date=invoice['date'],
-                    amount=invoice['amount'],
-                    status=invoice['status']
-                )
-
-            if 'pdf' in invoice:
-                cur_invoice.pdf.delete()
-                cur_invoice.pdf.save('Invoice-%d.pdf' % cur_invoice.uuid, ContentFile(invoice['pdf']))
-                cur_invoice.save(update_fields=['pdf'])
-
-        # Remove stale invoices
-        map(lambda i: i.delete(), cur_invoices.values())
-
-    def get_invoice_items(self, invoice_id):
-        return self.api.get_invoice_items(invoice_id)
-
-    def setup_product(self, resource, product_template_id):
-        # - place an order and generate invoice with duedate of the end of month
-        options = resource.get_price_options()
-        options = resource.order._propagate_default_options(options)
-
-        client_id = self.get_or_create_client()
-        order_id, invoice_id, product_id = self.api.add_order(
-            client_id, product_template_id, resource.name, **options)
-
-        resource.billing_backend_id = product_id
-        resource.billing_backend_template_id = product_template_id
-        resource.billing_backend_purchase_order_id = order_id
-        resource.billing_backend_active_invoice_id = invoice_id
-        resource.save(update_fields=['billing_backend_id',
-                                     'billing_backend_template_id',
-                                     'billing_backend_purchase_order_id',
-                                     'billing_backend_active_invoice_id'])
-
-    def confirm_product_setup(self, resource):
-        # - accept order
-        self.api.accept_order(resource.billing_backend_purchase_order_id)
-
-    def cancel_product_setup(self, resource):
-        # - cancel order
-        # TODO: cancel purchase if order already accepted
-        self.api.cancel_order(resource.billing_backend_purchase_order_id)
-
-    def update_product(self, resource, **options):
-        # - get an upgrade price from API (invoice should be already present?)
-        # - add upgrade amount as an item for last unpaid invoice or as billable item otherwise
-        options = resource.order._propagate_default_options(options)
-        self.api.update_order(
-            self.get_or_create_client(),
-            resource.billing_backend_active_invoice_id,
-            resource.billing_backend_id,
-            resource.billing_backend_template_id,
-            **options)
-
-    def terminate_product(self, resource):
-        # - change billing product status to 'terminated'
-        # - deduct a price of remained days from final invoice
-        self.api.terminate_order(
-            self.get_or_create_client(),
-            resource.billing_backend_active_invoice_id,
-            resource.billing_backend_id)
-
     def get_total_cost_of_active_products(self):
         return self.api.get_total_cost_of_active_products(self.get_or_create_client())
 
     def get_orders(self):
-        # XXX: This is fragile - different billing systems can return different orders,
-        # after billing application stabilization we need to provide standard order structure
         return self.api.get_client_orders(self.get_or_create_client())
 
 
