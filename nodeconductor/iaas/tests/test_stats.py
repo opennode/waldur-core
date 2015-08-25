@@ -607,6 +607,7 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
         usage = [
             (1415910025, 'cpu_util', 10),
             (1415910025, 'memory_util', 22),
+            (1415910025, 'memory_util_agent', 21),
             (1415910025, 'storage_root_util', 23),
             (1415910025, 'storage_data_util', 33),
         ]
@@ -629,6 +630,11 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
             {
                 'item': 'storage_data_util',
                 'value': 67,
+                'timestamp': 1415910025
+            },
+            {
+                'item': 'memory_util_agent',
+                'value': 21,
                 'timestamp': 1415910025
             },
         ]

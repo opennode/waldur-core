@@ -9,7 +9,7 @@ import nodeconductor.core.fields
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('template', '0001_initial'),
+        ('template', '0004_upgrate_polymorphic_package'),
         ('iaas', '0015_cloudprojectmembership_internal_network_id'),
     ]
 

@@ -157,6 +157,8 @@ Optionally project_uuid parameter can be supplied for services requiring it like
 
 To import (link with NodeConductor) resource issue POST against the same endpoint with resource id.
 
+.. code-block:: http
+
     POST /api/openstack/08039f01c9794efc912f1689f4530cf0/link/ HTTP/1.1
     Content-Type: application/json
     Accept: application/json

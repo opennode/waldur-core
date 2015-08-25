@@ -1,14 +1,16 @@
 from __future__ import unicode_literals
 
+import collections
+from datetime import timedelta
 import logging
 import sys
-import collections
 
 from django.conf import settings
 from django.db import connections, DatabaseError
-from django.utils import six
+from django.utils import six, timezone
 
-from nodeconductor.core import utils as core_utils
+from nodeconductor.core.utils import datetime_to_timestamp
+from nodeconductor.iaas.models import Instance
 from nodeconductor.monitoring.zabbix import errors, api_client
 from nodeconductor.monitoring.zabbix import sql_utils
 
@@ -208,7 +210,7 @@ class ZabbixDBClient(object):
                 logger.warning('Invalid item key %s', key)
                 continue
             if self.items[name]['convert_to_mb']:
-                value = value / (1024 * 1024)
+                value /= (1024 * 1024)
             value = int(value)
             results.append((timestamp, name, value))
         return results
@@ -356,3 +358,43 @@ class ZabbixDBClient(object):
             })
 
         return resampled_values
+
+    def get_application_installation_state(self, instance):
+        # a shortcut for the IaaS instances -- all done
+        if instance.type == Instance.Services.IAAS:
+            return 'OK'
+
+        zabbix_api_client = api_client.ZabbixApiClient()
+        name = zabbix_api_client.get_host_name(instance)
+        api = zabbix_api_client.get_zabbix_api()
+
+        if api.host.exists(host=name):
+            hostid = api.host.get(filter={'host': name})[0]['hostid']
+            # get installation state from DB:
+            query = r"""
+                SELECT
+                  hi.value
+                FROM zabbix.items it
+                  JOIN zabbix.history_uint hi ON hi.itemid = it.itemid
+                WHERE
+                  it.key_ = %(key_)s
+                AND
+                  it.hostid = %(hostid)s
+                AND
+                  hi.clock > %(time)s
+                ORDER BY hi.clock DESC
+                LIMIT 1
+            """
+            parameters = {
+                'key_': zabbix_api_client._settings.get('application-status-item', 'application.status'),
+                'hostid': hostid,
+                'time': datetime_to_timestamp(timezone.now()-timedelta(hours=1)),
+            }
+            try:
+                value = self.execute_query(query, parameters)[0][0]
+            except IndexError:
+                return 'NO DATA'
+            return 'OK' if value == 1 else 'NOT OK'
+        else:
+            logger.warn('Cannot retrieve installation state of instance %s. Host does not exist.', instance)
+            return 'NO DATA'

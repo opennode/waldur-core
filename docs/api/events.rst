@@ -87,6 +87,7 @@ Request should contain fields:
 When hook is activated, POST request is issued against destination URL with the following data:
 
 .. code-block:: javascript
+
     {
         "timestamp": "2015-07-14T12:12:56.000000",
         "message": "Customer ABC LLC has been updated.",
@@ -116,6 +117,7 @@ Request should contain fields:
 Example of a request:
 
 .. code-block:: javascript
+
     {
         "events": [
             "iaas_instance_start_succeeded"
@@ -126,6 +128,7 @@ Example of a request:
 You may temporarily disable hook without deleting it by issuing following PATCH request against hook URL:
 
 .. code-block:: javascript
+
     {
         "is_active": "false"
     }

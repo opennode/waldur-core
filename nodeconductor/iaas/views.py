@@ -557,6 +557,7 @@ class TemplateFilter(django_filters.FilterSet):
             'name',
             'type',
             'application_type',
+            'is_active',
         )
 
 
@@ -584,9 +585,6 @@ class TemplateViewSet(viewsets.ModelViewSet):
         queryset = super(TemplateViewSet, self).get_queryset()
 
         user = self.request.user
-
-        if not user.is_staff:
-            queryset = queryset.exclude(is_active=False)
 
         if self.request.method == 'GET':
             cloud_uuid = self.request.query_params.get('cloud')
@@ -687,6 +685,13 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
                     d[output_name] = d[db_name]
                     del d[db_name]
 
+        # XXX: hack for portal only. (Provide project group data if aggregation was done by project)
+        if 'project' in aggregate_parameters and 'project_group' not in aggregate_parameters:
+            for item in queryset:
+                project = Project.objects.get(uuid=item['project_uuid'])
+                if project.project_group is not None:
+                    item['project_group_uuid'] = project.project_group.uuid.hex
+                    item['project_group_name'] = project.project_group.name
         return Response(queryset)
 
 

@@ -7,7 +7,7 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('iaas', '0045_instance_billing_backend_active_invoice_id'),
+        ('iaas', '0001_squashed_0045_instance_billing_backend_active_invoice_id'),
     ]
 
     operations = [

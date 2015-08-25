@@ -459,6 +459,10 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
     def __str__(self):
         return '%s (%s)' % (self.name, self.get_type_display())
 
+    class Meta:
+        verbose_name = "Service settings"
+        verbose_name_plural = "Service settings"
+
 
 @python_2_unicode_compatible
 class Service(core_models.SerializableAbstractMixin,

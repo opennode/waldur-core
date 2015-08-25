@@ -15,7 +15,7 @@ import nodeconductor.iaas.models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('structure', '0001_initial'),
+        # ('structure', '0001_initial'),
     ]
 
     operations = [
