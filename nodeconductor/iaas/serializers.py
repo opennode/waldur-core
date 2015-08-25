@@ -51,6 +51,7 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
     flavors = FlavorSerializer(many=True, read_only=True)
     projects = structure_serializers.BasicProjectSerializer(many=True, read_only=True)
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
+    resources_count = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.Cloud
@@ -59,7 +60,8 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
             'url',
             'name',
             'customer', 'customer_name', 'customer_native_name',
-            'flavors', 'projects', 'auth_url', 'dummy'
+            'flavors', 'projects', 'auth_url', 'dummy',
+            'resources_count'
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -86,6 +88,9 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
 
     def get_related_paths(self):
         return 'customer',
+
+    def get_resources_count(self, obj):
+        return models.Instance.objects.filter(cloud_project_membership__cloud=obj).count()
 
 
 class UniqueConstraintError(exceptions.APIException):
