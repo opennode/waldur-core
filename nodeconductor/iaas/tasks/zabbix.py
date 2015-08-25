@@ -18,9 +18,15 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task
-def zabbix_create_host_and_service(instance_uuid):
+def zabbix_create_host_and_service(instance_uuid, warn_if_exists=True):
     instance = Instance.objects.get(uuid=instance_uuid)
-    monitoring_utils.create_host_and_service(instance)
+    monitoring_utils.create_host_and_service(instance, warn_if_exists=warn_if_exists)
+
+
+@shared_task
+def zabbix_create_host_and_service_for_all_instances():
+    for instance in Instance.objects.exclude(backend_id=''):
+        zabbix_create_host_and_service.delay(instance.uuid.hex, warn_if_exists=False)
 
 
 @shared_task

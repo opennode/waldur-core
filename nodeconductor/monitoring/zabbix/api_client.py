@@ -8,7 +8,6 @@ from requests.packages.urllib3 import exceptions
 from django.conf import settings as django_settings
 from django.utils import six
 from pyzabbix import ZabbixAPI, ZabbixAPIException
-from nodeconductor.iaas.models import Instance
 
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
