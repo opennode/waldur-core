@@ -70,7 +70,7 @@ def update_today_usage():
 @shared_task
 def update_today_usage_of_resource(resource_str):
     resource = next(Resource.from_string(resource_str))
-    options = resource.get_usage_options()
+    usage_state = resource.get_usage_state()
 
     numerical = (CostConstants.PriceItem.STORAGE,)
     content_type = ContentType.objects.get_for_model(resource)
@@ -80,15 +80,15 @@ def update_today_usage_of_resource(resource_str):
         for item in DefaultPriceListItem.objects.filter(resource_content_type=content_type)}
 
     today = datetime.datetime.utcnow().date()
-    for opt in options:
-        if not options[opt]:
+    for key, val in usage_state.items():
+        if not val:
             continue
 
         usage, _ = ResourceUsage.objects.get_or_create(
             date=today,
             content_type=content_type,
             object_id=resource.id,
-            units=units[opt, None if opt in numerical else options[opt]])
+            units=units[key, None if key in numerical else val])
 
-        usage.value = F('value') + (options[opt] if opt in numerical else 1)
+        usage.value = F('value') + (val if key in numerical else 1)
         usage.save(update_fields=['value'])

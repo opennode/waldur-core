@@ -361,8 +361,8 @@ class Instance(PaidResource, structure_models.BaseVirtualMachineMixin, structure
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)
 
-    def get_usage_options(self):
-        options = {
+    def get_usage_state(self):
+        state = {
             CostConstants.PriceItem.STORAGE: self.get_storage_size(),
             CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
             CostConstants.PriceItem.LICENSE_APPLICATION: self.template.application_type,
@@ -372,15 +372,15 @@ class Instance(PaidResource, structure_models.BaseVirtualMachineMixin, structure
         }
 
         if self.state == self.States.ONLINE and self.flavor_name:
-            options[CostConstants.PriceItem.FLAVOR] = self.flavor_name
+            state[CostConstants.PriceItem.FLAVOR] = self.flavor_name
 
         storage_size = self.data_volume_size
         storage_size += sum(b.metadata['system_snapshot_size'] +
                             b.metadata['data_snapshot_size'] for b in self.backups.get_active())
 
-        options[CostConstants.PriceItem.STORAGE] = ServiceBackend.mb2gb(storage_size)
+        state[CostConstants.PriceItem.STORAGE] = ServiceBackend.mb2gb(storage_size)
 
-        return options
+        return state
 
     def _init_instance_licenses(self):
         """

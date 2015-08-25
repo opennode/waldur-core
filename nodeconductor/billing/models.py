@@ -145,7 +145,7 @@ class PaidResource(models.Model):
 
     billing_backend_id = models.CharField(max_length=255, blank=True, help_text='ID of a resource in backend')
 
-    def get_usage_options(self):
+    def get_usage_state(self):
         raise NotImplementedError
 
     def __init__(self, *args, **kwargs):

@@ -46,7 +46,7 @@ class BillingBackend(object):
                 six.reraise(BillingBackendError, e)
             else:
                 self.api = backend_cls(**config)
-                self.api_url = config.get('api_url', '???')
+                self.api_url = config.get('api_url', ':unknown:')
 
     def __getattr__(self, name):
         return getattr(self.api, name)
