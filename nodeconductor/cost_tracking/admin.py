@@ -25,9 +25,11 @@ class PriceListItemAdmin(admin.ModelAdmin):
 
 
 class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.ModelAdmin):
-    list_display = ('uuid', 'item_type', 'key', 'value', 'units', 'resource_content_type')
+    list_display = ('uuid', 'item_type', 'key', 'value', 'monthly_rate', 'units', 'resource_content_type')
     list_filter = ['item_type', 'key']
-    change_readonly_fields = ('resource_content_type',)
+    fields = ('item_type', ('value', 'monthly_rate'), 'key', 'units')
+    readonly_fields = ('monthly_rate',)
+    change_readonly_fields = ('resource_content_type', 'key', 'units', 'resource_content_type')
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "resource_content_type":

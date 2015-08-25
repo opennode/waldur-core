@@ -86,9 +86,6 @@ class CostConstants(object):
     Os = OsTypes
     Support = SupportTypes
 
-    class Flavor(object):
-        OFFLINE = 'offline'
-
 
 class CostTrackingStrategy(object):
     """ A base class for the model-specific cost tracking strategies.

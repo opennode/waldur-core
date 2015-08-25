@@ -14,13 +14,12 @@ from celery import shared_task
 
 from nodeconductor.backup.models import Backup
 from nodeconductor.billing.backend import BillingBackend, BillingBackendError
-from nodeconductor.billing.models import PriceList
+from nodeconductor.billing.models import PriceList, PaidResource
 from nodeconductor.core.utils import timestamp_to_datetime, datetime_to_timestamp
-from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas.models import Cloud, CloudProjectMembership, Instance
 from nodeconductor.logging.elasticsearch_client import ElasticsearchResultList
-from nodeconductor.structure.models import Customer
+from nodeconductor.structure.models import Customer, Resource
 from nodeconductor.structure import SupportedServices
 
 logger = logging.getLogger(__name__)
@@ -212,7 +211,7 @@ def create_invoices(customer_uuid, start_date, end_date):
     billing_backend = customer.get_billing_backend()
     usage_data, data, projected_total = get_customer_usage_data(customer, start_date, end_date)
 
-    invoice_code = billing_backend.api.create_invoice(data)
+    invoice_code = billing_backend.create_invoice(data)
     # create a preliminary invoice in NC
     invoice = customer.invoices.create(
         backend_id=invoice_code,
@@ -239,12 +238,22 @@ def lookup_instance_licenses_from_event_log(instance_uuid):
 @shared_task(name='nodeconductor.billing.sync_pricelist')
 def sync_pricelist():
     backend = BillingBackend()
-    priceitems = DefaultPriceListItem.objects.filter(
-        backend_product_id='').values_list('resource_content_type', flat=True).distinct()
+    try:
+        backend.propagate_pricelist()
+    except BillingBackendError as e:
+        logger.error("Can't propagade pricelist to %s: %s", backend, e)
 
-    for cid in priceitems:
-        content_type = ContentType.objects.get_for_id(cid)
-        try:
-            backend.propagate_pricelist(content_type)
-        except BillingBackendError as e:
-            logger.error("Can't propagade pricelist for %s: %s", content_type, e)
+
+@shared_task(name='nodeconductor.billing.propagate_usage')
+def propagate_usage():
+    nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+    if not nc_settings.get('ENABLE_ORDER_PROCESSING'):
+        return
+
+    backend = BillingBackend()
+    for resource in Resource.get_all_models():
+        if issubclass(resource, PaidResource):
+            try:
+                backend.add_usage(resource)
+            except BillingBackendError as e:
+                logger.error("Can't propagade usage for %s to %s: %s", resource, backend, e)

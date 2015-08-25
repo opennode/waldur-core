@@ -12,7 +12,6 @@ from nodeconductor.iaas.models import Instance
 
 openstack_options = {
     CostConstants.PriceItem.FLAVOR: [
-        (CostConstants.Flavor.OFFLINE, 0),
         ('g1.small1', 1),
         ('g1.small2', 2),
         ('g1.medium1', 3),

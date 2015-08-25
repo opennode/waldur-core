@@ -197,15 +197,15 @@ NODECONDUCTOR['JIRA_SUPPORT'] = {
     'project': 'NST',
 }
 
-
 # Example of settings for billing using WHMMCS API.
 NODECONDUCTOR['BILLING'] = {
-    'backend': 'nodeconductor.billing.backend.whmcs.WHMCSAPI',
-    'api_url': 'http://demo.whmcs.com/includes/api.php',
-    'username': 'Admin',
-    'password': 'demo',
-    'currency_code': 1,
-    'currency_name': 'USD',
+    'backend': 'nodeconductor.billing.backend.killbill.KillBillAPI',
+    'api_url': 'http://killbill.example.com/1.0/kb/',
+    'username': 'admin',
+    'password': 'password',
+    'api_key': 'bob',
+    'api_secret': 'lazar',
+    'currency': 'USD',
     'openstack': {
         'invoice_meters': {
             # nova meter name: (resource name, pricelist name, unit converter, unit)

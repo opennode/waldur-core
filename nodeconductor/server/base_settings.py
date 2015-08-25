@@ -229,7 +229,18 @@ CELERYBEAT_SCHEDULE = {
         'task': 'nodeconductor.cost_tracking.update_current_month_projected_estimate',
         'schedule': timedelta(hours=24),
         'args': (),
-    }
+    },
+
+    'update-today-usage': {
+        'task': 'nodeconductor.cost_tracking.update_today_usage',
+        'schedule': crontab(minute=10),
+        'args': (),
+    },
+    'push-today-usage-to-backend': {
+        'task': 'nodeconductor.billing.propagate_usage',
+        'schedule': crontab(hour=23, minute=50),
+        'args': (),
+    },
 }
 
 CELERY_TASK_THROTTLING = {
@@ -241,7 +252,7 @@ CELERY_TASK_THROTTLING = {
 
 NODECONDUCTOR = {
     'EXTENSIONS_AUTOREGISTER': True,
-    'ENABLE_WHMCS_ORDER_PROCESSING': False,
+    'ENABLE_ORDER_PROCESSING': False,
     'DEFAULT_SECURITY_GROUPS': (
         {
             'name': 'ssh',

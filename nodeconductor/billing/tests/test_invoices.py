@@ -93,7 +93,7 @@ class CreateInvoicesTaskTest(TestCase):
             'cpu': 1.0,
             'servers': 1.0}
         )
-        mocked_billing.api.create_invoice = Mock()
+        mocked_billing.create_invoice = Mock()
 
         start_date = datetime(day=1, month=3, year=2015)
         end_date = datetime(day=31, month=3, year=2015)
@@ -103,7 +103,7 @@ class CreateInvoicesTaskTest(TestCase):
                             datetime_to_timestamp(end_date))
 
             self.assertTrue(mocked_openstack().get_nova_usage.called)
-            self.assertTrue(mocked_billing().api.create_invoice.called)
+            self.assertTrue(mocked_billing().create_invoice.called)
             self.assertTrue(mocked_pdf_generator.called)
 
 

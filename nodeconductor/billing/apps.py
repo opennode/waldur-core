@@ -30,7 +30,7 @@ class BillingConfig(AppConfig):
         )
 
         nc_settings = getattr(settings, 'NODECONDUCTOR', {})
-        if nc_settings.get('ENABLE_WHMCS_ORDER_PROCESSING', False):
+        if nc_settings.get('ENABLE_ORDER_PROCESSING', False):
             for index, resource in enumerate(structure_models.Resource.get_all_models()):
                 if issubclass(resource, PaidResource):
                     signals.post_delete.connect(

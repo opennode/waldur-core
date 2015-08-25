@@ -361,20 +361,8 @@ class Instance(PaidResource, structure_models.BaseVirtualMachineMixin, structure
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)
 
-    def get_storage_size(self, extra=0):
-        # 'extra' is used to calculate totals size (e.g. together with backup snapshots)
-        return ServiceBackend.mb2gb(self.data_volume_size + extra)
-
-    def get_default_price_options(self):
-        return {
-            CostConstants.PriceItem.FLAVOR: CostConstants.Flavor.OFFLINE,
-            CostConstants.PriceItem.LICENSE_OS: CostConstants.Os.OTHER,
-            CostConstants.PriceItem.LICENSE_APPLICATION: CostConstants.Application.NONE,
-        }
-
-    def get_price_options(self):
-        return {
-            CostConstants.PriceItem.FLAVOR: self.flavor_name,
+    def get_usage_state(self):
+        state = {
             CostConstants.PriceItem.STORAGE: self.get_storage_size(),
             CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
             CostConstants.PriceItem.LICENSE_APPLICATION: self.template.application_type,
@@ -382,6 +370,17 @@ class Instance(PaidResource, structure_models.BaseVirtualMachineMixin, structure
                                               if self.type == self.Services.PAAS
                                               else CostConstants.Support.BASIC),
         }
+
+        if self.state == self.States.ONLINE and self.flavor_name:
+            state[CostConstants.PriceItem.FLAVOR] = self.flavor_name
+
+        storage_size = self.data_volume_size
+        storage_size += sum(b.metadata['system_snapshot_size'] +
+                            b.metadata['data_snapshot_size'] for b in self.backups.get_active())
+
+        state[CostConstants.PriceItem.STORAGE] = ServiceBackend.mb2gb(storage_size)
+
+        return state
 
     def _init_instance_licenses(self):
         """
