@@ -7,7 +7,7 @@ def register_in(router):
     router.register(r'instances', views.InstanceViewSet)
     router.register(r'iaas-templates', views.TemplateViewSet, base_name='iaastemplate')
     router.register(r'template-licenses', views.TemplateLicenseViewSet)
-    router.register(r'iaas-resources', views.ServiceViewSet, base_name='iaas-resource')
+    router.register(r'iaas-resources', views.ResourceViewSet, base_name='iaas-resource')
     router.register(r'clouds', views.CloudViewSet)
     router.register(r'flavors', views.FlavorViewSet)
     router.register(r'project-cloud-memberships', views.CloudProjectMembershipViewSet, base_name='cloudproject_membership')

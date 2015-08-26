@@ -1234,7 +1234,7 @@ class ResourceViewSet(viewsets.GenericViewSet):
             if types != [] and resource_type not in types:
                 continue
 
-            params = clear_query(('name', 'project_uuid'))
+            params = clear_query(('name', 'project_uuid', 'customer_uuid'))
             response = fetch_data(resources_url, params)
 
             if response.total and response.total > len(response.data):
@@ -1405,12 +1405,15 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
         send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
 
 
-class BaseResourceProjectFilter(object):
-    def filter_queryset(self, request, queryset, view):
-        project_uuid = request.query_params.get('project_uuid')
-        if project_uuid:
-            return queryset.filter(service_project_link__project__uuid=project_uuid)
-        return queryset
+class BaseResourceFilter(django_filters.FilterSet):
+    project_uuid = django_filters.CharFilter(name='service_project_link__project__uuid')
+    customer_uuid = django_filters.CharFilter(name='service_project_link__service__customer__uuid')
+    service_uuid = django_filters.CharFilter(name='service_project_link__service__uuid')
+    name = django_filters.CharFilter(lookup_type='icontains')
+
+    class Meta(object):
+        model = models.Resource
+        fields = ('project_uuid', 'customer_uuid', 'service_uuid', 'name')
 
 
 class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
@@ -1425,11 +1428,8 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     serializer_class = NotImplemented
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (
-        filters.GenericRoleFilter,
-        rf_filters.DjangoFilterBackend,
-        BaseResourceProjectFilter
-    )
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_class = BaseResourceFilter
 
     def safe_operation(valid_state=None):
         def decorator(view_fn):
