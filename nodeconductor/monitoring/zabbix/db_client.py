@@ -266,7 +266,6 @@ class ZabbixDBClient(object):
                     if next_value is None:
                         break
                     time, value = next_value
-                    print time, value
 
                     if time <= end:
                         if end - time < interval or time > start:
