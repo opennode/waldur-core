@@ -981,6 +981,11 @@ class UsageStatsSerializer(serializers.Serializer):
                 "GET parameter 'item' have to be from list: %s" % ZabbixDBClient.items.keys())
         return value
 
+    def validate(self, attrs):
+        if attrs['start_timestamp'] >= attrs['end_timestamp']:
+            raise serializers.ValidationError('Interval value `from` has to be less then `to`')
+        return attrs
+
     def get_stats(self, instances, is_paas=False):
         self.attrs = self.data
         item = self.data['item']

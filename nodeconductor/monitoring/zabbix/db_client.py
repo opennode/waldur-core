@@ -217,6 +217,7 @@ class ZabbixDBClient(object):
 
     def get_item_stats(self, instances, item, start_timestamp, end_timestamp, segments_count):
         # FIXME: Quick and dirty hack to handle storage in a separate flow
+        # XXX: "Storage" item is deprecated it will be removed soon (need to confirm Portal usage)
         if item == 'storage':
             return self.get_storage_stats(instances, start_timestamp, end_timestamp, segments_count)
 
@@ -230,32 +231,53 @@ class ZabbixDBClient(object):
         if not host_ids:
             return []
 
+        zabbix_settings = getattr(settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {})
+        # TODO: Move this to settings
+        HISTORY_RECORDS_INTERVAL = zabbix_settings.get('HISTORY_RECORDS_INTERVAL', 15) * 60
+        TRENDS_RECORDS_INTERVAL = zabbix_settings.get('TRENDS_RECORDS_INTERVAL', 60)  * 60
+        HISTORY_DATE_RANGE = timedelta(hours=zabbix_settings.get('TRENDS_DATE_RANGE', 48))
+
         item_key = self.items[item]['key']
-        item_table = self.items[item]['table']
+        item_history_table = self.items[item]['table']
+        item_trends_table = 'trends' if item_history_table == 'history' else 'trends_uint'
         convert_to_mb = self.items[item]['convert_to_mb']
+        trends_start_date = datetime_to_timestamp(timezone.now() - HISTORY_DATE_RANGE)
         try:
-            time_and_value_list = self.get_item_time_and_value_list(
-                host_ids, [item_key], item_table, start_timestamp, end_timestamp, convert_to_mb)
+            history_cursor = self.get_cursor(
+                host_ids, [item_key], item_history_table, start_timestamp, end_timestamp, convert_to_mb,
+                min_interval=HISTORY_RECORDS_INTERVAL)
+            trends_cursor = self.get_cursor(
+                host_ids, [item_key], item_trends_table, start_timestamp, end_timestamp, convert_to_mb,
+                min_interval=TRENDS_RECORDS_INTERVAL)
 
             interval = ((end_timestamp - start_timestamp) / segments_count)
             points = [start_timestamp + interval * i for i in range(segments_count + 1)][::-1]
 
-            # print points
             segment_list = []
-            next_value = time_and_value_list.fetchone()
+            if points[1] > trends_start_date:
+                next_value = history_cursor.fetchone()
+            else:
+                next_value = trends_cursor.fetchone()
+
             for end, start in zip(points[:-1], points[1:]):
                 segment = {'from': start, 'to': end}
+                interval = HISTORY_RECORDS_INTERVAL if start > trends_start_date else TRENDS_RECORDS_INTERVAL
 
                 while True:
                     if next_value is None:
                         break
                     time, value = next_value
+                    print time, value
 
                     if time <= end:
-                        segment['value'] = value
+                        if end - time < interval or time > start:
+                            segment['value'] = value
                         break
                     else:
-                        next_value = time_and_value_list.fetchone()
+                        if start > trends_start_date:
+                            next_value = history_cursor.fetchone()
+                        else:
+                            next_value = trends_cursor.fetchone()
 
                 segment_list.append(segment)
 
@@ -264,8 +286,7 @@ class ZabbixDBClient(object):
             logger.exception('Can not execute query the Zabbix DB.')
             six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
 
-    def get_item_time_and_value_list(
-            self, host_ids, item_keys, item_table, start_timestamp, end_timestamp, convert_to_mb):
+    def get_cursor(self, host_ids, item_keys, item_table, start_timestamp, end_timestamp, convert_to_mb, min_interval):
         """
         Execute query to zabbix db to get item values from history
         """
@@ -277,15 +298,16 @@ class ZabbixDBClient(object):
             'GROUP BY hi.clock '
             'ORDER BY hi.clock DESC'
         )
-        zabbix_settings = getattr(settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {})
-        min_interval = zabbix_settings.get('MAX_USAGE_INTERVAL', 60) * 60
+        value_path = 'hi.value' if item_table.startswith('history') else 'hi.value_avg'
+        if convert_to_mb:
+            value_path += ' / (1024*1024)'
         parameters = {
             'item_keys': '"' + '", "'.join(item_keys) + '"',
             'start_timestamp': start_timestamp - min_interval,
             'end_timestamp': end_timestamp,
             'host_ids': ','.join(str(host_id) for host_id in host_ids),
             'item_table': item_table,
-            'value_path': 'hi.value' if not convert_to_mb else 'hi.value / (1024*1024)',
+            'value_path': value_path,
         }
         query = query % parameters
 
