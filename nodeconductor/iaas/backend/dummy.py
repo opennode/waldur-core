@@ -725,6 +725,19 @@ class NeutronClient(OpenStackBaseClient):
             }
         }
 
+    def show_quota(self, tenant_id=None):
+        return {'quota': {'floatingip': 50,
+                          'health_monitor': -1,
+                          'member': -1,
+                          'network': 10,
+                          'pool': 10,
+                          'port': 50,
+                          'router': 10,
+                          'security_group': 100,
+                          'security_group_rule': 100,
+                          'subnet': 10,
+                          'vip': 10}}
+
 
 class CinderClient(OpenStackBaseClient):
     """ Dummy OpenStack volume service """
