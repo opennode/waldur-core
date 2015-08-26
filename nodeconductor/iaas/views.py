@@ -695,7 +695,7 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
         return Response(queryset)
 
 
-class ServiceFilter(django_filters.FilterSet):
+class ResourceFilter(django_filters.FilterSet):
     project_group_name = django_filters.CharFilter(
         name='cloud_project_membership__project__project_groups__name',
         distinct=True,
@@ -718,6 +718,11 @@ class ServiceFilter(django_filters.FilterSet):
     )
 
     name = django_filters.CharFilter(lookup_type='icontains')
+
+    customer_uuid = django_filters.CharFilter(
+        name='cloud_project_membership__project__customer__uuid'
+    )
+
     customer_name = django_filters.CharFilter(
         name='cloud_project_membership__project__customer__name',
         lookup_type='icontains',
@@ -747,6 +752,7 @@ class ServiceFilter(django_filters.FilterSet):
         fields = [
             'name',
             'template_name',
+            'customer_uuid',
             'customer_name',
             'customer_native_name',
             'customer_abbreviation',
@@ -795,14 +801,14 @@ class ServiceFilter(django_filters.FilterSet):
 
 
 # XXX: This view has to be rewritten or removed after haystack implementation
-class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
+class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.Instance.objects.exclude(
         state=models.Instance.States.DELETING,
     )
     serializer_class = ServiceSerializer
     lookup_field = 'uuid'
     filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
-    filter_class = ServiceFilter
+    filter_class = ResourceFilter
 
     def _get_period(self):
         period = self.request.query_params.get('period')
@@ -815,7 +821,7 @@ class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
         """
         Extra context provided to the serializer class.
         """
-        context = super(ServiceViewSet, self).get_serializer_context()
+        context = super(ResourceViewSet, self).get_serializer_context()
         context['period'] = self._get_period()
         return context
 
