@@ -170,6 +170,7 @@ class SupportedServices(object):
                 ...
                 "GitLab": {
                     "url": "/api/gitlab/",
+                    "service_project_link_url": "/api/gitlab-service-project-link/",
                     "resources": {
                         "Project": "/api/gitlab-projects/",
                         "Group": "/api/gitlab-groups/"
@@ -178,13 +179,21 @@ class SupportedServices(object):
                 ...
             }
         """
-        return {
-            service['name']: {
+        from django.apps import apps
+
+        data = {}
+        for service_model_name, service in cls._registry.items():
+            service_model = apps.get_model(service_model_name)
+            service_project_link = cls.get_service_project_link(service_model)
+            service_project_link_url = reverse(service_project_link.get_url_name() + '-list', request=request)
+
+            data[service['name']] = {
                 'url': reverse(service['list_view'], request=request),
+                'service_project_link_url': service_project_link_url,
                 'resources': {resource['name']: reverse(resource['list_view'], request=request)
-                              for resource in service['resources'].values()},
-            } for service in cls._registry.values()
-        }
+                              for resource in service['resources'].values()}
+            }
+        return data
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -209,10 +218,7 @@ class SupportedServices(object):
         data = {}
         for service_model_name, service in cls._registry.items():
             service_model = apps.get_model(service_model_name)
-            service_project_link = next(
-                m[0].model for m in service_model._meta.get_all_related_objects_with_model()
-                if m[0].var_name == 'cloudprojectmembership' or
-                m[0].var_name.endswith('serviceprojectlink'))
+            service_project_link = cls.get_service_project_link(service_model)
             data[service['service_type']] = {
                 'service': service_model,
                 'service_project_link': service_project_link,
@@ -220,6 +226,12 @@ class SupportedServices(object):
             }
 
         return data
+
+    @classmethod
+    def get_service_project_link(cls, service_model):
+        return next(m[0].model for m in service_model._meta.get_all_related_objects_with_model()
+                    if m[0].var_name == 'cloudprojectmembership' or
+                    m[0].var_name.endswith('serviceprojectlink'))
 
     @classmethod
     @lru_cache(maxsize=1)
