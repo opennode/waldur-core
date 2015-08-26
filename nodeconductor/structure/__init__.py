@@ -218,7 +218,7 @@ class SupportedServices(object):
         data = {}
         for service_model_name, service in cls._registry.items():
             service_model = apps.get_model(service_model_name)
-            service_project_link = self.get_service_project_link(service_model)
+            service_project_link = cls.get_service_project_link(service_model)
             data[service['service_type']] = {
                 'service': service_model,
                 'service_project_link': service_project_link,
