@@ -232,7 +232,6 @@ class ZabbixDBClient(object):
             return []
 
         zabbix_settings = getattr(settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {})
-        # TODO: Move this to settings
         HISTORY_RECORDS_INTERVAL = zabbix_settings.get('HISTORY_RECORDS_INTERVAL', 15) * 60
         TRENDS_RECORDS_INTERVAL = zabbix_settings.get('TRENDS_RECORDS_INTERVAL', 60)  * 60
         HISTORY_DATE_RANGE = timedelta(hours=zabbix_settings.get('TRENDS_DATE_RANGE', 48))
