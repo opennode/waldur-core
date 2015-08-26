@@ -31,6 +31,12 @@ class ZabbixDBClient(object):
             'convert_to_mb': False
         },
 
+        'cpu_util_agent': {
+            'key': 'system.cpu.util[,,]',
+            'table': 'history',
+            'convert_to_mb': False
+        },
+
         'memory': {
             'key': 'kvm.vm.memory.size',
             'table': 'history_uint',
