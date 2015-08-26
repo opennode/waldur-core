@@ -992,6 +992,8 @@ class UsageStatsSerializer(serializers.Serializer):
         zabbix_db_client = ZabbixDBClient()
         if is_paas and item == 'memory_util':
             item = 'memory_util_agent'
+        if is_paas and item == 'cpu_util':
+            item = 'cpu_util_agent'
         item_stats = zabbix_db_client.get_item_stats(
             instances, item, self.data['start_timestamp'], self.data['end_timestamp'], self.data['segments_count'])
         # XXX: Quick and dirty fix: zabbix presents percentage of free space(not utilized) for storage
