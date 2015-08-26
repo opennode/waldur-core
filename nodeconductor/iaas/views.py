@@ -472,9 +472,10 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
             raise Http404()
 
         hour = 60 * 60
+        now = time.time()
         data = {
-            'start_timestamp': request.query_params.get('from', int(time.time() - hour)),
-            'end_timestamp': request.query_params.get('to', int(time.time())),
+            'start_timestamp': request.query_params.get('from', int(now - hour)),
+            'end_timestamp': request.query_params.get('to', int(now)),
             'segments_count': request.query_params.get('datapoints', 6),
             'item': request.query_params.get('item'),
         }
@@ -483,6 +484,11 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         serializer.is_valid(raise_exception=True)
 
         stats = serializer.get_stats([instance], is_paas=instance.type == models.Instance.Services.PAAS)
+        # Hack that adds zero as start points
+        created_ts = datetime_to_timestamp(instance.created)
+        for stat in stats:
+            if stat['from'] >= created_ts and stat['to'] - created_ts < hour / 2:
+                stat['value'] = 0
         return Response(stats, status=status.HTTP_200_OK)
 
     @detail_route()
