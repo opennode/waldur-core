@@ -9,7 +9,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models, transaction
 from django.db.models import Q, F, signals
-from django.utils import six
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
@@ -723,20 +722,6 @@ class Resource(core_models.UuidMixin,
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
-
-    def __getattr__(self, name):
-        """
-        Provide additional attribute for logging
-        """
-        if name == 'type':
-            return self.get_type()
-        raise AttributeError
-
-    def get_type(self):
-        return six.text_type(self._meta)
-
-    def get_log_fields(self):
-        return ('uuid', 'name', 'type')
 
     def __str__(self):
         return self.name
