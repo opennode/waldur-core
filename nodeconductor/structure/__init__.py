@@ -1,4 +1,3 @@
-import logging
 import importlib
 
 from django.utils.lru_cache import lru_cache
@@ -7,7 +6,6 @@ from rest_framework.reverse import reverse
 
 
 default_app_config = 'nodeconductor.structure.apps.StructureConfig'
-logger = logging.getLogger(__name__)
 
 
 class ServiceTypes(object):

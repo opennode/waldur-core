@@ -38,7 +38,7 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
         return ('uuid', 'customer', 'amount', 'date', 'status')
 
     def get_billing_backend(self):
-        return self.customer.get_billing_backend(self)
+        return self.customer.get_billing_backend()
 
     def get_items(self):
         # TODO: create separate model for items

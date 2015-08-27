@@ -79,15 +79,16 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InvoiceSerializer
 
     @decorators.detail_route()
-    def usage_pdf(self, request, uuid=None):
+    def pdf(self, request, uuid=None):
         invoice = self.get_object()
-        if not invoice.usage_pdf:
-            raise exceptions.NotFound("There's no usage PDF for this invoice")
+        if not invoice.pdf:
+            raise exceptions.NotFound("There's no PDF for this invoice")
 
-        response = serve(request, invoice.usage_pdf.name, document_root=settings.MEDIA_ROOT)
+        response = serve(request, invoice.pdf.name, document_root=settings.MEDIA_ROOT)
         if request.query_params.get('download'):
+            filename = invoice.pdf.name.split('/')[-1]
             response['Content-Type'] = 'application/pdf'
-            response['Content-Disposition'] = 'attachment; filename="usage.pdf"'
+            response['Content-Disposition'] = 'attachment; filename="{}"'.format(filename)
 
         return response
 
