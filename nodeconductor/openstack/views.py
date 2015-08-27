@@ -35,7 +35,7 @@ class ImageViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
 
 
-class InstanceFilter(django_filters.FilterSet):
+class InstanceFilter(structure_views.BaseResourceFilter):
     project = django_filters.CharFilter(
         name='service_project_link__project__uuid',
         lookup_type='icontains',
@@ -74,7 +74,6 @@ class InstanceFilter(django_filters.FilterSet):
         lookup_type='icontains',
         distinct=True)
 
-    name = django_filters.CharFilter(lookup_type='icontains')
     description = django_filters.CharFilter(lookup_type='icontains')
     state = django_filters.NumberFilter()
 
@@ -83,8 +82,7 @@ class InstanceFilter(django_filters.FilterSet):
 
     class Meta(object):
         model = models.Instance
-        fields = [
-            'name',
+        fields = structure_views.BaseResourceFilter.Meta.fields + (
             'description',
             'customer',
             'customer_name',
@@ -101,7 +99,7 @@ class InstanceFilter(django_filters.FilterSet):
             'cores',
             'system_volume_size',
             'data_volume_size',
-        ]
+        )
         order_by = [
             'name',
             '-name',
