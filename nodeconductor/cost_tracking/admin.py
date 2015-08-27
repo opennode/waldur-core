@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.cost_tracking import models
+from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import models as structure_models, admin as structure_admin
 
 
@@ -25,11 +26,15 @@ class PriceListItemAdmin(admin.ModelAdmin):
 
 
 class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.ModelAdmin):
-    list_display = ('uuid', 'item_type', 'key', 'value', 'monthly_rate', 'units', 'resource_content_type')
+    list_display = ('units', 'item_type', 'key', 'value', 'monthly_rate', 'product_name')
     list_filter = ['item_type', 'key']
     fields = ('item_type', ('value', 'monthly_rate'), 'key', 'units')
     readonly_fields = ('monthly_rate',)
-    change_readonly_fields = ('resource_content_type', 'key', 'units', 'resource_content_type')
+    change_readonly_fields = ('resource_content_type', 'key', 'units')
+
+    def product_name(self, obj):
+        return SupportedServices.get_name_for_model(
+            obj.resource_content_type.model_class()).title().replace('.', '')
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "resource_content_type":
