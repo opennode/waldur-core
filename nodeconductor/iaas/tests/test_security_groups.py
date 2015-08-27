@@ -88,6 +88,16 @@ class SecurityGroupCreateTest(test.APITransactionTestCase):
         response = self.client.post(self.url, data=self.valid_data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(models.SecurityGroup.objects.filter(name=self.valid_data['name']).exists())
+
+    def test_security_group_raises_validation_error_if_rule_port_is_invalid(self):
+        self.valid_data['rules'][0]['to_port'] = 80000
+
+        self.client.force_authenticate(self.admin)
+        response = self.client.post(self.url, data=self.valid_data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(models.SecurityGroup.objects.filter(name=self.valid_data['name']).exists())
 
 
 class SecurityGroupUpdateTest(test.APITransactionTestCase):
@@ -121,7 +131,7 @@ class SecurityGroupUpdateTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.admin)
         response = self.client.patch(self.url, data={'rules': rules})
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         reread_security_group = models.SecurityGroup.objects.get(pk=self.security_group.pk)
         self.assertEqual(len(rules), reread_security_group.rules.count())
         saved_rule = reread_security_group.rules.first()

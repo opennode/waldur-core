@@ -224,7 +224,8 @@ class NestedSecurityGroupRuleSerializer(serializers.ModelSerializer):
             except models.SecurityGroup:
                 raise serializers.ValidationError('Security group with id %s does not exist' % data['id'])
         else:
-            return models.SecurityGroupRule(**data)
+            internal_data = super(NestedSecurityGroupRuleSerializer, self).to_internal_value(data)
+            return models.SecurityGroupRule(**internal_data)
 
 
 class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):

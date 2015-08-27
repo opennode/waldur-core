@@ -1880,9 +1880,10 @@ class OpenStackBackend(OpenStackClient):
                     to_port=nc_rule.to_port,
                     cidr=nc_rule.cidr,
                 )
-            except nova_exceptions.ClientException:
+            except nova_exceptions.ClientException as e:
                 logger.exception('Failed to create rule %s for security group %s in backend',
                                  nc_rule, security_group)
+                six.reraise(CloudBackendError, e)
             else:
                 logger.info('Security group rule with id %s successfully created in backend', nc_rule.id)
 
