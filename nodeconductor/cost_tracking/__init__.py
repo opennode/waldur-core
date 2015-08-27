@@ -29,6 +29,8 @@ class PriceItemTypes(object):
         (NETWORK, 'network'),
     )
 
+    NUMERICS = (STORAGE,)
+
 
 class OsTypes(object):
     CENTOS6 = 'centos6'
@@ -136,8 +138,7 @@ class CostTrackingStrategy(object):
         for model in models:
             queryset = model.objects.exclude(state=model.States.ERRED)
             if customer:
-                query = {model.Permissions.customer_path: customer}
-                queryset = queryset.filter(**query)
+                queryset = queryset.filter(customer=customer)
 
             for instance in queryset.iterator():
                 try:
@@ -147,7 +148,7 @@ class CostTrackingStrategy(object):
                     continue
                 except ServiceBackendError as e:
                     logger.error(
-                        "Failed to get price estimate for resource %s: %s" % (instance, e))
+                        "Failed to get price estimate for resource %s: %s", instance, e)
                 else:
                     yield instance, monthly_cost
 

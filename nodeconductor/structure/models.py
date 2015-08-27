@@ -487,10 +487,6 @@ class Service(core_models.SerializableAbstractMixin,
     def get_backend(self, **kwargs):
         return self.settings.get_backend(**kwargs)
 
-    def get_usage_data(self, start_date, end_date):
-        # Please refer to nodeconductor.billing.tasks.debit_customers while implementing it
-        raise NotImplementedError
-
     def __str__(self):
         return self.name
 
@@ -711,6 +707,10 @@ class Resource(core_models.UuidMixin,
 
     def get_backend(self):
         return self.service_project_link.get_backend()
+
+    def get_cost(self, start_date, end_date):
+        raise NotImplementedError(
+            "Please refer to nodeconductor.billing.tasks.debit_customers while implementing it")
 
     @classmethod
     @lru_cache(maxsize=1)

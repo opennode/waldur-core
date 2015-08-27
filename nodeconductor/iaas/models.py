@@ -295,7 +295,7 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
-class Instance(PaidResource, structure_models.BaseVirtualMachineMixin, structure_models.Resource):
+class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMixin, PaidResource):
     """
     A generalization of a single virtual machine.
 
@@ -363,7 +363,6 @@ class Instance(PaidResource, structure_models.BaseVirtualMachineMixin, structure
 
     def get_usage_state(self):
         state = {
-            CostConstants.PriceItem.STORAGE: self.get_storage_size(),
             CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
             CostConstants.PriceItem.LICENSE_APPLICATION: self.template.application_type,
             CostConstants.PriceItem.SUPPORT: (CostConstants.Support.PREMIUM
