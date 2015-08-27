@@ -76,6 +76,18 @@ class KillBillAPI(object):
         return self.accounts.list(externalKey=uuid)
 
     def add_subscription(self, client_id, resource):
+        # initial invoice is generated on subscribe (even with zero amount)
+        # http://docs.killbill.io/0.15/userguide_subscription.html#five-minutes-create-subscription
+        #
+        # further invoices will be generated on monthly basis
+        # one could use time shift to force it for testing purpose
+        # example:
+        #   backend = BillingBackend()
+        #   backend.api.test.move_days(31)
+        #
+        # killbill server must be run in test mode for these tricks
+        # -Dorg.killbill.server.test.mode=true
+
         content_type = ContentType.objects.get_for_model(resource)
         product_name = self._get_product_name_for_content_type(content_type)
         subscription = self.subscriptions.create(
