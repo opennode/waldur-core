@@ -487,7 +487,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         # Hack that adds zero as start points
         created_ts = datetime_to_timestamp(instance.created)
         for stat in stats:
-            if stat['from'] >= created_ts and stat['to'] - created_ts < hour / 2:
+            if stat['from'] >= created_ts and stat['to'] - created_ts < hour / 2 and 'value' not in stat:
                 stat['value'] = 0
         return Response(stats, status=status.HTTP_200_OK)
 
