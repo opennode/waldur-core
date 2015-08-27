@@ -28,23 +28,15 @@ class IaaSCostTracking(CostTrackingStrategy):
                 logger.error(
                     "Failed to get price estimate for resource %s: %s", instance, e)
             else:
-                # prorata estimate calculation based on daily usage cost
-                sd = invoice['start_date']
-                ed = invoice['end_date']
                 today = datetime.date.today()
-                if not sd <= today <= ed:
+                if not invoice['start_date'] <= today <= invoice['end_date']:
                     logger.error(
                         "Wrong invoice estimate for resource %s: %s", instance, invoice)
                     continue
 
-                if sd.year == today.year and sd.month == today.month:
-                    days_in_month = calendar.monthrange(sd.year, sd.month)[1]
-                    days = sd.replace(day=days_in_month) - sd
-
-                elif ed.year == today.year and ed.month == today.month:
-                    days = ed - ed.replace(day=1)
-
-                daily_cost = invoice['amount'] / ((today - sd).days + 1)
-                cost = daily_cost * (days.days + 1)
+                # prorata monthly cost estimate based on daily usage cost
+                days_in_month = calendar.monthrange(today.year, today.month)[1]
+                daily_cost = invoice['amount'] / ((today - invoice['start_date']).days + 1)
+                cost = daily_cost * days_in_month
 
                 yield instance, cost
