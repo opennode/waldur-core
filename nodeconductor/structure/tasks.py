@@ -52,25 +52,6 @@ def stop_customer_resources(customer_uuid):
                 continue
 
 
-@shared_task(name='nodeconductor.structure.sync_users')
-def sync_users(action, entities_uuids, service_project_links):
-    actions = {
-        handlers.PUSH_KEY: push_ssh_public_key,
-        handlers.REMOVE_KEY: remove_ssh_public_key,
-        handlers.ADD_USER: add_user,
-        handlers.REMOVE_USER: remove_user,
-    }
-
-    try:
-        task = actions[action]
-    except KeyError:
-        raise NotImplementedError("Action %s isn't supported by sync_users" % action)
-
-    for spl in service_project_links:
-        for entity_uuid in entities_uuids:
-            task.delay(entity_uuid, spl)
-
-
 @shared_task(name='nodeconductor.structure.recover_erred_services')
 def recover_erred_services():
     for service_type, service in SupportedServices.get_service_models().items():
@@ -235,7 +216,7 @@ def recover_erred_service(service_project_link_str, is_iaas=False):
         logger.info('Failed to recover service settings %s.' % settings)
 
 
-@shared_task(max_retries=120, default_retry_delay=30)
+@shared_task(name='nodeconductor.structure.push_ssh_public_key', max_retries=120, default_retry_delay=30)
 @retry_if_false
 def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
     try:
@@ -271,9 +252,15 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
     return True
 
 
-@shared_task()
-def remove_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
-    public_key = SshPublicKey.objects.get(uuid=ssh_public_key_uuid)
+@shared_task(name='nodeconductor.structure.remove_ssh_public_key')
+def remove_ssh_public_key(key_data, service_project_link_str):
+    public_key = SshPublicKey(
+        name=key_data['name'],
+        user_id=key_data['user_id'],
+        fingerprint=key_data['fingerprint'],
+        public_key=key_data['public_key'],
+        uuid=key_data['uuid']
+    )
     service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
 
     try:
@@ -283,7 +270,7 @@ def remove_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
         pass
 
 
-@shared_task(max_retries=120, default_retry_delay=30)
+@shared_task(name='nodeconductor.structure.add_user', max_retries=120, default_retry_delay=30)
 @retry_if_false
 def add_user(user_uuid, service_project_link_str):
     user = get_user_model().objects.get(uuid=user_uuid)
@@ -315,9 +302,12 @@ def add_user(user_uuid, service_project_link_str):
     return True
 
 
-@shared_task()
-def remove_user(user_uuid, service_project_link_str):
-    user = get_user_model().objects.get(uuid=user_uuid)
+@shared_task(name='nodeconductor.structure.remove_user')
+def remove_user(user_data, service_project_link_str):
+    user = get_user_model()(
+        username=user_data['username'],
+        email=user_data['email']
+    )
     service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
 
     try:
