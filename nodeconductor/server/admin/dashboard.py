@@ -57,8 +57,5 @@ class CustomIndexDashboard(FluentIndexDashboard):
             children=[
                 [_('API'), '/api/'],
                 [_('Documentation'), 'http://nodeconductor.readthedocs.org/en/stable/'],
-                [_('Change password'),
-                 reverse('%s:password_change' % site_name)],
-                [_('Log out'), reverse('%s:logout' % site_name)],
             ]
         ))

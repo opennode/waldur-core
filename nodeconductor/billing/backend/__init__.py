@@ -3,7 +3,6 @@ import importlib
 
 from django.utils import six
 from django.conf import settings
-from django.core.files.base import ContentFile
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +72,28 @@ class BillingBackend(object):
         self.customer.balance = client_details['balance']
         self.customer.save(update_fields=['balance'])
 
+    def sync_invoices(self):
+        backend_id = self.get_or_create_client()
+
+        # Update or create invoices from backend
+        cur_invoices = {i.backend_id: i for i in self.customer.invoices.all()}
+        for invoice in self.api.get_invoices(backend_id):
+            cur_invoice = cur_invoices.pop(invoice['backend_id'], None)
+            if cur_invoice:
+                cur_invoice.date = invoice['date']
+                cur_invoice.amount = invoice['amount']
+                cur_invoice.save(update_fields=['date', 'amount'])
+            else:
+                cur_invoice = self.customer.invoices.create(
+                    backend_id=invoice['backend_id'],
+                    date=invoice['date'],
+                    amount=invoice['amount'])
+
+                cur_invoice.generate_pdf()
+
+        # Remove stale invoices
+        map(lambda i: i.delete(), cur_invoices.values())
+
     def subscribe(self, resource):
         client_id = self.get_or_create_client()
         resource.billing_backend_id = self.api.add_subscription(client_id, resource)
@@ -83,11 +104,12 @@ class BillingBackend(object):
         resource.billing_backend_id = ''
         resource.save(update_fields=['billing_backend_id'])
 
-    def get_total_cost_of_active_products(self):
-        return self.api.get_total_cost_of_active_products(self.get_or_create_client())
+    def add_usage_data(self, resource, usage_data):
+        self.api.add_usage(resource.billing_backend_id, usage_data)
 
-    def get_orders(self):
-        return self.api.get_client_orders(self.get_or_create_client())
+    def get_invoice_estimate(self, resource):
+        client_id = self.get_or_create_client()
+        return self.api.get_dry_invoice(client_id, resource.billing_backend_id)
 
 
 class DummyBillingAPI(object):

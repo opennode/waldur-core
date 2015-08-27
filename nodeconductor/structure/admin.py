@@ -1,7 +1,4 @@
-from datetime import datetime
-
 from django.contrib import admin, messages
-from django.core.management import call_command, CommandError
 from django.db import models as django_models
 from django.http import HttpResponseRedirect
 from django.utils.translation import ungettext
@@ -44,8 +41,6 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     readonly_fields = ['balance']
     actions = [
         'sync_with_backend',
-        'create_last_month_invoices',
-        'create_current_month_invoices',
         'update_current_month_projected_estimate',
     ]
     list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created']
@@ -65,38 +60,6 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
         self.message_user(request, message)
 
     sync_with_backend.short_description = "Sync selected customers with billing backend"
-
-    def create_invoices(self, request, queryset, year=None, month=None):
-        succeeded_customers = []
-        for customer in queryset.iterator():
-            try:
-                if year is not None and month is not None:
-                    call_command('createinvoices', year, month, customer_uuid=customer.uuid.hex)
-                else:
-                    call_command('createinvoices', customer_uuid=customer.uuid.hex)
-                succeeded_customers.append(customer)
-            except CommandError as e:
-                message = 'Invoices creation fails for customer {} with error: {}'.format(customer.name, e.message)
-                self.message_user(request, message, messages.ERROR)
-
-        if succeeded_customers:
-            message = ungettext(
-                'Invoice creation successfully scheduled for customer %(customers_names)s',
-                'Invoices creation successfully scheduled for customers: %(customers_names)s',
-                len(succeeded_customers)
-            )
-            message = message % {'customers_names': ', '.join([c.name for c in succeeded_customers])}
-            self.message_user(request, message)
-
-    def create_last_month_invoices(self, request, queryset):
-        self.create_invoices(request, queryset)
-
-    create_last_month_invoices.short_description = "Create invoices for last month"
-
-    def create_current_month_invoices(self, request, queryset):
-        self.create_invoices(request, queryset, year=datetime.now().year, month=datetime.now().month)
-
-    create_current_month_invoices.short_description = "Create invoices for current month"
 
     def update_current_month_projected_estimate(self, request, queryset):
         customers_without_backend_id = []

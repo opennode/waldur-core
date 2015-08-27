@@ -95,6 +95,8 @@ class UserOrganizationEventLogger(EventLogger):
 
 class ResourceEventLogger(EventLogger):
     resource = models.Resource
+    # XXX: 'resource_type' should be defined here separately because of iaas.Instance model having 'type' field
+    resource_type = basestring
 
     class Meta:
         event_types = ('resource_imported',

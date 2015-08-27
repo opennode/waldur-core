@@ -9,7 +9,7 @@ import django.core.validators
 
 class Migration(migrations.Migration):
 
-    replaces = [('cost_tracking', '0001_initial'), ('cost_tracking', '0002_price_list'), ('cost_tracking', '0003_new_price_list_items'), ('cost_tracking', '0004_remove_connection_to_resource'), ('cost_tracking', '0005_expand_item_type_size'), ('cost_tracking', '0006_add_backend_cache_fields_to_pricelist'), ('cost_tracking', '0007_remove_obsolete_billing_fields')]
+    replaces = [('cost_tracking', '0001_initial'), ('cost_tracking', '0002_price_list'), ('cost_tracking', '0003_new_price_list_items'), ('cost_tracking', '0004_remove_connection_to_resource'), ('cost_tracking', '0005_expand_item_type_size'), ('cost_tracking', '0006_add_backend_cache_fields_to_pricelist'), ('cost_tracking', '0007_remove_obsolete_billing_fields'), ('cost_tracking', '0008_delete_resourceusage')]
 
     dependencies = [
         ('contenttypes', '0001_initial'),
@@ -75,24 +75,5 @@ class Migration(migrations.Migration):
                 'abstract': False,
             },
             bases=(models.Model,),
-        ),
-        migrations.CreateModel(
-            name='ResourceUsage',
-            fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
-                ('date', models.DateField()),
-                ('object_id', models.PositiveIntegerField()),
-                ('units', models.CharField(max_length=30, blank=True)),
-                ('value', models.DecimalField(default=0, max_digits=9, decimal_places=2)),
-                ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
-            ],
-            options={
-            },
-            bases=(models.Model,),
-        ),
-        migrations.AlterUniqueTogether(
-            name='resourceusage',
-            unique_together=set([('date', 'content_type', 'object_id', 'units')]),
         ),
     ]

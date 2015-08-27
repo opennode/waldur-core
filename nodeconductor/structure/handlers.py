@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
-from nodeconductor.structure import ServiceBackendNotImplemented, signals
+from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.filters import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
@@ -389,16 +389,25 @@ def log_resource_created(sender, instance, created=False, **kwargs):
         event_logger.resource.info(
             'Resource {resource_name} has been imported.',
             event_type='resource_imported',
-            event_context={'resource': instance})
+            event_context={
+                'resource': instance,
+                'resource_type': SupportedServices.get_name_for_model(instance),
+            })
     else:
         event_logger.resource.info(
             'Resource {resource_name} has been created.',
             event_type='resource_created',
-            event_context={'resource': instance})
+            event_context={
+                'resource': instance,
+                'resource_type': SupportedServices.get_name_for_model(instance),
+            })
 
 
 def log_resource_deleted(sender, instance, **kwargs):
     event_logger.resource.info(
         'Resource {resource_name} has been deleted.',
         event_type='resource_deleted',
-        event_context={'resource': instance})
+        event_context={
+            'resource': instance,
+            'resource_type': SupportedServices.get_name_for_model(instance),
+        })

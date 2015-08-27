@@ -9,8 +9,7 @@ from lxml import etree
 
 from django.contrib.contenttypes.models import ContentType
 
-from nodeconductor.cost_tracking import CostConstants
-from nodeconductor.cost_tracking.models import DefaultPriceListItem, ResourceUsage
+from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor import __version__
 
@@ -52,6 +51,12 @@ class KillBillAPI(object):
         self.usages = KillBill.Usage(self.credentials)
         self.test = KillBill.Test(self.credentials)
 
+    def _parse_date(self, date):
+        try:
+            return datetime.strptime(date, '%Y-%m-%d').date()
+        except ValueError as e:
+            raise BillingBackendError("Can't parse date %s: %s" % (date, e))
+
     def _get_plan_name_for_content_type(self, content_type):
         return "{}-{}".format(content_type.app_label, content_type.model)
 
@@ -71,6 +76,18 @@ class KillBillAPI(object):
         return self.accounts.list(externalKey=uuid)
 
     def add_subscription(self, client_id, resource):
+        # initial invoice is generated on subscribe (even with zero amount)
+        # http://docs.killbill.io/0.15/userguide_subscription.html#five-minutes-create-subscription
+        #
+        # further invoices will be generated on monthly basis
+        # one could use time shift to force it for testing purpose
+        # example:
+        #   backend = BillingBackend()
+        #   backend.api.test.move_days(31)
+        #
+        # killbill server must be run in test mode for these tricks
+        # -Dorg.killbill.server.test.mode=true
+
         content_type = ContentType.objects.get_for_model(resource)
         product_name = self._get_product_name_for_content_type(content_type)
         subscription = self.subscriptions.create(
@@ -86,45 +103,63 @@ class KillBillAPI(object):
     def del_subscription(self, subscription_id):
         self.subscriptions.delete(subscription_id)
 
-    def add_usage(self, resource):
-        # Push info about current resource configuration to backend
-        # otherwise be called once a day and submit daily usage
+    def add_usage(self, subscription_id, usage_data):
+        # Push hourly usage to backend
         # http://docs.killbill.io/0.14/consumable_in_arrear.html#_usage_and_metering
-
-        today = datetime.utcnow().date()
-        content_type = ContentType.objects.get_for_model(resource)
-        usage_qs = ResourceUsage.objects.filter(
-            date=today,
-            content_type=content_type,
-            object_id=resource.id)
-
-        records = []
-        for usage in usage_qs:
-            records.append({
-                'unitType': usage.units,
+        today = datetime.utcnow().date().strftime('%Y-%m-%d')
+        self.usages.create(
+            subscriptionId=subscription_id,
+            unitUsageRecords=[{
+                'unitType': unit,
                 'usageRecords': [{
-                    'recordDate': today.strftime('%Y-%m-%d'),
-                    'amount': str(usage.value),
+                    'recordDate': today,
+                    'amount': str(amount),
                 }],
-            })
+            } for unit, amount in usage_data.items()])
 
-        self.usages.create(subscriptionId=resource.billing_backend_id, unitUsageRecords=records)
-
-    def get_dry_invoice(self, client_id, date=None):
-        if not date:
-            date = datetime.utcnow().date()
-
-        return self.invoices.request(
+    def get_dry_invoice(self, client_id, subscription_id):
+        subscription = self.subscriptions.get(subscription_id)
+        data = self.invoices.request(
             'invoices/dryRun',
             method='POST',
             accountId=client_id,
-            targetDate=date.strftime('%Y-%m-%d'))
+            targetDate=subscription['chargedThroughDate'],
+            data=json.dumps({'subscriptionId': subscription_id}))
+
+        return {
+            'amount': data['amount'],
+            'end_date': self._parse_date(data['targetDate']),
+            'start_date': self._parse_date(subscription['billingStartDate']),
+            'items': [
+                {
+                    'name': item['description'].replace(' (usage item)', ''),
+                    'amount': item['amount'],
+                } for item in data['items'] if item['amount']
+            ]}
+
+    def get_invoices(self, client_id):
+        data = self.accounts.get(client_id, 'invoices')
+        return [{'backend_id': invoice['invoiceId'],
+                 'date': self._parse_date(invoice['invoiceDate']),
+                 'amount': invoice['amount']}
+                for invoice in data]
+
+    def get_invoice(self, invoice_id):
+        invoice = self.invoices.get(invoice_id)
+        return {'backend_id': invoice['invoiceId'],
+                'date': self._parse_date(invoice['invoiceDate']),
+                'items': [{'backend_id': item['invoiceItemId'],
+                           'name': item['description'].replace(' (usage item)', ''),
+                           'amount': item['amount']}
+                          for item in invoice['items']],
+                'amount': invoice['amount']}
 
     def get_invoice_items(self, invoice_id):
-        raise NotImplementedError
-
-    def create_invoice(self, data):
-        raise NotImplementedError
+        data = self.invoices.get(invoice_id)
+        return [{'backend_id': item['invoiceItemId'],
+                 'name': item['description'].replace(' (usage item)', ''),
+                 'amount': item['amount']}
+                for item in data['items']]
 
     def propagate_pricelist(self):
         # Generate catalog and push it to backend
@@ -212,13 +247,6 @@ class KillBillAPI(object):
             catalog, xml_declaration=True, pretty_print=True, standalone=False, encoding='UTF-8')
 
         self.catalog.create(xml)
-
-    def get_total_cost_of_active_products(self, client_id):
-        # TODO (NC-738)
-        raise NotImplementedError
-
-    def get_client_orders(self, client_id):
-        raise NotImplementedError
 
 
 class KillBill(object):
@@ -319,6 +347,9 @@ class KillBill(object):
 
     class Test(BaseResource):
         path = 'test/clock'
+
+        def move_days(self, days=1):
+            return self.request(self.path, method='PUT', days=days)
 
     class Usage(BaseResource):
         path = 'usages'

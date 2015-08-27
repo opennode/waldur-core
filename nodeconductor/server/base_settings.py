@@ -236,11 +236,6 @@ CELERYBEAT_SCHEDULE = {
         'schedule': crontab(minute=10),
         'args': (),
     },
-    'push-today-usage-to-backend': {
-        'task': 'nodeconductor.billing.propagate_usage',
-        'schedule': crontab(hour=23, minute=50),
-        'args': (),
-    },
 }
 
 CELERY_TASK_THROTTLING = {
