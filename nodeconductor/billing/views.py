@@ -1,25 +1,19 @@
-import collections
 import logging
-import StringIO
+import django_filters
 
-from django import http
 from django.conf import settings
 from django.shortcuts import redirect
-from django.template.loader import render_to_string
-from django.utils import timezone
 from django.views.static import serve
-import django_filters
 from django_fsm import TransitionNotAllowed
-from rest_framework import mixins, viewsets, permissions, response, decorators, exceptions, status, views
-from rest_framework.exceptions import APIException
+from rest_framework import mixins, viewsets, permissions, decorators, exceptions, status
+from rest_framework.response import Response
 from rest_framework.reverse import reverse
-import xhtml2pdf.pisa as pisa
 
 from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.billing.log import event_logger
 from nodeconductor.billing.models import Invoice, Payment
 from nodeconductor.billing.serializers import (
-    InvoiceSerializer, PaymentSerializer, PaymentApproveSerializer, OrderCustomerSerializer)
+    InvoiceSerializer, PaymentSerializer, PaymentApproveSerializer)
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.structure.filters import GenericRoleFilter
 from nodeconductor.structure.models import CustomerRole
@@ -51,7 +45,6 @@ class InvoiceFilter(django_filters.FilterSet):
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'year', 'month',
             'amount',
-            'status',
             'date',
         ]
         order_by = [
@@ -59,8 +52,6 @@ class InvoiceFilter(django_filters.FilterSet):
             '-date',
             'amount',
             '-amount',
-            'status',
-            '-status',
             'customer__name',
             '-customer__name',
             'customer__abbreviation',
@@ -95,45 +86,18 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
 
         response = serve(request, invoice.pdf.name, document_root=settings.MEDIA_ROOT)
         if request.query_params.get('download'):
-            filename = '{}-{}-invoicenr-{}.pdf'.format(invoice.date.year, invoice.date.month, invoice.backend_id)
+            filename = invoice.pdf.name.split('/')[-1]
             response['Content-Type'] = 'application/pdf'
             response['Content-Disposition'] = 'attachment; filename="{}"'.format(filename)
 
         return response
 
     @decorators.detail_route()
-    def usage_pdf(self, request, uuid=None):
-        invoice = self.get_object()
-        if not invoice.usage_pdf:
-            raise exceptions.NotFound("There's no usage PDF for this invoice")
-
-        response = serve(request, invoice.usage_pdf.name, document_root=settings.MEDIA_ROOT)
-        if request.query_params.get('download'):
-            response['Content-Type'] = 'application/pdf'
-            response['Content-Disposition'] = 'attachment; filename="usage.pdf"'
-
-        return response
-
-    @decorators.detail_route()
     def items(self, request, uuid=None):
-        invoice = self.get_object()
-        # TODO: Move it to createsampleinvoices
-        if not invoice.backend_id:
-            # Dummy items
-            items = [
-                {
-                    "amount": "7.95",
-                    "type": "Hosting",
-                    "name": "Home Package - topcorp.tv (02/10/2014 - 01/11/2014)"
-                }
-            ]
-            return response.Response(items, status=status.HTTP_200_OK)
         try:
-            backend = invoice.customer.get_billing_backend()
-            items = backend.api.get_invoice_items(invoice.backend_id)
-            return response.Response(items, status=status.HTTP_200_OK)
+            return Response(self.get_object().get_items())
         except BillingBackendError:
-            return response.Response(
+            return Response(
                 {'Detail': 'Cannot retrieve data from invoice backend'}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -197,7 +161,7 @@ class PaymentView(CreateByStaffOrOwnerMixin,
             logging.warning('Unable to create payment because of backend error %s', e)
             payment.set_erred()
             payment.save()
-            raise APIException()
+            raise exceptions.APIException()
 
     @decorators.detail_route()
     def approve(self, request, uuid):
@@ -268,44 +232,3 @@ class PaymentView(CreateByStaffOrOwnerMixin,
         except TransitionNotAllowed:
             logging.warning('Unable to cancel payment because of invalid state')
             return redirect(backend.api.return_url)
-
-
-class OrdersView(views.APIView):
-    """ Custom view that returns orders for customer """
-
-    def get(self, request):
-        serializer = OrderCustomerSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-
-        customer = serializer.validated_data
-        billing_backend = customer.get_billing_backend()
-        orders = billing_backend.get_orders()
-
-        context = self._prepare_context(orders)
-        context['customer'] = customer
-
-        result = StringIO.StringIO()
-        pisa.pisaDocument(
-            StringIO.StringIO(render_to_string('billing/orders_report.html', context)),
-            result,
-        )
-
-        response = http.HttpResponse(result.getvalue(), content_type='application/pdf')
-
-        if request.query_params.get('download'):
-            now = timezone.now()
-            name = '{}-{}-{}-orders-for-{}.pdf'.format(now.year, now.month, now.day, customer.abbreviation)
-            response['Content-Disposition'] = 'attachment; filename="{}"'.format(name)
-
-        return response
-
-    def _prepare_context(self, orders):
-        grouped_orders = collections.defaultdict(list)
-        for order in orders:
-            date = (order['date'].year, order['date'].month, order['date'].strftime('%B %Y'))
-            grouped_orders[date].append(order)
-
-        grouped_orders = collections.OrderedDict(
-            sorted(dict(grouped_orders).items(), key=lambda x: x[0], reverse=True))
-
-        return {'grouped_orders': grouped_orders}

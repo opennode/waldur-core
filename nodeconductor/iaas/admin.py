@@ -236,10 +236,8 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
         (_('Access configuration'), {'fields': ('key_name', 'key_fingerprint')}),
         (_('Network configuration'), {'fields': ('internal_ips', 'external_ips')}),
         (_('Deployment settings'), {'fields': ('template', 'type', 'agreed_sla', 'user_data')}),
-        (_('Backend connections'), {'fields': ('backend_id', 'billing_backend_id', 'billing_backend_template_id', 'billing_backend_purchase_order_id')}),
-
+        (_('Billing'), {'fields': ('billing_backend_id',)}),
     )
-
 
     def get_project_name(self, obj):
         return obj.cloud_project_membership.project.name

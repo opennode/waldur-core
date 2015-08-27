@@ -9,6 +9,7 @@ Filtering of invoices is supported through HTTP query parameters, the following 
 - ?month=<month>
 - ?year=<year>
 
+
 Invoice PDF
 -----------
 

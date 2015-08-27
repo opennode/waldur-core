@@ -308,52 +308,6 @@ class SupportedServices(object):
                     return models
 
     @classmethod
-    def get_parent_models(cls, entity):
-        """ Get a set of all related models in the ascending structure hierarchy for given entity.
-
-            >> SupportedServices.get_parent_models(Drople.objects.first())
-            {
-                <Customer: Alice (AL)>,
-                <DigitalOceanService: Test Service>,
-                <DigitalOceanServiceProjectLink: Test Service | My Project>,
-                <Droplet: cloud.example.com>,
-                <Project: My Project | Alice>,
-            }
-
-            >> SupportedServices.get_parent_models(Project.objects.first())
-            {
-                <Customer: Alice (AL)>,
-                <Project: My Project | Alice>,
-            }
-
-        """
-
-        from nodeconductor.structure import models
-
-        def get_parent_entities(entity):
-            if isinstance(entity, models.Resource):
-                yield entity
-                for e in get_parent_entities(entity.service_project_link):
-                    yield e
-
-            elif isinstance(entity, models.ServiceProjectLink):
-                yield entity
-                for e in get_parent_entities(entity.project):
-                    yield e
-                for e in get_parent_entities(entity.service):
-                    yield e
-
-            elif isinstance(entity, (models.Service, models.Project)):
-                yield entity
-                for e in get_parent_entities(entity.customer):
-                    yield e
-
-            else:
-                yield entity
-
-        return set(get_parent_entities(entity))
-
-    @classmethod
     def _get_model_srt(cls, model):
         return force_text(model._meta)
 
