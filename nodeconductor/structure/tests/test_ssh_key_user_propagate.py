@@ -5,6 +5,7 @@ from rest_framework import test
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.models import CustomerRole, ProjectRole
+from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
 
 @patch('celery.app.base.Celery.send_task')
@@ -49,10 +50,9 @@ class UserAndSshKeyPropagationTest(test.APITransactionTestCase):
         self.client.delete(structure_factories.SshPublicKeyFactory.get_url(ssh_key))
         self.assert_task_called(mocked_task,
                                 'nodeconductor.structure.remove_ssh_public_key',
-                                ssh_key.to_dict())
+                                serialize_ssh_key(ssh_key))
 
     def test_delete_user(self, mocked_task):
-        user_key = structure_factories.SshPublicKeyFactory(user=self.owner)
         staff = structure_factories.UserFactory(is_staff=True)
 
         self.client.force_authenticate(staff)
@@ -60,17 +60,17 @@ class UserAndSshKeyPropagationTest(test.APITransactionTestCase):
 
         self.assert_task_called(mocked_task,
                                 'nodeconductor.structure.remove_user',
-                                {'username': self.owner.username, 'email': self.owner.email})
+                                serialize_user(self.owner))
 
     def test_grant_and_revoke_user_from_project(self, mocked_task):
         user = structure_factories.UserFactory()
-        user_key = structure_factories.SshPublicKeyFactory(user=user)
+        ssh_key = structure_factories.SshPublicKeyFactory(user=user)
 
         # Grant user in project
         self.project.add_user(user, ProjectRole.ADMINISTRATOR)
         self.assert_task_called(mocked_task,
                                 'nodeconductor.structure.push_ssh_public_key',
-                                user_key.uuid.hex)
+                                ssh_key.uuid.hex)
 
         self.assert_task_called(mocked_task,
                                 'nodeconductor.structure.add_user',
@@ -80,8 +80,8 @@ class UserAndSshKeyPropagationTest(test.APITransactionTestCase):
         self.project.remove_user(user)
         self.assert_task_called(mocked_task,
                                 'nodeconductor.structure.remove_ssh_public_key',
-                                user_key.to_dict())
+                                serialize_ssh_key(ssh_key))
 
         self.assert_task_called(mocked_task,
                                 'nodeconductor.structure.remove_user',
-                                {'username': user.username, 'email': user.email})
+                                serialize_user(user))

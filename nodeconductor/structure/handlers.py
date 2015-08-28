@@ -14,6 +14,7 @@ from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.filters import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
                                             Customer, ProjectGroup, ServiceProjectLink)
+from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
 
 logger = logging.getLogger(__name__)
@@ -43,26 +44,21 @@ class Link(object):
     def __init__(self, link):
         self.link = link.to_string()
 
-    def _to_string(self, obj):
-        if not isinstance(obj, basestring):
-            return obj.uuid.hex
-        return obj
-
     def add_user(self, user):
-        send_task('structure', 'add_user')(self._to_string(user), self.link)
+        if not isinstance(user, basestring):
+            user = user.uuid.hex
+        send_task('structure', 'add_user')(user, self.link)
 
     def remove_user(self, user):
-        data = {
-            'username': user.username,
-            'email': user.email
-        }
-        send_task('structure', 'remove_user')(data, self.link)
+        send_task('structure', 'remove_user')(serialize_user(user), self.link)
 
     def add_key(self, key):
-        send_task('structure', 'push_ssh_public_key')(self._to_string(key), self.link)
+        if not isinstance(key, basestring):
+            key = key.uuid.hex
+        send_task('structure', 'push_ssh_public_key')(key, self.link)
 
     def remove_key(self, key):
-        send_task('structure', 'remove_ssh_public_key')(key.to_dict(), self.link)
+        send_task('structure', 'remove_ssh_public_key')(serialize_ssh_key(key), self.link)
 
 
 def propagate_new_users_key_to_his_projects_services(sender, instance=None, created=False, **kwargs):

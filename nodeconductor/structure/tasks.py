@@ -12,6 +12,7 @@ from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models, handlers)
+from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
 
 
 logger = logging.getLogger(__name__)
@@ -254,13 +255,7 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
 
 @shared_task(name='nodeconductor.structure.remove_ssh_public_key')
 def remove_ssh_public_key(key_data, service_project_link_str):
-    public_key = SshPublicKey(
-        name=key_data['name'],
-        user_id=key_data['user_id'],
-        fingerprint=key_data['fingerprint'],
-        public_key=key_data['public_key'],
-        uuid=key_data['uuid']
-    )
+    public_key = deserialize_ssh_key(key_data)
     service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
 
     try:
@@ -304,10 +299,7 @@ def add_user(user_uuid, service_project_link_str):
 
 @shared_task(name='nodeconductor.structure.remove_user')
 def remove_user(user_data, service_project_link_str):
-    user = get_user_model()(
-        username=user_data['username'],
-        email=user_data['email']
-    )
+    user = deserialize_user(user_data)
     service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
 
     try:
