@@ -10,6 +10,7 @@ from celery import shared_task
 from nodeconductor.core.tasks import transition, retry_if_false
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.structure.log import event_logger
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models, handlers)
 
@@ -245,13 +246,33 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
     backend = service_project_link.get_backend()
     try:
         backend.add_ssh_key(public_key, service_project_link)
+        event_logger.ssh_sync.info(
+            'SSH key {ssh_key_name} has been pushed to {service_name}.',
+            event_type='ssh_key_push_succeeded',
+            event_context={
+                'service_project_link': service_project_link,
+                'ssh_key': public_key
+            }
+        )
     except ServiceBackendNotImplemented:
         pass
     except (ServiceBackendError, CloudBackendError):
         logger.warn(
-            'Failed to push public key %s for service project link %s',
+            'Failed to push SSH key %s to service project link %s',
             public_key.uuid, service_project_link_str,
             exc_info=1)
+
+        # Prevent excessive logging
+        if push_ssh_public_key.request.retries == 0:
+            event_logger.ssh_sync.warning(
+                'Failed to push SSH key {ssh_key_name} to {service_name}.',
+                event_type='ssh_key_push_failed',
+                event_context={
+                    'service_project_link': service_project_link,
+                    'ssh_key': public_key
+                }
+            )
+
     return True
 
 
@@ -263,8 +284,30 @@ def remove_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
     try:
         backend = service_project_link.get_backend()
         backend.remove_ssh_key(public_key, service_project_link)
+        event_logger.ssh_sync.info(
+            'SSH key {ssh_key_name} has been removed from {service_name}.',
+            event_type='ssh_key_remove_succeeded',
+            event_context={
+                'service_project_link': service_project_link,
+                'ssh_key': public_key
+            }
+        )
     except ServiceBackendNotImplemented:
         pass
+    except (ServiceBackendError, CloudBackendError):
+        logger.warn(
+            'Failed to remove SSH key %s from service project link %s',
+            public_key.uuid, service_project_link_str,
+            exc_info=1)
+
+        event_logger.ssh_sync.warning(
+            'Failed to delete SSH key {ssh_key_name} from {service_name}.',
+            event_type='ssh_key_remove_failed',
+            event_context={
+                'service_project_link': service_project_link,
+                'ssh_key': public_key
+            }
+        )
 
 
 @shared_task(max_retries=120, default_retry_delay=30)

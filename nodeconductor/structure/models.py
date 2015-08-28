@@ -528,6 +528,7 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 class ServiceProjectLink(core_models.SerializableAbstractMixin,
                          core_models.SynchronizableMixin,
                          quotas_models.QuotaModelMixin,
+                         LoggableMixin,
                          StructureModel):
     """ Base service-project link class. See Service class for usage example. """
 
@@ -560,6 +561,9 @@ class ServiceProjectLink(core_models.SerializableAbstractMixin,
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return cls._meta.app_label + '-spl'
+
+    def get_log_fields(self):
+        return ('project', 'service',)
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
