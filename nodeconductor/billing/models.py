@@ -62,7 +62,7 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
         backend = self.get_billing_backend()
         invoice = backend.get_invoice(self.backend_id)
 
-        # cleanup if usage_pdf already existed
+        # cleanup if pdf already existed
         if self.pdf is not None:
             self.pdf.delete()
 

@@ -17,14 +17,6 @@ from nodeconductor.structure import (SupportedServices, ServiceBackendError,
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='nodeconductor.structure.sync_billing_customers')
-def sync_billing_customers(customer_uuids=None):
-    if not isinstance(customer_uuids, (list, tuple)):
-        customer_uuids = models.Customer.objects.all().values_list('uuid', flat=True)
-
-    map(sync_billing_customer.delay, customer_uuids)
-
-
 @shared_task(name='nodeconductor.structure.stop_customer_resources')
 def stop_customer_resources(customer_uuid):
     if not settings.NODECONDUCTOR.get('SUSPEND_UNPAID_CUSTOMERS'):
@@ -129,14 +121,6 @@ def sync_service_project_links(service_project_links=None, initial=False):
             args=(service_project_link_str,),
             link=sync_service_project_link_succeeded.si(service_project_link_str),
             link_error=sync_service_project_link_failed.si(service_project_link_str))
-
-
-@shared_task
-def sync_billing_customer(customer_uuid):
-    customer = models.Customer.objects.get(uuid=customer_uuid)
-    backend = customer.get_billing_backend()
-    backend.sync_customer()
-    backend.sync_invoices()
 
 
 @shared_task

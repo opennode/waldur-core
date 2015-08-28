@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from nodeconductor.billing.models import Invoice, Payment
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.structure.models import Customer
 
 
 class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
@@ -12,14 +11,12 @@ class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
     month = serializers.DateField(format='%m', source='date')
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
     pdf = serializers.HyperlinkedIdentityField(view_name='invoice-pdf', lookup_field='uuid')
-    usage_pdf = serializers.HyperlinkedIdentityField(view_name='invoice-usage-pdf', lookup_field='uuid')
 
     class Meta(object):
         model = Invoice
         fields = (
-            'url', 'uuid', 'year', 'month', 'amount', 'pdf', 'usage_pdf', 'date',
+            'url', 'uuid', 'year', 'month', 'amount', 'pdf', 'date',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
-            'status',
         )
         related_paths = ('customer',)
         extra_kwargs = {
