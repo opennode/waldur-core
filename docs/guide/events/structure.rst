@@ -82,3 +82,19 @@ Structure events
 
     **resource_deleted**
         Resource has been deleted.
+
+------------
+
+.. glossary::
+
+    **ssh_key_push_succeeded**
+        SSH key has been pushed to service.
+
+    **ssh_key_push_failed**
+        Failed to push SSH key to service.
+
+    **ssh_key_remove_succeeded**
+        SSH key has been removed from service.
+
+    **ssh_key_remove_failed**
+        Failed to delete SSH key from service.

@@ -247,7 +247,7 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
     try:
         backend.add_ssh_key(public_key, service_project_link)
         event_logger.ssh_sync.info(
-            'Pushed public key {ssh_key_name} to {service_name}.',
+            'SSH key {ssh_key_name} has been pushed to {service_name}.',
             event_type='ssh_key_push_succeeded',
             event_context={
                 'service_project_link': service_project_link,
@@ -258,14 +258,14 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
         pass
     except (ServiceBackendError, CloudBackendError):
         logger.warn(
-            'Failed to push public key %s for service project link %s',
+            'Failed to push SSH key %s to service project link %s',
             public_key.uuid, service_project_link_str,
             exc_info=1)
 
         # Prevent excessive logging
         if push_ssh_public_key.request.retries == 0:
             event_logger.ssh_sync.warning(
-                'Failed to push public key {ssh_key_name} to {service_name}.',
+                'Failed to push SSH key {ssh_key_name} to {service_name}.',
                 event_type='ssh_key_push_failed',
                 event_context={
                     'service_project_link': service_project_link,
@@ -285,7 +285,7 @@ def remove_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
         backend = service_project_link.get_backend()
         backend.remove_ssh_key(public_key, service_project_link)
         event_logger.ssh_sync.info(
-            'Removed public key {ssh_key_name} from {service_name}.',
+            'SSH key {ssh_key_name} has been removed from {service_name}.',
             event_type='ssh_key_remove_succeeded',
             event_context={
                 'service_project_link': service_project_link,
@@ -296,12 +296,12 @@ def remove_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
         pass
     except (ServiceBackendError, CloudBackendError):
         logger.warn(
-            'Failed to remove public key %s from service project link %s',
+            'Failed to remove SSH key %s from service project link %s',
             public_key.uuid, service_project_link_str,
             exc_info=1)
 
         event_logger.ssh_sync.warning(
-            'Failed to delete public key {ssh_key_name} from {service_name}.',
+            'Failed to delete SSH key {ssh_key_name} from {service_name}.',
             event_type='ssh_key_remove_failed',
             event_context={
                 'service_project_link': service_project_link,
