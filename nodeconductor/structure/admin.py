@@ -47,7 +47,7 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
 
     def sync_with_backend(self, request, queryset):
         customer_uuids = list(queryset.values_list('uuid', flat=True))
-        send_task('structure', 'sync_billing_customers')(customer_uuids)
+        send_task('billing', 'sync_billing_customers')(customer_uuids)
 
         tasks_scheduled = queryset.count()
         message = ungettext(

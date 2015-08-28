@@ -145,9 +145,10 @@ class KillBillAPI(object):
                 for invoice in data]
 
     def get_invoice(self, invoice_id):
-        invoice = self.invoices.get(invoice_id)
+        invoice = self.invoices.get(invoice_id, withItems=True)
         return {'backend_id': invoice['invoiceId'],
                 'date': self._parse_date(invoice['invoiceDate']),
+                'invoice_number': invoice['invoiceNumber'],
                 'items': [{'backend_id': item['invoiceItemId'],
                            'name': item['description'].replace(' (usage item)', ''),
                            'amount': item['amount']}
@@ -155,11 +156,7 @@ class KillBillAPI(object):
                 'amount': invoice['amount']}
 
     def get_invoice_items(self, invoice_id):
-        data = self.invoices.get(invoice_id)
-        return [{'backend_id': item['invoiceItemId'],
-                 'name': item['description'].replace(' (usage item)', ''),
-                 'amount': item['amount']}
-                for item in data['items']]
+        return self.get_invoice(invoice_id)['items']
 
     def propagate_pricelist(self):
         # Generate catalog and push it to backend

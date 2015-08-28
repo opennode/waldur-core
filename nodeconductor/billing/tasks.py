@@ -5,6 +5,7 @@ from datetime import timedelta, datetime
 
 from nodeconductor.billing.backend import BillingBackend, BillingBackendError
 from nodeconductor.structure import SupportedServices
+from nodeconductor.structure.models import Customer
 
 
 logger = logging.getLogger(__name__)
@@ -45,3 +46,19 @@ def sync_pricelist():
         backend.propagate_pricelist()
     except BillingBackendError as e:
         logger.error("Can't propagade pricelist to %s: %s", backend, e)
+
+
+@shared_task(name='nodeconductor.billing.sync_billing_customers')
+def sync_billing_customers(customer_uuids=None):
+    if not isinstance(customer_uuids, (list, tuple)):
+        customer_uuids = Customer.objects.all().values_list('uuid', flat=True)
+
+    map(sync_billing_customer.delay, customer_uuids)
+
+
+@shared_task
+def sync_billing_customer(customer_uuid):
+    customer = Customer.objects.get(uuid=customer_uuid)
+    backend = customer.get_billing_backend()
+    backend.sync_customer()
+    backend.sync_invoices()
