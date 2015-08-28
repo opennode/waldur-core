@@ -506,13 +506,6 @@ class OpenStackBackend(OpenStackClient):
 
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
-
-            event_logger.membership.warning(
-                'Failed to push public key to cloud {cloud_name}.',
-                event_type='iaas_membership_sync_failed',
-                event_context={'membership': membership}
-            )
-
             six.reraise(CloudBackendError, e)
 
     def remove_ssh_public_key(self, membership, public_key):
@@ -531,13 +524,6 @@ class OpenStackBackend(OpenStackClient):
             logger.info('Deleted ssh public key %s from backend', public_key.name)
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to delete ssh public key %s from backend', public_key.name)
-
-            event_logger.membership.warning(
-                'Failed to delete public key from cloud {cloud_name}.',
-                event_type='iaas_membership_sync_failed',
-                event_context={'membership': membership}
-            )
-
             six.reraise(CloudBackendError, e)
 
     def push_membership_quotas(self, membership, quotas):

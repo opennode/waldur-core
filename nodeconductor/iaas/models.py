@@ -102,7 +102,7 @@ class ServiceStatistics(models.Model):
 
 
 @python_2_unicode_compatible
-class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink):
+class CloudProjectMembership(structure_models.ServiceProjectLink):
     """
     This model represents many to many relationships between project and cloud
     """
@@ -141,7 +141,7 @@ class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink)
         return self.cloud.get_backend()
 
     def get_log_fields(self):
-        return ('project', 'cloud',)
+        return ('project', 'cloud', 'service')
 
     @property
     def service(self):

@@ -15,7 +15,7 @@ class OpenStackService(structure_models.Service):
         return self.settings.backend_url
 
 
-class OpenStackServiceProjectLink(LoggableMixin, structure_models.ServiceProjectLink):
+class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
     service = models.ForeignKey(OpenStackService)
 
     tenant_id = models.CharField(max_length=64, blank=True)
@@ -43,9 +43,6 @@ class OpenStackServiceProjectLink(LoggableMixin, structure_models.ServiceProject
 
     def get_quota_parents(self):
         return [self.project]
-
-    def get_log_fields(self):
-        return ('project', 'cloud',)
 
     def get_backend(self):
         return super(OpenStackServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)

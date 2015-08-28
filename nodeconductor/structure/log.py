@@ -1,5 +1,5 @@
 from nodeconductor.logging.log import EventLogger, event_logger
-from nodeconductor.core.models import User
+from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.structure import models
 from nodeconductor.structure.filters import filter_queryset_for_user
 
@@ -104,6 +104,17 @@ class ResourceEventLogger(EventLogger):
                        'resource_deleted')
 
 
+class SshSyncEventLogger(EventLogger):
+    ssh_key = SshPublicKey
+    service_project_link = models.ServiceProjectLink
+
+    class Meta:
+        event_types = ('ssh_key_push_succeeded',
+                       'ssh_key_push_failed',
+                       'ssh_key_remove_succeeded',
+                       'ssh_key_remove_failed')
+
+
 event_logger.register('customer_role', CustomerRoleEventLogger)
 event_logger.register('project_role', ProjectRoleEventLogger)
 event_logger.register('project_group_role', ProjectGroupRoleEventLogger)
@@ -114,3 +125,4 @@ event_logger.register('project', ProjectEventLogger)
 event_logger.register('project_group', ProjectGroupEventLogger)
 event_logger.register('balance', BalanceEventLogger)
 event_logger.register('resource', ResourceEventLogger)
+event_logger.register('ssh_sync', SshSyncEventLogger)
