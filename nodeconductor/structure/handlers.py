@@ -56,20 +56,13 @@ class Link(object):
             'username': user.username,
             'email': user.email
         }
-        send_task('structure', 'remove_user')(data, link)
+        send_task('structure', 'remove_user')(data, self.link)
 
     def add_key(self, key):
         send_task('structure', 'push_ssh_public_key')(self._to_string(key), self.link)
 
     def remove_key(self, key):
-        data = {
-            'name': key.name,
-            'user_id': key.user_id,
-            'fingerprint': key.fingerprint,
-            'public_key': key.public_key,
-            'uuid': key.uuid.hex
-        }
-        send_task('structure', 'remove_ssh_public_key')(data, self.link)
+        send_task('structure', 'remove_ssh_public_key')(key.to_dict(), self.link)
 
 
 def propagate_new_users_key_to_his_projects_services(sender, instance=None, created=False, **kwargs):

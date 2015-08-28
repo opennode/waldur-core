@@ -201,6 +201,15 @@ class SshPublicKey(LoggableMixin, UuidMixin, models.Model):
     def __str__(self):
         return self.name
 
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'user_id': self.user_id,
+            'fingerprint': self.fingerprint,
+            'public_key': self.public_key,
+            'uuid': self.uuid.hex
+        }
+
 
 class SynchronizationStates(object):
     SYNCING_SCHEDULED = 1
