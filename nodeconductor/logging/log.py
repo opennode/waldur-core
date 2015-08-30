@@ -7,8 +7,9 @@ import importlib
 import logging
 
 from django.apps import apps
-from django.utils import six
 from django.contrib.contenttypes import models as ct_models
+from django.db import transaction
+from django.utils import six
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.logging import models
@@ -252,19 +253,20 @@ class AlertLogger(BaseLogger):
 
         context = self.compile_context(**alert_context)
         msg = self.compile_message(message_template, context)
-        try:
-            content_type = ct_models.ContentType.objects.get_for_model(scope)
-            alert = models.Alert.objects.get(
-                object_id=scope.id, content_type=content_type, alert_type=alert_type, closed__isnull=True)
-            if alert.severity != severity or alert.message != msg:
-                alert.severity = severity
-                alert.message = msg
-                alert.save()
-            created = False
-        except models.Alert.DoesNotExist:
-            alert = models.Alert.objects.create(
-                alert_type=alert_type, message=msg, severity=severity, context=context, scope=scope)
-            created = True
+        with transaction.atomic():
+            try:
+                content_type = ct_models.ContentType.objects.get_for_model(scope)
+                alert = models.Alert.objects.get(
+                    object_id=scope.id, content_type=content_type, alert_type=alert_type, closed__isnull=True)
+                if alert.severity != severity or alert.message != msg:
+                    alert.severity = severity
+                    alert.message = msg
+                    alert.save()
+                created = False
+            except models.Alert.DoesNotExist:
+                alert = models.Alert.objects.create(
+                    alert_type=alert_type, message=msg, severity=severity, context=context, scope=scope)
+                created = True
 
         return alert, created
 
