@@ -40,7 +40,8 @@ class QuietSession(requests.Session):
     def request(self, *args, **kwargs):
         if not kwargs.get('verify', self.verify):
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', exceptions.InsecurePlatformWarning)
+                if hasattr(exceptions, 'InsecurePlatformWarning'):  # urllib3 1.10 and lower does not have this warning
+                    warnings.simplefilter('ignore', exceptions.InsecurePlatformWarning)
                 warnings.simplefilter('ignore', exceptions.InsecureRequestWarning)
                 return super(QuietSession, self).request(*args, **kwargs)
         else:
