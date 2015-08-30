@@ -106,7 +106,7 @@ class GenericRelatedField(Field):
                 kwargs = {field: getattr(obj, field)}
                 break
         if kwargs is None:
-            raise AttributeError('Related object does not have any of of lookup_fields')
+            raise AttributeError('Related object does not have any of lookup_fields')
         try:
             request = self.context['request']
         except AttributeError:
@@ -137,7 +137,7 @@ class GenericRelatedField(Field):
             match = resolve(url)
             model = self._get_model_from_resolve_match(match)
             obj = model.objects.get(**match.kwargs)
-        except (Resolver404, AttributeError, MultipleObjectsReturned):
+        except (Resolver404, AttributeError, MultipleObjectsReturned, model.DoesNotExist):
             raise serializers.ValidationError("Can`t restore object from url: %s" % data)
         if model not in self.related_models:
             raise serializers.ValidationError('%s object does not support such relationship' % str(obj))
