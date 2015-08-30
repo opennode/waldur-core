@@ -75,4 +75,3 @@ class EmailHookSerializer(BaseHookSerializer):
     class Meta(BaseHookSerializer.Meta):
         model = models.EmailHook
         fields = BaseHookSerializer.Meta.fields + ('email', )
-

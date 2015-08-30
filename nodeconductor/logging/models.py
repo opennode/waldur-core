@@ -15,7 +15,7 @@ from nodeconductor.logging import managers
 
 
 class UuidMixin(models.Model):
-    # There is circular dependency between logging and core applications. 
+    # There is circular dependency between logging and core applications.
     # Core models are loggable. So we cannot use UUID mixin here.
 
     class Meta:
