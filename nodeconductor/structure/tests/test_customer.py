@@ -620,3 +620,19 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         project_group.add_user(user, ProjectGroupRole.MANAGER)
         project_group.remove_user(user)
         self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 0)
+
+    def test_customer_quota_is_not_increased_on_adding_owner_as_administrator(self):
+        user = factories.UserFactory()
+        project = factories.ProjectFactory(customer=self.customer)
+        self.customer.add_user(user, CustomerRole.OWNER)
+        project.add_user(user, ProjectRole.ADMINISTRATOR)
+
+        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 1)
+
+    def test_customer_quota_is_not_increased_on_adding_owner_as_manager(self):
+        user = factories.UserFactory()
+        project = factories.ProjectFactory(customer=self.customer)
+        self.customer.add_user(user, CustomerRole.OWNER)
+        project.add_user(user, ProjectRole.ADMINISTRATOR)
+
+        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 1)

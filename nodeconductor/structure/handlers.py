@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from collections import Counter
 import logging
 
 from django.db import models, transaction
@@ -365,15 +366,12 @@ def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwar
 
     if sender == Customer:
         customer = structure
-        customer_users = customer.get_users().exclude(groups__customerrole__role_type=role)
-    elif sender == Project:
+    elif sender in (Project, ProjectGroup):
         customer = structure.customer
-        customer_users = customer.get_users().exclude(groups__projectrole__role_type=role)
-    elif sender == ProjectGroup:
-        customer = structure.customer
-        customer_users = customer.get_users().exclude(groups__projectgrouprole__role_type=role)
 
-    if user not in customer_users:
+    customer_users_counter = Counter(customer.get_users())
+
+    if customer_users_counter.get(user, 0) == 1:
         if signal == signals.structure_role_granted:
             customer.add_quota_usage('nc_user_count', 1)
         else:
