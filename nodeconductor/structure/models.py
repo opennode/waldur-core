@@ -727,6 +727,9 @@ class Resource(core_models.UuidMixin,
         """ This name will be used by generic relationships to membership model for URL creation """
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
 
+    def get_log_fields(self):
+        return ('uuid', 'name', 'service_project_link')
+
     def __str__(self):
         return self.name
 
