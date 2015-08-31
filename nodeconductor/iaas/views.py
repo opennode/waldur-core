@@ -989,6 +989,9 @@ class CloudFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='customer__uuid',
     )
+    customer_uuid = django_filters.CharFilter(
+        name='customer__uuid',
+    )
     customer_name = django_filters.CharFilter(
         lookup_type='icontains',
         name='customer__name',
@@ -1012,6 +1015,7 @@ class CloudFilter(django_filters.FilterSet):
         fields = [
             'name',
             'customer',
+            'customer_uuid',
             'customer_name',
             'customer_native_name',
             'project',
