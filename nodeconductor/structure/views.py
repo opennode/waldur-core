@@ -1319,10 +1319,15 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     filter_class = BaseServiceFilter
     lookup_field = 'uuid'
 
+    def _can_import(self):
+        return self.import_serializer_class is not NotImplemented
+
     def get_serializer_class(self):
+        serializer = super(BaseServiceViewSet, self).get_serializer_class()
         if self.action == 'link':
-            return self.import_serializer_class
-        return super(BaseServiceViewSet, self).get_serializer_class()
+            serializer = self.import_serializer_class if self._can_import() else rf_serializers.Serializer
+
+        return serializer
 
     def get_serializer_context(self):
         context = super(BaseServiceViewSet, self).get_serializer_context()
@@ -1332,6 +1337,9 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     @detail_route(methods=['get', 'post'])
     def link(self, request, uuid=None):
+        if not self._can_import():
+            raise MethodNotAllowed('link')
+
         if self.request.method == 'GET':
             service = self.get_object()
             try:
