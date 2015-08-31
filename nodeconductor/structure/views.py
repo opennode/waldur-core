@@ -1203,7 +1203,7 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
 
 
 class ServiceViewSet(viewsets.GenericViewSet):
-    """ The list of supported services and resources. """
+    """ Metadata about supported services and resources. """
 
     def list(self, request):
         return Response(SupportedServices.get_services_with_resources(request))
@@ -1253,14 +1253,16 @@ class ResourceViewSet(BaseSummaryView):
 
     def get_urls(self, request):
         types = request.query_params.getlist('resource_type', [])
-
-        for resource_type, resources_url in SupportedServices.get_resources(request).items():
-            if types != [] and resource_type not in types:
-                continue
-            yield resources_url
+        resources = SupportedServices.get_resources(request).items()
+        if types != []:
+            return [url for (type, url) in resources if type in types]
+        else:
+            return [url for (type, url) in resources]
 
 
 class ServiceItemsViewSet(BaseSummaryView):
+    """ The summary list of all user services. """
+
     params = ('name', 'customer_uuid')
 
     def get_urls(self, request):
