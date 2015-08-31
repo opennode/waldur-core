@@ -172,6 +172,12 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
+    'sync-service-settings': {
+        'task': 'nodeconductor.structure.sync_service_settings',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+
     'recover-erred-services': {
         'task': 'nodeconductor.structure.recover_erred_services',
         'schedule': timedelta(minutes=45),
