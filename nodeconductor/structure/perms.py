@@ -52,6 +52,19 @@ PERMISSION_LOGICS = (
     )),
 )
 
+resource_permission_logic = FilteredCollaboratorsPermissionLogic(
+    collaborators_query=[
+        'service_project_link__project__roles__permission_group__user',
+        'service_project_link__project__customer__roles__permission_group__user',
+    ],
+    collaborators_filter={
+        'service_project_link__project__roles__role_type': ProjectRole.ADMINISTRATOR,
+        'service_project_link__project__customer__roles__role_type': CustomerRole.OWNER,
+    },
+    any_permission=True,
+)
+
+
 OWNER_CAN_MANAGE_CUSTOMER_LOGICS = FilteredCollaboratorsPermissionLogic(
     collaborators_query='roles__permission_group__user',
     collaborators_filter={
