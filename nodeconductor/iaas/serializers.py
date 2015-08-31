@@ -19,6 +19,7 @@ from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.quotas import serializers as quotas_serializers
+from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure import filters as structure_filters
 
@@ -52,6 +53,7 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
     projects = structure_serializers.BasicProjectSerializer(many=True, read_only=True)
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
     resources_count = serializers.SerializerMethodField()
+    service_type = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.Cloud
@@ -61,7 +63,7 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
             'name',
             'customer', 'customer_name', 'customer_native_name',
             'flavors', 'projects', 'auth_url', 'dummy',
-            'resources_count'
+            'resources_count', 'service_type',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -91,6 +93,9 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
 
     def get_resources_count(self, obj):
         return models.Instance.objects.filter(cloud_project_membership__cloud=obj).count()
+
+    def get_service_type(self, obj):
+        return SupportedServices.get_name_for_model(obj)
 
 
 class UniqueConstraintError(exceptions.APIException):

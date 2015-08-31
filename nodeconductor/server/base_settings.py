@@ -13,11 +13,12 @@ from nodeconductor.server.admin.settings import *
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
 
 
-DEBUG = False
+DEBUG = True
 
 TEMPLATE_DEBUG = False
 
 MEDIA_ROOT = '/tmp/'
+MEDIA_URL = '/media/'
 
 MEDIA_URL = '/media/'
 
@@ -55,12 +56,15 @@ INSTALLED_APPS = (
     'permission',
     'django_fsm',
     'reversion',
+
+    'corsheaders',
 )
 
 INSTALLED_APPS += ADMIN_APPS
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -287,3 +291,4 @@ try:
     CELERYBEAT_SCHEDULE.update(NODECONDUCTOR_PLUS_CELERYBEAT_SCHEDULE)
 except (ImportError, NameError):
     pass
+CORS_ORIGIN_ALLOW_ALL = True
