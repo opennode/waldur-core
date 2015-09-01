@@ -179,13 +179,20 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
                     query = {resource_model.Permissions.project_path.split('__')[0]: link}
                     resources_count += resource_model.objects.filter(**query).count()
 
+                # XXX: Backward compatibility with IAAS Cloud
+                try:
+                    is_shared = link.service.settings.shared
+                except AttributeError:
+                    is_shared = False
+
                 services.append({
                     'uuid': service_uuid,
                     'url': service_url,
                     'name': service_name,
                     'type': service_type,
                     'state': link.get_state_display(),
-                    'resources_count': resources_count
+                    'resources_count': resources_count,
+                    'shared': is_shared
                 })
         return services
 
