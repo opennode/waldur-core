@@ -1362,8 +1362,11 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
         if not self._can_import():
             raise MethodNotAllowed('link')
 
+        service = self.get_object()
+        if service.settings.shared and not request.user.is_staff:
+            raise PermissionDenied("Only staff users are allowed to import resources from shared services.")
+
         if self.request.method == 'GET':
-            service = self.get_object()
             try:
                 # project_uuid can be supplied in order to get a list of resources
                 # available for import (link) based on project, depends on backend implementation
