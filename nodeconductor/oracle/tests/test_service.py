@@ -178,10 +178,6 @@ class ServicePermissionTest(test.APITransactionTestCase):
     def test_user_can_add_service_to_the_customer_he_owns(self):
         self.client.force_authenticate(user=self.users['customer_owner'])
 
-        new_service = factories.OracleServiceFactory.build(settings=self.settings, customer=self.customers['owned'])
-        response = self.client.post(factories.OracleServiceFactory.get_list_url(), self._get_valid_payload(new_service))
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
         payload = {
             'name': factories.OracleServiceFactory().name,
             'customer': structure_factories.CustomerFactory.get_url(self.customers['owned']),
@@ -211,7 +207,7 @@ class ServicePermissionTest(test.APITransactionTestCase):
             new_service = factories.OracleServiceFactory.build(
                 settings=self.settings, customer=self.customers[customer_type])
             response = self.client.post(factories.OracleServiceFactory.get_list_url(), self._get_valid_payload(new_service))
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_user_cannot_add_service_to_the_customer_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.users['no_role'])

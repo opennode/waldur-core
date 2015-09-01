@@ -421,8 +421,9 @@ def connect_customer_to_shared_service_settings(sender, instance, created=False,
     customer = instance
 
     for shared_settings in ServiceSettings.objects.filter(shared=True):
-        service_model = SupportedServices.get_service_model_for_service_type(shared_settings.type)
-        service_model.objects.create(customer=customer, settings=shared_settings)
+        service_model = SupportedServices.get_service_models()[shared_settings.type]['service']
+        service_model.objects.create(customer=customer, settings=shared_settings, name='Shared {} service'.format(
+            shared_settings.get_type_display()))
 
 
 def connect_shared_service_settings_to_customers(sender, instance, created=False, **kwargs):
@@ -431,30 +432,7 @@ def connect_shared_service_settings_to_customers(sender, instance, created=False
     if not service_settings.shared:
         return
     if created or not service_settings.tracker.previous('shared'):
-        service_model = SupportedServices.get_service_model_for_service_type(service_settings.type)
+        service_model = SupportedServices.get_service_models()[service_settings.type]['service']
         for customer in Customer.objects.all():
-            service_model.objects.create(customer=customer, settings=service_settings)
-
-
-def handle_unsharing_of_service_settings_with_resources(sender, instance, created=False, **kwargs):
-    """ Raise exception if service settings has connected resource, delete related services otherwise """
-    if created:
-        return
-    service_settings = instance
-
-    if not service_settings.shared and ServiceSettings.objects.filter(id=service_settings.id).exists():
-        resource_models = SupportedServices.get_resource_models_for_service_type(service_settings.type)
-        related_resources = []
-        for resource_model in resource_models:
-            related_resources += list(resource_model.objects.filter(
-                service_project_link__service__settings=service_settings))
-
-        if related_resources:
-            raise models.ProtectedError(
-                "Cannot delete service settings {} because they have related services with resources".format(
-                    service_settings),
-                related_resources
-            )
-        else:
-            service_model = SupportedServices.get_service_model_for_service_type(service_settings.type)
-            service_model.objects.filter(settings=service_settings).delete()
+            service_model.objects.create(customer=customer, settings=service_settings, name='Shared {} service'.format(
+                service_settings.get_type_display()))

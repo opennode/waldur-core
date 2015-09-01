@@ -284,9 +284,3 @@ class StructureConfig(AppConfig):
             sender=ServiceSettings,
             dispatch_uid='nodeconductor.structure.handlers.connect_shared_service_settings_to_customers',
         )
-
-        signals.pre_save.connect(
-            handlers.handle_unsharing_of_service_settings_with_resources,
-            sender=ServiceSettings,
-            dispatch_uid='nodeconductor.structure.handlers.handle_unsharing_of_service_settings_with_resources',
-        )

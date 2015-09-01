@@ -228,18 +228,6 @@ class SupportedServices(object):
         return data
 
     @classmethod
-    def get_service_model_for_service_type(cls, service_type):
-        service_models = {
-            service_type: models['service'] for service_type, models in cls.get_service_models().items()}
-        return service_models[service_type]
-
-    @classmethod
-    def get_resource_models_for_service_type(cls, service_type):
-        resource_models = {
-            service_type: models['resources'] for service_type, models in cls.get_service_models().items()}
-        return resource_models[service_type]
-
-    @classmethod
     def get_service_project_link(cls, service_model):
         return next(m[0].model for m in service_model._meta.get_all_related_objects_with_model()
                     if m[0].var_name == 'cloudprojectmembership' or
