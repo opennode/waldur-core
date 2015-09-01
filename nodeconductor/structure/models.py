@@ -14,7 +14,6 @@ from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 from jsonfield import JSONField
-from model_utils import FieldTracker
 from model_utils.models import TimeStampedModel
 
 from nodeconductor.billing.backend import BillingBackend
@@ -488,8 +487,6 @@ class Service(core_models.SerializableAbstractMixin,
         help_text="Service will be automatically added to all customers projects if it is available for all"
     )
     projects = NotImplemented
-
-    tracker = FieldTracker()
 
     def get_backend(self, **kwargs):
         return self.settings.get_backend(**kwargs)
