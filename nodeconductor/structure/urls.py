@@ -16,6 +16,7 @@ def register_in(router):
     router.register(r'project-group-permissions', views.ProjectGroupPermissionViewSet, base_name='projectgroup_permission')
     router.register(r'service-settings', views.ServiceSettingsViewSet)
     router.register(r'services', views.ServiceViewSet, base_name='service')
+    router.register(r'service-items', views.ServiceItemsViewSet, base_name='service_items')
     router.register(r'resources', views.ResourceViewSet, base_name='resource')
     router.register(r'users', views.UserViewSet)
     router.register(r'keys', views.SshKeyViewSet)

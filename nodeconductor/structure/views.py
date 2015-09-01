@@ -1203,14 +1203,14 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
 
 
 class ServiceViewSet(viewsets.GenericViewSet):
-    """ The list of supported services and resources. """
+    """ Metadata about supported services and resources. """
 
     def list(self, request):
         return Response(SupportedServices.get_services_with_resources(request))
 
 
-class ResourceViewSet(viewsets.GenericViewSet):
-    """ The summary list of all user resources. """
+class BaseSummaryView(viewsets.GenericViewSet):
+    params = []
 
     def list(self, request):
 
@@ -1220,32 +1220,53 @@ class ResourceViewSet(viewsets.GenericViewSet):
                 raise APIException(response.data)
             return response
 
-        def clear_query(keys):
-            params = {}
-            for key in keys:
-                if key in request.query_params:
-                    params[key] = request.query_params.get(key)
-            return params
-
         data = []
-        types = request.query_params.getlist('resource_type', [])
-
-        for resource_type, resources_url in SupportedServices.get_resources(request).items():
-            if types != [] and resource_type not in types:
-                continue
-
-            params = clear_query(('name', 'project_uuid', 'customer_uuid'))
-            response = fetch_data(resources_url, params)
+        for url in self.get_urls(request):
+            params = self.get_params(request)
+            response = fetch_data(url, params)
 
             if response.total and response.total > len(response.data):
                 params['page_size'] = response.total
-                response = fetch_data(resources_url, params)
+                response = fetch_data(url, params)
             data += response.data
 
         page = self.paginate_queryset(data)
         if page is not None:
             return self.get_paginated_response(page)
         return response.Response(data)
+
+    def get_params(self, request):
+        params = {}
+        for key in self.params:
+            if key in request.query_params:
+                params[key] = request.query_params.get(key)
+        return params
+
+    def get_urls(self, request):
+        return []
+
+
+class ResourceViewSet(BaseSummaryView):
+    """ The summary list of all user resources. """
+
+    params = ('name', 'project_uuid', 'customer_uuid')
+
+    def get_urls(self, request):
+        types = request.query_params.getlist('resource_type', [])
+        resources = SupportedServices.get_resources(request).items()
+        if types != []:
+            return [url for (type, url) in resources if type in types]
+        else:
+            return [url for (type, url) in resources]
+
+
+class ServiceItemsViewSet(BaseSummaryView):
+    """ The summary list of all user services. """
+
+    params = ('name', 'customer_uuid')
+
+    def get_urls(self, request):
+        return SupportedServices.get_services(request).values()
 
 
 class UpdateOnlyByPaidCustomerMixin(object):
@@ -1298,6 +1319,7 @@ class UpdateOnlyByPaidCustomerMixin(object):
 class BaseServiceFilter(django_filters.FilterSet):
     customer_uuid = django_filters.CharFilter(name='customer__uuid')
     customer = core_filters.URLFilter(viewset=CustomerViewSet, name='customer__uuid')
+    name = django_filters.CharFilter(lookup_type='icontains')
 
     class Meta(object):
         model = models.Service
@@ -1340,8 +1362,11 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
         if not self._can_import():
             raise MethodNotAllowed('link')
 
+        service = self.get_object()
+        if service.settings.shared and not request.user.is_staff:
+            raise PermissionDenied("Only staff users are allowed to import resources from shared services.")
+
         if self.request.method == 'GET':
-            service = self.get_object()
             try:
                 # project_uuid can be supplied in order to get a list of resources
                 # available for import (link) based on project, depends on backend implementation
