@@ -14,7 +14,6 @@ from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 from jsonfield import JSONField
-from model_utils import FieldTracker
 from model_utils.models import TimeStampedModel
 
 from nodeconductor.billing.backend import BillingBackend
@@ -452,8 +451,6 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
 
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
     dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
-
-    tracker = FieldTracker()
 
     def get_backend(self, **kwargs):
         return SupportedServices.get_service_backend(self.type)(self, **kwargs)

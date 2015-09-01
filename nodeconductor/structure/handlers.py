@@ -429,10 +429,10 @@ def connect_customer_to_shared_service_settings(sender, instance, created=False,
 def connect_shared_service_settings_to_customers(sender, instance, created=False, **kwargs):
     """ Connected service settings with all customers if they were created or become shared """
     service_settings = instance
-    if not service_settings.shared:
+    if not service_settings.shared or not created:
         return
-    if created or not service_settings.tracker.previous('shared'):
-        service_model = SupportedServices.get_service_models()[service_settings.type]['service']
-        for customer in Customer.objects.all():
-            service_model.objects.create(customer=customer, settings=service_settings, name='Shared {} service'.format(
-                service_settings.get_type_display()))
+
+    service_model = SupportedServices.get_service_models()[service_settings.type]['service']
+    for customer in Customer.objects.all():
+        service_model.objects.create(customer=customer, settings=service_settings, name='Shared {} service'.format(
+            service_settings.get_type_display()))
