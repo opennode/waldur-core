@@ -19,7 +19,7 @@ class ResourceQuotasTest(test.APITransactionTestCase):
 
     def test_auto_quotas_update(self):
         for service_type, models in SupportedServices.get_service_models().items():
-            settings = factories.ServiceSettingsFactory(customer=self.customer, type=service_type)
+            settings = factories.ServiceSettingsFactory(customer=self.customer, type=service_type, shared=False)
 
             class ServiceFactory(factory.DjangoModelFactory):
                 class Meta(object):

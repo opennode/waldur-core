@@ -66,6 +66,9 @@ class SuspendServiceTest(test.APITransactionTestCase):
         self.client.force_authenticate(user=self.user)
 
         for service_type, models in SupportedServices.get_service_models().items():
+            # XXX: quick fix for iaas cloud. Can be removed after iaas application refactoring.
+            if service_type == -1:
+                continue
             settings = factories.ServiceSettingsFactory(customer=self.customer, type=service_type)
 
             class ServiceFactory(factory.DjangoModelFactory):
@@ -87,7 +90,7 @@ class SuspendServiceTest(test.APITransactionTestCase):
                     })
 
             else:
-                service = ServiceFactory(customer=self.customer, settings=settings)
+                service = models['service'].objects.get(customer=self.customer, settings=settings)
 
             service_url = self._get_url(
                 SupportedServices.get_detail_view_for_model(models['service']), uuid=service.uuid.hex)
@@ -97,17 +100,6 @@ class SuspendServiceTest(test.APITransactionTestCase):
 
             response = self.client.delete(service_url)
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-            settings = factories.ServiceSettingsFactory(customer=self.customer, type=service_type)
-            response = self.client.post(
-                self._get_url(SupportedServices.get_list_view_for_model(models['service'])),
-                {
-                    'name': 'new service',
-                    'customer': factories.CustomerFactory.get_url(self.customer),
-                    'settings': factories.ServiceSettingsFactory.get_url(settings),
-                    'auth_url': 'http://example.com:5000/v2',
-                })
-            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.data)
 
             for resource_model in models['resources']:
                 if service_type == SupportedServices.Types.IaaS:

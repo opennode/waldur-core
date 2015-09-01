@@ -156,6 +156,7 @@ class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
                 severity_codes.get(severity_name) for severity_name in request.query_params.getlist('severity')]
             queryset = queryset.filter(severity__in=severities)
 
+        # XXX: this filtering is fragile, need to be fixed in NC-774
         if 'scope_type' in request.query_params:
             choices = {_convert(m.__name__): m for m in utils.get_loggable_models()}
             try:
