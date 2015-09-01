@@ -295,7 +295,33 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
-class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMixin, PaidResource):
+class PaidInstance(PaidResource):
+
+    class Meta(object):
+        abstract = True
+
+    def get_usage_state(self):
+        state = {
+            CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
+            CostConstants.PriceItem.LICENSE_APPLICATION: self.template.application_type,
+            CostConstants.PriceItem.SUPPORT: (CostConstants.Support.PREMIUM
+                                              if self.type == self.Services.PAAS
+                                              else CostConstants.Support.BASIC),
+        }
+
+        if self.state == self.States.ONLINE and self.flavor_name:
+            state[CostConstants.PriceItem.FLAVOR] = self.flavor_name
+
+        storage_size = self.data_volume_size
+        storage_size += sum(b.metadata['system_snapshot_size'] +
+                            b.metadata['data_snapshot_size'] for b in self.backups.get_active())
+
+        state[CostConstants.PriceItem.STORAGE] = ServiceBackend.mb2gb(storage_size)
+
+        return state
+
+
+class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMixin, PaidInstance):
     """
     A generalization of a single virtual machine.
 
@@ -360,26 +386,6 @@ class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMix
 
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)
-
-    def get_usage_state(self):
-        state = {
-            CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
-            CostConstants.PriceItem.LICENSE_APPLICATION: self.template.application_type,
-            CostConstants.PriceItem.SUPPORT: (CostConstants.Support.PREMIUM
-                                              if self.type == self.Services.PAAS
-                                              else CostConstants.Support.BASIC),
-        }
-
-        if self.state == self.States.ONLINE and self.flavor_name:
-            state[CostConstants.PriceItem.FLAVOR] = self.flavor_name
-
-        storage_size = self.data_volume_size
-        storage_size += sum(b.metadata['system_snapshot_size'] +
-                            b.metadata['data_snapshot_size'] for b in self.backups.get_active())
-
-        state[CostConstants.PriceItem.STORAGE] = ServiceBackend.mb2gb(storage_size)
-
-        return state
 
     def _init_instance_licenses(self):
         """

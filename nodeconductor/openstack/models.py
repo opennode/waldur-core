@@ -2,6 +2,7 @@ from django.db import models
 from django.core.validators import MinValueValidator
 
 from nodeconductor.structure import models as structure_models
+from nodeconductor.iaas.models import PaidInstance
 from nodeconductor.logging.log import LoggableMixin
 
 
@@ -59,7 +60,7 @@ class Image(structure_models.ServiceProperty):
     min_ram = models.PositiveIntegerField(default=0, help_text='Minimum memory size in MiB')
 
 
-class Instance(structure_models.VirtualMachineMixin, structure_models.Resource):
+class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, PaidInstance):
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
     service_project_link = models.ForeignKey(

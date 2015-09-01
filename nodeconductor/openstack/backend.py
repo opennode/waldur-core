@@ -235,6 +235,9 @@ class OpenStackBackend(ServiceBackend):
 
         return instance
 
+    def get_monthly_cost_estimate(self, instance):
+        return self._old_backend.get_monthly_cost_estimate(instance)
+
     def get_resources_for_import(self):
         if self.is_admin:
             raise ServiceBackendNotImplemented(
