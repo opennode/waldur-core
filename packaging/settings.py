@@ -24,8 +24,16 @@ config_defaults = {
         'static_root': os.path.join(data_dir, 'static'),
         'template_debug': 'false',
         'owner_can_manage_customer': 'false',
-        'enable_whmcs_order_processing': 'false',
+        'enable_order_processing': 'false',
         'show_all_users': 'true'
+    },
+    'billing': {
+        'api_url': '',
+        'password': '',
+        'username': '',
+        'api_key': '',
+        'api_secret': '',
+        'currency': 'USD',
     },
     'celery': {
         'backup_schedule_execute_period': 600,
@@ -95,13 +103,6 @@ config_defaults = {
     },
     'sqlite3': {
         'path': os.path.join(work_dir, 'db.sqlite3'),
-    },
-    'whmcs': {
-        'api_url': '',
-        'currency_code': 1,
-        'currency_name': 'USD',
-        'password': '',
-        'username': '',
     },
     'zabbix': {
         'db_host': '',  # empty to disable Zabbix database access
@@ -786,26 +787,13 @@ NODECONDUCTOR.update({
         }
     },
     'BILLING': {
-        'backend': 'nodeconductor.billing.backend.whmcs.WHMCSAPI',
-        'api_url': config.get('whmcs', 'api_url'),
-        'username': config.get('whmcs', 'username'),
-        'password': config.get('whmcs', 'password'),
-        'currency_code': int(config.get('whmcs', 'currency_code')),
-        'currency_name': config.get('whmcs', 'currency_name'),
-        'openstack': {
-            'invoice_meters': {
-                # ceilometer meter name: (resource name, pricelist name, unit converter, unit)
-                'cpu': ('CPU', 'cpu', 'hours'),
-                'memory': ('Memory', 'ram_gb', 'GB/h'),
-                'disk': ('Storage', 'storage_gb', 'GB/h'),
-                'servers': ('Servers', 'server_num', 'units'),
-                 # licenses
-                'wordpress': ('WordPress', 'wordpress', 'hours'),
-                'zimbra': ('Zimbra', 'zimbra', 'hours'),
-                'postgresql': ('PostgreSQL', 'postgresql', 'hours'),
-
-            }
-        }
+        'backend': 'nodeconductor.billing.backend.killbill.KillBillAPI',
+        'api_url': config.get('billing', 'api_url'),
+        'username': config.get('billing', 'username'),
+        'password': config.get('billing', 'password'),
+        'api_key': config.get('billing', 'api_key'),
+        'api_secret': config.get('billing', 'api_secret'),
+        'currency': config.get('billing', 'currency'),
     },
     'ELASTICSEARCH': {
         'username': config.get('elasticsearch', 'username'),
@@ -817,7 +805,7 @@ NODECONDUCTOR.update({
 
     'OWNER_CAN_MANAGE_CUSTOMER': config.getboolean('global', 'owner_can_manage_customer'),
 
-    'ENABLE_WHMCS_ORDER_PROCESSING': config.getboolean('global', 'enable_whmcs_order_processing'),
+    'ENABLE_ORDER_PROCESSING': config.getboolean('global', 'enable_order_processing'),
 
     'SHOW_ALL_USERS': config.getboolean('global', 'show_all_users'),
 
