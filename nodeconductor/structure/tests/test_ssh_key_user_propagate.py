@@ -30,7 +30,7 @@ class UserAndSshKeyPropagationTest(test.APITransactionTestCase):
             class Meta(object):
                 model = models['service_project_link']
 
-        settings = structure_factories.ServiceSettingsFactory(customer=customer, type=service_type)
+        settings = structure_factories.ServiceSettingsFactory(customer=customer, type=service_type, shared=False)
         service = ServiceFactory(customer=customer, settings=settings)
         return ServiceProjectLinkFactory(service=service, project=project)
 

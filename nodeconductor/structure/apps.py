@@ -23,6 +23,7 @@ class StructureConfig(AppConfig):
         Customer = self.get_model('Customer')
         Project = self.get_model('Project')
         ProjectGroup = self.get_model('ProjectGroup')
+        ServiceSettings = self.get_model('ServiceSettings')
 
         signals.post_save.connect(
             handlers.log_customer_save,
@@ -270,4 +271,16 @@ class StructureConfig(AppConfig):
             handlers.log_customer_account_debited,
             sender=Customer,
             dispatch_uid='nodeconductor.structure.handlers.log_customer_account_debited',
+        )
+
+        signals.post_save.connect(
+            handlers.connect_customer_to_shared_service_settings,
+            sender=Customer,
+            dispatch_uid='nodeconductor.structure.handlers.connect_customer_to_shared_service_settings',
+        )
+
+        signals.post_save.connect(
+            handlers.connect_shared_service_settings_to_customers,
+            sender=ServiceSettings,
+            dispatch_uid='nodeconductor.structure.handlers.connect_shared_service_settings_to_customers',
         )

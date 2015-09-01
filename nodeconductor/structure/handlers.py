@@ -10,11 +10,11 @@ from django.contrib.auth import get_user_model
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
-from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, signals
+from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.filters import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
-                                            Customer, ProjectGroup, ServiceProjectLink)
+                                            Customer, ProjectGroup, ServiceProjectLink, ServiceSettings)
 from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
 
@@ -413,3 +413,26 @@ def log_resource_deleted(sender, instance, **kwargs):
             'resource': instance,
             'resource_type': SupportedServices.get_name_for_model(instance),
         })
+
+
+def connect_customer_to_shared_service_settings(sender, instance, created=False, **kwargs):
+    if not created:
+        return
+    customer = instance
+
+    for shared_settings in ServiceSettings.objects.filter(shared=True):
+        service_model = SupportedServices.get_service_models()[shared_settings.type]['service']
+        service_model.objects.create(customer=customer, settings=shared_settings, name='Shared {} service'.format(
+            shared_settings.get_type_display()))
+
+
+def connect_shared_service_settings_to_customers(sender, instance, created=False, **kwargs):
+    """ Connected service settings with all customers if they were created or become shared """
+    service_settings = instance
+    if not service_settings.shared or not created:
+        return
+
+    service_model = SupportedServices.get_service_models()[service_settings.type]['service']
+    for customer in Customer.objects.all():
+        service_model.objects.create(customer=customer, settings=service_settings, name='Shared {} service'.format(
+            service_settings.get_type_display()))

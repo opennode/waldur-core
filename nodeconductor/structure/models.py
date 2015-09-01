@@ -13,14 +13,14 @@ from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
-from model_utils.models import TimeStampedModel
 from jsonfield import JSONField
+from model_utils.models import TimeStampedModel
 
+from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.core import models as core_models
 from nodeconductor.core.tasks import send_task
-from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
-from nodeconductor.billing.backend import BillingBackend
+from nodeconductor.quotas import models as quotas_models
 from nodeconductor.structure.managers import StructureManager
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
