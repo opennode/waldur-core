@@ -7,7 +7,7 @@ from django.db.models import signals
 from nodeconductor.core import handlers as core_handlers
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
-from nodeconductor.structure.models import Resource, ServiceProjectLink
+from nodeconductor.structure.models import Resource, ServiceProjectLink, Service
 from nodeconductor.structure import filters
 from nodeconductor.structure import handlers
 from nodeconductor.structure import signals as structure_signals
@@ -284,3 +284,18 @@ class StructureConfig(AppConfig):
             sender=ServiceSettings,
             dispatch_uid='nodeconductor.structure.handlers.connect_shared_service_settings_to_customers',
         )
+
+        signals.post_save.connect(
+            handlers.connect_project_to_all_available_services,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.connect_project_to_all_available_services',
+        )
+
+        for index, service_model in enumerate(Service.get_all_models()):
+            signals.post_save.connect(
+                handlers.connect_service_to_all_projects_if_it_is_available_for_all,
+                sender=service_model,
+                dispatch_uid='nodeconductor.structure.handlers.'
+                             'connect_service_{}_to_all_projects_if_it_is_available_for_all_{}'.format(
+                                service_model.__name__, index),
+            )

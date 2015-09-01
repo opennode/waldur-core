@@ -1,6 +1,7 @@
 from django.test import TestCase
 
 from nodeconductor.openstack import models as openstack_models
+from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import models, SupportedServices
 from nodeconductor.structure.tests import factories
 
@@ -48,3 +49,28 @@ class ServiceSettingsSignalsTest(TestCase):
 
         self.assertTrue(openstack_models.OpenStackService.objects.filter(
             customer=customer, settings=new_shared_service_settings).exists())
+
+
+class ServiceSignalsTest(TestCase):
+
+    def test_availble_for_service_connects_to_each_new_project(self):
+        customer = factories.CustomerFactory()
+        service_settings = factories.ServiceSettingsFactory(type=SupportedServices.Types.OpenStack, shared=False)
+        service = openstack_models.OpenStackService.objects.create(
+            name='test', customer=customer, settings=service_settings, available_for_all=True)
+        project = factories.ProjectFactory(customer=customer)
+
+        self.assertTrue(openstack_models.OpenStackServiceProjectLink.objects.filter(
+            project=project, service=service).exists())
+
+    def test_if_service_become_available_it_connects_to_project(self):
+        customer = factories.CustomerFactory()
+        service_settings = factories.ServiceSettingsFactory(type=SupportedServices.Types.OpenStack, shared=False)
+        service = openstack_models.OpenStackService.objects.create(
+            name='test', customer=customer, settings=service_settings)
+        project = factories.ProjectFactory(customer=customer)
+        service.available_for_all = True
+        service.save()
+
+        self.assertTrue(openstack_models.OpenStackServiceProjectLink.objects.filter(
+            project=project, service=service).exists())
