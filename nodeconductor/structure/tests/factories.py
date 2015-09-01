@@ -141,7 +141,7 @@ class ServiceSettingsFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'Settings %s' % n)
     state = core_models.SynchronizationStates.IN_SYNC
     shared = True
-    type = 2
+    type = 1
 
     @classmethod
     def get_url(cls, settings=None):
