@@ -7,7 +7,7 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('openstack', '0005_rename_service_models'),
+        ('openstack', '0006_instance_billing_backend_id'),
     ]
 
     operations = [
