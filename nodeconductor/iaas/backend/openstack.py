@@ -1369,7 +1369,7 @@ class OpenStackBackend(OpenStackClient):
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
             else:
                 # TODO: add floating ips support for openstack (NC-636)
-                if isinstance(instance, models.Instance);
+                if isinstance(instance, models.Instance):
                     self.release_floating_ip_from_instance(instance)
 
         except nova_exceptions.ClientException as e:
