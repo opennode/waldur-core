@@ -37,12 +37,13 @@ def update_current_month_projected_estimate(customer_uuid=None, resource_uuid=No
         return delta
 
     for model in Resource.get_all_models():
-        queryset = model.objects.exclude(state=model.States.ERRED)
+        # XXX: customer filter must be applied in a first turn (NC-777)
         if customer_uuid:
-            queryset = queryset.filter(customer__uuid=customer_uuid)
+            queryset = model.objects.filter(customer__uuid=customer_uuid)
         elif resource_uuid:
-            queryset = queryset.filter(uuid=resource_uuid)
+            queryset = model.objects.filter(uuid=resource_uuid)
 
+        queryset = queryset.exclude(state=model.States.ERRED)
         for instance in queryset.iterator():
             try:
                 backend = instance.get_backend()
