@@ -1,8 +1,11 @@
 import django_filters
 
-from rest_framework import viewsets
+from django.conf import settings
+from rest_framework import viewsets, decorators, exceptions, response, status
 
 from nodeconductor.core import filters as core_filters
+from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import views as structure_views
 from nodeconductor.openstack import models, serializers
 
@@ -21,6 +24,35 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
     queryset = models.OpenStackServiceProjectLink.objects.all()
     serializer_class = serializers.ServiceProjectLinkSerializer
     filter_class = OpenStackServiceProjectLinkFilter
+
+    @decorators.detail_route(methods=['post'])
+    def set_quotas(self, request, **kwargs):
+        if not request.user.is_staff:
+            raise exceptions.PermissionDenied()
+
+        spl = self.get_object()
+        if spl.state != SynchronizationStates.IN_SYNC:
+            return response.Response(
+                {'detail': 'Service project link must be in sync state for setting quotas'},
+                status=status.HTTP_409_CONFLICT)
+
+        serializer = serializers.ServiceProjectLinkQuotaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = dict(serializer.validated_data)
+        if data.get('instances') is not None:
+            quotas = settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS_INSTANCE_RATIOS', {})
+            volume_ratio = quotas.get('volumes', 4)
+            snapshots_ratio = quotas.get('snapshots', 20)
+
+            data['volumes'] = volume_ratio * data['instances']
+            data['snapshots'] = snapshots_ratio * data['instances']
+
+        send_task('structure', 'sync_service_project_links')(spl.to_string(), quotas=data)
+
+        return response.Response(
+            {'status': 'Quota update was scheduled'},
+            status=status.HTTP_202_ACCEPTED)
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):

@@ -122,7 +122,7 @@ event_logger.register('instance_flavor', InstanceFlavorChangeEventLogger)
 event_logger.register('instance_licenses', InstanceLicensesEventLogger)
 event_logger.register('cloud', CloudEventLogger)
 event_logger.register('membership', MembershipEventLogger)
-event_logger.register('quota', QuotaEventLogger)
+event_logger.register('membership_quota', QuotaEventLogger)
 
 
 # XXX: This filter should be moved to structure application and support alerts filtering for all customer-related

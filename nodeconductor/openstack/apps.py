@@ -12,6 +12,7 @@ class OpenStackConfig(AppConfig):
     def ready(self):
         OpenStackService = self.get_model('OpenStackService')
         OpenStackServiceProjectLink = self.get_model('OpenStackServiceProjectLink')
+        Instance = self.get_model('Instance')
 
         from nodeconductor.openstack.backend import OpenStackBackend
         SupportedServices.register_backend(OpenStackService, OpenStackBackend)
@@ -20,4 +21,16 @@ class OpenStackConfig(AppConfig):
             handlers.set_spl_default_availability_zone,
             sender=OpenStackServiceProjectLink,
             dispatch_uid='nodeconductor.openstack.handlers.set_spl_default_availability_zone',
+        )
+
+        signals.post_save.connect(
+            handlers.increase_quotas_usage_on_instance_creation,
+            sender=Instance,
+            dispatch_uid='nodeconductor.iaas.handlers.increase_quotas_usage_on_instance_creation',
+        )
+
+        signals.post_delete.connect(
+            handlers.decrease_quotas_usage_on_instances_deletion,
+            sender=Instance,
+            dispatch_uid='nodeconductor.iaas.handlers.decrease_quotas_usage_on_instances_deletion',
         )

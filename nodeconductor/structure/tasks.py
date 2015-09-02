@@ -12,7 +12,7 @@ from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
-                                     ServiceBackendNotImplemented, models, handlers)
+                                     ServiceBackendNotImplemented, models)
 from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
 
 
@@ -88,7 +88,7 @@ def sync_service_settings(settings_uuids=None, initial=False):
 
 
 @shared_task(name='nodeconductor.structure.sync_service_project_links')
-def sync_service_project_links(service_project_links=None, initial=False):
+def sync_service_project_links(service_project_links=None, quotas=None, initial=False):
     if service_project_links and not isinstance(service_project_links, (list, tuple)):
         service_project_links = [service_project_links]
 
@@ -102,6 +102,7 @@ def sync_service_project_links(service_project_links=None, initial=False):
         service_project_link_str = obj.to_string()
         begin_syncing_service_project_links.apply_async(
             args=(service_project_link_str,),
+            kwargs={'quotas': quotas},
             link=sync_service_project_link_succeeded.si(service_project_link_str),
             link_error=sync_service_project_link_failed.si(service_project_link_str))
 
@@ -130,20 +131,22 @@ def sync_service_settings_failed(settings_uuid, transition_entity=None):
 
 
 @shared_task
-def begin_syncing_service_project_links(service_project_link_str, transition_entity=None):
+def begin_syncing_service_project_links(service_project_link_str, quotas=None, transition_entity=None):
     spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
 
     @transition(spl_model, 'begin_syncing')
-    def process(service_project_link_pk, transition_entity=None):
+    def process(service_project_link_pk, quotas=None, transition_entity=None):
         service_project_link = transition_entity
         try:
-            # Get administrative backend session from service instead of tenant session from spl
-            backend = service_project_link.service.get_backend()
-            backend.sync_link(service_project_link)
+            backend = service_project_link.get_backend()
+            if quotas:
+                backend.sync_quotas(service_project_link, quotas)
+            else:
+                backend.sync_link(service_project_link)
         except ServiceBackendNotImplemented:
             pass
 
-    process(spl_pk)
+    process(spl_pk, quotas=quotas)
 
 
 @shared_task
@@ -222,7 +225,7 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
                 'Rescheduling synchronisation of keys for link %s in state %s.',
                 service_project_link_str, service_project_link.get_state_display())
 
-            # retry a task if service project link is in a sane state
+            # retry a task if service project link is not in a sane state
             return False
 
     backend = service_project_link.get_backend()
@@ -244,16 +247,14 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
             public_key.uuid, service_project_link_str,
             exc_info=1)
 
-        # Prevent excessive logging
-        if push_ssh_public_key.request.retries == 0:
-            event_logger.ssh_sync.warning(
-                'Failed to push SSH key {ssh_key_name} to {service_name}.',
-                event_type='ssh_key_push_failed',
-                event_context={
-                    'service_project_link': service_project_link,
-                    'ssh_key': public_key
-                }
-            )
+        event_logger.ssh_sync.warning(
+            'Failed to push SSH key {ssh_key_name} to {service_name}.',
+            event_type='ssh_key_push_failed',
+            event_context={
+                'service_project_link': service_project_link,
+                'ssh_key': public_key
+            }
+        )
 
     return True
 
@@ -308,7 +309,7 @@ def add_user(user_uuid, service_project_link_str):
                 'Rescheduling synchronisation of users for link %s in state %s.',
                 service_project_link_str, service_project_link.get_state_display())
 
-            # retry a task if service project link is in a sane state
+            # retry a task if service project link is not in a sane state
             return False
 
     backend = service_project_link.get_backend()
@@ -321,6 +322,7 @@ def add_user(user_uuid, service_project_link_str):
             'Failed to add user %s for service project link %s',
             user.uuid, service_project_link_str,
             exc_info=1)
+
     return True
 
 

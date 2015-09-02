@@ -59,6 +59,15 @@ class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkS
         }
 
 
+class ServiceProjectLinkQuotaSerializer(serializers.Serializer):
+    instances = serializers.IntegerField(min_value=1, required=False)
+    ram = serializers.IntegerField(min_value=1, required=False)
+    vcpu = serializers.IntegerField(min_value=1, required=False)
+    storage = serializers.IntegerField(min_value=1, required=False)
+    security_group_count = serializers.IntegerField(min_value=1, required=False)
+    security_group_rule_count = serializers.IntegerField(min_value=1, required=False)
+
+
 class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     service = serializers.HyperlinkedRelatedField(

@@ -79,8 +79,16 @@ class QuotaModelMixin(models.Model):
     def set_quota_limit(self, quota_name, limit):
         self.quotas.filter(name=quota_name).update(limit=limit)
 
-    def set_quota_usage(self, quota_name, usage):
-        self._set_editable_field_value('usage', quota_name, usage)
+    def set_quota_usage(self, quota_name, usage, fail_silently=False):
+        with transaction.atomic():
+            try:
+                original_quota = self.quotas.get(name=quota_name)
+            except Quota.DoesNotExist:
+                if not fail_silently:
+                    raise
+            self._add_delta_to_ancestors('usage', quota_name, usage - original_quota.usage)
+            original_quota.usage = usage
+            original_quota.save(update_fields=['usage'])
 
     def add_quota_usage(self, quota_name, usage_delta, fail_silently=False):
         """
@@ -89,13 +97,6 @@ class QuotaModelMixin(models.Model):
         If <fail_silently> is True - operation will not fail if quota does not exist
         """
         self._add_delta_to_editable_field('usage', quota_name, usage_delta, fail_silently)
-
-    def _set_editable_field_value(self, field, quota_name, value):
-        with transaction.atomic():
-            original_quota = self.quotas.get(name=quota_name)
-            self._add_delta_to_ancestors(field, quota_name, value - getattr(original_quota, field))
-            setattr(original_quota, field, value)
-            original_quota.save()
 
     def _add_delta_to_editable_field(self, field, quota_name, delta, fail_silently=False):
         """

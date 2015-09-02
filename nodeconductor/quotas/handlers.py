@@ -1,6 +1,7 @@
 from django.db.models import signals
 
-from nodeconductor.quotas.log import alert_logger
+from nodeconductor.quotas.log import alert_logger, event_logger
+from nodeconductor.structure.models import ServiceProjectLink
 
 
 def add_quotas_to_scope(sender, instance, created=False, **kwargs):
@@ -74,6 +75,19 @@ def check_quota_threshold_breach(sender, instance, **kwargs):
             alert_context={
                 'quota': quota
             })
+
+        if quota.scope in ServiceProjectLink.get_all_models():
+            spl = quota.scope
+            event_logger.quota.warning(
+                '{quota_name} quota threshold has been reached for project {project_name}.',
+                event_type='quota_threshold_reached',
+                event_context={
+                    'quota': quota,
+                    'service': spl.service,
+                    'project': spl.project,
+                    'project_group': spl.project.project_groups.first(),
+                    'threshold': alert_threshold * quota.limit,
+                })
     else:
         alert_logger.quota.close(scope=quota, alert_type='quota_usage_is_over_threshold')
 

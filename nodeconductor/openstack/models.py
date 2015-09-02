@@ -1,7 +1,9 @@
 from django.db import models
 from django.core.validators import MinValueValidator
+from model_utils import FieldTracker
 
 from nodeconductor.structure import models as structure_models
+from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.iaas.models import PaidInstance
 from nodeconductor.logging.log import LoggableMixin
 
@@ -16,7 +18,9 @@ class OpenStackService(structure_models.Service):
         return self.settings.backend_url
 
 
-class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
+class OpenStackServiceProjectLink(QuotaModelMixin, structure_models.ServiceProjectLink):
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances', 'security_group_count', 'security_group_rule_count']
+
     service = models.ForeignKey(OpenStackService)
 
     tenant_id = models.CharField(max_length=64, blank=True)
@@ -75,6 +79,8 @@ class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, 
     data_volume_id = models.CharField(max_length=255, blank=True)
     data_volume_size = models.PositiveIntegerField(
         default=DEFAULT_DATA_VOLUME_SIZE, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
+
+    tracker = FieldTracker()
 
     @property
     def cloud_project_membership(self):

@@ -169,7 +169,6 @@ def check_instance_name_update(sender, instance=None, created=False, **kwargs):
         zabbix_update_host_visible_name.delay(instance.uuid.hex)
 
 
-# This signal has to be connected to all resources (NC-634)
 def increase_quotas_usage_on_instance_creation(sender, instance=None, created=False, **kwargs):
     if created:
         instance.service_project_link.add_quota_usage('max_instances', 1)

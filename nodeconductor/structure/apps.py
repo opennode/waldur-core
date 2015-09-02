@@ -4,7 +4,6 @@ from django.apps import AppConfig
 from django.contrib.auth import get_user_model
 from django.db.models import signals
 
-from nodeconductor.core import handlers as core_handlers
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.models import Resource, ServiceProjectLink
@@ -175,34 +174,32 @@ class StructureConfig(AppConfig):
         )
 
         for index, model in enumerate(Resource.get_all_models()):
-            signals.pre_save.connect(
-                core_handlers.preserve_fields_before_update,
-                sender=model,
-                dispatch_uid='nodeconductor.core.handlers.preserve_fields_before_update_{}_{}'.format(model.__name__, index),
-            )
-
             signals.post_save.connect(
-                handlers.update_resource_quota_usage,
+                handlers.change_project_nc_resource_quota,
                 sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_resource_quota_{}_{}'.format(model.__name__, index),
+                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_resource_quota_{}_{}'.format(
+                    model.__name__, index),
             )
 
             signals.post_delete.connect(
-                handlers.update_resource_quota_usage,
+                handlers.change_project_nc_resource_quota,
                 sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_resource_quota_{}_{}'.format(model.__name__, index),
+                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_resource_quota_{}_{}'.format(
+                    model.__name__, index),
             )
 
             signals.post_save.connect(
                 handlers.log_resource_created,
                 sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.log_resource_created_{}_{}'.format(model.__name__, index),
+                dispatch_uid='nodeconductor.structure.handlers.log_resource_created_{}_{}'.format(
+                    model.__name__, index),
             )
 
             signals.post_delete.connect(
                 handlers.log_resource_deleted,
                 sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.log_resource_deleted_{}_{}'.format(model.__name__, index),
+                dispatch_uid='nodeconductor.structure.handlers.log_resource_deleted_{}_{}'.format(
+                    model.__name__, index),
             )
 
         for model in ServiceProjectLink.get_all_models():

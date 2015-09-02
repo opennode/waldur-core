@@ -12,7 +12,7 @@ from neutronclient.client import exceptions as neutron_exceptions
 from novaclient import exceptions as nova_exceptions
 
 from nodeconductor.core.tasks import send_task
-from nodeconductor.structure import ServiceBackend, ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.structure import ServiceBackend, ServiceBackendError
 from nodeconductor.iaas.backend.openstack import OpenStackClient, CloudBackendError
 from nodeconductor.iaas.backend.openstack import OpenStackBackend as OldOpenStackBackend
 from nodeconductor.openstack import models
@@ -31,37 +31,47 @@ class OpenStackBackend(ServiceBackend):
 
     def __init__(self, settings, tenant_id=None):
         self.settings = settings
-        self.is_admin = True
-
-        credentials = {
-            'auth_url': settings.backend_url,
-            'username': settings.username,
-            'password': settings.password,
-        }
-        if tenant_id:
-            self.is_admin = False
-            credentials['tenant_id'] = tenant_id
-        elif settings.options:
-            credentials['tenant_name'] = settings.options.get('tenant_name', self.DEFAULT_TENANT)
-        else:
-            credentials['tenant_name'] = self.DEFAULT_TENANT
-
-        try:
-            self.session = OpenStackClient(dummy=settings.dummy).create_tenant_session(credentials)
-        except CloudBackendError as e:
-            six.reraise(OpenStackBackendError, e)
+        self.tenant_id = tenant_id
 
         # TODO: Get rid of it (NC-646)
         self._old_backend = OldOpenStackBackend(dummy=self.settings.dummy)
 
+    def _get_session(self, admin=False):
+        credentials = {
+            'auth_url': self.settings.backend_url,
+            'username': self.settings.username,
+            'password': self.settings.password,
+        }
+
+        if not admin:
+            if not self.tenant_id:
+                raise OpenStackBackendError(
+                    "Can't create tenant session, please provide tenant ID")
+
+            credentials['tenant_id'] = self.tenant_id
+        elif self.settings.options:
+            credentials['tenant_name'] = self.settings.options.get('tenant_name', self.DEFAULT_TENANT)
+        else:
+            credentials['tenant_name'] = self.DEFAULT_TENANT
+
+        try:
+            return OpenStackClient(dummy=self.settings.dummy).create_tenant_session(credentials)
+        except CloudBackendError as e:
+            six.reraise(OpenStackBackendError, e)
+
     def __getattr__(self, name):
-        methods = ('keystone_client', 'nova_client', 'neutron_client',
-                   'cinder_client', 'glance_client', 'ceilometer_client')
+        clients = 'keystone', 'nova', 'neutron', 'cinder', 'glance', 'ceilometer'
+        method = lambda client: getattr(OpenStackClient, 'create_%s_client' % client)
 
-        if name in methods:
-            return getattr(OpenStackClient, 'create_%s' % name)(self.session)
+        for client in clients:
+            if name == '{}_client'.format(client):
+                return method(client)(self._get_session(admin=False))
 
-        return super(OpenStackBackend, self).__getattr__(name)
+            if name == '{}_admin_client'.format(client):
+                return method(client)(self._get_session(admin=True))
+
+        raise AttributeError(
+            "'%s' object has no attribute '%s'" % (self.__class__.__name__, name))
 
     def ping(self):
         # Session validation occurs on class creation so assume it's active
@@ -69,9 +79,6 @@ class OpenStackBackend(ServiceBackend):
         return True
 
     def ping_resource(self, instance):
-        if self.is_admin:
-            raise ServiceBackendNotImplemented("You have to use tenant session")
-
         try:
             self.nova_client.servers.get(instance.backend_id)
         except (ConnectionError, nova_exceptions.ClientException):
@@ -97,16 +104,23 @@ class OpenStackBackend(ServiceBackend):
     def sync_link(self, service_project_link):
         # Migration status:
         # [x] push_membership()
+        # [ ] pull_instances()
+        # [ ] pull_floating_ips() (TODO: NC-636)
         # [ ] push_security_groups() (TODO: NC-638)
-        # [ ] pull_resource_quota() & pull_resource_quota_usage() (TODO: NC-634)
+        # [x] pull_resource_quota() & pull_resource_quota_usage()
 
         try:
             self.push_link(service_project_link)
+            self.pull_quotas(service_project_link)
         except (keystone_exceptions.ClientException, neutron_exceptions.NeutronException) as e:
             logger.exception('Failed to synchronize ServiceProjectLink %s', service_project_link.to_string())
             six.reraise(OpenStackBackendError, e)
         else:
             logger.info('Successfully synchronized ServiceProjectLink %s', service_project_link.to_string())
+
+    def sync_quotas(self, service_project_link, quotas):
+        self.push_quotas(service_project_link, quotas)
+        self.pull_quotas(service_project_link)
 
     def provision(self, instance, flavor=None, image=None, ssh_key=None):
         if ssh_key:
@@ -153,7 +167,7 @@ class OpenStackBackend(ServiceBackend):
         return {p.backend_id: p for p in model.objects.filter(settings=self.settings)}
 
     def pull_flavors(self):
-        nova = self.nova_client
+        nova = self.nova_admin_client
         with transaction.atomic():
             cur_flavors = self._get_current_properties(models.Flavor)
             for backend_flavor in nova.flavors.findall(is_public=True):
@@ -171,7 +185,7 @@ class OpenStackBackend(ServiceBackend):
             map(lambda i: i.delete(), cur_flavors.values())
 
     def pull_images(self):
-        glance = self.glance_client
+        glance = self.glance_admin_client
         with transaction.atomic():
             cur_images = self._get_current_properties(models.Image)
             for backend_image in glance.images.list():
@@ -188,12 +202,26 @@ class OpenStackBackend(ServiceBackend):
 
             map(lambda i: i.delete(), cur_images.values())
 
+    def push_quotas(self, service_project_link, quotas):
+        try:
+            self._old_backend.push_membership_quotas(service_project_link, quotas)
+        except CloudBackendError as e:
+            six.reraise(OpenStackBackendError, e)
+
+    def pull_quotas(self, service_project_link):
+        try:
+            self._old_backend.pull_resource_quota(service_project_link)
+            self._old_backend.pull_resource_quota_usage(service_project_link)
+        except CloudBackendError as e:
+            six.reraise(OpenStackBackendError, e)
+
     def push_link(self, service_project_link):
-        keystone = self.keystone_client
+        keystone = self.keystone_admin_client
+        neutron = self.neutron_admin_client
         tenant = self._old_backend.get_or_create_tenant(service_project_link, keystone)
 
         self._old_backend.ensure_user_is_tenant_admin(self.settings.username, tenant, keystone)
-        self.get_or_create_network(service_project_link)
+        self.get_or_create_network(service_project_link, neutron)
 
         service_project_link.tenant_id = tenant.id
         service_project_link.save()
@@ -239,10 +267,6 @@ class OpenStackBackend(ServiceBackend):
         return self._old_backend.get_monthly_cost_estimate(instance)
 
     def get_resources_for_import(self):
-        if self.is_admin:
-            raise ServiceBackendNotImplemented(
-                "You should use tenant session in order to get resources list")
-
         cur_instances = models.Instance.objects.all().values_list('backend_id', flat=True)
         try:
             instances = self.nova_client.servers.list()
@@ -400,5 +424,5 @@ class OpenStackBackend(ServiceBackend):
             logger.info("Successfully provisioned instance %s", instance.uuid)
 
     # TODO: (NC-636)
-    def get_or_create_network(self, service_project_link):
+    def get_or_create_network(self, service_project_link, neutron):
         pass
