@@ -5,6 +5,7 @@ import time
 import uuid
 import logging
 import datetime
+import calendar
 import pkg_resources
 import dateutil.parser
 
@@ -35,7 +36,8 @@ from novaclient.v1_1 import client as nova_client
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
-from nodeconductor.structure import ServiceBackendNotImplemented
+from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 from nodeconductor.iaas.backend import dummy as dummy_clients
@@ -325,6 +327,28 @@ class OpenStackBackend(OpenStackClient):
 
     def get_resources_for_import(self):
         raise ServiceBackendNotImplemented
+
+    def get_monthly_cost_estimate(self, instance):
+        nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+        if not nc_settings.get('ENABLE_ORDER_PROCESSING'):
+            raise ServiceBackendNotImplemented
+
+        try:
+            backend = instance.order.backend
+            invoice = backend.get_invoice_estimate(instance)
+        except BillingBackendError as e:
+            logger.error("Failed to get cost estimate for instance %s: %s", instance, e)
+            six.reraise(ServiceBackendError, e)
+
+        today = datetime.date.today()
+        if not invoice['start_date'] <= today <= invoice['end_date']:
+            raise ServiceBackendError("Wrong invoice estimate for instance %s: %s" % (instance, invoice))
+
+        # prorata monthly cost estimate based on daily usage cost
+        daily_cost = invoice['amount'] / ((today - invoice['start_date']).days + 1)
+        monthly_cost = daily_cost * calendar.monthrange(today.year, today.month)[1]
+
+        return monthly_cost
 
     # CloudAccount related methods
     def push_cloud_account(self, cloud_account):

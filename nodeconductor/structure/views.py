@@ -1390,6 +1390,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                 return Response(resources)
             except ServiceBackendError as e:
                 raise APIException(e)
+
         else:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
@@ -1400,9 +1401,12 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                     "Only customer owner or staff are allowed to perform this action.")
 
             try:
-                serializer.save()
+                resource = serializer.save()
             except ServiceBackendError as e:
                 raise APIException(e)
+
+            send_task('cost_tracking', 'update_current_month_projected_estimate')(
+                resource_uuid=resource.uuid.hex)
 
             return Response(serializer.data, status=status.HTTP_200_OK)
 

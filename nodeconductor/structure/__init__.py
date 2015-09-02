@@ -381,7 +381,7 @@ class ServiceBackend(object):
     def get_resources_for_import(self):
         raise ServiceBackendNotImplemented
 
-    def get_cost_estimate(self, resource):
+    def get_monthly_cost_estimate(self, resource):
         raise ServiceBackendNotImplemented
 
     @staticmethod
