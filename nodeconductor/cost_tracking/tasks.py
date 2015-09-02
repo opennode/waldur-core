@@ -5,18 +5,21 @@ from celery import shared_task
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 
-from nodeconductor.cost_tracking import CostConstants, get_cost_tracking_models
+from nodeconductor.cost_tracking import CostConstants
 from nodeconductor.cost_tracking.models import DefaultPriceListItem, PriceEstimate
 from nodeconductor.billing.models import PaidResource
-from nodeconductor.structure.models import Customer, Project, Resource, Service
+from nodeconductor.structure.models import Resource
+from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented
 
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(name='nodeconductor.cost_tracking.update_current_month_projected_estimate')
-def update_current_month_projected_estimate(customer_uuid=None):
-    customer = Customer.objects.get(uuid=customer_uuid) if customer_uuid else None
+def update_current_month_projected_estimate(customer_uuid=None, resource_uuid=None):
+
+    if customer_uuid and resource_uuid:
+        raise RuntimeError("Either customer_uuid or resource_uuid could be supplied, both received.")
 
     def update_price_for_scope(scope, cost):
         today = datetime.date.today()
@@ -27,46 +30,39 @@ def update_current_month_projected_estimate(customer_uuid=None):
             year=today.year)
 
         delta = cost - estimate.total
-
-        estimate.total = cost
-        estimate.save(update_fields=['total'])
+        if delta:
+            estimate.total = cost
+            estimate.save(update_fields=['total'])
 
         return delta
 
-    def get_parent_models(cls, obj):
-        if isinstance(obj, Resource):
-            spl = obj.service_project_link
-            return spl.project, spl.service, obj.customer
+    for model in Resource.get_all_models():
+        queryset = model.objects.exclude(state=model.States.ERRED)
+        if customer_uuid:
+            queryset = queryset.filter(customer__uuid=customer_uuid)
+        elif resource_uuid:
+            queryset = queryset.filter(uuid=resource_uuid)
 
-        elif isinstance(obj, (Service, Project)):
-            return obj.customer,
-
-        else:
-            return tuple()
-
-    finished_items = {}
-    for strategy in get_cost_tracking_models():
-        for model, cost in strategy.get_all_costs_estimates(customer):
-            if model.__class__ not in PriceEstimate.get_estimated_models():
-                logger.error(
-                    "Model %s can't be used in tracking costs" % model.__class__.__name__)
+        for instance in queryset.iterator():
+            try:
+                backend = instance.get_backend()
+                monthly_cost = backend.get_monthly_cost_estimate(instance)
+            except ServiceBackendNotImplemented:
                 continue
+            except ServiceBackendError as e:
+                logger.error("Failed to get cost estimate for resource %s: %s", instance, e)
+            except Exception as e:
+                logger.exception("Failed to get cost estimate for resource %s: %s", instance, e)
+            else:
+                logger.info("Update cost estimate for resource %s: %s", instance, monthly_cost)
 
-            if model in finished_items:
-                logger.warn(
-                    "Model %s appears second time during tracking costs. "
-                    "Consider optimizing it if it's still valid behavior." % model.__class__.__name__)
+                # save monthly cost as is for initial scope
+                delta_cost = update_price_for_scope(instance, monthly_cost)
 
-            # save monthly cost as is for initial scope
-            # XXX: only Resource should be used for initial scope if possible
-            #      otherwise it's easy to break consistency of total sums
-            delta = update_price_for_scope(model, cost)
-
-            # increment total cost by delta for parent nodes if any
-            for scope in get_parent_models(model):
-                update_price_for_scope(scope, cost + delta)
-
-            finished_items[model] = cost
+                # increment total cost by delta for parent nodes
+                spl = instance.service_project_link
+                for scope in (spl, spl.project, spl.service, instance.customer):
+                    update_price_for_scope(scope, monthly_cost + delta_cost)
 
 
 @shared_task(name='nodeconductor.cost_tracking.update_today_usage')

@@ -68,7 +68,8 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
             if not customer.billing_backend_id:
                 customers_without_backend_id.append(customer)
                 continue
-            send_task('cost_tracking', 'update_current_month_projected_estimate')(customer=customer.uuid.hex)
+            send_task('cost_tracking', 'update_current_month_projected_estimate')(
+                customer_uuid=customer.uuid.hex)
             succeeded_customers.append(customer)
 
         if succeeded_customers:
