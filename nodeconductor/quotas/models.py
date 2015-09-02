@@ -86,9 +86,10 @@ class QuotaModelMixin(models.Model):
             except Quota.DoesNotExist:
                 if not fail_silently:
                     raise
-            self._add_delta_to_ancestors('usage', quota_name, usage - original_quota.usage)
-            original_quota.usage = usage
-            original_quota.save(update_fields=['usage'])
+            else:
+                self._add_delta_to_ancestors('usage', quota_name, usage - original_quota.usage)
+                original_quota.usage = usage
+                original_quota.save(update_fields=['usage'])
 
     def add_quota_usage(self, quota_name, usage_delta, fail_silently=False):
         """
