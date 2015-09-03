@@ -14,7 +14,7 @@ from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.filters import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
-                                            Customer, ProjectGroup, ServiceProjectLink, ServiceSettings)
+                                            Customer, ProjectGroup, ServiceProjectLink, ServiceSettings, Service)
 from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
 
@@ -436,3 +436,22 @@ def connect_shared_service_settings_to_customers(sender, instance, created=False
     for customer in Customer.objects.all():
         service_model.objects.create(customer=customer, settings=service_settings, name='Shared {} service'.format(
             service_settings.get_type_display()))
+
+
+def connect_project_to_all_available_services(sender, instance, created=False, **kwargs):
+    if not created:
+        return
+    project = instance
+
+    for service_model in Service.get_all_models():
+        for service in service_model.objects.filter(available_for_all=True, customer=project.customer):
+            service_project_link_model = service.projects.through
+            service_project_link_model.objects.create(project=project, service=service)
+
+
+def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance, created=False, **kwargs):
+    service = instance
+    if service.available_for_all:
+        service_project_link_model = service.projects.through
+        for project in service.customer.projects.all():
+            service_project_link_model.objects.get_or_create(project=project, service=service)

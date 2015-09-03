@@ -482,6 +482,10 @@ class Service(core_models.SerializableAbstractMixin,
 
     settings = models.ForeignKey(ServiceSettings)
     customer = models.ForeignKey(Customer)
+    available_for_all = models.BooleanField(
+        default=False,
+        help_text="Service will be automatically added to all customers projects if it is available for all"
+    )
     projects = NotImplemented
 
     def get_backend(self, **kwargs):
