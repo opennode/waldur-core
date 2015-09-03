@@ -981,7 +981,7 @@ class ServiceSerializer(serializers.Serializer):
 
 
 class UsageStatsSerializer(serializers.Serializer):
-    segments_count = serializers.IntegerField(min_value=0)
+    segments_count = serializers.IntegerField(min_value=1)
     start_timestamp = serializers.IntegerField(min_value=0)
     end_timestamp = serializers.IntegerField(min_value=0)
     item = serializers.CharField()
