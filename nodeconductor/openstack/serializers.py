@@ -1,8 +1,8 @@
 from rest_framework import serializers
 
 from django.db.models import Max
-from django.utils import dateparse
 
+from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import SupportedServices, serializers as structure_serializers
 from nodeconductor.openstack.backend import OpenStackBackendError
 from nodeconductor.openstack import models
@@ -51,9 +51,12 @@ class ServiceSerializer(structure_serializers.BaseServiceSerializer):
 
 class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkSerializer):
 
+    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
+
     class Meta(structure_serializers.BaseServiceProjectLinkSerializer.Meta):
         model = models.OpenStackServiceProjectLink
         view_name = 'openstack-spl-detail'
+        fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.fields + ('quotas',)
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': 'openstack-detail'},
         }
