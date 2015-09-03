@@ -444,7 +444,7 @@ def connect_project_to_all_available_services(sender, instance, created=False, *
     project = instance
 
     for service_model in Service.get_all_models():
-        for service in service_model.objects.filter(available_for_all=True):
+        for service in service_model.objects.filter(available_for_all=True, customer=project.customer):
             service_project_link_model = service.projects.through
             service_project_link_model.objects.create(project=project, service=service)
 

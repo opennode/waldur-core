@@ -51,26 +51,44 @@ class ServiceSettingsSignalsTest(TestCase):
             customer=customer, settings=new_shared_service_settings).exists())
 
 
-class ServiceSignalsTest(TestCase):
+class ServiceProjectLinkSignalsTest(TestCase):
 
-    def test_availble_for_service_connects_to_each_new_project(self):
+    def test_new_project_connects_to_available_services_of_customer(self):
         customer = factories.CustomerFactory()
-        service_settings = factories.ServiceSettingsFactory(type=SupportedServices.Types.OpenStack, shared=False)
-        service = openstack_models.OpenStackService.objects.create(
-            name='test', customer=customer, settings=service_settings, available_for_all=True)
+        service = self.create_service(customer, available_for_all=True)
+
+        other_customer = factories.CustomerFactory()
+        other_service = self.create_service(other_customer, available_for_all=True)
+
+        # Act
         project = factories.ProjectFactory(customer=customer)
 
-        self.assertTrue(openstack_models.OpenStackServiceProjectLink.objects.filter(
-            project=project, service=service).exists())
+        # Assert
+        self.assertTrue(self.link_exists(project, service))
+        self.assertFalse(self.link_exists(project, other_service))
 
-    def test_if_service_become_available_it_connects_to_project(self):
+    def test_if_service_became_available_it_connects_to_all_projects_of_customer(self):
         customer = factories.CustomerFactory()
-        service_settings = factories.ServiceSettingsFactory(type=SupportedServices.Types.OpenStack, shared=False)
-        service = openstack_models.OpenStackService.objects.create(
-            name='test', customer=customer, settings=service_settings)
+        service = self.create_service(customer, available_for_all=False)
         project = factories.ProjectFactory(customer=customer)
+
+        other_customer = factories.CustomerFactory()
+        other_project = factories.ProjectFactory(customer=other_customer)
+
+        # Act
         service.available_for_all = True
         service.save()
 
-        self.assertTrue(openstack_models.OpenStackServiceProjectLink.objects.filter(
-            project=project, service=service).exists())
+        # Assert
+        self.assertTrue(self.link_exists(project, service))
+        self.assertFalse(self.link_exists(other_project, service))
+
+    def create_service(self, customer, available_for_all):
+        service_settings = factories.ServiceSettingsFactory(type=SupportedServices.Types.OpenStack, shared=False)
+        return openstack_models.OpenStackService.objects.create(name='test',
+                                                                customer=customer,
+                                                                settings=service_settings,
+                                                                available_for_all=available_for_all)
+    def link_exists(self, project, service):
+        return openstack_models.OpenStackServiceProjectLink.objects.filter(
+            project=project, service=service).exists()
