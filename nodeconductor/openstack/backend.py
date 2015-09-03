@@ -232,9 +232,13 @@ class OpenStackBackend(ServiceBackend):
             cinder = self.cinder_client
 
             instance = nova.servers.get(instance_id)
-            system_volume, data_volume = self._old_backend._get_instance_volumes(nova, cinder, instance_id)
-            cores, ram, _ = self._old_backend._get_flavor_info(nova, instance)
-            ips = self._old_backend._get_instance_ips(instance)
+            try:
+                system_volume, data_volume = self._old_backend._get_instance_volumes(nova, cinder, instance_id)
+                cores, ram, _ = self._old_backend._get_flavor_info(nova, instance)
+                ips = self._old_backend._get_instance_ips(instance)
+            except LookupError as e:
+                logger.exception("Failed to lookup instance %s information", instance_id)
+                six.reraise(OpenStackBackendError, e)
 
             instance.nc_model_data = dict(
                 name=instance.name or instance.id,

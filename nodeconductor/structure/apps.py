@@ -211,12 +211,6 @@ class StructureConfig(AppConfig):
             )
 
             signals.post_save.connect(
-                quotas_handlers.add_quotas_to_scope,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.add_quotas_to_service_project_link_%s' % model.__name__,
-            )
-
-            signals.post_save.connect(
                 handlers.change_project_nc_service_quota,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_service_quota_%s' % model.__name__,

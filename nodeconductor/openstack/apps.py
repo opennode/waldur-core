@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 from django.db.models import signals
 
+from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.openstack import handlers
 from nodeconductor.structure import SupportedServices
 
@@ -16,6 +17,12 @@ class OpenStackConfig(AppConfig):
 
         from nodeconductor.openstack.backend import OpenStackBackend
         SupportedServices.register_backend(OpenStackService, OpenStackBackend)
+
+        signals.post_save.connect(
+            quotas_handlers.add_quotas_to_scope,
+            sender=OpenStackServiceProjectLink,
+            dispatch_uid='nodeconductor.openstack.handlers.add_quotas_to_service_project_link',
+        )
 
         signals.pre_save.connect(
             handlers.set_spl_default_availability_zone,
