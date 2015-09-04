@@ -33,11 +33,11 @@ class OpenStackConfig(AppConfig):
         signals.post_save.connect(
             handlers.increase_quotas_usage_on_instance_creation,
             sender=Instance,
-            dispatch_uid='nodeconductor.iaas.handlers.increase_quotas_usage_on_instance_creation',
+            dispatch_uid='nodeconductor.openstack.handlers.increase_quotas_usage_on_instance_creation',
         )
 
         signals.post_delete.connect(
             handlers.decrease_quotas_usage_on_instances_deletion,
             sender=Instance,
-            dispatch_uid='nodeconductor.iaas.handlers.decrease_quotas_usage_on_instances_deletion',
+            dispatch_uid='nodeconductor.openstack.handlers.decrease_quotas_usage_on_instances_deletion',
         )
