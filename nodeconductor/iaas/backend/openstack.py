@@ -558,7 +558,8 @@ class OpenStackBackend(OpenStackClient):
             'snapshots': ('snapshots', lambda x: x),
         }
         nova_quota_mapping = {
-            'max_instances': ('instances', lambda x: x),
+            'max_instances': ('instances', lambda x: x),    # iaas app quota
+            'instances': ('instances', lambda x: x),        # openstack app quota
             'ram': ('ram', self.get_backend_ram_size),
             'vcpu': ('cores', lambda x: x),
         }
@@ -849,10 +850,13 @@ class OpenStackBackend(OpenStackClient):
 
         membership.set_quota_limit('ram', self.get_core_ram_size(nova_quotas.ram))
         membership.set_quota_limit('vcpu', nova_quotas.cores)
-        membership.set_quota_limit('max_instances', nova_quotas.instances)
         membership.set_quota_limit('storage', self.get_core_disk_size(cinder_quotas.gigabytes))
         membership.set_quota_limit('security_group_count', neutron_quotas['security_group'])
         membership.set_quota_limit('security_group_rule_count', neutron_quotas['security_group_rule'])
+
+        # XXX: this quota name is different in iaas and openstack apps, handle both
+        membership.set_quota_limit('max_instances', nova_quotas.instances)
+        membership.set_quota_limit('instances', nova_quotas.instances)
 
     def pull_resource_quota_usage(self, membership):
         try:
@@ -897,7 +901,8 @@ class OpenStackBackend(OpenStackClient):
 
         membership.set_quota_usage('ram', ram)
         membership.set_quota_usage('vcpu', vcpu)
-        membership.set_quota_usage('max_instances', len(instances))
+        membership.set_quota_usage('instances', len(instances), fail_silently=True)
+        membership.set_quota_usage('max_instances', len(instances), fail_silently=True)
         membership.set_quota_usage('storage', sum([self.get_core_disk_size(v.size) for v in volumes + snapshots]))
         membership.set_quota_usage('security_group_count', len(security_groups))
         membership.set_quota_usage('security_group_rule_count', len(sum([sg.rules for sg in security_groups], [])))
@@ -1362,8 +1367,10 @@ class OpenStackBackend(OpenStackClient):
                     event_type='iaas_instance_deletion_failed',
                     event_context={'instance': instance})
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
-            elif isinstance(instance, models.Instance):  # TODO: add quota support for all services (NC-634)
-                self.release_floating_ip_from_instance(instance)
+            else:
+                # TODO: add floating ips support for openstack (NC-636)
+                if isinstance(instance, models.Instance):
+                    self.release_floating_ip_from_instance(instance)
 
         except nova_exceptions.ClientException as e:
             logger.info('Failed to delete instance %s', instance.uuid)

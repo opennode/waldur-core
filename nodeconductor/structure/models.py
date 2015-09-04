@@ -8,19 +8,19 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models, transaction
-from django.db.models import Q, F, signals
+from django.db.models import Q, F
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
-from jsonfield import JSONField
 from model_utils.models import TimeStampedModel
+from jsonfield import JSONField
 
-from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.core import models as core_models
 from nodeconductor.core.tasks import send_task
-from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.quotas import models as quotas_models
+from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.managers import StructureManager
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
@@ -531,12 +531,9 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 @python_2_unicode_compatible
 class ServiceProjectLink(core_models.SerializableAbstractMixin,
                          core_models.SynchronizableMixin,
-                         quotas_models.QuotaModelMixin,
                          LoggableMixin,
                          StructureModel):
     """ Base service-project link class. See Service class for usage example. """
-
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances']
 
     class Meta(object):
         abstract = True
@@ -548,9 +545,6 @@ class ServiceProjectLink(core_models.SerializableAbstractMixin,
 
     service = NotImplemented
     project = models.ForeignKey(Project)
-
-    def get_quota_parents(self):
-        return [self.project]
 
     def get_backend(self, **kwargs):
         return self.service.get_backend(**kwargs)
@@ -597,28 +591,6 @@ class VirtualMachineMixin(BaseVirtualMachineMixin):
     cores = models.PositiveSmallIntegerField(default=0, help_text='Number of cores in a VM')
     ram = models.PositiveIntegerField(default=0, help_text='Memory size in MiB')
     disk = models.PositiveIntegerField(default=0, help_text='Disk size in MiB')
-
-    def update_quota_usage(self, **kwargs):
-        signal = kwargs['signal']
-        add_quota = self.service_project_link.add_quota_usage
-
-        if signal == signals.post_save:
-            if kwargs.get('created'):
-                add_quota('instances', 1)
-                add_quota('ram', self.ram)
-                add_quota('vcpu', self.cores)
-                add_quota('storage', self.disk)
-            else:
-                old_values = self._old_values
-                add_quota('ram', self.ram - old_values['ram'])
-                add_quota('vcpu', self.cores - old_values['cores'])
-                add_quota('storage', self.disk - old_values['disk'])
-
-        elif signal == signals.post_delete:
-            add_quota('instances', -1)
-            add_quota('ram', -self.ram)
-            add_quota('vcpu', -self.cores)
-            add_quota('storage', -self.disk)
 
     class Meta(object):
         abstract = True

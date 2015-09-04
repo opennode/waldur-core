@@ -11,7 +11,7 @@ Projects quotas names:
  - 'max_instances' - total amount of instances(virtual machines)
 
 Cloud project memberships have same quotas as projects. All current projects and memberships quotas are based on
-backend limits and are not editable by any user. Quota limits auto update is executed every 5 minutes.
+backend limits and are not editable by any user. Quota limits auto update is executed once a day.
 
 
 Getting quota limit and usage
@@ -41,7 +41,7 @@ Example:
                 "name": "vcpu",
                 "limit": 20.0,
                 "usage": 0.0,
-                "owner": "http://example.com/api/projects/ddff7ad4c37c4ced8fa727ad9472409a/"
+                "scope": "http://example.com/api/projects/ddff7ad4c37c4ced8fa727ad9472409a/"
             },
             {
                 "url": "http://example.com/api/quotas/afb6284c13bf4a99a05e2f18f9a5896c/",
@@ -49,7 +49,7 @@ Example:
                 "name": "ram",
                 "limit": 1024.0,
                 "usage": 0.0,
-                "owner": "http://example.com/api/projects/ddff7ad4c37c4ced8fa727ad9472409a/"
+                "scope": "http://example.com/api/projects/ddff7ad4c37c4ced8fa727ad9472409a/"
             },
             {
                 "url": "http://example.com/api/quotas/85742e63c27e4bf7abf1d6dbf56492ab/",
@@ -57,7 +57,7 @@ Example:
                 "name": "storage",
                 "limit": 2048.0,
                 "usage": 0.0,
-                "owner": "http://example.com/api/projects/ddff7ad4c37c4ced8fa727ad9472409a/"
+                "scope": "http://example.com/api/projects/ddff7ad4c37c4ced8fa727ad9472409a/"
             },
             {
                 "url": "http://example.com/api/quotas/40cc868934e04833b39e3578ab796217/",
@@ -65,7 +65,7 @@ Example:
                 "name": "max_instances",
                 "limit": 10.0,
                 "usage": 0.0,
-                "owner": "http://example.com/api/projects/ddff7ad4c37c4ced8fa727ad9472409a/"
+                "scope": "http://example.com/api/projects/ddff7ad4c37c4ced8fa727ad9472409a/"
             }
         ],
         ...
@@ -78,7 +78,7 @@ Example:
 
 .. code-block:: http
 
-    GET /api/projects/ HTTP/1.1
+    GET /api/quotas/ HTTP/1.1
     Content-Type: application/json
     Accept: application/json
     Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
@@ -91,7 +91,7 @@ Example:
             "name": "vcpu",
             "limit": -1.0,
             "usage": 0.0,
-            "owner": "http://example.com/api/projects/5f7ec56c529c4745842020e8e93597a8/"
+            "scope": "http://example.com/api/projects/5f7ec56c529c4745842020e8e93597a8/"
         },
         {
             "url": "http://example.com/api/quotas/0725aa77f33b46a2b966669c626248f4/",
@@ -99,7 +99,7 @@ Example:
             "name": "ram",
             "limit": -1.0,
             "usage": 0.0,
-            "owner": "http://example.com/api/projects/5f7ec56c529c4745842020e8e93597a8/"
+            "scope": "http://example.com/api/projects/5f7ec56c529c4745842020e8e93597a8/"
         },
         {
             "url": "http://example.com/api/quotas/39ab2acd59924ee6beb461f4a265c110/",
@@ -107,7 +107,7 @@ Example:
             "name": "storage",
             "limit": -1.0,
             "usage": 0.0,
-            "owner": "http://example.com/api/projects/5f7ec56c529c4745842020e8e93597a8/"
+            "scope": "http://example.com/api/projects/5f7ec56c529c4745842020e8e93597a8/"
         },
         {
             "url": "http://example.com/api/quotas/b4601b3490914b82aa2afd023a54a2ec/",
@@ -115,7 +115,7 @@ Example:
             "name": "max_instances",
             "limit": -1.0,
             "usage": 0.0,
-            "owner": "http://example.com/api/projects/5f7ec56c529c4745842020e8e93597a8/"
+            "scope": "http://example.com/api/projects/5f7ec56c529c4745842020e8e93597a8/"
         },
         {
             "url": "http://example.com/api/quotas/ef8ffb2f25ed472aa2debca7229a409d/",
@@ -123,7 +123,7 @@ Example:
             "name": "vcpu",
             "limit": -1.0,
             "usage": 10.0,
-            "owner": "http://example.com/api/projects/5eede44757a14986ab6f326a2ed0893d/"
+            "scope": "http://example.com/api/projects/5eede44757a14986ab6f326a2ed0893d/"
         },
         ...
     ]

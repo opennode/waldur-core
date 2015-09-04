@@ -16,6 +16,7 @@ from nodeconductor.billing.models import PaidResource
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
+from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.structure import models as structure_models, ServiceBackend
 
 logger = logging.getLogger(__name__)
@@ -102,7 +103,7 @@ class ServiceStatistics(models.Model):
 
 
 @python_2_unicode_compatible
-class CloudProjectMembership(structure_models.ServiceProjectLink):
+class CloudProjectMembership(QuotaModelMixin, structure_models.ServiceProjectLink):
     """
     This model represents many to many relationships between project and cloud
     """

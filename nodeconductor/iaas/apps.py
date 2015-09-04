@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.db.models import signals
 
+from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.core import handlers as core_handlers
 from nodeconductor.core.signals import pre_serializer_fields
 
@@ -29,6 +30,12 @@ class IaasConfig(AppConfig):
             handlers.add_clouds_to_related_model,
             sender=ProjectSerializer,
             dispatch_uid='nodeconductor.iaas.handlers.add_clouds_to_project',
+        )
+
+        signals.post_save.connect(
+            quotas_handlers.add_quotas_to_scope,
+            sender=CloudProjectMembership,
+            dispatch_uid='nodeconductor.iaas.handlers.add_quotas_to_cloud_project_membership',
         )
 
         signals.post_save.connect(
