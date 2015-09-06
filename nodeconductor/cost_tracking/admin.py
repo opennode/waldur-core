@@ -28,7 +28,7 @@ class PriceListItemAdmin(admin.ModelAdmin):
 class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ('units', 'item_type', 'key', 'value', 'monthly_rate', 'product_name')
     list_filter = ['item_type', 'key']
-    fields = ('item_type', ('value', 'monthly_rate'), 'key', 'units')
+    fields = ('item_type', ('value', 'monthly_rate'), 'resource_content_type', 'key', 'units')
     readonly_fields = ('monthly_rate',)
     change_readonly_fields = ('resource_content_type', 'key', 'units')
 
