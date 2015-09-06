@@ -26,11 +26,10 @@ class ServiceSettingsTest(test.APITransactionTestCase):
         self.customers['owned'].add_user(self.users['owner'], CustomerRole.OWNER)
 
         self.settings = {
-            'shared': factories.ServiceSettingsFactory(),
-            'inaccessible': factories.ServiceSettingsFactory(customer=self.customers['inaccessible'], shared=False),
+            'shared': factories.ServiceSettingsFactory(shared=True),
+            'inaccessible': factories.ServiceSettingsFactory(customer=self.customers['inaccessible']),
             'owned': factories.ServiceSettingsFactory(
-                customer=self.customers['owned'], backend_url='bk.url', password='123',
-                type=1, shared=False),
+                customer=self.customers['owned'], backend_url='bk.url', password='123', type=1),
         }
 
     def _get_settings_url(self, settings=None):

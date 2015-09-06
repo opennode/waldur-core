@@ -1,7 +1,7 @@
 from celery import shared_task
 
 from nodeconductor.core.tasks import transition, throttle
-from nodeconductor.openstack.models import Instance
+from nodeconductor.openstack.models import Instance, SecurityGroup
 
 
 @shared_task(name='nodeconductor.openstack.provision')
@@ -49,6 +49,40 @@ def restart(instance_uuid):
         args=(instance_uuid,),
         link=set_online.si(instance_uuid),
         link_error=set_erred.si(instance_uuid))
+
+
+@shared_task(name='nodeconductor.openstack.sync_instance_security_groups')
+def sync_instance_security_groups(instance_uuid):
+    instance = Instance.objects.get(uuid=instance_uuid)
+    backend = instance.get_backend()
+    backend.sync_instance_security_groups(instance)
+
+
+@shared_task(name='nodeconductor.openstack.sync_security_group')
+@transition(SecurityGroup, 'begin_syncing')
+def sync_security_group(security_group_uuid, action, transition_entity=None):
+    security_group = transition_entity
+    backend = security_group.service_project_link.get_backend()
+
+    @transition(SecurityGroup, 'set_in_sync')
+    def succeeded(security_group_uuid, transition_entity=None):
+        pass
+
+    @transition(SecurityGroup, 'set_erred')
+    def failed(security_group_uuid, transition_entity=None):
+        pass
+
+    try:
+        func = getattr(backend, '%s_security_group' % action)
+        func(security_group)
+    except:
+        failed(security_group_uuid)
+        raise
+    else:
+        if action == 'delete':
+            security_group.delete()
+        else:
+            succeeded(security_group_uuid)
 
 
 @shared_task(is_heavy_task=True)

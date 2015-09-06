@@ -101,16 +101,17 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info('Successfully synchronized OpenStack service %s', self.settings.backend_url)
 
-    def sync_link(self, service_project_link):
+    def sync_link(self, service_project_link, is_initial=False):
         # Migration status:
         # [x] push_membership()
         # [ ] pull_instances()
         # [ ] pull_floating_ips() (TODO: NC-636)
-        # [ ] push_security_groups() (TODO: NC-638)
+        # [x] push_security_groups()
         # [x] pull_resource_quota() & pull_resource_quota_usage()
 
         try:
             self.push_link(service_project_link)
+            self.push_security_groups(service_project_link, is_initial=is_initial)
             self.pull_quotas(service_project_link)
         except (keystone_exceptions.ClientException, neutron_exceptions.NeutronException) as e:
             logger.exception('Failed to synchronize ServiceProjectLink %s', service_project_link.to_string())
@@ -215,6 +216,19 @@ class OpenStackBackend(ServiceBackend):
         except CloudBackendError as e:
             six.reraise(OpenStackBackendError, e)
 
+    def push_security_groups(self, service_project_link, is_initial=False):
+        try:
+            self._old_backend.push_security_groups(
+                service_project_link, is_membership_creation=is_initial)
+        except CloudBackendError as e:
+            six.reraise(OpenStackBackendError, e)
+
+    def sync_instance_security_groups(self, instance):
+        try:
+            self._old_backend.push_instance_security_groups(instance)
+        except CloudBackendError as e:
+            six.reraise(OpenStackBackendError, e)
+
     def push_link(self, service_project_link):
         keystone = self.keystone_admin_client
         neutron = self.neutron_admin_client
@@ -258,6 +272,8 @@ class OpenStackBackend(ServiceBackend):
 
                 internal_ips=ips.get('internal', ''),
                 external_ips=ips.get('external', ''),
+
+                security_groups=[sg['name'] for sg in instance.security_groups],
             )
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
@@ -359,6 +375,8 @@ class OpenStackBackend(ServiceBackend):
                     instance.uuid, data_volume.id)
                 raise OpenStackBackendError("Timed out waiting for instance %s to provision" % instance.uuid)
 
+            security_group_ids = instance.security_groups.values_list('security_group__backend_id', flat=True)
+
             server_create_parameters = dict(
                 name=instance.name,
                 image=None,  # Boot from volume, see boot_index below
@@ -381,6 +399,7 @@ class OpenStackBackend(ServiceBackend):
                     },
                 ],
                 key_name=backend_public_key.name if backend_public_key is not None else None,
+                security_groups=security_group_ids,
             )
             availability_zone = instance.service_project_link.availability_zone
             if availability_zone:
@@ -426,6 +445,27 @@ class OpenStackBackend(ServiceBackend):
             six.reraise(OpenStackBackendError, e)
         else:
             logger.info("Successfully provisioned instance %s", instance.uuid)
+
+    def create_security_group(self, security_group):
+        nova = self.nova_client
+        try:
+            self._old_backend.create_security_group(security_group, nova)
+        except CloudBackendError as e:
+            six.reraise(OpenStackBackendError, e)
+
+    def delete_security_group(self, security_group):
+        nova = self.nova_client
+        try:
+            self._old_backend.delete_security_group(security_group, nova)
+        except CloudBackendError as e:
+            six.reraise(OpenStackBackendError, e)
+
+    def update_security_group(self, security_group):
+        nova = self.nova_client
+        try:
+            self._old_backend.update_security_group(security_group, nova)
+        except CloudBackendError as e:
+            six.reraise(OpenStackBackendError, e)
 
     # TODO: (NC-636)
     def get_or_create_network(self, service_project_link, neutron):

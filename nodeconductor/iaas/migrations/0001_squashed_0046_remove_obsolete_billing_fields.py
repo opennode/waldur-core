@@ -387,7 +387,7 @@ class Migration(migrations.Migration):
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
                 ('name', models.CharField(max_length=150, verbose_name='name')),
                 ('backend_id', models.CharField(help_text='Reference to a SecurityGroup in a remote cloud', max_length=128, blank=True)),
-                ('cloud_project_membership', models.ForeignKey(related_name='+', to='iaas.CloudProjectMembership')),
+                ('cloud_project_membership', models.ForeignKey(related_name='security_groups', to='iaas.CloudProjectMembership')),
                 ('state', django_fsm.FSMIntegerField(default=1, choices=[(1, 'Sync Scheduled'), (2, 'Syncing'), (3, 'In Sync'), (4, 'Erred')])),
             ],
             options={

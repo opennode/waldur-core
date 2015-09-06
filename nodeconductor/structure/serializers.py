@@ -831,8 +831,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         if not user.is_staff:
             if not customer.has_user(user, models.CustomerRole.OWNER):
                 raise exceptions.PermissionDenied()
-            if settings and not settings.shared and attrs.get('customer') != settings.customer:
-                raise serializers.ValidationError('Customer must match settings customer.')
+            if not self.instance and settings and not settings.shared:
+                if attrs.get('customer') != settings.customer:
+                    raise serializers.ValidationError('Customer must match settings customer.')
 
         if self.context['request'].method == 'POST':
             settings_fields = 'backend_url', 'username', 'password', 'token'

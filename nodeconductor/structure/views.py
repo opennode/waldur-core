@@ -28,7 +28,7 @@ from rest_framework import views
 from rest_framework import viewsets
 from rest_framework import generics
 from rest_framework.decorators import detail_route, list_route
-from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, APIException
+from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException
 from rest_framework.response import Response
 
 from nodeconductor.core import filters as core_filters
@@ -1376,7 +1376,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                     try:
                         spl = spl_class.objects.get(project__uuid=project_uuid, service=service)
                     except:
-                        pass
+                        raise NotFound("Can't find project %s" % project_uuid)
                     else:
                         backend = spl.get_backend()
                 else:

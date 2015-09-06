@@ -1,7 +1,9 @@
 from django.db import models
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
 
+from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.iaas.models import PaidInstance
@@ -64,6 +66,51 @@ class Image(structure_models.ServiceProperty):
     min_ram = models.PositiveIntegerField(default=0, help_text='Minimum memory size in MiB')
 
 
+@python_2_unicode_compatible
+class SecurityGroup(core_models.UuidMixin,
+                    core_models.NameMixin,
+                    core_models.DescribableMixin,
+                    core_models.SynchronizableMixin):
+
+    class Permissions(object):
+        customer_path = 'service_project_link__project__customer'
+        project_path = 'service_project_link__project'
+        project_group_path = 'service_project_link__project__project_groups'
+
+    service_project_link = models.ForeignKey(
+        OpenStackServiceProjectLink, related_name='security_groups')
+
+    backend_id = models.CharField(max_length=128, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+@python_2_unicode_compatible
+class SecurityGroupRule(models.Model):
+    TCP = 'tcp'
+    UDP = 'udp'
+    ICMP = 'icmp'
+
+    CHOICES = (
+        (TCP, 'tcp'),
+        (UDP, 'udp'),
+        (ICMP, 'icmp'),
+    )
+
+    security_group = models.ForeignKey(SecurityGroup, related_name='rules')
+    protocol = models.CharField(max_length=4, blank=True, choices=CHOICES)
+    from_port = models.IntegerField(validators=[MaxValueValidator(65535)], null=True)
+    to_port = models.IntegerField(validators=[MaxValueValidator(65535)], null=True)
+    cidr = models.CharField(max_length=32, blank=True)
+
+    backend_id = models.CharField(max_length=128, blank=True)
+
+    def __str__(self):
+        return '%s (%s): %s (%s -> %s)' % \
+               (self.security_group, self.protocol, self.cidr, self.from_port, self.to_port)
+
+
 class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, PaidInstance):
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
@@ -92,3 +139,12 @@ class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, 
             'uuid', 'name', 'type', 'service_project_link', 'ram', 'cores',
             'data_volume_size', 'system_volume_size',
         )
+
+
+class InstanceSecurityGroup(models.Model):
+    class Permissions(object):
+        project_path = 'instance__project'
+        project_group_path = 'instance__project__project_groups'
+
+    instance = models.ForeignKey(Instance, related_name='security_groups')
+    security_group = models.ForeignKey(SecurityGroup, related_name='instance_groups')

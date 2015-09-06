@@ -69,7 +69,8 @@ class SuspendServiceTest(test.APITransactionTestCase):
             # XXX: quick fix for iaas cloud. Can be removed after iaas application refactoring.
             if service_type == -1:
                 continue
-            settings = factories.ServiceSettingsFactory(customer=self.customer, type=service_type)
+            settings = factories.ServiceSettingsFactory(
+                customer=self.customer, type=service_type, shared=True)
 
             class ServiceFactory(factory.DjangoModelFactory):
                 class Meta(object):

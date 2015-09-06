@@ -102,7 +102,7 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
         service_project_link_str = obj.to_string()
         begin_syncing_service_project_links.apply_async(
             args=(service_project_link_str,),
-            kwargs={'quotas': quotas},
+            kwargs={'quotas': quotas, 'initial': initial},
             link=sync_service_project_link_succeeded.si(service_project_link_str),
             link_error=sync_service_project_link_failed.si(service_project_link_str))
 
@@ -131,7 +131,7 @@ def sync_service_settings_failed(settings_uuid, transition_entity=None):
 
 
 @shared_task
-def begin_syncing_service_project_links(service_project_link_str, quotas=None, transition_entity=None):
+def begin_syncing_service_project_links(service_project_link_str, quotas=None, initial=False, transition_entity=None):
     spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
 
     @transition(spl_model, 'begin_syncing')
@@ -142,7 +142,7 @@ def begin_syncing_service_project_links(service_project_link_str, quotas=None, t
             if quotas:
                 backend.sync_quotas(service_project_link, quotas)
             else:
-                backend.sync_link(service_project_link)
+                backend.sync_link(service_project_link, is_initial=initial)
         except ServiceBackendNotImplemented:
             pass
 

@@ -488,7 +488,6 @@ class SecurityGroup(core_models.UuidMixin,
                     core_models.DescribableMixin,
                     core_models.NameMixin,
                     core_models.SynchronizableMixin,
-                    CloudProjectMember,
                     models.Model):
 
     class Permissions(object):
@@ -499,6 +498,9 @@ class SecurityGroup(core_models.UuidMixin,
     """
     This class contains OpenStack security groups.
     """
+
+    cloud_project_membership = models.ForeignKey(
+        CloudProjectMembership, related_name='security_groups')
 
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=128, blank=True,
