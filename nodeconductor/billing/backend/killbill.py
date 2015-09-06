@@ -271,7 +271,7 @@ class KillBill(object):
         def delete(self, uuid):
             return self.request('/'.join([self.path, uuid]), method='DELETE')
 
-        def request(self, url, method='GET', data=None, **kwargs):
+        def request(self, url, method='GET', data=None, verify=False, **kwargs):
             response_types = {'application/json': 'json', 'application/xml': 'xml'}
             headers = {'User-Agent': 'NodeConductor/%s' % __version__,
                        'Accept': 'application/json',
@@ -284,7 +284,7 @@ class KillBill(object):
 
             url = url if url.startswith(self.api_url) else self.api_url + url
             response = getattr(requests, method.lower())(
-                url, params=kwargs, data=data, auth=self.auth, headers=headers)
+                url, params=kwargs, data=data, auth=self.auth, headers=headers, verify=verify)
 
             codes = requests.status_codes.codes
             response_type = response_types.get(response.headers.get('content-type'), '')
