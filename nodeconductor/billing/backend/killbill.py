@@ -63,9 +63,9 @@ class KillBillAPI(object):
     def _get_product_name_for_content_type(self, content_type):
         return self._get_plan_name_for_content_type(content_type).title().replace('-', '')
 
-    def add_client(self, name=None, uuid=None, **kwargs):
+    def add_client(self, email=None, name=None, uuid=None, **kwargs):
         account = self.accounts.create(
-            name=name, externalKey=uuid, currency=self.currency)
+            name=name, email=email, externalKey=uuid, currency=self.currency)
         return account['accountId']
 
     def get_client_details(self, client_id):

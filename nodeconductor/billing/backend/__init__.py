@@ -58,6 +58,7 @@ class BillingBackend(object):
             return self.customer.billing_backend_id
 
         self.customer.billing_backend_id = self.api.add_client(
+            email="%s@example.com" % self.customer.uuid,  # XXX: a fake email address unique to a customer
             name=self.customer.name,
             uuid=self.customer.uuid.hex)
 
