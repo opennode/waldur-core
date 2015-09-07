@@ -233,6 +233,7 @@ class KillBillAPI(object):
                     E.cancelPolicyCase(E.productCategory('STANDALONE'), E.policy('END_OF_TERM')),
                     E.cancelPolicyCase(E.policy('END_OF_TERM')),
                 ),
+                E.createAlignment(E.createAlignmentCase(E.alignment('START_OF_SUBSCRIPTION'))),
                 E.billingAlignment(E.billingAlignmentCase(E.alignment('ACCOUNT'))),
                 E.priceList(E.priceListCase(E.toPriceList('DEFAULT'))),
             ),
