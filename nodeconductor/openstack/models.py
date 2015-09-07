@@ -6,7 +6,7 @@ from model_utils import FieldTracker
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
 from nodeconductor.quotas.models import QuotaModelMixin
-from nodeconductor.iaas.models import PaidInstance
+from nodeconductor.iaas.models import PaidInstance, InitialSecurityGroup
 from nodeconductor.logging.log import LoggableMixin
 
 
@@ -70,7 +70,8 @@ class Image(structure_models.ServiceProperty):
 class SecurityGroup(core_models.UuidMixin,
                     core_models.NameMixin,
                     core_models.DescribableMixin,
-                    core_models.SynchronizableMixin):
+                    core_models.SynchronizableMixin,
+                    InitialSecurityGroup):
 
     class Permissions(object):
         customer_path = 'service_project_link__project__customer'

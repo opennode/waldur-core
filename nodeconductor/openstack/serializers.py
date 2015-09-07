@@ -313,21 +313,21 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
     def create(self, validated_data):
         security_groups = [data['security_group'] for data in validated_data.pop('security_groups', [])]
         instance = super(InstanceSerializer, self).create(validated_data)
-        for security_group in security_groups:
-            models.InstanceSecurityGroup.objects.create(instance=instance, security_group=security_group)
+
+        for sg in security_groups:
+            instance.security_groups.create(security_group=sg)
 
         return instance
 
     def update(self, instance, validated_data):
         security_groups = validated_data.pop('security_groups', [])
         security_groups = [data['security_group'] for data in security_groups]
-
         instance = super(InstanceSerializer, self).update(instance, validated_data)
-        queryset = models.InstanceSecurityGroup.objects
 
-        queryset.filter(instance=instance).delete()
-        for security_group in security_groups:
-            queryset.create(instance=instance, security_group=security_group)
+        instance.security_groups.all().delete()
+        for sg in security_groups:
+            instance.security_groups.create(security_group=sg)
+
         return instance
 
 
@@ -355,8 +355,9 @@ class InstanceImportSerializer(structure_serializers.BaseResourceImportSerialize
                                "are missed in NodeConductor" % validated_data['backend_id']})
 
         validated_data.update(backend_instance.nc_model_data)
-
         instance = super(InstanceImportSerializer, self).create(validated_data)
-        instance.security_groups.add(*security_groups)
+
+        for sg in security_groups:
+            instance.security_groups.create(security_group=sg)
 
         return instance
