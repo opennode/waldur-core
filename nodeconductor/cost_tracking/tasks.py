@@ -42,6 +42,8 @@ def update_current_month_projected_estimate(customer_uuid=None, resource_uuid=No
             queryset = model.objects.filter(customer__uuid=customer_uuid)
         elif resource_uuid:
             queryset = model.objects.filter(uuid=resource_uuid)
+        else:
+            queryset = model.objects.all()
 
         queryset = queryset.exclude(state=model.States.ERRED)
         for instance in queryset.iterator():
