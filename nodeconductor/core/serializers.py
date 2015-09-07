@@ -385,7 +385,7 @@ class HistorySerializer(serializers.Serializer):
             return [self.validated_data['start'] + interval * i for i in range(self.validated_data['points_count'])]
 
 
-class DynamicSerializer(serializers.Serializer):
+class DynamicSerializer(serializers.ModelSerializer):
     """
     Allows to specify additional fields for serializer.
     Useful for managing dependencies between applications.
