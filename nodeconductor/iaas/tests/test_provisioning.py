@@ -907,6 +907,23 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, 'Error: %r' % response.data)
 
+    def test_assigning_floating_ip_on_provisioning_marks_it_as_booked(self):
+        data = self.get_valid_data()
+        address = '127.0.0.1'
+        data['external_ips'] = [address]
+
+        # add this floating ip as available
+        FloatingIP.objects.create(status='DOWN', cloud_project_membership=self.membership, address=address)
+
+        response = self.client.post(self.instance_list_url, data)
+
+        floating_ip_booked = FloatingIP.objects.filter(status='BOOKED',
+                                                       cloud_project_membership=self.membership,
+                                                       address=address).exists()
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, 'Error: %r' % response.data)
+        self.assertTrue(floating_ip_booked)
+
     def test_can_create_instance_with_defined_volume_size(self):
         data = self.get_valid_data()
         data['data_volume_size'] = 2 * 1024
@@ -1090,7 +1107,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
             # Should not depend on cloud, instead represents an "aggregation" of templates
             'template': self._get_template_url(self.template),
 
-            'external_ips': [],
+            'external_ips': ['1.1.1.1'],
 
             # Cloud dependent parameters
             'flavor': self._get_flavor_url(self.flavor),

@@ -2346,7 +2346,7 @@ class OpenStackBackend(OpenStackClient):
         try:
             floating_ip = models.FloatingIP.objects.get(
                 cloud_project_membership=instance.cloud_project_membership,
-                status='DOWN',
+                status__in=('BOOKED', 'DOWN'),
                 address=instance.external_ips,
                 backend_network_id=instance.cloud_project_membership.external_network_id
             )
