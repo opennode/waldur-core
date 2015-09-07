@@ -1107,7 +1107,7 @@ class InstanceProvisioningTest(UrlResolverMixin, test.APITransactionTestCase):
             # Should not depend on cloud, instead represents an "aggregation" of templates
             'template': self._get_template_url(self.template),
 
-            'external_ips': ['1.1.1.1'],
+            'external_ips': [],
 
             # Cloud dependent parameters
             'flavor': self._get_flavor_url(self.flavor),
