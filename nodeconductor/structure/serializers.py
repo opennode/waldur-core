@@ -89,6 +89,7 @@ class NestedProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSeria
 
 
 class ProjectSerializer(PermissionFieldFilteringMixin,
+                        core_serializers.DynamicSerializer,
                         core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = NestedProjectGroupSerializer(
