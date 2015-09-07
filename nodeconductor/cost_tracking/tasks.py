@@ -68,8 +68,8 @@ def update_current_month_projected_estimate(customer_uuid=None, resource_uuid=No
 
 @shared_task(name='nodeconductor.cost_tracking.update_today_usage')
 def update_today_usage():
-    # this task is suppossed to be called every hour and count hourly resource usage
-    # it's exact ammount for numerical options and boolean value for the rest
+    # this task is supposed to be called every hour and count hourly resource usage
+    # it's exact amount for numerical options and boolean value for the rest
     # example:
     #       2015-08-20 13:00    storage-1Gb         20
     #       2015-08-20 13:00    flavor-g1.small1    1
@@ -82,7 +82,8 @@ def update_today_usage():
 
     for resource in Resource.get_all_models():
         if issubclass(resource, PaidResource):
-            update_today_usage_of_resource.delay(resource.to_string())
+            for r in resource.objects.all():
+                update_today_usage_of_resource.delay(r.to_string())
 
 
 @shared_task
