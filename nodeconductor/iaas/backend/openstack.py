@@ -953,9 +953,11 @@ class OpenStackBackend(OpenStackClient):
             for ip_id in nc_ids & backend_ids:
                 nc_ip = nc_floating_ips[ip_id]
                 backend_ip = backend_floating_ips[ip_id]
-                if nc_ip.status != backend_ip['status'] or nc_ip.address != backend_ip['floating_ip_address']:
+                if nc_ip.status != backend_ip['status'] or nc_ip.address != backend_ip['floating_ip_address']\
+                        or nc_ip.backend_network_id != backend_ip['floating_network_id']:
                     nc_ip.status = backend_ip['status']
                     nc_ip.address = backend_ip['floating_ip_address']
+                    nc_ip.backend_network_id = backend_ip['floating_network_id']
                     nc_ip.save()
                     logger.info('Updated existing floating IP port %s in database', nc_ip.uuid)
 
