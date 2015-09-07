@@ -514,6 +514,18 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         instance.key = key
         instance.cloud = flavor.cloud
 
+        # book floating IP
+        membership = validated_data.get('cloud_project_membership')
+        floating_ip = validated_data.pop('external_ips', None)
+        if floating_ip:
+            ip = models.FloatingIP.objects.get(
+                address=floating_ip,
+                status='DOWN',
+                cloud_project_membership=membership,
+            )
+            ip.status = 'BOOKED'
+            ip.save()
+
         return instance
 
     def to_internal_value(self, data):
