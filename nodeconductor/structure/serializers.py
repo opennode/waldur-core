@@ -213,8 +213,9 @@ class CustomerImageSerializer(serializers.ModelSerializer):
         fields = ['image']
 
 
-class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
-                         serializers.HyperlinkedModelSerializer):
+class CustomerSerializer(core_serializers.DynamicSerializer,
+                         core_serializers.AugmentedSerializerMixin,
+                         serializers.HyperlinkedModelSerializer,):
     projects = serializers.SerializerMethodField()
     project_groups = serializers.SerializerMethodField()
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)

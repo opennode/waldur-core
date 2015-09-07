@@ -383,3 +383,25 @@ class HistorySerializer(serializers.Serializer):
             interval = ((self.validated_data['end'] - self.validated_data['start']) /
                         (self.validated_data['points_count'] - 1))
             return [self.validated_data['start'] + interval * i for i in range(self.validated_data['points_count'])]
+
+
+class DynamicSerializer(serializers.Serializer):
+    """
+    Allows to specify additional fields for serializer.
+    Useful for managing dependencies between applications.
+    """
+    _additional_fields = {}
+
+    @classmethod
+    def add_field(cls, field_name, model_class, options=None):
+        cls.Meta.fields += (field_name,)
+        cls._additional_fields[field_name] = (model_class, options or {})
+
+    def build_unknown_field(self, field_name, model_class):
+        if field_name in self._additional_fields:
+            return self._additional_fields[field_name]
+        return super(DynamicSerializer, self).build_unknown_field(field_name, model_class)
+
+    @classmethod
+    def add_to_class(cls, name, value):
+        setattr(cls, name, value)
