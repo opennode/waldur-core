@@ -1,3 +1,4 @@
+from ddt import ddt, data
 from mock import patch
 
 from rest_framework import test, status
@@ -9,6 +10,7 @@ from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
 
+@ddt
 class SecurityGroupCreateTest(test.APITransactionTestCase):
 
     def setUp(self):
@@ -41,15 +43,9 @@ class SecurityGroupCreateTest(test.APITransactionTestCase):
         }
         self.url = factories.SecurityGroupFactory.get_list_url()
 
-    def test_customer_owner_can_create_security_group(self):
-        self.client.force_authenticate(self.owner)
-        response = self.client.post(self.url, self.valid_data)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(models.SecurityGroup.objects.filter(name=self.valid_data['name']).exists())
-
-    def test_project_administrator_can_create_security_group(self):
-        self.client.force_authenticate(self.admin)
+    @data('owner', 'admin')
+    def test_user_with_access_can_create_security_group(self, user):
+        self.client.force_authenticate(getattr(self, user))
         response = self.client.post(self.url, self.valid_data)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)

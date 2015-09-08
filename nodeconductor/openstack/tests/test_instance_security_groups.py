@@ -50,11 +50,19 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
 
     def test_add_instance_with_security_groups(self):
         data = _instance_data(self.user, self.instance)
-        data['security_groups'] = [self._get_valid_security_group_payload(g.security_group)
-                                   for g in self.instance_security_groups]
+        data['security_groups'] = [self._get_valid_security_group_payload(sg)
+                                   for sg in self.service_security_groups]
 
         response = self.client.post(factories.InstanceFactory.get_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+
+        reread_instance = models.Instance.objects.get(pk=self.instance.pk)
+        reread_security_groups = [
+            isg.security_group
+            for isg in reread_instance.security_groups.all()
+        ]
+
+        self.assertEquals(reread_security_groups, self.service_security_groups)
 
     def test_change_instance_security_groups_single_field(self):
         membership = self.instance.service_project_link
@@ -85,12 +93,20 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         response = self.client.get(factories.InstanceFactory.get_url(self.instance))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+        isg = factories.InstanceSecurityGroupFactory(instance=self.instance)
         data = _instance_data(self.user, self.instance)
-        data['security_groups'] = [self._get_valid_security_group_payload()
-                                   for g in self.instance_security_groups]
-        with patch('nodeconductor.iaas.tasks.zabbix.zabbix_update_host_visible_name.delay'):
-            response = self.client.put(factories.InstanceFactory.get_url(self.instance), data=data)
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data['security_groups'] = [self._get_valid_security_group_payload(isg.security_group)]
+
+        response = self.client.put(factories.InstanceFactory.get_url(self.instance), data=data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        reread_instance = models.Instance.objects.get(pk=self.instance.pk)
+        reread_security_groups = [
+            isg.security_group
+            for isg in reread_instance.security_groups.all()
+        ]
+
+        self.assertEquals(reread_security_groups, [isg.security_group])
 
     def test_security_groups_is_not_required(self):
         data = _instance_data(self.user, self.instance)
