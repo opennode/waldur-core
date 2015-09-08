@@ -65,6 +65,10 @@ class QuotaModelMixin(models.Model):
       - can_user_update_quotas(self, user) - return True if user has permission to update quotas of this object
       - get_quota_parents(self) - return list of 'quota parents'
 
+    Additional optional fields:
+      - GLOBAL_COUNT_QUOTA_NAME - name of global count quota. It presents - global quota will be automatically created
+                                  for model
+
     Use such methods to change objects quotas:
       set_quota_limit, set_quota_usage, add_quota_usage.
 
