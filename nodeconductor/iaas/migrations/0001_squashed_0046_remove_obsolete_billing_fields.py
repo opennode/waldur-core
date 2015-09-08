@@ -430,7 +430,7 @@ class Migration(migrations.Migration):
                 ('status', models.CharField(max_length=30)),
                 ('backend_id', models.CharField(max_length=255)),
                 ('backend_network_id', models.CharField(max_length=255, editable=False)),
-                ('cloud_project_membership', models.ForeignKey(related_name='+', to='iaas.CloudProjectMembership')),
+                ('cloud_project_membership', models.ForeignKey(related_name='floating_ips', to='iaas.CloudProjectMembership')),
             ],
             options={
                 'abstract': False,

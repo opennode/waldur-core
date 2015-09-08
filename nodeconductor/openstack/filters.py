@@ -119,11 +119,11 @@ class SecurityGroupFilter(django_filters.FilterSet):
         name='description',
         lookup_type='icontains',
     )
-    cloud = django_filters.CharFilter(
-        name='cloud_project_membership__cloud__uuid',
+    service = django_filters.CharFilter(
+        name='service_project_link__service__uuid',
     )
     project = django_filters.CharFilter(
-        name='cloud_project_membership__project__uuid',
+        name='service_project_link__project__uuid',
     )
 
     class Meta(object):
@@ -131,6 +131,23 @@ class SecurityGroupFilter(django_filters.FilterSet):
         fields = [
             'name',
             'description',
-            'cloud',
+            'service',
             'project'
+        ]
+
+
+class FloatingIPFilter(django_filters.FilterSet):
+    project = django_filters.CharFilter(
+        name='service_project_link__project__uuid',
+    )
+    service = django_filters.CharFilter(
+        name='service_project_link__service__uuid',
+    )
+
+    class Meta(object):
+        model = models.FloatingIP
+        fields = [
+            'project',
+            'service',
+            'status',
         ]

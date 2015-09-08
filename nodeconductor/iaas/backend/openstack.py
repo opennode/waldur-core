@@ -16,6 +16,7 @@ from cinderclient import exceptions as cinder_exceptions
 from cinderclient.v1 import client as cinder_client
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import transaction
 from django.db.models import ProtectedError
 from django.utils import dateparse
@@ -919,7 +920,7 @@ class OpenStackBackend(OpenStackClient):
             six.reraise(CloudBackendError, e)
 
         nc_floating_ips = dict(
-            (ip.backend_id, ip) for ip in models.FloatingIP.objects.filter(cloud_project_membership=membership))
+            (ip.backend_id, ip) for ip in membership.floating_ips.all())
 
         backend_ids = set(backend_floating_ips.keys())
         nc_ids = set(nc_floating_ips.keys())
@@ -933,8 +934,7 @@ class OpenStackBackend(OpenStackClient):
 
             for ip_id in backend_ids - nc_ids:
                 ip = backend_floating_ips[ip_id]
-                created_ip = models.FloatingIP.objects.create(
-                    cloud_project_membership=membership,
+                created_ip = membership.floating_ips.create(
                     status=ip['status'],
                     backend_id=ip['id'],
                     address=ip['floating_ip_address'],
@@ -1362,9 +1362,7 @@ class OpenStackBackend(OpenStackClient):
                     event_context={'instance': instance})
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
             else:
-                # TODO: add floating ips support for openstack (NC-636)
-                if isinstance(instance, models.Instance):
-                    self.release_floating_ip_from_instance(instance)
+                self.release_floating_ip_from_instance(instance)
 
         except nova_exceptions.ClientException as e:
             logger.info('Failed to delete instance %s', instance.uuid)
@@ -2336,18 +2334,19 @@ class OpenStackBackend(OpenStackClient):
 
         logger.debug('About to add external ip %s to instance %s',
                      instance.external_ips, instance.uuid)
+
+        membership = instance.cloud_project_membership
         try:
-            floating_ip = models.FloatingIP.objects.get(
-                cloud_project_membership=instance.cloud_project_membership,
+            floating_ip = membership.floating_ips.get(
                 status__in=('BOOKED', 'DOWN'),
                 address=instance.external_ips,
-                backend_network_id=instance.cloud_project_membership.external_network_id
+                backend_network_id=membership.external_network_id
             )
             server.add_floating_ip(address=instance.external_ips, fixed_address=instance.internal_ips)
         except (
-                models.FloatingIP.DoesNotExist,
-                models.FloatingIP.MultipleObjectsReturned,
                 nova_exceptions.ClientException,
+                ObjectDoesNotExist,
+                MultipleObjectsReturned,
                 KeyError,
                 IndexError,
         ):
@@ -2365,17 +2364,14 @@ class OpenStackBackend(OpenStackClient):
         if not instance.external_ips:
             return
 
+        membership = instance.cloud_project_membership
         try:
-            floating_ip = models.FloatingIP.objects.get(
-                cloud_project_membership=instance.cloud_project_membership,
+            floating_ip = membership.floating_ips.get(
                 status='ACTIVE',
                 address=instance.external_ips,
-                backend_network_id=instance.cloud_project_membership.external_network_id
+                backend_network_id=membership.external_network_id
             )
-        except (
-                models.FloatingIP.DoesNotExist,
-                models.FloatingIP.MultipleObjectsReturned
-        ):
+        except (ObjectDoesNotExist, MultipleObjectsReturned):
             logger.warning('Failed to release floating ip %s from instance %s',
                            instance.external_ips, instance.uuid)
         else:
@@ -2388,8 +2384,7 @@ class OpenStackBackend(OpenStackClient):
         data = {'floating_network_id': membership.external_network_id, 'tenant_id': membership.tenant_id}
         ip_address = neutron.create_floatingip({'floatingip': data})['floatingip']
 
-        models.FloatingIP.objects.create(
-            cloud_project_membership=membership,
+        membership.floating_ips.create(
             status='DOWN',
             address=ip_address['floating_ip_address'],
             backend_id=ip_address['id'],

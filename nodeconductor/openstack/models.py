@@ -27,6 +27,7 @@ class OpenStackServiceProjectLink(QuotaModelMixin, structure_models.ServiceProje
 
     tenant_id = models.CharField(max_length=64, blank=True)
     internal_network_id = models.CharField(max_length=64, blank=True)
+    external_network_id = models.CharField(max_length=64, blank=True)
 
     availability_zone = models.CharField(
         max_length=100, blank=True,
@@ -110,6 +111,22 @@ class SecurityGroupRule(models.Model):
     def __str__(self):
         return '%s (%s): %s (%s -> %s)' % \
                (self.security_group, self.protocol, self.cidr, self.from_port, self.to_port)
+
+
+class FloatingIP(core_models.UuidMixin):
+
+    class Permissions(object):
+        customer_path = 'service_project_link__project__customer'
+        project_path = 'service_project_link__project'
+        project_group_path = 'service_project_link__project__project_groups'
+
+    service_project_link = models.ForeignKey(
+        OpenStackServiceProjectLink, related_name='floating_ips')
+
+    address = models.GenericIPAddressField(protocol='IPv4')
+    status = models.CharField(max_length=30)
+    backend_id = models.CharField(max_length=255)
+    backend_network_id = models.CharField(max_length=255, editable=False)
 
 
 class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, PaidInstance):

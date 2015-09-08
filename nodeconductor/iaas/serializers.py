@@ -4,7 +4,6 @@ from datetime import timedelta
 import logging
 
 from django.core.urlresolvers import reverse
-from django.core.validators import MaxLengthValidator
 from django.db import IntegrityError, transaction
 from django.db.models import Max
 from django.utils import timezone
@@ -353,10 +352,6 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
         view_name = 'security_group-detail'
 
 
-class IpCountValidator(MaxLengthValidator):
-    message = 'Only %(limit_value)s ip address is supported.'
-
-
 class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMixin,
                                serializers.HyperlinkedModelSerializer):
 
@@ -394,7 +389,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
         child=core_serializers.IPAddressField(),
         allow_null=True,
         required=False,
-        validators=[IpCountValidator(1)],
+        validators=[structure_serializers.IpCountValidator(1)],
     )
 
     class Meta(object):

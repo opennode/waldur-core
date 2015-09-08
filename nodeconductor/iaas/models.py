@@ -157,13 +157,6 @@ class CloudProjectMembership(QuotaModelMixin, structure_models.ServiceProjectLin
         return 'cloudproject_membership'
 
 
-class CloudProjectMember(models.Model):
-    class Meta(object):
-        abstract = True
-
-    cloud_project_membership = models.ForeignKey(CloudProjectMembership, related_name='+')
-
-
 @python_2_unicode_compatible
 class Flavor(LoggableMixin, core_models.UuidMixin, core_models.NameMixin, models.Model):
     """
@@ -263,11 +256,14 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
         return '{0} <-> {1}'.format(self.template.name, self.backend_image_id)
 
 
-class FloatingIP(core_models.UuidMixin, CloudProjectMember):
+class FloatingIP(core_models.UuidMixin):
     class Permissions(object):
         customer_path = 'cloud_project_membership__cloud__customer'
         project_path = 'cloud_project_membership__project'
         project_group_path = 'cloud_project_membership__project__project_groups'
+
+    cloud_project_membership = models.ForeignKey(
+        CloudProjectMembership, related_name='floating_ips')
 
     address = models.GenericIPAddressField(protocol='IPv4')
     status = models.CharField(max_length=30)

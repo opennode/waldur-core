@@ -141,3 +141,22 @@ class InstanceSecurityGroupFactory(factory.DjangoModelFactory):
 
     instance = factory.SubFactory(InstanceFactory)
     security_group = factory.SubFactory(SecurityGroupFactory)
+
+
+class FloatingIPFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.FloatingIP
+
+    service_project_link = factory.SubFactory(OpenStackServiceProjectLinkFactory)
+    status = factory.Iterator(['ACTIVE', 'SHUTOFF', 'DOWN'])
+    address = factory.LazyAttribute(lambda o: '.'.join('%s' % randint(0, 255) for _ in range(4)))
+
+    @classmethod
+    def get_url(self, instance=None):
+        if instance is None:
+            instance = FloatingIPFactory()
+        return 'http://testserver' + reverse('openstack-fip-detail', kwargs={'uuid': instance.uuid})
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('openstack-fip-list')
