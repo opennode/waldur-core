@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SshPublicKey
-from nodeconductor.quotas import handlers as quotas_handlers
+from nodeconductor.quotas import handlers as quotas_handlers, models as quota_models
 from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.filters import filter_queryset_for_user

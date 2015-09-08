@@ -16,6 +16,9 @@ class QuotaManager(GenericKeyMixin, models.Manager):
         # will be moved to model manager method
         from nodeconductor.structure.filters import filter_queryset_for_user
 
+        if user.is_staff:
+            return queryset
+
         quota_scope_models = utils.get_models_with_quotas()
         query = Q()
         for model in quota_scope_models:
