@@ -1421,6 +1421,7 @@ class BaseServiceProjectLinkFilter(django_filters.FilterSet):
 
 
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
+                                    core_mixins.UpdateOnlyStableMixin,
                                     mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,

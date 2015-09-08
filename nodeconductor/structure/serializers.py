@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, MaxLengthValidator
 from django.contrib import auth
 from django.db import models as django_models
 from django.conf import settings
@@ -19,6 +19,10 @@ from nodeconductor.structure.filters import filter_queryset_for_user
 
 
 User = auth.get_user_model()
+
+
+class IpCountValidator(MaxLengthValidator):
+    message = 'Only %(limit_value)s ip address is supported.'
 
 
 class PermissionFieldFilteringMixin(object):
@@ -916,6 +920,11 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
     def validate(self, attrs):
         if attrs['service'].customer != attrs['project'].customer:
             raise serializers.ValidationError("Service customer doesn't match project customer")
+
+        # XXX: Consider adding unique key (service, project) to the model instead
+        if self.Meta.model.objects.filter(service=attrs['service'], project=attrs['project']).exists():
+            raise serializers.ValidationError("This service project link already exists")
+
         return attrs
 
 
@@ -1070,7 +1079,9 @@ class VirtualMachineSerializer(BaseResourceSerializer):
     external_ips = serializers.ListField(
         child=core_serializers.IPAddressField(),
         allow_null=True,
-        read_only=True)
+        required=False,
+        validators=[IpCountValidator(1)],
+    )
 
     class Meta(BaseResourceSerializer.Meta):
         read_only_fields = ('start_time', 'cores', 'ram', 'disk')

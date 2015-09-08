@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from django.db import transaction
 from django.db.models import Max
+from netaddr import IPNetwork
 
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.core import models as core_models
@@ -61,7 +62,10 @@ class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkS
     class Meta(structure_serializers.BaseServiceProjectLinkSerializer.Meta):
         model = models.OpenStackServiceProjectLink
         view_name = 'openstack-spl-detail'
-        fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.fields + ('quotas',)
+        fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.fields + (
+            'quotas', 'tenant_id', 'external_network_id', 'internal_network_id'
+        )
+        read_only_fields = ('tenant_id', 'external_network_id', 'internal_network_id')
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': 'openstack-detail'},
         }
@@ -129,6 +133,75 @@ class NestedSecurityGroupRuleSerializer(serializers.ModelSerializer):
         else:
             internal_data = super(NestedSecurityGroupRuleSerializer, self).to_internal_value(data)
             return models.SecurityGroupRule(**internal_data)
+
+
+class ExternalNetworkSerializer(serializers.Serializer):
+    vlan_id = serializers.CharField(required=False)
+    vxlan_id = serializers.CharField(required=False)
+    network_ip = core_serializers.IPAddressField()
+    network_prefix = serializers.IntegerField(min_value=0, max_value=32)
+    ips_count = serializers.IntegerField(min_value=1, required=False)
+
+    def validate(self, attrs):
+        vlan_id = attrs.get('vlan_id')
+        vxlan_id = attrs.get('vxlan_id')
+
+        if vlan_id is None and vxlan_id is None:
+            raise serializers.ValidationError("VLAN or VXLAN ID should be provided.")
+        elif vlan_id and vxlan_id:
+            raise serializers.ValidationError("VLAN and VXLAN networks cannot be created simultaneously.")
+
+        ips_count = attrs.get('ips_count')
+        if ips_count is None:
+            return attrs
+
+        network_ip = attrs.get('network_ip')
+        network_prefix = attrs.get('network_prefix')
+
+        cidr = IPNetwork(network_ip)
+        cidr.prefixlen = network_prefix
+
+        # subtract router and broadcast IPs
+        if cidr.size < ips_count - 2:
+            raise serializers.ValidationError("Not enough Floating IP Addresses available.")
+
+        return attrs
+
+
+class AssignFloatingIpSerializer(serializers.Serializer):
+    floating_ip_uuid = serializers.CharField()
+
+    def __init__(self, instance, *args, **kwargs):
+        self.assigned_instance = instance
+        super(AssignFloatingIpSerializer, self).__init__(*args, **kwargs)
+
+    def validate(self, attrs):
+        ip_uuid = attrs.get('floating_ip_uuid')
+
+        try:
+            floating_ip = models.FloatingIP.objects.get(uuid=ip_uuid)
+        except models.FloatingIP.DoesNotExist:
+            raise serializers.ValidationError("Floating IP does not exist.")
+
+        if floating_ip.status == 'ACTIVE':
+            raise serializers.ValidationError("Floating IP status must be DOWN.")
+        elif floating_ip.cloud_project_membership != self.assigned_instance.cloud_project_membership:
+            raise serializers.ValidationError("Floating IP must belong to same cloud project membership.")
+
+        return attrs
+
+
+class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
+    service_project_link = NestedServiceProjectLinkSerializer(read_only=True)
+
+    class Meta:
+        model = models.FloatingIP
+        fields = ('url', 'uuid', 'status', 'address',
+                  'service_project_link', 'backend_id', 'backend_network_id')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+        view_name = 'openstack-fip-detail'
 
 
 class SecurityGroupSerializer(core_serializers.AugmentedSerializerMixin,
@@ -288,6 +361,16 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         if any([flavor.settings != settings, image.settings != settings]):
             raise serializers.ValidationError(
                 "Flavor and image must belong to the same service settings as service project link.")
+
+        external_ips = attrs.get('external_ips')
+        if external_ips:
+            ip_exists = attrs['service_project_link'].floating_ips.filter(
+                address=external_ips,
+                status='DOWN',
+            ).exists()
+            if not ip_exists:
+                raise serializers.ValidationError(
+                    {'external_ips': "External IP is not from the list of available floating IPs."})
 
         system_volume_size = attrs.get('system_volume_size', 0)
         if system_volume_size:

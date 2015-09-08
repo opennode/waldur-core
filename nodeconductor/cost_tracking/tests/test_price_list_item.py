@@ -3,7 +3,7 @@ from rest_framework import test, status
 
 from nodeconductor.cost_tracking import models, CostConstants
 from nodeconductor.cost_tracking.tests import factories
-from nodeconductor.oracle.tests import factories as oracle_factories
+from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -27,7 +27,7 @@ class PriceListItemListTest(test.APITransactionTestCase):
         self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
         self.project_group.projects.add(self.project)
 
-        self.service = oracle_factories.OracleServiceFactory(customer=self.customer)
+        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
         self.price_list_item = factories.PriceListItemFactory(service=self.service)
 
     @data('staff', 'owner', 'manager')
@@ -52,7 +52,7 @@ class PriceListItemListTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.users['staff'])
         response = self.client.get(
             factories.PriceListItemFactory.get_list_url(),
-            data={'service': oracle_factories.OracleServiceFactory.get_url(self.service)}
+            data={'service': openstack_factories.OpenStackServiceFactory.get_url(self.service)}
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -79,9 +79,9 @@ class PriceListItemCreateTest(test.APITransactionTestCase):
         self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
         self.project_group.projects.add(self.project)
 
-        self.service = oracle_factories.OracleServiceFactory(customer=self.customer)
+        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
         self.valid_data = {
-            'service': oracle_factories.OracleServiceFactory.get_url(self.service),
+            'service': openstack_factories.OpenStackServiceFactory.get_url(self.service),
             'value': 100,
             'units': 'UAH',
             'key': 'test_key',
@@ -126,7 +126,7 @@ class PriceListItemUpdateTest(test.APITransactionTestCase):
         self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
         self.project_group.projects.add(self.project)
 
-        self.service = oracle_factories.OracleServiceFactory(customer=self.customer)
+        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
         self.price_list_item = factories.PriceListItemFactory(service=self.service)
 
     @data('staff', 'owner')
