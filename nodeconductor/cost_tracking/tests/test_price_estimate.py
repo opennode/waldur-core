@@ -54,7 +54,7 @@ class PriceEstimateListTest(test.APITransactionTestCase):
         self.assertNotIn(other_price_estimate.uuid.hex, [obj['uuid'] for obj in response.data])
 
     def test_user_can_filter_price_estimate_by_scope(self):
-        self.client.force_authenticate(self.users['administrator'])
+        self.client.force_authenticate(self.users['owner'])
         response = self.client.get(
             factories.PriceEstimateFactory.get_list_url(),
             data={'scope': structure_factories.ProjectFactory.get_url(self.project)})
@@ -64,7 +64,7 @@ class PriceEstimateListTest(test.APITransactionTestCase):
         self.assertEqual(response.data[0]['uuid'], self.project_price_estimate.uuid.hex)
 
     def test_user_can_filter_price_estimates_by_date(self):
-        self.client.force_authenticate(self.users['owner'])
+        self.client.force_authenticate(self.users['administrator'])
         response = self.client.get(
             factories.PriceEstimateFactory.get_list_url(),
             data={'date': '{}.{}'.format(self.link_price_estimate.year, self.link_price_estimate.month)})
