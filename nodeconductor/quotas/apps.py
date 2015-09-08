@@ -26,3 +26,20 @@ class QuotasConfig(AppConfig):
                 dispatch_uid=('nodeconductor.quotas.handlers.reset_quota_values_to_zeros_before_delete_%s_%s'
                               % (model.__name__, index)),
             )
+
+            signals.post_save.connect(
+                handlers.increase_global_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.quotas.handlers.increase_global_quota_%s_%s' % (model.__name__, index)
+            )
+
+            signals.post_delete.connect(
+                handlers.decrease_global_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.quotas.handlers.decrease_global_quota_%s_%s' % (model.__name__, index)
+            )
+
+        signals.post_migrate.connect(
+            handlers.create_global_quotas,
+            dispatch_uid="nodeconductor.quotas.handlers.create_global_quotas",
+        )

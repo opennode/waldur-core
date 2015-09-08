@@ -4,6 +4,8 @@ import itertools
 
 import django_filters
 
+from nodeconductor.quotas import models
+
 
 class QuotaFilterSetMixin(object):
     """
@@ -75,3 +77,18 @@ class QuotaFilter(django_filters.NumberFilter):
 
     def filter(self, qs, value):
         return qs.filter(**{'quotas__name': self.quota_name, 'quotas__{}'.format(self.quota_field): value})
+
+
+class QuotaFilterSet(django_filters.FilterSet):
+    """
+    FilterSet for quotas view
+    """
+    name = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
+
+    class Meta(object):
+        model = models.Quota
+        fields = [
+            'name'
+        ]

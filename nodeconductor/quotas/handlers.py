@@ -1,7 +1,7 @@
 from django.db.models import signals
 
+from nodeconductor.quotas import models, utils
 from nodeconductor.quotas.log import alert_logger, event_logger
-from nodeconductor.structure.models import ServiceProjectLink
 
 
 def add_quotas_to_scope(sender, instance, created=False, **kwargs):
@@ -64,6 +64,9 @@ def quantity_quota_handler_factory(path_to_quota_scope, quota_name, count=1):
 
 
 def check_quota_threshold_breach(sender, instance, **kwargs):
+    # XXX: This import creates circular dependency between quotas and structure
+    from nodeconductor.structure.models import ServiceProjectLink
+
     quota = instance
     alert_threshold = 0.8
 
@@ -97,3 +100,23 @@ def reset_quota_values_to_zeros_before_delete(sender, instance=None, **kwargs):
     quotas_names = quotas_scope.quotas.values_list('name', flat=True)
     for name in quotas_names:
         quotas_scope.set_quota_usage(name, 0)
+
+
+def create_global_quotas(**kwargs):
+    for model in utils.get_models_with_quotas():
+        if hasattr(model, 'GLOBAL_COUNT_QUOTA_NAME'):
+            models.Quota.objects.get_or_create(name=getattr(model, 'GLOBAL_COUNT_QUOTA_NAME'))
+
+
+def increase_global_quota(sender, instance=None, created=False, **kwargs):
+    if created and hasattr(sender, 'GLOBAL_COUNT_QUOTA_NAME'):
+        global_quota = models.Quota.objects.select_for_update().get(name=getattr(sender, 'GLOBAL_COUNT_QUOTA_NAME'))
+        global_quota.usage += 1
+        global_quota.save()
+
+
+def decrease_global_quota(sender, **kwargs):
+    if hasattr(sender, 'GLOBAL_COUNT_QUOTA_NAME'):
+        global_quota = models.Quota.objects.select_for_update().get(name=getattr(sender, 'GLOBAL_COUNT_QUOTA_NAME'))
+        global_quota.usage -= 1
+        global_quota.save()

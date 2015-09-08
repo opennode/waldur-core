@@ -12,8 +12,9 @@ from nodeconductor.core.models import UuidMixin, NameMixin, ReversionMixin
 @python_2_unicode_compatible
 class Quota(UuidMixin, NameMixin, LoggableMixin, ReversionMixin, models.Model):
     """
-    Abstract quota for any resource
+    Abstract quota for any resource.
 
+    Quota can exist without scope - for example quota for all projects or all customers on site
     If quota limit is defined as -1 quota will never be exceeded
     """
     class Meta:
@@ -22,8 +23,8 @@ class Quota(UuidMixin, NameMixin, LoggableMixin, ReversionMixin, models.Model):
     limit = models.FloatField(default=-1)
     usage = models.FloatField(default=0)
 
-    content_type = models.ForeignKey(ct_models.ContentType)
-    object_id = models.PositiveIntegerField()
+    content_type = models.ForeignKey(ct_models.ContentType, null=True)
+    object_id = models.PositiveIntegerField(null=True)
     scope = ct_fields.GenericForeignKey('content_type', 'object_id')
 
     objects = managers.QuotaManager('scope')
@@ -63,6 +64,10 @@ class QuotaModelMixin(models.Model):
       - QUOTAS_NAMES - list of names for object quotas
       - can_user_update_quotas(self, user) - return True if user has permission to update quotas of this object
       - get_quota_parents(self) - return list of 'quota parents'
+
+    Additional optional fields:
+      - GLOBAL_COUNT_QUOTA_NAME - name of global count quota. It presents - global quota will be automatically created
+                                  for model
 
     Use such methods to change objects quotas:
       set_quota_limit, set_quota_usage, add_quota_usage.

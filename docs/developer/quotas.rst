@@ -106,3 +106,11 @@ QuotaInline for admin models
 
 ``quotas.admin`` contains generic inline model``QuotaInline``, which can be used for as inline model for any quota
 scope.
+
+
+Global count quotas for models
+------------------------------
+
+Global count quota - quota without scope that stores information about count of all model instances.
+To create new global quota - add field GLOBAL_COUNT_QUOTA_NAME = '<quota name>' to model.
+(Please use prefix <nc_global> for global quotas names)
