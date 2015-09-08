@@ -56,8 +56,8 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
 
     @decorators.detail_route(methods=['post', 'delete'])
     def external_network(self, request, pk=None):
+        spl = self.get_object()
         if request.method == 'DELETE':
-            spl = self.get_object()
             if spl.external_network_id:
                 send_task('openstack', 'sync_external_network')(spl.to_string(), 'delete')
                 return response.Response(

@@ -1,12 +1,11 @@
 from mock import patch
 from rest_framework import status, test
 
+from nodeconductor.openstack import models
+from nodeconductor.openstack.tests import factories
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.models import ServiceSettings, ProjectRole, CustomerRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
-
-from . import factories
-from ..models import OracleService
 
 
 class ServicePermissionTest(test.APITransactionTestCase):
@@ -35,12 +34,12 @@ class ServicePermissionTest(test.APITransactionTestCase):
         }
 
         self.services = {
-            'owned': factories.OracleServiceFactory(customer=self.customers['owned']),
-            'admined': factories.OracleServiceFactory(customer=self.customers['has_admined_project']),
-            'managed': factories.OracleServiceFactory(customer=self.customers['has_managed_project']),
-            'managed_by_group_manager': factories.OracleServiceFactory(
+            'owned': factories.OpenStackServiceFactory(customer=self.customers['owned']),
+            'admined': factories.OpenStackServiceFactory(customer=self.customers['has_admined_project']),
+            'managed': factories.OpenStackServiceFactory(customer=self.customers['has_managed_project']),
+            'managed_by_group_manager': factories.OpenStackServiceFactory(
                 customer=self.customers['has_managed_by_group_manager']),
-            'not_in_project': factories.OracleServiceFactory(),
+            'not_in_project': factories.OpenStackServiceFactory(),
         }
 
         self.settings = structure_factories.ServiceSettingsFactory(
@@ -53,60 +52,60 @@ class ServicePermissionTest(test.APITransactionTestCase):
         project_group.projects.add(self.projects['managed_by_group_manager'])
         project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
-        factories.OracleServiceProjectLinkFactory(service=self.services['admined'], project=self.projects['admined'])
-        factories.OracleServiceProjectLinkFactory(service=self.services['managed'], project=self.projects['managed'])
-        factories.OracleServiceProjectLinkFactory(
+        factories.OpenStackServiceProjectLinkFactory(service=self.services['admined'], project=self.projects['admined'])
+        factories.OpenStackServiceProjectLinkFactory(service=self.services['managed'], project=self.projects['managed'])
+        factories.OpenStackServiceProjectLinkFactory(
             service=self.services['managed_by_group_manager'], project=self.projects['managed_by_group_manager'])
 
     # List filtration tests
     def test_anonymous_user_cannot_list_services(self):
-        response = self.client.get(factories.OracleServiceFactory.get_list_url())
+        response = self.client.get(factories.OpenStackServiceFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_list_services_of_projects_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.users['project_admin'])
 
-        response = self.client.get(factories.OracleServiceFactory.get_list_url())
+        response = self.client.get(factories.OpenStackServiceFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        service_url = factories.OracleServiceFactory.get_url(self.services['admined'])
+        service_url = factories.OpenStackServiceFactory.get_url(self.services['admined'])
         self.assertIn(service_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_services_of_projects_he_is_manager_of(self):
         self.client.force_authenticate(user=self.users['project_manager'])
 
-        response = self.client.get(factories.OracleServiceFactory.get_list_url())
+        response = self.client.get(factories.OpenStackServiceFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        service_url = factories.OracleServiceFactory.get_url(self.services['managed'])
+        service_url = factories.OpenStackServiceFactory.get_url(self.services['managed'])
         self.assertIn(service_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_services_of_projects_he_is_group_manager_of(self):
         self.client.force_authenticate(user=self.users['group_manager'])
 
-        response = self.client.get(factories.OracleServiceFactory.get_list_url())
+        response = self.client.get(factories.OpenStackServiceFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        service_url = factories.OracleServiceFactory.get_url(self.services['managed_by_group_manager'])
+        service_url = factories.OpenStackServiceFactory.get_url(self.services['managed_by_group_manager'])
         self.assertIn(service_url, [instance['url'] for instance in response.data])
 
     def test_user_can_list_services_of_projects_he_is_customer_owner_of(self):
         self.client.force_authenticate(user=self.users['customer_owner'])
 
-        response = self.client.get(factories.OracleServiceFactory.get_list_url())
+        response = self.client.get(factories.OpenStackServiceFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        service_url = factories.OracleServiceFactory.get_url(self.services['owned'])
+        service_url = factories.OpenStackServiceFactory.get_url(self.services['owned'])
         self.assertIn(service_url, [instance['url'] for instance in response.data])
 
     def test_user_cannot_list_services_of_projects_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.users['no_role'])
 
-        response = self.client.get(factories.OracleServiceFactory.get_list_url())
+        response = self.client.get(factories.OpenStackServiceFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         for service_type in 'admined', 'managed', 'managed_by_group_manager':
-            service_url = factories.OracleServiceFactory.get_url(self.services[service_type])
+            service_url = factories.OpenStackServiceFactory.get_url(self.services[service_type])
             self.assertNotIn(
                 service_url,
                 [instance['url'] for instance in response.data],
@@ -116,31 +115,31 @@ class ServicePermissionTest(test.APITransactionTestCase):
     # Direct instance access tests
     def test_anonymous_user_cannot_access_service(self):
         for service_type in 'admined', 'managed', 'not_in_project':
-            response = self.client.get(factories.OracleServiceFactory.get_url(self.services[service_type]))
+            response = self.client.get(factories.OpenStackServiceFactory.get_url(self.services[service_type]))
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_can_access_service_allowed_for_project_he_is_administrator_of(self):
         self.client.force_authenticate(user=self.users['project_admin'])
 
-        response = self.client.get(factories.OracleServiceFactory.get_url(self.services['admined']))
+        response = self.client.get(factories.OpenStackServiceFactory.get_url(self.services['admined']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_access_service_allowed_for_project_he_is_manager_of(self):
         self.client.force_authenticate(user=self.users['project_manager'])
 
-        response = self.client.get(factories.OracleServiceFactory.get_url(self.services['managed']))
+        response = self.client.get(factories.OpenStackServiceFactory.get_url(self.services['managed']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_access_service_allowed_for_project_he_is_group_manager_of(self):
         self.client.force_authenticate(user=self.users['group_manager'])
 
-        response = self.client.get(factories.OracleServiceFactory.get_url(self.services['managed_by_group_manager']))
+        response = self.client.get(factories.OpenStackServiceFactory.get_url(self.services['managed_by_group_manager']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_user_can_see_services_customer_name(self):
         self.client.force_authenticate(user=self.users['project_admin'])
 
-        response = self.client.get(factories.OracleServiceFactory.get_url(self.services['admined']))
+        response = self.client.get(factories.OpenStackServiceFactory.get_url(self.services['admined']))
 
         customer = self.services['admined'].customer
 
@@ -154,7 +153,7 @@ class ServicePermissionTest(test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['no_role'])
 
         for service_type in 'admined', 'managed':
-            response = self.client.get(factories.OracleServiceFactory.get_url(self.services[service_type]))
+            response = self.client.get(factories.OpenStackServiceFactory.get_url(self.services[service_type]))
             # 404 is used instead of 403 to hide the fact that the resource exists at all
             self.assertEqual(
                 response.status_code,
@@ -166,7 +165,7 @@ class ServicePermissionTest(test.APITransactionTestCase):
         for user_role in 'customer_owner', 'project_admin', 'project_manager', 'group_manager':
             self.client.force_authenticate(user=self.users[user_role])
 
-            response = self.client.get(factories.OracleServiceFactory.get_url(self.services['not_in_project']))
+            response = self.client.get(factories.OpenStackServiceFactory.get_url(self.services['not_in_project']))
             # 404 is used instead of 403 to hide the fact that the resource exists at all
             self.assertEqual(
                 response.status_code,
@@ -179,7 +178,7 @@ class ServicePermissionTest(test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['customer_owner'])
 
         payload = {
-            'name': factories.OracleServiceFactory().name,
+            'name': factories.OpenStackServiceFactory().name,
             'customer': structure_factories.CustomerFactory.get_url(self.customers['owned']),
             "backend_url": "http://example.com",
             "username": "user",
@@ -187,7 +186,7 @@ class ServicePermissionTest(test.APITransactionTestCase):
         }
 
         with patch('celery.app.base.Celery.send_task') as mocked_task:
-            response = self.client.post(factories.OracleServiceFactory.get_list_url(), payload)
+            response = self.client.post(factories.OpenStackServiceFactory.get_list_url(), payload)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
             settings = ServiceSettings.objects.get(name=payload['name'])
@@ -198,25 +197,25 @@ class ServicePermissionTest(test.APITransactionTestCase):
                 (settings.uuid.hex,), {'initial': True})
 
     def test_user_cannot_add_service_to_the_customer_he_sees_but_doesnt_own(self):
-        for user_role, customer_type in {
-                'project_admin': 'has_admined_project',
-                'project_manager': 'has_managed_project',
-                }.items():
+        choices = {
+            'project_admin': 'has_admined_project',
+            'project_manager': 'has_managed_project',
+        }
+        for user_role, customer_type in choices.items():
             self.client.force_authenticate(user=self.users[user_role])
 
-            new_service = factories.OracleServiceFactory.build(
+            new_service = factories.OpenStackServiceFactory.build(
                 settings=self.settings, customer=self.customers[customer_type])
-            response = self.client.post(factories.OracleServiceFactory.get_list_url(), self._get_valid_payload(new_service))
+            response = self.client.post(factories.OpenStackServiceFactory.get_list_url(), self._get_valid_payload(new_service))
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_user_cannot_add_service_to_the_customer_he_has_no_role_in(self):
         self.client.force_authenticate(user=self.users['no_role'])
 
-        new_service = factories.OracleServiceFactory.build(customer=self.customers['owned'])
-        response = self.client.post(factories.OracleServiceFactory.get_list_url(), self._get_valid_payload(new_service))
+        new_service = factories.OpenStackServiceFactory.build(customer=self.customers['owned'])
+        response = self.client.post(factories.OpenStackServiceFactory.get_list_url(), self._get_valid_payload(new_service))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    # Mutation tests
     def test_user_cannot_change_customer_of_service_he_owns(self):
         user = self.users['customer_owner']
 
@@ -228,10 +227,10 @@ class ServicePermissionTest(test.APITransactionTestCase):
         new_customer.add_user(user, CustomerRole.OWNER)
 
         payload = {'customer': structure_factories.CustomerFactory.get_url(new_customer)}
-        response = self.client.patch(factories.OracleServiceFactory.get_url(service), data=payload)
+        response = self.client.patch(factories.OpenStackServiceFactory.get_url(service), data=payload)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        reread_service = OracleService.objects.get(pk=service.pk)
+        reread_service = models.OpenStackService.objects.get(pk=service.pk)
         self.assertEqual(reread_service.customer, service.customer)
 
     def test_user_can_change_service_name_of_service_he_owns(self):
@@ -240,10 +239,10 @@ class ServicePermissionTest(test.APITransactionTestCase):
         service = self.services['owned']
 
         payload = {'name': 'new name'}
-        response = self.client.patch(factories.OracleServiceFactory.get_url(service), data=payload)
+        response = self.client.patch(factories.OpenStackServiceFactory.get_url(service), data=payload)
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
 
-        reread_service = OracleService.objects.get(pk=service.pk)
+        reread_service = models.OpenStackService.objects.get(pk=service.pk)
         self.assertEqual(reread_service.name, 'new name')
 
     def _get_valid_payload(self, resource):

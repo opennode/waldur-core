@@ -55,5 +55,4 @@ PERMISSION_LOGICS = (
     ('openstack.Flavor', StaffPermissionLogic(any_permission=True)),
     ('openstack.Image', StaffPermissionLogic(any_permission=True)),
     ('openstack.FloatingIP', StaffPermissionLogic(any_permission=True)),
-    # ('openstack.IpMapping', StaffPermissionLogic(any_permission=True)),
 )

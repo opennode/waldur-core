@@ -34,10 +34,11 @@ class OpenStackServiceProjectLinkFactory(factory.DjangoModelFactory):
     project = factory.SubFactory(structure_factories.ProjectFactory)
 
     @classmethod
-    def get_url(cls, spl=None):
+    def get_url(cls, spl=None, action=None):
         if spl is None:
             spl = OpenStackServiceProjectLinkFactory()
-        return 'http://testserver' + reverse('openstack-spl-detail', kwargs={'pk': spl.pk})
+        url = 'http://testserver' + reverse('openstack-spl-detail', kwargs={'pk': spl.pk})
+        return url if action is None else url + action + '/'
 
     @classmethod
     def get_list_url(cls):

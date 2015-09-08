@@ -920,6 +920,11 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
     def validate(self, attrs):
         if attrs['service'].customer != attrs['project'].customer:
             raise serializers.ValidationError("Service customer doesn't match project customer")
+
+        # XXX: Consider adding unique key (service, project) to the model instead
+        if self.Meta.model.objects.filter(service=attrs['service'], project=attrs['project']).exists():
+            raise serializers.ValidationError("This service project link already exists")
+
         return attrs
 
 
