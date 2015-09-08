@@ -19,6 +19,12 @@ class OpenStackConfig(AppConfig):
         SupportedServices.register_backend(OpenStackService, OpenStackBackend)
 
         signals.post_save.connect(
+            handlers.create_initial_security_groups,
+            sender=OpenStackServiceProjectLink,
+            dispatch_uid='nodeconductor.openstack.handlers.create_initial_security_groups',
+        )
+
+        signals.post_save.connect(
             quotas_handlers.add_quotas_to_scope,
             sender=OpenStackServiceProjectLink,
             dispatch_uid='nodeconductor.openstack.handlers.add_quotas_to_service_project_link',

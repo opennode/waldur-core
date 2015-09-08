@@ -140,7 +140,7 @@ class ServiceSettingsFactory(factory.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: 'Settings %s' % n)
     state = core_models.SynchronizationStates.IN_SYNC
-    shared = True
+    shared = False
     type = 1
 
     @classmethod

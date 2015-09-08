@@ -5,7 +5,9 @@ import logging
 from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
+from django.conf import settings
 from django.db import models
+from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible
 
 from nodeconductor.core import models as core_models
@@ -483,12 +485,99 @@ class InstanceLicense(core_models.UuidMixin, models.Model):
         return 'License: %s for %s' % (self.template_license, self.instance)
 
 
+class InitialSecurityGroup(object):
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _get_default_security_groups():
+        nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+        config_groups = nc_settings.get('DEFAULT_SECURITY_GROUPS', [])
+        groups = []
+
+        def get_icmp(config_rule, key):
+            result = config_rule[key]
+
+            if not isinstance(result, (int, long)):
+                raise TypeError('wrong type for "%s": expected int, found %s' %
+                                (key, type(result).__name__))
+
+            if not -1 <= result <= 255:
+                raise ValueError('wrong value for "%s": '
+                                 'expected value in range [-1, 255], found %d' %
+                                 key, result)
+
+            return result
+
+        def get_port(config_rule, key):
+            result = config_rule[key]
+
+            if not isinstance(result, (int, long)):
+                raise TypeError('wrong type for "%s": expected int, found %s' %
+                                (key, type(result).__name__))
+
+            if not 1 <= result <= 65535:
+                raise ValueError('wrong value for "%s": '
+                                 'expected value in range [1, 65535], found %d' %
+                                 (key, result))
+
+            return result
+
+        for config_group in config_groups:
+            try:
+                name = config_group['name']
+                description = config_group['description']
+                config_rules = config_group['rules']
+                if not isinstance(config_rules, (tuple, list)):
+                    raise TypeError('wrong type for "rules": expected list, found %s' %
+                                    type(config_rules).__name__)
+
+                rules = []
+                for config_rule in config_rules:
+                    protocol = config_rule['protocol']
+                    if protocol == 'icmp':
+                        from_port = get_icmp(config_rule, 'icmp_type')
+                        to_port = get_icmp(config_rule, 'icmp_code')
+                    elif protocol in ('tcp', 'udp'):
+                        from_port = get_port(config_rule, 'from_port')
+                        to_port = get_port(config_rule, 'to_port')
+
+                        if to_port < from_port:
+                            raise ValueError('wrong value for "to_port": '
+                                             'expected value less that from_port (%d), found %d' %
+                                             (from_port, to_port))
+                    else:
+                        raise ValueError('wrong value for "protocol": '
+                                         'expected one of (tcp, udp, icmp), found %s' %
+                                         protocol)
+
+                    rules.append({
+                        'protocol': protocol,
+                        'cidr': config_rule['cidr'],
+                        'from_port': from_port,
+                        'to_port': to_port,
+                    })
+            except KeyError as e:
+                logger.error('Skipping misconfigured security group: parameter "%s" not found',
+                             e.message)
+            except (ValueError, TypeError) as e:
+                logger.error('Skipping misconfigured security group: %s',
+                             e.message)
+            else:
+                groups.append({
+                    'name': name,
+                    'description': description,
+                    'rules': rules,
+                })
+
+        return groups
+
+
 @python_2_unicode_compatible
 class SecurityGroup(core_models.UuidMixin,
                     core_models.DescribableMixin,
                     core_models.NameMixin,
                     core_models.SynchronizableMixin,
-                    CloudProjectMember,
+                    InitialSecurityGroup,
                     models.Model):
 
     class Permissions(object):
@@ -499,6 +588,9 @@ class SecurityGroup(core_models.UuidMixin,
     """
     This class contains OpenStack security groups.
     """
+
+    cloud_project_membership = models.ForeignKey(
+        CloudProjectMembership, related_name='security_groups')
 
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=128, blank=True,

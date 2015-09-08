@@ -8,6 +8,19 @@ def set_spl_default_availability_zone(sender, instance=None, **kwargs):
             instance.availability_zone = settings.options.get('availability_zone', '')
 
 
+def create_initial_security_groups(sender, instance=None, created=False, **kwargs):
+    if not created:
+        return
+
+    for group in instance.security_groups.model._get_default_security_groups():
+        sg = instance.security_groups.create(
+            name=group['name'],
+            description=group['description'])
+
+        for rule in group['rules']:
+            sg.rules.create(**rule)
+
+
 def increase_quotas_usage_on_instance_creation(sender, instance=None, created=False, **kwargs):
     add_quota = instance.service_project_link.add_quota_usage
     if created:

@@ -1,13 +1,14 @@
-import django_filters
-
 from django.conf import settings
-from rest_framework import viewsets, decorators, exceptions, response, status
+from rest_framework import viewsets, decorators, exceptions, response, permissions, status
+from rest_framework import filters as rf_filters
 
+from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import views as structure_views
-from nodeconductor.openstack import models, serializers
+from nodeconductor.structure import filters as structure_filters
+from nodeconductor.openstack import models, filters, serializers
 
 
 class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
@@ -51,8 +52,7 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
         send_task('structure', 'sync_service_project_links')(spl.to_string(), quotas=data)
 
         return response.Response(
-            {'status': 'Quota update was scheduled'},
-            status=status.HTTP_202_ACCEPTED)
+            {'status': 'Quota update was scheduled'}, status=status.HTTP_202_ACCEPTED)
 
 
 class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -67,116 +67,14 @@ class ImageViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
 
 
-class InstanceFilter(structure_views.BaseResourceFilter):
-    project = django_filters.CharFilter(
-        name='service_project_link__project__uuid',
-        lookup_type='icontains',
-        distinct=True)
-
-    project_name = django_filters.CharFilter(
-        name='service_project_link__project__name',
-        lookup_type='icontains',
-        distinct=True)
-
-    project_group_name = django_filters.CharFilter(
-        name='service_project_link__project__project_groups__name',
-        lookup_type='icontains',
-        distinct=True)
-
-    project_group = django_filters.CharFilter(
-        name='service_project_link__project__project_groups__uuid',
-        distinct=True)
-
-    customer = django_filters.CharFilter(
-        name='service_project_link__project__customer__uuid',
-        distinct=True)
-
-    customer_name = django_filters.CharFilter(
-        name='service_project_link__project__customer__name',
-        lookup_type='icontains',
-        distinct=True)
-
-    customer_native_name = django_filters.CharFilter(
-        name='service_project_link__project__customer__native_name',
-        lookup_type='icontains',
-        distinct=True)
-
-    customer_abbreviation = django_filters.CharFilter(
-        name='service_project_link__project__customer__abbreviation',
-        lookup_type='icontains',
-        distinct=True)
-
-    description = django_filters.CharFilter(lookup_type='icontains')
-    state = django_filters.NumberFilter()
-
-    # In order to return results when an invalid value is specified
-    strict = False
-
-    class Meta(object):
-        model = models.Instance
-        fields = structure_views.BaseResourceFilter.Meta.fields + (
-            'description',
-            'customer',
-            'customer_name',
-            'customer_native_name',
-            'customer_abbreviation',
-            'project',
-            'project_name',
-            'project_group_name',
-            'project_group',
-            'state',
-            'start_time',
-            'created',
-            'ram',
-            'cores',
-            'system_volume_size',
-            'data_volume_size',
-        )
-        order_by = [
-            'name',
-            '-name',
-            'state',
-            '-state',
-            'service_project_link__project__customer__name',
-            '-service_project_link__project__customer__name',
-            'service_project_link__project__customer__native_name',
-            '-service_project_link__project__customer__native_name',
-            'service_project_link__project__customer__abbreviation',
-            '-service_project_link__project__customer__abbreviation',
-            'service_project_link__project__name',
-            '-service_project_link__project__name',
-            'service_project_link__project__project_groups__name',
-            '-service_project_link__project__project_groups__name',
-            'created',
-            '-created',
-            'ram',
-            '-ram',
-            'cores',
-            '-cores',
-            'system_volume_size',
-            '-system_volume_size',
-            'data_volume_size',
-            '-data_volume_size',
-        ]
-        order_by_mapping = {
-            # Proper field naming
-            'customer_name': 'service_project_link__project__customer__name',
-            'customer_native_name': 'service_project_link__project__customer__native_name',
-            'customer_abbreviation': 'service_project_link__project__customer__abbreviation',
-            'project_name': 'service_project_link__project__name',
-            'project_group_name': 'service_project_link__project__project_groups__name',
-
-            # Backwards compatibility
-            'project__customer__name': 'service_project_link__project__customer__name',
-            'project__name': 'service_project_link__project__name',
-            'project__project_groups__name': 'service_project_link__project__project_groups__name',
-        }
-
-
 class InstanceViewSet(structure_views.BaseResourceViewSet):
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
-    filter_class = InstanceFilter
+    filter_class = filters.InstanceFilter
+
+    def perform_update(self, serializer):
+        super(InstanceViewSet, self).perform_update(serializer)
+        send_task('openstack', 'sync_instance_security_groups')(self.get_object().uuid.hex)
 
     def perform_provision(self, serializer):
         resource = serializer.save()
@@ -186,3 +84,31 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             flavor=serializer.validated_data['flavor'],
             image=serializer.validated_data['image'],
             ssh_key=serializer.validated_data.get('ssh_public_key'))
+
+
+class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
+    queryset = models.SecurityGroup.objects.all()
+    serializer_class = serializers.SecurityGroupSerializer
+    lookup_field = 'uuid'
+    filter_class = filters.SecurityGroupFilter
+    filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+
+    def perform_create(self, serializer):
+        security_group = serializer.save()
+        send_task('openstack', 'sync_security_group')(security_group.uuid.hex, 'create')
+
+    def perform_update(self, serializer):
+        super(SecurityGroupViewSet, self).perform_update(serializer)
+        security_group = self.get_object()
+        security_group.schedule_syncing()
+        security_group.save()
+        send_task('openstack', 'sync_security_group')(security_group.uuid.hex, 'update')
+
+    def destroy(self, request, *args, **kwargs):
+        security_group = self.get_object()
+        security_group.schedule_syncing()
+        security_group.save()
+        send_task('openstack', 'sync_security_group')(security_group.uuid.hex, 'delete')
+        return response.Response(
+            {'status': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)

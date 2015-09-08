@@ -618,11 +618,7 @@ class OpenStackBackend(OpenStackClient):
             logger.exception('Failed to create nova client')
             six.reraise(CloudBackendError, e)
 
-        from nodeconductor.iaas.models import SecurityGroup
-
-        nc_security_groups = SecurityGroup.objects.filter(
-            cloud_project_membership=membership,
-        )
+        nc_security_groups = membership.security_groups.all()
         if not is_membership_creation:
             nc_security_groups = nc_security_groups.filter(state__in=SynchronizationStates.STABLE_STATES)
 
@@ -707,6 +703,9 @@ class OpenStackBackend(OpenStackClient):
             logger.info('Security group %s successfully updated in backend', security_group.uuid)
 
     def pull_security_groups(self, membership):
+        # get proper SecurityGroup model class for either iaas or openstack app
+        SecurityGroup = membership.security_groups.model
+
         try:
             session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
@@ -726,20 +725,15 @@ class OpenStackBackend(OpenStackClient):
         unsynchronized_groups = []
         # list of nc security groups that do not exist in openstack
 
-        from nodeconductor.iaas.models import SecurityGroup
-
-        extra_groups = SecurityGroup.objects.filter(
-            cloud_project_membership=membership,
-        ).exclude(
+        extra_groups = membership.security_groups.exclude(
             backend_id__in=[g.id for g in backend_security_groups],
         )
 
         with transaction.atomic():
             for backend_group in backend_security_groups:
                 try:
-                    nc_group = SecurityGroup.objects.get(
+                    nc_group = membership.security_groups.get(
                         backend_id=backend_group.id,
-                        cloud_project_membership=membership,
                     )
                     if not self._are_security_groups_equal(backend_group, nc_group):
                         unsynchronized_groups.append(backend_group)
@@ -752,9 +746,8 @@ class OpenStackBackend(OpenStackClient):
 
             # synchronizing unsynchronized security groups
             for backend_group in unsynchronized_groups:
-                nc_security_group = SecurityGroup.objects.get(
+                nc_security_group = membership.security_groups.get(
                     backend_id=backend_group.id,
-                    cloud_project_membership=membership,
                 )
                 if backend_group.name != nc_security_group.name:
                     nc_security_group.name = backend_group.name
@@ -764,10 +757,9 @@ class OpenStackBackend(OpenStackClient):
 
             # creating non-existed security groups
             for backend_group in nonexistent_groups:
-                nc_security_group = SecurityGroup.objects.create(
+                nc_security_group = membership.security_groups.create(
                     backend_id=backend_group.id,
                     name=backend_group.name,
-                    cloud_project_membership=membership,
                 )
                 self.pull_security_group_rules(nc_security_group, nova)
                 logger.info('Created new security group %s in database', nc_security_group.uuid)
@@ -1641,7 +1633,8 @@ class OpenStackBackend(OpenStackClient):
                 'Successfully deleted snapshots %s', ', '.join(snapshot_ids))
 
     def push_instance_security_groups(self, instance):
-        from nodeconductor.iaas.models import SecurityGroup
+        # get proper SecurityGroup model class for either iaas or openstack app
+        SecurityGroup = instance.security_groups.model.security_group.get_queryset().model
 
         try:
             membership = instance.cloud_project_membership
