@@ -1,7 +1,7 @@
 from django.db import models
 
 
-class StructureManager(models.Manager):
+class StructureQueryset(models.QuerySet):
     """ Provides additional filtering by customer (based on permission definition).
 
         Example:
@@ -15,16 +15,13 @@ class StructureManager(models.Manager):
                 Droplet.objects.filter(Q(customer__name='Alice') | Q(customer__name='Bob'))
     """
 
-    def get(self, *args, **kwargs):
-        return self.filter(*args, **kwargs).get()
-
     def exclude(self, *args, **kwargs):
-        return self.get_queryset().exclude(
+        return super(StructureQueryset, self).exclude(
             *[self._patch_query_argument(a) for a in args],
             **self._filter_by_custom_fields(**kwargs))
 
     def filter(self, *args, **kwargs):
-        return self.get_queryset().filter(
+        return super(StructureQueryset, self).filter(
             *[self._patch_query_argument(a) for a in args],
             **self._filter_by_custom_fields(**kwargs))
 
@@ -74,3 +71,6 @@ class StructureManager(models.Manager):
                 if extra:
                     customer_path += '__' + extra
                 return {customer_path: customer}
+
+
+StructureManager = models.Manager.from_queryset(StructureQueryset)
