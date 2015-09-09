@@ -102,8 +102,10 @@ class BillingBackend(object):
 
     def terminate(self, resource):
         self.api.del_subscription(resource.billing_backend_id)
-        resource.billing_backend_id = ''
-        resource.save(update_fields=['billing_backend_id'])
+        resource_model = resource.__class__
+        if resource_model.objects.filter(pk=resource.pk).exists():
+            resource.billing_backend_id = ''
+            resource.save(update_fields=['billing_backend_id'])
 
     def add_usage_data(self, resource, usage_data):
         self.api.add_usage(resource.billing_backend_id, usage_data)
