@@ -123,19 +123,23 @@ class KillBillAPI(object):
             'invoices/dryRun',
             method='POST',
             accountId=client_id,
-            targetDate=subscription['chargedThroughDate'],
-            data=json.dumps({'subscriptionId': subscription_id}))
+            targetDate=subscription['chargedThroughDate'])
 
-        return {
-            'amount': data['amount'],
-            'end_date': self._parse_date(data['targetDate']),
-            'start_date': self._parse_date(subscription['billingStartDate']),
-            'items': [
-                {
+        total = 0
+        items = []
+        for item in data['items']:
+            if item['amount'] and item['subscriptionId'] == subscription_id:
+                total += item['amount']
+                items.append({
                     'name': item['description'].replace(' (usage item)', ''),
                     'amount': item['amount'],
-                } for item in data['items'] if item['amount']
-            ]}
+                })
+
+        return {
+            'amount': total,
+            'end_date': self._parse_date(data['targetDate']),
+            'start_date': self._parse_date(subscription['billingStartDate']),
+            'items': items}
 
     def get_invoices(self, client_id):
         data = self.accounts.get(client_id, 'invoices')
