@@ -7,12 +7,14 @@ from requests.packages.urllib3 import exceptions
 
 from django.conf import settings as django_settings
 from django.utils import six
-from pyzabbix import ZabbixAPI, ZabbixAPIException
+import pyzabbix
 
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
+from nodeconductor.monitoring.zabbix.log import ZabbixLogsFilter
 
 
 logger = logging.getLogger(__name__)
+pyzabbix.logger.addFilter(ZabbixLogsFilter())
 
 
 def _exception_decorator(message, fail_silently=None):
@@ -21,7 +23,7 @@ def _exception_decorator(message, fail_silently=None):
         def wrapper(self, *args, **kwargs):
             try:
                 return func(self, *args, **kwargs)
-            except (ZabbixAPIException, RequestException) as exception:
+            except (pyzabbix.ZabbixAPIException, RequestException) as exception:
                 if not self._settings.get('FAIL_SILENTLY', False):
                     exception_name = exception.__class__.__name__
                     message_args = (self,) + args + tuple(kwargs.values())
@@ -185,7 +187,7 @@ class ZabbixApiClient(object):
         api = self.get_zabbix_api()
         service_data = api.service.get(filter={'name': service_name})
         if len(service_data) != 1:
-            raise ZabbixAPIException('Exactly one result is expected for service name %s'
+            raise pyzabbix.ZabbixAPIException('Exactly one result is expected for service name %s'
                                      ', instead received %s. Instance: %s'
                                      % (service_name, len(service_data), instance)
                                      )
@@ -208,7 +210,7 @@ class ZabbixApiClient(object):
         unsafe_session = QuietSession()
         unsafe_session.verify = False
 
-        api = ZabbixAPI(server=self._settings['server'], session=unsafe_session)
+        api = pyzabbix.ZabbixAPI(server=self._settings['server'], session=unsafe_session)
         api.login(self._settings['username'], self._settings['password'])
         return api
 
@@ -228,7 +230,7 @@ class ZabbixApiClient(object):
         try:
             return api.trigger.get(hostids=hostid)[0]['triggerid']
         except IndexError:
-            raise ZabbixAPIException('No template with id: %s' % hostid)
+            raise pyzabbix.ZabbixAPIException('No template with id: %s' % hostid)
 
     def get_or_create_hostgroup(self, api, project):
         group_name = self.get_hostgroup_name(project)
@@ -254,7 +256,7 @@ class ZabbixApiClient(object):
         name = self.get_host_name(instance) if host_name is None else host_name
         if name.strip() == '':
             logger.warn('Cannot register host with empty name, host %s', instance)
-            raise ZabbixAPIException('Zabbix host name cannot be empty')
+            raise pyzabbix.ZabbixAPIException('Zabbix host name cannot be empty')
 
         visible_name = self.get_host_visible_name(instance) if visible_name is None else visible_name
 
