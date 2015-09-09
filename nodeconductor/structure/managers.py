@@ -15,9 +15,6 @@ class StructureQueryset(models.QuerySet):
                 Droplet.objects.filter(Q(customer__name='Alice') | Q(customer__name='Bob'))
     """
 
-    def get(self, *args, **kwargs):
-        return self.filter(*args, **kwargs).get()
-
     def exclude(self, *args, **kwargs):
         return super(StructureQueryset, self).exclude(
             *[self._patch_query_argument(a) for a in args],
