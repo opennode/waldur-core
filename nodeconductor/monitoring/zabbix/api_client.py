@@ -163,7 +163,7 @@ class ZabbixApiClient(object):
         if hostid is None:
             hostid = self.get_host(instance)['hostid']
 
-        service_parameters['triggerid'] = self.get_host_triggerid(api, hostid)
+        service_parameters['triggerid'] = self.get_host_sla_triggerid(api, hostid)
 
         _, created = self.get_or_create_service(api, service_parameters)
 
@@ -226,9 +226,11 @@ class ZabbixApiClient(object):
     def get_service_name(self, instance):
         return 'Availability of %s' % instance.backend_id
 
-    def get_host_triggerid(self, api, hostid):
+    def get_host_sla_triggerid(self, api, hostid):
         try:
-            return api.trigger.get(hostids=hostid)[0]['triggerid']
+            return api.trigger.get(hostids=hostid, output=['triggerid'],
+                                   # XXX a hardcoded description, consider refactoring
+                                   filter={'description': 'Missing data about the VM' })[0]['triggerid']
         except IndexError:
             raise pyzabbix.ZabbixAPIException('No template with id: %s' % hostid)
 
