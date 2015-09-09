@@ -9,9 +9,8 @@ from nodeconductor.openstack.models import OpenStackService, OpenStackServicePro
 
 class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
 
-    def get_actions(self, request):
-        actions = super(ServiceProjectLinkAdmin, self).get_actions(request)
-        return actions + ['detect_external_networks', 'allocate_floating_ip']
+    actions = structure_admin.ServiceProjectLinkAdmin.actions + \
+              ['detect_external_networks', 'allocate_floating_ip']
 
     def detect_external_networks(self, request, queryset):
         queryset = queryset.exclude(state=SynchronizationStates.ERRED)
