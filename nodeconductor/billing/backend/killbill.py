@@ -10,7 +10,7 @@ from lxml import etree
 from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.cost_tracking.models import DefaultPriceListItem
-from nodeconductor.billing.backend import BillingBackendError
+from nodeconductor.billing.backend import BillingBackendError, NotFoundBillingBackendError
 from nodeconductor import __version__
 
 
@@ -313,8 +313,10 @@ class KillBill(object):
                     except ValueError:
                         pass
 
-                raise BillingBackendError(
-                    "%s. Request to Killbill backend failed: %s" % (response.status_code, reason))
+                error_message = "%s. Request to Killbill backend failed: %s" % (response.status_code, reason)
+                if response.status_code == codes.not_found:
+                    raise NotFoundBillingBackendError(error_message)
+                raise BillingBackendError(error_message)
 
             try:
                 if response_type == 'xml':

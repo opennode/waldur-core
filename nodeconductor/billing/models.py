@@ -146,6 +146,11 @@ class PaidResource(models.Model):
             self.instance = instance
 
         def safe_method(func):
+            """
+            Catch billing errors and log them without re-raising
+
+            Return format: <was method executed without error>, <error message>
+            """
             @functools.wraps(func)
             def wrapped(self, *args, **kwargs):
                 try:
@@ -155,6 +160,11 @@ class PaidResource(models.Model):
                     logger.error(
                         "Failed to perform order %s for resource %s: %s",
                         func.__name__, self.instance, e)
+                    return False, e.message
+                else:
+                    logger.info('Successfully perform order %s for resource %s.', func.__name__, self.instance)
+                    return True, ''
+
             return wrapped
 
         @property

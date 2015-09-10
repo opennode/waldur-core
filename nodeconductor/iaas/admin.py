@@ -1,14 +1,14 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.translation import ungettext, gettext
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
-from nodeconductor.quotas.admin import QuotaInline
-from nodeconductor.structure.admin import ProtectedModelMixin
 from nodeconductor.iaas import models
 from nodeconductor.iaas import tasks
+from nodeconductor.quotas.admin import QuotaInline
+from nodeconductor.structure.admin import ProtectedModelMixin
 
 
 # Inspired by Django Snippet https://djangosnippets.org/snippets/2629/
@@ -226,7 +226,7 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
     search_fields = ['name', 'uuid']
     list_filter = ['state', 'cloud_project_membership__project', 'template']
 
-    actions = ['pull_installation_state']
+    actions = ['pull_installation_state', 'subscribe']
 
     fieldsets = (
         (_('General'), {'fields': ('name', 'description', 'cloud_project_membership')}),
@@ -267,6 +267,33 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
         self.message_user(request, message)
 
     pull_installation_state.short_description = "Pull Installation state"
+
+    def subscribe(self, request, queryset):
+        erred_instances = []
+        subscribed_instances = []
+        for instance in queryset:
+            is_subscribed, _ = instance.order.subscribe()
+            if is_subscribed:
+                subscribed_instances.append(instance)
+            else:
+                erred_instances.append(instance)
+
+        if subscribed_instances:
+            subscribed_instances_count = len(subscribed_instances)
+            message = ungettext(
+                'One instance subscribed',
+                '%(subscribed_instances_count)d instances subscribed',
+                subscribed_instances_count
+            )
+            message = message % {'subscribed_instances_count': subscribed_instances_count}
+            self.message_user(request, message)
+
+        if erred_instances:
+            message = gettext('Failed to subscribe instances: %(erred_instances)s')
+            message = message % {'erred_instances': ', '.join([i.name for i in erred_instances])}
+            self.message_user(request, message, level=messages.ERROR)
+
+    subscribe.short_description = "Subscribe to billing backend"
 
 
 class ImageInline(ReadonlyInlineMixin, admin.TabularInline):
