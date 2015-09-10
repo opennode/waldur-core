@@ -411,7 +411,7 @@ class OpenStackBackend(OpenStackClient):
                 nc_flavor.ram = self.get_core_ram_size(backend_flavor.ram)
                 nc_flavor.disk = self.get_core_disk_size(backend_flavor.disk)
                 nc_flavor.save()
-                logger.info('Updated existing flavor %s in database', nc_flavor.uuid)
+                logger.debug('Updated existing flavor %s in database', nc_flavor.uuid)
 
     def pull_images(self, cloud_account):
         session = self.create_session(keystone_url=cloud_account.auth_url, dummy=self.dummy)
@@ -471,9 +471,9 @@ class OpenStackBackend(OpenStackClient):
                         image.min_ram = self.get_core_ram_size(backend_image.min_ram)
                         image.min_disk = self.get_core_disk_size(backend_image.min_disk)
                         image.save()
-                        logger.info('Updated existing image %s to point to %s in database', image, image.backend_id)
+                        logger.debug('Updated existing image %s to point to %s in database', image, image.backend_id)
                     else:
-                        logger.info('Image %s pointing to %s is already up to date', image, image.backend_id)
+                        logger.debug('Image %s pointing to %s is already up to date', image, image.backend_id)
 
                     current_image_ids.add(image.backend_id)
 
@@ -701,7 +701,7 @@ class OpenStackBackend(OpenStackClient):
             logger.exception('Failed to update security group %s in backend', security_group.uuid)
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Security group %s successfully updated in backend', security_group.uuid)
+            logger.debug('Security group %s successfully updated in backend', security_group.uuid)
 
     def pull_security_groups(self, membership):
         # get proper SecurityGroup model class for either iaas or openstack app
@@ -754,7 +754,7 @@ class OpenStackBackend(OpenStackClient):
                     nc_security_group.name = backend_group.name
                     nc_security_group.save()
                 self.pull_security_group_rules(nc_security_group, nova)
-            logger.info('Updated existing security groups in database')
+            logger.debug('Updated existing security groups in database')
 
             # creating non-existed security groups
             for backend_group in nonexistent_groups:
@@ -951,7 +951,7 @@ class OpenStackBackend(OpenStackClient):
                     nc_ip.address = backend_ip['floating_ip_address']
                     nc_ip.backend_network_id = backend_ip['floating_network_id']
                     nc_ip.save()
-                    logger.info('Updated existing floating IP port %s in database', nc_ip.uuid)
+                    logger.debug('Updated existing floating IP port %s in database', nc_ip.uuid)
 
     # Statistics methods
     def get_resource_stats(self, auth_url):
@@ -977,7 +977,7 @@ class OpenStackBackend(OpenStackClient):
             logger.exception('Failed to get statistics for auth_url: %s', auth_url)
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Successfully for auth_url: %s was successfully taken', auth_url)
+            logger.debug('Successfully for auth_url: %s was successfully taken', auth_url)
         return stats
 
     def pull_service_statistics(self, cloud_account, service_stats=None):
@@ -1932,7 +1932,7 @@ class OpenStackBackend(OpenStackClient):
                     protocol=backend_rule['ip_protocol'],
                     cidr=backend_rule['ip_range']['cidr'],
                 )
-            logger.info('Updated existing security group rules in database')
+            logger.debug('Updated existing security group rules in database')
 
             # creating non-existed rules
             for backend_rule in nonexistent_rules:

@@ -171,11 +171,6 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.assertRaises(ZabbixError, lambda: self.zabbix_client.delete_hostgroup(self.project))
 
     # Service creation
-    def test_create_service_uses_given_template_trigger(self):
-        self.zabbix_client.create_service(self.instance)
-
-        self.api.trigger.get.assert_called_once_with(hostids=self.zabbix_client.get_host(self.instance)['hostid'])
-
     def test_create_service_creates_new_service_if_it_does_not_exist(self):
         self.api.service.get.return_value = []
 
