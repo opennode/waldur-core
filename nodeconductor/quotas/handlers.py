@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import signals
 
 from nodeconductor.quotas import models, utils
@@ -110,13 +111,17 @@ def create_global_quotas(**kwargs):
 
 def increase_global_quota(sender, instance=None, created=False, **kwargs):
     if created and hasattr(sender, 'GLOBAL_COUNT_QUOTA_NAME'):
-        global_quota = models.Quota.objects.select_for_update().get(name=getattr(sender, 'GLOBAL_COUNT_QUOTA_NAME'))
-        global_quota.usage += 1
-        global_quota.save()
+        with transaction.atomic():
+            global_quota = models.Quota.objects.select_for_update().get(
+                name=getattr(sender, 'GLOBAL_COUNT_QUOTA_NAME'))
+            global_quota.usage += 1
+            global_quota.save()
 
 
 def decrease_global_quota(sender, **kwargs):
     if hasattr(sender, 'GLOBAL_COUNT_QUOTA_NAME'):
-        global_quota = models.Quota.objects.select_for_update().get(name=getattr(sender, 'GLOBAL_COUNT_QUOTA_NAME'))
-        global_quota.usage -= 1
-        global_quota.save()
+        with transaction.atomic():
+            global_quota = models.Quota.objects.select_for_update().get(
+                name=getattr(sender, 'GLOBAL_COUNT_QUOTA_NAME'))
+            global_quota.usage -= 1
+            global_quota.save()
