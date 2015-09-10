@@ -1589,3 +1589,18 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     def restart(self, request, resource, uuid=None):
         backend = resource.get_backend()
         backend.restart(resource)
+
+
+class ServicePropertyFilter(django_filters.FilterSet):
+    settings_uuid = django_filters.CharFilter(name='settings__uuid')
+
+    class Meta(object):
+        model = models.ServiceProperty
+        fields = ['settings_uuid']
+
+
+class BaseServicePropertyView(viewsets.ReadOnlyModelViewSet):
+    filter_class = ServicePropertyFilter
+
+    class Meta(object):
+        model = models.ServiceProperty

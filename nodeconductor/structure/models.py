@@ -333,6 +333,13 @@ class Project(core_models.DescribableMixin,
     def get_quota_parents(self):
         return [self.customer]
 
+    def get_links(self):
+        """
+        Get all service project links connected to current project
+        """
+        return [link for model in SupportedServices.get_service_models().values()
+                     for link in model['service_project_link'].objects.filter(project=self)]
+
 
 @python_2_unicode_compatible
 class ProjectGroupRole(core_models.UuidMixin, models.Model):

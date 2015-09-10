@@ -92,6 +92,53 @@ class NestedProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSeria
         }
 
 
+class NestedServiceProjectLinkSerializer(serializers.Serializer):
+    uuid = serializers.ReadOnlyField(source='service.uuid')
+    url = serializers.SerializerMethodField()
+    link_url = serializers.SerializerMethodField()
+    name = serializers.ReadOnlyField(source='service.name')
+    type = serializers.SerializerMethodField()
+    state = serializers.ReadOnlyField(source='get_state_display')
+    resources_count = serializers.SerializerMethodField(source='get_resources_count')
+    shared = serializers.SerializerMethodField()
+    settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
+
+    def get_url(self, link):
+        """
+        URL of service
+        """
+        view_name = SupportedServices.get_detail_view_for_model(link.service)
+        return reverse(view_name, kwargs={'uuid': link.service.uuid.hex}, request=self.context['request'])
+
+    def get_link_url(self, link):
+        """
+        URL of service project link
+        """
+        view_name = link.get_url_name() + '-detail'
+        return reverse(view_name, kwargs={'pk': link.id}, request=self.context['request'])
+
+    def get_type(self, link):
+        return SupportedServices.get_name_for_model(link.service)
+
+    def get_shared(self, link):
+        # XXX: Backward compatibility with IAAS Cloud
+        try:
+            return link.service.settings.shared
+        except AttributeError:
+            return False
+
+    def get_resources_count(self, link):
+        """
+        Count total number of all resources connected to link
+        """
+        total = 0
+        for model in SupportedServices.get_service_resources(link.service):
+            # Format query path from resource to service project link
+            query = {model.Permissions.project_path.split('__')[0]: link}
+            total += model.objects.filter(**query).count()
+        return total
+
+
 class ProjectSerializer(PermissionFieldFilteringMixin,
                         core_serializers.DynamicSerializer,
                         core_serializers.AugmentedSerializerMixin,
@@ -108,7 +155,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
     resource_quota = serializers.SerializerMethodField('get_resource_quotas')
     resource_quota_usage = serializers.SerializerMethodField('get_resource_quotas_usage')
 
-    services = serializers.SerializerMethodField()
+    services = NestedServiceProjectLinkSerializer(source='get_links', many=True)
 
     class Meta(object):
         model = models.Project
@@ -159,47 +206,6 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             instance.project_groups.clear()
             instance.project_groups.add(*project_groups)
         return super(ProjectSerializer, self).update(instance, validated_data)
-
-    def get_services(self, project):
-        services = []
-        request = self.context['request']
-
-        for model in SupportedServices.get_service_models().values():
-            service_model = model['service']
-            link_model = model['service_project_link']
-            resource_models = model['resources']
-
-            view_name = SupportedServices.get_detail_view_for_model(service_model)
-            service_type = SupportedServices.get_name_for_model(service_model)
-            queryset = link_model.objects.filter(project=project)
-
-            for link in queryset:
-                service_uuid = link.service.uuid.hex
-                service_url = reverse(view_name, kwargs={'uuid': service_uuid}, request=request)
-                service_name = link.service.name
-
-                resources_count = 0
-                for resource_model in resource_models:
-                    # Format query path to service project link or cloud project membership
-                    query = {resource_model.Permissions.project_path.split('__')[0]: link}
-                    resources_count += resource_model.objects.filter(**query).count()
-
-                # XXX: Backward compatibility with IAAS Cloud
-                try:
-                    is_shared = link.service.settings.shared
-                except AttributeError:
-                    is_shared = False
-
-                services.append({
-                    'uuid': service_uuid,
-                    'url': service_url,
-                    'name': service_name,
-                    'type': service_type,
-                    'state': link.get_state_display(),
-                    'resources_count': resources_count,
-                    'shared': is_shared
-                })
-        return services
 
 
 class DefaultImageField(serializers.ImageField):
