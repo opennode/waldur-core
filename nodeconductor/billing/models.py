@@ -155,6 +155,8 @@ class PaidResource(models.Model):
                     logger.error(
                         "Failed to perform order %s for resource %s: %s",
                         func.__name__, self.instance, e)
+                else:
+                    logger.info('Successfully perform order %s for resource %s.', func.__name__, self.instance)
             return wrapped
 
         @property
