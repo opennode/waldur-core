@@ -32,10 +32,12 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
     if not created:
         return
 
+    from nodeconductor.iaas.tasks.security_groups import create_security_group
     for group in instance.security_groups.model._get_default_security_groups():
         sg = instance.security_groups.create(
             name=group['name'],
             description=group['description'])
+        create_security_group.delay(sg.uuid.hex)
 
         for rule in group['rules']:
             sg.rules.create(**rule)
