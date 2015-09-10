@@ -155,7 +155,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
     resource_quota = serializers.SerializerMethodField('get_resource_quotas')
     resource_quota_usage = serializers.SerializerMethodField('get_resource_quotas_usage')
 
-    services = NestedServiceProjectLinkSerializer(source='get_links', many=True)
+    services = NestedServiceProjectLinkSerializer(source='get_links', many=True, read_only=True)
 
     class Meta(object):
         model = models.Project
