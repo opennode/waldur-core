@@ -11,7 +11,7 @@ class BillingBackendError(Exception):
     pass
 
 
-class NotFoundBillingBackendError(Exception):
+class NotFoundBillingBackendError(BillingBackendError):
     pass
 
 

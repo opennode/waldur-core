@@ -3,7 +3,6 @@ from django.contrib import admin, messages
 from django.utils.translation import ungettext, gettext
 from django.utils.translation import ugettext_lazy as _
 
-from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 from nodeconductor.iaas import models
@@ -273,12 +272,11 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
         erred_instances = []
         subscribed_instances = []
         for instance in queryset:
-            try:
-                instance.order.subscribe()
-            except BillingBackendError:
-                erred_instances.append(instance)
-            else:
+            is_subscribed, _ = instance.order.subscribe()
+            if is_subscribed:
                 subscribed_instances.append(instance)
+            else:
+                erred_instances.append(instance)
 
         if subscribed_instances:
             subscribed_instances_count = len(subscribed_instances)
@@ -287,11 +285,11 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
                 '%(subscribed_instances_count)d instances subscribed',
                 subscribed_instances_count
             )
-            message = message % {'tasks_scheduled': subscribed_instances_count}
+            message = message % {'subscribed_instances_count': subscribed_instances_count}
             self.message_user(request, message)
 
         if erred_instances:
-            message = gettext('Pulling failed for instances: %(erred_instances)s')
+            message = gettext('Failed to subscribe instances: %(erred_instances)s')
             message = message % {'erred_instances': ', '.join([i.name for i in erred_instances])}
             self.message_user(request, message, level=messages.ERROR)
 
