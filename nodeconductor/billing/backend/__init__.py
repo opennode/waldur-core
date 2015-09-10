@@ -60,8 +60,8 @@ class BillingBackend(object):
     def get_or_create_client(self):
         try:
             client = self.api.get_client_by_uuid(self.customer.uuid.hex)
-            if self.customer.billing_backend_id != client['externalKey']:
-                self.customer.billing_backend_id = client['externalKey']
+            if self.customer.billing_backend_id != client['accountId']:
+                self.customer.billing_backend_id = client['accountId']
                 self.customer.save(update_fields=['billing_backend_id'])
         except NotFoundBillingBackendError:
             self.customer.billing_backend_id = self.api.add_client(
