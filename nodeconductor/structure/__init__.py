@@ -89,7 +89,7 @@ class SupportedServices(object):
     @classmethod
     def register_backend(cls, service_model, backend_class):
         model_str = cls._get_model_srt(service_model)
-        cls._registry.setdefault(model_str, {'resources': {}})
+        cls._registry.setdefault(model_str, {'resources': {}, 'properties': {}})
         cls._registry[model_str]['backend'] = backend_class
 
         try:
@@ -104,7 +104,7 @@ class SupportedServices(object):
             return
 
         model_str = cls._get_model_srt(metadata.model)
-        cls._registry.setdefault(model_str, {'resources': {}})
+        cls._registry.setdefault(model_str, {'resources': {}, 'properties': {}})
         cls._registry[model_str].update({
             'name': dict(cls.Types.CHOICES)[service_type],
             'service_type': service_type,
@@ -126,6 +126,20 @@ class SupportedServices(object):
                     'detail_view': metadata.view_name,
                     'list_view': metadata.view_name.replace('-detail', '-list'),
                 })
+                break
+
+    @classmethod
+    def register_property(cls, service_type, metadata):
+        if service_type is NotImplemented:
+            return
+
+        for service_model_name, service in cls._registry.items():
+            if service.get('service_type') == service_type:
+                model_str = cls._get_model_srt(metadata.model)
+                service['properties'][model_str] = {
+                    'name': metadata.model.__name__,
+                    'list_view': metadata.model.get_url_name() + '-list'
+                }
                 break
 
     @classmethod
@@ -191,7 +205,9 @@ class SupportedServices(object):
                 'url': reverse(service['list_view'], request=request),
                 'service_project_link_url': service_project_link_url,
                 'resources': {resource['name']: reverse(resource['list_view'], request=request)
-                              for resource in service['resources'].values()}
+                              for resource in service['resources'].values()},
+                'properties': {resource['name']: reverse(resource['list_view'], request=request)
+                              for resource in service.get('properties', {}).values()}
             }
         return data
 

@@ -1109,3 +1109,22 @@ class VirtualMachineSerializer(BaseResourceSerializer):
         instance.external_ips = [instance.external_ips] if instance.external_ips else []
         instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
         return super(VirtualMachineSerializer, self).to_representation(instance)
+
+
+class PropertySerializerMetaclass(serializers.SerializerMetaclass):
+    """ Build a list of supported properties via serializers definition.
+        See SupportedServices for details.
+    """
+    def __new__(cls, name, bases, args):
+        service_type = args.get('SERVICE_TYPE', NotImplemented)
+        SupportedServices.register_property(service_type, args['Meta'])
+        return super(PropertySerializerMetaclass, cls).__new__(cls, name, bases, args)
+
+
+class BasePropertySerializer(six.with_metaclass(PropertySerializerMetaclass,
+                             serializers.HyperlinkedModelSerializer)):
+
+    SERVICE_TYPE = NotImplemented
+
+    class Meta(object):
+        model = NotImplemented

@@ -6,7 +6,18 @@ from nodeconductor.structure import SupportedServices, serializers as structure_
 from nodeconductor.oracle import models
 
 
-class ZoneSerializer(serializers.HyperlinkedModelSerializer):
+class ServiceSerializer(structure_serializers.BaseServiceSerializer):
+
+    SERVICE_TYPE = SupportedServices.Types.Oracle
+
+    class Meta(structure_serializers.BaseServiceSerializer.Meta):
+        model = models.OracleService
+        view_name = 'oracle-detail'
+
+
+class ZoneSerializer(structure_serializers.BasePropertySerializer):
+
+    SERVICE_TYPE = SupportedServices.Types.Oracle
 
     class Meta(object):
         model = models.Zone
@@ -17,7 +28,9 @@ class ZoneSerializer(serializers.HyperlinkedModelSerializer):
         }
 
 
-class TemplateSerializer(serializers.HyperlinkedModelSerializer):
+class TemplateSerializer(structure_serializers.BasePropertySerializer):
+
+    SERVICE_TYPE = SupportedServices.Types.Oracle
 
     type = serializers.ReadOnlyField(source='get_type_display')
 
@@ -28,15 +41,6 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
-
-
-class ServiceSerializer(structure_serializers.BaseServiceSerializer):
-
-    SERVICE_TYPE = SupportedServices.Types.Oracle
-
-    class Meta(structure_serializers.BaseServiceSerializer.Meta):
-        model = models.OracleService
-        view_name = 'oracle-detail'
 
 
 class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkSerializer):
