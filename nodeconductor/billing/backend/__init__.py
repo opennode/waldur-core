@@ -11,6 +11,10 @@ class BillingBackendError(Exception):
     pass
 
 
+class NotFoundBillingBackendError(Exception):
+    pass
+
+
 class BillingBackend(object):
     """ General billing backend.
         Utilizes particular backend API client depending on django settings.
@@ -54,15 +58,17 @@ class BillingBackend(object):
         return 'Billing backend %s' % self.api_url
 
     def get_or_create_client(self):
-        if self.customer.billing_backend_id:
-            return self.customer.billing_backend_id
-
-        self.customer.billing_backend_id = self.api.add_client(
-            email="%s@example.com" % self.customer.uuid,  # XXX: a fake email address unique to a customer
-            name=self.customer.name,
-            uuid=self.customer.uuid.hex)
-
-        self.customer.save(update_fields=['billing_backend_id'])
+        try:
+            client = self.api.get_client_by_uuid(self.customer.uuid.hex)
+            if self.customer.billing_backend_id != client['externalKey']:
+                self.customer.billing_backend_id = client['externalKey']
+                self.customer.save(update_fields=['billing_backend_id'])
+        except NotFoundBillingBackendError:
+            self.customer.billing_backend_id = self.api.add_client(
+                email="%s@example.com" % self.customer.uuid,  # XXX: a fake email address unique to a customer
+                name=self.customer.name,
+                uuid=self.customer.uuid.hex)
+            self.customer.save(update_fields=['billing_backend_id'])
 
         return self.customer.billing_backend_id
 
