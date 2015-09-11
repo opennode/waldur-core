@@ -100,12 +100,14 @@ class FlavorViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Flavor.objects.all()
     serializer_class = serializers.FlavorSerializer
     lookup_field = 'uuid'
+    filter_class = structure_views.ServicePropertySettingsFilter
 
 
 class ImageViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Image.objects.all()
     serializer_class = serializers.ImageSerializer
     lookup_field = 'uuid'
+    filter_class = structure_views.ServicePropertySettingsFilter
 
 
 class InstanceViewSet(structure_views.BaseResourceViewSet):
