@@ -199,7 +199,7 @@ class SupportedServices(object):
         for service_model_name, service in cls._registry.items():
             service_model = apps.get_model(service_model_name)
             service_project_link = cls.get_service_project_link(service_model)
-            service_project_link_url = reverse(service_project_link.get_url_name() + '-list', request=request)
+            service_project_link_url = reverse(cls.get_list_view_for_model(service_project_link), request=request)
 
             data[service['name']] = {
                 'url': reverse(service['list_view'], request=request),
@@ -279,10 +279,14 @@ class SupportedServices(object):
 
     @classmethod
     def get_list_view_for_model(cls, model):
+        if hasattr(model, 'get_url_name'):
+            return model.get_url_name() + '-list'
         return cls._get_view_for_model(model, view_type='list_view')
 
     @classmethod
     def get_detail_view_for_model(cls, model):
+        if hasattr(model, 'get_url_name'):
+            return model.get_url_name() + '-detail'
         return cls._get_view_for_model(model, view_type='detail_view')
 
     @classmethod

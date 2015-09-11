@@ -111,7 +111,7 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
         return reverse(view_name, kwargs={'uuid': link.service.uuid.hex}, request=self.context['request'])
 
     def get_service_project_link_url(self, link):
-        view_name = link.get_url_name() + '-detail'
+        view_name = SupportedServices.get_detail_view_for_model(link)
         return reverse(view_name, kwargs={'pk': link.id}, request=self.context['request'])
 
     def get_type(self, link):
