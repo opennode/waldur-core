@@ -21,12 +21,14 @@ class ZoneViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Zone.objects.all()
     serializer_class = serializers.ZoneSerializer
     lookup_field = 'uuid'
+    filter_class = structure_views.ServicePropertySettingsFilter
 
 
 class TemplateViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Template.objects.all()
     serializer_class = serializers.TemplateSerializer
     lookup_field = 'uuid'
+    filter_class = structure_views.ServicePropertySettingsFilter
 
 
 class DatabaseViewSet(structure_views.BaseResourceViewSet):

@@ -1592,11 +1592,21 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
 
 
 class BaseServicePropertyFilter(django_filters.FilterSet):
-    settings_uuid = django_filters.CharFilter(name='settings__uuid')
+    name = django_filters.CharFilter(
+        name='name',
+        lookup_type='icontains',
+    )
 
     class Meta(object):
         model = models.ServiceProperty
-        fields = ('settings_uuid',)
+        fields = ('name',)
+
+
+class ServicePropertySettingsFilter(BaseServicePropertyFilter):
+    settings_uuid = django_filters.CharFilter(name='settings__uuid')
+
+    class Meta(BaseServicePropertyFilter.Meta):
+        fields = BaseServicePropertyFilter.Meta.fields + ('settings_uuid', )
 
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
