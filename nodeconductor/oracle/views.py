@@ -17,13 +17,13 @@ class OracleServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkView
     serializer_class = serializers.ServiceProjectLinkSerializer
 
 
-class ZoneViewSet(structure_views.BaseServicePropertyView):
+class ZoneViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Zone.objects.all()
     serializer_class = serializers.ZoneSerializer
     lookup_field = 'uuid'
 
 
-class TemplateViewSet(structure_views.BaseServicePropertyView):
+class TemplateViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Template.objects.all()
     serializer_class = serializers.TemplateSerializer
     lookup_field = 'uuid'

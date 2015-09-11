@@ -1202,8 +1202,8 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
         send_task('structure', 'sync_service_settings')(instance.uuid.hex, initial=True)
 
 
-class ServiceViewSet(viewsets.GenericViewSet):
-    """ Metadata about supported services and resources. """
+class ServiceMetadataViewSet(viewsets.GenericViewSet):
+    """ Metadata about supported services, resources and properties. """
 
     def list(self, request):
         return Response(SupportedServices.get_services_with_resources(request))
@@ -1260,7 +1260,7 @@ class ResourceViewSet(BaseSummaryView):
             return [url for (type, url) in resources]
 
 
-class ServiceItemsViewSet(BaseSummaryView):
+class ServicesViewSet(BaseSummaryView):
     """ The summary list of all user services. """
 
     params = ('name', 'customer_uuid')
@@ -1591,16 +1591,13 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         backend.restart(resource)
 
 
-class ServicePropertyFilter(django_filters.FilterSet):
+class BaseServicePropertyFilter(django_filters.FilterSet):
     settings_uuid = django_filters.CharFilter(name='settings__uuid')
 
     class Meta(object):
         model = models.ServiceProperty
-        fields = ['settings_uuid']
+        fields = ('settings_uuid',)
 
 
-class BaseServicePropertyView(viewsets.ReadOnlyModelViewSet):
-    filter_class = ServicePropertyFilter
-
-    class Meta(object):
-        model = models.ServiceProperty
+class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
+    filter_class = BaseServicePropertyFilter
