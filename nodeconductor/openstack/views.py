@@ -96,13 +96,13 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
             status=status.HTTP_202_ACCEPTED)
 
 
-class FlavorViewSet(viewsets.ReadOnlyModelViewSet):
+class FlavorViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Flavor.objects.all()
     serializer_class = serializers.FlavorSerializer
     lookup_field = 'uuid'
 
 
-class ImageViewSet(viewsets.ReadOnlyModelViewSet):
+class ImageViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Image.objects.all()
     serializer_class = serializers.ImageSerializer
     lookup_field = 'uuid'

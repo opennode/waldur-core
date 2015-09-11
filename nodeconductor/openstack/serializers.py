@@ -14,28 +14,6 @@ from nodeconductor.openstack.backend import OpenStackBackendError
 from nodeconductor.openstack import models
 
 
-class FlavorSerializer(serializers.HyperlinkedModelSerializer):
-
-    class Meta(object):
-        model = models.Flavor
-        view_name = 'openstack-flavor-detail'
-        fields = ('url', 'uuid', 'name', 'cores', 'ram', 'disk')
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
-        }
-
-
-class ImageSerializer(serializers.HyperlinkedModelSerializer):
-
-    class Meta(object):
-        model = models.Image
-        view_name = 'openstack-image-detail'
-        fields = ('url', 'uuid', 'name', 'min_disk', 'min_ram')
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
-        }
-
-
 class ServiceSerializer(structure_serializers.BaseServiceSerializer):
 
     SERVICE_TYPE = SupportedServices.Types.OpenStack
@@ -53,6 +31,32 @@ class ServiceSerializer(structure_serializers.BaseServiceSerializer):
     class Meta(structure_serializers.BaseServiceSerializer.Meta):
         model = models.OpenStackService
         view_name = 'openstack-detail'
+
+
+class FlavorSerializer(structure_serializers.BasePropertySerializer):
+
+    SERVICE_TYPE = SupportedServices.Types.OpenStack
+
+    class Meta(object):
+        model = models.Flavor
+        view_name = 'openstack-flavor-detail'
+        fields = ('url', 'uuid', 'name', 'cores', 'ram', 'disk')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+
+class ImageSerializer(structure_serializers.BasePropertySerializer):
+
+    SERVICE_TYPE = SupportedServices.Types.OpenStack
+
+    class Meta(object):
+        model = models.Image
+        view_name = 'openstack-image-detail'
+        fields = ('url', 'uuid', 'name', 'min_disk', 'min_ram')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
 
 class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkSerializer):
