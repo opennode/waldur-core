@@ -14,6 +14,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
 from model_utils.models import TimeStampedModel
+from model_utils import FieldTracker
 from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
@@ -254,6 +255,7 @@ class Project(core_models.DescribableMixin,
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_project_count'
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
+    tracker = FieldTracker()
 
     # XXX: Hack for gcloud and logging
     @property

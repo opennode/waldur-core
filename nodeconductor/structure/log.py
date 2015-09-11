@@ -25,9 +25,10 @@ class BalanceEventLogger(EventLogger):
 class ProjectEventLogger(EventLogger):
     project = models.Project
     project_group = models.ProjectGroup
+    project_previous_name = basestring
 
     class Meta:
-        nullable_fields = ['project_group']
+        nullable_fields = ['project_group', 'project_previous_name']
         event_types = ('project_deletion_succeeded',
                        'project_update_succeeded',
                        'project_creation_succeeded')

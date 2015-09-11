@@ -79,20 +79,23 @@ class BaseLogger(object):
                 for k, v in self.__class__.__dict__.items()
                 if not k.startswith('_') and not isinstance(v, (types.ClassType, types.FunctionType))}
 
+        missed = set(self.fields.keys()) - set(self.get_nullable_fields()) - set(kwargs.keys())
+        if missed:
+            raise LoggerError("Missed fields in event context: %s" % ', '.join(missed))
+
         context = {}
-        required_fields = self.fields.copy()
 
         event_context = get_event_context()
         if event_context:
             context.update(event_context)
             username = event_context.get('user_username')
-            if 'user' in required_fields and username:
+            if 'user' in self.fields and username:
                 logger.warning("User is passed directly to event context. "
                                "Currently authenticated user %s is ignored.", username)
 
         for entity_name, entity in six.iteritems(kwargs):
-            if entity_name in required_fields:
-                entity_class = required_fields.pop(entity_name)
+            if entity_name in self.fields:
+                entity_class = self.fields[entity_name]
                 if entity is None and entity_name in self.get_nullable_fields():
                     continue
                 if not isinstance(entity, entity_class):
@@ -116,10 +119,6 @@ class BaseLogger(object):
                 logger.warning(
                     "Cannot properly serialize '%s' context field. "
                     "Must be inherited from LoggableMixin." % entity_name)
-
-        if required_fields:
-            raise LoggerError(
-                "Missed fields in event context: %s" % ', '.join(required_fields.keys()))
 
         return context
 

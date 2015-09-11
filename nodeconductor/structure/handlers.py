@@ -242,13 +242,23 @@ def log_project_save(sender, instance, created=False, **kwargs):
                 'project_group': instance.project_groups.first(),
             })
     else:
-        event_logger.project.info(
-            'Project {project_name} has been updated.',
-            event_type='project_update_succeeded',
-            event_context={
-                'project': instance,
-                'project_group': instance.project_groups.first(),
-            })
+        if instance.tracker.has_changed('name'):
+            event_logger.project.info(
+                'Project has been renamed from {project_previous_name} to {project_name}.',
+                event_type='project_update_succeeded',
+                event_context={
+                    'project': instance,
+                    'project_group': instance.project_groups.first(),
+                    'project_previous_name': instance.tracker.previous('name')
+                })
+        else:
+            event_logger.project.info(
+                'Project {project_name} has been updated.',
+                event_type='project_update_succeeded',
+                event_context={
+                    'project': instance,
+                    'project_group': instance.project_groups.first()
+                })
 
 
 def log_project_delete(sender, instance, **kwargs):
