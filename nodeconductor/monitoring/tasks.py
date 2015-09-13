@@ -37,7 +37,7 @@ def update_instance_sla(sla_type):
         month_start = datetime.datetime.strptime('01/%s/%s' % (dt.month, dt.year),
                                                     '%d/%m/%Y')
         start_time = int(month_start.strftime("%s"))
-        end_time = int(add_months(month_start, 1).strftime("%s"))
+        end_time = int(dt.strftime("%s"))
 
     instances = Instance.objects.exclude(state__in=[
         Instance.States.DELETING,
