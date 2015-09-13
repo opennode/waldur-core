@@ -1,7 +1,8 @@
 import factory
 from mock import patch, call
-from rest_framework import test
+from rest_framework import test, status
 
+from nodeconductor.core import models as core_models
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.models import CustomerRole, ProjectRole

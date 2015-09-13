@@ -675,6 +675,12 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
             'url': {'lookup_field': 'uuid'},
         }
 
+    def validate(self, attrs):
+        fingerprint = core_models.get_ssh_key_fingerprint(attrs['public_key'])
+        if core_models.SshPublicKey.objects.filter(fingerprint=fingerprint).exists():
+            raise serializers.ValidationError('Key with same fingerprint already exists')
+        return attrs
+
     def get_fields(self):
         fields = super(SshKeySerializer, self).get_fields()
 
