@@ -1,7 +1,8 @@
 import factory
 from mock import patch, call
-from rest_framework import test
+from rest_framework import test, status
 
+from nodeconductor.core import models as core_models
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.models import CustomerRole, ProjectRole
@@ -85,3 +86,17 @@ class UserAndSshKeyPropagationTest(test.APITransactionTestCase):
         self.assert_task_called(mocked_task,
                                 'nodeconductor.structure.remove_user',
                                 serialize_user(user))
+
+    def test_user_cannot_add_ssh_key_with_duplicate_fingerprint(self, mocked_task):
+        staff = structure_factories.UserFactory(is_staff=True)
+        key = structure_factories.SshPublicKeyFactory()
+        data = {
+            'name': 'test',
+            'public_key': key.public_key,
+        }
+
+        self.client.force_authenticate(staff)
+        response = self.client.post(structure_factories.SshPublicKeyFactory.get_list_url(), data=data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(core_models.SshPublicKey.objects.filter(**data).exists())
