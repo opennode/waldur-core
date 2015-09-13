@@ -32,7 +32,6 @@ class SshKeyRetrieveListTest(test.APITransactionTestCase):
         self.user = factories.UserFactory()
         self.user_key = factories.SshPublicKeyFactory(user=self.user)
 
-    #  TODO: move this test to permissions test
     def test_admin_can_access_any_key(self):
         self.client.force_authenticate(self.staff)
         url = factories.SshPublicKeyFactory.get_url(self.user_key)
@@ -49,9 +48,10 @@ class SshKeyCreateDeleteTest(test.APITransactionTestCase):
 
     def test_key_user_and_name_uniqueness(self):
         self.client.force_authenticate(self.user)
+        key = factories.SshPublicKeyFactory.build()
         data = {
             'name': self.user_key.name,
-            'public_key': self.user_key.public_key,
+            'public_key': key.public_key,
         }
 
         response = self.client.post(factories.SshPublicKeyFactory.get_list_url(), data=data)
@@ -61,9 +61,10 @@ class SshKeyCreateDeleteTest(test.APITransactionTestCase):
 
     def test_valid_key_creation(self):
         self.client.force_authenticate(self.user)
+        key = factories.SshPublicKeyFactory.build()
         data = {
-            'name': 'key#2',
-            'public_key': self.user_key.public_key,
+            'name': key.name,
+            'public_key': key.public_key,
         }
         response = self.client.post(factories.SshPublicKeyFactory.get_list_url(), data=data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -86,3 +87,17 @@ class SshKeyCreateDeleteTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.user)
         response = self.client.delete(factories.SshPublicKeyFactory.get_url(other_key))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_user_cannot_add_ssh_key_with_duplicate_fingerprint(self):
+        staff = factories.UserFactory(is_staff=True)
+        key = factories.SshPublicKeyFactory()
+        data = {
+            'name': 'test',
+            'public_key': key.public_key,
+        }
+
+        self.client.force_authenticate(staff)
+        response = self.client.post(factories.SshPublicKeyFactory.get_list_url(), data=data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(core_models.SshPublicKey.objects.filter(**data).exists())
