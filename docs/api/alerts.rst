@@ -27,6 +27,7 @@ Alerts can be filtered by:
 Alerts can be ordered by:
 
  -?o=severity - order by severity
+ -?o=created - order by creation time
 
 
 .. code-block:: http

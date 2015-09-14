@@ -122,6 +122,8 @@ class AlertFilter(django_filters.FilterSet):
         order_by = [
             'severity',
             '-severity',
+            'created',
+            '-created',
         ]
 
 
@@ -216,7 +218,7 @@ class AlertViewSet(mixins.CreateModelMixin,
     filter_class = AlertFilter
 
     def get_queryset(self):
-        return models.Alert.objects.filtered_for_user(self.request.user)
+        return models.Alert.objects.filtered_for_user(self.request.user).order_by('-created')
 
     @decorators.detail_route(methods=['post'])
     def close(self, request, *args, **kwargs):

@@ -1,3 +1,4 @@
+import inspect
 import six
 from urlparse import urlparse
 
@@ -15,7 +16,7 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
 
     This backend supports additional attribute of a FilterSet named `order_by_mapping`.
     It maps ordering fields from user friendly ones to the ones that depend on
-    the model relation innards.
+    the model relation innards. Also it passes request as parameter to filter classes.
 
     See https://github.com/alex/django-filter/issues/178#issuecomment-62129586
 
@@ -68,8 +69,11 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
                 params.setlist(order_by_field, ordering)
             else:
                 params = request.query_params
-
-            return filter_class(params, queryset=queryset).qs
+            # pass request as parameter to filter class if it expects such argument
+            if 'request' in inspect.getargspec(filter_class.__init__).args:
+                return filter_class(params, queryset=queryset, request=request).qs
+            else:
+                return filter_class(params, queryset=queryset).qs
 
         return queryset
 
@@ -141,15 +145,19 @@ class GenericKeyFilter(django_filters.CharFilter):
     Filter analog for GenericRelatedField.
     """
 
-    def __init__(self, content_type_field='content_type', object_id_field='object_id', related_models=(), **kwargs):
+    def __init__(self, content_type_field='content_type', object_id_field='object_id', related_models=(), request=None,
+                 **kwargs):
         super(GenericKeyFilter, self).__init__(**kwargs)
         self.content_type_field = content_type_field
         self.object_id_field = object_id_field
         self.related_models = related_models
+        self.request = request
 
     def filter(self, qs, value):
         if value:
             field = core_serializers.GenericRelatedField(related_models=self.related_models)
+            # Trick to set field context without serializer
+            field._context = {'request': self.request}
             obj = field.to_internal_value(value)
             ct = ContentType.objects.get_for_model(obj)
             return qs.filter(**{self.object_id_field: obj.id, self.content_type_field: ct})

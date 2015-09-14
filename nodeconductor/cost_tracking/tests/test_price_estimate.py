@@ -84,6 +84,14 @@ class PriceEstimateListTest(test.APITransactionTestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['uuid'], self.project_price_estimate.uuid.hex)
 
+    def test_user_receive_error_on_filtering_by_not_visible_for_him_object(self):
+        data = {'scope': structure_factories.ProjectFactory.get_url()}
+
+        self.client.force_authenticate(self.users['administrator'])
+        response = self.client.get(factories.PriceEstimateFactory.get_list_url(), data=data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 @ddt
 class PriceEstimateCreateTest(test.APITransactionTestCase):

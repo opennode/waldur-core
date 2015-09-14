@@ -95,6 +95,12 @@ class GenericRelatedField(Field):
             format_kwargs['model_name'] = obj._meta.object_name.lower()
         return self._default_view_name % format_kwargs
 
+    def _get_request(self):
+        try:
+            return self.context['request']
+        except KeyError:
+            raise AttributeError('GenericRelatedField have to be initialized with `request` in context')
+
     def to_representation(self, obj):
         """
         Serializes any object to his url representation
@@ -106,10 +112,7 @@ class GenericRelatedField(Field):
                 break
         if kwargs is None:
             raise AttributeError('Related object does not have any of lookup_fields')
-        try:
-            request = self.context['request']
-        except AttributeError:
-            raise AttributeError('GenericRelatedField have to be initialized with `request` in context')
+        request = self._get_request()
         return request.build_absolute_uri(reverse(self._get_url(obj), kwargs=kwargs))
 
     def _format_url(self, url):
@@ -131,11 +134,16 @@ class GenericRelatedField(Field):
         """
         Restores model instance from its url
         """
+        # XXX: This circular dependency will be removed then filter_queryset_for_user
+        # will be moved to model manager method
+        from nodeconductor.structure.filters import filter_queryset_for_user
+        request = self._get_request()
         try:
             url = self._format_url(data)
             match = resolve(url)
             model = self._get_model_from_resolve_match(match)
-            obj = model.objects.get(**match.kwargs)
+            queryset = filter_queryset_for_user(model.objects.all(), request.user)
+            obj = queryset.get(**match.kwargs)
         except (Resolver404, AttributeError, MultipleObjectsReturned, ObjectDoesNotExist):
             raise serializers.ValidationError("Can`t restore object from url: %s" % data)
         if model not in self.related_models:
