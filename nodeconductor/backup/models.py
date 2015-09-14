@@ -41,7 +41,8 @@ class BackupSchedule(core_models.UuidMixin,
     Model representing a backup schedule for a generic object.
     """
     # backup specific settings
-    retention_time = models.PositiveIntegerField(help_text='Retention time in days')
+    retention_time = models.PositiveIntegerField(
+        help_text='Retention time in days')  # if 0 - backup will be kept forever
     maximal_number_of_backups = models.PositiveSmallIntegerField()
     schedule = core_fields.CronScheduleField(max_length=15)
     next_trigger_at = models.DateTimeField(null=True)
@@ -66,10 +67,11 @@ class BackupSchedule(core_models.UuidMixin,
         """
         Creates new backup based on schedule and starts backup process
         """
+        kept_until = django_timezone.now() + timedelta(days=self.retention_time) if self.retention_time else None
         backup = Backup.objects.create(
             backup_schedule=self,
             backup_source=self.backup_source,
-            kept_until=django_timezone.now() + timedelta(days=self.retention_time),
+            kept_until=kept_until,
             description='scheduled backup')
         backup.start_backup()
         return backup
