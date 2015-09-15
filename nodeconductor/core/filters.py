@@ -1,4 +1,3 @@
-import inspect
 import six
 from urlparse import urlparse
 
@@ -16,7 +15,7 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
 
     This backend supports additional attribute of a FilterSet named `order_by_mapping`.
     It maps ordering fields from user friendly ones to the ones that depend on
-    the model relation innards. Also it passes request as parameter to filter classes.
+    the model relation innards.
 
     See https://github.com/alex/django-filter/issues/178#issuecomment-62129586
 
@@ -70,10 +69,7 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
             else:
                 params = request.query_params
             # pass request as parameter to filter class if it expects such argument
-            if 'request' in inspect.getargspec(filter_class.__init__).args:
-                return filter_class(params, queryset=queryset, request=request).qs
-            else:
-                return filter_class(params, queryset=queryset).qs
+            return filter_class(params, queryset=queryset).qs
 
         return queryset
 
@@ -94,6 +90,48 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
             return '-' + ordering
 
         return ordering
+
+
+class GenericKeyFilterBackend(filters.DjangoFilterBackend):
+    """
+    Backend for filtering by backend field.
+
+    Methods 'get_related_models' and 'get_field_name' has to be implemented.
+    Example:
+
+        class AlertScopeFilterBackend(core_filters.GenericKeyFilterBackend):
+
+            def get_related_models(self):
+                return utils.get_loggable_models()
+
+            def get_field_name(self):
+                return 'scope'
+    """
+    content_type_field = 'content_type'
+    object_id_field = 'object_id'
+
+    def get_related_models(self):
+        """ Return all models that are acceptable as filter argument """
+        raise NotImplementedError
+
+    def get_field_name(self):
+        """ Get name of filter field name in request """
+        raise NotImplementedError
+
+    def get_field_value(self, request):
+        field_name = self.get_field_name()
+        return request.query_params.get(field_name)
+
+    def filter_queryset(self, request, queryset, view):
+        value = self.get_field_value(request)
+        if value:
+            field = core_serializers.GenericRelatedField(related_models=self.get_related_models())
+            # Trick to set field context without serializer
+            field._context = {'request': request}
+            obj = field.to_internal_value(value)
+            ct = ContentType.objects.get_for_model(obj)
+            return queryset.filter(**{self.object_id_field: obj.id, self.content_type_field: ct})
+        return queryset
 
 
 class MappedChoiceFilter(django_filters.ChoiceFilter):
@@ -136,32 +174,6 @@ class URLFilter(django_filters.CharFilter):
                 uuid = url.kwargs.get(pk_name)
 
         return super(URLFilter, self).filter(qs, uuid)
-
-
-class GenericKeyFilter(django_filters.CharFilter):
-    """
-    Filter by generic key.
-
-    Filter analog for GenericRelatedField.
-    """
-
-    def __init__(self, content_type_field='content_type', object_id_field='object_id', related_models=(), request=None,
-                 **kwargs):
-        super(GenericKeyFilter, self).__init__(**kwargs)
-        self.content_type_field = content_type_field
-        self.object_id_field = object_id_field
-        self.related_models = related_models
-        self.request = request
-
-    def filter(self, qs, value):
-        if value:
-            field = core_serializers.GenericRelatedField(related_models=self.related_models)
-            # Trick to set field context without serializer
-            field._context = {'request': self.request}
-            obj = field.to_internal_value(value)
-            ct = ContentType.objects.get_for_model(obj)
-            return qs.filter(**{self.object_id_field: obj.id, self.content_type_field: ct})
-        return qs
 
 
 class TimestampFilter(django_filters.NumberFilter):

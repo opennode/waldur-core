@@ -3,6 +3,7 @@ from rest_framework import test, status
 
 from nodeconductor.cost_tracking import models, CostConstants
 from nodeconductor.cost_tracking.tests import factories
+from nodeconductor.openstack import models as openstack_models
 from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
@@ -80,6 +81,7 @@ class PriceListItemCreateTest(test.APITransactionTestCase):
         self.project_group.projects.add(self.project)
 
         self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        openstack_models.OpenStackServiceProjectLink.objects.create(project=self.project, service=self.service)
         self.valid_data = {
             'service': openstack_factories.OpenStackServiceFactory.get_url(self.service),
             'value': 100,
@@ -102,7 +104,7 @@ class PriceListItemCreateTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.users[user])
         response = self.client.post(factories.PriceListItemFactory.get_list_url(), data=self.valid_data)
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, str(response.data) + " " + user)
         self.assertFalse(models.PriceListItem.objects.filter(
             service=self.service, value=self.valid_data['value'], item_type=self.valid_data['item_type']).exists())
 

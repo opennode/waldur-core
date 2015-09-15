@@ -133,7 +133,7 @@ class BackupPermissionsTest(helpers.PermissionsTest):
         if method == 'GET':
             return [self.regular_user]
         else:
-            return [self.regular_user, self.project_group_manager, self.customer_owner]
+            return [self.project_group_manager, self.customer_owner]
 
     def get_urls_configs(self):
         yield {'url': _backup_url(self.backup), 'method': 'GET'}
@@ -161,5 +161,6 @@ class BackupSourceFilterTest(test.APITransactionTestCase):
         self.assertEqual(3, len(response.data))
 
         response = self.client.get(_backup_list_url(), data={'backup_source': _instance_url(instance1)})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(2, len(response.data))
         self.assertEqual(_instance_url(instance1), response.data[0]['backup_source'])
