@@ -12,6 +12,7 @@ Alerts can be filtered by:
  - ?alert_type=<alert_type> (can be list)
  - ?scope=<url> concrete alert scope
  - ?scope_type=<string> name of scope type (Ex.: instance, cloud_project_membership, project...)
+   DEPRECATED use ?content_type instead
  - ?created_from=<timestamp>
  - ?created_to=<timestamp>
  - ?closed_from=<timestamp>
@@ -23,6 +24,8 @@ Alerts can be filtered by:
  - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
    object with given uuid)
  - ?acknowledged=True|False - show only acknowledged (non-acknowledged) alerts
+ - ?content_type=<string> name of scope content type in format <app_name>.<scope_type>
+   (Ex.: structure.project, iaas.instance...)
 
 Alerts can be ordered by:
 
