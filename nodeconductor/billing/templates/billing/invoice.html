@@ -1,7 +1,11 @@
 <html>
     <head></head>
     <body>
-        <h1>Invoice #{{ invoice.invoice_number }} for "{{ customer.name }}"</h1>
+        <h1>
+            Invoice #{{ invoice.invoice_number }} for the period starting
+            from {{ invoice.start_date|date:"d/m/Y" }} to {{ invoice.end_date|date:"d/m/Y" }}
+        </h1>
+        <h2>Customer: {{ customer.name }}</h2>
         <h2>Date: {{ invoice.date }}</h2>
         <hr/>
         <table border="0.1" cellpadding="5">
@@ -12,14 +16,14 @@
             {% for item in items %}
             <tr>
                 <td width="20" align="right">{{ forloop.counter }}</td>
-                <td>{{ item.name }}</td>
-                <td width="100" align="right">{{ item.amount }} {{ item.currency }}</td>
+                <td>{{ item.name }}<br>{{ item.usage }}</td>
+                <td width="100" align="right">{{ item.amount|floatformat:2 }} {{ item.currency }}</td>
             </tr>
             {% endfor %}
             {% endfor %}
             <tr>
                 <th align="right" colspan="2">Total:</th>
-                <th align="right">{{ invoice.amount }} {{ invoice.currency }}</th>
+                <th align="right">{{ invoice.amount|floatformat:2 }} {{ invoice.currency }}</th>
             </tr>
         </table>
     </body>

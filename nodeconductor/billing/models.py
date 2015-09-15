@@ -12,7 +12,9 @@ from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.billing.backend import BillingBackendError
+from nodeconductor.billing.backend.killbill import UNIT_PREFIX
 
 
 logger = logging.getLogger(__name__)
@@ -58,15 +60,23 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
                 }
             ]
 
-    def generate_pdf(self, resources_mapping=()):
+    def generate_pdf(self):
         backend = self.get_billing_backend()
         invoice = backend.get_invoice(self.backend_id)
 
         resources = {}
+        pricelist = {p.units.replace(UNIT_PREFIX, ''): p for p in DefaultPriceListItem.objects.all()}
+
         for item in invoice['items']:
-            resource = "{} ({})".format(
-                resources_mapping.get(item['subscription_id'], '-unknown-'),
-                item['subscription_id'])
+            price_item = pricelist.get(item['name'])
+            if price_item:
+                item['name'] = price_item.name
+                item['usage'] = "{} x {:.2f} {}".format(
+                    int(item['amount'] / float(price_item.value)),
+                    price_item.value,
+                    item['currency'])
+
+            resource = item['resource']
             resources.setdefault(resource, [])
             resources[resource].append(item)
 

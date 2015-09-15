@@ -3,7 +3,7 @@ import json
 import requests
 import logging
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from lxml.builder import E, ElementMaker
 from lxml import etree
 
@@ -13,6 +13,7 @@ from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.billing.backend import BillingBackendError, NotFoundBillingBackendError
 from nodeconductor import __version__
 
+UNIT_PREFIX = 'hour-of-'
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +99,10 @@ class KillBillAPI(object):
             billingPeriod='MONTHLY',
             priceList='DEFAULT')
 
+        self.subscriptions._object_query(
+            subscription['subscriptionId'], 'customFields', method='POST',
+            data=json.dumps([{'name': 'resource_name', 'value': resource.name}]))
+
         return subscription['subscriptionId']
 
     def del_subscription(self, subscription_id):
@@ -149,21 +154,38 @@ class KillBillAPI(object):
                 for invoice in data if invoice['amount']]
 
     def get_invoice(self, invoice_id):
-        invoice = self.invoices.get(invoice_id, withItems=True)
-        return {'backend_id': invoice['invoiceId'],
-                'date': self._parse_date(invoice['invoiceDate']),
-                'currency': invoice['currency'],
-                'invoice_number': invoice['invoiceNumber'],
-                'items': [{'backend_id': item['invoiceItemId'],
-                           'name': item['description'].replace(' (usage item)', ''),
-                           'subscription_id': item['subscriptionId'],
-                           'currency': item['currency'],
-                           'amount': item['amount']}
-                          for item in invoice['items']],
-                'amount': invoice['amount']}
+        raw_invoice = self.invoices.get(invoice_id, withItems=True)
+        target_date = self._parse_date(raw_invoice['targetDate'])
+        invoice = dict(
+            backend_id=raw_invoice['invoiceId'],
+            date=self._parse_date(raw_invoice['invoiceDate']),
+            end_date=target_date,
+            start_date=target_date - timedelta(days=30),
+            invoice_number=raw_invoice['invoiceNumber'],
+            currency=raw_invoice['currency'],
+            amount=raw_invoice['amount'],
+            items=[]
+        )
+
+        for item in raw_invoice['items']:
+            fields = self.get_subscription_fields(item['subscriptionId'])
+            if item['amount']:
+                invoice['items'].append(dict(
+                    backend_id=item['invoiceItemId'],
+                    name=item['usageName'] or item['description'],
+                    resource=fields['resource_name'],
+                    currency=item['currency'],
+                    amount=item['amount'],
+                ))
+
+        return invoice
 
     def get_invoice_items(self, invoice_id):
         return self.get_invoice(invoice_id)['items']
+
+    def get_subscription_fields(self, subscription_id):
+        fields = self.subscriptions.get(subscription_id, 'customFields')
+        return {f['name']: f['value'] for f in fields}
 
     def propagate_pricelist(self):
         # Generate catalog and push it to backend
@@ -183,7 +205,7 @@ class KillBillAPI(object):
             usages = E.usages()
             for priceitem in DefaultPriceListItem.objects.filter(resource_content_type=cid):
                 usage_name = re.sub(r'[\s:;,+%&$@/]+', '', "{}-{}".format(priceitem.item_type, priceitem.key))
-                unit_name = "hour-of-%s" % usage_name
+                unit_name = UNIT_PREFIX + usage_name
                 usage = E.usage(
                     E.billingPeriod('MONTHLY'),
                     E.tiers(E.tier(E.blocks(E.tieredBlock(
@@ -266,11 +288,15 @@ class KillBill(object):
         def __repr__(self):
             return self.api_url + self.path
 
+        def _object_query(self, uuid, entity=None, method='GET', data=None, **kwargs):
+            return self.request(
+                '/'.join([self.path, uuid, entity or '']), method=method, data=data, **kwargs)
+
         def list(self, **kwargs):
             return self.request(self.path, method='GET', **kwargs)
 
         def get(self, uuid, entity=None, **kwargs):
-            return self.request('/'.join([self.path, uuid, entity or '']), method='GET', **kwargs)
+            return self._object_query(uuid, entity, **kwargs)
 
         def create(self, raw_data=None, **kwargs):
             data = raw_data or json.dumps(kwargs)

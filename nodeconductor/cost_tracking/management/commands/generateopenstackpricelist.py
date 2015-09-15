@@ -33,6 +33,23 @@ openstack_options = {
     ],
 }
 
+titles = {
+    CostConstants.PriceItem.FLAVOR: ("Flavor type", None),
+    CostConstants.PriceItem.LICENSE_APPLICATION: ("Application license", dict(CostConstants.Application.CHOICES)),
+    CostConstants.PriceItem.LICENSE_OS: ("OS license", dict(CostConstants.Os.CHOICES)),
+}
+
+item_names = {('storage', '1 GB'): "Storage"}
+
+for opt, (title, choices) in titles.items():
+    for val, _ in openstack_options[opt]:
+        item_names[(opt, val)] = "%s: %s" % (title, choices[val] if choices else val)
+
+opt = CostConstants.PriceItem.SUPPORT
+choices = dict(CostConstants.Support.CHOICES)
+for val, _ in openstack_options[opt]:
+    item_names[(opt, val)] = "%s support" % choices[val].title()
+
 
 class Command(BaseCommand):
 
@@ -47,7 +64,7 @@ class Command(BaseCommand):
                     key=key,             # e.g. 'g1.small1'
                     defaults=dict(
                         value=value,     # e.g. '1'
-                        units='',
+                        name=item_names[(category, key)],
                     )
                 )
         self.stdout.write('... Done')

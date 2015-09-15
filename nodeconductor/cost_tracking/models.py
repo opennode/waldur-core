@@ -74,7 +74,7 @@ class AbstractPriceListItem(models.Model):
         return '%0.2f' % (self.value * hours_in_month())
 
 
-class DefaultPriceListItem(core_models.UuidMixin, AbstractPriceListItem):
+class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, AbstractPriceListItem):
     """ Default price list item for all resources of supported service types """
     resource_content_type = models.ForeignKey(ContentType, default=None)
 
