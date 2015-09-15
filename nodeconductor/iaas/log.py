@@ -2,7 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 
 from nodeconductor.logging.log import EventLogger, event_logger
-from nodeconductor.logging.views import ExternalAlertFilterBackend, BaseExternalFilter
+from nodeconductor.logging.filters import ExternalAlertFilterBackend, BaseExternalFilter
 from nodeconductor.structure import models as structure_models
 
 

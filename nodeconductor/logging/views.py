@@ -1,63 +1,16 @@
 from __future__ import unicode_literals
 
-import re
-
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q, Count
-import django_filters
-from rest_framework import response, settings, viewsets, permissions, filters, status, decorators, mixins
-from rest_framework.serializers import ValidationError
+from django.db.models import Count
+from rest_framework import response, viewsets, permissions, status, decorators, mixins
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
-from nodeconductor.logging import elasticsearch_client, models, serializers, utils
-from nodeconductor.logging.log import event_logger
-
-
-def _convert(name):
-    """ Converts CamelCase to underscore """
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-
-class EventFilterBackend(filters.BaseFilterBackend):
-
-    def filter_queryset(self, request, queryset, view):
-        search_text = request.query_params.get(settings.api_settings.SEARCH_PARAM, '')
-        must_terms = {}
-        should_terms = {}
-        if 'event_type' in request.query_params:
-            must_terms['event_type'] = request.query_params.getlist('event_type')
-
-        if 'scope' in request.query_params:
-            field = core_serializers.GenericRelatedField(related_models=utils.get_loggable_models())
-            obj = field.to_internal_value(request.query_params['scope'])
-            must_terms[_convert(obj.__class__.__name__ + '_uuid')] = [obj.uuid.hex]
-        elif 'scope_type' in request.query_params:
-            choices = {_convert(m.__name__): m for m in utils.get_loggable_models()}
-            try:
-                scope_type = choices[request.query_params['scope_type']]
-            except KeyError:
-                raise ValidationError(
-                    'Scope type "{}" is not valid. Has to be one from list: {}'.format(
-                        request.query_params['scope_type'], ', '.join(choices.keys()))
-                )
-            else:
-                must_terms.update(scope_type.get_permitted_objects_uuids(request.user))
-        else:
-            should_terms.update(event_logger.get_permitted_objects_uuids(request.user))
-
-        queryset = queryset.filter(search_text=search_text, should_terms=should_terms, must_terms=must_terms)
-
-        order_by = request.query_params.get('o', '-@timestamp')
-        queryset = queryset.order_by(order_by)
-
-        return queryset
+from nodeconductor.logging import elasticsearch_client, models, serializers, filters
 
 
 class EventViewSet(viewsets.GenericViewSet):
 
-    filter_backends = (EventFilterBackend,)
+    filter_backends = (filters.EventFilterBackend,)
 
     def get_queryset(self):
         return elasticsearch_client.ElasticsearchResultList()
@@ -99,112 +52,6 @@ class EventViewSet(viewsets.GenericViewSet):
             status=status.HTTP_200_OK)
 
 
-class AlertFilter(django_filters.FilterSet):
-    """ Basic filters for alerts """
-
-    acknowledged = django_filters.BooleanFilter(name='acknowledged', distinct=True)
-    scope = core_filters.GenericKeyFilter(related_models=utils.get_loggable_models())
-    closed_from = core_filters.TimestampFilter(name='closed', lookup_type='gte')
-    closed_to = core_filters.TimestampFilter(name='closed', lookup_type='lt')
-    created_from = core_filters.TimestampFilter(name='created', lookup_type='gte')
-    created_to = core_filters.TimestampFilter(name='created', lookup_type='lt')
-
-    class Meta:
-        model = models.Alert
-        fields = [
-            'acknowledged',
-            'scope',
-            'closed_from',
-            'closed_to',
-            'created_from',
-            'created_to',
-        ]
-        order_by = [
-            'severity',
-            '-severity',
-        ]
-
-
-class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
-    """
-    Additional filters for alerts.
-
-    Support for filters that are related to more than one field or provides unusual query.
-    """
-
-    def filter_queryset(self, request, queryset, view):
-        mapped = {
-            'start': request.query_params.get('from'),
-            'end': request.query_params.get('to'),
-        }
-        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(
-            data={k: v for k, v in mapped.items() if v})
-        timestamp_interval_serializer.is_valid(raise_exception=True)
-        filter_data = timestamp_interval_serializer.get_filter_data()
-        if 'start' in filter_data:
-            queryset = queryset.filter(
-                Q(closed__gte=filter_data['start']) | Q(closed__isnull=True))
-        if 'end' in filter_data:
-            queryset = queryset.filter(created__lte=filter_data['end'])
-
-        if 'opened' in request.query_params:
-            queryset = queryset.filter(closed__isnull=True)
-
-        if 'severity' in request.query_params:
-            severity_codes = {v: k for k, v in models.Alert.SeverityChoices.CHOICES}
-            severities = [
-                severity_codes.get(severity_name) for severity_name in request.query_params.getlist('severity')]
-            queryset = queryset.filter(severity__in=severities)
-
-        # XXX: this filtering is fragile, need to be fixed in NC-774
-        if 'scope_type' in request.query_params:
-            choices = {_convert(m.__name__): m for m in utils.get_loggable_models()}
-            try:
-                scope_type = choices[request.query_params['scope_type']]
-            except KeyError:
-                raise ValidationError(
-                    'Scope type "{}" is not valid. Has to be one from list: {}'.format(
-                        request.query_params['scope_type'], ', '.join(choices.keys()))
-                )
-            else:
-                ct = ContentType.objects.get_for_model(scope_type)
-                queryset = queryset.filter(content_type=ct)
-
-        if 'alert_type' in request.query_params:
-            queryset = queryset.filter(alert_type__in=request.query_params.getlist('alert_type'))
-
-        return queryset
-
-
-class BaseExternalFilter(object):
-    """ Interface for external alert filter """
-    def filter(self, request, queryset, view):
-        raise NotImplementedError
-
-
-class ExternalAlertFilterBackend(filters.BaseFilterBackend):
-    """
-    Support external filters registered in other apps
-    """
-
-    @classmethod
-    def get_registered_filters(cls):
-        return getattr(cls, '_filters', [])
-
-    @classmethod
-    def register(cls, external_filter):
-        assert isinstance(external_filter, BaseExternalFilter), 'Registered filter has to inherit BaseExternalFilter'
-        if hasattr(cls, '_filters'):
-            cls._filters.append(external_filter)
-        else:
-            cls._filters = [external_filter]
-
-    def filter_queryset(self, request, queryset, view):
-        for filt in self.__class__.get_registered_filters():
-            queryset = filt.filter(request, queryset, view)
-        return queryset
-
-
 class AlertViewSet(mixins.CreateModelMixin,
                    viewsets.ReadOnlyModelViewSet):
 
@@ -212,11 +59,15 @@ class AlertViewSet(mixins.CreateModelMixin,
     serializer_class = serializers.AlertSerializer
     lookup_field = 'uuid'
     permission_classes = (permissions.IsAuthenticated,)
-    filter_backends = (filters.DjangoFilterBackend, AdditionalAlertFilterBackend, ExternalAlertFilterBackend)
-    filter_class = AlertFilter
+    filter_backends = (
+        core_filters.DjangoMappingFilterBackend,
+        filters.AdditionalAlertFilterBackend,
+        filters.ExternalAlertFilterBackend
+    )
+    filter_class = filters.AlertFilter
 
     def get_queryset(self):
-        return models.Alert.objects.filtered_for_user(self.request.user)
+        return models.Alert.objects.filtered_for_user(self.request.user).order_by('-created')
 
     @decorators.detail_route(methods=['post'])
     def close(self, request, *args, **kwargs):

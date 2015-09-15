@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import unittest
 import datetime
 
 from croniter import croniter
@@ -214,7 +213,7 @@ class BackupSchedulePermissionsTest(helpers.PermissionsTest):
         if method == 'GET':
             return [self.regular_user]
         else:
-            return [self.regular_user, self.project_group_manager, self.customer_owner]
+            return [self.project_group_manager, self.customer_owner]
 
     def get_urls_configs(self):
         yield {'url': _backup_schedule_url(self.schedule), 'method': 'GET'}

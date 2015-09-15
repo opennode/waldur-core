@@ -1,89 +1,29 @@
 from __future__ import unicode_literals
 
-from django.db.models import Q
-from django.contrib.contenttypes import models as ct_models
-import django_filters
 from django_fsm import TransitionNotAllowed
 
 from rest_framework import permissions as rf_permissions, status, viewsets, mixins
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied
+
+from nodeconductor.backup import models, serializers, filters
+from nodeconductor.backup.log import event_logger, extract_event_context
 from nodeconductor.backup.models import Backup
 from nodeconductor.core.filters import DjangoMappingFilterBackend
-
 from nodeconductor.core.permissions import has_user_permission_for_instance
-from nodeconductor.backup import models, serializers, utils
-from nodeconductor.backup.log import event_logger, extract_event_context
-from nodeconductor.structure import filters as structure_filters
-
-
-class BackupPermissionFilter():
-
-    def _get_user_visible_model_instances_ids(self, user, model):
-        queryset = structure_filters.filter_queryset_for_user(model.objects.all(), user)
-        return queryset.values_list('pk', flat=True)
-
-    def filter_queryset(self, request, queryset, view):
-        """
-        Filter backups with source to which user has view access
-        """
-        q_query = Q()
-        for strategy in utils.get_backup_strategies().values():
-            model = strategy.get_model()
-            model_content_type = ct_models.ContentType.objects.get_for_model(model)
-            instances_ids = self._get_user_visible_model_instances_ids(request.user, model)
-            q_query |= (Q(content_type=model_content_type) & Q(object_id__in=instances_ids))
-        return queryset.filter(q_query)
-
-
-class BackupSourceFilter(object):
-    def filter_queryset(self, request, queryset, view):
-        if 'backup_source' not in request.query_params:
-            return queryset
-        serializer = serializers.BackupSourceSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-        backup_source = serializer.validated_data['backup_source']
-        ct = ct_models.ContentType.objects.get_for_model(backup_source)
-        return queryset.filter(content_type=ct, object_id=backup_source.id)
-
-
-class BackupProjectFilter(object):
-    def filter_queryset(self, request, queryset, view):
-        project_uuid = request.query_params.get('project_uuid')
-
-        if not project_uuid:
-            return queryset
-
-        query = Q()
-        for strategy in utils.get_backup_strategies().values():
-            model = strategy.get_model()
-            content_type = ct_models.ContentType.objects.get_for_model(model)
-
-            key = model.Permissions.project_path + '__uuid'
-            ids = model.objects.filter(**{key: project_uuid}).values_list('pk', flat=True)
-            query |= Q(content_type=content_type, object_id__in=ids)
-        return queryset.filter(query)
-
-
-class BackupScheduleFilter(django_filters.FilterSet):
-    description = django_filters.CharFilter(
-        lookup_type='icontains',
-    )
-
-    class Meta(object):
-        model = models.BackupSchedule
-        fields = (
-            'description',
-        )
 
 
 class BackupScheduleViewSet(viewsets.ModelViewSet):
     queryset = models.BackupSchedule.objects.all()
     serializer_class = serializers.BackupScheduleSerializer
     lookup_field = 'uuid'
-    filter_backends = (BackupPermissionFilter, DjangoMappingFilterBackend)
-    filter_class = BackupScheduleFilter
+    filter_backends = (
+        filters.BackupPermissionFilterBackend,
+        filters.BackupSourceFilterBackend,
+        DjangoMappingFilterBackend,
+    )
+    filter_class = filters.BackupScheduleFilter
     permission_classes = (rf_permissions.IsAuthenticated,)
 
     def perform_create(self, serializer):
@@ -139,18 +79,6 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         return Response({'status': 'BackupSchedule was deactivated'})
 
 
-class BackupFilter(django_filters.FilterSet):
-    description = django_filters.CharFilter(
-        lookup_type='icontains',
-    )
-
-    class Meta(object):
-        model = models.Backup
-        fields = (
-            'description',
-        )
-
-
 class BackupViewSet(mixins.CreateModelMixin,
                     mixins.RetrieveModelMixin,
                     mixins.ListModelMixin,
@@ -159,12 +87,12 @@ class BackupViewSet(mixins.CreateModelMixin,
     serializer_class = serializers.BackupSerializer
     lookup_field = 'uuid'
     filter_backends = (
-        BackupPermissionFilter,
-        BackupSourceFilter,
-        BackupProjectFilter,
-        DjangoMappingFilterBackend
+        filters.BackupPermissionFilterBackend,
+        filters.BackupProjectFilterBackend,
+        filters.BackupSourceFilterBackend,
+        DjangoMappingFilterBackend,
     )
-    filter_class = BackupFilter
+    filter_class = filters.BackupFilter
     permission_classes = (rf_permissions.IsAuthenticated,)
 
     def perform_create(self, serializer):
