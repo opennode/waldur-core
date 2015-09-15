@@ -164,12 +164,12 @@ class KillBillAPI(object):
             invoice_number=raw_invoice['invoiceNumber'],
             currency=raw_invoice['currency'],
             amount=raw_invoice['amount'],
-            items=[]
+            items=[],
         )
 
         for item in raw_invoice['items']:
-            fields = self.get_subscription_fields(item['subscriptionId'])
             if item['amount']:
+                fields = self.get_subscription_fields(item['subscriptionId'])
                 invoice['items'].append(dict(
                     backend_id=item['invoiceItemId'],
                     name=item['usageName'] or item['description'],
