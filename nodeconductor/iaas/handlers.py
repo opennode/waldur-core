@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 from nodeconductor.core.serializers import UnboundSerializerMethodField
+from nodeconductor.core.tasks import send_task
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 
@@ -32,16 +33,15 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
     if not created:
         return
 
-    from nodeconductor.iaas.tasks.security_groups import create_security_group
     for group in instance.security_groups.model._get_default_security_groups():
         sg = instance.security_groups.create(
             name=group['name'],
             description=group['description'])
-        create_security_group.delay(sg.uuid.hex)
 
         for rule in group['rules']:
             sg.rules.create(**rule)
 
+        send_task('iaas', 'create_security_group')(sg.uuid.hex)
 
 def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwargs):
     from nodeconductor.backup.models import Backup
