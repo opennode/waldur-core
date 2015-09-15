@@ -78,22 +78,8 @@ class PriceListItemServiceFilterBackend(core_filters.GenericKeyFilterBackend):
         return 'service'
 
 
-# XXX: This filter can be moved to core and used in other applications
-class ResourceContentTypeFilter(django_filters.CharFilter):
-
-    def filter(self, qs, value):
-        if value:
-            try:
-                app_label, model = value.split('.')
-                ct = ContentType.objects.get(app_label=app_label, model=model)
-                return super(ResourceContentTypeFilter, self).filter(qs, ct)
-            except (ContentType.DoesNotExist, ValueError):
-                return qs.none()
-        return qs
-
-
 class DefaultPriceListItemFilter(django_filters.FilterSet):
-    resource_content_type = ResourceContentTypeFilter()
+    resource_content_type = core_filters.ContentTypeFilter()
 
     class Meta:
         model = models.DefaultPriceListItem

@@ -62,6 +62,7 @@ class AlertFilter(django_filters.FilterSet):
     closed_to = core_filters.TimestampFilter(name='closed', lookup_type='lt')
     created_from = core_filters.TimestampFilter(name='created', lookup_type='gte')
     created_to = core_filters.TimestampFilter(name='created', lookup_type='lt')
+    content_type = core_filters.ContentTypeFilter()
 
     class Meta:
         model = models.Alert
@@ -71,6 +72,7 @@ class AlertFilter(django_filters.FilterSet):
             'closed_to',
             'created_from',
             'created_to',
+            'content_type',
         ]
         order_by = [
             'severity',
@@ -120,7 +122,7 @@ class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
                 severity_codes.get(severity_name) for severity_name in request.query_params.getlist('severity')]
             queryset = queryset.filter(severity__in=severities)
 
-        # XXX: this filtering is fragile, need to be fixed in NC-774
+        # XXX: this filter is wrong and deprecated, need to be removed after replacement in Portal
         if 'scope_type' in request.query_params:
             choices = {_convert(m.__name__): m for m in utils.get_loggable_models()}
             try:

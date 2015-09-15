@@ -211,3 +211,16 @@ class StaffOrUserFilter(object):
         if request.user.is_staff:
             return queryset
         return queryset.filter(user=request.user)
+
+
+class ContentTypeFilter(django_filters.CharFilter):
+
+    def filter(self, qs, value):
+        if value:
+            try:
+                app_label, model = value.split('.')
+                ct = ContentType.objects.get(app_label=app_label, model=model)
+                return super(ContentTypeFilter, self).filter(qs, ct)
+            except (ContentType.DoesNotExist, ValueError):
+                return qs.none()
+        return qs
