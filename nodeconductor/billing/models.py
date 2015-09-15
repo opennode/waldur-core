@@ -58,9 +58,17 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
                 }
             ]
 
-    def generate_pdf(self):
+    def generate_pdf(self, resources_mapping=()):
         backend = self.get_billing_backend()
         invoice = backend.get_invoice(self.backend_id)
+
+        resources = {}
+        for item in invoice['items']:
+            resource = "{} ({})".format(
+                resources_mapping.get(item['subscription_id'], '-unknown-'),
+                item['subscription_id'])
+            resources.setdefault(resource, [])
+            resources[resource].append(item)
 
         # cleanup if pdf already existed
         if self.pdf is not None:
@@ -71,6 +79,7 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
             StringIO.StringIO(render_to_string('billing/invoice.html', {
                 'customer': self.customer,
                 'invoice': invoice,
+                'resources': resources,
             })), result)
 
         # generate a new file

@@ -146,15 +146,18 @@ class KillBillAPI(object):
         return [{'backend_id': invoice['invoiceId'],
                  'date': self._parse_date(invoice['invoiceDate']),
                  'amount': invoice['amount']}
-                for invoice in data]
+                for invoice in data if invoice['amount']]
 
     def get_invoice(self, invoice_id):
         invoice = self.invoices.get(invoice_id, withItems=True)
         return {'backend_id': invoice['invoiceId'],
                 'date': self._parse_date(invoice['invoiceDate']),
+                'currency': invoice['currency'],
                 'invoice_number': invoice['invoiceNumber'],
                 'items': [{'backend_id': item['invoiceItemId'],
                            'name': item['description'].replace(' (usage item)', ''),
+                           'subscription_id': item['subscriptionId'],
+                           'currency': item['currency'],
                            'amount': item['amount']}
                           for item in invoice['items']],
                 'amount': invoice['amount']}
@@ -234,7 +237,7 @@ class KillBillAPI(object):
                 E.changePolicy(E.changePolicyCase(E.policy('END_OF_TERM'))),
                 E.changeAlignment(E.changeAlignmentCase(E.alignment('START_OF_SUBSCRIPTION'))),
                 E.cancelPolicy(
-                    E.cancelPolicyCase(E.productCategory('STANDALONE'), E.policy('END_OF_TERM')),
+                    E.cancelPolicyCase(E.productCategory('STANDALONE'), E.policy('IMMEDIATE')),
                     E.cancelPolicyCase(E.policy('END_OF_TERM')),
                 ),
                 E.createAlignment(E.createAlignmentCase(E.alignment('START_OF_SUBSCRIPTION'))),

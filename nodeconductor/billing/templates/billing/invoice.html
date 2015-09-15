@@ -5,15 +5,21 @@
         <h2>Date: {{ invoice.date }}</h2>
         <hr/>
         <table border="0.1" cellpadding="5">
-            {% for item in invoice.items %}
+            {% for resource, items in resources.items %}
             <tr>
+                <td colspan="3"><h2>Resource: {{ resource }}</h2></td>
+            </tr>
+            {% for item in items %}
+            <tr>
+                <td width="20" align="right">{{ forloop.counter }}</td>
                 <td>{{ item.name }}</td>
-                <td>{{ item.amount }}</td>
+                <td width="100" align="right">{{ item.amount }} {{ item.currency }}</td>
             </tr>
             {% endfor %}
+            {% endfor %}
             <tr>
-                <th>Total</th>
-                <th>{{ invoice.amount }}</th>
+                <th align="right" colspan="2">Total:</th>
+                <th align="right">{{ invoice.amount }} {{ invoice.currency }}</th>
             </tr>
         </table>
     </body>

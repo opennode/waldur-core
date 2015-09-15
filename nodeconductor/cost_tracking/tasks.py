@@ -79,10 +79,10 @@ def update_today_usage():
     if not nc_settings.get('ENABLE_ORDER_PROCESSING'):
         return
 
-    for resource in Resource.get_all_models():
-        if issubclass(resource, PaidResource):
-            for r in resource.objects.all():
-                update_today_usage_of_resource.delay(r.to_string())
+    for model in Resource.get_all_models():
+        if issubclass(model, PaidResource):
+            for resource in model.objects.all():
+                update_today_usage_of_resource.delay(resource.to_string())
 
 
 @shared_task
