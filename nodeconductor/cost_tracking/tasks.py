@@ -100,6 +100,10 @@ def update_today_usage_of_resource(resource_str):
     usage = {}
     for key, val in usage_state.items():
         if val:
-            usage[units[key, None if key in numerical else val]] = val if key in numerical else 1
+            try:
+                unit = units[key, None if key in numerical else val]
+                usage[unit] = val if key in numerical else 1
+            except KeyError:
+                logger.error("Can't find price for usage item %s:%s", key, val)
 
     resource.order.add_usage(usage)

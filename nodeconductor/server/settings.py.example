@@ -199,7 +199,7 @@ NODECONDUCTOR['JIRA_SUPPORT'] = {
     'project': 'NST',
 }
 
-# Example of settings for billing using WHMMCS API.
+# Example of settings for billing using KillBill API.
 NODECONDUCTOR['BILLING'] = {
     'backend': 'nodeconductor.billing.backend.killbill.KillBillAPI',
     'api_url': 'http://killbill.example.com/1.0/kb/',
@@ -208,6 +208,12 @@ NODECONDUCTOR['BILLING'] = {
     'api_key': 'bob',
     'api_secret': 'lazar',
     'currency': 'USD',
+}
+NODECONDUCTOR['BILLING_INVOICE'] = {
+    'logo': 'logo.png',  # Full or relative path to logo for billing invoices
+    'company': 'OpenNode',
+    'bank': 'American Bank',
+    'account': '123456789',
 }
 
 """
