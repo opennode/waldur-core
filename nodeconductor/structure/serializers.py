@@ -715,7 +715,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state')
-        write_only_fields = ('backend_url', 'username', 'token')
+        write_only_fields = ('backend_url', 'username', 'token', 'password')
         related_paths = ('customer',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -729,24 +729,32 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         fields = super(ServiceSettingsSerializer, self).get_fields()
 
         if isinstance(self.instance, self.Meta.model):
-            if self.check_permission():
-                serializer = self.get_service_serializer()
-                filter_fields = serializer.SERVICE_ACCOUNT_FIELDS
-                if filter_fields is not NotImplemented:
-                    for field in ('backend_url', 'username', 'password', 'token'):
-                        if field in filter_fields:
-                            fields[field].help_text = filter_fields[field]
-                            fields[field].write_only = False
-                        else:
-                            del fields[field]
+            serializer = self.get_service_serializer()
 
-                extra_fields = serializer.SERVICE_ACCOUNT_EXTRA_FIELDS
-                if extra_fields is not NotImplemented:
-                    for field in extra_fields:
-                        fields[field] = serializers.CharField(required=False,
-                                                              source='options.' + field,
-                                                              allow_blank=True,
-                                                              help_text=extra_fields[field])
+            # Remove fields if they are not needed for service
+            filter_fields = serializer.SERVICE_ACCOUNT_FIELDS
+            if filter_fields is not NotImplemented:
+                for field in self.Meta.write_only_fields:
+                    if field in filter_fields:
+                        fields[field].help_text = filter_fields[field]
+                        fields[field].write_only = False
+                    else:
+                        del fields[field]
+
+            # Add extra fields stored in options dictionary
+            extra_fields = serializer.SERVICE_ACCOUNT_EXTRA_FIELDS
+            if extra_fields is not NotImplemented:
+                for field in extra_fields:
+                    fields[field] = serializers.CharField(required=False,
+                                                          source='options.' + field,
+                                                          allow_blank=True,
+                                                          help_text=extra_fields[field])
+
+            # Non-staff user is not allowed to read settings of shared service
+            if not self.check_permission():
+                for field in self.Meta.write_only_fields:
+                    if field in fields:
+                        del fields[field]
 
         if self.context['request'].method == 'GET':
             fields['type'] = serializers.ReadOnlyField(source='get_type_display')
@@ -754,11 +762,17 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         return fields
 
     def check_permission(self):
-        perm = 'structure.change_%s' % self.Meta.model._meta.model_name
         user = self.context['request'].user
+
+        # Non-staff user is not allowed to modify settings of shared service
+        if not user.is_staff and self.instance.shared:
+            return False
+
+        perm = 'structure.change_%s' % self.Meta.model._meta.model_name
         return user.has_perms([perm], self.instance)
 
     def get_service_serializer(self):
+        # Find service serializer by service type of settings object
         return next(cls for cls in BaseServiceSerializer.__subclasses__()
                         if cls.SERVICE_TYPE == self.instance.type)
 
