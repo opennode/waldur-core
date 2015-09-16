@@ -5,7 +5,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 from nodeconductor.core.serializers import UnboundSerializerMethodField
-from nodeconductor.core.tasks import send_task
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 
