@@ -40,7 +40,7 @@ class ServiceSettingsSignalsTest(TestCase):
         customer = factories.CustomerFactory()
 
         self.assertTrue(openstack_models.OpenStackService.objects.filter(
-            customer=customer, settings=self.openstack_shared_service_settings).exists())
+            customer=customer, settings=self.openstack_shared_service_settings, available_for_all=True).exists())
 
     def test_new_shared_services_connects_to_existed_customers(self):
         customer = factories.CustomerFactory()
@@ -48,7 +48,7 @@ class ServiceSettingsSignalsTest(TestCase):
             type=SupportedServices.Types.OpenStack, shared=True)
 
         self.assertTrue(openstack_models.OpenStackService.objects.filter(
-            customer=customer, settings=new_shared_service_settings).exists())
+            customer=customer, settings=new_shared_service_settings, available_for_all=True).exists())
 
 
 class ServiceProjectLinkSignalsTest(TestCase):
