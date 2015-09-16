@@ -189,6 +189,20 @@ class StructureConfig(AppConfig):
             )
 
             signals.post_save.connect(
+                handlers.change_customer_nc_resource_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.increase_customer_nc_resource_quota_{}_{}'.format(
+                    model.__name__, index),
+            )
+
+            signals.post_delete.connect(
+                handlers.change_customer_nc_resource_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.decrease_customer_nc_resource_quota_{}_{}'.format(
+                    model.__name__, index),
+            )
+
+            signals.post_save.connect(
                 handlers.log_resource_created,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.log_resource_created_{}_{}'.format(
@@ -221,6 +235,7 @@ class StructureConfig(AppConfig):
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_service_quota_%s' % model.__name__,
             )
+
 
         signals.pre_delete.connect(
             handlers.remove_stale_user_from_his_projects_services,
@@ -289,4 +304,18 @@ class StructureConfig(AppConfig):
                 dispatch_uid='nodeconductor.structure.handlers.'
                              'connect_service_{}_to_all_projects_if_it_is_available_for_all_{}'.format(
                                 service_model.__name__, index),
+            )
+
+            signals.post_save.connect(
+                handlers.change_customer_nc_service_quota,
+                sender=service_model,
+                dispatch_uid='nodeconductor.structure.handlers.increase_customer_nc_service_quota_{}_{}'.format(
+                                service_model.__name__, index),
+            )
+
+            signals.post_delete.connect(
+                handlers.change_customer_nc_service_quota,
+                sender=service_model,
+                dispatch_uid='nodeconductor.structure.handlers.decrease_customer_nc_service_quota_{}_{}'.format(
+                                service_model.__name__, index)
             )
