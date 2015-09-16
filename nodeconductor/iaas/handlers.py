@@ -41,7 +41,6 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
         for rule in group['rules']:
             sg.rules.create(**rule)
 
-        send_task('iaas', 'create_security_group')(sg.uuid.hex)
 
 def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwargs):
     from nodeconductor.backup.models import Backup
