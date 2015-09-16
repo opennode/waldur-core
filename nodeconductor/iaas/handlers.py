@@ -1,11 +1,18 @@
 from __future__ import unicode_literals
+import logging
 
 from django.apps import apps
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from nodeconductor.core.serializers import UnboundSerializerMethodField
+from nodeconductor.iaas.models import SecurityGroup, SecurityGroupRule
 from nodeconductor.structure.filters import filter_queryset_for_user
+
+
+logger = logging.getLogger(__name__)
 
 
 def filter_clouds(clouds, request):
@@ -32,13 +39,33 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
     if not created:
         return
 
-    for group in instance.security_groups.model._get_default_security_groups():
-        sg = instance.security_groups.create(
-            name=group['name'],
-            description=group['description'])
+    nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+    config_groups = nc_settings.get('DEFAULT_SECURITY_GROUPS', [])
 
-        for rule in group['rules']:
-            sg.rules.create(**rule)
+    for group in config_groups:
+        sg_name = group.get('name')
+
+        if sg_name in (None, ''):
+            logger.error('Skipping misconfigured security group: parameter "name" not found or is empty.')
+            continue
+
+        sg_description = group.get('description', None)
+        sg = SecurityGroup(cloud_project_membership=instance, name=sg_name, description=sg_description)
+
+        for rule in group.get('rules', ()):
+            if 'icmp_type' in rule:
+                rule['from_port'] = rule.pop('icmp_type')
+            if 'icmp_code' in rule:
+                rule['to_port'] = rule.pop('icmp_code')
+
+            try:
+                rule = SecurityGroupRule(group=sg, **rule)
+                rule.full_clean()
+            except ValidationError as e:
+                logger.error('Failed to create rule for security group %s: %s.' % (sg_name, e.message))
+            else:
+                sg.save()
+                rule.save()
 
 
 def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwargs):
