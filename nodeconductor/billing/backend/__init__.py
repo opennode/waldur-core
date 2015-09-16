@@ -83,14 +83,6 @@ class BillingBackend(object):
     def sync_invoices(self):
         client_id = self.get_or_create_client()
 
-        from nodeconductor.billing.models import PaidResource
-        from nodeconductor.structure.models import Resource
-
-        resources_mapping = {
-            resource.billing_backend_id: resource.name
-            for model in Resource.get_all_models() if issubclass(model, PaidResource)
-            for resource in model.objects.filter(customer=self.customer)}
-
         # Update or create invoices from backend
         cur_invoices = {i.backend_id: i for i in self.customer.invoices.all()}
         for invoice in self.api.get_invoices(client_id):
@@ -105,7 +97,7 @@ class BillingBackend(object):
                     date=invoice['date'],
                     amount=invoice['amount'])
 
-            cur_invoice.generate_pdf(resources_mapping)
+            cur_invoice.generate_pdf()
 
         # Remove stale invoices
         map(lambda i: i.delete(), cur_invoices.values())
