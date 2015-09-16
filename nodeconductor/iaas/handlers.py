@@ -44,15 +44,22 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
 
     for group in config_groups:
         sg_name = group.get('name')
-
         if sg_name in (None, ''):
             logger.error('Skipping misconfigured security group: parameter "name" not found or is empty.')
             continue
 
-        sg_description = group.get('description', None)
-        sg = SecurityGroup(cloud_project_membership=instance, name=sg_name, description=sg_description)
+        rules = group.get('rules')
+        if type(rules) not in (list, tuple):
+            logger.error('Skipping misconfigured security group: parameter "rules" should be list or tuple.')
+            continue
 
-        for rule in group.get('rules', ()):
+        sg_description = group.get('description', None)
+        sg = SecurityGroup.objects.get_or_create(
+            cloud_project_membership=instance,
+            description=sg_description,
+            name=sg_name)[0]
+
+        for rule in rules:
             if 'icmp_type' in rule:
                 rule['from_port'] = rule.pop('icmp_type')
             if 'icmp_code' in rule:
@@ -62,11 +69,9 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
                 rule = SecurityGroupRule(group=sg, **rule)
                 rule.full_clean()
             except ValidationError as e:
-                logger.error('Failed to create rule for security group %s: %s.' % (sg_name, e.message))
+                logger.error('Failed to create rule for security group %s: %s.' % (sg_name, e))
             else:
-                sg.save()
                 rule.save()
-
 
 def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwargs):
     from nodeconductor.backup.models import Backup
