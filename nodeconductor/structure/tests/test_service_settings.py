@@ -43,7 +43,6 @@ class ServiceSettingsTest(test.APITransactionTestCase):
 
         response = self.client.get(self._get_settings_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
-        self.assertNotIn('password', response.data[0], response.data)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['uuid'], self.settings['shared'].uuid.hex, response.data)
 
@@ -68,7 +67,6 @@ class ServiceSettingsTest(test.APITransactionTestCase):
 
         response = self.client.get(self._get_settings_url(self.settings['owned']))
         self.assertIsNotNone(response.data['backend_url'])
-        self.assertNotIn('password', response.data)
 
     def test_user_cant_see_others_settings_credentials(self):
         self.client.force_authenticate(user=self.users['not_owner'])
