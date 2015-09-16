@@ -10,6 +10,7 @@ from rest_framework.exceptions import PermissionDenied
 from nodeconductor.backup import models, serializers, filters
 from nodeconductor.backup.log import event_logger, extract_event_context
 from nodeconductor.backup.models import Backup
+from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.permissions import has_user_permission_for_instance
 
@@ -98,6 +99,19 @@ class BackupViewSet(mixins.CreateModelMixin,
     def perform_create(self, serializer):
         if not has_user_permission_for_instance(self.request.user, serializer.validated_data['backup_source']):
             raise PermissionDenied('You do not have permission to perform this action.')
+
+        # Check that backup source is in stable state.
+        backup_source = serializer.validated_data.get('backup_source')
+        backupable_states = (
+            backup_source.States.ERRED,
+            backup_source.States.OFFLINE,
+            backup_source.States.ONLINE,
+        )
+        state = getattr(backup_source, 'state')
+
+        if state not in backupable_states:
+            raise IncorrectStateException('Backup source should be in stable state.')
+
         backup = serializer.save()
         backup.start_backup()
 

@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
+import logging
 import pytz
 
 from croniter.croniter import croniter
@@ -18,6 +19,8 @@ from nodeconductor.core import fields as core_fields
 from nodeconductor.backup import managers, exceptions, utils
 from nodeconductor.logging.log import LoggableMixin
 
+
+logger = logging.getLogger(__name__)
 
 class BackupSourceAbstractModel(models.Model):
     """
@@ -63,10 +66,29 @@ class BackupSchedule(core_models.UuidMixin,
         base_time = datetime.now(pytz.timezone(self.timezone))
         self.next_trigger_at = croniter(self.schedule, base_time).get_next(datetime)
 
+    def _check_backup_source_state(self):
+        """
+        Backup source should be stable state.
+        """
+        state = self.backup_source.state
+        backupable_states = (
+            self.backup_source.States.ONLINE,
+            self.backup_source.States.OFFLINE,
+            self.backup_source.States.ERRED
+        )
+        if state not in backupable_states:
+            logger.warning('Cannot execute backup schedule for %s in state %s.' % (self.backup_source, state))
+            return False
+
+        return True
+
     def _create_backup(self):
         """
         Creates new backup based on schedule and starts backup process
         """
+        if not self._check_backup_source_state():
+            return
+
         kept_until = django_timezone.now() + timedelta(days=self.retention_time) if self.retention_time else None
         backup = Backup.objects.create(
             backup_schedule=self,
