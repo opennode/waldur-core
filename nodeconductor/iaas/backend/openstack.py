@@ -654,17 +654,11 @@ class OpenStackBackend(OpenStackClient):
 
         # updating unsynchronized security groups
         for nc_group in unsynchronized_groups:
-            try:
-                self.update_security_group(nc_group, nova=nova)
-            except CloudBackendError, e:
-                pass
+            send_task('iaas', 'update_security_group')(nc_group.uuid.hex)
 
         # creating nonexistent and unsynchronized security groups
         for nc_group in nonexistent_groups:
-            try:
-                self.create_security_group(nc_group, nova=nova)
-            except CloudBackendError, e:
-                pass
+            send_task('iaas', 'create_security_group')(nc_group.uuid.hex)
 
     def create_security_group(self, security_group, nova):
         logger.debug('About to create security group %s in backend', security_group.uuid)
