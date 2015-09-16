@@ -710,8 +710,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         fields = (
             'url', 'uuid', 'name', 'type', 'state', 'shared',
             'backend_url', 'username', 'password', 'token',
-            'customer', 'customer_name', 'customer_native_name',
-            'dummy'
+            'customer', 'customer_name', 'customer_native_name', 'dummy'
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state')
