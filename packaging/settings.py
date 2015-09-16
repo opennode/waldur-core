@@ -34,6 +34,10 @@ config_defaults = {
         'api_key': '',
         'api_secret': '',
         'currency': 'USD',
+        'logo': '',
+        'company': '',
+        'bank': '',
+        'account': '',
     },
     'celery': {
         'backup_schedule_execute_period': 600,
@@ -794,6 +798,12 @@ NODECONDUCTOR.update({
         'api_key': config.get('billing', 'api_key'),
         'api_secret': config.get('billing', 'api_secret'),
         'currency': config.get('billing', 'currency'),
+    },
+    'BILLING_INVOICE': {
+        'logo': config.get('billing', 'logo'),
+        'company': config.get('billing', 'company'),
+        'bank': config.get('billing', 'bank'),
+        'account': config.get('billing', 'account'),
     },
     'ELASTICSEARCH': {
         'username': config.get('elasticsearch', 'username'),
