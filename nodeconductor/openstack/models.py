@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
@@ -6,7 +7,7 @@ from model_utils import FieldTracker
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
 from nodeconductor.quotas.models import QuotaModelMixin
-from nodeconductor.iaas.models import PaidInstance, InitialSecurityGroup
+from nodeconductor.iaas.models import PaidInstance
 from nodeconductor.logging.log import LoggableMixin
 
 
@@ -71,8 +72,7 @@ class Image(structure_models.ServiceProperty):
 class SecurityGroup(core_models.UuidMixin,
                     core_models.NameMixin,
                     core_models.DescribableMixin,
-                    core_models.SynchronizableMixin,
-                    InitialSecurityGroup):
+                    core_models.SynchronizableMixin):
 
     class Permissions(object):
         customer_path = 'service_project_link__project__customer'
@@ -107,6 +107,34 @@ class SecurityGroupRule(models.Model):
     cidr = models.CharField(max_length=32, blank=True)
 
     backend_id = models.CharField(max_length=128, blank=True)
+
+    def validate_icmp(self):
+        if self.from_port is not None and not -1 <= self.from_port <= 255:
+            raise ValidationError('Wrong value for "from_port": '
+                                  'expected value in range [-1, 255], found %d' % self.from_port)
+        if self.to_port is not None and not -1 <= self.to_port <= 255:
+            raise ValidationError('Wrong value for "to_port": '
+                                  'expected value in range [-1, 255], found %d' % self.to_port)
+
+    def validate_port(self):
+        if self.from_port is not None and self.to_port is not None:
+            if self.from_port > self.to_port:
+                raise ValidationError('"from_port" should be less or equal to "to_port"')
+        if self.from_port is not None and self.from_port < 1:
+            raise ValidationError('Wrong value for "from_port": '
+                                  'expected value in range [1, 65535], found %d' % self.from_port)
+        if self.to_port is not None and self.to_port < 1:
+            raise ValidationError('Wrong value for "to_port": '
+                                  'expected value in range [1, 65535], found %d' % self.to_port)
+
+    def clean(self):
+        if self.protocol == 'icmp':
+            self.validate_icmp()
+        elif self.protocol in ('tcp', 'udp'):
+            self.validate_port()
+        else:
+            raise ValidationError('Wrong value for "protocol": '
+                                  'expected one of (tcp, udp, icmp), found %s' % self.protocol)
 
     def __str__(self):
         return '%s (%s): %s (%s -> %s)' % \
