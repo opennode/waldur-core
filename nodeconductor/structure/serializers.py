@@ -715,6 +715,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state')
+        write_only_fields = ('backend_url', 'username', 'token')
         related_paths = ('customer',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -726,37 +727,40 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
 
     def get_fields(self):
         fields = super(ServiceSettingsSerializer, self).get_fields()
-        request = self.context['request']
 
         if isinstance(self.instance, self.Meta.model):
-            perm = 'structure.change_%s' % self.Meta.model._meta.model_name
-            if request.user.has_perms([perm], self.instance):
-                for field in 'backend_url', 'username', 'token':
-                    fields[field].write_only = False
+            if self.check_permission():
+                serializer = self.get_service_serializer()
+                filter_fields = serializer.SERVICE_ACCOUNT_FIELDS
+                if filter_fields is not NotImplemented:
+                    for field in ('backend_url', 'username', 'password', 'token'):
+                        if field in filter_fields:
+                            fields[field].help_text = filter_fields[field]
+                            fields[field].write_only = False
+                        else:
+                            del fields[field]
 
-            serializer = next(cls for cls in BaseServiceSerializer.__subclasses__()
-                                  if cls.SERVICE_TYPE == self.instance.type)
+                extra_fields = serializer.SERVICE_ACCOUNT_EXTRA_FIELDS
+                if extra_fields is not NotImplemented:
+                    for field in extra_fields:
+                        fields[field] = serializers.CharField(required=False,
+                                                              source='options.' + field,
+                                                              allow_blank=True,
+                                                              help_text=extra_fields[field])
 
-            filter_fields = serializer.SERVICE_ACCOUNT_FIELDS
-            if filter_fields is not NotImplemented:
-                for field in ('backend_url', 'username', 'password', 'token'):
-                    if field in filter_fields:
-                        fields[field].help_text = filter_fields[field]
-                    else:
-                        del fields[field]
-
-            extra_fields = serializer.SERVICE_ACCOUNT_EXTRA_FIELDS
-            if extra_fields is not NotImplemented:
-                for field in extra_fields:
-                    fields[field] = serializers.CharField(required=False,
-                                                          source='options.' + field,
-                                                          allow_blank=True,
-                                                          help_text=extra_fields[field])
-
-        if request.method == 'GET':
+        if self.context['request'].method == 'GET':
             fields['type'] = serializers.ReadOnlyField(source='get_type_display')
 
         return fields
+
+    def check_permission(self):
+        perm = 'structure.change_%s' % self.Meta.model._meta.model_name
+        user = self.context['request'].user
+        return user.has_perms([perm], self.instance)
+
+    def get_service_serializer(self):
+        return next(cls for cls in BaseServiceSerializer.__subclasses__()
+                        if cls.SERVICE_TYPE == self.instance.type)
 
 
 class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
