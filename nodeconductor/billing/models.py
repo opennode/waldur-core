@@ -1,9 +1,11 @@
+import os
 import logging
 import functools
 import StringIO
 import xhtml2pdf.pisa as pisa
 
 from django.db import models
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
 from django.utils.encoding import python_2_unicode_compatible
@@ -70,19 +72,27 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
         for item in invoice['items']:
             price_item = pricelist.get(item['name'])
             if price_item:
+                usage = int(item['amount'] / float(price_item.value))
+                unit = 'GB/hour' if price_item.item_type == 'storage' else 'hour' + (
+                    's' if usage > 1 else '')
+
                 item['name'] = price_item.name
-                item['usage'] = "{} x {:.2f} {}".format(
-                    int(item['amount'] / float(price_item.value)),
-                    price_item.value,
-                    item['currency'])
+                item['usage'] = "{} {} x {:.2f} {}".format(
+                    usage, unit, price_item.value, item['currency'])
 
             resource = item['resource']
-            resources.setdefault(resource, [])
-            resources[resource].append(item)
+            resources.setdefault(resource, {'items': [], 'amount': 0})
+            resources[resource]['amount'] += item['amount']
+            resources[resource]['items'].append(item)
 
         # cleanup if pdf already existed
         if self.pdf is not None:
             self.pdf.delete()
+
+        info = settings.NODECONDUCTOR.get('BILLING_INVOICE', {})
+        logo = info.get('logo', None)
+        if logo and not logo.startswith('/'):
+            logo = os.path.join(settings.BASE_DIR, logo)
 
         result = StringIO.StringIO()
         pdf = pisa.pisaDocument(
@@ -90,6 +100,8 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
                 'customer': self.customer,
                 'invoice': invoice,
                 'resources': resources,
+                'logo': logo,
+                'info': info,
             })), result)
 
         # generate a new file

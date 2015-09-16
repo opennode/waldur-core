@@ -1,30 +1,56 @@
+{% load staticfiles %}
 <html>
-    <head></head>
+    <head>
+        <style type="text/css">
+        body {font-size: 18px}
+        </style>
+    </head>
     <body>
-        <h1>
-            Invoice #{{ invoice.invoice_number }} for the period starting
-            from {{ invoice.start_date|date:"d/m/Y" }} to {{ invoice.end_date|date:"d/m/Y" }}
-        </h1>
-        <h2>Customer: {{ customer.name }}</h2>
-        <h2>Date: {{ invoice.date }}</h2>
-        <hr/>
-        <table border="0.1" cellpadding="5">
-            {% for resource, items in resources.items %}
+        <table cellpadding="0" cellspacing="0">
+        <tr>
+            <td>
+                <h1>
+                    Invoice #{{ invoice.invoice_number }}<br>
+                    <small>Invoice date: {{ invoice.date }}</small><br>
+                    <small>Invoice due: {{ invoice.due_date }}</small>
+                </h1>
+                <h3>Services consumed from {{ invoice.start_date }} till {{ invoice.end_date }}<br>Customer: {{ customer.name }}</h3>
+            </td>
+            <td align="right" valign="top" width="150"><img src="{{ logo }}"></td>
+        </tr>
+        </table>
+        <br>
+        <table cellpadding="0">
+            {% for resource, data in resources.items %}
             <tr>
-                <td colspan="3"><h2>Resource: {{ resource }}</h2></td>
+                <td><h2>{{ resource }}</h2></td>
+                <td width="150" align="right"><h2>{{ data.amount|floatformat:2 }} {{ invoice.currency }}</h2></td>
             </tr>
-            {% for item in items %}
             <tr>
-                <td width="20" align="right">{{ forloop.counter }}</td>
-                <td>{{ item.name }}<br>{{ item.usage }}</td>
-                <td width="100" align="right">{{ item.amount|floatformat:2 }} {{ item.currency }}</td>
+                <td colspan="2">
+                <table cellpadding="5">
+                {% for item in data.items %}
+                <tr>
+                    <td width="20" align="right">{{ forloop.counter }}</td>
+                    <td>{{ item.name }} {{ item.usage }}</td>
+                    <td width="150" align="right">{{ item.amount|floatformat:2 }} {{ item.currency }}</td>
+                </tr>
+                {% endfor %}
+                </table>
+            </td>
             </tr>
+            <tr><td colspan="2"><br></td></tr>
             {% endfor %}
-            {% endfor %}
-            <tr>
-                <th align="right" colspan="2">Total:</th>
-                <th align="right">{{ invoice.amount|floatformat:2 }} {{ invoice.currency }}</th>
+            <tr><td colspan="2" style="padding: 10px 0"><hr></td></tr>
+            <tr style="font-size:24px">
+                <th align="right" colspan="2">Total: {{ invoice.amount|floatformat:2 }} {{ invoice.currency }}</th>
             </tr>
         </table>
+        <div style="margin-top: 100px">
+            <span style="font-size:20px;font-weight:bold">Please submit payment to:</span><br>
+            Company name: {{ info.company }}<br>
+            Bank: {{ info.bank }}<br>
+            Bank account: {{ info.account }}<br>
+        </div>
     </body>
 </html>
