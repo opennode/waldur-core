@@ -4,11 +4,11 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError
 
-from nodeconductor.core.tasks import send_task
 from nodeconductor.openstack.models import SecurityGroup, SecurityGroupRule
 
 
 logger = logging.getLogger(__name__)
+
 
 def set_spl_default_availability_zone(sender, instance=None, **kwargs):
     if not instance.availability_zone:
@@ -26,27 +26,33 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
 
     for group in config_groups:
         sg_name = group.get('name')
-
         if sg_name in (None, ''):
             logger.error('Skipping misconfigured security group: parameter "name" not found or is empty.')
             continue
 
-        sg_description = group.get('description', None)
-        sg = SecurityGroup(service_project_link=instance, name=sg_name, description=sg_description)
+        rules = group.get('rules')
+        if type(rules) not in (list, tuple):
+            logger.error('Skipping misconfigured security group: parameter "rules" should be list or tuple.')
+            continue
 
-        for rule in group.get('rules', ()):
+        sg_description = group.get('description', None)
+        sg = SecurityGroup.objects.get_or_create(
+            service_project_link=instance,
+            description=sg_description,
+            name=sg_name)[0]
+
+        for rule in rules:
             if 'icmp_type' in rule:
                 rule['from_port'] = rule.pop('icmp_type')
             if 'icmp_code' in rule:
                 rule['to_port'] = rule.pop('icmp_code')
 
             try:
-                rule = SecurityGroupRule(group=sg, **rule)
+                rule = SecurityGroupRule(security_group=sg, **rule)
                 rule.full_clean()
             except ValidationError as e:
-                logger.error('Failed to create rule for security group %s: %s.' % (sg_name, e.message))
+                logger.error('Failed to create rule for security group %s: %s.' % (sg_name, e))
             else:
-                sg.save()
                 rule.save()
 
 
