@@ -715,6 +715,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state')
+        write_only_fields = ('backend_url', 'username', 'token', 'password')
         related_paths = ('customer',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -726,12 +727,11 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
 
     def get_fields(self):
         fields = super(ServiceSettingsSerializer, self).get_fields()
-        credentials = ('backend_url', 'username', 'token', 'password')
 
         if isinstance(self.instance, self.Meta.model):
             if self.check_permission():
                 # If user can change settings he should be able to see value
-                for field in credentials:
+                for field in self.Meta.write_only_fields:
                     fields[field].write_only = False
 
                 serializer = self.get_service_serializer()
@@ -739,7 +739,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
                 # Remove fields if they are not needed for service
                 filter_fields = serializer.SERVICE_ACCOUNT_FIELDS
                 if filter_fields is not NotImplemented:
-                    for field in credentials:
+                    for field in self.Meta.write_only_fields:
                         if field in filter_fields:
                             fields[field].help_text = filter_fields[field]
                         elif field in fields:
@@ -754,7 +754,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
                                                               allow_blank=True,
                                                               help_text=extra_fields[field])
             else:
-                for field in credentials:
+                for field in self.Meta.write_only_fields:
                     del fields[field]
 
         if self.context['request'].method == 'GET':
