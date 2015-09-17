@@ -255,7 +255,7 @@ class SecurityGroupSerializer(core_serializers.AugmentedSerializerMixin,
 
     def validate_rules(self, value):
         for rule in value:
-            rule.full_clean(exclude=['service_project_link'])
+            rule.full_clean(exclude=['security_group'])
             if rule.id is not None and self.instance is None:
                 raise serializers.ValidationError('Cannot add existed rule with id %s to new security group' % rule.id)
             elif rule.id is not None and self.instance is not None and rule.security_group != self.instance:
