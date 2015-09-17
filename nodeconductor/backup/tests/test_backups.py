@@ -7,6 +7,7 @@ from rest_framework import test
 from nodeconductor.backup import models
 from nodeconductor.backup.tests import factories
 from nodeconductor.core.tests import helpers
+from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tests import factories as iaas_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
@@ -33,7 +34,7 @@ class BackupUsageTest(test.APITransactionTestCase):
 
     def test_backup_manually_create(self):
         # success:
-        backupable = iaas_factories.InstanceFactory()
+        backupable = iaas_factories.InstanceFactory(state=Instance.States.OFFLINE)
         backup_data = {
             'backup_source': iaas_factories.InstanceFactory.get_url(backupable),
         }
@@ -50,6 +51,16 @@ class BackupUsageTest(test.APITransactionTestCase):
         response = self.client.post(url, data=backup_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('backup_source', response.content)
+
+    def test_user_cannot_backup_unstable_instance(self):
+        backupable = iaas_factories.InstanceFactory(state=Instance.States.RESIZING)
+        backup_data = {
+            'backup_source': iaas_factories.InstanceFactory.get_url(backupable),
+        }
+        url = _backup_list_url()
+        response = self.client.post(url, data=backup_data)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['detail'], 'Backup source should be in stable state.')
 
     def test_backup_restore(self):
         backup = factories.BackupFactory()
