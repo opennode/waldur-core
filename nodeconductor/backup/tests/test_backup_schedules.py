@@ -13,6 +13,7 @@ from rest_framework import test
 from nodeconductor.backup import models
 from nodeconductor.backup.tests import factories
 from nodeconductor.core.tests import helpers
+from nodeconductor.iaas.models import Instance
 from nodeconductor.iaas.tests import factories as iaas_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
@@ -153,6 +154,12 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
         schedule = factories.BackupScheduleFactory(is_active=False)
         response = self.client.post(_backup_schedule_url(schedule, action='deactivate'))
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_backup_schedule_for_unstable_source_should_not_start(self):
+        backupable = iaas_factories.InstanceFactory(state=Instance.States.ERRED)
+        schedule = factories.BackupScheduleFactory(backup_source=backupable)
+        self.assertEqual(schedule._check_backup_source_state(), False)
+        self.assertEqual(schedule._create_backup(), None)
 
 
 class BackupScheduleListPermissionsTest(helpers.ListPermissionsTest):
