@@ -2,12 +2,12 @@ Billing integration
 -------------------
 
 NodeConductor can integrate with billing systems and expose typical features via REST API and admin interface.
-At the moment, only KillBill_ is supported as a backend.
+At the moment, only KillBill_ is supported as a backend. The following features are available:
 
-- pushing chargeback information from the services for invoice generation (based on resource and license consumption).
+- Pushing chargeback information from the services for invoice generation (based on resource and license consumption).
   Usages of resources is accounted on an hourly basis.
-- getting invoice data from the backend (including generated PDFs).
-- getting pricelists for products configured in the billing system. Monthly prices are assumed to be configured in KillBill.
+- Getting invoice data from the backend.
+- Propagating pricelists to the backend.
 
 
 .. _KillBill: https://killbill.io/
@@ -22,7 +22,7 @@ To setup a KillBill integration, add a billing block of configuration as shown i
 
 .. code-block:: python
 
-    # Example of settings for billing using WHMMCS API.
+    # Example of settings for billing using KillBill API.
     NODECONDUCTOR['BILLING'] = {
         # billing driver
         'backend': 'nodeconductor.billing.backend.killbill.KillBillAPI',
@@ -36,18 +36,6 @@ To setup a KillBill integration, add a billing block of configuration as shown i
         'api_secret': 'lazar',
         # extra options
         'currency': 'USD',
-        # OpenStack service specific checks
-        'openstack': {
-            'invoice_meters': {
-                # billing meter name: (resource name, pricelist name, unit)
-                'cpu': ('CPU', 'cpu', 'hours'),
-                'memory': ('Memory', 'ram_gb', 'GB/h'),
-                'disk': ('Storage', 'storage_gb', 'GB/h'),
-                'servers': ('Servers', 'server_num', ''),
-                # license type: (display name, pricelist name, unit)
-                'license_type': ('Sample license title', 'license_type', 'hours')
-            }
-        }
     }
 
 Synchronisation with product prices of KillBill
