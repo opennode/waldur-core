@@ -359,12 +359,6 @@ change_customer_nc_service_quota = quotas_handlers.quantity_quota_handler_factor
 )
 
 
-change_customer_nc_resource_quota = quotas_handlers.quantity_quota_handler_factory(
-    path_to_quota_scope='customer',
-    quota_name='nc_resource_count',
-)
-
-
 change_project_nc_resource_quota = quotas_handlers.quantity_quota_handler_factory(
     path_to_quota_scope='service_project_link.project',
     quota_name='nc_resource_count',
