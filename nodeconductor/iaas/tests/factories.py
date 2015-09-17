@@ -114,8 +114,8 @@ class SecurityGroupRuleFactory(factory.DjangoModelFactory):
 
     group = factory.SubFactory(SecurityGroupFactory)
     protocol = models.SecurityGroupRule.tcp
-    from_port = factory.fuzzy.FuzzyInteger(1, 65535)
-    to_port = factory.fuzzy.FuzzyInteger(1, 65535)
+    from_port = factory.fuzzy.FuzzyInteger(1, 30000)
+    to_port = factory.fuzzy.FuzzyInteger(30000, 65535)
     cidr = factory.LazyAttribute(lambda o: '.'.join('%s' % randint(1, 255) for i in range(4)) + '/24')
 
 
