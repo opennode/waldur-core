@@ -507,7 +507,7 @@ class SecurityGroup(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class SecurityGroupRule(models.Model):
+class SecurityGroupRule(core_models.SecurityGroupRuleValidationMixin, models.Model):
 
     tcp = 'tcp'
     udp = 'udp'
@@ -528,34 +528,6 @@ class SecurityGroupRule(models.Model):
 
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=128, blank=True)
-
-    def validate_icmp(self):
-        if self.from_port is not None and not -1 <= self.from_port <= 255:
-            raise ValidationError('Wrong value for "from_port": '
-                                  'expected value in range [-1, 255], found %d' % self.from_port)
-        if self.to_port is not None and not -1 <= self.to_port <= 255:
-            raise ValidationError('Wrong value for "to_port": '
-                                  'expected value in range [-1, 255], found %d' % self.to_port)
-
-    def validate_port(self):
-        if self.from_port is not None and self.to_port is not None:
-            if self.from_port > self.to_port:
-                raise ValidationError('"from_port" should be less or equal to "to_port"')
-        if self.from_port is not None and self.from_port < 1:
-            raise ValidationError('Wrong value for "from_port": '
-                                  'expected value in range [1, 65535], found %d' % self.from_port)
-        if self.to_port is not None and self.to_port < 1:
-            raise ValidationError('Wrong value for "to_port": '
-                                  'expected value in range [1, 65535], found %d' % self.to_port)
-
-    def clean(self):
-        if self.protocol == 'icmp':
-            self.validate_icmp()
-        elif self.protocol in ('tcp', 'udp'):
-            self.validate_port()
-        else:
-            raise ValidationError('Wrong value for "protocol": '
-                                  'expected one of (tcp, udp, icmp), found %s' % self.protocol)
 
     def __str__(self):
         return '%s (%s): %s (%s -> %s)' % \
