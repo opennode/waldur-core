@@ -31,22 +31,22 @@ def zabbix_task(task_fn):
     return wrapped
 
 
-@zabbix_task
 @shared_task
+@zabbix_task
 def zabbix_create_host_and_service(instance_uuid, warn_if_exists=True):
     instance = Instance.objects.get(uuid=instance_uuid)
     monitoring_utils.create_host_and_service(instance, warn_if_exists=warn_if_exists)
 
 
-@zabbix_task
 @shared_task
+@zabbix_task
 def zabbix_create_host_and_service_for_all_instances():
     for instance in Instance.objects.exclude(backend_id=''):
         zabbix_create_host_and_service.delay(instance.uuid.hex, warn_if_exists=False)
 
 
-@zabbix_task
 @shared_task
+@zabbix_task
 def zabbix_update_host_visible_name(instance_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)
     try:

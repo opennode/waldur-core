@@ -44,6 +44,7 @@ from nodeconductor.structure.models import ProjectRole, Project, Customer, Proje
 
 
 logger = logging.getLogger(__name__)
+ZABBIX_ENABLED = getattr(django_settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
 
 
 def schedule_transition():
@@ -466,8 +467,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
     @detail_route()
     def usage(self, request, uuid):
         # XXX: hook. Should be removed after zabbix refactoring
-        zabbix_enabled = getattr(django_settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
-        if not zabbix_enabled:
+        if not ZABBIX_ENABLED:
             raise Http404()
 
         instance = self.get_object()
@@ -502,8 +502,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         Find max or min utilization of cpu, memory and storage of the instance within timeframe.
         """
         # XXX: hook. Should be removed after zabbix refactoring
-        zabbix_enabled = getattr(django_settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
-        if not zabbix_enabled:
+        if not ZABBIX_ENABLED:
             raise Http404()
 
         instance = self.get_object()
@@ -940,8 +939,7 @@ class UsageStatsView(views.APIView):
 
     def get(self, request, format=None):
         # XXX: hook. Should be removed after zabbix refactoring
-        zabbix_enabled = getattr(django_settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
-        if not zabbix_enabled:
+        if not ZABBIX_ENABLED:
             raise Http404()
 
         usage_stats = []
