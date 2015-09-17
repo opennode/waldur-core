@@ -727,9 +727,11 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
 
     def get_fields(self):
         fields = super(ServiceSettingsSerializer, self).get_fields()
+        request = self.context['request']
 
         if isinstance(self.instance, self.Meta.model):
-            if self.check_permission():
+            perm = 'structure.change_%s' % self.Meta.model._meta.model_name
+            if request.user.has_perms([perm], self.instance):
                 # If user can change settings he should be able to see value
                 for field in self.Meta.write_only_fields:
                     fields[field].write_only = False
@@ -753,24 +755,11 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
                                                               source='options.' + field,
                                                               allow_blank=True,
                                                               help_text=extra_fields[field])
-            else:
-                for field in self.Meta.write_only_fields:
-                    del fields[field]
 
-        if self.context['request'].method == 'GET':
+        if request.method == 'GET':
             fields['type'] = serializers.ReadOnlyField(source='get_type_display')
 
         return fields
-
-    def check_permission(self):
-        user = self.context['request'].user
-
-        # Non-staff user is not allowed to modify settings of shared service
-        if not user.is_staff and self.instance.shared:
-            return False
-
-        perm = 'structure.change_%s' % self.Meta.model._meta.model_name
-        return user.has_perms([perm], self.instance)
 
     def get_service_serializer(self):
         # Find service serializer by service type of settings object
