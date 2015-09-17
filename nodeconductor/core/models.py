@@ -280,36 +280,3 @@ class SerializableAbstractMixin(object):
         for obj in objects:
             model, pk = cls.parse_model_string(obj)
             yield model._default_manager.get(pk=pk)
-
-
-class SecurityGroupRuleValidationMixin(object):
-    """
-    Mixin for security group rule validation.
-    """
-    def validate_icmp(self):
-        if self.from_port is not None and not -1 <= self.from_port <= 255:
-            raise ValidationError('Wrong value for "from_port": '
-                                  'expected value in range [-1, 255], found %d' % self.from_port)
-        if self.to_port is not None and not -1 <= self.to_port <= 255:
-            raise ValidationError('Wrong value for "to_port": '
-                                  'expected value in range [-1, 255], found %d' % self.to_port)
-
-    def validate_port(self):
-        if self.from_port is not None and self.to_port is not None:
-            if self.from_port > self.to_port:
-                raise ValidationError('"from_port" should be less or equal to "to_port"')
-        if self.from_port is not None and self.from_port < 1:
-            raise ValidationError('Wrong value for "from_port": '
-                                  'expected value in range [1, 65535], found %d' % self.from_port)
-        if self.to_port is not None and self.to_port < 1:
-            raise ValidationError('Wrong value for "to_port": '
-                                  'expected value in range [1, 65535], found %d' % self.to_port)
-
-    def clean(self):
-        if self.protocol == 'icmp':
-            self.validate_icmp()
-        elif self.protocol in ('tcp', 'udp'):
-            self.validate_port()
-        else:
-            raise ValidationError('Wrong value for "protocol": '
-                                  'expected one of (tcp, udp, icmp), found %s' % self.protocol)
