@@ -574,7 +574,7 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         service.delete()
         self.assertEqual(self.customer.quotas.get(name='nc_service_count').usage, 0)
 
-    def test_customer_services_quota_does_not_depend_on_service_project_link(self):
+    def test_customer_and_project_service_project_link_quota_updated(self):
         from nodeconductor.iaas.tests import factories as iaas_factories
         cloud = iaas_factories.CloudFactory(customer=self.customer)
 
@@ -584,8 +584,10 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         project2 = factories.ProjectFactory(customer=self.customer)
         cpm2 = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project2)
 
-        self.assertEqual(project1.quotas.get(name='nc_service_count').usage, 1)
-        self.assertEqual(project2.quotas.get(name='nc_service_count').usage, 1)
+        self.assertEqual(project1.quotas.get(name='nc_service_project_link_count').usage, 1)
+        self.assertEqual(project2.quotas.get(name='nc_service_project_link_count').usage, 1)
+
+        self.assertEqual(self.customer.quotas.get(name='nc_service_project_link_count').usage, 2)
         self.assertEqual(self.customer.quotas.get(name='nc_service_count').usage, 1)
 
     # XXX: this test should be rewritten after instances will become part of general services

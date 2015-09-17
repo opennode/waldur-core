@@ -15,6 +15,7 @@ class IaasConfig(AppConfig):
     # See, https://docs.djangoproject.com/en/1.7/ref/applications/#django.apps.AppConfig.ready
     def ready(self):
         Instance = self.get_model('Instance')
+        Cloud = self.get_model('Cloud')
         CloudProjectMembership = self.get_model('CloudProjectMembership')
 
         from nodeconductor.iaas import handlers
@@ -81,4 +82,16 @@ class IaasConfig(AppConfig):
             handlers.decrease_quotas_usage_on_instances_deletion,
             sender=Instance,
             dispatch_uid='nodeconductor.iaas.handlers.decrease_quotas_usage_on_instances_deletion',
+        )
+
+        signals.post_save.connect(
+            handlers.change_customer_nc_service_quota,
+            sender=Cloud,
+            dispatch_uid='nodeconductor.iaas.handlers.increase_customer_nc_service_quota'
+        )
+
+        signals.post_delete.connect(
+            handlers.change_customer_nc_service_quota,
+            sender=Cloud,
+            dispatch_uid='nodeconductor.iaas.handlers.decrease_customer_nc_service_quota'
         )

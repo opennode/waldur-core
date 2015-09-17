@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 from nodeconductor.core.serializers import UnboundSerializerMethodField
+from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.filters import filter_queryset_for_user
 
 
@@ -89,3 +90,9 @@ def decrease_quotas_usage_on_instances_deletion(sender, instance=None, **kwargs)
     instance.service_project_link.add_quota_usage('ram', -instance.ram)
     instance.service_project_link.add_quota_usage(
         'storage', -(instance.system_volume_size + instance.data_volume_size))
+
+
+change_customer_nc_service_quota = quotas_handlers.quantity_quota_handler_factory(
+    path_to_quota_scope='customer',
+    quota_name='nc_service_count',
+)
