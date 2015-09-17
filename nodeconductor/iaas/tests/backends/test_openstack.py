@@ -259,30 +259,6 @@ class OpenStackBackendSecurityGroupsTest(TransactionTestCase):
         self.backend.delete_security_group = mock.Mock()
         self.backend.push_security_group_rules = mock.Mock()
 
-    def test_push_security_groups_creates_nonexisting_groups(self):
-        group1 = factories.SecurityGroupFactory(
-            cloud_project_membership=self.membership, state=SynchronizationStates.IN_SYNC)
-        group2 = factories.SecurityGroupFactory(
-            cloud_project_membership=self.membership, state=SynchronizationStates.IN_SYNC)
-        self.nova_client.security_groups.list = mock.Mock(return_value=[])
-        # when
-        self.backend.push_security_groups(self.membership)
-        # then
-        self.backend.create_security_group.assert_any_call(group1, nova=self.nova_client)
-        self.backend.create_security_group.assert_any_call(group2, nova=self.nova_client)
-
-    def test_push_security_groups_updates_unsynchronized_groups(self):
-        group1 = factories.SecurityGroupFactory(
-            cloud_project_membership=self.membership, backend_id=1, state=SynchronizationStates.IN_SYNC)
-        group2 = mock.Mock()
-        group2.name = 'group2'
-        group2.id = 1
-        self.nova_client.security_groups.list = mock.Mock(return_value=[group2])
-        # when
-        self.backend.push_security_groups(self.membership)
-        # then
-        self.backend.update_security_group.assert_any_call(group1, nova=self.nova_client)
-
     def test_push_security_groups_deletes_nonexisting_groups(self):
         group1 = mock.Mock()
         group1.name = 'group1'
