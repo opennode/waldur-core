@@ -732,13 +732,39 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         if isinstance(self.instance, self.Meta.model):
             perm = 'structure.change_%s' % self.Meta.model._meta.model_name
             if request.user.has_perms([perm], self.instance):
-                for field in 'backend_url', 'username', 'token':
+                # If user can change settings he should be able to see value
+                for field in self.Meta.write_only_fields:
                     fields[field].write_only = False
+
+                serializer = self.get_service_serializer()
+
+                # Remove fields if they are not needed for service
+                filter_fields = serializer.SERVICE_ACCOUNT_FIELDS
+                if filter_fields is not NotImplemented:
+                    for field in self.Meta.write_only_fields:
+                        if field in filter_fields:
+                            fields[field].help_text = filter_fields[field]
+                        elif field in fields:
+                            del fields[field]
+
+                # Add extra fields stored in options dictionary
+                extra_fields = serializer.SERVICE_ACCOUNT_EXTRA_FIELDS
+                if extra_fields is not NotImplemented:
+                    for field in extra_fields:
+                        fields[field] = serializers.CharField(required=False,
+                                                              source='options.' + field,
+                                                              allow_blank=True,
+                                                              help_text=extra_fields[field])
 
         if request.method == 'GET':
             fields['type'] = serializers.ReadOnlyField(source='get_type_display')
 
         return fields
+
+    def get_service_serializer(self):
+        # Find service serializer by service type of settings object
+        return next(cls for cls in BaseServiceSerializer.__subclasses__()
+                        if cls.SERVICE_TYPE == self.instance.type)
 
 
 class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
