@@ -34,7 +34,7 @@ class BackupUsageTest(test.APITransactionTestCase):
 
     def test_backup_manually_create(self):
         # success:
-        backupable = iaas_factories.InstanceFactory()
+        backupable = iaas_factories.InstanceFactory(state=Instance.States.OFFLINE)
         backup_data = {
             'backup_source': iaas_factories.InstanceFactory.get_url(backupable),
         }
