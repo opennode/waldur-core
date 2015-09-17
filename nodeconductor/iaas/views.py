@@ -465,6 +465,11 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     @detail_route()
     def usage(self, request, uuid):
+        # XXX: hook. Should be removed after zabbix refactoring
+        zabbix_enabled = getattr(django_settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
+        if not zabbix_enabled:
+            raise Http404()
+
         instance = self.get_object()
 
         if not instance.backend_id or instance.state in (models.Instance.States.PROVISIONING_SCHEDULED,
@@ -496,6 +501,11 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         """
         Find max or min utilization of cpu, memory and storage of the instance within timeframe.
         """
+        # XXX: hook. Should be removed after zabbix refactoring
+        zabbix_enabled = getattr(django_settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
+        if not zabbix_enabled:
+            raise Http404()
+
         instance = self.get_object()
         if not instance.backend_id:
             return Response({'detail': 'calculated usage is not available for instance without backend_id'},
@@ -929,6 +939,11 @@ class UsageStatsView(views.APIView):
         return {path: obj}
 
     def get(self, request, format=None):
+        # XXX: hook. Should be removed after zabbix refactoring
+        zabbix_enabled = getattr(django_settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
+        if not zabbix_enabled:
+            raise Http404()
+
         usage_stats = []
 
         aggregate_model_name = request.query_params.get('aggregate', 'customer')

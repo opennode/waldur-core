@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
+import functools
 import logging
 
 from celery import shared_task
+from django.conf import settings
 
 from nodeconductor.core.tasks import retry_if_false
 from nodeconductor.iaas.models import Instance
@@ -17,18 +19,33 @@ from nodeconductor.monitoring import utils as monitoring_utils
 logger = logging.getLogger(__name__)
 
 
+def zabbix_task(task_fn):
+    """ Decorator that executes task only if zabbix is enabled """
+    zabbix_enabled = getattr(settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
+
+    @functools.wraps(task_fn)
+    def wrapped(*args, **kwargs):
+        if zabbix_enabled:
+            return task_fn(*args, **kwargs)
+
+    return wrapped
+
+
+@zabbix_task
 @shared_task
 def zabbix_create_host_and_service(instance_uuid, warn_if_exists=True):
     instance = Instance.objects.get(uuid=instance_uuid)
     monitoring_utils.create_host_and_service(instance, warn_if_exists=warn_if_exists)
 
 
+@zabbix_task
 @shared_task
 def zabbix_create_host_and_service_for_all_instances():
     for instance in Instance.objects.exclude(backend_id=''):
         zabbix_create_host_and_service.delay(instance.uuid.hex, warn_if_exists=False)
 
 
+@zabbix_task
 @shared_task
 def zabbix_update_host_visible_name(instance_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)
@@ -49,6 +66,7 @@ def _get_installation_state(instance):
 # Or we simply return zabbix status or we handle its status changes.
 
 @shared_task
+@zabbix_task
 def pull_instance_installation_state(instance_uuid):
     """ Pull state for one instance """
     instance = Instance.objects.get(uuid=instance_uuid)
@@ -74,6 +92,7 @@ def pull_instance_installation_state(instance_uuid):
 
 
 @shared_task
+@zabbix_task
 def pull_instances_installation_state():
     """ Pull state for all stable instances """
     instances = Instance.objects.filter(
@@ -89,6 +108,7 @@ def pull_instances_installation_state():
 
 @shared_task(max_retries=60, default_retry_delay=60)
 @retry_if_false
+@zabbix_task
 def poll_instance_installation_state(instance_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)
     instance.installation_state = _get_installation_state(instance)
@@ -106,6 +126,7 @@ def poll_instance_installation_state(instance_uuid):
 
 
 @shared_task
+@zabbix_task
 def installation_state_pull_failed(instance_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)
     instance.installation_state = 'FAIL'
