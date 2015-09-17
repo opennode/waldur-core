@@ -102,14 +102,9 @@ class BackupViewSet(mixins.CreateModelMixin,
 
         # Check that backup source is in stable state.
         backup_source = serializer.validated_data.get('backup_source')
-        backupable_states = (
-            backup_source.States.ERRED,
-            backup_source.States.OFFLINE,
-            backup_source.States.ONLINE,
-        )
         state = getattr(backup_source, 'state')
 
-        if state not in backupable_states:
+        if state not in backup_source.States.STABLE_STATES:
             raise IncorrectStateException('Backup source should be in stable state.')
 
         backup = serializer.save()

@@ -71,12 +71,7 @@ class BackupSchedule(core_models.UuidMixin,
         Backup source should be stable state.
         """
         state = self.backup_source.state
-        backupable_states = (
-            self.backup_source.States.ONLINE,
-            self.backup_source.States.OFFLINE,
-            self.backup_source.States.ERRED
-        )
-        if state not in backupable_states:
+        if state not in self.backup_source.States.STABLE_STATES:
             logger.warning('Cannot execute backup schedule for %s in state %s.' % (self.backup_source, state))
             return False
 
