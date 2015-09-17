@@ -2,11 +2,13 @@ from django.db import models
 
 
 class StructureQueryset(models.QuerySet):
-    """ Provides additional filtering by customer (based on permission definition).
+    """ Provides additional filtering by customer or project (based on permission definition).
 
         Example:
 
             .. code-block:: python
+
+                Instance.objects.filter(project=12)
 
                 Droplet.objects.filter(
                     customer__name__startswith='A',
@@ -46,31 +48,32 @@ class StructureQueryset(models.QuerySet):
             base_field = field.split('__')[0]
             if base_field in fields:
                 args.update(**{field: val})
-            elif base_field == 'customer':
-                args.update(self._filter_by_customer(field, val))
+            elif base_field in ('customer', 'project'):
+                args.update(self._filter_by_permission_fields(base_field, field, val))
             else:
                 args.update(**{field: val})
 
         return args
 
-    def _filter_by_customer(self, field, customer):
-        # handle 'customer' custom field
-        # look for customer field path in Permissions class, fallback to FieldError if it's missed
+    def _filter_by_permission_fields(self, name, field, value):
+        # handle fields connected via permissions relations
         extra = '__'.join(field.split('__')[1:]) if '__' in field else None
         try:
-            customer_path = self.model.Permissions.customer_path
+            # look for the target field path in Permissions class,
+            path = getattr(self.model.Permissions, '%s_path' % name)
         except AttributeError:
-            return {field: customer}
+            # fallback to FieldError if it's missed
+            return {field: value}
         else:
-            if customer_path == 'self':
+            if path == 'self':
                 if extra:
-                    return {extra: customer}
+                    return {extra: value}
                 else:
-                    return {'pk': customer.pk if isinstance(customer, models.Model) else customer}
+                    return {'pk': value.pk if isinstance(value, models.Model) else value}
             else:
                 if extra:
-                    customer_path += '__' + extra
-                return {customer_path: customer}
+                    path += '__' + extra
+                return {path: value}
 
 
 StructureManager = models.Manager.from_queryset(StructureQueryset)
