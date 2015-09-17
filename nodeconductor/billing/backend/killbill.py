@@ -9,6 +9,7 @@ from lxml import etree
 
 from django.contrib.contenttypes.models import ContentType
 
+from nodeconductor.core.utils import hours_in_month
 from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.billing.backend import BillingBackendError, NotFoundBillingBackendError
 from nodeconductor import __version__
@@ -159,8 +160,9 @@ class KillBillAPI(object):
         invoice = dict(
             backend_id=raw_invoice['invoiceId'],
             date=self._parse_date(raw_invoice['invoiceDate']),
+            due_date=target_date + timedelta(hours=hours_in_month()),
             end_date=target_date,
-            start_date=target_date - timedelta(days=30),
+            start_date=target_date - timedelta(hours=hours_in_month()),
             invoice_number=raw_invoice['invoiceNumber'],
             currency=raw_invoice['currency'],
             amount=raw_invoice['amount'],

@@ -1,8 +1,9 @@
-from django.shortcuts import redirect
 from django.conf.urls import patterns, url
-from django.core.urlresolvers import reverse
 from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
+from django.core.urlresolvers import reverse
+from django.shortcuts import redirect
+from django.utils.translation import ungettext
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.cost_tracking import models
@@ -45,7 +46,11 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         return super(DefaultPriceListItemAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_urls(self):
-        my_urls = patterns('', url(r'^sync/$', self.admin_site.admin_view(self.sync)))
+        my_urls = patterns(
+            '', 
+            url(r'^sync/$', self.admin_site.admin_view(self.sync)),
+            url(r'^create_for_flavors/$', self.admin_site.admin_view(self.create_for_flavors)),
+        )
         return my_urls + super(DefaultPriceListItemAdmin, self).get_urls()
 
     def sync(self, request):
@@ -53,6 +58,30 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         self.message_user(request, "Pricelists scheduled for sync")
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
+    def create_for_flavors(self, request):
+        # XXX: this import creates circular dependency between iaas and cost_tracking applications:
+        from nodeconductor.iaas.models import Instance, Flavor
+        instance_content_type = ContentType.objects.get_for_model(Instance)
+        executed_flavors = []
+        for flavor in Flavor.objects.all():
+            lookup_kwargs = {'item_type': 'flavor', 'key': flavor.name, 'resource_content_type': instance_content_type}
+            if not models.DefaultPriceListItem.objects.filter(**lookup_kwargs).exists():
+                item = models.DefaultPriceListItem(**lookup_kwargs)
+                item.name = 'Flavor type: {}'.format(flavor.name)
+                item.save()
+                executed_flavors.append(flavor)
+
+        if executed_flavors:
+            message = ungettext(
+                'Price item were created for flavor: {}'.format(executed_flavors[0].name),
+                'Price items were created for flavors: {}'.format(', '.join(f.name for f in executed_flavors)),
+                len(executed_flavors)
+            )
+            self.message_user(request, message)
+        else:
+            self.message_user(request, "Price items exist for all flavors")
+
+        return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
 admin.site.register(models.PriceListItem, PriceListItemAdmin)
 admin.site.register(models.DefaultPriceListItem, DefaultPriceListItemAdmin)

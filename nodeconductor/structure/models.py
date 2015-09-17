@@ -41,7 +41,7 @@ class StructureModel(models.Model):
 
     def __getattr__(self, name):
         # add additional properties to the object according to defined Permissions class
-        fields = ('customer',)
+        fields = ('customer', 'project')
         if name in fields:
             try:
                 path = getattr(self.Permissions, name + '_path')

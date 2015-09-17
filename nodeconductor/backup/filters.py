@@ -39,10 +39,7 @@ class BackupProjectFilterBackend(object):
         for strategy in utils.get_backup_strategies().values():
             model = strategy.get_model()
             content_type = ct_models.ContentType.objects.get_for_model(model)
-
-            # TODO: Move this logic to structure manager after issue NC-794 implementation
-            key = model.Permissions.project_path + '__uuid'
-            ids = model.objects.filter(**{key: project_uuid}).values_list('pk', flat=True)
+            ids = model.objects.filter(project__uuid=project_uuid).values_list('pk', flat=True)
             query |= Q(content_type=content_type, object_id__in=ids)
         return queryset.filter(query)
 

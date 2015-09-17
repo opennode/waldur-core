@@ -83,18 +83,30 @@ class SecurityGroupCreateTest(test.APITransactionTestCase):
 
     def test_security_group_raises_validation_error_on_wrong_membership_in_request(self):
         del self.valid_data['cloud_project_membership']['url']
-
-        self.client.force_authenticate(self.admin)
-        response = self.client.post(self.url, data=self.valid_data)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(models.SecurityGroup.objects.filter(name=self.valid_data['name']).exists())
+        self._ensure_validation_error_is_raised(self.valid_data)
 
     def test_security_group_raises_validation_error_if_rule_port_is_invalid(self):
         self.valid_data['rules'][0]['to_port'] = 80000
+        self._ensure_validation_error_is_raised(self.valid_data)
 
+    def test_security_group_raises_validation_error_if_protocol_is_invalid(self):
+        self.valid_data['rules'][0]['protocol'] = 'ip'
+        self._ensure_validation_error_is_raised(self.valid_data)
+
+    def test_security_group_raises_validation_error_if_rule_icmp_port_is_invalid(self):
+        self.valid_data['rules'][0]['protocol'] = 'icmp'
+        self.valid_data['rules'][0]['from_port'] = 300
+        self._ensure_validation_error_is_raised(self.valid_data)
+
+    def test_security_group_raises_validation_error_if_rule_to_port_is_less_than_from_port(self):
+        self.valid_data['rules'][0]['from_port'] = 30
+        self.valid_data['rules'][0]['to_port'] = 20
+        self._ensure_validation_error_is_raised(self.valid_data)
+
+    # Helper methods
+    def _ensure_validation_error_is_raised(self, data):
         self.client.force_authenticate(self.admin)
-        response = self.client.post(self.url, data=self.valid_data)
+        response = self.client.post(self.url, data=data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(models.SecurityGroup.objects.filter(name=self.valid_data['name']).exists())

@@ -30,6 +30,7 @@ class EventFilterBackend(filters.BaseFilterBackend):
 
         if 'scope' in request.query_params:
             field = core_serializers.GenericRelatedField(related_models=utils.get_loggable_models())
+            field._context = {'request': request}
             obj = field.to_internal_value(request.query_params['scope'])
             must_terms[_convert(obj.__class__.__name__ + '_uuid')] = [obj.uuid.hex]
         elif 'scope_type' in request.query_params:

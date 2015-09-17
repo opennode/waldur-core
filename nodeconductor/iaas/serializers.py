@@ -280,6 +280,7 @@ class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
 
     def validate_rules(self, value):
         for rule in value:
+            rule.full_clean(exclude=['group'])
             if rule.id is not None and self.instance is None:
                 raise serializers.ValidationError('Cannot add existed rule with id %s to new security group' % rule.id)
             elif rule.id is not None and self.instance is not None and rule.group != self.instance:
