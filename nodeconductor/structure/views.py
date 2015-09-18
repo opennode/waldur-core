@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from django import http
 from django.conf import settings as django_settings
 from django.contrib import auth
+from django.contrib.contenttypes.models import ContentType
 from django.db import connection, transaction, IntegrityError
 from django.db.models import Q, Sum
 from django.template.loader import render_to_string
@@ -37,6 +38,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.utils import request_api
+from nodeconductor.logging.filters import ExternalAlertFilterBackend, BaseExternalFilter
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
@@ -1611,3 +1613,28 @@ class ServicePropertySettingsFilter(BaseServicePropertyFilter):
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = BaseServicePropertyFilter
+
+
+class AggregateFilter(BaseExternalFilter):
+    """
+    Filter by services, projects, service project links and resources
+    """
+
+    def filter(self, request, queryset, view):
+        # Don't apply filter if aggregate is not specified
+        if 'aggregate' not in request.query_params:
+            return queryset
+
+        aggregate_serializer = serializers.AggregateSerializer(data=request.query_params)
+        aggregate_serializer.is_valid(raise_exception=True)
+
+        related_objects = aggregate_serializer.get_related_objects(request.user)
+        aggregate_query = Q()
+        for objects in related_objects:
+          content_type = ContentType.objects.get_for_model(objects.model)
+          ids = objects.values_list('id', flat=True)
+          aggregate_query |= Q(content_type=content_type, object_id__in=ids)
+
+        return queryset.filter(aggregate_query)
+
+ExternalAlertFilterBackend.register(AggregateFilter())
