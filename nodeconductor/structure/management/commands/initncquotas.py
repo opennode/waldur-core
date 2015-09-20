@@ -33,15 +33,15 @@ class Command(BaseCommand):
         self.stdout.write('... Done')
 
     def init_service_count_quota(self):
-        self.stdout.write('Drop current nc_service_count quotas values ...')
+        self.stdout.write('Drop current nc_service_project_link_count quotas values ...')
         project_ct = ContentType.objects.get_for_model(models.Project)
         quotas_models.Quota.objects.filter(
-            name='nc_service_count', content_type=project_ct).update(usage=0)
+            name='nc_service_project_link_count', content_type=project_ct).update(usage=0)
         self.stdout.write('... Done')
 
-        self.stdout.write('Calculating new nc_service_count quotas values ...')
+        self.stdout.write('Calculating new nc_service_project_link_count quotas values ...')
         links_models = [m for m in django_models.get_models() if issubclass(m, models.ServiceProjectLink)]
         for model in links_models:
             for link in model.objects.all():
-                link.project.add_quota_usage('nc_service_count', 1)
+                link.project.add_quota_usage('nc_service_project_link_count', 1)
         self.stdout.write('... Done')

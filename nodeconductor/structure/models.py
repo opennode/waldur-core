@@ -77,7 +77,13 @@ class Customer(core_models.UuidMixin,
     billing_backend_id = models.CharField(max_length=255, blank=True)
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
 
-    QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count', 'nc_service_count']
+    QUOTAS_NAMES = [
+        'nc_project_count',
+        'nc_resource_count',
+        'nc_user_count',
+        'nc_service_project_link_count',
+        'nc_service_count'
+    ]
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_customer_count'
 
     def get_billing_backend(self):
@@ -251,7 +257,7 @@ class Project(core_models.DescribableMixin,
         project_path = 'self'
         project_group_path = 'project_groups'
 
-    QUOTAS_NAMES = ['nc_resource_count', 'nc_service_count']
+    QUOTAS_NAMES = ['nc_resource_count', 'nc_service_project_link_count']
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_project_count'
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)

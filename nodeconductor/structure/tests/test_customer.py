@@ -563,6 +563,33 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         project.delete()
         self.assertEqual(self.customer.quotas.get(name='nc_project_count').usage, 0)
 
+    def test_customer_services_quota_increases_on_service_creation(self):
+        from nodeconductor.iaas.tests import factories as iaas_factories
+        service = iaas_factories.CloudFactory(customer=self.customer)
+        self.assertEqual(self.customer.quotas.get(name='nc_service_count').usage, 1)
+
+    def test_customer_services_quota_decreases_on_service_deletion(self):
+        from nodeconductor.iaas.tests import factories as iaas_factories
+        service = iaas_factories.CloudFactory(customer=self.customer)
+        service.delete()
+        self.assertEqual(self.customer.quotas.get(name='nc_service_count').usage, 0)
+
+    def test_customer_and_project_service_project_link_quota_updated(self):
+        from nodeconductor.iaas.tests import factories as iaas_factories
+        cloud = iaas_factories.CloudFactory(customer=self.customer)
+
+        project1 = factories.ProjectFactory(customer=self.customer)
+        cpm1 = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project1)
+
+        project2 = factories.ProjectFactory(customer=self.customer)
+        cpm2 = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project2)
+
+        self.assertEqual(project1.quotas.get(name='nc_service_project_link_count').usage, 1)
+        self.assertEqual(project2.quotas.get(name='nc_service_project_link_count').usage, 1)
+
+        self.assertEqual(self.customer.quotas.get(name='nc_service_project_link_count').usage, 2)
+        self.assertEqual(self.customer.quotas.get(name='nc_service_count').usage, 1)
+
     # XXX: this test should be rewritten after instances will become part of general services
     def test_customer_instances_quota_increases_on_instance_creation(self):
         from nodeconductor.iaas.tests import factories as iaas_factories
