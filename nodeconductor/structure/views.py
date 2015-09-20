@@ -1438,10 +1438,6 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = BaseServiceProjectLinkFilter
 
-    def perform_create(self, serializer):
-        instance = serializer.save()
-        send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
-
 
 class BaseResourceFilter(django_filters.FilterSet):
     project_uuid = django_filters.CharFilter(name='service_project_link__project__uuid')
