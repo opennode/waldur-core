@@ -44,6 +44,7 @@ from nodeconductor.structure.models import ProjectRole, Project, Customer, Proje
 
 
 logger = logging.getLogger(__name__)
+ZABBIX_ENABLED = getattr(django_settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
 
 
 def schedule_transition():
@@ -465,6 +466,10 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     @detail_route()
     def usage(self, request, uuid):
+        # XXX: hook. Should be removed after zabbix refactoring
+        if not ZABBIX_ENABLED:
+            raise Http404()
+
         instance = self.get_object()
 
         if not instance.backend_id or instance.state in (models.Instance.States.PROVISIONING_SCHEDULED,
@@ -496,6 +501,10 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         """
         Find max or min utilization of cpu, memory and storage of the instance within timeframe.
         """
+        # XXX: hook. Should be removed after zabbix refactoring
+        if not ZABBIX_ENABLED:
+            raise Http404()
+
         instance = self.get_object()
         if not instance.backend_id:
             return Response({'detail': 'calculated usage is not available for instance without backend_id'},
@@ -929,6 +938,10 @@ class UsageStatsView(views.APIView):
         return {path: obj}
 
     def get(self, request, format=None):
+        # XXX: hook. Should be removed after zabbix refactoring
+        if not ZABBIX_ENABLED:
+            raise Http404()
+
         usage_stats = []
 
         aggregate_model_name = request.query_params.get('aggregate', 'customer')
