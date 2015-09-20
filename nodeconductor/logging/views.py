@@ -62,7 +62,8 @@ class AlertViewSet(mixins.CreateModelMixin,
     filter_backends = (
         core_filters.DjangoMappingFilterBackend,
         filters.AdditionalAlertFilterBackend,
-        filters.ExternalAlertFilterBackend
+        filters.ExternalAlertFilterBackend,
+        filters.AlertScopeFilterBackend,
     )
     filter_class = filters.AlertFilter
 
