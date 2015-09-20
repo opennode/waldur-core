@@ -110,9 +110,9 @@ class SuspendServiceTest(test.APITransactionTestCase):
                     class Meta(object):
                         model = resource_model
 
-                spl = ServiceProjectLinkFactory(
-                    service=service,
-                    project=factories.ProjectFactory(customer=self.customer))
+                project = factories.ProjectFactory(customer=self.customer)
+                spl = models['service_project_link'].objects.get(service=service, project=project)
+
                 resource = ResourceFactory(service_project_link=spl)
                 resource_url = self._get_url(
                     SupportedServices.get_detail_view_for_model(resource_model), uuid=resource.uuid.hex)
