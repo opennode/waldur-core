@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 
-from nodeconductor.cost_tracking.models import DefaultPriceListItem
+from nodeconductor.cost_tracking.models import DefaultPriceListItem, ApplicationType
 from nodeconductor.cost_tracking import CostConstants
 from nodeconductor.iaas.models import Instance
 
@@ -23,7 +23,7 @@ openstack_options = {
         ('1 GB', 1),
     ],
     CostConstants.PriceItem.LICENSE_APPLICATION: [
-        (name, idx) for idx, name in enumerate(dict(CostConstants.Application.CHOICES).keys(), start=1)
+        (name, idx) for idx, name in enumerate([at.name for at in ApplicationType.objects.all()], start=1)
     ],
     CostConstants.PriceItem.LICENSE_OS: [
         (name, idx) for idx, name in enumerate(dict(CostConstants.Os.CHOICES).keys(), start=1)
@@ -35,7 +35,8 @@ openstack_options = {
 
 titles = {
     CostConstants.PriceItem.FLAVOR: ("Flavor type", None),
-    CostConstants.PriceItem.LICENSE_APPLICATION: ("Application license", dict(CostConstants.Application.CHOICES)),
+    CostConstants.PriceItem.LICENSE_APPLICATION: (
+        "Application license", {at.name: at.name for at in ApplicationType.objects.all()}),
     CostConstants.PriceItem.LICENSE_OS: ("OS license", dict(CostConstants.Os.CHOICES)),
 }
 

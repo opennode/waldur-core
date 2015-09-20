@@ -4,6 +4,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
 from jsonfield import JSONField
 from model_utils import FieldTracker
@@ -94,3 +95,12 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
 
     class Meta:
         unique_together = ('key', 'content_type', 'object_id')
+
+
+# XXX: this model has to be moved to separate module that will connect OpenStack instances and cost tracking
+@python_2_unicode_compatible
+class ApplicationType(core_models.NameMixin, models.Model):
+    EMPTY = 'none'
+
+    def __str__(self):
+        return self.name

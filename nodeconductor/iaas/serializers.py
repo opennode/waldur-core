@@ -14,6 +14,7 @@ from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core import models as core_models, serializers as core_serializers
 from nodeconductor.core.fields import MappedChoiceField, TimestampField
 from nodeconductor.core.utils import timeshift, datetime_to_timestamp
+from nodeconductor.cost_tracking import models as cost_tracking_models
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
@@ -805,6 +806,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 
     template_licenses = TemplateLicenseSerializer(many=True)
     images = serializers.SerializerMethodField()
+    application_type = serializers.SerializerMethodField()
 
     class Meta(object):
         view_name = 'iaastemplate-detail'
@@ -823,6 +825,10 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
             'template_licenses': {'lookup_field': 'uuid'},
         }
 
+    def get_application_type(self, obj):
+        if obj.application_type:
+            return obj.application_type.name
+
     def get_images(self, obj):
         try:
             user = self.context['request'].user
@@ -837,6 +843,8 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
+
+    application_type = serializers.CharField()
 
     class Meta(object):
         view_name = 'iaastemplate-detail'
@@ -867,6 +875,24 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
                     "Only one license of service type %s is allowed" % service_type)
 
         return value
+
+    def _prepare_application_type(self, validated_data):
+        """ Replace application_type name by application_type object """
+        application_type = validated_data.get('application_type')
+        if application_type:
+            try:
+                validated_data['application_type'] = cost_tracking_models.ApplicationType.objects.get(
+                    name=validated_data['application_type'])
+            except cost_tracking_models.ApplicationType.DoesNotExist:
+                raise serializers.ValidationError('Application type {} is not available'.format(application_type))
+
+    def create(self, validated_data):
+        self._prepare_application_type(validated_data)
+        return super(TemplateCreateSerializer, self).create(validated_data)
+
+    def update(self, validated_data):
+        self._prepare_application_type(validated_data)
+        return super(TemplateCreateSerializer, self).update(validated_data)
 
 
 class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):

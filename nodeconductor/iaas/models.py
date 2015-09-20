@@ -11,7 +11,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.utils import request_api
-from nodeconductor.cost_tracking import CostConstants
+from nodeconductor.cost_tracking import CostConstants, models as cost_tracking_models
 from nodeconductor.billing.models import PaidResource
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
@@ -231,9 +231,7 @@ class Template(core_models.UuidMixin,
     # fields for categorisation
     # XXX consider changing to tags
     type = models.CharField(max_length=100, blank=True, help_text='Template type')
-    application_type = models.CharField(max_length=100, blank=True, choices=CostConstants.Application.CHOICES,
-                                        default=CostConstants.Application.NONE,
-                                        help_text='Type of the application inside the template (optional)')
+    application_type = models.ForeignKey(cost_tracking_models.ApplicationType, null=True)
 
     def __str__(self):
         return self.name
