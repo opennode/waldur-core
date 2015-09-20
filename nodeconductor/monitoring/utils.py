@@ -1,13 +1,18 @@
 import logging
 
+from django.conf import settings
+
 from nodeconductor.monitoring.log import event_logger
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
 logger = logging.getLogger(__name__)
+ZABBIX_ENABLED = getattr(settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
 
 
 def create_host(cloud_project_membership, warn_if_exists=True):
+    if not ZABBIX_ENABLED:
+        return
     try:
         zabbix_client = ZabbixApiClient()
         zabbix_client.create_host(
@@ -18,6 +23,8 @@ def create_host(cloud_project_membership, warn_if_exists=True):
 
 
 def create_host_and_service(instance, warn_if_exists=True):
+    if not ZABBIX_ENABLED:
+        return
     try:
         zabbix_client = ZabbixApiClient()
         zabbix_client.create_host(instance, warn_if_host_exists=warn_if_exists)
@@ -39,6 +46,8 @@ def create_host_and_service(instance, warn_if_exists=True):
 
 
 def delete_host_and_service(instance):
+    if not ZABBIX_ENABLED:
+        return
     try:
         zabbix_client = ZabbixApiClient()
         zabbix_client.delete_host(instance)
