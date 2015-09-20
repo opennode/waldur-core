@@ -4,6 +4,7 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError
 
+from nodeconductor.core.tasks import send_task
 from nodeconductor.openstack.models import SecurityGroup, SecurityGroupRule
 
 
@@ -75,3 +76,8 @@ def decrease_quotas_usage_on_instances_deletion(sender, instance=None, **kwargs)
     add_quota('ram', -instance.ram)
     add_quota('vcpu', -instance.cores)
     add_quota('storage', -instance.disk)
+
+
+def sync_service_project_link_with_backend(sender, instance, created=False, **kwargs):
+    if created:
+        send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)

@@ -34,6 +34,9 @@ class OpenStackServiceProjectLink(QuotaModelMixin, structure_models.ServiceProje
         help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
     )
 
+    class Meta:
+        unique_together = ('service', 'project')
+
     @property
     def cloud(self):
         # XXX: Temporary backward compatibility
