@@ -19,7 +19,8 @@ def _instance_data(user, instance=None):
         'flavor': factories.FlavorFactory.get_url(flavor),
         'image': factories.ImageFactory.get_url(image),
         'service_project_link': factories.OpenStackServiceProjectLinkFactory.get_url(instance.service_project_link),
-        'ssh_public_key': structure_factories.SshPublicKeyFactory.get_url(ssh_public_key)
+        'ssh_public_key': structure_factories.SshPublicKeyFactory.get_url(ssh_public_key),
+        'system_volume_size': image.min_disk
     }
 
 
