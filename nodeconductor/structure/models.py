@@ -268,6 +268,12 @@ class Project(core_models.DescribableMixin,
     def project_group(self):
         return self.project_groups.first()
 
+    @property
+    def full_name(self):
+        project_group = self.project_group
+        name = (project_group.name + ' / ' if project_group else '') + self.name
+        return name
+
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
 

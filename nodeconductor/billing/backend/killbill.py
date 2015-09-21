@@ -128,7 +128,7 @@ class KillBillAPI(object):
             billingPeriod='MONTHLY',
             priceList='DEFAULT')
 
-        extra_fields = {'resource_name': resource.name, 'project_name': resource.project.name}
+        extra_fields = {'resource_name': resource.name, 'project_name': resource.project.full_name}
         self.set_subscription_fields(subscription['subscriptionId'], extra_fields)
 
         return subscription['subscriptionId']
