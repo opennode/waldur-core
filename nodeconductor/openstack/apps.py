@@ -47,3 +47,9 @@ class OpenStackConfig(AppConfig):
             sender=Instance,
             dispatch_uid='nodeconductor.openstack.handlers.decrease_quotas_usage_on_instances_deletion',
         )
+
+        signals.post_save.connect(
+            handlers.sync_service_project_link_with_backend,
+            sender=OpenStackServiceProjectLink,
+            dispatch_uid='nodeconductor.structure.handlers.sync_service_project_link_with_backend',
+        )

@@ -2,6 +2,7 @@ import logging
 import datetime
 
 from celery import shared_task
+from django.db.models import F
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
@@ -23,18 +24,17 @@ def update_current_month_projected_estimate(customer_uuid=None, resource_uuid=No
     if customer_uuid and resource_uuid:
         raise RuntimeError("Either customer_uuid or resource_uuid could be supplied, both received.")
 
-    def update_price_for_scope(scope, cost):
+    def update_price_for_scope(scope, absolute_cost=0, delta_cost=0):
         today = datetime.date.today()
-        estimate, _ = PriceEstimate.objects.get_or_create(
+        estimate, created = PriceEstimate.objects.get_or_create(
             content_type=ContentType.objects.get_for_model(scope),
             object_id=scope.id,
             month=today.month,
             year=today.year)
 
-        delta = cost - estimate.total
-        if delta:
-            estimate.total = cost
-            estimate.save(update_fields=['total'])
+        delta = absolute_cost if created else absolute_cost - estimate.total
+        estimate.total = absolute_cost if absolute_cost else F('total') + delta_cost
+        estimate.save(update_fields=['total'])
 
         return delta
 
@@ -59,12 +59,13 @@ def update_current_month_projected_estimate(customer_uuid=None, resource_uuid=No
                 logger.info("Update cost estimate for resource %s: %s", instance, monthly_cost)
 
                 # save monthly cost as is for initial scope
-                delta_cost = update_price_for_scope(instance, monthly_cost)
+                delta_cost = update_price_for_scope(instance, absolute_cost=monthly_cost)
 
                 # increment total cost by delta for parent nodes
-                spl = instance.service_project_link
-                for scope in (spl, spl.project, spl.service, instance.customer):
-                    update_price_for_scope(scope, monthly_cost + delta_cost)
+                if delta_cost:
+                    spl = instance.service_project_link
+                    for scope in (spl, spl.project, spl.service, instance.customer):
+                        update_price_for_scope(scope, delta_cost=delta_cost)
 
 
 @shared_task(name='nodeconductor.cost_tracking.update_today_usage')
