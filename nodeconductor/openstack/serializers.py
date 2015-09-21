@@ -377,16 +377,11 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
                 raise serializers.ValidationError(
                     {'external_ips': "External IP is not from the list of available floating IPs."})
 
-        system_volume_size = attrs.get('system_volume_size', flavor.disk)
-        attrs['system_volume_size'] = system_volume_size
-
-        max_min_disk = (
-            models.Image.objects.filter(settings=settings).aggregate(Max('min_disk'))
-        )['min_disk__max']
-
-        if max_min_disk > system_volume_size:
+        if 'system_volume_size' not in attrs:
+            attrs['system_volume_size'] = image.min_disk
+        elif image.min_disk > attrs['system_volume_size']:
             raise serializers.ValidationError(
-                {'system_volume_size': "System volume size has to be greater than %s" % max_min_disk})
+                {'system_volume_size': "System volume size has to be greater than %s" % image.min_disk})
 
         for security_group_data in attrs.get('security_groups', []):
             security_group = security_group_data['security_group']
