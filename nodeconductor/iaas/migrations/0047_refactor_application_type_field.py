@@ -29,7 +29,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='template',
             name='application_type',
-            field=models.ForeignKey(to='cost_tracking.ApplicationType', null=True),
+            field=models.ForeignKey(to='cost_tracking.ApplicationType', null=True, help_text='Type of the application inside the template (optional)'),
             preserve_default=True,
         ),
         migrations.RunPython(migrate_application_type_data),

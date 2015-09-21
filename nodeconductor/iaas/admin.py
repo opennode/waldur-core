@@ -349,11 +349,11 @@ class TemplateAdmin(admin.ModelAdmin):
         LicenseInline,
     )
     ordering = ('name', )
-    list_display = ['name', 'uuid', 'os_type', 'type', 'sla_level']
+    list_display = ['name', 'uuid', 'os_type', 'application_type', 'type', 'sla_level']
 
     fieldsets = (
         (_('General'), {'fields': ('name', 'description', 'icon_name', 'is_active',)}),
-        (_('Type'), {'fields': ('os', 'os_type', 'type',)}),
+        (_('Type'), {'fields': ('os', 'os_type', 'application_type', 'type',)}),
         (_('Deployment settings'), {'fields': ('sla_level',)}),
     )
 
