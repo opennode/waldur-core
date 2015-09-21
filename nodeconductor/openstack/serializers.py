@@ -377,9 +377,11 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
                 raise serializers.ValidationError(
                     {'external_ips': "External IP is not from the list of available floating IPs."})
 
-        if 'system_volume_size' not in attrs:
-            attrs['system_volume_size'] = image.min_disk
-        elif image.min_disk > attrs['system_volume_size']:
+        if image.min_ram > flavor.ram:
+            raise serializers.ValidationError(
+                {'flavor': "RAM of flavor is not enough for selected image %s" % image.min_ram})
+
+        if image.min_disk > attrs['system_volume_size']:
             raise serializers.ValidationError(
                 {'system_volume_size': "System volume size has to be greater than %s" % image.min_disk})
 
