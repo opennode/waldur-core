@@ -44,22 +44,17 @@ class FilterAlertsByAggregateTest(test.APITransactionTestCase):
             self.project_alerts.append(project_alerts)
             self.customer_alerts.append(customer_alerts)
 
-        Alert.objects.exclude(pk__in=[alert.pk for alerts in self.customer_alerts for alert in alerts]).delete()
+        # Cleanup other alerts
+        alert_ids = [alert.pk for alerts in self.customer_alerts for alert in alerts]
+        Alert.objects.exclude(pk__in=alert_ids).delete()
 
     def test_alert_can_be_filtered_by_customer(self):
         for user, customer, alerts in zip(self.users, self.customers, self.customer_alerts):
-            self.client.force_authenticate(user)
             query = {
                 'aggregate': 'customer',
                 'uuid': customer.uuid.hex
             }
-
-            response = self.client.get(AlertFactory.get_list_url(), data=query)
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-            expected = set(alert.uuid.hex for alert in alerts)
-            actual = set(alert['uuid'] for alert in response.data)
-            self.assertEqual(expected, actual)
+            self.check_alerts(user, query, alerts)
 
     def test_alert_can_be_filtered_by_project(self):
         for user, project, alerts in zip(self.users, self.projects, self.project_alerts):
@@ -68,13 +63,16 @@ class FilterAlertsByAggregateTest(test.APITransactionTestCase):
                 'aggregate': 'project',
                 'uuid': project.uuid.hex
             }
+            self.check_alerts(user, query, alerts)
 
-            response = self.client.get(AlertFactory.get_list_url(), data=query)
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
+    def check_alerts(self, user, query, alerts):
+        self.client.force_authenticate(user)
+        response = self.client.get(AlertFactory.get_list_url(), data=query)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-            expected = set(alert.uuid.hex for alert in alerts)
-            actual = set(alert['uuid'] for alert in response.data)
-            self.assertEqual(expected, actual)
+        expected = set(alert.uuid.hex for alert in alerts)
+        actual = set(alert['uuid'] for alert in response.data)
+        self.assertEqual(expected, actual)
 
     def create_resource(self, customer, project):
         service_type, models = SupportedServices.get_service_models().items()[0]
