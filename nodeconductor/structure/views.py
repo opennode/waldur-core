@@ -1617,7 +1617,7 @@ class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
 
 class AggregateFilter(BaseExternalFilter):
     """
-    Filter by services, projects, service project links and resources
+    Filter by aggregate
     """
 
     def filter(self, request, queryset, view):
@@ -1625,14 +1625,25 @@ class AggregateFilter(BaseExternalFilter):
         if 'aggregate' not in request.query_params:
             return queryset
 
-        aggregate_serializer = serializers.AggregateSerializer(data=request.query_params)
-        aggregate_serializer.is_valid(raise_exception=True)
+        serializer = serializers.AggregateSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
 
-        related_objects = aggregate_serializer.get_related_objects(request.user)
+        aggregates = serializer.get_aggregates(request.user)
+        projects = serializer.get_projects(request.user)
+        querysets = [aggregates, projects]
+        query = {serializer.data['aggregate'] + '__in': aggregates}
+
+        all_models = models.Resource.get_all_models() + \
+                     models.Service.get_all_models() + \
+                     models.ServiceProjectLink.get_all_models()
+        for model in all_models:
+            qs = model.objects.filter(**query).all()
+            querysets.append(filters.filter_queryset_for_user(qs, request.user))
+
         aggregate_query = Q()
-        for objects in related_objects:
-          content_type = ContentType.objects.get_for_model(objects.model)
-          ids = objects.values_list('id', flat=True)
+        for qs in querysets:
+          content_type = ContentType.objects.get_for_model(qs.model)
+          ids = qs.values_list('id', flat=True)
           aggregate_query |= Q(content_type=content_type, object_id__in=ids)
 
         return queryset.filter(aggregate_query)

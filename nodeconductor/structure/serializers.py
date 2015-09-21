@@ -1174,26 +1174,16 @@ class AggregateSerializer(serializers.Serializer):
     aggregate = serializers.ChoiceField(choices=MODEL_NAME_CHOICES, default='customer')
     uuid = serializers.CharField(allow_null=True, default=None)
 
-    def get_related_objects(self, user):
-        items = [self.get_queryset(user)]
-        items += [self.get_projects(user)]
-        items += self.get_resources(user)
-        items += self.get_services(user)
-        items += self.get_service_project_links(user)
-        return items
-
-    def get_model(self):
-        return self.MODEL_CLASSES[self.data['aggregate']]
-
-    def get_queryset(self, user):
-        queryset = filter_queryset_for_user(self.get_model().objects.all(), user)
+    def get_aggregates(self, user):
+        model = self.MODEL_CLASSES[self.data['aggregate']]
+        queryset = filter_queryset_for_user(model.objects.all(), user)
 
         if 'uuid' in self.data and self.data['uuid']:
             queryset = queryset.filter(uuid=self.data['uuid'])
         return queryset
 
     def get_projects(self, user):
-        queryset = self.get_queryset(user)
+        queryset = self.get_aggregates(user)
 
         if self.data['aggregate'] == 'project':
             return queryset.all()
@@ -1203,28 +1193,3 @@ class AggregateSerializer(serializers.Serializer):
         else:
             queryset = models.Project.objects.filter(customer__in=list(queryset))
             return filter_queryset_for_user(queryset, user)
-
-    def get_resources(self, user):
-        projects = self.get_projects(user)
-        resources = []
-        for model in models.Resource.get_all_models():
-            query = {model.Permissions.project_path + '__in': projects}
-            queryset = model.objects.filter(**query).all()
-            resources.append(filter_queryset_for_user(queryset, user))
-        return resources
-
-    def get_services(self, user):
-        projects = self.get_projects(user)
-        services = []
-        for model in models.Service.get_all_models():
-            queryset = model.objects.filter(projects__in=projects).all()
-            services.append(filter_queryset_for_user(queryset, user))
-        return services
-
-    def get_service_project_links(self, user):
-        projects = self.get_projects(user)
-        service_project_links = []
-        for model in models.ServiceProjectLink.get_all_models():
-            queryset = model.objects.filter(project__in=projects).all()
-            service_project_links.append(filter_queryset_for_user(queryset, user))
-        return service_project_links
