@@ -47,7 +47,7 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
 
     def get_urls(self):
         my_urls = patterns(
-            '', 
+            '',
             url(r'^sync/$', self.admin_site.admin_view(self.sync)),
             url(r'^create_for_flavors/$', self.admin_site.admin_view(self.create_for_flavors)),
         )
@@ -83,6 +83,12 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
+
+class ApplicationTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', )
+
+
 admin.site.register(models.PriceListItem, PriceListItemAdmin)
 admin.site.register(models.DefaultPriceListItem, DefaultPriceListItemAdmin)
 admin.site.register(models.PriceEstimate)
+admin.site.register(models.ApplicationType, ApplicationTypeAdmin)
