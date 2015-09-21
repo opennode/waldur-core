@@ -105,7 +105,7 @@ def update_today_usage_of_resource(resource_str):
             for item in DefaultPriceListItem.objects.filter(resource_content_type=content_type)}
 
         now = timezone.now()
-        hours_from_last_usage = (now - resource.last_usage_update_time).total_seconds() / 60 / 60
+        hours_from_last_usage_update = (now - resource.last_usage_update_time).total_seconds() / 60 / 60
 
         usage = {}
         for key, val in usage_state.items():
@@ -113,7 +113,7 @@ def update_today_usage_of_resource(resource_str):
                 try:
                     unit = units[key, None if key in numerical else val]
                     usage_per_hour = val if key in numerical else 1
-                    usage[unit] = round(usage_per_hour * hours_from_last_usage, 2)
+                    usage[unit] = round(usage_per_hour * hours_from_last_usage_update, 2)
                 except KeyError:
                     logger.error("Can't find price for usage item %s:%s", key, val)
 
