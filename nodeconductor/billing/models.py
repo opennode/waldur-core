@@ -1,6 +1,7 @@
 import os
 import logging
 import functools
+import collections
 import StringIO
 import xhtml2pdf.pisa as pisa
 
@@ -32,6 +33,7 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
     amount = models.DecimalField(max_digits=9, decimal_places=2)
     date = models.DateField()
     pdf = models.FileField(upload_to='invoices', blank=True, null=True)
+    usage_pdf = models.FileField(upload_to='invoices', blank=True, null=True)
 
     backend_id = models.CharField(max_length=255, blank=True)
 
@@ -62,10 +64,51 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
                 }
             ]
 
-    def generate_pdf(self):
-        backend = self.get_billing_backend()
-        invoice = backend.get_invoice(self.backend_id)
+    def generate_invoice_file_name(self, usage=False):
+        name = '{}-invoice-{}'.format(self.date.strftime('%Y-%m-%d'), self.pk)
+        if usage:
+            name += '-usage'
+        return name + '.pdf'
 
+    def generate_pdf(self, invoice):
+        projects = {}
+        for item in invoice['items']:
+            project = item['project']
+            resource = item['resource']
+            projects.setdefault(project, {'items': {}, 'amount': 0})
+            projects[project]['amount'] += item['amount']
+            projects[project]['items'].setdefault(resource, 0)
+            projects[project]['items'][resource] += item['amount']
+
+        projects = collections.OrderedDict(sorted(projects.items()))
+
+        # cleanup if pdf already existed
+        if self.pdf is not None:
+            self.pdf.delete()
+
+        info = settings.NODECONDUCTOR.get('BILLING_INVOICE', {})
+        logo = info.get('logo', None)
+        if logo and not logo.startswith('/'):
+            logo = os.path.join(settings.BASE_DIR, logo)
+
+        result = StringIO.StringIO()
+        pdf = pisa.pisaDocument(
+            StringIO.StringIO(render_to_string('billing/invoice.html', {
+                'customer': self.customer,
+                'invoice': invoice,
+                'projects': projects,
+                'info': info,
+                'logo': logo,
+            })), result)
+
+        # generate a new file
+        if not pdf.err:
+            self.pdf.save(self.generate_invoice_file_name(), ContentFile(result.getvalue()))
+            self.save(update_fields=['pdf'])
+        else:
+            logger.error(pdf.err)
+
+    def generate_usage_pdf(self, invoice):
         resources = {}
         pricelist = {p.units.replace(UNIT_PREFIX, ''): p for p in DefaultPriceListItem.objects.all()}
 
@@ -85,9 +128,11 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
             resources[resource]['amount'] += item['amount']
             resources[resource]['items'].append(item)
 
+        resources = collections.OrderedDict(sorted(resources.items()))
+
         # cleanup if pdf already existed
-        if self.pdf is not None:
-            self.pdf.delete()
+        if self.usage_pdf is not None:
+            self.usage_pdf.delete()
 
         info = settings.NODECONDUCTOR.get('BILLING_INVOICE', {})
         logo = info.get('logo', None)
@@ -96,19 +141,17 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
 
         result = StringIO.StringIO()
         pdf = pisa.pisaDocument(
-            StringIO.StringIO(render_to_string('billing/invoice.html', {
+            StringIO.StringIO(render_to_string('billing/usage_invoice.html', {
                 'customer': self.customer,
                 'invoice': invoice,
                 'resources': resources,
                 'logo': logo,
-                'info': info,
             })), result)
 
         # generate a new file
         if not pdf.err:
-            name = '{}-invoice-{}.pdf'.format(invoice['date'].strftime('%Y-%m-%d'), self.pk)
-            self.pdf.save(name, ContentFile(result.getvalue()))
-            self.save(update_fields=['pdf'])
+            self.usage_pdf.save(self.generate_invoice_file_name(usage=True), ContentFile(result.getvalue()))
+            self.save(update_fields=['usage_pdf'])
         else:
             logger.error(pdf.err)
 
