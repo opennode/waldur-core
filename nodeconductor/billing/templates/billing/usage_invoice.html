@@ -27,48 +27,30 @@
         <table>
         <tr>
             <td width="65%"><img src="{{ logo }}"></td>
-            <td width="35%"><h1>Invoice #{{ invoice.invoice_number }}</h1></td>
+            <td width="35%"><h2>
+                Usage invoice #{{ invoice.invoice_number }}<br>
+                <small>Customer: {{ customer.name }}</small>
+            </h2></td>
         </tr>
         <tr><td colspan="2"><hr></td></tr>
-        <tr>
-            <td><h3>Payment details</h3></td>
-            <td>
-                Invoice date: {{ invoice.date }}<br>
-                Invoice due: {{ invoice.due_date }}
-            </td>
-        </tr>
-        <tr><td colspan="2"><hr></td></tr>
-        <tr>
-            <td>
-                <b>{{ info.company }}</b><br>
-                Bank: {{ info.bank }}<br>
-                Bank account: {{ info.account }}
-            </td>
-            <td>
-                <b>Customer details</b><br>
-                Customer name: {{ customer.name }}<br>
-                Customer number: {{ customer.pk|add:10000 }}<br>
-                {{ customer.contact_details }}
-            </td>
-        </tr>
         </table>
 
-        <h3>Services consumed from {{ invoice.start_date }} till {{ invoice.end_date }}</h3>
-        <br>
+        <h3>Services consumed from {{ invoice.start_date }} till {{ invoice.end_date }}</h3><br>
+
         <table cellpadding="0">
-            {% for project, data in projects.items %}
+            {% for resource, data in resources.items %}
             <tr>
-                <td><h2>{{ project }}</h2></td>
+                <td><h2>{{ resource }}</h2></td>
                 <td width="150" align="right"><h2>{{ data.amount|floatformat:2 }} {{ invoice.currency }}</h2></td>
             </tr>
             <tr>
                 <td colspan="2">
                 <table cellpadding="5">
-                {% for resource, amount in data.items.items %}
+                {% for item in data.items %}
                 <tr>
-                    <td width="20" align="right">{{ forloop.parentloop.counter }}</td>
-                    <td>{{ resource }}</td>
-                    <td width="150" align="right">{{ amount|floatformat:2 }} {{ invoice.currency }}</td>
+                    <td width="20" align="right">{{ forloop.counter }}</td>
+                    <td>{{ item.name }} {{ item.usage }}</td>
+                    <td width="150" align="right">{{ item.amount|floatformat:2 }} {{ item.currency }}</td>
                 </tr>
                 {% endfor %}
                 </table>
