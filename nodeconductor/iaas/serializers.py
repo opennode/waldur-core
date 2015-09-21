@@ -890,9 +890,9 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
         self._prepare_application_type(validated_data)
         return super(TemplateCreateSerializer, self).create(validated_data)
 
-    def update(self, validated_data):
+    def update(self, instance, validated_data):
         self._prepare_application_type(validated_data)
-        return super(TemplateCreateSerializer, self).update(validated_data)
+        return super(TemplateCreateSerializer, self).update(instance, validated_data)
 
 
 class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
