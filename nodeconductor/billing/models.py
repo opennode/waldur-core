@@ -8,7 +8,6 @@ from django.db import models
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
-from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import transition, FSMIntegerField
 from model_utils.models import TimeStampedModel
