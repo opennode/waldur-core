@@ -354,6 +354,11 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
             'flavor', 'image', 'system_volume_size', 'data_volume_size',
         )
 
+    def get_fields(self):
+        fields = super(InstanceSerializer, self).get_fields()
+        fields['system_volume_size'].required = True
+        return fields
+
     def validate(self, attrs):
         # skip validation on object update
         if self.instance is not None:

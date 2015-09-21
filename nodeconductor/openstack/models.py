@@ -142,7 +142,7 @@ class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, 
 
     # OpenStack backend specific fields
     system_volume_id = models.CharField(max_length=255, blank=True)
-    system_volume_size = models.PositiveIntegerField(help_text='Root disk size in MiB')
+    system_volume_size = models.PositiveIntegerField(default=0, help_text='Root disk size in MiB')
     data_volume_id = models.CharField(max_length=255, blank=True)
     data_volume_size = models.PositiveIntegerField(
         default=DEFAULT_DATA_VOLUME_SIZE, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
