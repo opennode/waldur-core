@@ -320,6 +320,7 @@ LOGGING = {
         },
         'nodeconductor': {
             'handlers': [],
+            'level': config.get('logging', 'log_level').upper(),
         },
         'requests': {
             'handlers': [],
