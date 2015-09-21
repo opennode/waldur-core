@@ -40,9 +40,9 @@ class UserChangeForm(auth_admin.UserChangeForm):
 
 
 class UserAdmin(auth_admin.UserAdmin):
-    list_display = ('username', 'uuid', 'email', 'full_name', 'native_name', 'is_staff')
+    list_display = ('username', 'uuid', 'email', 'full_name', 'native_name', 'is_active', 'is_staff')
     search_fields = ('username', 'uuid', 'full_name', 'native_name', 'email')
-    list_filter = ('is_staff', 'is_superuser', 'is_active')
+    list_filter = ('is_active', 'is_staff', 'is_superuser')
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         (_('Personal info'), {'fields': ('civil_number', 'full_name', 'native_name', 'email')}),
