@@ -299,11 +299,14 @@ class PaidInstance(PaidResource):
     def get_usage_state(self):
         state = {
             CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
-            CostConstants.PriceItem.LICENSE_APPLICATION: self.template.application_type,
             CostConstants.PriceItem.SUPPORT: (CostConstants.Support.PREMIUM
                                               if self.type == self.Services.PAAS
                                               else CostConstants.Support.BASIC),
         }
+
+        application = self.template.application_type
+        if application:
+            state[CostConstants.PriceItem.LICENSE_APPLICATION] = application.name
 
         if self.state == self.States.ONLINE and self.flavor_name:
             state[CostConstants.PriceItem.FLAVOR] = self.flavor_name

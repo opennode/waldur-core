@@ -53,6 +53,34 @@ class KillBillAPI(object):
         self.usages = KillBill.Usage(self.credentials)
         self.test = KillBill.Test(self.credentials)
 
+    def _parse_invoice_data(self, raw_invoice):
+        target_date = self._parse_date(raw_invoice['targetDate'])
+        invoice = dict(
+            backend_id=raw_invoice['invoiceId'],
+            date=self._parse_date(raw_invoice['invoiceDate']),
+            due_date=target_date + timedelta(hours=hours_in_month()),
+            end_date=target_date,
+            start_date=target_date - timedelta(hours=hours_in_month()),
+            invoice_number=raw_invoice['invoiceNumber'],
+            currency=raw_invoice['currency'],
+            amount=raw_invoice['amount'],
+            items=[],
+        )
+
+        for item in raw_invoice['items']:
+            if item['amount']:
+                fields = self.get_subscription_fields(item['subscriptionId'])
+                invoice['items'].append(dict(
+                    backend_id=item['invoiceItemId'],
+                    name=item['usageName'] or item['description'],
+                    project=fields['project_name'],
+                    resource=fields['resource_name'],
+                    currency=item['currency'],
+                    amount=item['amount'],
+                ))
+
+        return invoice
+
     def _parse_date(self, date):
         try:
             return datetime.strptime(date, '%Y-%m-%d').date()
@@ -100,9 +128,8 @@ class KillBillAPI(object):
             billingPeriod='MONTHLY',
             priceList='DEFAULT')
 
-        self.subscriptions._object_query(
-            subscription['subscriptionId'], 'customFields', method='POST',
-            data=json.dumps([{'name': 'resource_name', 'value': resource.name}]))
+        extra_fields = {'resource_name': resource.name, 'project_name': resource.project.full_name}
+        self.set_subscription_fields(subscription['subscriptionId'], extra_fields)
 
         return subscription['subscriptionId']
 
@@ -148,39 +175,12 @@ class KillBillAPI(object):
             'items': items}
 
     def get_invoices(self, client_id):
-        data = self.accounts.get(client_id, 'invoices')
-        return [{'backend_id': invoice['invoiceId'],
-                 'date': self._parse_date(invoice['invoiceDate']),
-                 'amount': invoice['amount']}
-                for invoice in data if invoice['amount']]
+        invoices = self.accounts.get(client_id, 'invoices', withItems=True)
+        return [self._parse_invoice_data(invoice) for invoice in invoices if invoice['amount']]
 
     def get_invoice(self, invoice_id):
-        raw_invoice = self.invoices.get(invoice_id, withItems=True)
-        target_date = self._parse_date(raw_invoice['targetDate'])
-        invoice = dict(
-            backend_id=raw_invoice['invoiceId'],
-            date=self._parse_date(raw_invoice['invoiceDate']),
-            due_date=target_date + timedelta(hours=hours_in_month()),
-            end_date=target_date,
-            start_date=target_date - timedelta(hours=hours_in_month()),
-            invoice_number=raw_invoice['invoiceNumber'],
-            currency=raw_invoice['currency'],
-            amount=raw_invoice['amount'],
-            items=[],
-        )
-
-        for item in raw_invoice['items']:
-            if item['amount']:
-                fields = self.get_subscription_fields(item['subscriptionId'])
-                invoice['items'].append(dict(
-                    backend_id=item['invoiceItemId'],
-                    name=item['usageName'] or item['description'],
-                    resource=fields['resource_name'],
-                    currency=item['currency'],
-                    amount=item['amount'],
-                ))
-
-        return invoice
+        invoice = self.invoices.get(invoice_id, withItems=True)
+        return self._parse_invoice_data(invoice)
 
     def get_invoice_items(self, invoice_id):
         return self.get_invoice(invoice_id)['items']
@@ -188,6 +188,12 @@ class KillBillAPI(object):
     def get_subscription_fields(self, subscription_id):
         fields = self.subscriptions.get(subscription_id, 'customFields')
         return {f['name']: f['value'] for f in fields}
+
+    def set_subscription_fields(self, subscription_id, data):
+        fields = [{'name': key, 'value': val} for key, val in data.items()]
+        self.subscriptions._object_query(
+            subscription_id, 'customFields', method='POST',
+            data=json.dumps(fields))
 
     def propagate_pricelist(self):
         # Generate catalog and push it to backend
