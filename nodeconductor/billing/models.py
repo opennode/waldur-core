@@ -262,7 +262,7 @@ class PaidResource(models.Model):
             self.instance.save(update_fields=['billing_backend_id'])
 
     billing_backend_id = models.CharField(max_length=255, blank=True, help_text='ID of a resource in backend')
-    last_usage_update_time = models.DateTimeField(auto_now_add=True)
+    last_usage_update_time = models.DateTimeField(blank=True, null=True)
 
     def get_usage_state(self):
         raise NotImplementedError

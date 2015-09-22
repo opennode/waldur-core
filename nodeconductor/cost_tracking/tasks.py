@@ -93,6 +93,8 @@ def update_today_usage():
 
 @shared_task
 def update_today_usage_of_resource(resource_str):
+    # XXX: this method does ignores cases then VM was offline or online for small periods of time.
+    # It could to be rewritten if more accurate calculation will be needed
     with transaction.atomic():
         resource = next(Resource.from_string(resource_str))
         usage_state = resource.get_usage_state()
@@ -104,8 +106,12 @@ def update_today_usage_of_resource(resource_str):
             (item.item_type, None if item.item_type in numerical else item.key): item.units
             for item in DefaultPriceListItem.objects.filter(resource_content_type=content_type)}
 
+        if resource.last_usage_update_time is not None:
+            last_update_time = resource.last_usage_update_time
+        else:
+            last_update_time = resource.created
         now = timezone.now()
-        hours_from_last_usage_update = (now - resource.last_usage_update_time).total_seconds() / 60 / 60
+        hours_from_last_usage_update = (now - last_update_time).total_seconds() / 60 / 60
 
         usage = {}
         for key, val in usage_state.items():
