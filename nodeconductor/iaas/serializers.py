@@ -827,7 +827,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 
     def get_application_type(self, obj):
         if obj.application_type:
-            return obj.application_type.name
+            return obj.application_type.slug
 
     def get_images(self, obj):
         try:
@@ -882,7 +882,7 @@ class TemplateCreateSerializer(serializers.HyperlinkedModelSerializer):
         if application_type:
             try:
                 validated_data['application_type'] = cost_tracking_models.ApplicationType.objects.get(
-                    name=validated_data['application_type'])
+                    slug=validated_data['application_type'])
             except cost_tracking_models.ApplicationType.DoesNotExist:
                 raise serializers.ValidationError('Application type {} is not available'.format(application_type))
 

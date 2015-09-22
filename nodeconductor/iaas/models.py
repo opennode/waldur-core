@@ -306,7 +306,7 @@ class PaidInstance(PaidResource):
 
         application = self.template.application_type
         if application:
-            state[CostConstants.PriceItem.LICENSE_APPLICATION] = application.name
+            state[CostConstants.PriceItem.LICENSE_APPLICATION] = application.slug
 
         if self.state == self.States.ONLINE and self.flavor_name:
             state[CostConstants.PriceItem.FLAVOR] = self.flavor_name

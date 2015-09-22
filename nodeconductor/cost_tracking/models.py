@@ -100,7 +100,7 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
 # XXX: this model has to be moved to separate module that will connect OpenStack instances and cost tracking
 @python_2_unicode_compatible
 class ApplicationType(core_models.NameMixin, models.Model):
-    EMPTY = 'none'
+    slug = models.CharField(max_length=150, unique=True)
 
     def __str__(self):
         return self.name
