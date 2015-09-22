@@ -6,7 +6,7 @@ from django.db import models, migrations
 
 def init_default_application_types(apps, schema_editor):
     ApplicationType = apps.get_model("cost_tracking", "ApplicationType")
-    default_application_types = ('wordpress', 'zimbra', 'postgresql', 'none')
+    default_application_types = ('Wordpress', 'Zimbra', 'PostgreSQL', 'none')
     for name in default_application_types:
         ApplicationType.objects.create(name=name)
 

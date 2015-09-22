@@ -85,7 +85,8 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
 
 
 class ApplicationTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', )
+    list_display = ('name', 'slug')
+    prepopulated_fields = {'slug': ('name',)}
 
 
 admin.site.register(models.PriceListItem, PriceListItemAdmin)
