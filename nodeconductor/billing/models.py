@@ -123,7 +123,7 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
             price_item = pricelist.get(item['name'])
             if price_item:
                 usage = item['amount'] / float(price_item.value)
-                unit = 'GB/hour' if price_item.item_type == 'storage' else 'hour' + (
+                unit = ('GB/hour' if price_item.item_type == 'storage' else 'hour') + (
                     's' if usage > 1 else '')
 
                 item['name'] = price_item.name
