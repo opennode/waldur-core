@@ -1157,3 +1157,39 @@ class BasePropertySerializer(six.with_metaclass(PropertySerializerMetaclass,
 
     class Meta(object):
         model = NotImplemented
+
+
+class AggregateSerializer(serializers.Serializer):
+    MODEL_NAME_CHOICES = (
+        ('project', 'project'),
+        ('customer', 'customer'),
+        ('project_group', 'project_group')
+    )
+    MODEL_CLASSES = {
+        'project': models.Project,
+        'customer': models.Customer,
+        'project_group': models.ProjectGroup,
+    }
+
+    aggregate = serializers.ChoiceField(choices=MODEL_NAME_CHOICES, default='customer')
+    uuid = serializers.CharField(allow_null=True, default=None)
+
+    def get_aggregates(self, user):
+        model = self.MODEL_CLASSES[self.data['aggregate']]
+        queryset = filter_queryset_for_user(model.objects.all(), user)
+
+        if 'uuid' in self.data and self.data['uuid']:
+            queryset = queryset.filter(uuid=self.data['uuid'])
+        return queryset
+
+    def get_projects(self, user):
+        queryset = self.get_aggregates(user)
+
+        if self.data['aggregate'] == 'project':
+            return queryset.all()
+        elif self.data['aggregate'] == 'project_group':
+            queryset = models.Project.objects.filter(project_groups__in=list(queryset))
+            return filter_queryset_for_user(queryset, user)
+        else:
+            queryset = models.Project.objects.filter(customer__in=list(queryset))
+            return filter_queryset_for_user(queryset, user)

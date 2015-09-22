@@ -1,7 +1,6 @@
-from nodeconductor.logging.log import EventLogger, event_logger
 from nodeconductor.core.models import User, SshPublicKey
+from nodeconductor.logging.log import EventLogger, event_logger
 from nodeconductor.structure import models
-from nodeconductor.structure.filters import filter_queryset_for_user
 
 
 class CustomerEventLogger(EventLogger):

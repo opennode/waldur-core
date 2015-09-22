@@ -1114,34 +1114,7 @@ class SlaHistoryEventSerializer(serializers.Serializer):
     state = serializers.CharField()
 
 
-class StatsAggregateSerializer(serializers.Serializer):
-    MODEL_NAME_CHOICES = (('project', 'project'), ('customer', 'customer'), ('project_group', 'project_group'))
-    MODEL_CLASSES = {
-        'project': structure_models.Project,
-        'customer': structure_models.Customer,
-        'project_group': structure_models.ProjectGroup,
-    }
-
-    aggregate = serializers.ChoiceField(choices=MODEL_NAME_CHOICES, default='customer')
-    uuid = serializers.CharField(allow_null=True, default=None)
-
-    def get_projects(self, user):
-        model = self.MODEL_CLASSES[self.data['aggregate']]
-        queryset = structure_filters.filter_queryset_for_user(model.objects.all(), user)
-
-        if 'uuid' in self.data and self.data['uuid']:
-            queryset = queryset.filter(uuid=self.data['uuid'])
-
-        if self.data['aggregate'] == 'project':
-            return queryset.all()
-        elif self.data['aggregate'] == 'project_group':
-            projects = structure_filters.filter_queryset_for_user(
-                structure_models.Project.objects.filter(project_groups__in=list(queryset)), user)
-            return structure_filters.filter_queryset_for_user(projects, user)
-        else:
-            projects = structure_models.Project.objects.filter(customer__in=list(queryset))
-            return structure_filters.filter_queryset_for_user(projects, user)
-
+class StatsAggregateSerializer(structure_serializers.AggregateSerializer):
     def get_memberships(self, user):
         projects = self.get_projects(user)
         return models.CloudProjectMembership.objects.filter(project__in=projects).all()
