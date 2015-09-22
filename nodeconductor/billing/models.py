@@ -80,7 +80,14 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
             projects[project]['items'].setdefault(resource, 0)
             projects[project]['items'][resource] += item['amount']
 
+        number = 0
         projects = collections.OrderedDict(sorted(projects.items()))
+        for project in projects:
+            resources = []
+            for resource, amount in sorted(projects[project]['items'].items()):
+                number += 1
+                resources.append((resource, {'amount': amount, 'number': number}))
+            projects[project]['items'] = collections.OrderedDict(resources)
 
         # cleanup if pdf already existed
         if self.pdf is not None:
