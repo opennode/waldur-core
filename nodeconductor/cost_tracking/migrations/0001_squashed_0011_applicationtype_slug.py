@@ -43,10 +43,6 @@ class Migration(migrations.Migration):
             },
             bases=(models.Model,),
         ),
-        # migrations.AlterUniqueTogether(
-        #     name='priceestimate',
-        #     unique_together=set([('content_type', 'object_id', 'month', 'year', 'is_manually_input')]),
-        # ),
         migrations.CreateModel(
             name='PriceListItem',
             fields=[
@@ -66,10 +62,6 @@ class Migration(migrations.Migration):
             },
             bases=(models.Model,),
         ),
-        # migrations.AlterUniqueTogether(
-        #     name='pricelistitem',
-        #     unique_together=set([('key', 'content_type', 'object_id')]),
-        # ),
         migrations.CreateModel(
             name='DefaultPriceListItem',
             fields=[
