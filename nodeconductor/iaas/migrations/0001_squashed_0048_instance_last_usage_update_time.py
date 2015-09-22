@@ -13,7 +13,6 @@ import model_utils.fields
 import nodeconductor.core.validators
 
 from uuid import uuid4
-from decimal import Decimal
 from django.db import models, migrations
 from django.db.models import Count
 from django.contrib.contenttypes.models import ContentType
@@ -161,12 +160,13 @@ def mark_security_groups_as_synced(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    replaces = [('iaas', '0001_initial'), ('iaas', '0002_floatingip'), ('iaas', '0003_change_ip_address_format'), ('iaas', '0004_extend_instance_ram'), ('iaas', '0005_auto_20141229_1915'), ('iaas', '0006_protect_non_empty_projects'), ('iaas', '0007_add_icmp_to_secgroup_rule_protocols'), ('iaas', '0008_add_instance_restarting_state'), ('iaas', '0009_add_min_ram_and_disk_to_image'), ('iaas', '0010_auto_20150118_1834'), ('iaas', '0011_cloudprojectmembership_availability_zone'), ('iaas', '0012_make_instance_timestamped_model'), ('iaas', '0013_remove_backup_quota'), ('iaas', '0014_servicestatistics'), ('iaas', '0015_cloudprojectmembership_internal_network_id'), ('iaas', '0016_iaastemplateservice'), ('iaas', '0017_init_new_quotas'), ('iaas', '0018_remove_old_quotas'), ('iaas', '0019_auto_20150310_1341'), ('iaas', '0020_openstacksettings'), ('iaas', '0021_auto_20150327_1500'), ('iaas', '0022_extend_iaas_template_with_type_icon_name'), ('iaas', '0023_add_related_name_to_instance_cpm_field'), ('iaas', '0024_init_customers_nc_instances_quota'), ('iaas', '0025_cloud_dummy'), ('iaas', '0026_inherit_namemixin'), ('iaas', '0027_refactor_cron_schedule_field'), ('iaas', '0028_fix_unique_constraint_of_cpm'), ('iaas', '0029_instance_user_data'), ('iaas', '0030_extend_iaas_template_with_type'), ('iaas', '0031_fix_iaas_template_service'), ('iaas', '0032_instance_type'), ('iaas', '0033_add_validator_to_instance_user_data'), ('iaas', '0034_instance_installation_state'), ('iaas', '0035_add_list_of_application_types'), ('iaas', '0036_add_default_installation_state'), ('iaas', '0037_init_security_groups_quotas'), ('iaas', '0038_securitygroup_state'), ('iaas', '0039_cloudprojectmembership_external_network_id'), ('iaas', '0040_update_cloudprojectmembership'), ('iaas', '0041_rename_service_models'), ('iaas', '0042_remove_template_fees'), ('iaas', '0043_enhance_resource_and_template_for_billing'), ('iaas', '0044_floatingip_backend_network_id'), ('iaas', '0045_instance_billing_backend_active_invoice_id'), ('iaas', '0046_remove_obsolete_billing_fields')]
+    replaces = [('iaas', '0001_initial'), ('iaas', '0002_floatingip'), ('iaas', '0003_change_ip_address_format'), ('iaas', '0004_extend_instance_ram'), ('iaas', '0005_auto_20141229_1915'), ('iaas', '0006_protect_non_empty_projects'), ('iaas', '0007_add_icmp_to_secgroup_rule_protocols'), ('iaas', '0008_add_instance_restarting_state'), ('iaas', '0009_add_min_ram_and_disk_to_image'), ('iaas', '0010_auto_20150118_1834'), ('iaas', '0011_cloudprojectmembership_availability_zone'), ('iaas', '0012_make_instance_timestamped_model'), ('iaas', '0013_remove_backup_quota'), ('iaas', '0014_servicestatistics'), ('iaas', '0015_cloudprojectmembership_internal_network_id'), ('iaas', '0016_iaastemplateservice'), ('iaas', '0017_init_new_quotas'), ('iaas', '0018_remove_old_quotas'), ('iaas', '0019_auto_20150310_1341'), ('iaas', '0020_openstacksettings'), ('iaas', '0021_auto_20150327_1500'), ('iaas', '0022_extend_iaas_template_with_type_icon_name'), ('iaas', '0023_add_related_name_to_instance_cpm_field'), ('iaas', '0024_init_customers_nc_instances_quota'), ('iaas', '0025_cloud_dummy'), ('iaas', '0026_inherit_namemixin'), ('iaas', '0027_refactor_cron_schedule_field'), ('iaas', '0028_fix_unique_constraint_of_cpm'), ('iaas', '0029_instance_user_data'), ('iaas', '0030_extend_iaas_template_with_type'), ('iaas', '0031_fix_iaas_template_service'), ('iaas', '0032_instance_type'), ('iaas', '0033_add_validator_to_instance_user_data'), ('iaas', '0034_instance_installation_state'), ('iaas', '0035_add_list_of_application_types'), ('iaas', '0036_add_default_installation_state'), ('iaas', '0037_init_security_groups_quotas'), ('iaas', '0038_securitygroup_state'), ('iaas', '0039_cloudprojectmembership_external_network_id'), ('iaas', '0040_update_cloudprojectmembership'), ('iaas', '0041_rename_service_models'), ('iaas', '0042_remove_template_fees'), ('iaas', '0043_enhance_resource_and_template_for_billing'), ('iaas', '0044_floatingip_backend_network_id'), ('iaas', '0045_instance_billing_backend_active_invoice_id'), ('iaas', '0046_remove_obsolete_billing_fields'), ('iaas', '0047_refactor_application_type_field'), ('iaas', '0048_instance_last_usage_update_time')]
 
     dependencies = [
         ('contenttypes', '0001_initial'),
         ('structure', '0015_drop_service_polymorphic'),
         ('template', '0004_upgrate_polymorphic_package'),
+        ('cost_tracking', '0001_squashed_0011_applicationtype_slug'),
     ]
 
     operations = [
@@ -241,7 +241,7 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=False)),
                 ('sla_level', models.DecimalField(null=True, max_digits=6, decimal_places=4, blank=True)),
                 ('os_type', models.CharField(default=b'other', max_length=10, choices=[(b'centos6', b'Centos 6'), (b'centos7', b'Centos 7'), (b'ubuntu', b'Ubuntu'), (b'rhel6', b'RedHat 6'), (b'rhel7', b'RedHat 7'), (b'freebsd', b'FreeBSD'), (b'windows', b'Windows'), (b'other', b'Other')])),
-                ('application_type', models.CharField(default=b'none', help_text='Type of the application inside the template (optional)', max_length=100, blank=True, choices=[(b'wordpress', b'WordPress'), (b'postgresql', b'PostgreSQL'), (b'zimbra', b'Zimbra'), (b'none', b'None')])),
+                ('application_type', models.ForeignKey(to='cost_tracking.ApplicationType', null=True, help_text='Type of the application inside the template (optional)')),
                 ('type', models.CharField(help_text='Template type', max_length=100, blank=True)),
             ],
             options={
@@ -322,6 +322,7 @@ class Migration(migrations.Migration):
                 ('type', models.CharField(default='IaaS', max_length=10, choices=[('IaaS', 'IaaS'), ('PaaS', 'PaaS')])),
                 ('installation_state', models.CharField(default='NO DATA', help_text='State of post deploy installation process', max_length=50, blank=True)),
                 ('billing_backend_id', models.CharField(help_text=b'ID of a resource in backend', max_length=255, blank=True)),
+                ('last_usage_update_time', models.DateTimeField(null=True, blank=True)),
             ],
             options={
                 'abstract': False,

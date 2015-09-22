@@ -6,10 +6,18 @@ import jsonfield.fields
 import uuidfield.fields
 import django.core.validators
 
+from nodeconductor.cost_tracking import ApplicationTypes
+
+
+def init_default_application_types(apps, schema_editor):
+    ApplicationType = apps.get_model('cost_tracking', 'ApplicationType')
+    for slug, name in ApplicationTypes.CHOICES:
+        ApplicationType.objects.update_or_create(slug=slug, defaults={'name': name})
+
 
 class Migration(migrations.Migration):
 
-    replaces = [('cost_tracking', '0001_initial'), ('cost_tracking', '0002_price_list'), ('cost_tracking', '0003_new_price_list_items'), ('cost_tracking', '0004_remove_connection_to_resource'), ('cost_tracking', '0005_expand_item_type_size'), ('cost_tracking', '0006_add_backend_cache_fields_to_pricelist'), ('cost_tracking', '0007_remove_obsolete_billing_fields'), ('cost_tracking', '0008_delete_resourceusage'), ('cost_tracking', '0009_defaultpricelistitem_name')]
+    replaces = [('cost_tracking', '0001_initial'), ('cost_tracking', '0002_price_list'), ('cost_tracking', '0003_new_price_list_items'), ('cost_tracking', '0004_remove_connection_to_resource'), ('cost_tracking', '0005_expand_item_type_size'), ('cost_tracking', '0006_add_backend_cache_fields_to_pricelist'), ('cost_tracking', '0007_remove_obsolete_billing_fields'), ('cost_tracking', '0008_delete_resourceusage'), ('cost_tracking', '0009_defaultpricelistitem_name'), ('cost_tracking', '0010_applicationtype'), ('cost_tracking', '0011_applicationtype_slug')]
 
     dependencies = [
         ('contenttypes', '0001_initial'),
@@ -31,13 +39,14 @@ class Migration(migrations.Migration):
                 ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
             ],
             options={
+                'unique_together': set([('content_type', 'object_id', 'month', 'year', 'is_manually_input')]),
             },
             bases=(models.Model,),
         ),
-        migrations.AlterUniqueTogether(
-            name='priceestimate',
-            unique_together=set([('content_type', 'object_id', 'month', 'year', 'is_manually_input')]),
-        ),
+        # migrations.AlterUniqueTogether(
+        #     name='priceestimate',
+        #     unique_together=set([('content_type', 'object_id', 'month', 'year', 'is_manually_input')]),
+        # ),
         migrations.CreateModel(
             name='PriceListItem',
             fields=[
@@ -53,13 +62,14 @@ class Migration(migrations.Migration):
                 ('resource_content_type', models.ForeignKey(related_name='+', default=None, to='contenttypes.ContentType')),
             ],
             options={
+                'unique_together': set([('key', 'content_type', 'object_id')]),
             },
             bases=(models.Model,),
         ),
-        migrations.AlterUniqueTogether(
-            name='pricelistitem',
-            unique_together=set([('key', 'content_type', 'object_id')]),
-        ),
+        # migrations.AlterUniqueTogether(
+        #     name='pricelistitem',
+        #     unique_together=set([('key', 'content_type', 'object_id')]),
+        # ),
         migrations.CreateModel(
             name='DefaultPriceListItem',
             fields=[
@@ -77,4 +87,17 @@ class Migration(migrations.Migration):
             },
             bases=(models.Model,),
         ),
+        migrations.CreateModel(
+            name='ApplicationType',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('name', models.CharField(max_length=150, verbose_name='name')),
+                ('slug', models.CharField(unique=True, max_length=150)),
+            ],
+            options={
+                'abstract': False,
+            },
+            bases=(models.Model,),
+        ),
+        migrations.RunPython(init_default_application_types),
     ]
