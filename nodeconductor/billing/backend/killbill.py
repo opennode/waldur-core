@@ -14,7 +14,7 @@ from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.billing.backend import BillingBackendError, NotFoundBillingBackendError
 from nodeconductor import __version__
 
-UNIT_PREFIX = 'hour-of-'
+UNIT_PREFIX = 'minute-of-'
 
 logger = logging.getLogger(__name__)
 
@@ -221,9 +221,9 @@ class KillBillAPI(object):
                         E.size('1'),
                         E.prices(E.price(
                             E.currency(self.currency),
-                            E.value(str(priceitem.value)),
+                            E.value(str(priceitem.value / 60)),  # compute minutely rate
                         )),
-                        E.max('744'),  # max hours in a month
+                        E.max('44640'),  # max minutes in a month
                     )))),
                     name=usage_name,
                     billingMode='IN_ARREAR',

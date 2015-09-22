@@ -122,12 +122,12 @@ class Invoice(LoggableMixin, core_models.UuidMixin):
         for item in invoice['items']:
             price_item = pricelist.get(item['name'])
             if price_item:
-                usage = int(item['amount'] / float(price_item.value))
+                usage = item['amount'] / float(price_item.value)
                 unit = 'GB/hour' if price_item.item_type == 'storage' else 'hour' + (
                     's' if usage > 1 else '')
 
                 item['name'] = price_item.name
-                item['usage'] = "{} {} x {:.2f} {}".format(
+                item['usage'] = "{:.2f} {} x {:.2f} {}".format(
                     usage, unit, price_item.value, item['currency'])
 
             resource = item['resource']
