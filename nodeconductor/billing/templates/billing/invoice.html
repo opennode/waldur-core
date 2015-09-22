@@ -64,11 +64,11 @@
             <tr>
                 <td colspan="2">
                 <table cellpadding="5">
-                {% for resource, amount in data.items.items %}
+                {% for resource, info in data.items.items %}
                 <tr>
-                    <td width="20" align="right">{{ forloop.parentloop.counter }}</td>
+                    <td width="20" align="right">{{ info.number }}</td>
                     <td>{{ resource }}</td>
-                    <td width="150" align="right">{{ amount|floatformat:2 }} {{ invoice.currency }}</td>
+                    <td width="150" align="right">{{ info.amount|floatformat:2 }} {{ invoice.currency }}</td>
                 </tr>
                 {% endfor %}
                 </table>
