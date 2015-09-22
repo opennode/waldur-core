@@ -97,7 +97,8 @@ class BillingBackend(object):
                     date=invoice['date'],
                     amount=invoice['amount'])
 
-            cur_invoice.generate_pdf()
+            cur_invoice.generate_pdf(invoice)
+            cur_invoice.generate_usage_pdf(invoice)
 
         # Remove stale invoices
         map(lambda i: i.delete(), cur_invoices.values())
