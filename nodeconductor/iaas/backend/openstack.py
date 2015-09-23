@@ -2078,7 +2078,8 @@ class OpenStackBackend(OpenStackClient):
 
             network_name = response['network']['name']
             subnet_id = response['network']['subnets'][0]
-            self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id)
+            self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id,
+                                      external=True, network_id=response['network']['id'])
 
             membership.external_network_id = external_network_id
             membership.save()
@@ -2185,7 +2186,7 @@ class OpenStackBackend(OpenStackClient):
         membership.external_network_id = ''
         membership.save()
 
-    def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id):
+    def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id, external=False, network_id=None):
         router_name = '{0}-router'.format(network_name)
         routers = neutron.list_routers(tenant_id=tenant_id)['routers']
 
@@ -2194,13 +2195,17 @@ class OpenStackBackend(OpenStackClient):
             router = routers[0]
         else:
             router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
-            logger.info('Router with name %s has been created.', router['name'])
+            logger.info('Router %s has been created.', router['name'])
 
         try:
-            neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
-            logger.info('Subnet with id %s was added to the router with name %s.', subnet_id, router_name)
-        except neutron_exceptions.NeutronClientException:
-            pass
+            if not external:
+                neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
+                logger.info('Internal subnet %s was connected to the router %s.', subnet_id, router_name)
+            else:
+                neutron.add_gateway_router(router['id'], {'network_id': network_id})
+                logger.info('External network %s was connected to the router %s.', network_id, router_name)
+        except neutron_exceptions.NeutronClientException as e:
+            logger.warning(e)
 
         return router['id']
 
