@@ -17,7 +17,7 @@ def init_default_application_types(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    replaces = [('cost_tracking', '0001_initial'), ('cost_tracking', '0002_price_list'), ('cost_tracking', '0003_new_price_list_items'), ('cost_tracking', '0004_remove_connection_to_resource'), ('cost_tracking', '0005_expand_item_type_size'), ('cost_tracking', '0006_add_backend_cache_fields_to_pricelist'), ('cost_tracking', '0007_remove_obsolete_billing_fields'), ('cost_tracking', '0008_delete_resourceusage'), ('cost_tracking', '0009_defaultpricelistitem_name'), ('cost_tracking', '0010_applicationtype'), ('cost_tracking', '0011_applicationtype_slug')]
+    replaces = [('cost_tracking', '0001_initial'), ('cost_tracking', '0002_price_list'), ('cost_tracking', '0003_new_price_list_items'), ('cost_tracking', '0004_remove_connection_to_resource'), ('cost_tracking', '0005_expand_item_type_size'), ('cost_tracking', '0006_add_backend_cache_fields_to_pricelist'), ('cost_tracking', '0007_remove_obsolete_billing_fields'), ('cost_tracking', '0008_delete_resourceusage'), ('cost_tracking', '0009_defaultpricelistitem_name'), ('cost_tracking', '0010_applicationtype'), ('cost_tracking', '0011_applicationtype_slug'), ('cost_tracking', '0012_fix_fields_length')]
 
     dependencies = [
         ('contenttypes', '0001_initial'),
@@ -50,10 +50,10 @@ class Migration(migrations.Migration):
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
                 ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
                 ('object_id', models.PositiveIntegerField()),
-                ('key', models.CharField(max_length=50)),
+                ('key', models.CharField(max_length=255)),
                 ('value', models.DecimalField(default=0, verbose_name=b'Hourly rate', max_digits=9, decimal_places=2)),
-                ('units', models.CharField(max_length=30, blank=True)),
-                ('item_type', models.CharField(default=b'flavor', max_length=30, choices=[(b'flavor', b'flavor'), (b'storage', b'storage'), (b'license-application', b'license-application'), (b'license-os', b'license-os'), (b'support', b'support'), (b'network', b'network')])),
+                ('units', models.CharField(max_length=255, blank=True)),
+                ('item_type', models.CharField(default=b'flavor', max_length=255, choices=[(b'flavor', b'flavor'), (b'storage', b'storage'), (b'license-application', b'license-application'), (b'license-os', b'license-os'), (b'support', b'support'), (b'network', b'network')])),
                 ('is_manually_input', models.BooleanField(default=False)),
                 ('resource_content_type', models.ForeignKey(related_name='+', default=None, to='contenttypes.ContentType')),
             ],
@@ -68,10 +68,10 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('name', models.CharField(max_length=150, verbose_name='name')),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
-                ('key', models.CharField(max_length=50)),
+                ('key', models.CharField(max_length=255)),
                 ('value', models.DecimalField(default=0, verbose_name=b'Hourly rate', max_digits=9, decimal_places=2)),
-                ('units', models.CharField(max_length=30, blank=True)),
-                ('item_type', models.CharField(default=b'flavor', max_length=30, choices=[(b'flavor', b'flavor'), (b'storage', b'storage'), (b'license-application', b'license-application'), (b'license-os', b'license-os'), (b'support', b'support'), (b'network', b'network')])),
+                ('units', models.CharField(max_length=255, blank=True)),
+                ('item_type', models.CharField(default=b'flavor', max_length=255, choices=[(b'flavor', b'flavor'), (b'storage', b'storage'), (b'license-application', b'license-application'), (b'license-os', b'license-os'), (b'support', b'support'), (b'network', b'network')])),
                 ('resource_content_type', models.ForeignKey(default=None, to='contenttypes.ContentType')),
             ],
             options={
