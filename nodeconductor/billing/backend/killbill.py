@@ -139,7 +139,7 @@ class KillBillAPI(object):
     def add_usage(self, subscription_id, usage_data):
         # Push hourly usage to backend
         # http://docs.killbill.io/0.14/consumable_in_arrear.html#_usage_and_metering
-        today = datetime.utcnow().date().strftime('%Y-%m-%d')
+        today = self.test.list()['localDate'] or datetime.utcnow().date().strftime('%Y-%m-%d')
         self.usages.create(
             subscriptionId=subscription_id,
             unitUsageRecords=[{
