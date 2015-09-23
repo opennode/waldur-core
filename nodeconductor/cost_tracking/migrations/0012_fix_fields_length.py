@@ -7,7 +7,7 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('cost_tracking', '0001_squashed_0011_applicationtype_slug'),
+        ('cost_tracking', '0011_applicationtype_slug'),
     ]
 
     operations = [
