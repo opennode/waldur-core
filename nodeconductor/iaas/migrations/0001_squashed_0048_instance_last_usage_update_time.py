@@ -166,7 +166,7 @@ class Migration(migrations.Migration):
         ('contenttypes', '0001_initial'),
         ('structure', '0015_drop_service_polymorphic'),
         ('template', '0004_upgrate_polymorphic_package'),
-        ('cost_tracking', '0001_squashed_0011_applicationtype_slug'),
+        ('cost_tracking', '0001_squashed_0012_fix_fields_length'),
     ]
 
     operations = [
