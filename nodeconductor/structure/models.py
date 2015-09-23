@@ -471,6 +471,7 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
     username = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100, blank=True, null=True)
     token = models.CharField(max_length=255, blank=True, null=True)
+    certificate = models.FileField(upload_to='certs', blank=True, null=True)
     type = models.SmallIntegerField(choices=SupportedServices.Types.CHOICES)
 
     options = JSONField(blank=True, help_text='Extra options')
