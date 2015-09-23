@@ -4,6 +4,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
 
 from nodeconductor.core import models as core_models
+from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import models as structure_models
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.iaas.models import PaidInstance, SecurityGroupRuleValidationMixin
@@ -131,6 +132,10 @@ class FloatingIP(core_models.UuidMixin):
     backend_network_id = models.CharField(max_length=255, editable=False)
 
 
+class InstanceWorkflowError(Exception):
+    pass
+
+
 class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, PaidInstance):
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
@@ -159,6 +164,36 @@ class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, 
             'uuid', 'name', 'type', 'service_project_link', 'ram', 'cores',
             'data_volume_size', 'system_volume_size',
         )
+
+    def provision(self, flavor=None, image=None, ssh_key=None, skip_external_ip_assigment=False):
+        if ssh_key:
+            self.key_name = ssh_key.name
+            self.key_fingerprint = ssh_key.fingerprint
+
+        if not skip_external_ip_assigment:
+            floating_ip = self.service_project_link.floating_ips.filter(status='DOWN').first()
+            self.external_ips = floating_ip.address
+            floating_ip.status = 'BOOKED'
+            floating_ip.save(update_fields=['status'])
+
+        self.cores = flavor.cores
+        self.ram = flavor.ram
+        self.disk = self.system_volume_size + self.data_volume_size
+        self.__save()
+
+        send_task('openstack', 'provision')(
+            self.uuid.hex,
+            backend_flavor_id=flavor.backend_id,
+            backend_image_id=image.backend_id)
+
+    def __save(self, *args, **kwargs):
+        return super(Instance, self).save(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        if self.id is None and kwargs.get('commit', True):
+            raise InstanceWorkflowError(
+                'New instance cannot be saved. Use `provision` method for new instance creation.')
+        self.__save(*args, **kwargs)
 
 
 class InstanceSecurityGroup(models.Model):

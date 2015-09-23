@@ -78,7 +78,7 @@ class OpenStackBackend(ServiceBackend):
         @functools.wraps(func)
         def wrapped(self, *args, **kwargs):
             try:
-                func(self, *args, **kwargs)
+                return func(self, *args, **kwargs)
             except CloudBackendError as e:
                 six.reraise(OpenStackBackendError, e)
         return wrapped
@@ -124,6 +124,9 @@ class OpenStackBackend(ServiceBackend):
             self.push_security_groups(service_project_link, is_initial=is_initial)
             self.pull_quotas(service_project_link)
             self.pull_floating_ips(service_project_link)
+            connected = self.connect_link_to_external_network(service_project_link)
+            if connected and is_initial:
+                self.prepare_floating_ip(service_project_link)
         except (keystone_exceptions.ClientException, neutron_exceptions.NeutronException) as e:
             logger.exception('Failed to synchronize ServiceProjectLink %s', service_project_link.to_string())
             six.reraise(OpenStackBackendError, e)
@@ -134,21 +137,8 @@ class OpenStackBackend(ServiceBackend):
         self.push_quotas(service_project_link, quotas)
         self.pull_quotas(service_project_link)
 
-    def provision(self, instance, flavor=None, image=None, ssh_key=None):
-        if ssh_key:
-            instance.key_name = ssh_key.name
-            instance.key_fingerprint = ssh_key.fingerprint
-
-        instance.cores = flavor.cores
-        instance.ram = flavor.ram
-        instance.disk = instance.system_volume_size + instance.data_volume_size
-        instance.save()
-
-        send_task('openstack', 'provision')(
-            instance.uuid.hex,
-            backend_flavor_id=flavor.backend_id,
-            backend_image_id=image.backend_id)
-
+    # XXX: Backend methods has to execute synchronous operations, they cannot call tasks.
+    # This methods have to be moved to signals or Instance model.
     def destroy(self, instance):
         instance.schedule_deletion()
         instance.save()
@@ -241,11 +231,11 @@ class OpenStackBackend(ServiceBackend):
         keystone = self.keystone_admin_client
         tenant = self._old_backend.get_or_create_tenant(service_project_link, keystone)
 
-        self._old_backend.ensure_user_is_tenant_admin(self.settings.username, tenant, keystone)
-        self.get_or_create_internal_network(service_project_link)
-
         service_project_link.tenant_id = tenant.id
         service_project_link.save(update_fields=['tenant_id'])
+
+        self._old_backend.ensure_user_is_tenant_admin(self.settings.username, tenant, keystone)
+        self.get_or_create_internal_network(service_project_link)
 
     def get_instance(self, instance_id):
         try:
@@ -508,6 +498,11 @@ class OpenStackBackend(ServiceBackend):
         neutron = self.neutron_admin_client
         self._old_backend.allocate_floating_ip_address(neutron, service_project_link)
 
+    def prepare_floating_ip(self, service_project_link):
+        """ Allocate new floating_ip to service project link tenant if it does not have any free ips """
+        if not service_project_link.floating_ips.filter(status='DOWN').exists():
+            self.allocate_floating_ip_address(service_project_link)
+
     @reraise_exceptions
     def assign_floating_ip_to_instance(self, instance, floating_ip):
         nova = self.nova_admin_client
@@ -517,3 +512,17 @@ class OpenStackBackend(ServiceBackend):
     def push_floating_ip_to_instance(self, instance, server):
         nova = self.nova_client
         self._old_backend.push_floating_ip_to_instance(server, instance, nova)
+
+    @reraise_exceptions
+    def connect_link_to_external_network(self, service_project_link):
+        neutron = self.neutron_admin_client
+        settings = service_project_link.service.settings
+        if 'external_network_id' in settings.options:
+            self._old_backend.connect_membership_to_external_network(
+                service_project_link, settings.options['external_network_id'], neutron)
+            connected = True
+        else:
+            logger.warning('OpenStack service project link was not connected to external network: "external_network_id"'
+                           ' option is not defined in settings {} option', settings.name)
+            connected = False
+        return connected

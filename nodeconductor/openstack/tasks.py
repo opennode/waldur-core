@@ -1,6 +1,6 @@
 import logging
 
-from celery import shared_task
+from celery import shared_task, chain
 
 from nodeconductor.core.tasks import transition, throttle
 from nodeconductor.openstack.backend import OpenStackBackendError
@@ -12,11 +12,19 @@ logger = logging.getLogger(__name__)
 
 @shared_task(name='nodeconductor.openstack.provision')
 def provision(instance_uuid, **kwargs):
+    instance = Instance.objects.get(uuid=instance_uuid)
     provision_instance.apply_async(
         args=(instance_uuid,),
         kwargs=kwargs,
-        link=set_online.si(instance_uuid),
+        link=chain(set_online.si(instance_uuid), prepare_floatting_ip.si(instance.service_project_link.to_string())),
         link_error=set_erred.si(instance_uuid))
+
+
+@shared_task(name='nodeconductor.openstack.prepare_floatting_ip')
+def prepare_floatting_ip(service_project_link_str):
+    service_project_link = next(OpenStackServiceProjectLink.from_string(service_project_link_str))
+    backend = service_project_link.get_backend()
+    backend.prepare_floating_ip(service_project_link)
 
 
 @shared_task(name='nodeconductor.openstack.destroy')
