@@ -471,6 +471,7 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
     username = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100, blank=True, null=True)
     token = models.CharField(max_length=255, blank=True, null=True)
+    certificate = models.FileField(upload_to='certs', blank=True, null=True)
     type = models.SmallIntegerField(choices=SupportedServices.Types.CHOICES)
 
     options = JSONField(blank=True, help_text='Extra options')
@@ -736,6 +737,11 @@ class Resource(core_models.UuidMixin,
 
     def get_log_fields(self):
         return ('uuid', 'name', 'service_project_link')
+
+    def _get_log_context(self, entity_name):
+        context = super(Resource, self)._get_log_context(entity_name)
+        context['resource_type'] = SupportedServices.get_name_for_model(self)
+        return context
 
     def __str__(self):
         return self.name

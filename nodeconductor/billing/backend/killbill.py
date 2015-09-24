@@ -14,7 +14,7 @@ from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.billing.backend import BillingBackendError, NotFoundBillingBackendError
 from nodeconductor import __version__
 
-UNIT_PREFIX = 'hour-of-'
+UNIT_PREFIX = 'minute-of-'
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ class KillBillAPI(object):
     def add_usage(self, subscription_id, usage_data):
         # Push hourly usage to backend
         # http://docs.killbill.io/0.14/consumable_in_arrear.html#_usage_and_metering
-        today = datetime.utcnow().date().strftime('%Y-%m-%d')
+        today = self.test.list()['localDate'] or datetime.utcnow().date().strftime('%Y-%m-%d')
         self.usages.create(
             subscriptionId=subscription_id,
             unitUsageRecords=[{
@@ -221,9 +221,9 @@ class KillBillAPI(object):
                         E.size('1'),
                         E.prices(E.price(
                             E.currency(self.currency),
-                            E.value(str(priceitem.value)),
+                            E.value(str(priceitem.value / 60)),  # compute minutely rate
                         )),
-                        E.max('744'),  # max hours in a month
+                        E.max('44640'),  # max minutes in a month
                     )))),
                     name=usage_name,
                     billingMode='IN_ARREAR',

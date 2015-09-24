@@ -1,3 +1,4 @@
+{% load humanize %}
 <html>
     <head>
         <style type="text/css">
@@ -41,7 +42,7 @@
             {% for resource, data in resources.items %}
             <tr>
                 <td><h2>{{ resource }}</h2></td>
-                <td width="150" align="right"><h2>{{ data.amount|floatformat:2 }} {{ invoice.currency }}</h2></td>
+                <td width="150" align="right"><h2>{{ data.amount|floatformat:2|intcomma }} {{ invoice.currency }}</h2></td>
             </tr>
             <tr>
                 <td colspan="2">
@@ -50,7 +51,7 @@
                 <tr>
                     <td width="20" align="right">{{ forloop.counter }}</td>
                     <td>{{ item.name }} {{ item.usage }}</td>
-                    <td width="150" align="right">{{ item.amount|floatformat:2 }} {{ item.currency }}</td>
+                    <td width="150" align="right">{{ item.amount|floatformat:2|intcomma }} {{ item.currency }}</td>
                 </tr>
                 {% endfor %}
                 </table>
@@ -60,7 +61,7 @@
             {% endfor %}
             <tr><td colspan="2" style="padding: 10px 0"><hr></td></tr>
             <tr style="font-size:24px">
-                <th align="right" colspan="2">Total: {{ invoice.amount|floatformat:2 }} {{ invoice.currency }}</th>
+                <th align="right" colspan="2">Total: {{ invoice.amount|floatformat:2|intcomma }} {{ invoice.currency }}</th>
             </tr>
         </table>
     </body>

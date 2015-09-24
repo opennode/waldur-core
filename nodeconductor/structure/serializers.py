@@ -709,13 +709,13 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         model = models.ServiceSettings
         fields = (
             'url', 'uuid', 'name', 'type', 'state', 'shared',
-            'backend_url', 'username', 'password', 'token',
+            'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
             'dummy'
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state')
-        write_only_fields = ('backend_url', 'username', 'token', 'password')
+        write_only_fields = ('backend_url', 'username', 'token', 'password', 'certificate')
         related_paths = ('customer',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -764,7 +764,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
     def get_service_serializer(self):
         # Find service serializer by service type of settings object
         return next(cls for cls in BaseServiceSerializer.__subclasses__()
-                        if cls.SERVICE_TYPE == self.instance.type)
+                    if cls.SERVICE_TYPE == self.instance.type)
 
 
 class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
@@ -798,6 +798,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     username = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
     password = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
     token = serializers.CharField(allow_null=True, write_only=True, required=False)
+    certificate = serializers.FileField(allow_null=True, write_only=True, required=False)
     dummy = serializers.BooleanField(write_only=True, required=False)
     resources_count = serializers.SerializerMethodField()
     service_type = serializers.SerializerMethodField()
@@ -811,12 +812,12 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'name', 'projects',
             'customer', 'customer_name', 'customer_native_name',
             'settings', 'dummy',
-            'backend_url', 'username', 'password', 'token',
+            'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type',
         )
         protected_fields = (
             'customer', 'settings',
-            'backend_url', 'username', 'password', 'token', 'dummy'
+            'backend_url', 'username', 'password', 'token', 'certificate', 'dummy'
         )
         related_paths = ('customer',)
         extra_kwargs = {
@@ -840,7 +841,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             fields['settings'].queryset = fields['settings'].queryset.filter(type=self.SERVICE_TYPE)
 
         if self.SERVICE_ACCOUNT_FIELDS is not NotImplemented:
-            for field in ('backend_url', 'username', 'password', 'token'):
+            for field in ('backend_url', 'username', 'password', 'token', 'certificate'):
                 if field in self.SERVICE_ACCOUNT_FIELDS:
                     fields[field].help_text = self.SERVICE_ACCOUNT_FIELDS[field]
                 else:
