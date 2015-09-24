@@ -11,6 +11,7 @@ from rest_framework.serializers import ValidationError
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
 from nodeconductor.logging import models, utils
 from nodeconductor.logging.log import event_logger
+from nodeconductor.logging.features import features_to_events, features_to_alerts
 
 
 def _convert(name):
@@ -24,9 +25,14 @@ class EventFilterBackend(filters.BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         search_text = request.query_params.get(settings.api_settings.SEARCH_PARAM, '')
         must_terms = {}
+        must_not_terms = {}
         should_terms = {}
         if 'event_type' in request.query_params:
             must_terms['event_type'] = request.query_params.getlist('event_type')
+
+        if 'exclude_features' in request.query_params:
+            features = request.query_params.getlist('exclude_features')
+            must_not_terms['event_type'] = features_to_events(features)
 
         if 'scope' in request.query_params:
             field = core_serializers.GenericRelatedField(related_models=utils.get_loggable_models())
@@ -47,7 +53,10 @@ class EventFilterBackend(filters.BaseFilterBackend):
         else:
             should_terms.update(event_logger.get_permitted_objects_uuids(request.user))
 
-        queryset = queryset.filter(search_text=search_text, should_terms=should_terms, must_terms=must_terms)
+        queryset = queryset.filter(search_text=search_text,
+                                   should_terms=should_terms,
+                                   must_terms=must_terms,
+                                   must_not_terms=must_not_terms)
 
         order_by = request.query_params.get('o', '-@timestamp')
         queryset = queryset.order_by(order_by)
@@ -139,6 +148,10 @@ class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
 
         if 'alert_type' in request.query_params:
             queryset = queryset.filter(alert_type__in=request.query_params.getlist('alert_type'))
+
+        if 'exclude_features' in request.query_params:
+            features = request.query_params.getlist('exclude_features')
+            queryset = queryset.exclude(alert_type__in=features_to_alerts(features))
 
         return queryset
 
