@@ -227,7 +227,7 @@ class ElasticsearchClient(object):
         self.body = self.SearchBody()
         self.body.set_should_terms(should_terms)
         self.body.set_must_terms(must_terms)
-        self.body.set_must_not_terms(must_terms)
+        self.body.set_must_not_terms(must_not_terms)
         self.body.set_search_text(search_text)
         self.body.set_timestamp_filter(start, end)
         self.body.prepare()
