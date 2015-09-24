@@ -564,6 +564,10 @@ class TemplateFilter(django_filters.FilterSet):
         categories=CostConstants.Os.CATEGORIES
     )
 
+    application_type = django_filters.CharFilter(
+        name='application_type__slug',
+    )
+
     class Meta(object):
         model = models.Template
         fields = (
