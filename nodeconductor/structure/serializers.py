@@ -1112,11 +1112,11 @@ class VirtualMachineSerializer(BaseResourceSerializer):
         write_only=True)
 
     class Meta(BaseResourceSerializer.Meta):
-        read_only_fields = ('start_time', 'cores', 'ram', 'disk', 'external_ips')
+        read_only_fields = ('start_time', 'cores', 'ram', 'disk', 'external_ips', 'internal_ips')
         protected_fields = ('service', 'service_project_link', 'user_data', 'ssh_public_key')
         write_only_fields = ('user_data',)
         fields = BaseResourceSerializer.Meta.fields + (
-            'cores', 'ram', 'disk', 'ssh_public_key', 'user_data', 'external_ips',
+            'cores', 'ram', 'disk', 'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
         )
 
     def get_fields(self):
@@ -1124,6 +1124,12 @@ class VirtualMachineSerializer(BaseResourceSerializer):
         fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
             user=self.context['user'])
         return fields
+
+    def to_representation(self, instance):
+        # We need this hook, because ips have to be represented as list
+        instance.external_ips = [instance.external_ips] if instance.external_ips else []
+        instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
+        return super(VirtualMachineSerializer, self).to_representation(instance)
 
 
 class PropertySerializerMetaclass(serializers.SerializerMetaclass):

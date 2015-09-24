@@ -26,6 +26,7 @@ class ServiceSerializer(structure_serializers.BaseServiceSerializer):
         'tenant_name': 'Administrative tenant (default: "admin")',
         'availability_zone': 'Default availability zone for provisioned Instances',
         'cpu_overcommit_ratio': '(default: 1)',
+        'external_network_id': 'ID of OpenStack external network that will be connected to new service tenants',
     }
 
     class Meta(structure_serializers.BaseServiceSerializer.Meta):
@@ -356,9 +357,6 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assigment',
         )
-        read_only_fields = structure_serializers.VirtualMachineSerializer.Meta.read_only_fields + (
-            'internal_ips',
-        )
 
     def get_fields(self):
         fields = super(InstanceSerializer, self).get_fields()
@@ -403,15 +401,7 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     def create(self, validated_data):
         security_groups = [data['security_group'] for data in validated_data.pop('security_groups', [])]
-        provision_data = {
-            'flavor': validated_data.pop('flavor'),
-            'image': validated_data.pop('image'),
-            'ssh_public_key': validated_data.pop('ssh_public_key', None),
-            'skip_external_ip_assigment': validated_data.pop('skip_external_ip_assigment', False)
-        }
-
-        instance = models.Instance(**validated_data)
-        instance.provision(**provision_data)
+        instance = super(InstanceSerializer, self).create(validated_data)
 
         for sg in security_groups:
             instance.security_groups.create(security_group=sg)

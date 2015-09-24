@@ -137,8 +137,27 @@ class OpenStackBackend(ServiceBackend):
         self.push_quotas(service_project_link, quotas)
         self.pull_quotas(service_project_link)
 
-    # XXX: Backend methods has to execute synchronous operations, they cannot call tasks.
-    # This methods have to be moved to signals or Instance model.
+    def provision(self, instance, flavor=None, image=None, ssh_key=None, skip_external_ip_assigment=False):
+        if ssh_key:
+            instance.key_name = ssh_key.name
+            instance.key_fingerprint = ssh_key.fingerprint
+
+        if not skip_external_ip_assigment:
+            floating_ip = instance.service_project_link.floating_ips.filter(status='DOWN').first()
+            instance.external_ips = floating_ip.address
+            floating_ip.status = 'BOOKED'
+            floating_ip.save(update_fields=['status'])
+
+        instance.cores = flavor.cores
+        instance.ram = flavor.ram
+        instance.disk = instance.system_volume_size + instance.data_volume_size
+        instance.save()
+
+        send_task('openstack', 'provision')(
+            instance.uuid.hex,
+            backend_flavor_id=flavor.backend_id,
+            backend_image_id=image.backend_id)
+
     def destroy(self, instance):
         instance.schedule_deletion()
         instance.save()

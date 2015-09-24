@@ -120,7 +120,13 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
         send_task('openstack', 'sync_instance_security_groups')(self.get_object().uuid.hex)
 
     def perform_provision(self, serializer):
-        serializer.save()
+        resource = serializer.save()
+        backend = resource.get_backend()
+        backend.provision(
+            resource,
+            flavor=serializer.validated_data['flavor'],
+            image=serializer.validated_data['image'],
+            ssh_key=serializer.validated_data.get('ssh_public_key'))
 
     @decorators.detail_route(methods=['post'])
     def assign_floating_ip(self, request, uuid):

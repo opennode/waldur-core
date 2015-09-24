@@ -161,28 +161,6 @@ class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, 
             'data_volume_size', 'system_volume_size',
         )
 
-    # XXX: Move flavor, image and ssh key to model as nullable FKs and move this logic to signal
-    def provision(self, flavor=None, image=None, ssh_public_key=None, skip_external_ip_assigment=False):
-        if ssh_public_key:
-            self.key_name = ssh_public_key.name
-            self.key_fingerprint = ssh_public_key.fingerprint
-
-        if not skip_external_ip_assigment:
-            floating_ip = self.service_project_link.floating_ips.filter(status='DOWN').first()
-            self.external_ips = floating_ip.address
-            floating_ip.status = 'BOOKED'
-            floating_ip.save(update_fields=['status'])
-
-        self.cores = flavor.cores
-        self.ram = flavor.ram
-        self.disk = self.system_volume_size + self.data_volume_size
-        self.save()
-
-        send_task('openstack', 'provision')(
-            self.uuid.hex,
-            backend_flavor_id=flavor.backend_id,
-            backend_image_id=image.backend_id)
-
 
 class InstanceSecurityGroup(models.Model):
     class Permissions(object):
