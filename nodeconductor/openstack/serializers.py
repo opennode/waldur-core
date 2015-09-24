@@ -406,7 +406,7 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         provision_data = {
             'flavor': validated_data.pop('flavor'),
             'image': validated_data.pop('image'),
-            'ssh_key': validated_data.pop('ssh_key', None),
+            'ssh_public_key': validated_data.pop('ssh_public_key', None),
             'skip_external_ip_assigment': validated_data.pop('skip_external_ip_assigment', False)
         }
 

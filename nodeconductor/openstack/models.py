@@ -162,10 +162,10 @@ class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, 
         )
 
     # XXX: Move flavor, image and ssh key to model as nullable FKs and move this logic to signal
-    def provision(self, flavor=None, image=None, ssh_key=None, skip_external_ip_assigment=False):
-        if ssh_key:
-            self.key_name = ssh_key.name
-            self.key_fingerprint = ssh_key.fingerprint
+    def provision(self, flavor=None, image=None, ssh_public_key=None, skip_external_ip_assigment=False):
+        if ssh_public_key:
+            self.key_name = ssh_public_key.name
+            self.key_fingerprint = ssh_public_key.fingerprint
 
         if not skip_external_ip_assigment:
             floating_ip = self.service_project_link.floating_ips.filter(status='DOWN').first()
