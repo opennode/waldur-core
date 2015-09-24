@@ -1,3 +1,6 @@
+# Group event and alerts by features in order to prevent large HTTP GET request
+# TODO: Refactor
+
 EVENT_FEATURES = {
     'users': [
         'auth_logged_in_with_username',
