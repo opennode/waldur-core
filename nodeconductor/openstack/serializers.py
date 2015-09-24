@@ -26,6 +26,7 @@ class ServiceSerializer(structure_serializers.BaseServiceSerializer):
         'tenant_name': 'Administrative tenant (default: "admin")',
         'availability_zone': 'Default availability zone for provisioned Instances',
         'cpu_overcommit_ratio': '(default: 1)',
+        'external_network_id': 'ID of OpenStack external network that will be connected to new service tenants',
     }
 
     class Meta(structure_serializers.BaseServiceSerializer.Meta):
@@ -344,14 +345,17 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
     security_groups = InstanceSecurityGroupSerializer(
         many=True, required=False, read_only=False)
 
+    skip_external_ip_assigment = serializers.BooleanField(write_only=True, default=False)
+
     class Meta(structure_serializers.VirtualMachineSerializer.Meta):
         model = models.Instance
         view_name = 'openstack-instance-detail'
         fields = structure_serializers.VirtualMachineSerializer.Meta.fields + (
-            'flavor', 'image', 'system_volume_size', 'data_volume_size', 'security_groups',
+            'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assigment',
+            'security_groups', 'internal_ips',
         )
         protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
-            'flavor', 'image', 'system_volume_size', 'data_volume_size',
+            'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assigment',
         )
 
     def get_fields(self):
@@ -365,22 +369,18 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
             return attrs
 
         settings = attrs['service_project_link'].service.settings
+        service_project_link = attrs['service_project_link']
         flavor = attrs['flavor']
         image = attrs['image']
+
+        if not service_project_link.floating_ips.filter(status='DOWN').exists():
+            raise serializers.ValidationError(
+                {'service_project_link': 'Links tenant does not have any free floating IP.'
+                                         ' Try to allocate floating IP.'})
 
         if any([flavor.settings != settings, image.settings != settings]):
             raise serializers.ValidationError(
                 "Flavor and image must belong to the same service settings as service project link.")
-
-        external_ips = attrs.get('external_ips')
-        if external_ips:
-            ip_exists = attrs['service_project_link'].floating_ips.filter(
-                address=external_ips,
-                status='DOWN',
-            ).exists()
-            if not ip_exists:
-                raise serializers.ValidationError(
-                    {'external_ips': "External IP is not from the list of available floating IPs."})
 
         if image.min_ram > flavor.ram:
             raise serializers.ValidationError(

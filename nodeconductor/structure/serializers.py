@@ -1112,20 +1112,12 @@ class VirtualMachineSerializer(BaseResourceSerializer):
         required=False,
         write_only=True)
 
-    external_ips = serializers.ListField(
-        child=core_serializers.IPAddressField(),
-        allow_null=True,
-        required=False,
-        validators=[IpCountValidator(1)],
-    )
-
     class Meta(BaseResourceSerializer.Meta):
-        read_only_fields = ('start_time', 'cores', 'ram', 'disk')
+        read_only_fields = ('start_time', 'cores', 'ram', 'disk', 'external_ips', 'internal_ips')
         protected_fields = ('service', 'service_project_link', 'user_data', 'ssh_public_key')
         write_only_fields = ('user_data',)
         fields = BaseResourceSerializer.Meta.fields + (
-            'cores', 'ram', 'disk',
-            'external_ips', 'ssh_public_key', 'user_data'
+            'cores', 'ram', 'disk', 'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
         )
 
     def get_fields(self):

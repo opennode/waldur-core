@@ -1,4 +1,3 @@
-from mock import patch
 from rest_framework import test, status
 
 from nodeconductor.openstack import models
@@ -10,6 +9,7 @@ from nodeconductor.structure.tests import factories as structure_factories
 def _instance_data(user, instance=None):
     if instance is None:
         instance = factories.InstanceFactory()
+    factories.FloatingIPFactory(service_project_link=instance.service_project_link, status='DOWN')
     image = factories.ImageFactory(settings=instance.service_project_link.service.settings)
     flavor = factories.FlavorFactory(settings=instance.service_project_link.service.settings)
     ssh_public_key = structure_factories.SshPublicKeyFactory(user=user)

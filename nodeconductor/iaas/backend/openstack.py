@@ -941,7 +941,9 @@ class OpenStackBackend(OpenStackClient):
                 backend_ip = backend_floating_ips[ip_id]
                 if nc_ip.status != backend_ip['status'] or nc_ip.address != backend_ip['floating_ip_address']\
                         or nc_ip.backend_network_id != backend_ip['floating_network_id']:
-                    nc_ip.status = backend_ip['status']
+                    # If key is BOOKED by NodeConductor it can be still DOWN in OpenStack
+                    if not (nc_ip.status == 'BOOKED' and backend_ip['status'] == 'DOWN'):
+                        nc_ip.status = backend_ip['status']
                     nc_ip.address = backend_ip['floating_ip_address']
                     nc_ip.backend_network_id = backend_ip['floating_network_id']
                     nc_ip.save()
@@ -2064,24 +2066,33 @@ class OpenStackBackend(OpenStackClient):
 
         return membership.internal_network_id
 
+    def connect_membership_to_external_network(self, membership, external_network_id, neutron):
+        """ Create router that will connect external network and memberships tenant """
+        try:
+            # check if the network actually exists
+            response = neutron.show_network(external_network_id)
+        except neutron_exceptions.NeutronClientException as e:
+            logger.exception('External network with id %s does not exist. Stale data in database?', external_network_id)
+            six.reraise(CloudBackendError, e)
+        else:
+
+            network_name = response['network']['name']
+            subnet_id = response['network']['subnets'][0]
+            # XXX: refactor function call, split get_or_create_router into more fine grained
+            self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id,
+                                      external=True, network_id=response['network']['id'])
+
+            membership.external_network_id = external_network_id
+            membership.save()
+
+            logger.info('Router between external network %s and tenant %s was successfully created',
+                        external_network_id, membership.tenant_id)
+            return external_network_id
+
     def get_or_create_external_network(self, membership, neutron, network_ip, network_prefix,
                                        vlan_id=None, vxlan_id=None, ips_count=None):
         if membership.external_network_id:
-            try:
-                # check if the network actually exists
-                response = neutron.show_network(membership.external_network_id)
-            except neutron_exceptions.NeutronClientException as e:
-                logger.exception('External network with id %s does not exist. Stale data in database?',
-                                 membership.external_network_id)
-                six.reraise(CloudBackendError, e)
-            else:
-                logger.info('External network with id %s exists.', membership.external_network_id)
-
-                network_name = response['network']['name']
-                subnet_id = response['network']['subnets'][0]
-                self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id)
-
-                return membership.external_network_id
+            self.connect_membership_to_external_network(membership, membership.external_network_id, neutron)
 
         # External network creation
         network_name = '{0}-ext-net'.format(self.create_backend_name())
@@ -2176,7 +2187,7 @@ class OpenStackBackend(OpenStackClient):
         membership.external_network_id = ''
         membership.save()
 
-    def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id):
+    def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id, external=False, network_id=None):
         router_name = '{0}-router'.format(network_name)
         routers = neutron.list_routers(tenant_id=tenant_id)['routers']
 
@@ -2185,13 +2196,17 @@ class OpenStackBackend(OpenStackClient):
             router = routers[0]
         else:
             router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
-            logger.info('Router with name %s has been created.', router['name'])
+            logger.info('Router %s has been created.', router['name'])
 
         try:
-            neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
-            logger.info('Subnet with id %s was added to the router with name %s.', subnet_id, router_name)
-        except neutron_exceptions.NeutronClientException:
-            pass
+            if not external:
+                neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
+                logger.info('Internal subnet %s was connected to the router %s.', subnet_id, router_name)
+            else:
+                neutron.add_gateway_router(router['id'], {'network_id': network_id})
+                logger.info('External network %s was connected to the router %s.', network_id, router_name)
+        except neutron_exceptions.NeutronClientException as e:
+            logger.warning(e)
 
         return router['id']
 
@@ -2323,7 +2338,7 @@ class OpenStackBackend(OpenStackClient):
             )
 
     def push_floating_ip_to_instance(self, server, instance, nova):
-        if instance.external_ips is None or instance.internal_ips is None:
+        if not instance.external_ips or not instance.internal_ips:
             return
 
         logger.debug('About to add external ip %s to instance %s',
