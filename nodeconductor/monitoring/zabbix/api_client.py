@@ -92,7 +92,7 @@ class ZabbixApiClient(object):
                 kwargs['templateid'] = self._settings['templateid']
             else:
                 kwargs['templateid'] = self._settings['openstack-templateid']
-            if not is_tenant:
+            if not is_tenant and instance.template.application_type:
                 kwargs['application_templateid'] = self._settings.get(
                     "%s-templateid" % instance.template.application_type.slug.lower())
             if is_tenant:
