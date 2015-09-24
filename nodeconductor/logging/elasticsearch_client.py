@@ -40,11 +40,12 @@ class ElasticsearchResultList(object):
         else:
             return ElasticsearchClient()
 
-    def filter(self, should_terms=None, must_terms=None, search_text='', start=None, end=None):
+    def filter(self, should_terms=None, must_terms=None, must_not_terms=None, search_text='', start=None, end=None):
         setattr(self, 'total', None)
         self.client.prepare_search_body(
             should_terms=should_terms,
             must_terms=must_terms,
+            must_not_terms=must_not_terms,
             search_text=search_text,
             start=start,
             end=end,
@@ -105,6 +106,7 @@ class ElasticsearchClient(object):
             self.timestamp_filter = {}
             self.should_terms_filter = {}
             self.must_terms_filter = {}
+            self.must_not_terms_filter = {}
             self.timestamp_ranges = []
 
         @_execute_if_not_empty
@@ -114,6 +116,10 @@ class ElasticsearchClient(object):
         @_execute_if_not_empty
         def set_must_terms(self, terms):
             self.must_terms_filter.update({key: map(str, value) for key, value in terms.items()})
+
+        @_execute_if_not_empty
+        def set_must_not_terms(self, terms):
+            self.must_not_terms_filter.update({key: map(str, value) for key, value in terms.items()})
 
         @_execute_if_not_empty
         def set_search_text(self, search_text):
@@ -157,6 +163,11 @@ class ElasticsearchClient(object):
                     {'terms': {key: value}} for key, value in self.must_terms_filter.items()
                 ]
 
+            if self.must_not_terms_filter:
+                self['query']['filtered']['filter']['bool']['must_not'] = [
+                    {'terms': {key: value}} for key, value in self.must_not_terms_filter.items()
+                ]
+
             if not self['query']['filtered']['filter']['bool']:
                 del self['query']['filtered']['filter']['bool']
 
@@ -197,14 +208,17 @@ class ElasticsearchClient(object):
     def __init__(self):
         self.client = self._get_client()
 
-    def prepare_search_body(self, should_terms=None, must_terms=None, search_text='', start=None, end=None):
+    def prepare_search_body(self, should_terms=None, must_terms=None, must_not_terms=None, search_text='', start=None, end=None):
         """
         Prepare body for elasticsearch query
 
         Search parameters
         ----------
-        terms : dictionary
-            Dictionary elements format:  <event term>: [<possible value 1>, <possible value 2> ...]
+        These parameters are dictionaries and have format:  <term>: [<value 1>, <value 2> ...]
+        should_terms: it resembles logical OR
+        must_terms: it resembles logical AND
+        must_not_terms: it resembles logical NOT
+
         search_text : string
             Text for FTS(full text search)
         start, end : datetime
@@ -213,6 +227,7 @@ class ElasticsearchClient(object):
         self.body = self.SearchBody()
         self.body.set_should_terms(should_terms)
         self.body.set_must_terms(must_terms)
+        self.body.set_must_not_terms(must_terms)
         self.body.set_search_text(search_text)
         self.body.set_timestamp_filter(start, end)
         self.body.prepare()

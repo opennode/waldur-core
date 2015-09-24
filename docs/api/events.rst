@@ -16,7 +16,7 @@ Filtering of customer list is supported through HTTP query parameters, the follo
   'project_group_name', 'cloud_account_name', 'project_name'
 - ?scope=<URL> - url of object that is connected to event
 - ?scope_type=<string> - name of scope type of object that is connected to event (Ex.: project, customer...)
-
+- ?exclude_features=<feature> (can be list) - exclude event from output if it's type corresponds to one of listed features
 
 Events count
 ------------

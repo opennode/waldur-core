@@ -26,6 +26,7 @@ Alerts can be filtered by:
  - ?acknowledged=True|False - show only acknowledged (non-acknowledged) alerts
  - ?content_type=<string> name of scope content type in format <app_name>.<scope_type>
    (Ex.: structure.project, iaas.instance...)
+ - ?exclude_features=<feature> (can be list) - exclude alert from output if it's type corresponds to one of given features
 
 Alerts can be ordered by:
 
