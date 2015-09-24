@@ -132,10 +132,6 @@ class FloatingIP(core_models.UuidMixin):
     backend_network_id = models.CharField(max_length=255, editable=False)
 
 
-class InstanceWorkflowError(Exception):
-    pass
-
-
 class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, PaidInstance):
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
@@ -165,6 +161,7 @@ class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, 
             'data_volume_size', 'system_volume_size',
         )
 
+    # XXX: Move flavor, image and ssh key to model as nullable FKs and move this logic to signal
     def provision(self, flavor=None, image=None, ssh_key=None, skip_external_ip_assigment=False):
         if ssh_key:
             self.key_name = ssh_key.name
@@ -179,21 +176,12 @@ class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, 
         self.cores = flavor.cores
         self.ram = flavor.ram
         self.disk = self.system_volume_size + self.data_volume_size
-        self.__save()
+        self.save()
 
         send_task('openstack', 'provision')(
             self.uuid.hex,
             backend_flavor_id=flavor.backend_id,
             backend_image_id=image.backend_id)
-
-    def __save(self, *args, **kwargs):
-        return super(Instance, self).save(*args, **kwargs)
-
-    def save(self, *args, **kwargs):
-        if self.id is None and kwargs.get('commit', True):
-            raise InstanceWorkflowError(
-                'New instance cannot be saved. Use `provision` method for new instance creation.')
-        self.__save(*args, **kwargs)
 
 
 class InstanceSecurityGroup(models.Model):
