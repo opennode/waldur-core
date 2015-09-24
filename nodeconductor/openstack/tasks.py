@@ -25,8 +25,6 @@ def prepare_floatting_ip(service_project_link_str):
     service_project_link = next(OpenStackServiceProjectLink.from_string(service_project_link_str))
     backend = service_project_link.get_backend()
     backend.prepare_floating_ip(service_project_link)
-    print 'Prepare floating ip raises error'
-    raise Exception('HM!')
 
 
 @shared_task(name='nodeconductor.openstack.destroy')
