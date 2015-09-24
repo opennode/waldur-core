@@ -738,6 +738,11 @@ class Resource(core_models.UuidMixin,
     def get_log_fields(self):
         return ('uuid', 'name', 'service_project_link')
 
+    def _get_log_context(self, entity_name):
+        context = super(Resource, self)._get_log_context(entity_name)
+        context['resource_type'] = SupportedServices.get_name_for_model(self)
+        return context
+
     def __str__(self):
         return self.name
 
