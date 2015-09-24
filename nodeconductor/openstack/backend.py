@@ -231,6 +231,20 @@ class OpenStackBackend(ServiceBackend):
     def pull_quotas(self, service_project_link):
         self._old_backend.pull_resource_quota(service_project_link)
         self._old_backend.pull_resource_quota_usage(service_project_link)
+        # additional quotas that are not implemented for in iaas application
+        logger.debug('About to get floating ip quota for tenant %s', service_project_link.tenant_id)
+        neutron = self.neutron_client
+        try:
+            floating_ip_count = len(self._old_backend.get_floating_ips(
+                tenant_id=service_project_link.tenant_id, neutron=neutron))
+            neutron_quotas = neutron.show_quota(tenant_id=service_project_link.tenant_id)['quota']
+        except neutron_exceptions.NeutronClientException as e:
+            logger.exception('Failed to get floating ip quota for tenant %s', service_project_link.tenant_id)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            logger.info('Successfully got floating ip quota for tenant %s', service_project_link.tenant_id)
+            service_project_link.set_quota_usage('floating_ip_count', floating_ip_count)
+            service_project_link.set_quota_limit('floating_ip_count', neutron_quotas['floatingip'])
 
     @reraise_exceptions
     def pull_floating_ips(self, service_project_link):
