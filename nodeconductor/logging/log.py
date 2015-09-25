@@ -58,7 +58,7 @@ class BaseLogger(object):
 
     def compile_message(self, message_template, context):
         try:
-            msg = message_template.format(**context)
+            msg = six.text_type(message_template).format(**context)
         except KeyError as e:
             raise LoggerError(
                 "Cannot find %s context field. Choices are: %s" % (
