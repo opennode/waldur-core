@@ -243,6 +243,12 @@ CELERYBEAT_SCHEDULE = {
         'schedule': crontab(minute=10),
         'args': (),
     },
+
+    'update-openstack-service-project-links-quotas': {
+        'task': 'nodeconductor.structure.sync_service_project_links',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    }
 }
 
 CELERY_TASK_THROTTLING = {
