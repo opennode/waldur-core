@@ -439,7 +439,7 @@ def connect_shared_service_settings_to_customers(sender, instance, created=False
     for customer in Customer.objects.all():
         service_model.objects.create(customer=customer,
                                      settings=service_settings,
-                                     name=shared_settings.name,
+                                     name=service_settings.name,
                                      available_for_all=True)
 
 
