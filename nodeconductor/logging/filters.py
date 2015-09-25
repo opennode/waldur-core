@@ -25,14 +25,17 @@ class EventFilterBackend(filters.BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         search_text = request.query_params.get(settings.api_settings.SEARCH_PARAM, '')
         must_terms = {}
-        must_not_terms = {'event_type': UPDATE_EVENTS}
+        must_not_terms = {}
         should_terms = {}
         if 'event_type' in request.query_params:
             must_terms['event_type'] = request.query_params.getlist('event_type')
 
         if 'exclude_features' in request.query_params:
             features = request.query_params.getlist('exclude_features')
-            must_not_terms['event_type'] += features_to_events(features)
+            must_not_terms['event_type'] = features_to_events(features)
+
+        if 'exclude_extra' in request.query_params:
+            must_not_terms['event_type'] = must_not_terms.get('event_type', []) + UPDATE_EVENTS
 
         if 'scope' in request.query_params:
             field = core_serializers.GenericRelatedField(related_models=utils.get_loggable_models())
