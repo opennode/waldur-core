@@ -11,7 +11,7 @@ from rest_framework.serializers import ValidationError
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
 from nodeconductor.logging import models, utils
 from nodeconductor.logging.log import event_logger
-from nodeconductor.logging.features import features_to_events, features_to_alerts
+from nodeconductor.logging.features import features_to_events, features_to_alerts, UPDATE_EVENTS
 
 
 def _convert(name):
@@ -33,6 +33,9 @@ class EventFilterBackend(filters.BaseFilterBackend):
         if 'exclude_features' in request.query_params:
             features = request.query_params.getlist('exclude_features')
             must_not_terms['event_type'] = features_to_events(features)
+
+        if 'exclude_extra' in request.query_params:
+            must_not_terms['event_type'] = must_not_terms.get('event_type', []) + UPDATE_EVENTS
 
         if 'scope' in request.query_params:
             field = core_serializers.GenericRelatedField(related_models=utils.get_loggable_models())
