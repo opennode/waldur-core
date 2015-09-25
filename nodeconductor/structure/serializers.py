@@ -802,6 +802,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     dummy = serializers.BooleanField(write_only=True, required=False)
     resources_count = serializers.SerializerMethodField()
     service_type = serializers.SerializerMethodField()
+    shared = serializers.SerializerMethodField()
 
     class Meta(object):
         model = NotImplemented
@@ -813,7 +814,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name',
             'settings', 'dummy',
             'backend_url', 'username', 'password', 'token', 'certificate',
-            'resources_count', 'service_type',
+            'resources_count', 'service_type', 'shared'
         )
         protected_fields = (
             'customer', 'settings',
@@ -920,6 +921,13 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     def get_service_type(self, obj):
         return SupportedServices.get_name_for_model(obj)
+
+    def get_shared(self, service):
+        # XXX: Backward compatibility with IAAS Cloud
+        try:
+            return service.settings.shared
+        except AttributeError:
+            return False
 
 
 class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
