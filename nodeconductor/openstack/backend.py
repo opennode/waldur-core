@@ -136,12 +136,12 @@ class OpenStackBackend(ServiceBackend):
         self.push_quotas(service_project_link, quotas)
         self.pull_quotas(service_project_link)
 
-    def provision(self, instance, flavor=None, image=None, ssh_key=None, skip_external_ip_assigment=False):
+    def provision(self, instance, flavor=None, image=None, ssh_key=None, skip_external_ip_assignment=False):
         if ssh_key:
             instance.key_name = ssh_key.name
             instance.key_fingerprint = ssh_key.fingerprint
 
-        if not skip_external_ip_assigment:
+        if not skip_external_ip_assignment:
             # TODO: check availability and quota
             self.prepare_floating_ip(instance.service_project_link)
             floating_ip = instance.service_project_link.floating_ips.filter(status='DOWN').first()
