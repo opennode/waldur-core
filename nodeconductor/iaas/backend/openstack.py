@@ -624,7 +624,7 @@ class OpenStackBackend(OpenStackClient):
             nc_security_groups = nc_security_groups.filter(state__in=SynchronizationStates.STABLE_STATES)
 
         try:
-            backend_security_groups = dict((str(g.id), g) for g in nova.security_groups.list())
+            backend_security_groups = dict((str(g.id), g) for g in nova.security_groups.list() if g.name != 'default')
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to get openstack security groups for membership %s', membership.id)
             six.reraise(CloudBackendError, e)
