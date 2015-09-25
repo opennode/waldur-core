@@ -1477,8 +1477,9 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
                 try:
                     with transaction.atomic():
                         resource = self.get_object()
-                        is_admin = resource.service_project_link.project.has_user(
-                            request.user, models.ProjectRole.ADMINISTRATOR)
+                        project = resource.service_project_link.project
+                        is_admin = project.has_user(request.user, models.ProjectRole.ADMINISTRATOR) \
+                            or project.customer.has_user(request.user, models.CustomerRole.OWNER)
 
                         if not is_admin and not request.user.is_staff:
                             raise PermissionDenied(
