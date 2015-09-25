@@ -121,6 +121,17 @@ EVENT_FEATURES = {
     ],
 }
 
+UPDATE_EVENTS = [
+    'customer_update_succeeded',
+    'iaas_backup_schedule_update_succeeded',
+    'iaas_instance_update_succeeded',
+    'project_group_update_succeeded',
+    'project_update_succeeded',
+    'template_service_update_succeeded',
+    'template_update_succeeded',
+    'user_update_succeeded'
+]
+
 ALERT_FEATURES = {
     'services': [
         'customer_has_zero_services',

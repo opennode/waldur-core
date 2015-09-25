@@ -11,7 +11,7 @@ from rest_framework.serializers import ValidationError
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
 from nodeconductor.logging import models, utils
 from nodeconductor.logging.log import event_logger
-from nodeconductor.logging.features import features_to_events, features_to_alerts
+from nodeconductor.logging.features import features_to_events, features_to_alerts, UPDATE_EVENTS
 
 
 def _convert(name):
@@ -25,14 +25,14 @@ class EventFilterBackend(filters.BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         search_text = request.query_params.get(settings.api_settings.SEARCH_PARAM, '')
         must_terms = {}
-        must_not_terms = {}
+        must_not_terms = {'event_type': UPDATE_EVENTS}
         should_terms = {}
         if 'event_type' in request.query_params:
             must_terms['event_type'] = request.query_params.getlist('event_type')
 
         if 'exclude_features' in request.query_params:
             features = request.query_params.getlist('exclude_features')
-            must_not_terms['event_type'] = features_to_events(features)
+            must_not_terms['event_type'] += features_to_events(features)
 
         if 'scope' in request.query_params:
             field = core_serializers.GenericRelatedField(related_models=utils.get_loggable_models())
