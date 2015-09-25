@@ -425,7 +425,7 @@ def connect_customer_to_shared_service_settings(sender, instance, created=False,
         service_model = SupportedServices.get_service_models()[shared_settings.type]['service']
         service_model.objects.create(customer=customer,
                                      settings=shared_settings,
-                                     name='Shared {} service'.format(shared_settings.get_type_display()),
+                                     name=shared_settings.name,
                                      available_for_all=True)
 
 
@@ -439,7 +439,7 @@ def connect_shared_service_settings_to_customers(sender, instance, created=False
     for customer in Customer.objects.all():
         service_model.objects.create(customer=customer,
                                      settings=service_settings,
-                                     name='Shared {} service'.format(service_settings.get_type_display()),
+                                     name=service_settings.name,
                                      available_for_all=True)
 
 

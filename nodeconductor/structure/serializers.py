@@ -802,7 +802,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     dummy = serializers.BooleanField(write_only=True, required=False)
     resources_count = serializers.SerializerMethodField()
     service_type = serializers.SerializerMethodField()
-    shared = serializers.SerializerMethodField()
+    shared = serializers.ReadOnlyField(source='settings.shared')
 
     class Meta(object):
         model = NotImplemented
@@ -921,13 +921,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     def get_service_type(self, obj):
         return SupportedServices.get_name_for_model(obj)
-
-    def get_shared(self, service):
-        # XXX: Backward compatibility with IAAS Cloud
-        try:
-            return service.settings.shared
-        except AttributeError:
-            return False
 
 
 class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
