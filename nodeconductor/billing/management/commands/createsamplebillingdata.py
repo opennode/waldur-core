@@ -6,7 +6,7 @@ from nodeconductor.structure.models import Customer
 
 
 class Command(BaseCommand):
-    help = 'Create dummy invoices & pricelist'
+    help = 'Create dummy invoices & price list'
 
     def handle(self, *args, **options):
         invoices = (
