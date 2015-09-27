@@ -132,6 +132,8 @@ class FloatingIP(core_models.UuidMixin):
     backend_id = models.CharField(max_length=255)
     backend_network_id = models.CharField(max_length=255, editable=False)
 
+    tracker = FieldTracker()
+
 
 class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, PaidInstance):
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024

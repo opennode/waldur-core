@@ -126,7 +126,8 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             resource,
             flavor=serializer.validated_data['flavor'],
             image=serializer.validated_data['image'],
-            ssh_key=serializer.validated_data.get('ssh_public_key'))
+            ssh_key=serializer.validated_data.get('ssh_public_key'),
+            skip_external_ip_assignment=serializer.validated_data['skip_external_ip_assignment'])
 
     @decorators.detail_route(methods=['post'])
     def assign_floating_ip(self, request, uuid):

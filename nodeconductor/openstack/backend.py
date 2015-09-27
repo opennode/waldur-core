@@ -562,3 +562,10 @@ class OpenStackBackend(ServiceBackend):
                            ' option is not defined in settings {} option', settings.name)
             connected = False
         return connected
+
+    @reraise_exceptions
+    def delete_instance(self, instance):
+        self._old_backend.delete_instance(instance)
+        (models.FloatingIP.objects
+            .filter(service_project_link=instance.service_project_link, address=instance.external_ips)
+            .update(status='DOWN'))
