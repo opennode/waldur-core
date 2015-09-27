@@ -55,7 +55,7 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
 
     def sync(self, request):
         send_task('billing', 'sync_pricelist')()
-        self.message_user(request, "Pricelists scheduled for sync")
+        self.message_user(request, "Price lists scheduled for sync")
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
     def create_for_flavors(self, request):

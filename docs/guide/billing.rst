@@ -7,7 +7,7 @@ At the moment, only KillBill_ is supported as a backend. The following features 
 - Pushing chargeback information from the services for invoice generation (based on resource and license consumption).
   Usages of resources is accounted on an hourly basis.
 - Getting invoice data from the backend.
-- Propagating pricelists to the backend.
+- Propagating price lists to the backend.
 
 
 .. _KillBill: https://killbill.io/
@@ -41,9 +41,9 @@ To setup a KillBill integration, add a billing block of configuration as shown i
 Synchronisation with product prices of KillBill
 +++++++++++++++++++++++++++++++++++++++++++++++
 
-NodeConductor can populate its pricelist based on the configured products in KillBill.
+NodeConductor can populate its price list based on the configured products in KillBill.
 
 The following conventions are in place:
 
-- KillBill product names and descriptions are taken as pricelist item names in NodeConductor.
+- KillBill product names and descriptions are taken as price list item names in NodeConductor.
 - KillBill hourly price is taken as an item price.
