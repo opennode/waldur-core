@@ -829,6 +829,15 @@ class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     filter_class = ResourceFilter
 
+    def get_queryset(self):
+        period = self._get_period()
+        if '-' in period:
+            year, month = map(int, period.split('-'))
+        else:
+            year = int(period)
+            month = 1
+        return super(ResourceViewSet, self).get_queryset().filter(created__gte=datetime.date(year, month, 1))
+
     def _get_period(self):
         period = self.request.query_params.get('period')
         if period is None:

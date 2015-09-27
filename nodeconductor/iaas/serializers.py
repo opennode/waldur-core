@@ -969,7 +969,7 @@ class ServiceSerializer(serializers.Serializer):
         try:
             period = self.context['period']
         except (KeyError, AttributeError):
-            raise AttributeError('ServiceSerializer has to be initialized with `request` in context')
+            raise AttributeError('ServiceSerializer has to be initialized with `period` in context')
         try:
             return models.InstanceSlaHistory.objects.get(instance=obj, period=period).value
         except models.InstanceSlaHistory.DoesNotExist:
