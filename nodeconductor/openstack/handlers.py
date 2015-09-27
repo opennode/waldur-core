@@ -83,7 +83,7 @@ def sync_service_project_link_with_backend(sender, instance, created=False, **kw
         send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
 
 
-def change_floating_ip_quota_on_key_change(sender, instance, created=False, **kwargs):
+def change_floating_ip_quota_on_status_change(sender, instance, created=False, **kwargs):
     floating_ip = instance
     if floating_ip.status != 'DOWN' and (created or floating_ip.tracker.previous('status') == 'DOWN'):
         floating_ip.service_project_link.add_quota_usage('floating_ip_count', 1)

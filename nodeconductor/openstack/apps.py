@@ -56,7 +56,7 @@ class OpenStackConfig(AppConfig):
         )
 
         signals.post_save.connect(
-            handlers.change_floating_ip_quota_on_key_change,
+            handlers.change_floating_ip_quota_on_status_change,
             sender=FloatingIP,
-            dispatch_uid='nodeconductor.openstack.handlers.change_floating_ip_quota_on_key_change',
+            dispatch_uid='nodeconductor.openstack.handlers.change_floating_ip_quota_on_status_change',
         )
