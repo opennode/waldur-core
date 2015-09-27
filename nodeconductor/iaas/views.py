@@ -830,7 +830,11 @@ class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = ResourceFilter
 
     def get_queryset(self):
-        year, month = map(int, self._get_period().split('-'))
+        period = self._get_period()
+        if '-' in period:
+            year, month = map(int, period.split('-'))
+        else:
+            year = int(period)
         return super(ResourceViewSet, self).get_queryset().filter(created__gte=datetime.date(year, month, 1))
 
     def _get_period(self):
