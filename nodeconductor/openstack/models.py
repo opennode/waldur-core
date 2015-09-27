@@ -22,7 +22,8 @@ class OpenStackService(structure_models.Service):
 
 
 class OpenStackServiceProjectLink(QuotaModelMixin, structure_models.ServiceProjectLink):
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances', 'security_group_count', 'security_group_rule_count']
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances', 'security_group_count', 'security_group_rule_count',
+                    'floating_ip_count']
 
     service = models.ForeignKey(OpenStackService)
 

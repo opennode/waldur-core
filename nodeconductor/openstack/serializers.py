@@ -345,17 +345,17 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
     security_groups = InstanceSecurityGroupSerializer(
         many=True, required=False, read_only=False)
 
-    skip_external_ip_assigment = serializers.BooleanField(write_only=True, default=False)
+    skip_external_ip_assignment = serializers.BooleanField(write_only=True, default=False)
 
     class Meta(structure_serializers.VirtualMachineSerializer.Meta):
         model = models.Instance
         view_name = 'openstack-instance-detail'
         fields = structure_serializers.VirtualMachineSerializer.Meta.fields + (
-            'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assigment',
+            'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
             'security_groups', 'internal_ips',
         )
         protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
-            'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assigment',
+            'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
         )
 
     def get_fields(self):
@@ -368,15 +368,16 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         if self.instance is not None:
             return attrs
 
-        settings = attrs['service_project_link'].service.settings
         service_project_link = attrs['service_project_link']
+        settings = service_project_link.service.settings
         flavor = attrs['flavor']
         image = attrs['image']
 
-        if not service_project_link.floating_ips.filter(status='DOWN').exists():
-            raise serializers.ValidationError(
-                {'service_project_link': 'Links tenant does not have any free floating IP.'
-                                         ' Try to allocate floating IP.'})
+        floating_ip_count_quota = service_project_link.quotas.get(name='floating_ip_count')
+        if floating_ip_count_quota.is_exceeded(delta=1):
+            raise serializers.ValidationError({
+                'service_project_link': 'Can not allocate floating IP - quota has been filled'}
+            )
 
         if any([flavor.settings != settings, image.settings != settings]):
             raise serializers.ValidationError(

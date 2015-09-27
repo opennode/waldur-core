@@ -116,17 +116,16 @@ class OpenStackBackend(ServiceBackend):
         # [x] push_membership()
         # [ ] pull_instances()
         # [x] pull_floating_ips()
-        # [x] push_security_groups()
+        # [ ] push_security_groups()
         # [x] pull_resource_quota() & pull_resource_quota_usage()
 
         try:
             self.push_link(service_project_link)
-            self.push_security_groups(service_project_link, is_initial=is_initial)
+            # XXX: Does not work due to a bug: NC-828
+            # self.push_security_groups(service_project_link, is_initial=is_initial)
             self.pull_quotas(service_project_link)
             self.pull_floating_ips(service_project_link)
-            connected = self.connect_link_to_external_network(service_project_link)
-            if connected and is_initial:
-                self.prepare_floating_ip(service_project_link)
+            self.connect_link_to_external_network(service_project_link)
         except (keystone_exceptions.ClientException, neutron_exceptions.NeutronException) as e:
             logger.exception('Failed to synchronize ServiceProjectLink %s', service_project_link.to_string())
             six.reraise(OpenStackBackendError, e)
@@ -137,12 +136,14 @@ class OpenStackBackend(ServiceBackend):
         self.push_quotas(service_project_link, quotas)
         self.pull_quotas(service_project_link)
 
-    def provision(self, instance, flavor=None, image=None, ssh_key=None, skip_external_ip_assigment=False):
+    def provision(self, instance, flavor=None, image=None, ssh_key=None, skip_external_ip_assignment=False):
         if ssh_key:
             instance.key_name = ssh_key.name
             instance.key_fingerprint = ssh_key.fingerprint
 
-        if not skip_external_ip_assigment:
+        if not skip_external_ip_assignment:
+            # TODO: check availability and quota
+            self.prepare_floating_ip(instance.service_project_link)
             floating_ip = instance.service_project_link.floating_ips.filter(status='DOWN').first()
             instance.external_ips = floating_ip.address
             floating_ip.status = 'BOOKED'
@@ -231,6 +232,22 @@ class OpenStackBackend(ServiceBackend):
     def pull_quotas(self, service_project_link):
         self._old_backend.pull_resource_quota(service_project_link)
         self._old_backend.pull_resource_quota_usage(service_project_link)
+        # additional quotas that are not implemented for in iaas application
+        logger.debug('About to get floating ip quota for tenant %s', service_project_link.tenant_id)
+        # XXX: a hack -- assure that current Backend instance has the same tenant_id as a link
+        self.tenant_id = service_project_link.tenant_id
+        neutron = self.neutron_client
+        try:
+            floating_ip_count = len(self._old_backend.get_floating_ips(
+                tenant_id=service_project_link.tenant_id, neutron=neutron))
+            neutron_quotas = neutron.show_quota(tenant_id=service_project_link.tenant_id)['quota']
+        except neutron_exceptions.NeutronClientException as e:
+            logger.exception('Failed to get floating ip quota for tenant %s', service_project_link.tenant_id)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            logger.info('Successfully got floating ip quota for tenant %s', service_project_link.tenant_id)
+            service_project_link.set_quota_usage('floating_ip_count', floating_ip_count)
+            service_project_link.set_quota_limit('floating_ip_count', neutron_quotas['floatingip'])
 
     @reraise_exceptions
     def pull_floating_ips(self, service_project_link):
