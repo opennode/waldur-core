@@ -14,6 +14,7 @@ class OpenStackConfig(AppConfig):
         OpenStackService = self.get_model('OpenStackService')
         OpenStackServiceProjectLink = self.get_model('OpenStackServiceProjectLink')
         Instance = self.get_model('Instance')
+        FloatingIP = self.get_model('FloatingIP')
 
         from nodeconductor.openstack.backend import OpenStackBackend
         SupportedServices.register_backend(OpenStackService, OpenStackBackend)
@@ -52,4 +53,10 @@ class OpenStackConfig(AppConfig):
             handlers.sync_service_project_link_with_backend,
             sender=OpenStackServiceProjectLink,
             dispatch_uid='nodeconductor.structure.handlers.sync_service_project_link_with_backend',
+        )
+
+        signals.post_save.connect(
+            handlers.change_floating_ip_quota_on_key_change,
+            sender=FloatingIP,
+            dispatch_uid='nodeconductor.openstack.handlers.change_floating_ip_quota_on_key_change',
         )

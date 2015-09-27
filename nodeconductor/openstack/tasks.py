@@ -1,6 +1,6 @@
 import logging
 
-from celery import shared_task, chain
+from celery import shared_task
 
 from nodeconductor.core.tasks import transition, throttle
 from nodeconductor.openstack.backend import OpenStackBackendError
@@ -12,33 +12,19 @@ logger = logging.getLogger(__name__)
 
 @shared_task(name='nodeconductor.openstack.provision')
 def provision(instance_uuid, **kwargs):
-    instance = Instance.objects.get(uuid=instance_uuid)
     provision_instance.apply_async(
         args=(instance_uuid,),
         kwargs=kwargs,
-        link=chain(set_online.si(instance_uuid), prepare_floatting_ip.si(instance.service_project_link.to_string())),
+        link=set_online.si(instance_uuid),
         link_error=set_erred.si(instance_uuid))
 
 
-@shared_task(name='nodeconductor.openstack.prepare_floatting_ip')
-def prepare_floatting_ip(service_project_link_str):
-    service_project_link = next(OpenStackServiceProjectLink.from_string(service_project_link_str))
-    backend = service_project_link.get_backend()
-    backend.prepare_floating_ip(service_project_link)
-
-
 @shared_task(name='nodeconductor.openstack.destroy')
-@transition(Instance, 'begin_deleting')
 def destroy(instance_uuid, transition_entity=None):
-    instance = transition_entity
-    try:
-        backend = instance.get_backend()
-        backend._old_backend.delete_instance(instance)
-    except:
-        set_erred(instance_uuid)
-        raise
-    else:
-        instance.delete()
+    destroy_instance.apply_async(
+        args=(instance_uuid,),
+        link=delete.si(instance_uuid),
+        link_error=set_erred.si(instance_uuid))
 
 
 @shared_task(name='nodeconductor.openstack.start')
@@ -172,6 +158,14 @@ def restart_instance(instance_uuid, transition_entity=None):
 
 
 @shared_task
+@transition(Instance, 'begin_deleting')
+def destroy_instance(instance_uuid, transition_entity=None):
+    instance = transition_entity
+    backend = instance.get_backend()
+    backend.delete_instance(instance)
+
+
+@shared_task
 @transition(Instance, 'set_online')
 def set_online(instance_uuid, transition_entity=None):
     pass
@@ -187,3 +181,8 @@ def set_offline(instance_uuid, transition_entity=None):
 @transition(Instance, 'set_erred')
 def set_erred(instance_uuid, transition_entity=None):
     pass
+
+
+@shared_task
+def delete(instance_uuid):
+    Instance.objects.get(uuid=instance_uuid).delete()
