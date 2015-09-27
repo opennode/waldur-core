@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import time
 import logging
 import functools
+import os
 import StringIO
 import django_filters
 
@@ -152,11 +153,18 @@ class CustomerViewSet(viewsets.ModelViewSet):
         partial_sums = [sum([el[1] for el in v]) for v in formatted_data.values()]
         total_sum = sum(partial_sums)
 
+        info = django_settings.NODECONDUCTOR.get('BILLING_INVOICE', {})
+        logo = info.get('logo', None)
+        if logo and not logo.startswith('/'):
+            logo = os.path.join(django_settings.BASE_DIR, logo)
+
         context = {
             'formatted_data': formatted_data,
             'group_by': group_by,
             'partial_sums': iter(partial_sums),
-            'total_sum': total_sum
+            'total_sum': total_sum,
+            'currency': django_settings.NODECONDUCTOR.get('BILLING').get('currency', ''),
+            'logo': logo,
         }
 
         result = StringIO.StringIO()
@@ -1640,9 +1648,9 @@ class AggregateFilter(BaseExternalFilter):
 
         aggregate_query = Q()
         for qs in querysets:
-          content_type = ContentType.objects.get_for_model(qs.model)
-          ids = qs.values_list('id', flat=True)
-          aggregate_query |= Q(content_type=content_type, object_id__in=ids)
+            content_type = ContentType.objects.get_for_model(qs.model)
+            ids = qs.values_list('id', flat=True)
+            aggregate_query |= Q(content_type=content_type, object_id__in=ids)
 
         return queryset.filter(aggregate_query)
 
