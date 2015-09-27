@@ -13,6 +13,12 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         # TODO: implement other quotas recalculation
         self.recalculate_global_quotas()
+        self.delete_stale_quotas()
+
+    def delete_stale_quotas(self):
+        for model in get_models_with_quotas():
+            for obj in model.objects.all():
+                obj.quotas.exclude(name__in=model.QUOTAS_NAMES).delete()
 
     def recalculate_global_quotas(self):
         for model in get_models_with_quotas():
