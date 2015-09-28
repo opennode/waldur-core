@@ -182,7 +182,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         response = http.HttpResponse(result.getvalue(), content_type='application/pdf')
 
         if request.query_params.get('download'):
-            download_name = '%s_cost_report_by_%s.pdf' % (timezone.now().year, group_by)
+            download_name = 'cost_report_by_%s.pdf' % group_by
             response['Content-Disposition'] = 'attachment; filename="%s"' % download_name
 
         return response
