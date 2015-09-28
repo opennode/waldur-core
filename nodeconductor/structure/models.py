@@ -393,6 +393,8 @@ class ProjectGroup(core_models.UuidMixin,
     projects = models.ManyToManyField(Project,
                                       related_name='project_groups')
 
+    tracker = FieldTracker()
+
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_project_group_count'
 
     def __str__(self):

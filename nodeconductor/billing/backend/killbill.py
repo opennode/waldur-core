@@ -128,8 +128,10 @@ class KillBillAPI(object):
             billingPeriod='MONTHLY',
             priceList='DEFAULT')
 
-        extra_fields = {'resource_name': resource.name, 'project_name': resource.project.full_name}
-        self.set_subscription_fields(subscription['subscriptionId'], extra_fields)
+        self.set_subscription_fields(
+            subscription['subscriptionId'],
+            resource_name=resource.name,
+            project_name=resource.project.full_name)
 
         return subscription['subscriptionId']
 
@@ -189,11 +191,18 @@ class KillBillAPI(object):
         fields = self.subscriptions.get(subscription_id, 'customFields')
         return {f['name']: f['value'] for f in fields}
 
-    def set_subscription_fields(self, subscription_id, data):
+    def set_subscription_fields(self, subscription_id, **data):
         fields = [{'name': key, 'value': val} for key, val in data.items()]
         self.subscriptions._object_query(
             subscription_id, 'customFields', method='POST',
             data=json.dumps(fields))
+
+    def update_subscription_fields(self, subscription_id, **data):
+        fields = self.subscriptions.get(subscription_id, 'customFields')
+        flist = ','.join(f['customFieldId'] for f in fields if f['name'] in data)
+        self.subscriptions._object_query(
+            subscription_id, 'customFields', method='DELETE', customFieldList=flist)
+        self.set_subscription_fields(subscription_id, **data)
 
     def propagate_pricelist(self):
         # Generate catalog and push it to backend
