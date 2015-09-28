@@ -676,7 +676,10 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         }
 
     def validate(self, attrs):
-        fingerprint = core_models.get_ssh_key_fingerprint(attrs['public_key'])
+        try:
+            fingerprint = core_models.get_ssh_key_fingerprint(attrs['public_key'])
+        except (IndexError, TypeError):
+            raise serializers.ValidationError('Key is not valid: cannot generate fingerprint from it.')
         if core_models.SshPublicKey.objects.filter(fingerprint=fingerprint).exists():
             raise serializers.ValidationError('Key with same fingerprint already exists')
         return attrs
