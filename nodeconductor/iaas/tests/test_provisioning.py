@@ -296,6 +296,12 @@ class InstanceApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.assertEqual(reread_instance.state, Instance.States.RESIZING_SCHEDULED,
                          'Instance should have been scheduled to resize')
 
+    def test_user_cannot_resize_instance_without_flavor_and_disk_size_in_request(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(factories.InstanceFactory.get_url(self.admined_instance, action='resize'), {})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_user_can_change_flavor_to_flavor_with_less_ram_if_result_ram_quota_usage_is_less_then_ram_limit(self):
         self.client.force_authenticate(user=self.user)
         instance = self.admined_instance
