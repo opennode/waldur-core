@@ -4,7 +4,6 @@ from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
 
 from nodeconductor.core import models as core_models
-from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import models as structure_models
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.iaas.models import PaidInstance, SecurityGroupRuleValidationMixin

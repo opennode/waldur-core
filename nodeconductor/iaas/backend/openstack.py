@@ -612,6 +612,7 @@ class OpenStackBackend(OpenStackClient):
             six.reraise(CloudBackendError, e)
 
     def push_security_groups(self, membership, is_membership_creation=False):
+        logger.debug('About to push security groups for tenant %s', membership.tenant_id)
         try:
             session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
@@ -654,11 +655,17 @@ class OpenStackBackend(OpenStackClient):
 
         # updating unsynchronized security groups
         for nc_group in unsynchronized_groups:
-            send_task('iaas', 'update_security_group')(nc_group.uuid.hex)
+            if nc_group.state in SynchronizationStates.STABLE_STATES:
+                nc_group.schedule_syncing()
+                nc_group.save()
+            send_task(membership.security_groups.model._meta.app_label, 'update_security_group')(nc_group.uuid.hex)
 
         # creating nonexistent and unsynchronized security groups
         for nc_group in nonexistent_groups:
-            send_task('iaas', 'create_security_group')(nc_group.uuid.hex)
+            if nc_group.state in SynchronizationStates.STABLE_STATES:
+                nc_group.schedule_syncing()
+                nc_group.save()
+            send_task(membership.security_groups.model._meta.app_label, 'create_security_group')(nc_group.uuid.hex)
 
     def create_security_group(self, security_group, nova):
         logger.debug('About to create security group %s in backend', security_group.uuid)
