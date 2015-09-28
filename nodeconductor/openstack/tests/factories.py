@@ -15,6 +15,8 @@ class OpenStackServiceFactory(factory.DjangoModelFactory):
     settings = factory.SubFactory(structure_factories.ServiceSettingsFactory)
     customer = factory.SubFactory(structure_factories.CustomerFactory)
 
+    external_network_id = factory.Sequence(lambda n: 'external_network_id%s' % n)
+
     @classmethod
     def get_url(cls, service=None):
         if service is None:
