@@ -240,7 +240,7 @@ def security_group_sync_failed(security_group_uuid, transition_entity=None):
 
 @shared_task
 def security_group_deletion_succeeded(security_group_uuid):
-    SecurityGroup.objects.get(uuid=security_group_uuid).delete()
+    SecurityGroup.objects.filter(uuid=security_group_uuid).delete()
 
 
 @shared_task
