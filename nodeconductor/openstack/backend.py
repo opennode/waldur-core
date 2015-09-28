@@ -5,7 +5,6 @@ from django.db import transaction
 from django.utils import six, dateparse, timezone
 from requests import ConnectionError
 
-from ceilometerclient import exc as ceilometer_exceptions
 from cinderclient import exceptions as cinder_exceptions
 from glanceclient import exc as glance_exceptions
 from keystoneclient import exceptions as keystone_exceptions
@@ -122,7 +121,7 @@ class OpenStackBackend(ServiceBackend):
         try:
             self.push_link(service_project_link)
             # XXX: Does not work due to a bug: NC-828
-            # self.push_security_groups(service_project_link, is_initial=is_initial)
+            self.push_security_groups(service_project_link, is_initial=is_initial)
             self.pull_quotas(service_project_link)
             self.pull_floating_ips(service_project_link)
             self.connect_link_to_external_network(service_project_link)
@@ -502,7 +501,7 @@ class OpenStackBackend(ServiceBackend):
     @reraise_exceptions
     def delete_security_group(self, security_group):
         nova = self.nova_client
-        self._old_backend.delete_security_group(security_group, nova)
+        self._old_backend.delete_security_group(security_group.backend_id, nova)
 
     @reraise_exceptions
     def update_security_group(self, security_group):
