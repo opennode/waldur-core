@@ -33,6 +33,8 @@ class OpenStackServiceProjectLinkFactory(factory.DjangoModelFactory):
     service = factory.SubFactory(OpenStackServiceFactory)
     project = factory.SubFactory(structure_factories.ProjectFactory)
 
+    external_network_id = factory.Sequence(lambda n: 'external_network_id%s' % n)
+
     @classmethod
     def get_url(cls, spl=None, action=None):
         if spl is None:

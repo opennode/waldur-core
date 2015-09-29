@@ -115,7 +115,7 @@ class OpenStackBackend(ServiceBackend):
         # [x] push_membership()
         # [ ] pull_instances()
         # [x] pull_floating_ips()
-        # [ ] push_security_groups()
+        # [x] push_security_groups()
         # [x] pull_resource_quota() & pull_resource_quota_usage()
 
         try:
@@ -140,14 +140,6 @@ class OpenStackBackend(ServiceBackend):
             instance.key_name = ssh_key.name
             instance.key_fingerprint = ssh_key.fingerprint
 
-        if not skip_external_ip_assignment:
-            # TODO: check availability and quota
-            self.prepare_floating_ip(instance.service_project_link)
-            floating_ip = instance.service_project_link.floating_ips.filter(status='DOWN').first()
-            instance.external_ips = floating_ip.address
-            floating_ip.status = 'BOOKED'
-            floating_ip.save(update_fields=['status'])
-
         instance.cores = flavor.cores
         instance.ram = flavor.ram
         instance.disk = instance.system_volume_size + instance.data_volume_size
@@ -156,7 +148,9 @@ class OpenStackBackend(ServiceBackend):
         send_task('openstack', 'provision')(
             instance.uuid.hex,
             backend_flavor_id=flavor.backend_id,
-            backend_image_id=image.backend_id)
+            backend_image_id=image.backend_id,
+            skip_external_ip_assignment=skip_external_ip_assignment
+        )
 
     def destroy(self, instance):
         instance.schedule_deletion()
@@ -333,7 +327,8 @@ class OpenStackBackend(ServiceBackend):
             if instance.id not in cur_instances and
             self._old_backend._get_instance_state(instance) != models.Instance.States.ERRED]
 
-    def provision_instance(self, instance, backend_flavor_id=None, backend_image_id=None):
+    def provision_instance(self, instance, backend_flavor_id=None, backend_image_id=None,
+                           skip_external_ip_assignment=False):
         logger.info('About to provision instance %s', instance.uuid)
         try:
             nova = self.nova_client
@@ -352,6 +347,14 @@ class OpenStackBackend(ServiceBackend):
                 logger.exception('Internal network with id of %s was not found',
                                  service_project_link.internal_network_id)
                 raise OpenStackBackendError('Unable to find network to attach instance to')
+
+            if not skip_external_ip_assignment:
+                # TODO: check availability and quota
+                self.prepare_floating_ip(service_project_link)
+                floating_ip = service_project_link.floating_ips.filter(status='DOWN').first()
+                instance.external_ips = floating_ip.address
+                floating_ip.status = 'BOOKED'
+                floating_ip.save(update_fields=['status'])
 
             # instance key name and fingerprint are optional
             if instance.key_name:
