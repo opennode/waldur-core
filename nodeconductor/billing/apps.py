@@ -5,8 +5,7 @@ from django.db.models import signals
 from django_fsm.signals import post_transition
 from django.conf import settings
 
-from nodeconductor.billing import handlers
-from nodeconductor.billing.models import PaidResource
+from nodeconductor.billing import handlers, get_paid_resource_models
 from nodeconductor.structure import models as structure_models
 from nodeconductor.core.handlers import preserve_fields_before_update
 
@@ -32,35 +31,34 @@ class BillingConfig(AppConfig):
 
         nc_settings = getattr(settings, 'NODECONDUCTOR', {})
         if nc_settings.get('ENABLE_ORDER_PROCESSING', False):
-            for index, resource in enumerate(structure_models.Resource.get_all_models()):
-                if issubclass(resource, PaidResource):
-                    signals.post_delete.connect(
-                        handlers.terminate_purchase,
-                        sender=resource,
-                        dispatch_uid='nodeconductor.billing.handlers.terminate_purchase_{}_{}'.format(
-                            resource.__name__, index),
-                    )
+            for index, resource in enumerate(get_paid_resource_models()):
+                signals.post_delete.connect(
+                    handlers.terminate_purchase,
+                    sender=resource,
+                    dispatch_uid='nodeconductor.billing.handlers.terminate_purchase_{}_{}'.format(
+                        resource.__name__, index),
+                )
 
-                    post_transition.connect(
-                        handlers.track_order,
-                        sender=resource,
-                        dispatch_uid='nodeconductor.billing.handlers.track_order_{}_{}'.format(
-                            resource.__name__, index),
-                    )
+                post_transition.connect(
+                    handlers.track_order,
+                    sender=resource,
+                    dispatch_uid='nodeconductor.billing.handlers.track_order_{}_{}'.format(
+                        resource.__name__, index),
+                )
 
-                    signals.pre_save.connect(
-                        preserve_fields_before_update,
-                        sender=resource,
-                        dispatch_uid='nodeconductor.billing.handlers.preserve_fields_before_update_{}_{}'.format(
-                            resource.__name__, index),
-                    )
+                signals.pre_save.connect(
+                    preserve_fields_before_update,
+                    sender=resource,
+                    dispatch_uid='nodeconductor.billing.handlers.preserve_fields_before_update_{}_{}'.format(
+                        resource.__name__, index),
+                )
 
-                    signals.post_save.connect(
-                        handlers.update_resource_name,
-                        sender=resource,
-                        dispatch_uid='nodeconductor.billing.handlers.update_resource_name_{}_{}'.format(
-                            resource.__name__, index),
-                    )
+                signals.post_save.connect(
+                    handlers.update_resource_name,
+                    sender=resource,
+                    dispatch_uid='nodeconductor.billing.handlers.update_resource_name_{}_{}'.format(
+                        resource.__name__, index),
+                )
 
             signals.post_save.connect(
                 handlers.update_project_name,

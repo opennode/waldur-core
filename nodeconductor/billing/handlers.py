@@ -1,8 +1,7 @@
 import logging
 
+from nodeconductor.billing import get_paid_resource_models
 from nodeconductor.billing.log import event_logger
-from nodeconductor.billing.models import PaidResource
-from nodeconductor.structure.models import Resource
 
 
 logger = logging.getLogger('nodeconductor.billing')
@@ -52,19 +51,17 @@ def update_resource_name(sender, instance, created=False, **kwargs):
 
 def update_project_name(sender, instance, created=False, **kwargs):
     if not created and instance.tracker.has_changed('name'):
-        for model in Resource.get_all_models():
-            if issubclass(model, PaidResource):
-                for resource in model.objects.filter(project=instance):
-                    resource.order.backend.update_subscription_fields(
-                        resource.billing_backend_id,
-                        project_name=resource.project.full_name)
+        for model in get_paid_resource_models():
+            for resource in model.objects.filter(project=instance):
+                resource.order.backend.update_subscription_fields(
+                    resource.billing_backend_id,
+                    project_name=resource.project.full_name)
 
 
 def update_project_group_name(sender, instance, created=False, **kwargs):
     if not created and instance.tracker.has_changed('name'):
-        for model in Resource.get_all_models():
-            if issubclass(model, PaidResource):
-                for resource in model.objects.filter(project__project_groups=instance):
-                    resource.order.backend.update_subscription_fields(
-                        resource.billing_backend_id,
-                        project_name=resource.project.full_name)
+        for model in get_paid_resource_models():
+            for resource in model.objects.filter(project__project_groups=instance):
+                resource.order.backend.update_subscription_fields(
+                    resource.billing_backend_id,
+                    project_name=resource.project.full_name)

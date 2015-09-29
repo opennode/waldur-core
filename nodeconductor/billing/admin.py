@@ -3,11 +3,8 @@ from django.conf.urls import patterns, url
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 
-from nodeconductor.billing import models
-
+from nodeconductor.billing import models, get_paid_resource_models
 from nodeconductor.billing.backend import BillingBackend
-from nodeconductor.billing.models import PaidResource
-from nodeconductor.structure.models import Resource
 from nodeconductor.cost_tracking.tasks import update_today_usage_of_resource
 
 
@@ -22,16 +19,15 @@ class InvoiceAdmin(admin.ModelAdmin):
         return my_urls + super(InvoiceAdmin, self).get_urls()
 
     def move_date(self, request):
-        for model in Resource.get_all_models():
-            if issubclass(model, PaidResource):
-                for resource in model.objects.all():
-                    try:
-                        update_today_usage_of_resource(resource.to_string())
-                    except Exception as e:
-                        self.message_user(
-                            request,
-                            "Can't post usage for %s: %s" % (resource, e),
-                            level=messages.ERROR)
+        for model in get_paid_resource_models:
+            for resource in model.objects.all():
+                try:
+                    update_today_usage_of_resource(resource.to_string())
+                except Exception as e:
+                    self.message_user(
+                        request,
+                        "Can't post usage for %s: %s" % (resource, e),
+                        level=messages.ERROR)
 
         backend = BillingBackend()
         backend.api.test.move_days(31)
