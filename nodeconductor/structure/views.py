@@ -91,6 +91,18 @@ class CustomerFilter(django_filters.FilterSet):
         ]
 
 
+class BalanceHistoryFilter(django_filters.FilterSet):
+    """ Basic filters for alerts """
+
+    created_from = core_filters.TimestampFilter(name='created', lookup_type='gte')
+    created_to = core_filters.TimestampFilter(name='created', lookup_type='lte')
+
+    class Meta:
+        model = models.BalanceHistory
+        fields = ['created_from', 'created_to']
+        order_by = ['created']
+
+
 class CustomerViewSet(viewsets.ModelViewSet):
     """List of customers that are accessible by this user.
 
@@ -201,6 +213,19 @@ class CustomerViewSet(viewsets.ModelViewSet):
             response['Content-Disposition'] = 'attachment; filename="%s"' % download_name
 
         return response
+
+    @detail_route()
+    def balance_history(self, request, uuid=None):
+        customer = self.get_object()
+        queryset = models.BalanceHistory.objects.filter(customer=customer)
+        month = 60 * 60 * 24 * 30
+        params = {
+            'created_from': request.query_params.get('from', int(time.time() - month)),
+            'created_to': request.query_params.get('to', int(time.time()))
+        }
+        queryset = BalanceHistoryFilter(params, queryset).qs
+        serializer = serializers.BalanceHistorySerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):

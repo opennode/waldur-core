@@ -88,10 +88,11 @@ class CustomerFactory(factory.DjangoModelFactory):
     contact_details = factory.Sequence(lambda n: 'contacts %s' % n)
 
     @classmethod
-    def get_url(cls, customer=None):
+    def get_url(cls, customer=None, action=None):
         if customer is None:
             customer = CustomerFactory()
-        return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
+        url = 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
+        return url if action is None else url + action + '/'
 
     @classmethod
     def get_list_url(self):

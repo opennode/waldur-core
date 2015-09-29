@@ -14,7 +14,8 @@ from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.filters import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
-                                            Customer, ProjectGroup, ServiceProjectLink, ServiceSettings, Service)
+                                            Customer, ProjectGroup, ServiceProjectLink, ServiceSettings, Service,
+                                            BalanceHistory)
 from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
 
@@ -204,6 +205,10 @@ def log_customer_account_debited(sender, instance, amount, **kwargs):
             'customer': instance,
             'amount': amount,
         })
+
+
+def log_customer_account_changed(sender, instance, amount, **kwargs):
+    BalanceHistory.objects.create(customer=instance, amount=instance.balance)
 
 
 def log_project_group_save(sender, instance, created=False, **kwargs):

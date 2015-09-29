@@ -13,6 +13,7 @@ from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
+from model_utils.fields import AutoCreatedField
 from model_utils.models import TimeStampedModel
 from model_utils import FieldTracker
 from jsonfield import JSONField
@@ -196,6 +197,12 @@ class Customer(core_models.UuidMixin,
             'name': self.name,
             'abbreviation': self.abbreviation
         }
+
+
+class BalanceHistory(models.Model):
+    customer = models.ForeignKey(Customer)
+    created = AutoCreatedField()
+    amount = models.DecimalField(max_digits=9, decimal_places=3)
 
 
 @python_2_unicode_compatible
