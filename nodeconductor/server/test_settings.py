@@ -23,7 +23,7 @@ INSTALLED_APPS += (
 BROKER_URL = 'django://'
 CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
 
-NODECONDUCTOR = {
+NODECONDUCTOR.update({
     'MONITORING': {
         'ZABBIX': {
             'server': "http://127.0.0.1:8888/zabbix",
@@ -39,4 +39,4 @@ NODECONDUCTOR = {
     'JIRA_SUPPORT': {'dummy': True},
     'ELASTICSEARCH_DUMMY': True,
     'BILLING_DUMMY': True,
-}
+})

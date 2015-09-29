@@ -1,12 +1,9 @@
-import unittest
-import mock
-
-from django.utils.image import Image
 from django.test.utils import override_settings
 from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
 
+from nodeconductor.core.tests.helpers import override_nodeconductor_settings
 from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.tests.factories import UserFactory, CustomerFactory
 from nodeconductor.structure.images import dummy_image
@@ -66,7 +63,7 @@ class ImageUploadTest(test.APISimpleTestCase):
         response = self.client.delete(self.url)
         self.assertEqual(status.HTTP_204_NO_CONTENT, response.status_code, response.data)
 
-    @override_settings(NODECONDUCTOR={'DEFAULT_CUSTOMER_LOGO':'default_logo.jpg'})
+    @override_nodeconductor_settings(DEFAULT_CUSTOMER_LOGO='default_logo.jpg')
     def assert_default_logo(self):
         url = reverse('customer-detail', kwargs={'uuid': self.customer.uuid.hex})
         response = self.client.get(url)

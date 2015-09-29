@@ -26,7 +26,6 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
         model = models.Instance
         fields = (
             'name', 'description',
-            #'project',
             'cloud_project_membership',
             'template',
             'flavor',
@@ -36,7 +35,9 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
             'agreed_sla',
             'type', 'user_data',
         )
-        lookup_field = 'uuid'
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     def get_fields(self):
         fields = super(InstanceBackupRestorationSerializer, self).get_fields()
