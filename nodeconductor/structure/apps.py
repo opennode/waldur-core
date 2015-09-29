@@ -222,7 +222,6 @@ class StructureConfig(AppConfig):
                 dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_service_quota_%s' % model.__name__,
             )
 
-
         signals.pre_delete.connect(
             handlers.remove_stale_user_from_his_projects_services,
             sender=User,

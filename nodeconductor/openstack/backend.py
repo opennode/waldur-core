@@ -173,10 +173,10 @@ class OpenStackBackend(ServiceBackend):
         send_task('openstack', 'restart')(instance.uuid.hex)
 
     def add_ssh_key(self, ssh_key, service_project_link):
-        return self._old_backend.remove_ssh_public_key(service_project_link, ssh_key)
+        return self._old_backend.add_ssh_key(ssh_key, service_project_link)
 
     def remove_ssh_key(self, ssh_key, service_project_link):
-        return self._old_backend.remove_ssh_public_key(service_project_link, ssh_key)
+        return self._old_backend.remove_ssh_key(ssh_key, service_project_link)
 
     def _get_current_properties(self, model):
         return {p.backend_id: p for p in model.objects.filter(settings=self.settings)}
