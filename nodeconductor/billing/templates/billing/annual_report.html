@@ -28,15 +28,28 @@
 
         <table>
         <tr>
-            <td width="55%"><img src="{{ logo }}"></td>
-            <td width="45%"><h2>
-                Annual report by {{ group_by }}
+            <td width="60%"><img src="{{ logo }}"></td>
+            <td width="40%"><h2>
+                Cost report by {{ group_by }}
             </h2></td>
         </tr>
         <tr><td colspan="2"><hr></td></tr>
         </table>
 
         {% if group_by == 'month' %}
+
+            <table cellpadding="0">
+                <tr><td colspan="2"><br></td></tr>
+                {% for year, value in global_data.items %}
+                    <tr>
+                        <td><h2>{{ year }}</h2></td>
+                        <td width="150" align="right"><h2>{{ value|floatformat:2|intcomma }} {{ currency }}</h2></td>
+                    </tr>
+                {% endfor %}
+                    <tr><td colspan="2"><hr></td></tr>
+                    <tr><td colspan="2" align="right"><h2>Total: {{ total_sum|floatformat:2|intcomma }} {{ currency }}</h2></td></tr>
+            </table>
+
             <table cellpadding="0">
                 {% for month, customers in formatted_data.items %}
                     <tr><td colspan="2"><br></td></tr>
@@ -58,10 +71,23 @@
                         </td>
                     </tr>
                 {% endfor %}
+                    <!-- <tr><td colspan="2"><hr></td></tr>
+                    <tr><td colspan="2" align="right"><h2>Total: {{ total_sum|floatformat:2|intcomma }} {{ currency }}</h2></td></tr> -->
+            </table>
+        {% elif group_by == 'customer' %}
+
+            <table cellpadding="0">
+                <tr><td colspan="2"><br></td></tr>
+                {% for customer_name, value in global_data.items %}
+                    <tr>
+                        <td><h2>{{ customer_name }}</h2></td>
+                        <td width="150" align="right"><h2>{{ value|floatformat:2|intcomma }} {{ currency }}</h2></td>
+                    </tr>
+                {% endfor %}
                     <tr><td colspan="2"><hr></td></tr>
                     <tr><td colspan="2" align="right"><h2>Total: {{ total_sum|floatformat:2|intcomma }} {{ currency }}</h2></td></tr>
             </table>
-        {% elif group_by == 'customer' %}
+
             <table cellpadding="0">
                 {% for customer_name, month_data in formatted_data.items %}
                     <tr><td colspan="2"><br></td></tr>
@@ -83,8 +109,8 @@
                         </td>
                     </tr>
                 {% endfor %}
-                    <tr><td colspan="2"><hr></td></tr>
-                    <tr><td colspan="2" align="right"><h2>Total: {{ total_sum|floatformat:2|intcomma }} {{ currency }}</h2></td></tr>
+                    <!-- <tr><td colspan="2"><hr></td></tr>
+                    <tr><td colspan="2" align="right"><h2>Total: {{ total_sum|floatformat:2|intcomma }} {{ currency }}</h2></td></tr> -->
             </table>
         {% endif %}
 

@@ -121,9 +121,8 @@ class CustomerViewSet(viewsets.ModelViewSet):
                 {'Detail': 'group_by parameter can be only `month` or `customer`'},
                 status=status.HTTP_400_BAD_REQUEST)
 
-        year_ago = timezone.now().replace(day=1) - timedelta(days=365)
         truncate_date = connection.ops.date_trunc_sql('month', 'date')
-        invoices = Invoice.objects.filter(date__gte=year_ago)
+        invoices = Invoice.objects.all()
         invoices_values = (
             invoices
             .extra({'month': truncate_date})
@@ -140,7 +139,8 @@ class CustomerViewSet(viewsets.ModelViewSet):
                 formatted_data[invoice['customer__name']].append((month, invoice['amount__sum']))
             formatted_data.default_factory = None
             for customer_name, month_data in formatted_data.items():
-                formatted_data[customer_name] = sorted(month_data, key=lambda x: x[0])
+                formatted_data[customer_name] = sorted(month_data, key=lambda x: x[0], reverse=True)
+            global_data = {k: sum([el[1] for el in v]) for k, v in formatted_data.items()}
         else:
             for invoice in invoices_values:
                 month = invoice['month']
@@ -148,8 +148,13 @@ class CustomerViewSet(viewsets.ModelViewSet):
                     month = datetime.strptime(invoice['month'], '%Y-%m-%d')
                 formatted_data[month].append((invoice['customer__name'], invoice['amount__sum']))
             formatted_data.default_factory = None
+            global_data = defaultdict(lambda: 0)
+            for month, customer_data in formatted_data.items():
+                global_data[month.year] += sum([el[1] for el in customer_data])
+            global_data.default_factory = None
+            global_data = OrderedDict(sorted(global_data.items(), key=lambda x: x[0], reverse=True))
 
-        formatted_data = OrderedDict(sorted(formatted_data.items(), key=lambda x: x[0]))
+        formatted_data = OrderedDict(sorted(formatted_data.items(), key=lambda x: x[0], reverse=True))
         partial_sums = [sum([el[1] for el in v]) for v in formatted_data.values()]
         total_sum = sum(partial_sums)
 
@@ -160,6 +165,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
         context = {
             'formatted_data': formatted_data,
+            'global_data': global_data,
             'group_by': group_by,
             'partial_sums': iter(partial_sums),
             'total_sum': total_sum,
@@ -176,7 +182,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         response = http.HttpResponse(result.getvalue(), content_type='application/pdf')
 
         if request.query_params.get('download'):
-            download_name = '%s_annual_report_by_%s.pdf' % (timezone.now().year, group_by)
+            download_name = 'cost_report_by_%s.pdf' % group_by
             response['Content-Disposition'] = 'attachment; filename="%s"' % download_name
 
         return response
