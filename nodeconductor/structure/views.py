@@ -138,9 +138,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
                     month = datetime.strptime(invoice['month'], '%Y-%m-%d')
                 formatted_data[invoice['customer__name']].append((month, invoice['amount__sum']))
             formatted_data.default_factory = None
+            global_data = {}
             for customer_name, month_data in formatted_data.items():
                 formatted_data[customer_name] = sorted(month_data, key=lambda x: x[0], reverse=True)
-            global_data = {k: sum([el[1] for el in v]) for k, v in formatted_data.items()}
+
+                year_data = defaultdict(lambda: 0)
+                for month, value in month_data:
+                    year_data[month.year] += value
+                year_data.default_factory = None
+                global_data[customer_name] = sorted(year_data.items(), key=lambda x: x[0], reverse=True)
+
+            global_partial_sums = [sum([el[1] for el in v]) for v in formatted_data.values()]
         else:
             for invoice in invoices_values:
                 month = invoice['month']
@@ -148,13 +156,19 @@ class CustomerViewSet(viewsets.ModelViewSet):
                     month = datetime.strptime(invoice['month'], '%Y-%m-%d')
                 formatted_data[month].append((invoice['customer__name'], invoice['amount__sum']))
             formatted_data.default_factory = None
-            global_data = defaultdict(lambda: 0)
+
+            global_data = defaultdict(lambda: defaultdict(lambda: 0))
             for month, customer_data in formatted_data.items():
-                global_data[month.year] += sum([el[1] for el in customer_data])
+                for customer_name, value in customer_data:
+                    global_data[month.year][customer_name] += value
+            for value in global_data.values():
+                value.default_factory = None
             global_data.default_factory = None
             global_data = OrderedDict(sorted(global_data.items(), key=lambda x: x[0], reverse=True))
+            global_partial_sums = [sum([el[1] for el in v.items()]) for v in global_data.values()]
 
         formatted_data = OrderedDict(sorted(formatted_data.items(), key=lambda x: x[0], reverse=True))
+        global_data = OrderedDict(sorted(global_data.items(), key=lambda x: x[0], reverse=True))
         partial_sums = [sum([el[1] for el in v]) for v in formatted_data.values()]
         total_sum = sum(partial_sums)
 
@@ -168,6 +182,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
             'global_data': global_data,
             'group_by': group_by,
             'partial_sums': iter(partial_sums),
+            'global_partial_sums': iter(global_partial_sums),
             'total_sum': total_sum,
             'currency': django_settings.NODECONDUCTOR.get('BILLING').get('currency', ''),
             'logo': logo,

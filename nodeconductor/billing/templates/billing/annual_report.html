@@ -40,22 +40,37 @@
 
             <table cellpadding="0">
                 <tr><td colspan="2"><br></td></tr>
-                {% for year, value in global_data.items %}
+                {% for year, customer_data in global_data.items %}
                     <tr>
                         <td><h2>{{ year }}</h2></td>
-                        <td width="150" align="right"><h2>{{ value|floatformat:2|intcomma }} {{ currency }}</h2></td>
+                        <td width="400" align="right"><h2>{{ global_partial_sums.next|floatformat:2|intcomma }} {{ currency }}</h2></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">
+                        <table cellpadding="5">
+                        {% for customer_name, amount in customer_data.items %}
+                            <tr>
+                                <td width="20" align="right">{{ forloop.counter }}</td>
+                                <td>{{ customer_name }}</td>
+                                <td width="400" align="right">{{ amount|floatformat:2|intcomma }} {{ currency }}</td>
+                            </tr>
+                        {% endfor %}
+                        </table>
+                        </td>
                     </tr>
                 {% endfor %}
                     <tr><td colspan="2"><hr></td></tr>
                     <tr><td colspan="2" align="right"><h2>Total: {{ total_sum|floatformat:2|intcomma }} {{ currency }}</h2></td></tr>
             </table>
 
+            <br>
+            <div align="center"><h2> Detailed report </h2></div>
+
             <table cellpadding="0">
                 {% for month, customers in formatted_data.items %}
-                    <tr><td colspan="2"><br></td></tr>
                     <tr>
                         <td><h2>{{ month | date:"Y F" }}</h2></td>
-                        <td width="150" align="right"><h2>{{ partial_sums.next|floatformat:2|intcomma }} {{ currency }}</h2></td>
+                        <td width="400" align="right"><h2>{{ partial_sums.next|floatformat:2|intcomma }} {{ currency }}</h2></td>
                     </tr>
                     <tr>
                         <td colspan="2">
@@ -64,7 +79,7 @@
                             <tr>
                                 <td width="20" align="right">{{ forloop.counter }}</td>
                                 <td>{{ customer_name }}</td>
-                                <td width="150" align="right">{{ amount|floatformat:2|intcomma }} {{ currency }}</td>
+                                <td width="400" align="right">{{ amount|floatformat:2|intcomma }} {{ currency }}</td>
                             </tr>
                         {% endfor %}
                         </table>
@@ -78,22 +93,35 @@
 
             <table cellpadding="0">
                 <tr><td colspan="2"><br></td></tr>
-                {% for customer_name, value in global_data.items %}
+                {% for customer_name, year_data in global_data.items %}
                     <tr>
                         <td><h2>{{ customer_name }}</h2></td>
-                        <td width="150" align="right"><h2>{{ value|floatformat:2|intcomma }} {{ currency }}</h2></td>
+                        <td width="400" align="right"><h2>{{ global_partial_sums.next|floatformat:2|intcomma }} {{ currency }}</h2></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">
+                        <table cellpadding="5">
+                        {% for year, amount in year_data %}
+                            <tr>
+                                <td width="20" align="right">{{ forloop.counter }}</td>
+                                <td>{{ year }}</td>
+                                <td width="400" align="right">{{ amount|floatformat:2|intcomma }} {{ currency }}</td>
+                            </tr>
+                        {% endfor %}
+                        </table>
+                        </td>
                     </tr>
                 {% endfor %}
                     <tr><td colspan="2"><hr></td></tr>
                     <tr><td colspan="2" align="right"><h2>Total: {{ total_sum|floatformat:2|intcomma }} {{ currency }}</h2></td></tr>
             </table>
-
+            <br>
+            <div align="center"><h2> Detailed report </h2></div>
             <table cellpadding="0">
                 {% for customer_name, month_data in formatted_data.items %}
-                    <tr><td colspan="2"><br></td></tr>
                     <tr>
                         <td><h2>{{ customer_name }}</h2></td>
-                        <td width="150" align="right"><h2>{{ partial_sums.next|floatformat:2|intcomma }} {{ currency }}</h2></td>
+                        <td width="400" align="right"><h2>{{ partial_sums.next|floatformat:2|intcomma }} {{ currency }}</h2></td>
                     </tr>
                     <tr>
                         <td colspan="2">
@@ -102,7 +130,7 @@
                             <tr>
                                 <td width="20" align="right">{{ forloop.counter }}</td>
                                 <td>{{ month | date:"Y F"  }}</td>
-                                <td width="150" align="right">{{ amount|floatformat:2|intcomma }} {{ currency }}</td>
+                                <td width="400" align="right">{{ amount|floatformat:2|intcomma }} {{ currency }}</td>
                             </tr>
                         {% endfor %}
                         </table>
