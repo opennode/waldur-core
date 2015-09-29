@@ -57,7 +57,8 @@ class BalanceHistoryViewTest(test.APITransactionTestCase):
         self.assert_equal_decimals(amounts, [item['amount'] for item in response.data])
 
     def test_balance_history_displayed_for_last_month(self):
-        BalanceHistory.objects.create(customer=self.customer, amount=10)
+        BalanceHistory.objects.create(
+            customer=self.customer, amount=10, created=timezone.now() - timedelta(days=1))
         BalanceHistory.objects.create(
             customer=self.customer, amount=20, created=timezone.now() - timedelta(weeks=6))
 
