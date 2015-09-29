@@ -27,9 +27,11 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = Template
-        lookup_field = 'uuid'
         fields = (
             'url', 'uuid', 'name',
             'description', 'icon_url', 'services',
             'is_active'
         )
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }

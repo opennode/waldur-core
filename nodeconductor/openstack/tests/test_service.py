@@ -192,7 +192,7 @@ class ServicePermissionTest(test.APITransactionTestCase):
             settings = ServiceSettings.objects.get(name=payload['name'])
             self.assertFalse(settings.shared)
 
-            mocked_task.assert_called_with(
+            mocked_task.assert_any_call(
                 'nodeconductor.structure.sync_service_settings',
                 (settings.uuid.hex,), {'initial': True})
 

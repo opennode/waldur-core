@@ -1,25 +1,26 @@
 import decimal
 import mock
 
-from django.test.utils import override_settings
 from rest_framework import test, status
 from rest_framework.reverse import reverse
 
 from nodeconductor.billing import models as billing_models
+from nodeconductor.core.tests.helpers import override_nodeconductor_settings
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
 
-@override_settings(NODECONDUCTOR={
-    'BILLING': {
+@override_nodeconductor_settings(
+    BILLING={
         'backend': 'nodeconductor.billing.backend.paypal.PaypalBackend',
         'mode': 'sandbox',
         'client_id': '',
         'client_secret': '',
         'currency_name': 'USD',
         'return_url': 'http://example.com/payment/return',
-    }
-})
+    },
+    BILLING_DUMMY=False,
+)
 class PaypalPaymentTest(test.APISimpleTestCase):
 
     def setUp(self):

@@ -99,8 +99,8 @@ class ZabbixApiClient(object):
                 kwargs['host_name'] = instance.tenant_id
                 kwargs['visible_name'] = instance.tenant_id
         except KeyError as e:
-            logger.error('Zabbix is not properly configured %s', e.message)
-            raise ZabbixError('Zabbix is not properly configured %s' % e.message)
+            logger.error('Zabbix is not properly configured %s', e)
+            raise ZabbixError('Zabbix is not properly configured %s' % e)
 
         _, created = self.get_or_create_host(
             api, instance,
