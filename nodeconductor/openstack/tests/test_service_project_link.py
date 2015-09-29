@@ -147,6 +147,9 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
 
     def test_staff_user_cannot_delete_not_existent_external_network(self):
         self.client.force_authenticate(user=self.staff)
+        self.service_project_link.external_network_id = ''
+        self.service_project_link.save()
+
         with patch('celery.app.base.Celery.send_task') as mocked_task:
             response = self.client.delete(self.network_url)
             self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -154,6 +157,8 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
 
     def test_user_cannot_allocate_floating_ip_from_spl_without_external_network_id(self):
         self.client.force_authenticate(user=self.staff)
+        self.service_project_link.external_network_id = ''
+        self.service_project_link.save()
 
         with patch('celery.app.base.Celery.send_task') as mocked_task:
             response = self.client.post(self.ips_url)
