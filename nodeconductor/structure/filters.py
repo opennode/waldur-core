@@ -3,9 +3,7 @@ from __future__ import unicode_literals
 import django_filters
 from django.contrib import auth
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.forms.fields import ChoiceField
 
 from rest_framework.filters import BaseFilterBackend
 
@@ -24,22 +22,6 @@ User = auth.get_user_model()
 class GenericRoleFilter(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         return filter_queryset_for_user(queryset, request.user)
-
-
-class CustomerRoleField(ChoiceField):
-    def to_python(self, value):
-        if value is not None:
-            if value in models.CustomerRole.NAME_TO_ROLE:
-                return models.CustomerRole.NAME_TO_ROLE[value]
-
-            raise ValidationError(self.error_messages['invalid_choice'],
-                                  code='invalid_choice', params={'value': value},)
-
-        return super(CustomerRoleField, self).to_python(value)
-
-
-class CustomerRoleFilter(django_filters.ChoiceFilter):
-    field_class = CustomerRoleField
 
 
 class CustomerFilter(django_filters.FilterSet):
