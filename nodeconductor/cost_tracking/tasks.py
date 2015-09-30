@@ -8,11 +8,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils import timezone
 
+from nodeconductor.billing.models import PaidResource
 from nodeconductor.cost_tracking import CostConstants
 from nodeconductor.cost_tracking.models import DefaultPriceListItem, PriceEstimate
 from nodeconductor.structure.models import Resource
 from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented
-from nodeconductor.billing import get_paid_resource_models
 
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ def update_today_usage():
     if not nc_settings.get('ENABLE_ORDER_PROCESSING'):
         return
 
-    for model in get_paid_resource_models():
+    for model in PaidResource.get_all_models():
         for resource in model.objects.all():
             update_today_usage_of_resource.delay(resource.to_string())
 

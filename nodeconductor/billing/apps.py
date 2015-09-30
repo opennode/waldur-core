@@ -5,7 +5,8 @@ from django.db.models import signals
 from django_fsm.signals import post_transition
 from django.conf import settings
 
-from nodeconductor.billing import handlers, get_paid_resource_models
+from nodeconductor.billing import handlers
+from nodeconductor.billing.models import PaidResource
 from nodeconductor.structure import models as structure_models
 from nodeconductor.core.handlers import preserve_fields_before_update
 
@@ -31,7 +32,7 @@ class BillingConfig(AppConfig):
 
         nc_settings = getattr(settings, 'NODECONDUCTOR', {})
         if nc_settings.get('ENABLE_ORDER_PROCESSING', False):
-            for index, resource in enumerate(get_paid_resource_models()):
+            for index, resource in enumerate(PaidResource.get_all_models()):
                 signals.post_delete.connect(
                     handlers.terminate_purchase,
                     sender=resource,

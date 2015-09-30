@@ -298,7 +298,6 @@ class PaidInstance(PaidResource):
 
     def get_usage_state(self):
         state = {
-            CostConstants.PriceItem.USAGE: 1,
             CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
             CostConstants.PriceItem.SUPPORT: (CostConstants.Support.PREMIUM
                                               if self.type == self.Services.PAAS

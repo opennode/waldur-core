@@ -1,5 +1,6 @@
 import importlib
 
+from django.conf import settings
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import force_text
 from rest_framework.reverse import reverse
@@ -100,7 +101,7 @@ class SupportedServices(object):
 
     @classmethod
     def register_service(cls, service_type, metadata):
-        if service_type is NotImplemented:
+        if service_type is NotImplemented or not cls._is_active_model(metadata.model):
             return
 
         model_str = cls._get_model_srt(metadata.model)
@@ -114,7 +115,7 @@ class SupportedServices(object):
 
     @classmethod
     def register_resource(cls, service, metadata):
-        if not service or service.view_name is NotImplemented:
+        if not service or service.view_name is NotImplemented or not cls._is_active_model(metadata.model):
             return
 
         model_str = cls._get_model_srt(metadata.model)
@@ -326,6 +327,10 @@ class SupportedServices(object):
             for resource_model in models['resources']:
                 if model_str == cls._get_model_srt(resource_model):
                     return models
+
+    @classmethod
+    def _is_active_model(cls, model):
+        return '.'.join(model.__module__.split('.')[:2]) in settings.INSTALLED_APPS
 
     @classmethod
     def _get_model_srt(cls, model):

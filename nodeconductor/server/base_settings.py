@@ -43,7 +43,7 @@ INSTALLED_APPS = (
     'nodeconductor.cost_tracking',
     'nodeconductor.billing',
     'nodeconductor.openstack',
-    'nodeconductor.oracle',
+    # 'nodeconductor.oracle',
     'nodeconductor.iaas',
     'nodeconductor.support',
     'nodeconductor.ldapsync',

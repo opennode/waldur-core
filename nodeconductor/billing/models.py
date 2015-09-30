@@ -9,6 +9,7 @@ from django.db import models
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
+from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import transition, FSMIntegerField
 from model_utils.models import TimeStampedModel
@@ -273,6 +274,12 @@ class PaidResource(models.Model):
 
     def get_usage_state(self):
         raise NotImplementedError
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        from nodeconductor.structure.models import Resource
+        return [model for model in Resource.get_all_models() if issubclass(model, cls)]
 
     def __init__(self, *args, **kwargs):
         super(PaidResource, self).__init__(*args, **kwargs)

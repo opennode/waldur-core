@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 
-from nodeconductor.billing import get_paid_resource_models
+from nodeconductor.billing.models import PaidResource
 from nodeconductor.cost_tracking.models import DefaultPriceListItem, ApplicationType
 from nodeconductor.cost_tracking import CostConstants
 
@@ -21,9 +21,6 @@ openstack_options = {
     ],
     CostConstants.PriceItem.STORAGE: [
         ('1 GB', 1),
-    ],
-    CostConstants.PriceItem.USAGE: [
-        ('1 hour', 1),
     ],
     CostConstants.PriceItem.LICENSE_APPLICATION: [
         (name, idx) for idx, name in enumerate([at.name for at in ApplicationType.objects.all()], start=1)
@@ -43,10 +40,7 @@ titles = {
     CostConstants.PriceItem.LICENSE_OS: ("OS license", dict(CostConstants.Os.CHOICES)),
 }
 
-item_names = {
-    (CostConstants.PriceItem.STORAGE, '1 GB'): "Storage",
-    (CostConstants.PriceItem.USAGE, '1 hour'): "Usage",
-}
+item_names = {(CostConstants.PriceItem.STORAGE, '1 GB'): "Storage"}
 
 for opt, (title, choices) in titles.items():
     for val, _ in openstack_options[opt]:
@@ -61,7 +55,7 @@ for val, _ in openstack_options[opt]:
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
-        for model in get_paid_resource_models():
+        for model in PaidResource.get_all_models():
             content_type = ContentType.objects.get_for_model(model)
             for category, option in openstack_options.items():
                 for key, value in option:

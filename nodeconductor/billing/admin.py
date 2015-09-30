@@ -3,8 +3,9 @@ from django.conf.urls import patterns, url
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 
-from nodeconductor.billing import models, get_paid_resource_models
+from nodeconductor.billing import models
 from nodeconductor.billing.backend import BillingBackend
+from nodeconductor.billing.models import PaidResource
 from nodeconductor.cost_tracking.tasks import update_today_usage_of_resource
 
 
@@ -19,7 +20,7 @@ class InvoiceAdmin(admin.ModelAdmin):
         return my_urls + super(InvoiceAdmin, self).get_urls()
 
     def move_date(self, request):
-        for model in get_paid_resource_models:
+        for model in PaidResource.get_all_models():
             for resource in model.objects.all():
                 try:
                     update_today_usage_of_resource(resource.to_string())

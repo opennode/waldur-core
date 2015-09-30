@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('structure', '0014_servicesettings_options'),
         # ('iaas', '0040_update_cloudprojectmembership'),
-        ('oracle', '0003_new_service_model'),
+        # ('oracle', '0003_new_service_model'),
         ('openstack', '0002_new_service_model'),
     ] + nc_plus_dependencies
 
