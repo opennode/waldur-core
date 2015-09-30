@@ -207,10 +207,6 @@ def log_customer_account_debited(sender, instance, amount, **kwargs):
         })
 
 
-def log_customer_account_changed(sender, instance, amount, **kwargs):
-    BalanceHistory.objects.create(customer=instance, amount=instance.balance)
-
-
 def log_project_group_save(sender, instance, created=False, **kwargs):
     if created:
         event_logger.project_group.info(

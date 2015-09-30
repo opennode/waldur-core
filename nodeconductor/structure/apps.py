@@ -265,18 +265,6 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.log_customer_account_debited',
         )
 
-        structure_signals.customer_account_credited.connect(
-            handlers.log_customer_account_changed,
-            sender=Customer,
-            dispatch_uid='nodeconductor.structure.handlers.log_customer_account_changed_credited',
-        )
-
-        structure_signals.customer_account_debited.connect(
-            handlers.log_customer_account_changed,
-            sender=Customer,
-            dispatch_uid='nodeconductor.structure.handlers.log_customer_account_changed_debited',
-        )
-
         signals.post_save.connect(
             handlers.connect_customer_to_shared_service_settings,
             sender=Customer,

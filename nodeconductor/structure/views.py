@@ -37,8 +37,9 @@ from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
+from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.tasks import send_task
-from nodeconductor.core.utils import request_api
+from nodeconductor.core.utils import request_api, datetime_to_timestamp
 from nodeconductor.logging.filters import ExternalAlertFilterBackend, BaseExternalFilter
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
@@ -216,14 +217,18 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     @detail_route()
     def balance_history(self, request, uuid=None):
+        default_start = timezone.now() - timedelta(days=30) # one month ago
+        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(data={
+            'start': request.query_params.get('from', datetime_to_timestamp(default_start)),
+            'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
+        })
+        timestamp_interval_serializer.is_valid(raise_exception=True)
+        filter_data = timestamp_interval_serializer.get_filter_data()
+
         customer = self.get_object()
-        queryset = models.BalanceHistory.objects.filter(customer=customer)
-        month = 60 * 60 * 24 * 30
-        params = {
-            'created_from': request.query_params.get('from', int(time.time() - month)),
-            'created_to': request.query_params.get('to', int(time.time()))
-        }
-        queryset = BalanceHistoryFilter(params, queryset).qs
+        queryset = models.BalanceHistory.objects.filter(customer=customer).order_by('created')
+        queryset = queryset.filter(created__gte=filter_data['start'], created__lte=filter_data['end'])
+
         serializer = serializers.BalanceHistorySerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

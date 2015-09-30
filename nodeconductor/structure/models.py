@@ -100,6 +100,7 @@ class Customer(core_models.UuidMixin,
             balance=new_balance if self.balance is None else F('balance') + amount)
 
         self.balance = new_balance
+        BalanceHistory.objects.create(customer=self, amount=self.balance)
         customer_account_credited.send(sender=Customer, instance=self, amount=float(amount))
 
     def debit_account(self, amount):
@@ -109,6 +110,7 @@ class Customer(core_models.UuidMixin,
             balance=new_balance if self.balance is None else F('balance') - amount)
 
         self.balance = new_balance
+        BalanceHistory.objects.create(customer=self, amount=self.balance)
         customer_account_debited.send(sender=Customer, instance=self, amount=float(amount))
 
         # Fully prepaid mode

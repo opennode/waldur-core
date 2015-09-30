@@ -60,7 +60,7 @@ class BalanceHistoryViewTest(test.APITransactionTestCase):
         BalanceHistory.objects.create(
             customer=self.customer, amount=10, created=timezone.now() - timedelta(days=1))
         BalanceHistory.objects.create(
-            customer=self.customer, amount=20, created=timezone.now() - timedelta(weeks=6))
+            customer=self.customer, amount=20, created=timezone.now() - timedelta(days=60))
 
         self.client.force_authenticate(user=self.user)
         response = self.client.get(self.get_url())
