@@ -90,6 +90,11 @@ class StructureConfig(AppConfig):
             project_path='group__projectrole__project',
         )
 
+        set_permissions_for_model(
+            ProjectGroup.projects.through,
+            customer_path='projectgroup__customer',
+        )
+
         # quotas creation
         signals.post_save.connect(
             quotas_handlers.add_quotas_to_scope,

@@ -476,12 +476,6 @@ class ProjectGroup(core_models.UuidMixin,
         return {'project_group_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
 
 
-set_permissions_for_model(
-    ProjectGroup.projects.through,
-    customer_path='projectgroup__customer',
-)
-
-
 @python_2_unicode_compatible
 class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.SynchronizableMixin):
 
