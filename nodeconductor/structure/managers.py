@@ -1,4 +1,64 @@
+from operator import or_
+
 from django.db import models
+
+
+def filter_queryset_for_user(queryset, user):
+    filtered_relations = ('customer', 'project', 'project_group')
+
+    if user is None or user.is_staff:
+        return queryset
+
+    def create_q(entity):
+        try:
+            path = getattr(permissions, '%s_path' % entity)
+        except AttributeError:
+            return None
+
+        role = getattr(permissions, '%s_role' % entity, None)
+
+        if path == 'self':
+            prefix = ''
+        else:
+            prefix = path + '__'
+
+        kwargs = {
+            prefix + 'roles__permission_group__user': user,
+        }
+
+        if role:
+            kwargs[prefix + 'roles__role_type'] = role
+
+        return models.Q(**kwargs)
+
+    try:
+        permissions = queryset.model.Permissions
+    except AttributeError:
+        return queryset
+
+    q_objects = [q_object for q_object in (
+        create_q(entity) for entity in filtered_relations
+    ) if q_object is not None]
+
+    try:
+        # Add extra query which basically allows to
+        # additionally filter by some flag and ignore permissions
+        extra_q = getattr(permissions, 'extra_query')
+    except AttributeError:
+        pass
+    else:
+        q_objects.append(models.Q(**extra_q))
+
+    try:
+        # Whether both customer and project filtering requested?
+        any_of_q = reduce(or_, q_objects)
+        return queryset.filter(any_of_q).distinct()
+    except TypeError:
+        # Or any of customer and project filtering requested?
+        return queryset.filter(q_objects[0])
+    except IndexError:
+        # Looks like no filters are there
+        return queryset
 
 
 class StructureQueryset(models.QuerySet):

@@ -1,10 +1,15 @@
 import django_filters
 
-from nodeconductor.structure.views import BaseResourceFilter
+from nodeconductor.core import filters as core_filters
+from nodeconductor.structure import filters as structure_filters
 from nodeconductor.openstack import models
 
 
-class InstanceFilter(BaseResourceFilter):
+class OpenStackServiceProjectLinkFilter(structure_filters.BaseServiceProjectLinkFilter):
+    service = core_filters.URLFilter(view_name='openstack-detail', name='service__uuid')
+
+
+class InstanceFilter(structure_filters.BaseResourceFilter):
     project = django_filters.CharFilter(
         name='service_project_link__project__uuid',
         lookup_type='icontains',
@@ -51,7 +56,7 @@ class InstanceFilter(BaseResourceFilter):
 
     class Meta(object):
         model = models.Instance
-        fields = BaseResourceFilter.Meta.fields + (
+        fields = structure_filters.BaseResourceFilter.Meta.fields + (
             'description',
             'customer',
             'customer_name',

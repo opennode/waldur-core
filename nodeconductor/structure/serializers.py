@@ -14,8 +14,8 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.quotas import serializers as quotas_serializers
-from nodeconductor.structure import models, filters, SupportedServices
-from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.structure import models, SupportedServices
+from nodeconductor.structure.managers import filter_queryset_for_user
 
 
 User = auth.get_user_model()
@@ -642,7 +642,7 @@ class CreationTimeStatsSerializer(serializers.Serializer):
         end_datetime = core_utils.timestamp_to_datetime(self.data['end_timestamp'])
 
         model = self.MODEL_CLASSES[self.data['model_name']]
-        filtered_queryset = filters.filter_queryset_for_user(model.objects.all(), user)
+        filtered_queryset = filter_queryset_for_user(model.objects.all(), user)
         created_datetimes = (
             filtered_queryset
             .filter(created__gte=start_datetime, created__lte=end_datetime)

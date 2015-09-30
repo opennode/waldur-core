@@ -6,8 +6,7 @@ from django.db.models import signals
 
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
-from nodeconductor.structure.models import Resource, ServiceProjectLink, Service
-from nodeconductor.structure import filters
+from nodeconductor.structure.models import Resource, ServiceProjectLink, Service, set_permissions_for_model
 from nodeconductor.structure import handlers
 from nodeconductor.structure import signals as structure_signals
 
@@ -84,11 +83,16 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.log_project_group_delete',
         )
 
-        filters.set_permissions_for_model(
+        set_permissions_for_model(
             User.groups.through,
             customer_path='group__projectrole__project__customer',
             project_group_path='group__projectrole__project__project_groups',
             project_path='group__projectrole__project',
+        )
+
+        set_permissions_for_model(
+            ProjectGroup.projects.through,
+            customer_path='projectgroup__customer',
         )
 
         # quotas creation

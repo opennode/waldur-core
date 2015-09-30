@@ -23,11 +23,20 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
-from nodeconductor.structure.managers import StructureManager
+from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
+
+
+def set_permissions_for_model(model, **kwargs):
+    class Permissions(object):
+        pass
+    for key, value in kwargs.items():
+        setattr(Permissions, key, value)
+
+    setattr(model, 'Permissions', Permissions)
 
 
 class StructureModel(models.Model):
@@ -186,7 +195,6 @@ class Customer(core_models.UuidMixin,
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
-        from nodeconductor.structure.filters import filter_queryset_for_user
         if user.is_staff:
             customer_queryset = cls.objects.all()
         else:
@@ -350,7 +358,6 @@ class Project(core_models.DescribableMixin,
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
-        from nodeconductor.structure.filters import filter_queryset_for_user
         return {'project_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
 
     def get_quota_parents(self):
@@ -466,7 +473,6 @@ class ProjectGroup(core_models.UuidMixin,
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
-        from nodeconductor.structure.filters import filter_queryset_for_user
         return {'project_group_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
 
 

@@ -12,7 +12,7 @@ from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
-from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
                                             Customer, ProjectGroup, ServiceProjectLink, ServiceSettings, Service,
                                             BalanceHistory)
