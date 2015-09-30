@@ -14,7 +14,8 @@ from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.filters import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
-                                            Customer, ProjectGroup, ServiceProjectLink, ServiceSettings, Service)
+                                            Customer, ProjectGroup, ServiceProjectLink, ServiceSettings, Service,
+                                            BalanceHistory)
 from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
 

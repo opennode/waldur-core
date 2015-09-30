@@ -265,6 +265,12 @@ class CustomerSerializer(core_serializers.DynamicSerializer,
         return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
 
 
+class BalanceHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.BalanceHistory
+        fields = ['created', 'amount']
+
+
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer):
