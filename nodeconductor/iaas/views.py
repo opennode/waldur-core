@@ -40,6 +40,7 @@ from nodeconductor.iaas.log import event_logger
 from nodeconductor.quotas import filters as quota_filters
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.views import UpdateOnlyByPaidCustomerMixin
+from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
 
@@ -608,8 +609,7 @@ class TemplateViewSet(viewsets.ModelViewSet):
         if self.request.method == 'GET':
             cloud_uuid = self.request.query_params.get('cloud')
             if cloud_uuid is not None:
-                cloud_queryset = structure_filters.filter_queryset_for_user(
-                    models.Cloud.objects.all(), user)
+                cloud_queryset = filter_queryset_for_user(models.Cloud.objects.all(), user)
 
                 try:
                     cloud = cloud_queryset.get(uuid=cloud_uuid)
@@ -655,7 +655,7 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
 
     @list_route()
     def stats(self, request):
-        queryset = structure_filters.filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
+        queryset = filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
         queryset = self._filter_queryset(queryset)
 
         aggregate_parameters = self.request.query_params.getlist('aggregate', [])
@@ -914,13 +914,13 @@ class CustomerStatsView(views.APIView):
 
     def get(self, request, format=None):
         customer_statistics = []
-        customer_queryset = structure_filters.filter_queryset_for_user(Customer.objects.all(), request.user)
+        customer_queryset = filter_queryset_for_user(Customer.objects.all(), request.user)
         for customer in customer_queryset:
-            projects_count = structure_filters.filter_queryset_for_user(
+            projects_count = filter_queryset_for_user(
                 Project.objects.filter(customer=customer), request.user).count()
-            project_groups_count = structure_filters.filter_queryset_for_user(
+            project_groups_count = filter_queryset_for_user(
                 ProjectGroup.objects.filter(customer=customer), request.user).count()
-            instances_count = structure_filters.filter_queryset_for_user(
+            instances_count = filter_queryset_for_user(
                 models.Instance.objects.filter(cloud_project_membership__project__customer=customer),
                 request.user).count()
             customer_statistics.append({
@@ -944,7 +944,7 @@ class UsageStatsView(views.APIView):
 
     def _get_aggregate_queryset(self, request, aggregate_model_name):
         model = self.aggregate_models[aggregate_model_name]['model']
-        return structure_filters.filter_queryset_for_user(model.objects.all(), request.user)
+        return filter_queryset_for_user(model.objects.all(), request.user)
 
     def _get_aggregate_filter(self, aggregate_model_name, obj):
         path = self.aggregate_models[aggregate_model_name]['path']
@@ -972,8 +972,7 @@ class UsageStatsView(views.APIView):
 
         # This filters out the vm Instances to those that can be seen
         # by currently logged in user. This is done within each aggregate root separately.
-        visible_instances = structure_filters.filter_queryset_for_user(
-            models.Instance.objects.all(), request.user)
+        visible_instances = filter_queryset_for_user(models.Instance.objects.all(), request.user)
 
         for aggregate_object in aggregate_queryset:
             # Narrow down the instance scope to aggregate root.

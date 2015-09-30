@@ -6,13 +6,13 @@ import django_filters
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.backup import models, utils
-from nodeconductor.structure import filters as structure_filters
+from nodeconductor.structure.managers import filter_queryset_for_user
 
 
 class BackupPermissionFilterBackend():
 
     def _get_user_visible_model_instances_ids(self, user, model):
-        queryset = structure_filters.filter_queryset_for_user(model.objects.all(), user)
+        queryset = filter_queryset_for_user(model.objects.all(), user)
         return queryset.values_list('pk', flat=True)
 
     def filter_queryset(self, request, queryset, view):

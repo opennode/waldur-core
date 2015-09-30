@@ -14,7 +14,7 @@ class QuotaManager(GenericKeyMixin, models.Manager):
             queryset = self.get_queryset()
         # XXX: This circular dependency will be removed then filter_queryset_for_user
         # will be moved to model manager method
-        from nodeconductor.structure.filters import filter_queryset_for_user
+        from nodeconductor.structure.managers import filter_queryset_for_user
 
         if user.is_staff:
             return queryset

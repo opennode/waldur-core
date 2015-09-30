@@ -3,7 +3,6 @@ from rest_framework import viewsets, decorators, exceptions, response, permissio
 from rest_framework import filters as rf_filters
 
 from nodeconductor.core import mixins as core_mixins
-from nodeconductor.core import filters as core_filters
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
@@ -18,14 +17,10 @@ class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
     import_serializer_class = serializers.InstanceImportSerializer
 
 
-class OpenStackServiceProjectLinkFilter(structure_views.BaseServiceProjectLinkFilter):
-    service = core_filters.URLFilter(viewset=OpenStackServiceViewSet, name='service__uuid')
-
-
 class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkViewSet):
     queryset = models.OpenStackServiceProjectLink.objects.all()
     serializer_class = serializers.ServiceProjectLinkSerializer
-    filter_class = OpenStackServiceProjectLinkFilter
+    filter_class = filters.OpenStackServiceProjectLinkFilter
 
     @decorators.detail_route(methods=['post'])
     def set_quotas(self, request, **kwargs):
@@ -100,14 +95,14 @@ class FlavorViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Flavor.objects.all()
     serializer_class = serializers.FlavorSerializer
     lookup_field = 'uuid'
-    filter_class = structure_views.ServicePropertySettingsFilter
+    filter_class = structure_filters.ServicePropertySettingsFilter
 
 
 class ImageViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Image.objects.all()
     serializer_class = serializers.ImageSerializer
     lookup_field = 'uuid'
-    filter_class = structure_views.ServicePropertySettingsFilter
+    filter_class = structure_filters.ServicePropertySettingsFilter
 
 
 class InstanceViewSet(structure_views.BaseResourceViewSet):

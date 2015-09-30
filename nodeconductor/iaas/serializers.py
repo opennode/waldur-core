@@ -21,7 +21,7 @@ from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
-from nodeconductor.structure import filters as structure_filters
+from nodeconductor.structure.managers import filter_queryset_for_user
 
 
 logger = logging.getLogger(__name__)
@@ -421,7 +421,7 @@ class InstanceCreateSerializer(structure_serializers.PermissionFieldFilteringMix
 
         fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(user=user)
 
-        clouds = structure_filters.filter_queryset_for_user(models.Cloud.objects.all(), user)
+        clouds = filter_queryset_for_user(models.Cloud.objects.all(), user)
         fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds).distinct()
 
         return fields
@@ -835,7 +835,7 @@ class TemplateSerializer(serializers.HyperlinkedModelSerializer):
         except (KeyError, AttributeError):
             return None
 
-        queryset = structure_filters.filter_queryset_for_user(obj.images.all(), user)
+        queryset = filter_queryset_for_user(obj.images.all(), user)
         images_serializer = TemplateImageSerializer(
             queryset, many=True, read_only=True, context=self.context)
 

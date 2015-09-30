@@ -10,7 +10,7 @@ from django.db import models
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.iaas.models import SecurityGroup, SecurityGroupRule
 from nodeconductor.quotas import handlers as quotas_handlers
-from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.structure.managers import filter_queryset_for_user
 
 
 logger = logging.getLogger(__name__)

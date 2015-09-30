@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 from nodeconductor.iaas import models
-from nodeconductor.structure import filters as structure_filters
+from nodeconductor.structure.managers import filter_queryset_for_user
 
 
 class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
@@ -48,7 +48,7 @@ class InstanceBackupRestorationSerializer(serializers.ModelSerializer):
         except (KeyError, AttributeError):
             return fields
 
-        clouds = structure_filters.filter_queryset_for_user(models.Cloud.objects.all(), user)
+        clouds = filter_queryset_for_user(models.Cloud.objects.all(), user)
         fields['template'].queryset = fields['template'].queryset.filter(images__cloud__in=clouds).distinct()
 
         return fields

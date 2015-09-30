@@ -5,7 +5,6 @@ import logging
 import functools
 import os
 import StringIO
-import django_filters
 
 from collections import defaultdict, OrderedDict
 from datetime import datetime, timedelta
@@ -13,7 +12,6 @@ from datetime import datetime, timedelta
 from django import http
 from django.conf import settings as django_settings
 from django.contrib import auth
-from django.contrib.contenttypes.models import ContentType
 from django.db import connection, transaction, IntegrityError
 from django.db.models import Q, Sum
 from django.template.loader import render_to_string
@@ -40,68 +38,18 @@ from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.utils import request_api, datetime_to_timestamp
-from nodeconductor.logging.filters import ExternalAlertFilterBackend, BaseExternalFilter
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
 from nodeconductor.structure.log import event_logger
+from nodeconductor.structure.managers import filter_queryset_for_user
 
 
 logger = logging.getLogger(__name__)
 
 User = auth.get_user_model()
-
-
-class CustomerFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(
-        lookup_type='icontains',
-    )
-    native_name = django_filters.CharFilter(
-        lookup_type='icontains',
-    )
-    abbreviation = django_filters.CharFilter(
-        lookup_type='icontains',
-    )
-    contact_details = django_filters.CharFilter(
-        lookup_type='icontains',
-    )
-
-    class Meta(object):
-        model = models.Customer
-        fields = [
-            'name',
-            'abbreviation',
-            'contact_details',
-            'native_name',
-            'registration_code',
-        ]
-        order_by = [
-            'name',
-            'abbreviation',
-            'contact_details',
-            'native_name',
-            'registration_code',
-            # desc
-            '-name',
-            '-abbreviation',
-            '-contact_details',
-            '-native_name',
-            '-registration_code',
-        ]
-
-
-class BalanceHistoryFilter(django_filters.FilterSet):
-    """ Basic filters for alerts """
-
-    created_from = core_filters.TimestampFilter(name='created', lookup_type='gte')
-    created_to = core_filters.TimestampFilter(name='created', lookup_type='lte')
-
-    class Meta:
-        model = models.BalanceHistory
-        fields = ['created_from', 'created_to']
-        order_by = ['created']
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
@@ -116,7 +64,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
-    filter_class = CustomerFilter
+    filter_class = filters.CustomerFilter
 
     def perform_create(self, serializer):
         customer = serializer.save()
@@ -251,82 +199,6 @@ class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
         raise PermissionDenied()
 
 
-class ProjectFilter(django_filters.FilterSet):
-    customer = django_filters.CharFilter(
-        name='customer__uuid',
-        distinct=True,
-    )
-
-    customer_name = django_filters.CharFilter(
-        name='customer__name',
-        distinct=True,
-        lookup_type='icontains'
-    )
-
-    customer_native_name = django_filters.CharFilter(
-        name='customer__native_name',
-        distinct=True,
-        lookup_type='icontains'
-    )
-
-    customer_abbreviation = django_filters.CharFilter(
-        name='customer__abbreviation',
-        distinct=True,
-        lookup_type='icontains'
-    )
-
-    project_group = django_filters.CharFilter(
-        name='project_groups__uuid',
-        distinct=True,
-    )
-
-    project_group_name = django_filters.CharFilter(
-        name='project_groups__name',
-        distinct=True,
-        lookup_type='icontains'
-    )
-
-    name = django_filters.CharFilter(lookup_type='icontains')
-
-    description = django_filters.CharFilter(lookup_type='icontains')
-
-    class Meta(object):
-        model = models.Project
-        fields = [
-            'project_group',
-            'project_group_name',
-            'name',
-            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-            'description',
-            'created',
-        ]
-        order_by = [
-            'name',
-            '-name',
-            'created',
-            '-created',
-            'project_groups__name',
-            '-project_groups__name',
-            'customer__native_name',
-            '-customer__native_name',
-            'customer__name',
-            '-customer__name',
-            'customer__abbreviation',
-            '-customer__abbreviation',
-        ]
-
-        order_by_mapping = {
-            # Proper field naming
-            'project_group_name': 'project_groups__name',
-            'customer_name': 'customer__name',
-            'customer_abbreviation': 'customer__abbreviation',
-            'customer_native_name': 'customer__native_name',
-
-            # Backwards compatibility
-            'project_groups__name': 'project_groups__name',
-        }
-
-
 class ProjectViewSet(viewsets.ModelViewSet):
     """List of projects that are accessible by this user.
 
@@ -339,7 +211,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
-    filter_class = ProjectFilter
+    filter_class = filters.ProjectFilter
 
     def can_create_project_with(self, customer, project_groups):
         user = self.request.user
@@ -394,56 +266,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
         super(ProjectViewSet, self).perform_create(serializer)
 
 
-class ProjectGroupFilter(django_filters.FilterSet):
-    customer = django_filters.CharFilter(
-        name='customer__uuid',
-        distinct=True,
-    )
-    customer_name = django_filters.CharFilter(
-        name='customer__name',
-        distinct=True,
-        lookup_type='icontains',
-    )
-    customer_native_name = django_filters.CharFilter(
-        name='customer__native_name',
-        distinct=True,
-        lookup_type='icontains',
-    )
-
-    customer_abbreviation = django_filters.CharFilter(
-        name='customer__abbreviation',
-        distinct=True,
-        lookup_type='icontains',
-    )
-
-    name = django_filters.CharFilter(lookup_type='icontains')
-
-    class Meta(object):
-        model = models.ProjectGroup
-        fields = [
-            'name',
-            'customer',
-            'customer_name',
-            'customer_native_name',
-            'customer_abbreviation',
-        ]
-        order_by = [
-            'name',
-            '-name',
-            'customer__name',
-            '-customer__name',
-            'customer__native_name',
-            '-customer__native_name',
-            'customer__abbreviation',
-            '-customer__abbreviation',
-        ]
-        order_by_mapping = {
-            'customer_name': 'customer__name',
-            'customer_abbreviation': 'customer__abbreviation',
-            'customer_native_name': 'customer__native_name',
-        }
-
-
 class ProjectGroupViewSet(viewsets.ModelViewSet):
     """
     List of project groups that are accessible to this user.
@@ -454,36 +276,7 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
     # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
-    filter_class = ProjectGroupFilter
-
-
-class ProjectGroupMembershipFilter(django_filters.FilterSet):
-    project_group = django_filters.CharFilter(
-        name='projectgroup__uuid',
-    )
-
-    project_group_name = django_filters.CharFilter(
-        name='projectgroup__name',
-        lookup_type='icontains',
-    )
-
-    project = django_filters.CharFilter(
-        name='project__uuid',
-    )
-
-    project_name = django_filters.CharFilter(
-        name='project__name',
-        lookup_type='icontains',
-    )
-
-    class Meta(object):
-        model = models.ProjectGroup.projects.through
-        fields = [
-            'project_group',
-            'project_group_name',
-            'project',
-            'project_name',
-        ]
+    filter_class = filters.ProjectGroupFilter
 
 
 class ProjectGroupMembershipViewSet(mixins.CreateModelMixin,
@@ -499,7 +292,7 @@ class ProjectGroupMembershipViewSet(mixins.CreateModelMixin,
     queryset = models.ProjectGroup.projects.through.objects.all()
     serializer_class = serializers.ProjectGroupMembershipSerializer
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
-    filter_class = ProjectGroupMembershipFilter
+    filter_class = filters.ProjectGroupMembershipFilter
 
     def perform_create(self, serializer):
         super(ProjectGroupMembershipViewSet, self).perform_create(serializer)
@@ -528,73 +321,6 @@ class ProjectGroupMembershipViewSet(mixins.CreateModelMixin,
                 'project_group': project_group,
             })
 
-# XXX: This should be put to models
-filters.set_permissions_for_model(
-    models.ProjectGroup.projects.through,
-    customer_path='projectgroup__customer',
-)
-
-
-class UserFilter(django_filters.FilterSet):
-    project_group = django_filters.CharFilter(
-        name='groups__projectrole__project__project_groups__name',
-        distinct=True,
-        lookup_type='icontains',
-    )
-    project = django_filters.CharFilter(
-        name='groups__projectrole__project__name',
-        distinct=True,
-        lookup_type='icontains',
-    )
-
-    full_name = django_filters.CharFilter(lookup_type='icontains')
-    username = django_filters.CharFilter()
-    native_name = django_filters.CharFilter(lookup_type='icontains')
-    job_title = django_filters.CharFilter(lookup_type='icontains')
-    email = django_filters.CharFilter(lookup_type='icontains')
-    is_active = django_filters.BooleanFilter()
-
-    class Meta(object):
-        model = User
-        fields = [
-            'full_name',
-            'native_name',
-            'organization',
-            'organization_approved',
-            'email',
-            'phone_number',
-            'description',
-            'job_title',
-            'project',
-            'project_group',
-            'username',
-            'civil_number',
-            'is_active',
-        ]
-        order_by = [
-            'full_name',
-            'native_name',
-            'organization',
-            'organization_approved',
-            'email',
-            'phone_number',
-            'description',
-            'job_title',
-            'username',
-            'is_active',
-            # descending
-            '-full_name',
-            '-native_name',
-            '-organization',
-            '-organization_approved',
-            '-email',
-            '-phone_number',
-            '-description',
-            '-job_title',
-            '-username',
-            '-is_active',
-        ]
-
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -610,7 +336,7 @@ class UserViewSet(viewsets.ModelViewSet):
         rf_permissions.IsAuthenticated,
         permissions.IsAdminOrOwnerOrOrganizationManager,
     )
-    filter_class = UserFilter
+    filter_class = filters.UserFilter
 
     def get_queryset(self):
         user = self.request.user
@@ -641,7 +367,7 @@ class UserViewSet(viewsets.ModelViewSet):
             potential_customer = self.request.query_params.get('potential_customer')
             if potential_customer:
                 connected_customers_query = connected_customers_query.filter(uuid=potential_customer)
-                connected_customers_query = filters.filter_queryset_for_user(connected_customers_query, user)
+                connected_customers_query = filter_queryset_for_user(connected_customers_query, user)
 
             connected_customers = list(connected_customers_query.all())
             potential_organization = self.request.query_params.get('potential_organization')
@@ -785,66 +511,6 @@ class UserViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_200_OK)
 
 
-# TODO: cover filtering/ordering with tests
-class ProjectPermissionFilter(django_filters.FilterSet):
-    project = django_filters.CharFilter(
-        name='group__projectrole__project__uuid',
-    )
-    project_url = core_filters.URLFilter(
-        viewset=ProjectViewSet,
-        name='group__projectrole__project__uuid',
-    )
-    user_url = core_filters.URLFilter(
-        viewset=UserViewSet,
-        name='user__uuid',
-    )
-    username = django_filters.CharFilter(
-        name='user__username',
-        lookup_type='exact',
-    )
-    full_name = django_filters.CharFilter(
-        name='user__full_name',
-        lookup_type='icontains',
-    )
-    native_name = django_filters.CharFilter(
-        name='user__native_name',
-        lookup_type='icontains',
-    )
-    role = core_filters.MappedChoiceFilter(
-        name='group__projectrole__role_type',
-        choices=(
-            ('admin', 'Administrator'),
-            ('manager', 'Manager'),
-            # TODO: Removing this drops support of filtering by numeric codes
-            (models.ProjectRole.ADMINISTRATOR, 'Administrator'),
-            (models.ProjectRole.MANAGER, 'Manager'),
-        ),
-        choice_mappings={
-            'admin': models.ProjectRole.ADMINISTRATOR,
-            'manager': models.ProjectRole.MANAGER,
-        },
-    )
-
-    class Meta(object):
-        model = User.groups.through
-        fields = [
-            'role',
-            'project',
-            'username',
-            'full_name',
-            'native_name',
-        ]
-        order_by = [
-            'user__username',
-            'user__full_name',
-            'user__native_name',
-            # desc
-            '-user__username',
-            '-user__full_name',
-            '-user__native_name',
-        ]
-
-
 class ProjectPermissionViewSet(mixins.CreateModelMixin,
                                mixins.RetrieveModelMixin,
                                mixins.ListModelMixin,
@@ -856,7 +522,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
     serializer_class = serializers.ProjectPermissionSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
-    filter_class = ProjectPermissionFilter
+    filter_class = filters.ProjectPermissionFilter
 
     def can_manage_roles_for(self, project):
         user = self.request.user
@@ -903,62 +569,6 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         affected_project.remove_user(affected_user, role)
 
 
-class ProjectGroupPermissionFilter(django_filters.FilterSet):
-    project_group = django_filters.CharFilter(
-        name='group__projectgrouprole__project_group__uuid',
-    )
-    project_group_url = core_filters.URLFilter(
-        viewset=ProjectGroupViewSet,
-        name='group__projectgrouprole__project_group__uuid',
-    )
-    user_url = core_filters.URLFilter(
-        viewset=UserViewSet,
-        name='user__uuid',
-    )
-    username = django_filters.CharFilter(
-        name='user__username',
-        lookup_type='exact',
-    )
-    full_name = django_filters.CharFilter(
-        name='user__full_name',
-        lookup_type='icontains',
-    )
-    native_name = django_filters.CharFilter(
-        name='user__native_name',
-        lookup_type='icontains',
-    )
-    role = core_filters.MappedChoiceFilter(
-        name='group__projectgrouprole__role_type',
-        choices=(
-            ('manager', 'Manager'),
-            # TODO: Removing this drops support of filtering by numeric codes
-            (models.ProjectGroupRole.MANAGER, 'Manager'),
-        ),
-        choice_mappings={
-            'manager': models.ProjectGroupRole.MANAGER,
-        },
-    )
-
-    class Meta(object):
-        model = User.groups.through
-        fields = [
-            'role',
-            'project_group',
-            'username',
-            'full_name',
-            'native_name',
-        ]
-        order_by = [
-            'user__username',
-            'user__full_name',
-            'user__native_name',
-            # desc
-            '-user__username',
-            '-user__full_name',
-            '-user__native_name',
-
-        ]
-
 
 class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
@@ -970,7 +580,7 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
     serializer_class = serializers.ProjectGroupPermissionSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (rf_filters.DjangoFilterBackend,)
-    filter_class = ProjectGroupPermissionFilter
+    filter_class = filters.ProjectGroupPermissionFilter
 
     def can_manage_roles_for(self, project_group):
         user = self.request.user
@@ -1024,63 +634,6 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
         affected_project_group.remove_user(affected_user, role)
 
 
-class CustomerPermissionFilter(django_filters.FilterSet):
-    customer = django_filters.CharFilter(
-        name='group__customerrole__customer__uuid',
-    )
-    customer_url = core_filters.URLFilter(
-        viewset=CustomerViewSet,
-        name='group__customerrole__customer__uuid',
-    )
-    user_url = core_filters.URLFilter(
-        viewset=UserViewSet,
-        name='user__uuid',
-    )
-    username = django_filters.CharFilter(
-        name='user__username',
-        lookup_type='exact',
-    )
-    full_name = django_filters.CharFilter(
-        name='user__full_name',
-        lookup_type='icontains',
-    )
-    native_name = django_filters.CharFilter(
-        name='user__native_name',
-        lookup_type='icontains',
-    )
-    role = core_filters.MappedChoiceFilter(
-        name='group__customerrole__role_type',
-        choices=(
-            ('owner', 'Owner'),
-            # TODO: Removing this drops support of filtering by numeric codes
-            (models.CustomerRole.OWNER, 'Owner'),
-        ),
-        choice_mappings={
-            'owner': models.CustomerRole.OWNER,
-        },
-    )
-
-    class Meta(object):
-        model = User.groups.through
-        fields = [
-            'role',
-            'customer',
-            'username',
-            'full_name',
-            'native_name',
-        ]
-        order_by = [
-            'user__username',
-            'user__full_name',
-            'user__native_name',
-            # desc
-            '-user__username',
-            '-user__full_name',
-            '-user__native_name',
-
-        ]
-
-
 class CustomerPermissionViewSet(mixins.CreateModelMixin,
                                 mixins.RetrieveModelMixin,
                                 mixins.ListModelMixin,
@@ -1094,7 +647,7 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
         # rf_permissions.DjangoObjectPermissions,
     )
     filter_backends = (rf_filters.DjangoFilterBackend,)
-    filter_class = CustomerPermissionFilter
+    filter_class = filters.CustomerPermissionFilter
 
     def can_manage_roles_for(self, customer):
         user = self.request.user
@@ -1167,27 +720,6 @@ class CreationTimeStatsView(views.APIView):
         return Response(stats, status=status.HTTP_200_OK)
 
 
-class SshKeyFilter(django_filters.FilterSet):
-    uuid = django_filters.CharFilter()
-    user_uuid = django_filters.CharFilter(
-        name='user__uuid'
-    )
-    name = django_filters.CharFilter(lookup_type='icontains')
-
-    class Meta(object):
-        model = core_models.SshPublicKey
-        fields = [
-            'name',
-            'fingerprint',
-            'uuid',
-            'user_uuid'
-        ]
-        order_by = [
-            'name',
-            '-name',
-        ]
-
-
 class SshKeyViewSet(mixins.CreateModelMixin,
                     mixins.RetrieveModelMixin,
                     mixins.DestroyModelMixin,
@@ -1203,7 +735,7 @@ class SshKeyViewSet(mixins.CreateModelMixin,
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
     filter_backends = (rf_filters.DjangoFilterBackend, core_filters.StaffOrUserFilter)
-    filter_class = SshKeyFilter
+    filter_class = filters.SshKeyFilter
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -1222,32 +754,6 @@ class SshKeyViewSet(mixins.CreateModelMixin,
             raise APIException(e)
 
 
-class ServiceSettingsFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(lookup_type='icontains')
-    type = core_filters.MappedChoiceFilter(
-        choices=SupportedServices.Types.get_direct_filter_mapping(),
-        choice_mappings=SupportedServices.Types.get_reverse_filter_mapping(),
-    )
-    state = core_filters.MappedChoiceFilter(
-        choices=(
-            ('sync_scheduled', 'Sync Scheduled'),
-            ('syncing', 'Syncing'),
-            ('in_sync', 'In Sync'),
-            ('erred', 'Erred'),
-        ),
-        choice_mappings={
-            'sync_scheduled': core_models.SynchronizationStates.SYNCING_SCHEDULED,
-            'syncing': core_models.SynchronizationStates.SYNCING,
-            'in_sync': core_models.SynchronizationStates.IN_SYNC,
-            'erred': core_models.SynchronizationStates.ERRED,
-        },
-    )
-
-    class Meta(object):
-        model = models.ServiceSettings
-        fields = ('name', 'type', 'state')
-
-
 class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
                              mixins.UpdateModelMixin,
                              mixins.ListModelMixin,
@@ -1256,7 +762,7 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
     serializer_class = serializers.ServiceSettingsSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
-    filter_class = ServiceSettingsFilter
+    filter_class = filters.ServiceSettingsFilter
     lookup_field = 'uuid'
 
     def perform_create(self, serializer):
@@ -1378,15 +884,6 @@ class UpdateOnlyByPaidCustomerMixin(object):
         return super(UpdateOnlyByPaidCustomerMixin, self).create(request, *args, **kwargs)
 
 
-class BaseServiceFilter(django_filters.FilterSet):
-    customer_uuid = django_filters.CharFilter(name='customer__uuid')
-    customer = core_filters.URLFilter(viewset=CustomerViewSet, name='customer__uuid')
-    name = django_filters.CharFilter(lookup_type='icontains')
-
-    class Meta(object):
-        model = models.Service
-
-
 class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                          core_mixins.UserContextMixin,
                          viewsets.ModelViewSet):
@@ -1400,7 +897,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     import_serializer_class = NotImplemented
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
-    filter_class = BaseServiceFilter
+    filter_class = filters.BaseServiceFilter
     lookup_field = 'uuid'
 
     def _can_import(self):
@@ -1473,15 +970,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class BaseServiceProjectLinkFilter(django_filters.FilterSet):
-    service_uuid = django_filters.CharFilter(name='service__uuid')
-    project_uuid = django_filters.CharFilter(name='project__uuid')
-    project = core_filters.URLFilter(viewset=ProjectViewSet, name='project__uuid')
-
-    class Meta(object):
-        model = models.ServiceProjectLink
-
-
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
                                     core_mixins.UpdateOnlyStableMixin,
                                     mixins.CreateModelMixin,
@@ -1498,18 +986,7 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
     serializer_class = NotImplemented
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
-    filter_class = BaseServiceProjectLinkFilter
-
-
-class BaseResourceFilter(django_filters.FilterSet):
-    project_uuid = django_filters.CharFilter(name='service_project_link__project__uuid')
-    customer_uuid = django_filters.CharFilter(name='service_project_link__service__customer__uuid')
-    service_uuid = django_filters.CharFilter(name='service_project_link__service__uuid')
-    name = django_filters.CharFilter(lookup_type='icontains')
-
-    class Meta(object):
-        model = models.Resource
-        fields = ('project_uuid', 'customer_uuid', 'service_uuid', 'name')
+    filter_class = filters.BaseServiceProjectLinkFilter
 
 
 class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
@@ -1525,7 +1002,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
-    filter_class = BaseResourceFilter
+    filter_class = filters.BaseResourceFilter
 
     def safe_operation(valid_state=None):
         def decorator(view_fn):
@@ -1650,59 +1127,5 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         backend.restart(resource)
 
 
-class BaseServicePropertyFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(
-        name='name',
-        lookup_type='icontains',
-    )
-
-    class Meta(object):
-        model = models.ServiceProperty
-        fields = ('name',)
-
-
-class ServicePropertySettingsFilter(BaseServicePropertyFilter):
-    settings_uuid = django_filters.CharFilter(name='settings__uuid')
-
-    class Meta(BaseServicePropertyFilter.Meta):
-        fields = BaseServicePropertyFilter.Meta.fields + ('settings_uuid', )
-
-
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
-    filter_class = BaseServicePropertyFilter
-
-
-class AggregateFilter(BaseExternalFilter):
-    """
-    Filter by aggregate
-    """
-
-    def filter(self, request, queryset, view):
-        # Don't apply filter if aggregate is not specified
-        if 'aggregate' not in request.query_params:
-            return queryset
-
-        serializer = serializers.AggregateSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-
-        aggregates = serializer.get_aggregates(request.user)
-        projects = serializer.get_projects(request.user)
-        querysets = [aggregates, projects]
-        query = {serializer.data['aggregate'] + '__in': aggregates}
-
-        all_models = models.Resource.get_all_models() + \
-                     models.Service.get_all_models() + \
-                     models.ServiceProjectLink.get_all_models()
-        for model in all_models:
-            qs = model.objects.filter(**query).all()
-            querysets.append(filters.filter_queryset_for_user(qs, request.user))
-
-        aggregate_query = Q()
-        for qs in querysets:
-            content_type = ContentType.objects.get_for_model(qs.model)
-            ids = qs.values_list('id', flat=True)
-            aggregate_query |= Q(content_type=content_type, object_id__in=ids)
-
-        return queryset.filter(aggregate_query)
-
-ExternalAlertFilterBackend.register(AggregateFilter())
+    filter_class = filters.BaseServicePropertyFilter
