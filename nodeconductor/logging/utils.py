@@ -1,6 +1,7 @@
 from django.db import models as django_models
 
 from nodeconductor.logging import log
+from nodeconductor.structure import SupportedServices
 
 
 def get_loggable_models():
@@ -9,6 +10,6 @@ def get_loggable_models():
     # Add subclasses of abstract loggable models (eg Service)
     for model in log.LoggableMixin.__subclasses__():
         if model._meta.abstract:
-            models.extend(model.__subclasses__())
+            models.extend([m for m in model.__subclasses__() if SupportedServices._is_active_model(m)])
 
     return models
