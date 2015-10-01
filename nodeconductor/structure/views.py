@@ -916,6 +916,9 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             context['service'] = self.get_object()
         return context
 
+    def get_import_context(self):
+        return {}
+
     @detail_route(methods=['get', 'post'])
     def link(self, request, uuid=None):
         if not self._can_import():
@@ -942,7 +945,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                     backend = service.get_backend()
 
                 try:
-                    resources = backend.get_resources_for_import()
+                    resources = backend.get_resources_for_import(**self.get_import_context())
                 except ServiceBackendNotImplemented:
                     resources = []
 
