@@ -33,7 +33,7 @@ class Alert(UuidMixin, TimeStampedModel):
         ERROR = 40
         CHOICES = ((DEBUG, 'Debug'), (INFO, 'Info'), (WARNING, 'Warning'), (ERROR, 'Error'))
 
-    alert_type = models.CharField(max_length=50)
+    alert_type = models.CharField(max_length=50, db_index=True)
     message = models.CharField(max_length=255)
     severity = models.SmallIntegerField(choices=SeverityChoices.CHOICES)
     closed = models.DateTimeField(null=True, blank=True)

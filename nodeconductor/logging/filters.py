@@ -76,6 +76,7 @@ class AlertFilter(django_filters.FilterSet):
     created_from = core_filters.TimestampFilter(name='created', lookup_type='gte')
     created_to = core_filters.TimestampFilter(name='created', lookup_type='lt')
     content_type = core_filters.ContentTypeFilter()
+    message = django_filters.CharFilter(lookup_type='icontains')
 
     class Meta:
         model = models.Alert
@@ -86,6 +87,7 @@ class AlertFilter(django_filters.FilterSet):
             'created_from',
             'created_to',
             'content_type',
+            'message'
         ]
         order_by = [
             'severity',
