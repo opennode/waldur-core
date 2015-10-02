@@ -562,7 +562,8 @@ class AggregateFilter(BaseExternalFilter):
         aggregates = serializer.get_aggregates(request.user)
         projects = serializer.get_projects(request.user)
         querysets = [aggregates, projects]
-        query = {serializer.data['aggregate'] + '__in': aggregates}
+        aggregates_ids = list(aggregates.values_list('id', flat=True))
+        query = {serializer.data['aggregate'] + '__in': aggregates_ids}
 
         all_models = models.Resource.get_all_models() + \
                      models.Service.get_all_models() + \
