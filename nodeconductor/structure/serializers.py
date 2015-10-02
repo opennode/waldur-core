@@ -1039,6 +1039,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'project_groups',
             'resource_type', 'state', 'created', 'service_project_link',
         )
+        protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -1049,6 +1050,14 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     def get_resource_type(self, obj):
         return SupportedServices.get_name_for_model(obj)
+
+    def to_representation(self, instance):
+        # We need this hook, because ips have to be represented as list
+        if hasattr(instance, 'external_ips'):
+            instance.external_ips = [instance.external_ips] if instance.external_ips else []
+        if hasattr(instance, 'internal_ips'):
+            instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
+        return super(BaseResourceSerializer, self).to_representation(instance)
 
     def create(self, validated_data):
         data = validated_data.copy()
@@ -1124,7 +1133,9 @@ class VirtualMachineSerializer(BaseResourceSerializer):
 
     class Meta(BaseResourceSerializer.Meta):
         read_only_fields = ('start_time', 'cores', 'ram', 'disk', 'external_ips', 'internal_ips')
-        protected_fields = ('service', 'service_project_link', 'user_data', 'ssh_public_key')
+        protected_fields = BaseResourceSerializer.Meta.protected_fields + (
+            'user_data', 'ssh_public_key'
+        )
         write_only_fields = ('user_data',)
         fields = BaseResourceSerializer.Meta.fields + (
             'cores', 'ram', 'disk', 'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
@@ -1135,12 +1146,6 @@ class VirtualMachineSerializer(BaseResourceSerializer):
         fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
             user=self.context['user'])
         return fields
-
-    def to_representation(self, instance):
-        # We need this hook, because ips have to be represented as list
-        instance.external_ips = [instance.external_ips] if instance.external_ips else []
-        instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
-        return super(VirtualMachineSerializer, self).to_representation(instance)
 
 
 class PropertySerializerMetaclass(serializers.SerializerMetaclass):
