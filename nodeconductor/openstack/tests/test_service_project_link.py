@@ -20,6 +20,7 @@ class ServiceProjectLinkCreateDeleteTest(test.APISimpleTestCase):
         self.project = structure_factories.ProjectFactory(customer=self.customer)
         self.service = factories.OpenStackServiceFactory(customer=self.customer)
 
+    @unittest.skip('Skipping till NC-848 is properly resolved')
     def test_membership_creation(self):
         self.client.force_authenticate(self.owner)
 
