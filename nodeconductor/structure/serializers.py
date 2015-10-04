@@ -1126,6 +1126,7 @@ class VirtualMachineSerializer(BaseResourceSerializer):
 
     external_ips = serializers.ListField(
         child=core_serializers.IPAddressField(),
+        read_only=True,
     )
     internal_ips = serializers.ListField(
         child=core_serializers.IPAddressField(),
