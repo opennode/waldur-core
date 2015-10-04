@@ -1124,6 +1124,14 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 
 class VirtualMachineSerializer(BaseResourceSerializer):
 
+    external_ips = serializers.ListField(
+        child=core_serializers.IPAddressField(),
+    )
+    internal_ips = serializers.ListField(
+        child=core_serializers.IPAddressField(),
+        read_only=True,
+    )
+
     ssh_public_key = serializers.HyperlinkedRelatedField(
         view_name='sshpublickey-detail',
         lookup_field='uuid',
