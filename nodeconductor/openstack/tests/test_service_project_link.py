@@ -264,7 +264,7 @@ class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
 
             mocked_task.assert_called_with(
                 'nodeconductor.structure.sync_service_project_links',
-                (service_project_link.to_string(),), {'initial': True})
+                (service_project_link.to_string(),), {'initial': True}, countdown=2)
 
     def test_admin_cannot_connect_new_service_and_project_if_he_is_project_admin(self):
         user = self.users['admin']
