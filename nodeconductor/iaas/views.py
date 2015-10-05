@@ -1029,6 +1029,11 @@ class CloudFilter(django_filters.FilterSet):
         name='cloudprojectmembership__project__uuid',
         distinct=True,
     )
+    # project_uuid is alias of project for consistency with structure filters
+    project_uuid = django_filters.CharFilter(
+        name='cloudprojectmembership__project__uuid',
+        distinct=True,
+    )
     project_name = django_filters.CharFilter(
         name='cloudprojectmembership__project__name',
         lookup_type='icontains',

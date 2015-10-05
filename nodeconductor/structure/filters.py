@@ -503,6 +503,7 @@ class BaseServiceFilter(django_filters.FilterSet):
     customer_uuid = django_filters.CharFilter(name='customer__uuid')
     customer = core_filters.URLFilter(view_name='customer-detail', name='customer__uuid')
     name = django_filters.CharFilter(lookup_type='icontains')
+    project_uuid = django_filters.CharFilter(name='projects__uuid', distinct=True)
 
     class Meta(object):
         model = models.Service
