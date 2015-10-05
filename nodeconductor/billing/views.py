@@ -1,18 +1,19 @@
 import logging
+import django_filters
 
 from django.conf import settings
-import django_filters
-from django_fsm import TransitionNotAllowed
 from django.shortcuts import redirect
 from django.views.static import serve
-from rest_framework import mixins, viewsets, permissions, response, decorators, exceptions, status
-from rest_framework.exceptions import APIException
+from django_fsm import TransitionNotAllowed
+from rest_framework import mixins, viewsets, permissions, decorators, exceptions, status
+from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
 from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.billing.log import event_logger
 from nodeconductor.billing.models import Invoice, Payment
-from nodeconductor.billing.serializers import InvoiceSerializer, PaymentSerializer, PaymentApproveSerializer
+from nodeconductor.billing.serializers import (
+    InvoiceSerializer, PaymentSerializer, PaymentApproveSerializer)
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.structure.filters import GenericRoleFilter
 from nodeconductor.structure.models import CustomerRole
@@ -44,7 +45,6 @@ class InvoiceFilter(django_filters.FilterSet):
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'year', 'month',
             'amount',
-            'status',
             'date',
         ]
         order_by = [
@@ -52,8 +52,6 @@ class InvoiceFilter(django_filters.FilterSet):
             '-date',
             'amount',
             '-amount',
-            'status',
-            '-status',
             'customer__name',
             '-customer__name',
             'customer__abbreviation',
@@ -80,53 +78,32 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
     )
     serializer_class = InvoiceSerializer
 
-    @decorators.detail_route()
-    def pdf(self, request, uuid=None):
-        invoice = self.get_object()
-        if not invoice.pdf:
+    def _serve_pdf(self, request, pdf):
+        if not pdf:
             raise exceptions.NotFound("There's no PDF for this invoice")
 
-        response = serve(request, invoice.pdf.name, document_root=settings.MEDIA_ROOT)
+        response = serve(request, pdf.name, document_root=settings.MEDIA_ROOT)
         if request.query_params.get('download'):
-            filename = '{}-{}-invoicenr-{}.pdf'.format(invoice.date.year, invoice.date.month, invoice.backend_id)
+            filename = pdf.name.split('/')[-1]
             response['Content-Type'] = 'application/pdf'
             response['Content-Disposition'] = 'attachment; filename="{}"'.format(filename)
 
         return response
 
     @decorators.detail_route()
+    def pdf(self, request, uuid=None):
+        return self._serve_pdf(request, self.get_object().pdf)
+
+    @decorators.detail_route()
     def usage_pdf(self, request, uuid=None):
-        invoice = self.get_object()
-        if not invoice.usage_pdf:
-            raise exceptions.NotFound("There's no usage PDF for this invoice")
-
-        response = serve(request, invoice.usage_pdf.name, document_root=settings.MEDIA_ROOT)
-        if request.query_params.get('download'):
-            response['Content-Type'] = 'application/pdf'
-            response['Content-Disposition'] = 'attachment; filename="usage.pdf"'
-
-        return response
+        return self._serve_pdf(request, self.get_object().usage_pdf)
 
     @decorators.detail_route()
     def items(self, request, uuid=None):
-        invoice = self.get_object()
-        # TODO: Move it to createsampleinvoices
-        if not invoice.backend_id:
-            # Dummy items
-            items = [
-                {
-                    "amount": "7.95",
-                    "type": "Hosting",
-                    "name": "Home Package - topcorp.tv (02/10/2014 - 01/11/2014)"
-                }
-            ]
-            return response.Response(items, status=status.HTTP_200_OK)
         try:
-            backend = invoice.customer.get_billing_backend()
-            items = backend.api.get_invoice_items(invoice.backend_id)
-            return response.Response(items, status=status.HTTP_200_OK)
+            return Response(self.get_object().get_items())
         except BillingBackendError:
-            return response.Response(
+            return Response(
                 {'Detail': 'Cannot retrieve data from invoice backend'}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -190,7 +167,7 @@ class PaymentView(CreateByStaffOrOwnerMixin,
             logging.warning('Unable to create payment because of backend error %s', e)
             payment.set_erred()
             payment.save()
-            raise APIException()
+            raise exceptions.APIException()
 
     @decorators.detail_route()
     def approve(self, request, uuid):

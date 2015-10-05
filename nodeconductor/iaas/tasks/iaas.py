@@ -203,6 +203,7 @@ def pull_cloud_membership(membership_pk):
     # XXX not the best idea to register in the function
     sync_cloud_project_membership_with_zabbix.delay(membership.pk)
 
+
 @shared_task
 def pull_cloud_memberships():
     # TODO: Extract to a service
@@ -282,6 +283,7 @@ def sync_cloud_project_membership_with_zabbix(membership_pk):
 
 @shared_task
 def check_cloud_memberships_quotas():
+    # XXX: this task is replaced by quotas.handlers.check_quota_threshold_breach for openstack app
     threshold = 0.80  # Could have been configurable...
 
     queryset = (
@@ -300,7 +302,7 @@ def check_cloud_memberships_quotas():
     for membership in queryset.iterator():
         for quota in membership.quotas.all():
             if quota.is_exceeded(threshold=threshold):
-                event_logger.quota.warning(
+                event_logger.membership_quota.warning(
                     '{quota_name} quota threshold has been reached for project {project_name}.',
                     event_type='quota_threshold_reached',
                     event_context={
@@ -353,6 +355,7 @@ def delete_external_network(membership_pk):
     except CloudBackendError:
         logger.info('Failed to delete external network for cloud project membership with id %s.', membership_pk)
 
+
 @shared_task
 def detect_external_network(membership_pk):
     membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
@@ -365,3 +368,35 @@ def detect_external_network(membership_pk):
         backend.detect_external_network(membership, neutron)
     except CloudBackendError:
         logger.warning('Failed to detect external network for cloud project membership with id %s.', membership_pk)
+
+
+@shared_task
+def allocate_floating_ip(membership_pk):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+    backend = membership.cloud.get_backend()
+
+    try:
+        session = backend.create_session(keystone_url=membership.cloud.auth_url, dummy=backend.dummy)
+        neutron = backend.create_neutron_client(session)
+
+        backend.allocate_floating_ip_address(neutron, membership)
+    except CloudBackendError:
+        logger.warning('Failed to allocate floating IP for cloud project membership with id %s.', membership_pk)
+
+
+@shared_task
+def assign_floating_ip(floating_ip_uuid, instance_uuid):
+    instance = models.Instance.objects.get(uuid=instance_uuid)
+    backend = instance.cloud_project_membership.cloud.get_backend()
+
+    floating_ip = models.FloatingIP.objects.get(uuid=floating_ip_uuid)
+
+    try:
+        session = backend.create_session(
+            keystone_url=instance.cloud_project_membership.cloud.auth_url,
+            dummy=backend.dummy)
+        nova = backend.create_nova_client(session)
+
+        backend.assign_floating_ip_to_instance(nova, instance, floating_ip)
+    except CloudBackendError:
+        logger.warning('Failed to assign floating IP to the instance with id %s.', instance_uuid)

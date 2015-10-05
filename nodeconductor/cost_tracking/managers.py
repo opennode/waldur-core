@@ -3,7 +3,7 @@ from django.db import models as django_models
 from django.db.models import Q
 
 from nodeconductor.core.managers import GenericKeyMixin
-from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import Service
 
 

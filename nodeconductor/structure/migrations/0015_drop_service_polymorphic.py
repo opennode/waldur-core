@@ -20,8 +20,8 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('structure', '0014_servicesettings_options'),
-        ('iaas', '0040_update_cloudprojectmembership'),
-        ('oracle', '0003_new_service_model'),
+        # ('iaas', '0040_update_cloudprojectmembership'),
+        # ('oracle', '0003_new_service_model'),
         ('openstack', '0002_new_service_model'),
     ] + nc_plus_dependencies
 
@@ -48,5 +48,5 @@ class Migration(migrations.Migration):
         migrations.RunSQL(
             "UPDATE structure_servicesettings SET options='\"\"' WHERE options=''"
         ),
-        migrations.RunPython(lambda apps, schema_editor: None),
+#        migrations.RunPython(lambda apps, schema_editor: None),
     ]

@@ -1,13 +1,16 @@
 from __future__ import unicode_literals
 
+import collections
+from datetime import timedelta
 import logging
 import sys
-import collections
 
+from django.conf import settings
 from django.db import connections, DatabaseError
-from django.utils import six
+from django.utils import six, timezone
 
-from nodeconductor.core import utils as core_utils
+from nodeconductor.core.utils import datetime_to_timestamp
+from nodeconductor.iaas.models import Instance
 from nodeconductor.monitoring.zabbix import errors, api_client
 from nodeconductor.monitoring.zabbix import sql_utils
 
@@ -28,6 +31,12 @@ class ZabbixDBClient(object):
             'convert_to_mb': False
         },
 
+        'cpu_util_agent': {
+            'key': 'system.cpu.util[,,]',
+            'table': 'history',
+            'convert_to_mb': False
+        },
+
         'memory': {
             'key': 'kvm.vm.memory.size',
             'table': 'history_uint',
@@ -38,6 +47,12 @@ class ZabbixDBClient(object):
             'key': 'kvm.vm.memory_util',
             'table': 'history',
             'convert_to_mb': False
+        },
+
+        'memory_util_agent': {
+            'key': 'vm.memory.size[pused]',
+            'table': 'history',
+            'convert_to_mb': False,
         },
 
         'storage': {
@@ -109,97 +124,6 @@ class ZabbixDBClient(object):
 
     def __init__(self):
         self.zabbix_api_client = api_client.ZabbixApiClient()
-
-    def get_projects_quota_timeline(self, hosts, items, start, end, interval):
-        """
-        hosts: list of tenant UUID
-        items: list of items, such as 'vcpu', 'ram'
-        start, end: timestamp
-        interval: day, week, month
-        Returns list of tuples like
-        (1415912624, 1415912630, 'vcpu_limit', 2048)
-
-        Explanation of the the SQL query.
-        1) Join three tables: hosts, items and history_uint.
-
-        2) Filter rows by host name, item name and time range.
-
-        3) Truncate date. For example, when interval is 'day',
-        2015-06-01 09:56:23 is truncated to 2015-06-01.
-
-        4) Rows are grouped by date and itemid and then averaged.
-        There's distinct itemid for combination of hostid and item.key_.
-        For example:
-        2015-06-01 09:56:23, host1, vcpu, 10,
-        2015-06-01 10:56:23, host1, vcpu, 20,
-        2015-06-01 11:56:23, host1, vcpu, 30,
-        2015-06-01 09:56:23, host1, ram, 100,
-        2015-06-01 10:56:23, host1, ram, 200,
-        2015-06-01 11:56:23, host1, ram, 300,
-
-        is converted to
-        2015-06-01, host1, vcpu, 20
-        2015-06-01, host1, ram, 200
-
-        5) Rows are grouped by date and item name and the sum is applied.
-        For example:
-        2015-06-01, host1, vcpu, 20
-        2015-06-01, host1, ram, 200
-        2015-06-01, host2, vcpu, 40
-        2015-06-01, host2, ram, 400
-
-        is converted to
-        2015-06-01, vcpu, 60
-        2015-06-01, ram,  600
-
-        6) Then we add end time span. For example:
-        2015-06-01, vcpu, 60
-        2015-06-01, ram,  600
-
-        is converted to
-        2015-06-01, 2015-06-02, vcpu, 60
-        2015-06-01, 2015-06-02, ram,  600
-
-        The benefit of this solution is that computations are
-        performed in the database, not in REST server.
-        """
-
-        template = r"""
-          SELECT {date_span}, item, SUM(value)
-            FROM (SELECT {date_trunc} AS date,
-                       items.key_ AS item,
-                       AVG(value) AS value
-                  FROM hosts,
-                       items,
-                       history_uint FORCE INDEX (history_uint_1)
-                 WHERE hosts.hostid = items.hostid
-                   AND items.itemid = history_uint.itemid
-                   AND hosts.host IN ({hosts_placeholder})
-                   AND items.key_ IN ({items_placeholder})
-                   AND clock >= %s
-                   AND clock <= %s
-                 GROUP BY date, items.itemid) AS t
-          GROUP BY date, item
-          """
-
-        try:
-            engine = sql_utils.get_zabbix_engine()
-            date_span = sql_utils.make_date_span(engine, interval, 'date')
-            date_trunc = sql_utils.truncate_date(engine, interval, 'clock')
-        except DatabaseError as e:
-            six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
-
-        query = template.format(
-            date_span=date_span,
-            date_trunc=date_trunc,
-            hosts_placeholder=sql_utils.make_list_placeholder(len(hosts)),
-            items_placeholder=sql_utils.make_list_placeholder(len(items)),
-        )
-        items = [self.items[name]['key'] for name in items]
-        params = hosts + items + [start, end]
-
-        records = self.execute_query(query, params)
-        return self.prepare_result(records)
 
     def execute_query(self, query, params):
         try:
@@ -292,13 +216,14 @@ class ZabbixDBClient(object):
                 logger.warning('Invalid item key %s', key)
                 continue
             if self.items[name]['convert_to_mb']:
-                value = value / (1024 * 1024)
+                value /= (1024 * 1024)
             value = int(value)
             results.append((timestamp, name, value))
         return results
 
     def get_item_stats(self, instances, item, start_timestamp, end_timestamp, segments_count):
         # FIXME: Quick and dirty hack to handle storage in a separate flow
+        # XXX: "Storage" item is deprecated it will be removed soon (need to confirm Portal usage)
         if item == 'storage':
             return self.get_storage_stats(instances, start_timestamp, end_timestamp, segments_count)
 
@@ -312,21 +237,60 @@ class ZabbixDBClient(object):
         if not host_ids:
             return []
 
+        zabbix_settings = getattr(settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {})
+        HISTORY_RECORDS_INTERVAL = zabbix_settings.get('HISTORY_RECORDS_INTERVAL', 15) * 60
+        TRENDS_RECORDS_INTERVAL = zabbix_settings.get('TRENDS_RECORDS_INTERVAL', 60)  * 60
+        HISTORY_DATE_RANGE = timedelta(hours=zabbix_settings.get('TRENDS_DATE_RANGE', 48))
+
         item_key = self.items[item]['key']
-        item_table = self.items[item]['table']
+        item_history_table = self.items[item]['table']
+        item_trends_table = 'trends' if item_history_table == 'history' else 'trends_uint'
         convert_to_mb = self.items[item]['convert_to_mb']
+        trends_start_date = datetime_to_timestamp(timezone.now() - HISTORY_DATE_RANGE)
         try:
-            time_and_value_list = self.get_item_time_and_value_list(
-                host_ids, [item_key], item_table, start_timestamp, end_timestamp, convert_to_mb)
-            segment_list = core_utils.format_time_and_value_to_segment_list(
-                time_and_value_list, segments_count, start_timestamp, end_timestamp, average=True)
+            history_cursor = self.get_cursor(
+                host_ids, [item_key], item_history_table, start_timestamp, end_timestamp, convert_to_mb,
+                min_interval=HISTORY_RECORDS_INTERVAL)
+            trends_cursor = self.get_cursor(
+                host_ids, [item_key], item_trends_table, start_timestamp, end_timestamp, convert_to_mb,
+                min_interval=TRENDS_RECORDS_INTERVAL)
+
+            interval = ((end_timestamp - start_timestamp) / segments_count)
+            points = [start_timestamp + interval * i for i in range(segments_count + 1)][::-1]
+
+            segment_list = []
+            if points[1] > trends_start_date:
+                next_value = history_cursor.fetchone()
+            else:
+                next_value = trends_cursor.fetchone()
+
+            for end, start in zip(points[:-1], points[1:]):
+                segment = {'from': start, 'to': end}
+                interval = HISTORY_RECORDS_INTERVAL if start > trends_start_date else TRENDS_RECORDS_INTERVAL
+
+                while True:
+                    if next_value is None:
+                        break
+                    time, value = next_value
+
+                    if time <= end:
+                        if end - time < interval or time > start:
+                            segment['value'] = value
+                        break
+                    else:
+                        if start > trends_start_date:
+                            next_value = history_cursor.fetchone()
+                        else:
+                            next_value = trends_cursor.fetchone()
+
+                segment_list.append(segment)
+
             return segment_list
         except DatabaseError as e:
             logger.exception('Can not execute query the Zabbix DB.')
             six.reraise(errors.ZabbixError, e, sys.exc_info()[2])
 
-    def get_item_time_and_value_list(
-            self, host_ids, item_keys, item_table, start_timestamp, end_timestamp, convert_to_mb):
+    def get_cursor(self, host_ids, item_keys, item_table, start_timestamp, end_timestamp, convert_to_mb, min_interval):
         """
         Execute query to zabbix db to get item values from history
         """
@@ -334,23 +298,26 @@ class ZabbixDBClient(object):
             'SELECT hi.clock time, (%(value_path)s) value '
             'FROM zabbix.items it JOIN zabbix.%(item_table)s hi on hi.itemid = it.itemid '
             'WHERE it.key_ in (%(item_keys)s) AND it.hostid in (%(host_ids)s) '
-            'AND hi.clock < %(end_timestamp)s AND hi.clock >= %(start_timestamp)s '
+            'AND hi.clock < %(end_timestamp)s AND hi.clock > %(start_timestamp)s '
             'GROUP BY hi.clock '
-            'ORDER BY hi.clock'
+            'ORDER BY hi.clock DESC'
         )
+        value_path = 'hi.value' if item_table.startswith('history') else 'hi.value_avg'
+        if convert_to_mb:
+            value_path += ' / (1024*1024)'
         parameters = {
             'item_keys': '"' + '", "'.join(item_keys) + '"',
-            'start_timestamp': start_timestamp,
+            'start_timestamp': start_timestamp - min_interval,
             'end_timestamp': end_timestamp,
             'host_ids': ','.join(str(host_id) for host_id in host_ids),
             'item_table': item_table,
-            'value_path': 'hi.value' if not convert_to_mb else 'hi.value / (1024*1024)',
+            'value_path': value_path,
         }
         query = query % parameters
 
         cursor = connections['zabbix'].cursor()
         cursor.execute(query)
-        return cursor.fetchall()
+        return cursor
 
     def get_storage_stats(self, instances, start_timestamp, end_timestamp, segments_count):
         host_ids = []
@@ -417,3 +384,43 @@ class ZabbixDBClient(object):
             })
 
         return resampled_values
+
+    def get_application_installation_state(self, instance):
+        # a shortcut for the IaaS instances -- all done
+        if instance.type == Instance.Services.IAAS:
+            return 'OK'
+
+        zabbix_api_client = api_client.ZabbixApiClient()
+        name = zabbix_api_client.get_host_name(instance)
+        api = zabbix_api_client.get_zabbix_api()
+
+        if api.host.exists(host=name):
+            hostid = api.host.get(filter={'host': name})[0]['hostid']
+            # get installation state from DB:
+            query = r"""
+                SELECT
+                  hi.value
+                FROM zabbix.items it
+                  JOIN zabbix.history_uint hi ON hi.itemid = it.itemid
+                WHERE
+                  it.key_ = %(key_)s
+                AND
+                  it.hostid = %(hostid)s
+                AND
+                  hi.clock > %(time)s
+                ORDER BY hi.clock DESC
+                LIMIT 1
+            """
+            parameters = {
+                'key_': zabbix_api_client._settings.get('application-status-item', 'application.status'),
+                'hostid': hostid,
+                'time': datetime_to_timestamp(timezone.now()-timedelta(hours=1)),
+            }
+            try:
+                value = self.execute_query(query, parameters)[0][0]
+            except IndexError:
+                return 'NO DATA'
+            return 'OK' if value == 1 else 'NOT OK'
+        else:
+            logger.warn('Cannot retrieve installation state of instance %s. Host does not exist.', instance)
+            return 'NO DATA'

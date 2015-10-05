@@ -11,11 +11,12 @@ from django.utils.encoding import python_2_unicode_compatible
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.utils import request_api
-from nodeconductor.cost_tracking import CostConstants
+from nodeconductor.cost_tracking import CostConstants, models as cost_tracking_models
 from nodeconductor.billing.models import PaidResource
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
+from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.structure import models as structure_models, ServiceBackend
 
 logger = logging.getLogger(__name__)
@@ -102,7 +103,7 @@ class ServiceStatistics(models.Model):
 
 
 @python_2_unicode_compatible
-class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink):
+class CloudProjectMembership(QuotaModelMixin, structure_models.ServiceProjectLink):
     """
     This model represents many to many relationships between project and cloud
     """
@@ -141,7 +142,7 @@ class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink)
         return self.cloud.get_backend()
 
     def get_log_fields(self):
-        return ('project', 'cloud',)
+        return ('project', 'cloud', 'service')
 
     @property
     def service(self):
@@ -152,13 +153,6 @@ class CloudProjectMembership(LoggableMixin, structure_models.ServiceProjectLink)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return 'cloudproject_membership'
-
-
-class CloudProjectMember(models.Model):
-    class Meta(object):
-        abstract = True
-
-    cloud_project_membership = models.ForeignKey(CloudProjectMembership, related_name='+')
 
 
 @python_2_unicode_compatible
@@ -237,9 +231,8 @@ class Template(core_models.UuidMixin,
     # fields for categorisation
     # XXX consider changing to tags
     type = models.CharField(max_length=100, blank=True, help_text='Template type')
-    application_type = models.CharField(max_length=100, blank=True, choices=CostConstants.Application.CHOICES,
-                                        default=CostConstants.Application.NONE,
-                                        help_text='Type of the application inside the template (optional)')
+    application_type = models.ForeignKey(cost_tracking_models.ApplicationType, null=True,
+                                         help_text='Type of the application inside the template (optional)')
 
     def __str__(self):
         return self.name
@@ -260,15 +253,19 @@ class TemplateMapping(core_models.DescribableMixin, models.Model):
         return '{0} <-> {1}'.format(self.template.name, self.backend_image_id)
 
 
-class FloatingIP(core_models.UuidMixin, CloudProjectMember):
+class FloatingIP(core_models.UuidMixin):
     class Permissions(object):
         customer_path = 'cloud_project_membership__cloud__customer'
         project_path = 'cloud_project_membership__project'
         project_group_path = 'cloud_project_membership__project__project_groups'
 
+    cloud_project_membership = models.ForeignKey(
+        CloudProjectMembership, related_name='floating_ips')
+
     address = models.GenericIPAddressField(protocol='IPv4')
     status = models.CharField(max_length=30)
     backend_id = models.CharField(max_length=255)
+    backend_network_id = models.CharField(max_length=255, editable=False)
 
 
 class IaasTemplateService(TemplateService):
@@ -294,7 +291,36 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
-class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineMixin, structure_models.Resource):
+class PaidInstance(PaidResource):
+
+    class Meta(object):
+        abstract = True
+
+    def get_usage_state(self):
+        state = {
+            CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
+            CostConstants.PriceItem.SUPPORT: (CostConstants.Support.PREMIUM
+                                              if self.type == self.Services.PAAS
+                                              else CostConstants.Support.BASIC),
+        }
+
+        application = self.template.application_type
+        if application:
+            state[CostConstants.PriceItem.LICENSE_APPLICATION] = application.slug
+
+        if self.state == self.States.ONLINE and self.flavor_name:
+            state[CostConstants.PriceItem.FLAVOR] = self.flavor_name
+
+        storage_size = self.data_volume_size
+        storage_size += sum(b.metadata['system_snapshot_size'] +
+                            b.metadata['data_snapshot_size'] for b in self.backups.get_active())
+
+        state[CostConstants.PriceItem.STORAGE] = ServiceBackend.mb2gb(storage_size)
+
+        return state
+
+
+class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMixin, PaidInstance):
     """
     A generalization of a single virtual machine.
 
@@ -359,24 +385,6 @@ class Instance(LoggableMixin, PaidResource, structure_models.BaseVirtualMachineM
 
     def get_instance_security_groups(self):
         return InstanceSecurityGroup.objects.filter(instance=self)
-
-    def get_storage_size(self, extra=0):
-        # 'extra' is used to calculate totals size (e.g. together with backup snapshots)
-        return ServiceBackend.mb2gb(self.system_volume_size + self.data_volume_size + extra)
-
-    def get_default_price_options(self):
-        return {CostConstants.PriceItem.FLAVOR: CostConstants.Flavor.OFFLINE}
-
-    def get_price_options(self):
-        return {
-            CostConstants.PriceItem.FLAVOR: self.flavor_name,
-            CostConstants.PriceItem.STORAGE: self.get_storage_size(),
-            CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
-            CostConstants.PriceItem.LICENSE_APPLICATION: self.template.application_type,
-            CostConstants.PriceItem.SUPPORT: (CostConstants.Support.PREMIUM
-                                              if self.type == self.Services.PAAS
-                                              else CostConstants.Support.BASIC),
-        }
 
     def _init_instance_licenses(self):
         """
@@ -478,7 +486,6 @@ class SecurityGroup(core_models.UuidMixin,
                     core_models.DescribableMixin,
                     core_models.NameMixin,
                     core_models.SynchronizableMixin,
-                    CloudProjectMember,
                     models.Model):
 
     class Permissions(object):
@@ -490,6 +497,9 @@ class SecurityGroup(core_models.UuidMixin,
     This class contains OpenStack security groups.
     """
 
+    cloud_project_membership = models.ForeignKey(
+        CloudProjectMembership, related_name='security_groups')
+
     # OpenStack backend specific fields
     backend_id = models.CharField(max_length=128, blank=True,
                                   help_text='Reference to a SecurityGroup in a remote cloud')
@@ -498,8 +508,41 @@ class SecurityGroup(core_models.UuidMixin,
         return self.name
 
 
+class SecurityGroupRuleValidationMixin(object):
+    """
+    Mixin for security group rule validation.
+    """
+    def validate_icmp(self):
+        if self.from_port is not None and not -1 <= self.from_port <= 255:
+            raise ValidationError('Wrong value for "from_port": '
+                                  'expected value in range [-1, 255], found %d' % self.from_port)
+        if self.to_port is not None and not -1 <= self.to_port <= 255:
+            raise ValidationError('Wrong value for "to_port": '
+                                  'expected value in range [-1, 255], found %d' % self.to_port)
+
+    def validate_port(self):
+        if self.from_port is not None and self.to_port is not None:
+            if self.from_port > self.to_port:
+                raise ValidationError('"from_port" should be less or equal to "to_port"')
+        if self.from_port is not None and self.from_port < 1:
+            raise ValidationError('Wrong value for "from_port": '
+                                  'expected value in range [1, 65535], found %d' % self.from_port)
+        if self.to_port is not None and self.to_port < 1:
+            raise ValidationError('Wrong value for "to_port": '
+                                  'expected value in range [1, 65535], found %d' % self.to_port)
+
+    def clean(self):
+        if self.protocol == 'icmp':
+            self.validate_icmp()
+        elif self.protocol in ('tcp', 'udp'):
+            self.validate_port()
+        else:
+            raise ValidationError('Wrong value for "protocol": '
+                                  'expected one of (tcp, udp, icmp), found %s' % self.protocol)
+
+
 @python_2_unicode_compatible
-class SecurityGroupRule(models.Model):
+class SecurityGroupRule(SecurityGroupRuleValidationMixin, models.Model):
 
     tcp = 'tcp'
     udp = 'udp'
@@ -514,8 +557,6 @@ class SecurityGroupRule(models.Model):
     group = models.ForeignKey(SecurityGroup, related_name='rules')
 
     protocol = models.CharField(max_length=4, blank=True, choices=PROTOCOL_CHOICES)
-    # TODO: Consider protocol dependent to/from_port fields validation
-    # TODO: Validate that from_port <= to_port
     from_port = models.IntegerField(validators=[MaxValueValidator(65535)], null=True)
     to_port = models.IntegerField(validators=[MaxValueValidator(65535)], null=True)
     cidr = models.CharField(max_length=32, blank=True)

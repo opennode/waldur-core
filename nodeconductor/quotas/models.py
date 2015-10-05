@@ -12,8 +12,9 @@ from nodeconductor.core.models import UuidMixin, NameMixin, ReversionMixin
 @python_2_unicode_compatible
 class Quota(UuidMixin, NameMixin, LoggableMixin, ReversionMixin, models.Model):
     """
-    Abstract quota for any resource
+    Abstract quota for any resource.
 
+    Quota can exist without scope - for example quota for all projects or all customers on site
     If quota limit is defined as -1 quota will never be exceeded
     """
     class Meta:
@@ -22,8 +23,8 @@ class Quota(UuidMixin, NameMixin, LoggableMixin, ReversionMixin, models.Model):
     limit = models.FloatField(default=-1)
     usage = models.FloatField(default=0)
 
-    content_type = models.ForeignKey(ct_models.ContentType)
-    object_id = models.PositiveIntegerField()
+    content_type = models.ForeignKey(ct_models.ContentType, null=True)
+    object_id = models.PositiveIntegerField(null=True)
     scope = ct_fields.GenericForeignKey('content_type', 'object_id')
 
     objects = managers.QuotaManager('scope')
@@ -64,6 +65,10 @@ class QuotaModelMixin(models.Model):
       - can_user_update_quotas(self, user) - return True if user has permission to update quotas of this object
       - get_quota_parents(self) - return list of 'quota parents'
 
+    Additional optional fields:
+      - GLOBAL_COUNT_QUOTA_NAME - name of global count quota. It presents - global quota will be automatically created
+                                  for model
+
     Use such methods to change objects quotas:
       set_quota_limit, set_quota_usage, add_quota_usage.
 
@@ -77,14 +82,19 @@ class QuotaModelMixin(models.Model):
     quotas = ct_fields.GenericRelation('quotas.Quota', related_query_name='quotas')
 
     def set_quota_limit(self, quota_name, limit):
-        # XXX: !!! Horrible hack !!! Remove ASAP !!! Propagate limits for backend quotas
-        if quota_name.startswith('nc_'):
-            self.quotas.filter(name=quota_name).update(limit=limit)
-        else:
-            self._set_editable_field_value('limit', quota_name, limit)
+        self.quotas.filter(name=quota_name).update(limit=limit)
 
-    def set_quota_usage(self, quota_name, usage):
-        self._set_editable_field_value('usage', quota_name, usage)
+    def set_quota_usage(self, quota_name, usage, fail_silently=False):
+        with transaction.atomic():
+            try:
+                original_quota = self.quotas.get(name=quota_name)
+            except Quota.DoesNotExist:
+                if not fail_silently:
+                    raise
+            else:
+                self._add_delta_to_ancestors('usage', quota_name, usage - original_quota.usage)
+                original_quota.usage = usage
+                original_quota.save(update_fields=['usage'])
 
     def add_quota_usage(self, quota_name, usage_delta, fail_silently=False):
         """
@@ -93,13 +103,6 @@ class QuotaModelMixin(models.Model):
         If <fail_silently> is True - operation will not fail if quota does not exist
         """
         self._add_delta_to_editable_field('usage', quota_name, usage_delta, fail_silently)
-
-    def _set_editable_field_value(self, field, quota_name, value):
-        with transaction.atomic():
-            original_quota = self.quotas.get(name=quota_name)
-            self._add_delta_to_ancestors(field, quota_name, value - getattr(original_quota, field))
-            setattr(original_quota, field, value)
-            original_quota.save()
 
     def _add_delta_to_editable_field(self, field, quota_name, delta, fail_silently=False):
         """
@@ -111,21 +114,31 @@ class QuotaModelMixin(models.Model):
             return
         with transaction.atomic():
             try:
-                original_quota = self.quotas.get(name=quota_name)
+                original_quota = self.quotas.select_for_update().get(name=quota_name)
             except Quota.DoesNotExist, e:
                 if not fail_silently:
                     raise e
             else:
+                # Django's F() expressions makes quota.is_exceeded() unusable in signals
+                # wrap update into a safe transaction instead (may not work with sqlite)
                 setattr(original_quota, field, getattr(original_quota, field) + delta)
-                original_quota.save()
+                original_quota.save(update_fields=[field])
                 self._add_delta_to_ancestors(field, quota_name, delta)
 
     def _add_delta_to_ancestors(self, field, quota_name, delta):
-        if delta:
-            for ancestor in self._get_quota_ancestors():
-                quota, _ = Quota.objects.get_or_create(scope=ancestor, name=quota_name)
-                setattr(quota, field, getattr(quota, field) + delta)
-                quota.save()
+        if not delta:
+            return
+
+        for ancestor in self._get_quota_ancestors():
+            with transaction.atomic():
+                try:
+                    quota = ancestor.quotas.select_for_update().get(name=quota_name)
+                except Quota.DoesNotExist:
+                    # ignore quotas change if parent does not have such quota
+                    pass
+                else:
+                    setattr(quota, field, getattr(quota, field) + delta)
+                    quota.save(update_fields=[field])
 
     def validate_quota_change(self, quota_deltas, raise_exception=False):
         """

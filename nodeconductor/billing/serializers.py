@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
-from nodeconductor.core import serializers as core_serializers
 from nodeconductor.billing.models import Invoice, Payment
+from nodeconductor.core import serializers as core_serializers
 
 
 class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
@@ -18,7 +18,6 @@ class InvoiceSerializer(core_serializers.AugmentedSerializerMixin,
         fields = (
             'url', 'uuid', 'year', 'month', 'amount', 'pdf', 'usage_pdf', 'date',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
-            'status',
         )
         related_paths = ('customer',)
         extra_kwargs = {

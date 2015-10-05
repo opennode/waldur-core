@@ -1,12 +1,11 @@
 import base64
 
 from django.core import validators
-from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned
+from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned, ObjectDoesNotExist
 from django.core.urlresolvers import reverse, resolve, Resolver404
 from rest_framework import serializers
 from rest_framework.fields import Field, ReadOnlyField
 
-from nodeconductor.core import utils
 from nodeconductor.core.fields import TimestampField
 from nodeconductor.core.signals import pre_serializer_fields
 
@@ -96,6 +95,12 @@ class GenericRelatedField(Field):
             format_kwargs['model_name'] = obj._meta.object_name.lower()
         return self._default_view_name % format_kwargs
 
+    def _get_request(self):
+        try:
+            return self.context['request']
+        except KeyError:
+            raise AttributeError('GenericRelatedField have to be initialized with `request` in context')
+
     def to_representation(self, obj):
         """
         Serializes any object to his url representation
@@ -106,11 +111,8 @@ class GenericRelatedField(Field):
                 kwargs = {field: getattr(obj, field)}
                 break
         if kwargs is None:
-            raise AttributeError('Related object does not have any of of lookup_fields')
-        try:
-            request = self.context['request']
-        except AttributeError:
-            raise AttributeError('GenericRelatedField have to be initialized with `request` in context')
+            raise AttributeError('Related object does not have any of lookup_fields')
+        request = self._get_request()
         return request.build_absolute_uri(reverse(self._get_url(obj), kwargs=kwargs))
 
     def _format_url(self, url):
@@ -132,12 +134,17 @@ class GenericRelatedField(Field):
         """
         Restores model instance from its url
         """
+        # XXX: This circular dependency will be removed then filter_queryset_for_user
+        # will be moved to model manager method
+        from nodeconductor.structure.managers import filter_queryset_for_user
+        request = self._get_request()
         try:
             url = self._format_url(data)
             match = resolve(url)
             model = self._get_model_from_resolve_match(match)
-            obj = model.objects.get(**match.kwargs)
-        except (Resolver404, AttributeError, MultipleObjectsReturned):
+            queryset = filter_queryset_for_user(model.objects.all(), request.user)
+            obj = queryset.get(**match.kwargs)
+        except (Resolver404, AttributeError, MultipleObjectsReturned, ObjectDoesNotExist):
             raise serializers.ValidationError("Can`t restore object from url: %s" % data)
         if model not in self.related_models:
             raise serializers.ValidationError('%s object does not support such relationship' % str(obj))
@@ -384,3 +391,25 @@ class HistorySerializer(serializers.Serializer):
             interval = ((self.validated_data['end'] - self.validated_data['start']) /
                         (self.validated_data['points_count'] - 1))
             return [self.validated_data['start'] + interval * i for i in range(self.validated_data['points_count'])]
+
+
+class DynamicSerializer(serializers.ModelSerializer):
+    """
+    Allows to specify additional fields for serializer.
+    Useful for managing dependencies between applications.
+    """
+    _additional_fields = {}
+
+    @classmethod
+    def add_field(cls, field_name, model_class, options=None):
+        cls.Meta.fields += (field_name,)
+        cls._additional_fields[field_name] = (model_class, options or {})
+
+    def build_unknown_field(self, field_name, model_class):
+        if field_name in self._additional_fields:
+            return self._additional_fields[field_name]
+        return super(DynamicSerializer, self).build_unknown_field(field_name, model_class)
+
+    @classmethod
+    def add_to_class(cls, name, value):
+        setattr(cls, name, value)

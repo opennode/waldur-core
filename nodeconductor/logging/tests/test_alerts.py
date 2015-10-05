@@ -53,16 +53,17 @@ class AlertsListTest(test.APITransactionTestCase):
         self.assertNotIn(alert2.uuid.hex, [a['uuid'] for a in response.data])
 
     def test_alert_list_can_be_filtered_by_scope_type(self):
+        # XXX: this tests will removed after content type filter implementation at portal
         project = structure_factories.ProjectFactory(customer=self.customer)
         alert1 = factories.AlertFactory(scope=project)
         alert2 = factories.AlertFactory(scope=self.customer)
 
         self.client.force_authenticate(self.owner)
-        response = self.client.get(factories.AlertFactory.get_list_url(), data={'scope_type': 'project'})
+        response = self.client.get(factories.AlertFactory.get_list_url(), data={'scope_type': 'customer'})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn(alert1.uuid.hex, [a['uuid'] for a in response.data])
-        self.assertNotIn(alert2.uuid.hex, [a['uuid'] for a in response.data])
+        self.assertIn(alert2.uuid.hex, [a['uuid'] for a in response.data])
+        self.assertNotIn(alert1.uuid.hex, [a['uuid'] for a in response.data])
 
     def test_alert_list_can_be_aggregated_for_concreate_customer(self):
         project = structure_factories.ProjectFactory(customer=self.customer)
@@ -104,6 +105,32 @@ class AlertsListTest(test.APITransactionTestCase):
         self.assertIn(alert1.uuid.hex, [a['uuid'] for a in response.data])
         self.assertIn(alert2.uuid.hex, [a['uuid'] for a in response.data])
         self.assertNotIn(alert3.uuid.hex, [a['uuid'] for a in response.data])
+
+    def test_alert_can_be_filtered_by_content_type(self):
+        project = structure_factories.ProjectFactory(customer=self.customer)
+        alert1 = factories.AlertFactory(scope=project)
+        alert2 = factories.AlertFactory(scope=self.customer)
+
+        self.client.force_authenticate(self.owner)
+        response = self.client.get(factories.AlertFactory.get_list_url(), data={'content_type': ['structure.project']})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(alert1.uuid.hex, [a['uuid'] for a in response.data])
+        self.assertNotIn(alert2.uuid.hex, [a['uuid'] for a in response.data])
+
+    def test_alert_can_be_filtered_by_scope(self):
+        project = structure_factories.ProjectFactory(customer=self.customer)
+        alert1 = factories.AlertFactory(scope=project)
+        alert2 = factories.AlertFactory(scope=self.customer)
+
+        self.client.force_authenticate(self.owner)
+        response = self.client.get(
+            factories.AlertFactory.get_list_url(),
+            data={'scope': structure_factories.ProjectFactory.get_url(project)})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(alert1.uuid.hex, [a['uuid'] for a in response.data])
+        self.assertNotIn(alert2.uuid.hex, [a['uuid'] for a in response.data])
 
 
 class AlertsCreateUpdateDeleteTest(test.APITransactionTestCase):

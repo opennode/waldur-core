@@ -8,6 +8,8 @@ from datetime import timedelta
 from celery.schedules import crontab
 import os
 
+from nodeconductor.server.admin.settings import *
+
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
 
 
@@ -27,6 +29,7 @@ INSTALLED_APPS = (
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.humanize',
     'django.contrib.staticfiles',
 
     'nodeconductor.landing',
@@ -40,15 +43,12 @@ INSTALLED_APPS = (
     'nodeconductor.cost_tracking',
     'nodeconductor.billing',
     'nodeconductor.openstack',
-    'nodeconductor.oracle',
+    # 'nodeconductor.oracle',
     'nodeconductor.iaas',
     'nodeconductor.support',
     'nodeconductor.ldapsync',
 
     'nodeconductor.testdata',
-
-    # Template overrides need to happen before admin is imported.
-    'django.contrib.admin',
 
     'rest_framework',
     'rest_framework.authtoken',
@@ -58,6 +58,8 @@ INSTALLED_APPS = (
     'reversion',
 )
 
+INSTALLED_APPS += ADMIN_APPS
+
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -66,7 +68,6 @@ MIDDLEWARE_CLASSES = (
     'nodeconductor.logging.middleware.CaptureEventContextMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'reversion.middleware.RevisionMiddleware',
 )
 
 REST_FRAMEWORK = {
@@ -172,6 +173,12 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
+    'sync-service-settings': {
+        'task': 'nodeconductor.structure.sync_service_settings',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+
     'recover-erred-services': {
         'task': 'nodeconductor.structure.recover_erred_services',
         'schedule': timedelta(minutes=45),
@@ -201,6 +208,12 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
+    'create-zabbix-hosts-and-services': {
+        'task': 'nodeconductor.iaas.tasks.zabbix.zabbix_create_host_and_service_for_all_instances',
+        'schedule': timedelta(hours=1),
+        'args': (),
+    },
+
     'execute-backup-schedules': {
         'task': 'nodeconductor.backup.tasks.execute_schedules',
         'schedule': timedelta(minutes=10),
@@ -218,9 +231,22 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=1),
         'args': (),
     },
+
     'update-current-month-cost-projections': {
-        'task': 'nodeconductor.iaas.cost_tracking.tasks.update_current_month_projected_estimate_for_customers',
+        'task': 'nodeconductor.cost_tracking.update_current_month_projected_estimate',
         'schedule': timedelta(hours=24),
+        'args': (),
+    },
+
+    'update-today-usage': {
+        'task': 'nodeconductor.cost_tracking.update_today_usage',
+        'schedule': crontab(minute=10),
+        'args': (),
+    },
+
+    'update-openstack-service-project-links-quotas': {
+        'task': 'nodeconductor.structure.sync_service_project_links',
+        'schedule': timedelta(minutes=30),
         'args': (),
     }
 }
@@ -234,7 +260,7 @@ CELERY_TASK_THROTTLING = {
 
 NODECONDUCTOR = {
     'EXTENSIONS_AUTOREGISTER': True,
-    'ENABLE_WHMCS_ORDER_PROCESSING': False,
+    'ENABLE_ORDER_PROCESSING': False,
     'DEFAULT_SECURITY_GROUPS': (
         {
             'name': 'ssh',

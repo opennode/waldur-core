@@ -12,6 +12,7 @@ Alerts can be filtered by:
  - ?alert_type=<alert_type> (can be list)
  - ?scope=<url> concrete alert scope
  - ?scope_type=<string> name of scope type (Ex.: instance, cloud_project_membership, project...)
+   DEPRECATED use ?content_type instead
  - ?created_from=<timestamp>
  - ?created_to=<timestamp>
  - ?closed_from=<timestamp>
@@ -21,12 +22,16 @@ Alerts can be filtered by:
  - ?opened - if this argument is in GET request endpoint will return only alerts that are not closed
  - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
  - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
- object with given uuid)
+   object with given uuid)
  - ?acknowledged=True|False - show only acknowledged (non-acknowledged) alerts
+ - ?content_type=<string> name of scope content type in format <app_name>.<scope_type>
+   (Ex.: structure.project, iaas.instance...)
+ - ?exclude_features=<feature> (can be list) - exclude alert from output if it's type corresponds to one of given features
 
 Alerts can be ordered by:
 
  -?o=severity - order by severity
+ -?o=created - order by creation time
 
 
 .. code-block:: http
@@ -39,12 +44,12 @@ Alerts can be ordered by:
 
     [
         {
-            "url": "http://127.0.0.1:8000/api/alerts/e80e48a4e58b48ff9a1320a0aa0d68ab/",
+            "url": "http://example.com/api/alerts/e80e48a4e58b48ff9a1320a0aa0d68ab/",
             "uuid": "e80e48a4e58b48ff9a1320a0aa0d68ab",
             "alert_type": "first_alert",
             "message": "message#1",
             "severity": "Debug",
-            "scope": "http://127.0.0.1:8000/api/instances/9d1d7e03b0d14fd0b42b5f649dfa3de5/",
+            "scope": "http://example.com/api/instances/9d1d7e03b0d14fd0b42b5f649dfa3de5/",
             "created": "2015-05-29T14:24:27.342Z",
             "closed": null,
             "context": {
@@ -56,7 +61,7 @@ Alerts can be ordered by:
                 'quota_name': 'ram',
                 'quota_usage': '131071',
                 'quota_uuid': 'f6ae2f7ca86f4e2f9bb64de1015a2815',
-                'scope_name': 'DEV/logtest',
+                'scope_name': 'project X',
                 'scope_uuid': '0238d71ee1934bd2839d4e71e5f9b91a'
             }
             "acknowledged": true,
@@ -91,14 +96,14 @@ Request example:
 Close alert
 -----------
 
-To close alert - run POST against */api/alerts/<alert_uuid>/close/*. No data is required. Only users with staff
+To close alert - run POST against **/api/alerts/<alert_uuid>/close/**. No data is required. Only users with staff
 privileges can close alerts.
 
 
 Acknowledge alert
 -----------------
 
-To acknowledge alert - run POST against */api/alerts/<alert_uuid>/acknowledge/*. No payload is required.
+To acknowledge alert - run POST against **/api/alerts/<alert_uuid>/acknowledge/**. No payload is required.
 All users that can see alerts can also acknowledge it. If alert is already acknowledged endpoint will return error
 with code 409(conflict).
 
@@ -106,16 +111,16 @@ with code 409(conflict).
 Cancel alert acknowledgment
 ---------------------------
 
-To cancel alert acknowledgment - run POST against */api/alerts/<alert_uuid>/cancel_acknowledgment/*.
+To cancel alert acknowledgment - run POST against **/api/alerts/<alert_uuid>/cancel_acknowledgment/**.
 No payload is required. All users that can see alerts can also cancel it acknowledgment. If alert is not acknowledged
-endpoint will return error with code 409(conflict).
+endpoint will return error with code 409 (conflict).
 
 
 Statistics
 ----------
 
 To get count of alerts per severities - run GET request against **/api/alerts/stats/**. This endpoint supports all
-filters that are available for alerts list (/api/alerts/).
+filters that are available for alerts list (**/api/alerts/**).
 
 Response example:
 

@@ -7,8 +7,9 @@ import importlib
 import logging
 
 from django.apps import apps
-from django.utils import six
 from django.contrib.contenttypes import models as ct_models
+from django.db import transaction
+from django.utils import six
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.logging import models
@@ -57,7 +58,7 @@ class BaseLogger(object):
 
     def compile_message(self, message_template, context):
         try:
-            msg = message_template.format(**context)
+            msg = six.text_type(message_template).format(**context)
         except KeyError as e:
             raise LoggerError(
                 "Cannot find %s context field. Choices are: %s" % (
@@ -78,20 +79,23 @@ class BaseLogger(object):
                 for k, v in self.__class__.__dict__.items()
                 if not k.startswith('_') and not isinstance(v, (types.ClassType, types.FunctionType))}
 
+        missed = set(self.fields.keys()) - set(self.get_nullable_fields()) - set(kwargs.keys())
+        if missed:
+            raise LoggerError("Missed fields in event context: %s" % ', '.join(missed))
+
         context = {}
-        required_fields = self.fields.copy()
 
         event_context = get_event_context()
         if event_context:
             context.update(event_context)
             username = event_context.get('user_username')
-            if 'user' in required_fields and username:
+            if 'user' in self.fields and username:
                 logger.warning("User is passed directly to event context. "
                                "Currently authenticated user %s is ignored.", username)
 
         for entity_name, entity in six.iteritems(kwargs):
-            if entity_name in required_fields:
-                entity_class = required_fields.pop(entity_name)
+            if entity_name in self.fields:
+                entity_class = self.fields[entity_name]
                 if entity is None and entity_name in self.get_nullable_fields():
                     continue
                 if not isinstance(entity, entity_class):
@@ -115,10 +119,6 @@ class BaseLogger(object):
                 logger.warning(
                     "Cannot properly serialize '%s' context field. "
                     "Must be inherited from LoggableMixin." % entity_name)
-
-        if required_fields:
-            raise LoggerError(
-                "Missed fields in event context: %s" % ', '.join(required_fields.keys()))
 
         return context
 
@@ -252,19 +252,20 @@ class AlertLogger(BaseLogger):
 
         context = self.compile_context(**alert_context)
         msg = self.compile_message(message_template, context)
-        try:
-            content_type = ct_models.ContentType.objects.get_for_model(scope)
-            alert = models.Alert.objects.get(
-                object_id=scope.id, content_type=content_type, alert_type=alert_type, closed__isnull=True)
-            if alert.severity != severity or alert.message != msg:
-                alert.severity = severity
-                alert.message = msg
-                alert.save()
-            created = False
-        except models.Alert.DoesNotExist:
-            alert = models.Alert.objects.create(
-                alert_type=alert_type, message=msg, severity=severity, context=context, scope=scope)
-            created = True
+        with transaction.atomic():
+            try:
+                content_type = ct_models.ContentType.objects.get_for_model(scope)
+                alert = models.Alert.objects.get(
+                    object_id=scope.id, content_type=content_type, alert_type=alert_type, closed__isnull=True)
+                if alert.severity != severity or alert.message != msg:
+                    alert.severity = severity
+                    alert.message = msg
+                    alert.save()
+                created = False
+            except models.Alert.DoesNotExist:
+                alert = models.Alert.objects.create(
+                    alert_type=alert_type, message=msg, severity=severity, context=context, scope=scope)
+                created = True
 
         return alert, created
 
@@ -420,6 +421,12 @@ class BaseLoggerRegistry(object):
             raise EventLoggerError("Logger '%s' already registered." % name)
         self.__dict__[name] = logger() if isinstance(logger, type) else logger
 
+    def get_all_types(self):
+        events = set()
+        for elogger in self.get_loggers():
+            events.update(elogger.get_supported_types())
+        return list(sorted(events))
+
 
 class EventLoggerRegistry(BaseLoggerRegistry):
 
@@ -433,17 +440,19 @@ class EventLoggerRegistry(BaseLoggerRegistry):
             permitted_objects_uuids.update(model.get_permitted_objects_uuids(user))
         return permitted_objects_uuids
 
-    def get_permitted_event_types(self):
-        events = set()
-        for elogger in self.get_loggers():
-            events.update(elogger.get_supported_types())
-        return events
-
 
 class AlertLoggerRegistry(BaseLoggerRegistry):
 
     def get_loggers(self):
         return [l for l in self.__dict__.values() if isinstance(l, AlertLogger)]
+
+
+def get_valid_events():
+    return event_logger.get_all_types()
+
+
+def get_valid_alerts():
+    return alert_logger.get_all_types()
 
 
 # This global objects represent the default loggers registry

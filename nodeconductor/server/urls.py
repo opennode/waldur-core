@@ -34,7 +34,7 @@ cost_tracking_urls.register_in(router)
 iaas_urls.register_in(router)
 logging_urls.register_in(router)
 openstack_urls.register_in(router)
-oracle_urls.register_in(router)
+# oracle_urls.register_in(router)
 quotas_urls.register_in(router)
 structure_urls.register_in(router)
 support_urls.register_in(router)
@@ -44,6 +44,7 @@ template_urls.register_in(router)
 urlpatterns = patterns(
     '',
     url(r'^admin/', include(admin.site.urls), name='admin'),
+    url(r'^admintools/', include('admin_tools.urls')),
 )
 
 if settings.NODECONDUCTOR.get('EXTENSIONS_AUTOREGISTER'):

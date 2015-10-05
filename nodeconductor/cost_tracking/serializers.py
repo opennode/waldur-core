@@ -85,8 +85,10 @@ class PriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = models.PriceListItem
-        lookup_field = 'uuid'
         fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'service')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     def create(self, validated_data):
         # XXX: This behavior is wrong for services with several resources, find a better approach
@@ -101,8 +103,10 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = models.DefaultPriceListItem
-        lookup_field = 'uuid'
         fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'resource_content_type')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     def get_resource_content_type(self, obj):
         return '{}.{}'.format(obj.resource_content_type.app_label, obj.resource_content_type.model)

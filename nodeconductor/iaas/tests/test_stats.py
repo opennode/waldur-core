@@ -590,7 +590,7 @@ class OpenstackAlertStatsTest(test.APITransactionTestCase):
 class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
-        self.instance = factories.InstanceFactory()
+        self.instance = factories.InstanceFactory(type=models.Instance.Services.PAAS)
         self.url = factories.InstanceFactory.get_url(self.instance, action='calculated_usage')
 
     def test_statistic_unavailable_if_instance_does_not_have_backend_id(self):
@@ -607,6 +607,7 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
         usage = [
             (1415910025, 'cpu_util', 10),
             (1415910025, 'memory_util', 22),
+            (1415910025, 'memory_util_agent', 21),
             (1415910025, 'storage_root_util', 23),
             (1415910025, 'storage_data_util', 33),
         ]
@@ -623,12 +624,17 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
             },
             {
                 'item': 'storage_root_util',
-                'value': 23,
+                'value': 77,
                 'timestamp': 1415910025
             },
             {
                 'item': 'storage_data_util',
-                'value': 33,
+                'value': 67,
+                'timestamp': 1415910025
+            },
+            {
+                'item': 'memory_util_agent',
+                'value': 21,
                 'timestamp': 1415910025
             },
         ]
@@ -646,7 +652,7 @@ class StatsInstanceMaxUsageTest(test.APITransactionTestCase):
 
             client.assert_called_once_with(
                 self.instance.backend_id,
-                ('cpu_util', 'memory_util', 'storage_root_util', 'storage_data_util'),
+                ['cpu_util', 'memory_util_agent', 'storage_root_util', 'storage_data_util'],
                 query_params['from'],
                 query_params['to'],
                 method='MAX',

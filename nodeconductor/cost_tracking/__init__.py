@@ -18,6 +18,8 @@ class PriceItemTypes(object):
         (NETWORK, 'network'),
     )
 
+    NUMERICS = (STORAGE,)
+
 
 class OsTypes(object):
     CENTOS6 = 'centos6'
@@ -39,6 +41,10 @@ class OsTypes(object):
         (WINDOWS, 'Windows'),
         (OTHER, 'Other'),
     )
+
+    CATEGORIES = {
+        'linux': (CENTOS6, CENTOS7, UBUNTU, RHEL6, RHEL7)
+    }
 
 
 class ApplicationTypes(object):
@@ -70,6 +76,3 @@ class CostConstants(object):
     Application = ApplicationTypes
     Os = OsTypes
     Support = SupportTypes
-
-    class Flavor(object):
-        OFFLINE = 'offline'

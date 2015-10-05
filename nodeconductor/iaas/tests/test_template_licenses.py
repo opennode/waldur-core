@@ -226,7 +226,8 @@ class LicenseStatsTests(test.APITransactionTestCase):
             for template_license in self.first_template_license, self.second_template_license:
                 expected_result.append({
                     'name': template_license.name, 'type': template_license.license_type, 'count': 1,
-                    'project_name': project.name, 'project_uuid': str(project.uuid)
+                    'project_name': project.name, 'project_uuid': str(project.uuid),
+                    'project_group_name': project.project_group.name, 'project_group_uuid': str(project.project_group.uuid)
                 })
         self.assertItemsEqual(response.data, expected_result)
 

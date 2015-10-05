@@ -166,6 +166,22 @@ class OracleRealBackend(OracleBaseBackend):
             username=settings.username,
             password=settings.password)
 
+    def ping(self):
+        try:
+            next(self.manager.get_zones())
+        except OracleBackendError:
+            return False
+        else:
+            return True
+
+    def ping_resource(self, database):
+        try:
+            self.get_database(database.backend_id)
+        except OracleBackendError:
+            return False
+        else:
+            return True
+
     def pull_service_properties(self):
         cur_zones = {z.backend_id: z for z in models.Zone.objects.filter(settings=self.settings)}
         cur_tmpls = {t.backend_id: t for t in models.Template.objects.filter(settings=self.settings)}

@@ -13,7 +13,7 @@ class AlertManager(models.Manager):
             queryset = self.get_queryset()
         # XXX: This circular dependency will be removed then filter_queryset_for_user
         # will be moved to model manager method
-        from nodeconductor.structure.filters import filter_queryset_for_user
+        from nodeconductor.structure.managers import filter_queryset_for_user
 
         query = Q()
         for model in utils.get_loggable_models():

@@ -1,9 +1,10 @@
 import logging
+import functools
 
 from django.db import transaction
 from django.utils import six, dateparse, timezone
+from requests import ConnectionError
 
-from ceilometerclient import exc as ceilometer_exceptions
 from cinderclient import exceptions as cinder_exceptions
 from glanceclient import exc as glance_exceptions
 from keystoneclient import exceptions as keystone_exceptions
@@ -11,7 +12,7 @@ from neutronclient.client import exceptions as neutron_exceptions
 from novaclient import exceptions as nova_exceptions
 
 from nodeconductor.core.tasks import send_task
-from nodeconductor.structure import ServiceBackend, ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.structure import ServiceBackend, ServiceBackendError
 from nodeconductor.iaas.backend.openstack import OpenStackClient, CloudBackendError
 from nodeconductor.iaas.backend.openstack import OpenStackBackend as OldOpenStackBackend
 from nodeconductor.openstack import models
@@ -30,42 +31,69 @@ class OpenStackBackend(ServiceBackend):
 
     def __init__(self, settings, tenant_id=None):
         self.settings = settings
-        self.is_admin = True
-
-        credentials = {
-            'auth_url': settings.backend_url,
-            'username': settings.username,
-            'password': settings.password,
-        }
-        if tenant_id:
-            self.is_admin = False
-            credentials['tenant_id'] = tenant_id
-        elif settings.options:
-            credentials['tenant_name'] = settings.options.get('tenant_name', self.DEFAULT_TENANT)
-        else:
-            credentials['tenant_name'] = self.DEFAULT_TENANT
-
-        try:
-            self.session = OpenStackClient(dummy=settings.dummy).create_tenant_session(credentials)
-        except CloudBackendError as e:
-            six.reraise(OpenStackBackendError, e)
+        self.tenant_id = tenant_id
 
         # TODO: Get rid of it (NC-646)
         self._old_backend = OldOpenStackBackend(dummy=self.settings.dummy)
 
+    def _get_session(self, admin=False):
+        credentials = {
+            'auth_url': self.settings.backend_url,
+            'username': self.settings.username,
+            'password': self.settings.password,
+        }
+
+        if not admin:
+            if not self.tenant_id:
+                raise OpenStackBackendError(
+                    "Can't create tenant session, please provide tenant ID")
+
+            credentials['tenant_id'] = self.tenant_id
+        elif self.settings.options:
+            credentials['tenant_name'] = self.settings.options.get('tenant_name', self.DEFAULT_TENANT)
+        else:
+            credentials['tenant_name'] = self.DEFAULT_TENANT
+
+        try:
+            return OpenStackClient(dummy=self.settings.dummy).create_tenant_session(credentials)
+        except CloudBackendError as e:
+            six.reraise(OpenStackBackendError, e)
+
     def __getattr__(self, name):
-        methods = ('keystone_client', 'nova_client', 'neutron_client',
-                   'cinder_client', 'glance_client', 'ceilometer_client')
+        clients = 'keystone', 'nova', 'neutron', 'cinder', 'glance', 'ceilometer'
+        method = lambda client: getattr(OpenStackClient, 'create_%s_client' % client)
 
-        if name in methods:
-            return getattr(OpenStackClient, 'create_%s' % name)(self.session)
+        for client in clients:
+            if name == '{}_client'.format(client):
+                return method(client)(self._get_session(admin=False))
 
-        return super(OpenStackBackend, self).__getattr__(name)
+            if name == '{}_admin_client'.format(client):
+                return method(client)(self._get_session(admin=True))
+
+        raise AttributeError(
+            "'%s' object has no attribute '%s'" % (self.__class__.__name__, name))
+
+    def reraise_exceptions(func):
+        @functools.wraps(func)
+        def wrapped(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except CloudBackendError as e:
+                six.reraise(OpenStackBackendError, e)
+        return wrapped
 
     def ping(self):
         # Session validation occurs on class creation so assume it's active
         # TODO: Consider validating session depending on tenant permissions
         return True
+
+    def ping_resource(self, instance):
+        try:
+            self.nova_client.servers.get(instance.backend_id)
+        except (ConnectionError, nova_exceptions.ClientException):
+            return False
+        else:
+            return True
 
     def sync(self):
         # Migration status:
@@ -82,21 +110,32 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info('Successfully synchronized OpenStack service %s', self.settings.backend_url)
 
-    def sync_link(self, service_project_link):
+    def sync_link(self, service_project_link, is_initial=False):
         # Migration status:
         # [x] push_membership()
-        # [ ] push_security_groups() (TODO: NC-638)
-        # [ ] pull_resource_quota() & pull_resource_quota_usage() (TODO: NC-634)
+        # [ ] pull_instances()
+        # [x] pull_floating_ips()
+        # [x] push_security_groups()
+        # [x] pull_resource_quota() & pull_resource_quota_usage()
 
         try:
             self.push_link(service_project_link)
+            # XXX: Does not work due to a bug: NC-828
+            self.push_security_groups(service_project_link, is_initial=is_initial)
+            self.pull_quotas(service_project_link)
+            self.pull_floating_ips(service_project_link)
+            self.connect_link_to_external_network(service_project_link)
         except (keystone_exceptions.ClientException, neutron_exceptions.NeutronException) as e:
             logger.exception('Failed to synchronize ServiceProjectLink %s', service_project_link.to_string())
             six.reraise(OpenStackBackendError, e)
         else:
             logger.info('Successfully synchronized ServiceProjectLink %s', service_project_link.to_string())
 
-    def provision(self, instance, flavor=None, image=None, ssh_key=None):
+    def sync_quotas(self, service_project_link, quotas):
+        self.push_quotas(service_project_link, quotas)
+        self.pull_quotas(service_project_link)
+
+    def provision(self, instance, flavor=None, image=None, ssh_key=None, skip_external_ip_assignment=False):
         if ssh_key:
             instance.key_name = ssh_key.name
             instance.key_fingerprint = ssh_key.fingerprint
@@ -109,7 +148,9 @@ class OpenStackBackend(ServiceBackend):
         send_task('openstack', 'provision')(
             instance.uuid.hex,
             backend_flavor_id=flavor.backend_id,
-            backend_image_id=image.backend_id)
+            backend_image_id=image.backend_id,
+            skip_external_ip_assignment=skip_external_ip_assignment
+        )
 
     def destroy(self, instance):
         instance.schedule_deletion()
@@ -132,16 +173,16 @@ class OpenStackBackend(ServiceBackend):
         send_task('openstack', 'restart')(instance.uuid.hex)
 
     def add_ssh_key(self, ssh_key, service_project_link):
-        return self._old_backend.remove_ssh_public_key(service_project_link, ssh_key)
+        return self._old_backend.add_ssh_key(ssh_key, service_project_link)
 
     def remove_ssh_key(self, ssh_key, service_project_link):
-        return self._old_backend.remove_ssh_public_key(service_project_link, ssh_key)
+        return self._old_backend.remove_ssh_key(ssh_key, service_project_link)
 
     def _get_current_properties(self, model):
         return {p.backend_id: p for p in model.objects.filter(settings=self.settings)}
 
     def pull_flavors(self):
-        nova = self.nova_client
+        nova = self.nova_admin_client
         with transaction.atomic():
             cur_flavors = self._get_current_properties(models.Flavor)
             for backend_flavor in nova.flavors.findall(is_public=True):
@@ -159,7 +200,7 @@ class OpenStackBackend(ServiceBackend):
             map(lambda i: i.delete(), cur_flavors.values())
 
     def pull_images(self):
-        glance = self.glance_client
+        glance = self.glance_admin_client
         with transaction.atomic():
             cur_images = self._get_current_properties(models.Image)
             for backend_image in glance.images.list():
@@ -176,15 +217,54 @@ class OpenStackBackend(ServiceBackend):
 
             map(lambda i: i.delete(), cur_images.values())
 
+    @reraise_exceptions
+    def push_quotas(self, service_project_link, quotas):
+        self._old_backend.push_membership_quotas(service_project_link, quotas)
+
+    @reraise_exceptions
+    def pull_quotas(self, service_project_link):
+        self._old_backend.pull_resource_quota(service_project_link)
+        self._old_backend.pull_resource_quota_usage(service_project_link)
+        # additional quotas that are not implemented for in iaas application
+        logger.debug('About to get floating ip quota for tenant %s', service_project_link.tenant_id)
+        # XXX: a hack -- assure that current Backend instance has the same tenant_id as a link
+        self.tenant_id = service_project_link.tenant_id
+        neutron = self.neutron_client
+        try:
+            floating_ip_count = len(self._old_backend.get_floating_ips(
+                tenant_id=service_project_link.tenant_id, neutron=neutron))
+            neutron_quotas = neutron.show_quota(tenant_id=service_project_link.tenant_id)['quota']
+        except neutron_exceptions.NeutronClientException as e:
+            logger.exception('Failed to get floating ip quota for tenant %s', service_project_link.tenant_id)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            logger.info('Successfully got floating ip quota for tenant %s', service_project_link.tenant_id)
+            service_project_link.set_quota_usage('floating_ip_count', floating_ip_count)
+            service_project_link.set_quota_limit('floating_ip_count', neutron_quotas['floatingip'])
+
+    @reraise_exceptions
+    def pull_floating_ips(self, service_project_link):
+        self._old_backend.pull_floating_ips(service_project_link)
+
+    @reraise_exceptions
+    def push_security_groups(self, service_project_link, is_initial=False):
+        self._old_backend.push_security_groups(
+            service_project_link, is_membership_creation=is_initial)
+
+    @reraise_exceptions
+    def sync_instance_security_groups(self, instance):
+        self._old_backend.push_instance_security_groups(instance)
+
+    @reraise_exceptions
     def push_link(self, service_project_link):
-        keystone = self.keystone_client
+        keystone = self.keystone_admin_client
         tenant = self._old_backend.get_or_create_tenant(service_project_link, keystone)
 
-        self._old_backend.ensure_user_is_tenant_admin(self.settings.username, tenant, keystone)
-        self.get_or_create_network(service_project_link)
-
         service_project_link.tenant_id = tenant.id
-        service_project_link.save()
+        service_project_link.save(update_fields=['tenant_id'])
+
+        self._old_backend.ensure_user_is_tenant_admin(self.settings.username, tenant, keystone)
+        self.get_or_create_internal_network(service_project_link)
 
     def get_instance(self, instance_id):
         try:
@@ -192,9 +272,13 @@ class OpenStackBackend(ServiceBackend):
             cinder = self.cinder_client
 
             instance = nova.servers.get(instance_id)
-            system_volume, data_volume = self._old_backend._get_instance_volumes(nova, cinder, instance_id)
-            cores, ram, _ = self._old_backend._get_flavor_info(nova, instance)
-            ips = self._old_backend._get_instance_ips(instance)
+            try:
+                system_volume, data_volume = self._old_backend._get_instance_volumes(nova, cinder, instance_id)
+                cores, ram, _ = self._old_backend._get_flavor_info(nova, instance)
+                ips = self._old_backend._get_instance_ips(instance)
+            except LookupError as e:
+                logger.exception("Failed to lookup instance %s information", instance_id)
+                six.reraise(OpenStackBackendError, e)
 
             instance.nc_model_data = dict(
                 name=instance.name or instance.id,
@@ -214,6 +298,8 @@ class OpenStackBackend(ServiceBackend):
 
                 internal_ips=ips.get('internal', ''),
                 external_ips=ips.get('external', ''),
+
+                security_groups=[sg['name'] for sg in instance.security_groups],
             )
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
@@ -223,30 +309,52 @@ class OpenStackBackend(ServiceBackend):
 
         return instance
 
-    def get_resources_for_import(self):
-        if self.is_admin:
-            raise ServiceBackendNotImplemented(
-                "You should use tenant session in order to get resources list")
+    def get_monthly_cost_estimate(self, instance):
+        return self._old_backend.get_monthly_cost_estimate(instance)
 
+    def get_resources_for_import(self):
         cur_instances = models.Instance.objects.all().values_list('backend_id', flat=True)
+        try:
+            instances = self.nova_client.servers.list()
+        except nova_exceptions.ClientException as e:
+            six.reraise(OpenStackBackendError, e)
         return [{
             'id': instance.id,
             'name': instance.name or instance.id,
             'created_at': instance.created,
             'status': instance.status,
-        } for instance in self.nova_client.servers.list()
+        } for instance in instances
             if instance.id not in cur_instances and
             self._old_backend._get_instance_state(instance) != models.Instance.States.ERRED]
 
-    def provision_instance(self, instance, backend_flavor_id=None, backend_image_id=None):
+    def provision_instance(self, instance, backend_flavor_id=None, backend_image_id=None,
+                           skip_external_ip_assignment=False):
         logger.info('About to provision instance %s', instance.uuid)
         try:
             nova = self.nova_client
             cinder = self.cinder_client
             glance = self.glance_client
+            neutron = self.neutron_client
 
             backend_flavor = nova.flavors.get(backend_flavor_id)
             backend_image = glance.images.get(backend_image_id)
+
+            # verify if the internal network to connect to exists
+            service_project_link = instance.service_project_link
+            try:
+                neutron.show_network(service_project_link.internal_network_id)
+            except neutron_exceptions.NeutronClientException:
+                logger.exception('Internal network with id of %s was not found',
+                                 service_project_link.internal_network_id)
+                raise OpenStackBackendError('Unable to find network to attach instance to')
+
+            if not skip_external_ip_assignment:
+                # TODO: check availability and quota
+                self.prepare_floating_ip(service_project_link)
+                floating_ip = service_project_link.floating_ips.filter(status='DOWN').first()
+                instance.external_ips = floating_ip.address
+                floating_ip.status = 'BOOKED'
+                floating_ip.save(update_fields=['status'])
 
             # instance key name and fingerprint are optional
             if instance.key_name:
@@ -312,6 +420,8 @@ class OpenStackBackend(ServiceBackend):
                     instance.uuid, data_volume.id)
                 raise OpenStackBackendError("Timed out waiting for instance %s to provision" % instance.uuid)
 
+            security_group_ids = instance.security_groups.values_list('security_group__backend_id', flat=True)
+
             server_create_parameters = dict(
                 name=instance.name,
                 image=None,  # Boot from volume, see boot_index below
@@ -333,9 +443,13 @@ class OpenStackBackend(ServiceBackend):
                         'delete_on_termination': True,
                     },
                 ],
+                nics=[
+                    {'net-id': service_project_link.internal_network_id}
+                ],
                 key_name=backend_public_key.name if backend_public_key is not None else None,
+                security_groups=security_group_ids,
             )
-            availability_zone = instance.service_project_link.availability_zone
+            availability_zone = service_project_link.availability_zone
             if availability_zone:
                 server_create_parameters['availability_zone'] = availability_zone
             if instance.user_data:
@@ -371,6 +485,8 @@ class OpenStackBackend(ServiceBackend):
                 logger.info(
                     "Successfully inferred internal ip addresses of instance %s", instance.uuid)
 
+            self.push_floating_ip_to_instance(instance, server)
+
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
                 nova_exceptions.ClientException,
@@ -380,6 +496,78 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info("Successfully provisioned instance %s", instance.uuid)
 
-    # TODO: (NC-636)
-    def get_or_create_network(self, service_project_link):
-        pass
+    @reraise_exceptions
+    def create_security_group(self, security_group):
+        nova = self.nova_client
+        self._old_backend.create_security_group(security_group, nova)
+
+    @reraise_exceptions
+    def delete_security_group(self, security_group):
+        nova = self.nova_client
+        self._old_backend.delete_security_group(security_group.backend_id, nova)
+
+    @reraise_exceptions
+    def update_security_group(self, security_group):
+        nova = self.nova_client
+        self._old_backend.update_security_group(security_group, nova)
+
+    @reraise_exceptions
+    def create_external_network(self, service_project_link, **kwargs):
+        neutron = self.neutron_admin_client
+        self._old_backend.get_or_create_external_network(service_project_link, neutron, **kwargs)
+
+    @reraise_exceptions
+    def detect_external_network(self, service_project_link):
+        neutron = self.neutron_admin_client
+        self._old_backend.detect_external_network(service_project_link, neutron)
+
+    @reraise_exceptions
+    def delete_external_network(self, service_project_link):
+        neutron = self.neutron_admin_client
+        self._old_backend.delete_external_network(service_project_link, neutron)
+
+    @reraise_exceptions
+    def get_or_create_internal_network(self, service_project_link):
+        neutron = self.neutron_admin_client
+        self._old_backend.get_or_create_internal_network(service_project_link, neutron)
+
+    @reraise_exceptions
+    def allocate_floating_ip_address(self, service_project_link):
+        neutron = self.neutron_admin_client
+        self._old_backend.allocate_floating_ip_address(neutron, service_project_link)
+
+    def prepare_floating_ip(self, service_project_link):
+        """ Allocate new floating_ip to service project link tenant if it does not have any free ips """
+        if not service_project_link.floating_ips.filter(status='DOWN').exists():
+            self.allocate_floating_ip_address(service_project_link)
+
+    @reraise_exceptions
+    def assign_floating_ip_to_instance(self, instance, floating_ip):
+        nova = self.nova_admin_client
+        self._old_backend.assign_floating_ip_to_instance(nova, instance, floating_ip)
+
+    @reraise_exceptions
+    def push_floating_ip_to_instance(self, instance, server):
+        nova = self.nova_client
+        self._old_backend.push_floating_ip_to_instance(server, instance, nova)
+
+    @reraise_exceptions
+    def connect_link_to_external_network(self, service_project_link):
+        neutron = self.neutron_admin_client
+        settings = service_project_link.service.settings
+        if 'external_network_id' in settings.options:
+            self._old_backend.connect_membership_to_external_network(
+                service_project_link, settings.options['external_network_id'], neutron)
+            connected = True
+        else:
+            logger.warning('OpenStack service project link was not connected to external network: "external_network_id"'
+                           ' option is not defined in settings {} option', settings.name)
+            connected = False
+        return connected
+
+    @reraise_exceptions
+    def delete_instance(self, instance):
+        self._old_backend.delete_instance(instance)
+        (models.FloatingIP.objects
+            .filter(service_project_link=instance.service_project_link, address=instance.external_ips)
+            .update(status='DOWN'))

@@ -167,6 +167,9 @@ NODECONDUCTOR = {
             'groupid': '8',
             'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
             'FAIL_SILENTLY': True,
+            'HISTORY_RECORDS_INTERVAL': 60,  # time for max interval between history usage records in zabbix (in minutes)
+            'TRENDS_RECORDS_INTERVAL': 60,  # time for max interval between trends usage records in zabbix (in minutes)
+            'HISTORY_DATE_RANGE': 48,  # time interval on which zabbix will use records from history table (in hours)
             # application-specific templates
             'wordpress-templateid': '10107',
             'zimbra-templateid': '10108',
@@ -196,27 +199,21 @@ NODECONDUCTOR['JIRA_SUPPORT'] = {
     'project': 'NST',
 }
 
-
-# Example of settings for billing using WHMMCS API.
+# Example of settings for billing using KillBill API.
 NODECONDUCTOR['BILLING'] = {
-    'backend': 'nodeconductor.billing.backend.whmcs.WHMCSAPI',
-    'api_url': 'http://demo.whmcs.com/includes/api.php',
-    'username': 'Admin',
-    'password': 'demo',
-    'currency_code': 1,
-    'currency_name': 'USD',
-    'openstack': {
-        'invoice_meters': {
-            # nova meter name: (resource name, pricelist name, unit converter, unit)
-            'cpu': ('CPU', 'cpu', 'hours'),
-            'memory': ('Memory', 'ram_gb', 'GB/h'),
-            'disk': ('Storage', 'storage_gb', 'GB/h'),
-            'servers': ('Servers', 'server_num', ''),
-            # license_type: (display name, pricelist_name, unit)
-            'sample_license': ('Sample license', 'sample_license', 'hours'),
-            'wordpress': ('WordPress', 'wordpress', 'hours'),
-        }
-    }
+    'backend': 'nodeconductor.billing.backend.killbill.KillBillAPI',
+    'api_url': 'http://killbill.example.com/1.0/kb/',
+    'username': 'admin',
+    'password': 'password',
+    'api_key': 'bob',
+    'api_secret': 'lazar',
+    'currency': 'USD',
+}
+NODECONDUCTOR['BILLING_INVOICE'] = {
+    'logo': 'logo.png',  # Full or relative path to logo for billing invoices
+    'company': 'OpenNode',
+    'bank': 'American Bank',
+    'account': '123456789',
 }
 
 """

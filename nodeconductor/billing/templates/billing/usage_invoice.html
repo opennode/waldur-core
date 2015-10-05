@@ -1,0 +1,79 @@
+{% load humanize %}
+<html>
+    <head>
+        <style type="text/css">
+        body {font-size: 18px}
+        @page {
+            size: a4 portrait;
+            @frame content_frame {          /* Content Frame */
+                left: 50pt; width: 512pt; top: 40pt; height: 632pt;
+            }
+            @frame footer_frame {           /* Another static Frame */
+                -pdf-frame-content: footer_content;
+                left: 50pt; width: 512pt; top: 772pt; height: 20pt;
+            }
+        }
+        #footer_content {
+            font-size: 14px;
+            text-align: right;
+        }
+        </style>
+    </head>
+    <body>
+        {# HINT: keep line breaks after <pdf:*> tags #}
+        <div id="footer_content">page <pdf:pagenumber>
+            of <pdf:pagecount>
+        </div>
+
+        <table>
+        <tr>
+            <td width="55%"><img src="{{ logo }}"></td>
+            <td width="45%"><h2>
+                Usage report for invoice #{{ invoice.invoice_number }}<br>
+                <small>Customer: {{ customer.name }}</small>
+            </h2></td>
+        </tr>
+        <tr><td colspan="2"><hr></td></tr>
+        </table>
+
+        <h3>Services consumed from {{ invoice.start_date }} till {{ invoice.end_date }}</h3><br>
+
+        <table cellpadding="2">
+            {% for resource, data in resources.items %}
+            <tr>
+                <td colspan="2"><h2>{{ resource }}</h2></td>
+                <td align="right"><h2>{{ data.amount|floatformat:2|intcomma }} {{ invoice.currency }}</h2></td>
+            </tr>
+            {% for item in data.items %}
+            <tr>
+                <td width="30" align="right">{{ forloop.counter }}</td>
+                <td style="padding-left:5px">{{ item.name }} {{ item.usage }}</td>
+                <td width="250" align="right">{{ item.amount|floatformat:2|intcomma }} {{ item.currency }}</td>
+            </tr>
+            {% endfor %}
+
+            {% comment %}
+            <tr>
+                <td colspan="2">
+                <table cellpadding="5">
+                {% for item in data.items %}
+                <tr>
+                    <td width="20" align="right">{{ forloop.counter }}</td>
+                    <td>{{ item.name }} {{ item.usage }}</td>
+                    <td width="150" align="right">{{ item.amount|floatformat:2|intcomma }} {{ item.currency }}</td>
+                </tr>
+                {% endfor %}
+                </table>
+            </td>
+            </tr>
+            {% endcomment %}
+
+            <tr><td colspan="3"><br></td></tr>
+            {% endfor %}
+            <tr><td colspan="3" style="padding: 10px 0"><hr></td></tr>
+            <tr style="font-size:24px">
+                <th align="right" colspan="3">Total: {{ invoice.amount|floatformat:2|intcomma }} {{ invoice.currency }}</th>
+            </tr>
+        </table>
+    </body>
+</html>

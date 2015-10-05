@@ -5,8 +5,7 @@ import logging
 
 from django.apps import apps
 from django.conf import settings
-from django.contrib.auth.models import (
-    AbstractBaseUser, PermissionsMixin, UserManager)
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 from django.core import validators
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
@@ -106,6 +105,10 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         return ('uuid', 'full_name', 'native_name', self.USERNAME_FIELD)
 
     def get_full_name(self):
+        # This method is used in django-reversion as name of revision creator.
+        return self.full_name
+
+    def get_short_name(self):
         # This method is used in django-reversion as name of revision creator.
         return self.full_name
 
@@ -248,9 +251,10 @@ class SynchronizableMixin(models.Model):
 
 class ReversionMixin(object):
 
-    def save(self, save_revision=True, **kwargs):
+    def save(self, save_revision=True, ignore_revision_duplicates=True, **kwargs):
         if save_revision:
             with reversion.create_revision():
+                reversion.revision_context_manager.set_ignore_duplicates(ignore_revision_duplicates)
                 return super(ReversionMixin, self).save(**kwargs)
         return super(ReversionMixin, self).save(**kwargs)
 

@@ -4,11 +4,11 @@ import functools
 import datetime
 import logging
 import time
-from operator import add
 
 from django.db import models as django_models
 from django.db import transaction, IntegrityError
 from django.db.models import Q
+from django.conf import settings as django_settings
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -22,27 +22,30 @@ from rest_framework import viewsets, views
 from rest_framework.response import Response
 from rest_framework.decorators import detail_route, list_route
 import reversion
-from reversion.models import Version
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core.filters import DjangoMappingFilterBackend
+from nodeconductor.core.filters import DjangoMappingFilterBackend, CategoryFilter
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
+from nodeconductor.cost_tracking import CostConstants
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.iaas.serializers import QuotaTimelineStatsSerializer
 from nodeconductor.iaas.log import event_logger
+from nodeconductor.quotas import filters as quota_filters
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.views import UpdateOnlyByPaidCustomerMixin
+from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
 
 
 logger = logging.getLogger(__name__)
+ZABBIX_ENABLED = getattr(django_settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
 
 
 def schedule_transition():
@@ -464,6 +467,10 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     @detail_route()
     def usage(self, request, uuid):
+        # XXX: hook. Should be removed after zabbix refactoring
+        if not ZABBIX_ENABLED:
+            raise Http404()
+
         instance = self.get_object()
 
         if not instance.backend_id or instance.state in (models.Instance.States.PROVISIONING_SCHEDULED,
@@ -471,9 +478,10 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
             raise Http404()
 
         hour = 60 * 60
+        now = time.time()
         data = {
-            'start_timestamp': request.query_params.get('from', int(time.time() - hour)),
-            'end_timestamp': request.query_params.get('to', int(time.time())),
+            'start_timestamp': request.query_params.get('from', int(now - hour)),
+            'end_timestamp': request.query_params.get('to', int(now)),
             'segments_count': request.query_params.get('datapoints', 6),
             'item': request.query_params.get('item'),
         }
@@ -481,7 +489,12 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         serializer = serializers.UsageStatsSerializer(data=data)
         serializer.is_valid(raise_exception=True)
 
-        stats = serializer.get_stats([instance])
+        stats = serializer.get_stats([instance], is_paas=instance.type == models.Instance.Services.PAAS)
+        # Hack that adds zero as start points
+        created_ts = datetime_to_timestamp(instance.created)
+        for stat in stats:
+            if stat['from'] >= created_ts and stat['to'] - created_ts < hour / 2 and 'value' not in stat:
+                stat['value'] = 0
         return Response(stats, status=status.HTTP_200_OK)
 
     @detail_route()
@@ -489,6 +502,10 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         """
         Find max or min utilization of cpu, memory and storage of the instance within timeframe.
         """
+        # XXX: hook. Should be removed after zabbix refactoring
+        if not ZABBIX_ENABLED:
+            raise Http404()
+
         instance = self.get_object()
         if not instance.backend_id:
             return Response({'detail': 'calculated usage is not available for instance without backend_id'},
@@ -514,10 +531,42 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         results = serializer.get_stats(instance, start, end)
         return Response(results, status=status.HTTP_200_OK)
 
+    @detail_route(methods=['post'])
+    def assign_floating_ip(self, request, uuid):
+        """
+        Assign floating IP to the instance.
+        """
+        instance = self.get_object()
+
+        serializer = serializers.AssignFloatingIpSerializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if not instance.cloud_project_membership.external_network_id:
+            return Response({'detail': 'External network ID of the cloud project membership is missing.'},
+                            status=status.HTTP_409_CONFLICT)
+        elif instance.cloud_project_membership.state in SynchronizationStates.UNSTABLE_STATES:
+            return Response({'detail': 'Cloud project membership of instance should be in stable state.'},
+                            status=status.HTTP_409_CONFLICT)
+        elif instance.state in models.Instance.States.UNSTABLE_STATES:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot add floating IP to instance in unstable state.')
+
+        tasks.assign_floating_ip.delay(serializer.validated_data['floating_ip_uuid'], uuid)
+        return Response({'detail': 'Assigning floating IP to the instance has been scheduled.'},
+                        status=status.HTTP_202_ACCEPTED)
+
 
 class TemplateFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
         lookup_type='icontains',
+    )
+
+    os_type = CategoryFilter(
+        categories=CostConstants.Os.CATEGORIES
+    )
+
+    application_type = django_filters.CharFilter(
+        name='application_type__slug',
     )
 
     class Meta(object):
@@ -528,6 +577,7 @@ class TemplateFilter(django_filters.FilterSet):
             'name',
             'type',
             'application_type',
+            'is_active',
         )
 
 
@@ -556,14 +606,10 @@ class TemplateViewSet(viewsets.ModelViewSet):
 
         user = self.request.user
 
-        if not user.is_staff:
-            queryset = queryset.exclude(is_active=False)
-
         if self.request.method == 'GET':
             cloud_uuid = self.request.query_params.get('cloud')
             if cloud_uuid is not None:
-                cloud_queryset = structure_filters.filter_queryset_for_user(
-                    models.Cloud.objects.all(), user)
+                cloud_queryset = filter_queryset_for_user(models.Cloud.objects.all(), user)
 
                 try:
                     cloud = cloud_queryset.get(uuid=cloud_uuid)
@@ -609,7 +655,7 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
 
     @list_route()
     def stats(self, request):
-        queryset = structure_filters.filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
+        queryset = filter_queryset_for_user(models.InstanceLicense.objects.all(), request.user)
         queryset = self._filter_queryset(queryset)
 
         aggregate_parameters = self.request.query_params.getlist('aggregate', [])
@@ -658,10 +704,17 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
                     d[output_name] = d[db_name]
                     del d[db_name]
 
+        # XXX: hack for portal only. (Provide project group data if aggregation was done by project)
+        if 'project' in aggregate_parameters and 'project_group' not in aggregate_parameters:
+            for item in queryset:
+                project = Project.objects.get(uuid=item['project_uuid'])
+                if project.project_group is not None:
+                    item['project_group_uuid'] = project.project_group.uuid.hex
+                    item['project_group_name'] = project.project_group.name
         return Response(queryset)
 
 
-class ServiceFilter(django_filters.FilterSet):
+class ResourceFilter(django_filters.FilterSet):
     project_group_name = django_filters.CharFilter(
         name='cloud_project_membership__project__project_groups__name',
         distinct=True,
@@ -684,6 +737,11 @@ class ServiceFilter(django_filters.FilterSet):
     )
 
     name = django_filters.CharFilter(lookup_type='icontains')
+
+    customer_uuid = django_filters.CharFilter(
+        name='cloud_project_membership__project__customer__uuid'
+    )
+
     customer_name = django_filters.CharFilter(
         name='cloud_project_membership__project__customer__name',
         lookup_type='icontains',
@@ -713,6 +771,7 @@ class ServiceFilter(django_filters.FilterSet):
         fields = [
             'name',
             'template_name',
+            'customer_uuid',
             'customer_name',
             'customer_native_name',
             'customer_abbreviation',
@@ -761,14 +820,23 @@ class ServiceFilter(django_filters.FilterSet):
 
 
 # XXX: This view has to be rewritten or removed after haystack implementation
-class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
+class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.Instance.objects.exclude(
         state=models.Instance.States.DELETING,
     )
     serializer_class = ServiceSerializer
     lookup_field = 'uuid'
     filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
-    filter_class = ServiceFilter
+    filter_class = ResourceFilter
+
+    def get_queryset(self):
+        period = self._get_period()
+        if '-' in period:
+            year, month = map(int, period.split('-'))
+        else:
+            year = int(period)
+            month = 1
+        return super(ResourceViewSet, self).get_queryset().filter(created__gte=datetime.date(year, month, 1))
 
     def _get_period(self):
         period = self.request.query_params.get('period')
@@ -781,7 +849,7 @@ class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
         """
         Extra context provided to the serializer class.
         """
-        context = super(ServiceViewSet, self).get_serializer_context()
+        context = super(ResourceViewSet, self).get_serializer_context()
         context['period'] = self._get_period()
         return context
 
@@ -846,13 +914,13 @@ class CustomerStatsView(views.APIView):
 
     def get(self, request, format=None):
         customer_statistics = []
-        customer_queryset = structure_filters.filter_queryset_for_user(Customer.objects.all(), request.user)
+        customer_queryset = filter_queryset_for_user(Customer.objects.all(), request.user)
         for customer in customer_queryset:
-            projects_count = structure_filters.filter_queryset_for_user(
+            projects_count = filter_queryset_for_user(
                 Project.objects.filter(customer=customer), request.user).count()
-            project_groups_count = structure_filters.filter_queryset_for_user(
+            project_groups_count = filter_queryset_for_user(
                 ProjectGroup.objects.filter(customer=customer), request.user).count()
-            instances_count = structure_filters.filter_queryset_for_user(
+            instances_count = filter_queryset_for_user(
                 models.Instance.objects.filter(cloud_project_membership__project__customer=customer),
                 request.user).count()
             customer_statistics.append({
@@ -876,13 +944,17 @@ class UsageStatsView(views.APIView):
 
     def _get_aggregate_queryset(self, request, aggregate_model_name):
         model = self.aggregate_models[aggregate_model_name]['model']
-        return structure_filters.filter_queryset_for_user(model.objects.all(), request.user)
+        return filter_queryset_for_user(model.objects.all(), request.user)
 
     def _get_aggregate_filter(self, aggregate_model_name, obj):
         path = self.aggregate_models[aggregate_model_name]['path']
         return {path: obj}
 
     def get(self, request, format=None):
+        # XXX: hook. Should be removed after zabbix refactoring
+        if not ZABBIX_ENABLED:
+            raise Http404()
+
         usage_stats = []
 
         aggregate_model_name = request.query_params.get('aggregate', 'customer')
@@ -900,8 +972,7 @@ class UsageStatsView(views.APIView):
 
         # This filters out the vm Instances to those that can be seen
         # by currently logged in user. This is done within each aggregate root separately.
-        visible_instances = structure_filters.filter_queryset_for_user(
-            models.Instance.objects.all(), request.user)
+        visible_instances = filter_queryset_for_user(models.Instance.objects.all(), request.user)
 
         for aggregate_object in aggregate_queryset:
             # Narrow down the instance scope to aggregate root.
@@ -943,6 +1014,9 @@ class CloudFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='customer__uuid',
     )
+    customer_uuid = django_filters.CharFilter(
+        name='customer__uuid',
+    )
     customer_name = django_filters.CharFilter(
         lookup_type='icontains',
         name='customer__name',
@@ -952,6 +1026,11 @@ class CloudFilter(django_filters.FilterSet):
         name='customer__native_name',
     )
     project = django_filters.CharFilter(
+        name='cloudprojectmembership__project__uuid',
+        distinct=True,
+    )
+    # project_uuid is alias of project for consistency with structure filters
+    project_uuid = django_filters.CharFilter(
         name='cloudprojectmembership__project__uuid',
         distinct=True,
     )
@@ -966,6 +1045,7 @@ class CloudFilter(django_filters.FilterSet):
         fields = [
             'name',
             'customer',
+            'customer_uuid',
             'customer_name',
             'customer_native_name',
             'project',
@@ -1014,22 +1094,76 @@ class CloudViewSet(UpdateOnlyByPaidCustomerMixin,
         super(CloudViewSet, self).perform_update(serializer)
 
 
-class CloudProjectMembershipFilter(django_filters.FilterSet):
+class CloudProjectMembershipFilter(quota_filters.QuotaFilterSetMixin, django_filters.FilterSet):
     cloud = django_filters.CharFilter(
         name='cloud__uuid',
     )
     project = django_filters.CharFilter(
         name='project__uuid',
     )
-    project_uuid = django_filters.CharFilter(name='project__uuid')
+    project_name = django_filters.CharFilter(
+        name='project__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+    project_group = django_filters.CharFilter(
+        name='project__project_groups__uuid',
+    )
+    project_group_name = django_filters.CharFilter(
+        name='project__project_groups__name',
+        distinct=True,
+        lookup_type='icontains',
+    )
+    ram = quota_filters.QuotaFilter(
+        quota_name='ram',
+        quota_field='limit',
+    )
+    vcpu = quota_filters.QuotaFilter(
+        quota_name='vcpu',
+        quota_field='limit',
+    )
+    storage = quota_filters.QuotaFilter(
+        quota_name='storage',
+        quota_field='limit',
+    )
+    max_instances = quota_filters.QuotaFilter(
+        quota_name='max_instances',
+        quota_field='limit',
+    )
 
     class Meta(object):
         model = models.CloudProjectMembership
         fields = [
             'cloud',
-            'project',
+            'project', 'project_name',
+            'project_group', 'project_group_name',
+            'ram', 'vcpu', 'storage', 'max_instances',
             'tenant_id',
         ]
+        order_by = [
+            'project__name',
+            '-project__name',
+            'project__project_groups__name',
+            '-project__project_groups__name',
+            'quotas__limit__ram',
+            '-quotas__limit__ram',
+            'quotas__limit__vcpu',
+            '-quotas__limit__vcpu',
+            'quotas__limit__storage',
+            '-quotas__limit__storage',
+            'quotas__limit__max_instances',
+            '-quotas__limit__max_instances',
+            'quotas__limit',
+            '-quotas__limit',
+        ]
+        order_by_mapping = {
+            'project_name': 'project__name',
+            'project_group_name': 'project__project_groups__name',
+            'vcpu': 'quotas__limit__vcpu',
+            'ram': 'quotas__limit__ram',
+            'max_instances': 'quotas__limit__max_instances',
+            'storage': 'quotas__limit__storage',
+        }
 
 
 class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
@@ -1050,7 +1184,7 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
 
     queryset = models.CloudProjectMembership.objects.all()
     serializer_class = serializers.CloudProjectMembershipSerializer
-    filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
+    filter_backends = (structure_filters.GenericRoleFilter, DjangoMappingFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_class = CloudProjectMembershipFilter
 
@@ -1071,10 +1205,19 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
         serializer = serializers.CloudProjectMembershipQuotaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        data = dict(serializer.validated_data)
+        if data.get('max_instances') is not None:
+            quotas = django_settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS_INSTANCE_RATIOS', {})
+            volume_ratio = quotas.get('volumes', 4)
+            snapshots_ratio = quotas.get('snapshots', 20)
+
+            data['volumes'] = volume_ratio * data['max_instances']
+            data['snapshots'] = snapshots_ratio * data['max_instances']
+
         instance.schedule_syncing()
         instance.save()
 
-        tasks.push_cloud_membership_quotas.delay(instance.pk, quotas=serializer.data)
+        tasks.push_cloud_membership_quotas.delay(instance.pk, quotas=data)
 
         return Response({'status': 'Quota update was scheduled'},
                         status=status.HTTP_202_ACCEPTED)
@@ -1125,6 +1268,24 @@ class CloudProjectMembershipViewSet(UpdateOnlyByPaidCustomerMixin,
         tasks.create_external_network.delay(pk, serializer.data)
 
         return Response({'status': 'External network creation has been scheduled.'},
+                        status=status.HTTP_202_ACCEPTED)
+
+    @detail_route(methods=['post'])
+    def allocate_floating_ip(self, request, pk=None):
+        """
+        Allocate floating IP from external network.
+        """
+        membership = self.get_object()
+
+        if not membership.external_network_id:
+            return Response({'detail': 'Cloud project membership should have an external network ID.'},
+                            status=status.HTTP_409_CONFLICT)
+        elif membership.state in core_models.SynchronizationStates.UNSTABLE_STATES:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cloud project membership must be in stable state.')
+
+        tasks.allocate_floating_ip.delay(pk)
+        return Response({'detail': 'Floating IP allocation has been scheduled.'},
                         status=status.HTTP_202_ACCEPTED)
 
 
@@ -1270,12 +1431,7 @@ class QuotaTimelineStatsView(views.APIView):
     def get_quota_scopes(self, request):
         serializer = serializers.StatsAggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        if serializer.data.get('aggregate') == 'customer':
-            scopes = structure_filters.filter_queryset_for_user(Customer.objects.all(), request.user)
-            if serializer.data.get('uuid'):
-                scopes = scopes.filter(uuid=serializer.data.get('uuid'))
-        else:
-            scopes = serializer.get_projects(request.user)
+        scopes = serializer.get_memberships(request.user)
         return scopes
 
     def get_stats(self, request):
@@ -1303,6 +1459,7 @@ class QuotaTimelineStatsView(views.APIView):
         stats = [{'from': datetime_to_timestamp(start), 'to': datetime_to_timestamp(end)} for start, end in dates]
 
         def _add(*args):
+            args = [arg if arg is not None else (0, 0) for arg in args]
             return [sum(q) for q in zip(*args)]
 
         for item in items:
@@ -1321,18 +1478,13 @@ class QuotaTimelineStatsView(views.APIView):
         versions = reversion.get_for_object(quota).select_related('reversion').filter(
             revision__date_created__lte=dates[0][0]).iterator()
         version = None
-        versions_exists = True
         for end, start in dates:
-            if versions_exists:
-                try:
-                    while version is None or version.revision.date_created > end:
-                        version = versions.next()
-                    stats_data.append((version.object_version.object.limit, version.object_version.object.usage))
-                except StopIteration:
-                    versions_exists = False
-                    stats_data.append((0, 0))
-            else:
-                stats_data.append((0, 0))
+            try:
+                while version is None or version.revision.date_created > end:
+                    version = versions.next()
+                stats_data.append((version.object_version.object.limit, version.object_version.object.usage))
+            except StopIteration:
+                break
 
         return stats_data
 

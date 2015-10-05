@@ -8,12 +8,14 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import models, transaction
-from django.db.models import Q, F, signals
+from django.db.models import Q, F
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
+from model_utils.fields import AutoCreatedField
 from model_utils.models import TimeStampedModel
+from model_utils import FieldTracker
 from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
@@ -21,10 +23,46 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.billing.backend import BillingBackend
+from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
+
+
+def set_permissions_for_model(model, **kwargs):
+    class Permissions(object):
+        pass
+    for key, value in kwargs.items():
+        setattr(Permissions, key, value)
+
+    setattr(model, 'Permissions', Permissions)
+
+
+class StructureModel(models.Model):
+    """ Generic structure model.
+        Provides transparent interaction with base entities and relations like customer.
+    """
+
+    objects = StructureManager()
+
+    class Meta(object):
+        abstract = True
+
+    def __getattr__(self, name):
+        # add additional properties to the object according to defined Permissions class
+        fields = ('customer', 'project')
+        if name in fields:
+            try:
+                path = getattr(self.Permissions, name + '_path')
+            except AttributeError:
+                pass
+            else:
+                if not path == 'self':
+                    return reduce(getattr, path.split('__'), self)
+
+        raise AttributeError(
+            "'%s' object has no attribute '%s'" % (self._meta.object_name, name))
 
 
 @python_2_unicode_compatible
@@ -33,7 +71,8 @@ class Customer(core_models.UuidMixin,
                quotas_models.QuotaModelMixin,
                LoggableMixin,
                ImageModelMixin,
-               TimeStampedModel):
+               TimeStampedModel,
+               StructureModel):
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
@@ -48,7 +87,14 @@ class Customer(core_models.UuidMixin,
     billing_backend_id = models.CharField(max_length=255, blank=True)
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
 
-    QUOTAS_NAMES = ['nc_project_count', 'nc_resource_count', 'nc_user_count']
+    QUOTAS_NAMES = [
+        'nc_project_count',
+        'nc_resource_count',
+        'nc_user_count',
+        'nc_service_project_link_count',
+        'nc_service_count'
+    ]
+    GLOBAL_COUNT_QUOTA_NAME = 'nc_global_customer_count'
 
     def get_billing_backend(self):
         return BillingBackend(self)
@@ -63,6 +109,7 @@ class Customer(core_models.UuidMixin,
             balance=new_balance if self.balance is None else F('balance') + amount)
 
         self.balance = new_balance
+        BalanceHistory.objects.create(customer=self, amount=self.balance)
         customer_account_credited.send(sender=Customer, instance=self, amount=float(amount))
 
     def debit_account(self, amount):
@@ -72,6 +119,7 @@ class Customer(core_models.UuidMixin,
             balance=new_balance if self.balance is None else F('balance') - amount)
 
         self.balance = new_balance
+        BalanceHistory.objects.create(customer=self, amount=self.balance)
         customer_account_debited.send(sender=Customer, instance=self, amount=float(amount))
 
         # Fully prepaid mode
@@ -147,7 +195,6 @@ class Customer(core_models.UuidMixin,
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
-        from nodeconductor.structure.filters import filter_queryset_for_user
         if user.is_staff:
             customer_queryset = cls.objects.all()
         else:
@@ -160,6 +207,12 @@ class Customer(core_models.UuidMixin,
             'name': self.name,
             'abbreviation': self.abbreviation
         }
+
+
+class BalanceHistory(models.Model):
+    customer = models.ForeignKey(Customer)
+    created = AutoCreatedField()
+    amount = models.DecimalField(max_digits=9, decimal_places=3)
 
 
 @python_2_unicode_compatible
@@ -214,20 +267,29 @@ class Project(core_models.DescribableMixin,
               core_models.NameMixin,
               quotas_models.QuotaModelMixin,
               LoggableMixin,
-              TimeStampedModel):
+              TimeStampedModel,
+              StructureModel):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
         project_group_path = 'project_groups'
 
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'max_instances', 'nc_resource_count', 'nc_service_count']
+    QUOTAS_NAMES = ['nc_resource_count', 'nc_service_project_link_count']
+    GLOBAL_COUNT_QUOTA_NAME = 'nc_global_project_count'
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
+    tracker = FieldTracker()
 
     # XXX: Hack for gcloud and logging
     @property
     def project_group(self):
         return self.project_groups.first()
+
+    @property
+    def full_name(self):
+        project_group = self.project_group
+        name = (project_group.name + ' / ' if project_group else '') + self.name
+        return name
 
     def add_user(self, user, role_type):
         UserGroup = get_user_model().groups.through
@@ -296,11 +358,17 @@ class Project(core_models.DescribableMixin,
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
-        from nodeconductor.structure.filters import filter_queryset_for_user
         return {'project_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
 
     def get_quota_parents(self):
         return [self.customer]
+
+    def get_links(self):
+        """
+        Get all service project links connected to current project
+        """
+        return [link for model in SupportedServices.get_service_models().values()
+                     for link in model['service_project_link'].objects.filter(project=self)]
 
 
 @python_2_unicode_compatible
@@ -326,6 +394,7 @@ class ProjectGroupRole(core_models.UuidMixin, models.Model):
 class ProjectGroup(core_models.UuidMixin,
                    core_models.DescribableMixin,
                    core_models.NameMixin,
+                   quotas_models.QuotaModelMixin,
                    LoggableMixin,
                    TimeStampedModel):
     """
@@ -339,6 +408,10 @@ class ProjectGroup(core_models.UuidMixin,
     customer = models.ForeignKey(Customer, related_name='project_groups', on_delete=models.PROTECT)
     projects = models.ManyToManyField(Project,
                                       related_name='project_groups')
+
+    tracker = FieldTracker()
+
+    GLOBAL_COUNT_QUOTA_NAME = 'nc_global_project_group_count'
 
     def __str__(self):
         return self.name
@@ -400,7 +473,6 @@ class ProjectGroup(core_models.UuidMixin,
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
-        from nodeconductor.structure.filters import filter_queryset_for_user
         return {'project_group_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
 
 
@@ -416,6 +488,7 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
     username = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100, blank=True, null=True)
     token = models.CharField(max_length=255, blank=True, null=True)
+    certificate = models.FileField(upload_to='certs', blank=True, null=True)
     type = models.SmallIntegerField(choices=SupportedServices.Types.CHOICES)
 
     options = JSONField(blank=True, help_text='Extra options')
@@ -429,12 +502,17 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
     def __str__(self):
         return '%s (%s)' % (self.name, self.get_type_display())
 
+    class Meta:
+        verbose_name = "Service settings"
+        verbose_name_plural = "Service settings"
+
 
 @python_2_unicode_compatible
 class Service(core_models.SerializableAbstractMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
-              LoggableMixin):
+              LoggableMixin,
+              StructureModel):
     """ Base service class. """
 
     class Meta(object):
@@ -448,14 +526,14 @@ class Service(core_models.SerializableAbstractMixin,
 
     settings = models.ForeignKey(ServiceSettings)
     customer = models.ForeignKey(Customer)
+    available_for_all = models.BooleanField(
+        default=False,
+        help_text="Service will be automatically added to all customers projects if it is available for all"
+    )
     projects = NotImplemented
 
     def get_backend(self, **kwargs):
         return self.settings.get_backend(**kwargs)
-
-    def get_usage_data(self, start_date, end_date):
-        # Please refer to nodeconductor.billing.tasks.debit_customers while implementing it
-        raise NotImplementedError
 
     def __str__(self):
         return self.name
@@ -470,6 +548,11 @@ class Service(core_models.SerializableAbstractMixin,
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return cls._meta.app_label
+
+    def _get_log_context(self, entity_name):
+        context = super(Service, self)._get_log_context(entity_name)
+        context['service_type'] = SupportedServices.get_name_for_model(self)
+        return context
 
 
 @python_2_unicode_compatible
@@ -497,10 +580,9 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 @python_2_unicode_compatible
 class ServiceProjectLink(core_models.SerializableAbstractMixin,
                          core_models.SynchronizableMixin,
-                         quotas_models.QuotaModelMixin):
+                         LoggableMixin,
+                         StructureModel):
     """ Base service-project link class. See Service class for usage example. """
-
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances']
 
     class Meta(object):
         abstract = True
@@ -512,9 +594,6 @@ class ServiceProjectLink(core_models.SerializableAbstractMixin,
 
     service = NotImplemented
     project = models.ForeignKey(Project)
-
-    def get_quota_parents(self):
-        return [self.project]
 
     def get_backend(self, **kwargs):
         return self.service.get_backend(**kwargs)
@@ -529,6 +608,9 @@ class ServiceProjectLink(core_models.SerializableAbstractMixin,
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return cls._meta.app_label + '-spl'
+
+    def get_log_fields(self):
+        return ('project', 'service',)
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
@@ -559,35 +641,18 @@ class VirtualMachineMixin(BaseVirtualMachineMixin):
     ram = models.PositiveIntegerField(default=0, help_text='Memory size in MiB')
     disk = models.PositiveIntegerField(default=0, help_text='Disk size in MiB')
 
-    def update_quota_usage(self, **kwargs):
-        signal = kwargs['signal']
-        add_quota = self.service_project_link.add_quota_usage
-
-        if signal == signals.post_save:
-            if kwargs.get('created'):
-                add_quota('instances', 1)
-                add_quota('ram', self.ram)
-                add_quota('vcpu', self.cores)
-                add_quota('storage', self.disk)
-            else:
-                old_values = self._old_values
-                add_quota('ram', self.ram - old_values['ram'])
-                add_quota('vcpu', self.cores - old_values['cores'])
-                add_quota('storage', self.disk - old_values['disk'])
-
-        elif signal == signals.post_delete:
-            add_quota('instances', -1)
-            add_quota('ram', -self.ram)
-            add_quota('vcpu', -self.cores)
-            add_quota('storage', -self.disk)
-
     class Meta(object):
         abstract = True
 
 
 @python_2_unicode_compatible
-class Resource(core_models.UuidMixin, core_models.DescribableMixin,
-               core_models.NameMixin, TimeStampedModel):
+class Resource(core_models.UuidMixin,
+               core_models.DescribableMixin,
+               core_models.NameMixin,
+               core_models.SerializableAbstractMixin,
+               LoggableMixin,
+               TimeStampedModel,
+               StructureModel):
 
     """ Base resource class. Resource is a provisioned entity of a service,
         for example: a VM in OpenStack or AWS, or a repository in Github.
@@ -646,7 +711,7 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
         )
 
         # Stable instances are the ones for which
-        # no tasks are scheduled or are in progress
+        # tasks are scheduled or are in progress
 
         STABLE_STATES = set([ONLINE, OFFLINE])
         UNSTABLE_STATES = set([
@@ -672,6 +737,10 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
     def get_backend(self):
         return self.service_project_link.get_backend()
 
+    def get_cost(self, start_date, end_date):
+        raise NotImplementedError(
+            "Please refer to nodeconductor.billing.tasks.debit_customers while implementing it")
+
     @classmethod
     @lru_cache(maxsize=1)
     def get_all_models(cls):
@@ -682,6 +751,14 @@ class Resource(core_models.UuidMixin, core_models.DescribableMixin,
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
+
+    def get_log_fields(self):
+        return ('uuid', 'name', 'service_project_link')
+
+    def _get_log_context(self, entity_name):
+        context = super(Resource, self)._get_log_context(entity_name)
+        context['resource_type'] = SupportedServices.get_name_for_model(self)
+        return context
 
     def __str__(self):
         return self.name

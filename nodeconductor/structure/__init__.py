@@ -1,5 +1,6 @@
 import importlib
 
+from django.conf import settings
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import force_text
 from rest_framework.reverse import reverse
@@ -89,7 +90,7 @@ class SupportedServices(object):
     @classmethod
     def register_backend(cls, service_model, backend_class):
         model_str = cls._get_model_srt(service_model)
-        cls._registry.setdefault(model_str, {'resources': {}})
+        cls._registry.setdefault(model_str, {'resources': {}, 'properties': {}})
         cls._registry[model_str]['backend'] = backend_class
 
         try:
@@ -100,11 +101,11 @@ class SupportedServices(object):
 
     @classmethod
     def register_service(cls, service_type, metadata):
-        if service_type is NotImplemented:
+        if service_type is NotImplemented or not cls._is_active_model(metadata.model):
             return
 
         model_str = cls._get_model_srt(metadata.model)
-        cls._registry.setdefault(model_str, {'resources': {}})
+        cls._registry.setdefault(model_str, {'resources': {}, 'properties': {}})
         cls._registry[model_str].update({
             'name': dict(cls.Types.CHOICES)[service_type],
             'service_type': service_type,
@@ -114,7 +115,7 @@ class SupportedServices(object):
 
     @classmethod
     def register_resource(cls, service, metadata):
-        if not service or service.view_name is NotImplemented:
+        if not service or service.view_name is NotImplemented or not cls._is_active_model(metadata.model):
             return
 
         model_str = cls._get_model_srt(metadata.model)
@@ -126,6 +127,20 @@ class SupportedServices(object):
                     'detail_view': metadata.view_name,
                     'list_view': metadata.view_name.replace('-detail', '-list'),
                 })
+                break
+
+    @classmethod
+    def register_property(cls, service_type, metadata):
+        if service_type is NotImplemented:
+            return
+
+        for service_model_name, service in cls._registry.items():
+            if service.get('service_type') == service_type:
+                model_str = cls._get_model_srt(metadata.model)
+                service['properties'][model_str] = {
+                    'name': metadata.model.__name__,
+                    'list_view': metadata.model.get_url_name() + '-list'
+                }
                 break
 
     @classmethod
@@ -170,6 +185,7 @@ class SupportedServices(object):
                 ...
                 "GitLab": {
                     "url": "/api/gitlab/",
+                    "service_project_link_url": "/api/gitlab-service-project-link/",
                     "resources": {
                         "Project": "/api/gitlab-projects/",
                         "Group": "/api/gitlab-groups/"
@@ -178,13 +194,23 @@ class SupportedServices(object):
                 ...
             }
         """
-        return {
-            service['name']: {
+        from django.apps import apps
+
+        data = {}
+        for service_model_name, service in cls._registry.items():
+            service_model = apps.get_model(service_model_name)
+            service_project_link = cls.get_service_project_link(service_model)
+            service_project_link_url = reverse(cls.get_list_view_for_model(service_project_link), request=request)
+
+            data[service['name']] = {
                 'url': reverse(service['list_view'], request=request),
+                'service_project_link_url': service_project_link_url,
                 'resources': {resource['name']: reverse(resource['list_view'], request=request)
                               for resource in service['resources'].values()},
-            } for service in cls._registry.values()
-        }
+                'properties': {resource['name']: reverse(resource['list_view'], request=request)
+                              for resource in service.get('properties', {}).values()}
+            }
+        return data
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -209,10 +235,7 @@ class SupportedServices(object):
         data = {}
         for service_model_name, service in cls._registry.items():
             service_model = apps.get_model(service_model_name)
-            service_project_link = next(
-                m[0].model for m in service_model._meta.get_all_related_objects_with_model()
-                if m[0].var_name == 'cloudprojectmembership' or
-                m[0].var_name.endswith('serviceprojectlink'))
+            service_project_link = cls.get_service_project_link(service_model)
             data[service['service_type']] = {
                 'service': service_model,
                 'service_project_link': service_project_link,
@@ -220,6 +243,12 @@ class SupportedServices(object):
             }
 
         return data
+
+    @classmethod
+    def get_service_project_link(cls, service_model):
+        return next(m[0].model for m in service_model._meta.get_all_related_objects_with_model()
+                    if m[0].var_name == 'cloudprojectmembership' or
+                    m[0].var_name.endswith('serviceprojectlink'))
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -241,15 +270,32 @@ class SupportedServices(object):
                 for resource, attrs in service['resources'].items()}
 
     @classmethod
+    @lru_cache(maxsize=1)
+    def get_service_resources(cls, model):
+        from django.apps import apps
+        model_str = cls._get_model_srt(model)
+        service = cls._registry[model_str]
+        resources = service['resources'].keys()
+        return [apps.get_model(resource) for resource in resources]
+
+    @classmethod
     def get_list_view_for_model(cls, model):
+        if hasattr(model, 'get_url_name'):
+            return model.get_url_name() + '-list'
         return cls._get_view_for_model(model, view_type='list_view')
 
     @classmethod
     def get_detail_view_for_model(cls, model):
+        if hasattr(model, 'get_url_name'):
+            return model.get_url_name() + '-detail'
         return cls._get_view_for_model(model, view_type='detail_view')
 
     @classmethod
     def get_name_for_model(cls, model):
+        """ Get a name for given class or model:
+            -- it's a service type for a service
+            -- it's a <service_type>.<resource_model_name> for a resource
+        """
         model_str = cls._get_model_srt(model)
         for model, service in cls._registry.items():
             if model == model_str:
@@ -260,6 +306,18 @@ class SupportedServices(object):
 
     @classmethod
     def get_related_models(cls, model):
+        """ Get a dictionary with related structure models for given class or model:
+
+            >> SupportedServices.get_related_models(gitlab_models.Project)
+            {
+                'service': nodeconductor_plus.gitlab.models.GitLabService,
+                'service_project_link': nodeconductor_plus.gitlab.models.GitLabServiceProjectLink,
+                'resources': [
+                    nodeconductor_plus.gitlab.models.Group,
+                    nodeconductor_plus.gitlab.models.Project,
+                ]
+            }
+        """
         model_str = cls._get_model_srt(model)
         for models in cls.get_service_models().values():
             if model_str == cls._get_model_srt(models['service']) or \
@@ -269,6 +327,10 @@ class SupportedServices(object):
             for resource_model in models['resources']:
                 if model_str == cls._get_model_srt(resource_model):
                     return models
+
+    @classmethod
+    def _is_active_model(cls, model):
+        return '.'.join(model.__module__.split('.')[:2]) in settings.INSTALLED_APPS
 
     @classmethod
     def _get_model_srt(cls, model):
@@ -305,6 +367,9 @@ class ServiceBackend(object):
     def ping(self):
         raise ServiceBackendNotImplemented
 
+    def ping_resource(self, resource):
+        raise ServiceBackendNotImplemented
+
     def sync(self):
         raise ServiceBackendNotImplemented
 
@@ -339,6 +404,9 @@ class ServiceBackend(object):
         raise ServiceBackendNotImplemented
 
     def get_resources_for_import(self):
+        raise ServiceBackendNotImplemented
+
+    def get_monthly_cost_estimate(self, resource):
         raise ServiceBackendNotImplemented
 
     @staticmethod

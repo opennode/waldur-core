@@ -5,6 +5,7 @@ import time
 import uuid
 import logging
 import datetime
+import calendar
 import pkg_resources
 import dateutil.parser
 
@@ -15,6 +16,7 @@ from cinderclient import exceptions as cinder_exceptions
 from cinderclient.v1 import client as cinder_client
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db import transaction
 from django.db.models import ProtectedError
 from django.utils import dateparse
@@ -35,7 +37,8 @@ from novaclient.v1_1 import client as nova_client
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
-from nodeconductor.structure import ServiceBackendNotImplemented
+from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 from nodeconductor.iaas.backend import dummy as dummy_clients
@@ -49,7 +52,7 @@ def _get_cinder_version():
     try:
         return pkg_resources.get_distribution('python-cinderclient').parsed_version
     except ValueError:
-        return '00000001', '00000000', '00000009', '*final'
+        return '00000001', '00000002', '00000001', '*final'
 
 
 @lru_cache(maxsize=1)
@@ -57,7 +60,7 @@ def _get_neutron_version():
     try:
         return pkg_resources.get_distribution('python-neutronclient').parsed_version
     except ValueError:
-        return '00000002', '00000003', '00000004', '*final'
+        return '00000002', '00000004', '00000000', '*final'
 
 
 @lru_cache(maxsize=1)
@@ -65,7 +68,7 @@ def _get_nova_version():
     try:
         return pkg_resources.get_distribution('python-novaclient').parsed_version
     except ValueError:
-        return '00000002', '00000017', '00000000', '*final'
+        return '00000002', '00000023', '00000000', '*final'
 
 
 class OpenStackClient(object):
@@ -326,6 +329,28 @@ class OpenStackBackend(OpenStackClient):
     def get_resources_for_import(self):
         raise ServiceBackendNotImplemented
 
+    def get_monthly_cost_estimate(self, instance):
+        nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+        if not nc_settings.get('ENABLE_ORDER_PROCESSING'):
+            raise ServiceBackendNotImplemented
+
+        try:
+            backend = instance.order.backend
+            invoice = backend.get_invoice_estimate(instance)
+        except BillingBackendError as e:
+            logger.error("Failed to get cost estimate for instance %s: %s", instance, e)
+            six.reraise(ServiceBackendError, e)
+
+        today = datetime.date.today()
+        if not invoice['start_date'] <= today <= invoice['end_date']:
+            raise ServiceBackendError("Wrong invoice estimate for instance %s: %s" % (instance, invoice))
+
+        # prorata monthly cost estimate based on daily usage cost
+        daily_cost = invoice['amount'] / ((today - invoice['start_date']).days + 1)
+        monthly_cost = daily_cost * calendar.monthrange(today.year, today.month)[1]
+
+        return monthly_cost
+
     # CloudAccount related methods
     def push_cloud_account(self, cloud_account):
         # There's nothing to push for OpenStack
@@ -386,7 +411,7 @@ class OpenStackBackend(OpenStackClient):
                 nc_flavor.ram = self.get_core_ram_size(backend_flavor.ram)
                 nc_flavor.disk = self.get_core_disk_size(backend_flavor.disk)
                 nc_flavor.save()
-                logger.info('Updated existing flavor %s in database', nc_flavor.uuid)
+                logger.debug('Updated existing flavor %s in database', nc_flavor.uuid)
 
     def pull_images(self, cloud_account):
         session = self.create_session(keystone_url=cloud_account.auth_url, dummy=self.dummy)
@@ -446,9 +471,9 @@ class OpenStackBackend(OpenStackClient):
                         image.min_ram = self.get_core_ram_size(backend_image.min_ram)
                         image.min_disk = self.get_core_disk_size(backend_image.min_disk)
                         image.save()
-                        logger.info('Updated existing image %s to point to %s in database', image, image.backend_id)
+                        logger.debug('Updated existing image %s to point to %s in database', image, image.backend_id)
                     else:
-                        logger.info('Image %s pointing to %s is already up to date', image, image.backend_id)
+                        logger.debug('Image %s pointing to %s is already up to date', image, image.backend_id)
 
                     current_image_ids.add(image.backend_id)
 
@@ -506,13 +531,6 @@ class OpenStackBackend(OpenStackClient):
 
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to propagate ssh public key %s to backend', key_name)
-
-            event_logger.membership.warning(
-                'Failed to push public key to cloud {cloud_name}.',
-                event_type='iaas_membership_sync_failed',
-                event_context={'membership': membership}
-            )
-
             six.reraise(CloudBackendError, e)
 
     def remove_ssh_public_key(self, membership, public_key):
@@ -531,22 +549,18 @@ class OpenStackBackend(OpenStackClient):
             logger.info('Deleted ssh public key %s from backend', public_key.name)
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to delete ssh public key %s from backend', public_key.name)
-
-            event_logger.membership.warning(
-                'Failed to delete public key from cloud {cloud_name}.',
-                event_type='iaas_membership_sync_failed',
-                event_context={'membership': membership}
-            )
-
             six.reraise(CloudBackendError, e)
 
     def push_membership_quotas(self, membership, quotas):
         # mapping to openstack terminology for quotas
         cinder_quota_mapping = {
             'storage': ('gigabytes', self.get_backend_disk_size),
+            'volumes': ('volumes', lambda x: x),
+            'snapshots': ('snapshots', lambda x: x),
         }
         nova_quota_mapping = {
-            'max_instances': ('instances', lambda x: x),
+            'max_instances': ('instances', lambda x: x),    # iaas app quota
+            'instances': ('instances', lambda x: x),        # openstack app quota
             'ram': ('ram', self.get_backend_ram_size),
             'vcpu': ('cores', lambda x: x),
         }
@@ -598,6 +612,7 @@ class OpenStackBackend(OpenStackClient):
             six.reraise(CloudBackendError, e)
 
     def push_security_groups(self, membership, is_membership_creation=False):
+        logger.debug('About to push security groups for tenant %s', membership.tenant_id)
         try:
             session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
@@ -605,16 +620,12 @@ class OpenStackBackend(OpenStackClient):
             logger.exception('Failed to create nova client')
             six.reraise(CloudBackendError, e)
 
-        from nodeconductor.iaas.models import SecurityGroup
-
-        nc_security_groups = SecurityGroup.objects.filter(
-            cloud_project_membership=membership,
-        )
+        nc_security_groups = membership.security_groups.all()
         if not is_membership_creation:
             nc_security_groups = nc_security_groups.filter(state__in=SynchronizationStates.STABLE_STATES)
 
         try:
-            backend_security_groups = dict((str(g.id), g) for g in nova.security_groups.list())
+            backend_security_groups = dict((str(g.id), g) for g in nova.security_groups.list() if g.name != 'default')
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to get openstack security groups for membership %s', membership.id)
             six.reraise(CloudBackendError, e)
@@ -644,17 +655,17 @@ class OpenStackBackend(OpenStackClient):
 
         # updating unsynchronized security groups
         for nc_group in unsynchronized_groups:
-            try:
-                self.update_security_group(nc_group, nova=nova)
-            except CloudBackendError, e:
-                pass
+            if nc_group.state in SynchronizationStates.STABLE_STATES:
+                nc_group.schedule_syncing()
+                nc_group.save()
+            send_task(membership.security_groups.model._meta.app_label, 'update_security_group')(nc_group.uuid.hex)
 
         # creating nonexistent and unsynchronized security groups
         for nc_group in nonexistent_groups:
-            try:
-                self.create_security_group(nc_group, nova=nova)
-            except CloudBackendError, e:
-                pass
+            if nc_group.state in SynchronizationStates.STABLE_STATES:
+                nc_group.schedule_syncing()
+                nc_group.save()
+            send_task(membership.security_groups.model._meta.app_label, 'create_security_group')(nc_group.uuid.hex)
 
     def create_security_group(self, security_group, nova):
         logger.debug('About to create security group %s in backend', security_group.uuid)
@@ -691,9 +702,12 @@ class OpenStackBackend(OpenStackClient):
             logger.exception('Failed to update security group %s in backend', security_group.uuid)
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Security group %s successfully updated in backend', security_group.uuid)
+            logger.debug('Security group %s successfully updated in backend', security_group.uuid)
 
     def pull_security_groups(self, membership):
+        # get proper SecurityGroup model class for either iaas or openstack app
+        SecurityGroup = membership.security_groups.model
+
         try:
             session = self.create_session(membership=membership, dummy=self.dummy)
             nova = self.create_nova_client(session)
@@ -713,20 +727,15 @@ class OpenStackBackend(OpenStackClient):
         unsynchronized_groups = []
         # list of nc security groups that do not exist in openstack
 
-        from nodeconductor.iaas.models import SecurityGroup
-
-        extra_groups = SecurityGroup.objects.filter(
-            cloud_project_membership=membership,
-        ).exclude(
+        extra_groups = membership.security_groups.exclude(
             backend_id__in=[g.id for g in backend_security_groups],
         )
 
         with transaction.atomic():
             for backend_group in backend_security_groups:
                 try:
-                    nc_group = SecurityGroup.objects.get(
+                    nc_group = membership.security_groups.get(
                         backend_id=backend_group.id,
-                        cloud_project_membership=membership,
                     )
                     if not self._are_security_groups_equal(backend_group, nc_group):
                         unsynchronized_groups.append(backend_group)
@@ -739,22 +748,20 @@ class OpenStackBackend(OpenStackClient):
 
             # synchronizing unsynchronized security groups
             for backend_group in unsynchronized_groups:
-                nc_security_group = SecurityGroup.objects.get(
+                nc_security_group = membership.security_groups.get(
                     backend_id=backend_group.id,
-                    cloud_project_membership=membership,
                 )
                 if backend_group.name != nc_security_group.name:
                     nc_security_group.name = backend_group.name
                     nc_security_group.save()
                 self.pull_security_group_rules(nc_security_group, nova)
-            logger.info('Updated existing security groups in database')
+            logger.debug('Updated existing security groups in database')
 
             # creating non-existed security groups
             for backend_group in nonexistent_groups:
-                nc_security_group = SecurityGroup.objects.create(
+                nc_security_group = membership.security_groups.create(
                     backend_id=backend_group.id,
                     name=backend_group.name,
-                    cloud_project_membership=membership,
                 )
                 self.pull_security_group_rules(nc_security_group, nova)
                 logger.info('Created new security group %s in database', nc_security_group.uuid)
@@ -808,10 +815,8 @@ class OpenStackBackend(OpenStackClient):
                     nc_instance.key_fingerprint = ""
 
                 ips = self._get_instance_ips(backend_instance)
-                if 'internal' in ips:
-                    nc_instance.internal_ips = ips['internal']
-                if 'external' in ips:
-                    nc_instance.external_ips = ips['external']
+                nc_instance.internal_ips = ips.get('internal', '')
+                nc_instance.external_ips = ips.get('external', '')
 
                 nc_instance.save()
                 # TODO: synchronize also volume sizes
@@ -839,10 +844,13 @@ class OpenStackBackend(OpenStackClient):
 
         membership.set_quota_limit('ram', self.get_core_ram_size(nova_quotas.ram))
         membership.set_quota_limit('vcpu', nova_quotas.cores)
-        membership.set_quota_limit('max_instances', nova_quotas.instances)
         membership.set_quota_limit('storage', self.get_core_disk_size(cinder_quotas.gigabytes))
         membership.set_quota_limit('security_group_count', neutron_quotas['security_group'])
         membership.set_quota_limit('security_group_rule_count', neutron_quotas['security_group_rule'])
+
+        # XXX: this quota name is different in iaas and openstack apps, handle both
+        membership.set_quota_limit('max_instances', nova_quotas.instances)
+        membership.set_quota_limit('instances', nova_quotas.instances)
 
     def pull_resource_quota_usage(self, membership):
         try:
@@ -887,7 +895,8 @@ class OpenStackBackend(OpenStackClient):
 
         membership.set_quota_usage('ram', ram)
         membership.set_quota_usage('vcpu', vcpu)
-        membership.set_quota_usage('max_instances', len(instances))
+        membership.set_quota_usage('instances', len(instances), fail_silently=True)
+        membership.set_quota_usage('max_instances', len(instances), fail_silently=True)
         membership.set_quota_usage('storage', sum([self.get_core_disk_size(v.size) for v in volumes + snapshots]))
         membership.set_quota_usage('security_group_count', len(security_groups))
         membership.set_quota_usage('security_group_rule_count', len(sum([sg.rules for sg in security_groups], [])))
@@ -912,7 +921,7 @@ class OpenStackBackend(OpenStackClient):
             six.reraise(CloudBackendError, e)
 
         nc_floating_ips = dict(
-            (ip.backend_id, ip) for ip in models.FloatingIP.objects.filter(cloud_project_membership=membership))
+            (ip.backend_id, ip) for ip in membership.floating_ips.all())
 
         backend_ids = set(backend_floating_ips.keys())
         nc_ids = set(nc_floating_ips.keys())
@@ -926,22 +935,26 @@ class OpenStackBackend(OpenStackClient):
 
             for ip_id in backend_ids - nc_ids:
                 ip = backend_floating_ips[ip_id]
-                created_ip = models.FloatingIP.objects.create(
-                    cloud_project_membership=membership,
+                created_ip = membership.floating_ips.create(
                     status=ip['status'],
                     backend_id=ip['id'],
                     address=ip['floating_ip_address'],
+                    backend_network_id=ip['floating_network_id']
                 )
                 logger.info('Created new floating IP port %s in database', created_ip.uuid)
 
             for ip_id in nc_ids & backend_ids:
                 nc_ip = nc_floating_ips[ip_id]
                 backend_ip = backend_floating_ips[ip_id]
-                if nc_ip.status != backend_ip['status'] or nc_ip.address != backend_ip['floating_ip_address']:
-                    nc_ip.status = backend_ip['status']
+                if nc_ip.status != backend_ip['status'] or nc_ip.address != backend_ip['floating_ip_address']\
+                        or nc_ip.backend_network_id != backend_ip['floating_network_id']:
+                    # If key is BOOKED by NodeConductor it can be still DOWN in OpenStack
+                    if not (nc_ip.status == 'BOOKED' and backend_ip['status'] == 'DOWN'):
+                        nc_ip.status = backend_ip['status']
                     nc_ip.address = backend_ip['floating_ip_address']
+                    nc_ip.backend_network_id = backend_ip['floating_network_id']
                     nc_ip.save()
-                    logger.info('Updated existing floating IP port %s in database', nc_ip.uuid)
+                    logger.debug('Updated existing floating IP port %s in database', nc_ip.uuid)
 
     # Statistics methods
     def get_resource_stats(self, auth_url):
@@ -967,7 +980,7 @@ class OpenStackBackend(OpenStackClient):
             logger.exception('Failed to get statistics for auth_url: %s', auth_url)
             six.reraise(CloudBackendError, e)
         else:
-            logger.info('Successfully for auth_url: %s was successfully taken', auth_url)
+            logger.debug('Successfully for auth_url: %s was successfully taken', auth_url)
         return stats
 
     def pull_service_statistics(self, cloud_account, service_stats=None):
@@ -1351,7 +1364,7 @@ class OpenStackBackend(OpenStackClient):
                     event_type='iaas_instance_deletion_failed',
                     event_context={'instance': instance})
                 raise CloudBackendError('Timed out waiting for instance %s to get deleted' % instance.uuid)
-            elif isinstance(instance, models.Instance):  # TODO: add quota support for all services (NC-634)
+            else:
                 self.release_floating_ip_from_instance(instance)
 
         except nova_exceptions.ClientException as e:
@@ -1621,7 +1634,8 @@ class OpenStackBackend(OpenStackClient):
                 'Successfully deleted snapshots %s', ', '.join(snapshot_ids))
 
     def push_instance_security_groups(self, instance):
-        from nodeconductor.iaas.models import SecurityGroup
+        # get proper SecurityGroup model class for either iaas or openstack app
+        SecurityGroup = instance.security_groups.model.security_group.get_queryset().model
 
         try:
             membership = instance.cloud_project_membership
@@ -1879,9 +1893,10 @@ class OpenStackBackend(OpenStackClient):
                     to_port=nc_rule.to_port,
                     cidr=nc_rule.cidr,
                 )
-            except nova_exceptions.ClientException:
+            except nova_exceptions.ClientException as e:
                 logger.exception('Failed to create rule %s for security group %s in backend',
                                  nc_rule, security_group)
+                six.reraise(CloudBackendError, e)
             else:
                 logger.info('Security group rule with id %s successfully created in backend', nc_rule.id)
 
@@ -1920,7 +1935,7 @@ class OpenStackBackend(OpenStackClient):
                     protocol=backend_rule['ip_protocol'],
                     cidr=backend_rule['ip_range']['cidr'],
                 )
-            logger.info('Updated existing security group rules in database')
+            logger.debug('Updated existing security group rules in database')
 
             # creating non-existed rules
             for backend_rule in nonexistent_rules:
@@ -2058,24 +2073,33 @@ class OpenStackBackend(OpenStackClient):
 
         return membership.internal_network_id
 
+    def connect_membership_to_external_network(self, membership, external_network_id, neutron):
+        """ Create router that will connect external network and memberships tenant """
+        try:
+            # check if the network actually exists
+            response = neutron.show_network(external_network_id)
+        except neutron_exceptions.NeutronClientException as e:
+            logger.exception('External network with id %s does not exist. Stale data in database?', external_network_id)
+            six.reraise(CloudBackendError, e)
+        else:
+
+            network_name = response['network']['name']
+            subnet_id = response['network']['subnets'][0]
+            # XXX: refactor function call, split get_or_create_router into more fine grained
+            self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id,
+                                      external=True, network_id=response['network']['id'])
+
+            membership.external_network_id = external_network_id
+            membership.save()
+
+            logger.info('Router between external network %s and tenant %s was successfully created',
+                        external_network_id, membership.tenant_id)
+            return external_network_id
+
     def get_or_create_external_network(self, membership, neutron, network_ip, network_prefix,
                                        vlan_id=None, vxlan_id=None, ips_count=None):
         if membership.external_network_id:
-            try:
-                # check if the network actually exists
-                response = neutron.show_network(membership.external_network_id)
-            except neutron_exceptions.NeutronClientException as e:
-                logger.exception('External network with id %s does not exist. Stale data in database?',
-                                 membership.external_network_id)
-                six.reraise(CloudBackendError, e)
-            else:
-                logger.info('External network with id %s exists.', membership.external_network_id)
-
-                network_name = response['network']['name']
-                subnet_id = response['network']['subnets'][0]
-                self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id)
-
-                return membership.external_network_id
+            self.connect_membership_to_external_network(membership, membership.external_network_id, neutron)
 
         # External network creation
         network_name = '{0}-ext-net'.format(self.create_backend_name())
@@ -2170,7 +2194,7 @@ class OpenStackBackend(OpenStackClient):
         membership.external_network_id = ''
         membership.save()
 
-    def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id):
+    def get_or_create_router(self, neutron, network_name, subnet_id, tenant_id, external=False, network_id=None):
         router_name = '{0}-router'.format(network_name)
         routers = neutron.list_routers(tenant_id=tenant_id)['routers']
 
@@ -2179,13 +2203,17 @@ class OpenStackBackend(OpenStackClient):
             router = routers[0]
         else:
             router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
-            logger.info('Router with name %s has been created.', router['name'])
+            logger.info('Router %s has been created.', router['name'])
 
         try:
-            neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
-            logger.info('Subnet with id %s was added to the router with name %s.', subnet_id, router_name)
-        except neutron_exceptions.NeutronClientException:
-            pass
+            if not external:
+                neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
+                logger.info('Internal subnet %s was connected to the router %s.', subnet_id, router_name)
+            else:
+                neutron.add_gateway_router(router['id'], {'network_id': network_id})
+                logger.info('External network %s was connected to the router %s.', network_id, router_name)
+        except neutron_exceptions.NeutronClientException as e:
+            logger.warning(e)
 
         return router['id']
 
@@ -2317,22 +2345,24 @@ class OpenStackBackend(OpenStackClient):
             )
 
     def push_floating_ip_to_instance(self, server, instance, nova):
-        if instance.external_ips is None or instance.internal_ips is None:
+        if not instance.external_ips or not instance.internal_ips:
             return
 
-        logger.debug('About add external ip %s to instance %s',
+        logger.debug('About to add external ip %s to instance %s',
                      instance.external_ips, instance.uuid)
+
+        membership = instance.cloud_project_membership
         try:
-            floating_ip = models.FloatingIP.objects.get(
-                cloud_project_membership=instance.cloud_project_membership,
-                status='DOWN',
+            floating_ip = membership.floating_ips.get(
+                status__in=('BOOKED', 'DOWN'),
                 address=instance.external_ips,
+                backend_network_id=membership.external_network_id
             )
             server.add_floating_ip(address=instance.external_ips, fixed_address=instance.internal_ips)
         except (
-                models.FloatingIP.DoesNotExist,
-                models.FloatingIP.MultipleObjectsReturned,
                 nova_exceptions.ClientException,
+                ObjectDoesNotExist,
+                MultipleObjectsReturned,
                 KeyError,
                 IndexError,
         ):
@@ -2341,7 +2371,7 @@ class OpenStackBackend(OpenStackClient):
             instance.set_erred()
             instance.save()
         else:
-            floating_ip.status = 'UP'
+            floating_ip.status = 'ACTIVE'
             floating_ip.save()
             logger.info('Successfully added external ip %s to instance %s',
                         instance.external_ips, instance.uuid)
@@ -2350,16 +2380,14 @@ class OpenStackBackend(OpenStackClient):
         if not instance.external_ips:
             return
 
+        membership = instance.cloud_project_membership
         try:
-            floating_ip = models.FloatingIP.objects.get(
-                cloud_project_membership=instance.cloud_project_membership,
+            floating_ip = membership.floating_ips.get(
                 status='ACTIVE',
                 address=instance.external_ips,
+                backend_network_id=membership.external_network_id
             )
-        except (
-                models.FloatingIP.DoesNotExist,
-                models.FloatingIP.MultipleObjectsReturned
-        ):
+        except (ObjectDoesNotExist, MultipleObjectsReturned):
             logger.warning('Failed to release floating ip %s from instance %s',
                            instance.external_ips, instance.uuid)
         else:
@@ -2367,6 +2395,31 @@ class OpenStackBackend(OpenStackClient):
             floating_ip.save()
             logger.info('Successfully released floating ip %s from instance %s',
                         instance.external_ips, instance.uuid)
+
+    def allocate_floating_ip_address(self, neutron, membership):
+        data = {'floating_network_id': membership.external_network_id, 'tenant_id': membership.tenant_id}
+        ip_address = neutron.create_floatingip({'floatingip': data})['floatingip']
+
+        membership.floating_ips.create(
+            status='DOWN',
+            address=ip_address['floating_ip_address'],
+            backend_id=ip_address['id'],
+            backend_network_id=ip_address['floating_network_id']
+        )
+        logger.info('Floating IP %s for external network with id %s has been created.',
+                    ip_address['floating_ip_address'], membership.external_network_id)
+
+    def assign_floating_ip_to_instance(self, nova, instance, floating_ip):
+        nova.servers.add_floating_ip(server=instance.backend_id, address=floating_ip.address)
+
+        floating_ip.status = 'ACTIVE'
+        floating_ip.save()
+
+        instance.external_ips = floating_ip.address
+        instance.save()
+
+        logger.info('Floating IP %s was successfully assigned to the instance with id %s.',
+                    floating_ip.address, instance.uuid)
 
     def get_attached_volumes(self, server_id, nova):
         """
