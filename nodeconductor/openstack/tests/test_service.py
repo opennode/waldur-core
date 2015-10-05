@@ -194,7 +194,7 @@ class ServicePermissionTest(test.APITransactionTestCase):
 
             mocked_task.assert_any_call(
                 'nodeconductor.structure.sync_service_settings',
-                (settings.uuid.hex,), {'initial': True})
+                (settings.uuid.hex,), {'initial': True}, countdown=2)
 
     def test_user_cannot_add_service_to_the_customer_he_sees_but_doesnt_own(self):
         choices = {
