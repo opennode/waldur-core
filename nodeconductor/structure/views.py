@@ -765,10 +765,6 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
     filter_class = filters.ServiceSettingsFilter
     lookup_field = 'uuid'
 
-    def perform_create(self, serializer):
-        instance = serializer.save()
-        send_task('structure', 'sync_service_settings')(instance.uuid.hex, initial=True)
-
 
 class ServiceMetadataViewSet(viewsets.GenericViewSet):
     """ Metadata about supported services, resources and properties. """

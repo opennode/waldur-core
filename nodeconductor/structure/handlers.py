@@ -461,3 +461,8 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
         service_project_link_model = service.projects.through
         for project in service.customer.projects.all():
             service_project_link_model.objects.get_or_create(project=project, service=service)
+
+
+def sync_service_settings_with_backend(sender, instance, created=False, **kwargs):
+    if created:
+        send_task('structure', 'sync_service_settings')(instance.uuid.hex, initial=True)
