@@ -80,10 +80,7 @@ def decrease_quotas_usage_on_instances_deletion(sender, instance=None, **kwargs)
 
 def sync_service_project_link_with_backend(sender, instance, created=False, **kwargs):
     if created:
-        from nodeconductor.structure.tasks import sync_service_project_links
-        sync_service_project_links.apply_async(args=[instance.to_string()], kwargs={'initial': True}, countdown=2)
-        # XXX: sending a task at once will fail as transaction has not yet been committed. NC-848
-        # send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
+        send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
 
 
 def change_floating_ip_quota_on_status_change(sender, instance, created=False, **kwargs):

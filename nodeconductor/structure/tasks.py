@@ -87,7 +87,8 @@ def sync_service_settings(settings_uuids=None, initial=False):
             link_error=sync_service_settings_failed.si(settings_uuid))
 
 
-@shared_task(name='nodeconductor.structure.sync_service_project_links')
+@shared_task(name='nodeconductor.structure.sync_service_project_links', max_retries=120, default_retry_delay=5)
+@retry_if_false
 def sync_service_project_links(service_project_links=None, quotas=None, initial=False):
     if service_project_links is not None:
         if not isinstance(service_project_links, (list, tuple)):
@@ -99,8 +100,14 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
         link_objects = sum(
             [list(model.objects.filter(state=SynchronizationStates.IN_SYNC)) for model in spl_models], [])
 
+    # For newly created SPLs make sure their settings in stable state, retry otherwise
+    if initial:
+        settings = link_objects[0].service.settings
+        if settings.state != SynchronizationStates.IN_SYNC:
+            return False
+
     for obj in link_objects:
-        # Settings are being created in SYNCING_SCHEDULED state,
+        # Links are being created in SYNCING_SCHEDULED state,
         # thus bypass transition during 'initial' sync.
         if not initial:
             obj.schedule_syncing()
@@ -112,6 +119,8 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
             kwargs={'quotas': quotas, 'initial': initial},
             link=sync_service_project_link_succeeded.si(service_project_link_str),
             link_error=sync_service_project_link_failed.si(service_project_link_str))
+
+    return True
 
 
 @shared_task

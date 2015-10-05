@@ -275,6 +275,12 @@ class StructureConfig(AppConfig):
         )
 
         signals.post_save.connect(
+            handlers.sync_service_settings_with_backend,
+            sender=ServiceSettings,
+            dispatch_uid='nodeconductor.structure.handlers.sync_service_settings_with_backend',
+        )
+
+        signals.post_save.connect(
             handlers.connect_shared_service_settings_to_customers,
             sender=ServiceSettings,
             dispatch_uid='nodeconductor.structure.handlers.connect_shared_service_settings_to_customers',

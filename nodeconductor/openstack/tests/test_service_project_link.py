@@ -20,7 +20,6 @@ class ServiceProjectLinkCreateDeleteTest(test.APISimpleTestCase):
         self.project = structure_factories.ProjectFactory(customer=self.customer)
         self.service = factories.OpenStackServiceFactory(customer=self.customer)
 
-    @unittest.skip('Skipping till NC-848 is properly resolved')
     def test_membership_creation(self):
         self.client.force_authenticate(self.owner)
 
@@ -249,7 +248,6 @@ class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
         response = self.client.post(self.url, payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    @unittest.skip('Skipping till NC-848 is properly resolved')
     def test_group_manager_can_connect_project_and_service(self):
         user = self.users['group_manager']
         self.client.force_authenticate(user=user)
