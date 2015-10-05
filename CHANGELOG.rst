@@ -5,6 +5,16 @@ Release NEXT
 ------------
 - <none yet>.
 
+Release 0.75.0
+--------------
+
+- Multiple bugfixes
+- Added invoice generation.
+- Add reporting of shared service consumption to KillBill.
+- Enhanced cost esimation module.
+- Dropped WHMCS billing, replaced with KillBill.io
+- New admin skin based on Fluent project
+
 Release 0.74.0
 --------------
 - Bugfixes.
