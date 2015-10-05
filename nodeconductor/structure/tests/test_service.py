@@ -41,7 +41,7 @@ class SuspendServiceTest(test.APITransactionTestCase):
 
                 mocked_task.assert_called_once_with(
                     'nodeconductor.structure.stop_customer_resources',
-                    (customer.uuid.hex,), {})
+                    (customer.uuid.hex,), {}, countdown=2)
 
                 self.assertEqual(customer.balance, -1 * amount)
 
