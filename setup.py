@@ -9,12 +9,12 @@ dev_requires = [
 
 tests_requires = [
     'ddt>=1.0.0',
+    'django-celery==3.1.16',
     'factory_boy==2.4.1',
     'mock==1.0.1',
     'mock-django==0.6.6',
     'six>=1.7.3',
     'stevedore==1.5.0',
-    'django-celery==3.1.16',
 ]
 
 install_requires = [
@@ -25,13 +25,13 @@ install_requires = [
     'Django>=1.7.1,<1.8',
     'django-auth-ldap==1.2.0',
     'django-filter==0.7',
+    'django-fluent-dashboard==0.5.1',
     'django-fsm==2.2.0',
     'django-model-utils==2.2',
     'django-permission==0.8.2',
     'django-polymorphic>=0.7',
     'django-reversion>=1.8.7',
     'django-uuidfield==0.5.0',
-    'django-fluent-dashboard==0.5.1',
     'djangorestframework>=3.1.0,<3.2.0',
     'djangosaml2==0.13.0',
     'elasticsearch>=1.0.0,<2.0.0',
