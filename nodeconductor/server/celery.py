@@ -29,6 +29,7 @@ class PriorityRouter(object):
             return {'queue': 'heavy'}
         return None
 
+
 # The workflow for passing event context to background tasks works as following:
 # 1) Generate event context at CaptureEventContextMiddleware and bind it to local thread
 # 2) At the Django side: fetch event context from local thread and pass it as parameter to task

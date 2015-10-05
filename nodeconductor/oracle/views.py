@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from rest_framework import viewsets
 
+from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import views as structure_views
 from nodeconductor.oracle import models
 from nodeconductor.oracle import serializers
@@ -17,16 +18,18 @@ class OracleServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkView
     serializer_class = serializers.ServiceProjectLinkSerializer
 
 
-class ZoneViewSet(viewsets.ReadOnlyModelViewSet):
+class ZoneViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Zone.objects.all()
     serializer_class = serializers.ZoneSerializer
     lookup_field = 'uuid'
+    filter_class = structure_filters.ServicePropertySettingsFilter
 
 
-class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
+class TemplateViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Template.objects.all()
     serializer_class = serializers.TemplateSerializer
     lookup_field = 'uuid'
+    filter_class = structure_filters.ServicePropertySettingsFilter
 
 
 class DatabaseViewSet(structure_views.BaseResourceViewSet):

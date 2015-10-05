@@ -14,7 +14,7 @@ from nodeconductor.structure.models import Customer
 from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.models import ProjectGroupRole
-from nodeconductor.structure.perms import USER_CAN_CREATE_CUSTOMER_LOGICS
+from nodeconductor.structure.perms import OWNER_CAN_MANAGE_CUSTOMER_LOGICS
 from nodeconductor.structure.tests import factories
 
 
@@ -442,7 +442,7 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_can_create_customer_if_he_is_not_staff_if_settings_are_tweaked(self):
-        add_permission_logic(Customer, USER_CAN_CREATE_CUSTOMER_LOGICS)
+        add_permission_logic(Customer, OWNER_CAN_MANAGE_CUSTOMER_LOGICS)
         self.client.force_authenticate(user=self.users['not_owner'])
 
         response = self.client.post(reverse('customer-list'), self._get_valid_payload())
@@ -451,7 +451,7 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
 
         # User became owner of created customer
         self.assertEqual(response.data['owners'][0]['uuid'], self.users['not_owner'].uuid.hex)
-        remove_permission_logic(Customer, USER_CAN_CREATE_CUSTOMER_LOGICS)
+        remove_permission_logic(Customer, OWNER_CAN_MANAGE_CUSTOMER_LOGICS)
 
     def test_user_can_create_customer_if_he_is_staff(self):
         self.client.force_authenticate(user=self.users['staff'])
@@ -563,6 +563,33 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         project.delete()
         self.assertEqual(self.customer.quotas.get(name='nc_project_count').usage, 0)
 
+    def test_customer_services_quota_increases_on_service_creation(self):
+        from nodeconductor.iaas.tests import factories as iaas_factories
+        service = iaas_factories.CloudFactory(customer=self.customer)
+        self.assertEqual(self.customer.quotas.get(name='nc_service_count').usage, 1)
+
+    def test_customer_services_quota_decreases_on_service_deletion(self):
+        from nodeconductor.iaas.tests import factories as iaas_factories
+        service = iaas_factories.CloudFactory(customer=self.customer)
+        service.delete()
+        self.assertEqual(self.customer.quotas.get(name='nc_service_count').usage, 0)
+
+    def test_customer_and_project_service_project_link_quota_updated(self):
+        from nodeconductor.iaas.tests import factories as iaas_factories
+        cloud = iaas_factories.CloudFactory(customer=self.customer)
+
+        project1 = factories.ProjectFactory(customer=self.customer)
+        cpm1 = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project1)
+
+        project2 = factories.ProjectFactory(customer=self.customer)
+        cpm2 = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project2)
+
+        self.assertEqual(project1.quotas.get(name='nc_service_project_link_count').usage, 1)
+        self.assertEqual(project2.quotas.get(name='nc_service_project_link_count').usage, 1)
+
+        self.assertEqual(self.customer.quotas.get(name='nc_service_project_link_count').usage, 2)
+        self.assertEqual(self.customer.quotas.get(name='nc_service_count').usage, 1)
+
     # XXX: this test should be rewritten after instances will become part of general services
     def test_customer_instances_quota_increases_on_instance_creation(self):
         from nodeconductor.iaas.tests import factories as iaas_factories
@@ -620,3 +647,19 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         project_group.add_user(user, ProjectGroupRole.MANAGER)
         project_group.remove_user(user)
         self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 0)
+
+    def test_customer_quota_is_not_increased_on_adding_owner_as_administrator(self):
+        user = factories.UserFactory()
+        project = factories.ProjectFactory(customer=self.customer)
+        self.customer.add_user(user, CustomerRole.OWNER)
+        project.add_user(user, ProjectRole.ADMINISTRATOR)
+
+        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 1)
+
+    def test_customer_quota_is_not_increased_on_adding_owner_as_manager(self):
+        user = factories.UserFactory()
+        project = factories.ProjectFactory(customer=self.customer)
+        self.customer.add_user(user, CustomerRole.OWNER)
+        project.add_user(user, ProjectRole.ADMINISTRATOR)
+
+        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 1)

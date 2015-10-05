@@ -19,16 +19,27 @@ class QuotasConfig(AppConfig):
             dispatch_uid='nodeconductor.quotas.handlers.check_quota_threshold_breach',
         )
 
-        signals.post_save.connect(
-            handlers.propagate_quotas_to_parents,
-            sender=Quota,
-            dispatch_uid='nodeconductor.quotas.handlers.propagate_quotas_to_parents',
-        )
-
         for index, model in enumerate(utils.get_models_with_quotas()):
             signals.pre_delete.connect(
                 handlers.reset_quota_values_to_zeros_before_delete,
                 sender=model,
                 dispatch_uid=('nodeconductor.quotas.handlers.reset_quota_values_to_zeros_before_delete_%s_%s'
-                    % (model.__name__, index)),
+                              % (model.__name__, index)),
             )
+
+            signals.post_save.connect(
+                handlers.increase_global_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.quotas.handlers.increase_global_quota_%s_%s' % (model.__name__, index)
+            )
+
+            signals.post_delete.connect(
+                handlers.decrease_global_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.quotas.handlers.decrease_global_quota_%s_%s' % (model.__name__, index)
+            )
+
+        signals.post_migrate.connect(
+            handlers.create_global_quotas,
+            dispatch_uid="nodeconductor.quotas.handlers.create_global_quotas",
+        )

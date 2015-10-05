@@ -26,12 +26,14 @@ class ServiceSettingsTest(test.APITransactionTestCase):
         self.customers['owned'].add_user(self.users['owner'], CustomerRole.OWNER)
 
         self.settings = {
-            'shared': factories.ServiceSettingsFactory(),
-            'inaccessible': factories.ServiceSettingsFactory(customer=self.customers['inaccessible'], shared=False),
+            'shared': factories.ServiceSettingsFactory(shared=True),
+            'inaccessible': factories.ServiceSettingsFactory(customer=self.customers['inaccessible']),
             'owned': factories.ServiceSettingsFactory(
-                customer=self.customers['owned'], backend_url='bk.url', password='123',
-                type=1, shared=False),
+                customer=self.customers['owned'], backend_url='bk.url', password='123', type=1),
         }
+
+        # Token is excluded, because it is not available for OpenStack
+        self.credentials = ('backend_url', 'username', 'password')
 
     def _get_settings_url(self, settings=None):
         if settings:
@@ -44,8 +46,8 @@ class ServiceSettingsTest(test.APITransactionTestCase):
 
         response = self.client.get(self._get_settings_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
-        self.assertNotIn('password', response.data[0], response.data)
         self.assertEqual(len(response.data), 1)
+        self.assert_credentials_hidden(response.data[0])
         self.assertEqual(response.data[0]['uuid'], self.settings['shared'].uuid.hex, response.data)
 
     def test_user_can_see_shared_and_own_settings(self):
@@ -68,17 +70,33 @@ class ServiceSettingsTest(test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['owner'])
 
         response = self.client.get(self._get_settings_url(self.settings['owned']))
-        self.assertIsNotNone(response.data['backend_url'])
-        self.assertNotIn('password', response.data)
+        self.assert_credentials_visible(response.data)
 
-    def test_user_cant_see_others_settings_credentials(self):
+    def test_user_cant_see_others_settings(self):
         self.client.force_authenticate(user=self.users['not_owner'])
 
         response = self.client.get(self._get_settings_url(self.settings['owned']))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_admin_can_see_all_credentials(self):
+        self.client.force_authenticate(user=self.users['staff'])
+
+        response = self.client.get(self._get_settings_url(self.settings['owned']))
+        self.assert_credentials_visible(response.data)
+
+    def test_user_cant_see_shared_credentials(self):
+        self.client.force_authenticate(user=self.users['owner'])
+
         response = self.client.get(self._get_settings_url(self.settings['shared']))
-        self.assertNotIn('backend_url', response.data)
+        self.assert_credentials_hidden(response.data)
+
+    def assert_credentials_visible(self, data):
+        for field in self.credentials:
+            self.assertIn(field, data)
+
+    def assert_credentials_hidden(self, data):
+        for field in self.credentials:
+            self.assertNotIn(field, data)
 
     def test_user_cant_change_settings_type(self):
         self.client.force_authenticate(user=self.users['owner'])

@@ -5,6 +5,8 @@ from django.utils import timezone
 
 from nodeconductor.backup import models, tasks
 from nodeconductor.backup.tests import factories
+from nodeconductor.iaas.tests.factories import InstanceFactory
+from nodeconductor.iaas.models import Instance
 
 
 class DeleteExpiredBackupsTaskTest(TestCase):
@@ -24,7 +26,8 @@ class ExecuteScheduleTaskTest(TestCase):
     def setUp(self):
         self.not_active_schedule = factories.BackupScheduleFactory(is_active=False)
 
-        self.schedule_for_execution = factories.BackupScheduleFactory()
+        backupable = InstanceFactory(state=Instance.States.OFFLINE)
+        self.schedule_for_execution = factories.BackupScheduleFactory(backup_source=backupable)
         self.schedule_for_execution.next_trigger_at = timezone.now() - timedelta(minutes=10)
         self.schedule_for_execution.save()
 

@@ -14,8 +14,11 @@
     <p>Azure</p>
     <ul>
         <li>Username — Azure subscription id in the form of GUID</li>
-        <li>Token — Path to the Azure X509 certificate file in .pem form</li>
+        <li>Certificate — Azure X509 certificate file in .pem form</li>
     </ul>
+    <p>
+        Supported Azure options are: "<code>location</code>" (default: "Central US")
+    </p>
     <p>OpenStack</p>
     <ul>
         <li>Backend url — Keystone auth URL (e.g. http://keystone.example.com:5000/v2.0)</li>
@@ -24,7 +27,9 @@
     </ul>
     <p>
         Supported OpenStack options are: "<code>tenant_name</code>" (default: "admin"),
-        "<code>availability_zone</code>" and "<code>cpu_overcommit_ratio</code>" (default: 1)
+        "<code>availability_zone</code>", "<code>cpu_overcommit_ratio</code>" (default: 1) and
+        "<code>external_network_id</code>" (ID of OpenStack external network that will be connected to new service
+        tenants)
     </p>
     <p>DigitalOcean</p>
     <ul>

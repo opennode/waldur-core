@@ -9,9 +9,13 @@ from django.utils import timezone
 
 from nodeconductor.backup.tests import factories
 from nodeconductor.backup import models
+from nodeconductor.iaas.models import Instance
+from nodeconductor.iaas.tests.factories import InstanceFactory
 
 
 class BackupScheduleTest(TestCase):
+    def setUp(self):
+        self.backup_source = InstanceFactory(state=Instance.States.OFFLINE)
 
     def test_update_next_trigger_at(self):
         now = timezone.now()
@@ -37,7 +41,7 @@ class BackupScheduleTest(TestCase):
 
     def test_create_backup(self):
         now = timezone.now()
-        schedule = factories.BackupScheduleFactory(retention_time=3)
+        schedule = factories.BackupScheduleFactory(retention_time=3,  backup_source=self.backup_source)
         schedule._create_backup()
         backup = models.Backup.objects.get(backup_schedule=schedule)
         self.assertFalse(backup.kept_until is None)
@@ -45,7 +49,7 @@ class BackupScheduleTest(TestCase):
 
     def test_execute(self):
         # we have schedule
-        schedule = factories.BackupScheduleFactory(maximal_number_of_backups=1)
+        schedule = factories.BackupScheduleFactory(maximal_number_of_backups=1, backup_source=self.backup_source)
         # with 2 ready backups
         old_backup1 = factories.BackupFactory(backup_schedule=schedule)
         old_backup2 = factories.BackupFactory(backup_schedule=schedule)

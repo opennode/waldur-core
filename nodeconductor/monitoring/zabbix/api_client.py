@@ -7,13 +7,14 @@ from requests.packages.urllib3 import exceptions
 
 from django.conf import settings as django_settings
 from django.utils import six
-from pyzabbix import ZabbixAPI, ZabbixAPIException
-from nodeconductor.iaas.models import Instance
+import pyzabbix
 
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
+from nodeconductor.monitoring.zabbix.log import ZabbixLogsFilter
 
 
 logger = logging.getLogger(__name__)
+pyzabbix.logger.addFilter(ZabbixLogsFilter())
 
 
 def _exception_decorator(message, fail_silently=None):
@@ -22,7 +23,7 @@ def _exception_decorator(message, fail_silently=None):
         def wrapper(self, *args, **kwargs):
             try:
                 return func(self, *args, **kwargs)
-            except (ZabbixAPIException, RequestException) as exception:
+            except (pyzabbix.ZabbixAPIException, RequestException) as exception:
                 if not self._settings.get('FAIL_SILENTLY', False):
                     exception_name = exception.__class__.__name__
                     message_args = (self,) + args + tuple(kwargs.values())
@@ -41,7 +42,8 @@ class QuietSession(requests.Session):
     def request(self, *args, **kwargs):
         if not kwargs.get('verify', self.verify):
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', exceptions.InsecurePlatformWarning)
+                if hasattr(exceptions, 'InsecurePlatformWarning'):  # urllib3 1.10 and lower does not have this warning
+                    warnings.simplefilter('ignore', exceptions.InsecurePlatformWarning)
                 warnings.simplefilter('ignore', exceptions.InsecureRequestWarning)
                 return super(QuietSession, self).request(*args, **kwargs)
         else:
@@ -90,15 +92,15 @@ class ZabbixApiClient(object):
                 kwargs['templateid'] = self._settings['templateid']
             else:
                 kwargs['templateid'] = self._settings['openstack-templateid']
-            if not is_tenant:
+            if not is_tenant and instance.template.application_type:
                 kwargs['application_templateid'] = self._settings.get(
-                    "%s-templateid" % instance.template.application_type.lower())
+                    "%s-templateid" % instance.template.application_type.slug.lower())
             if is_tenant:
                 kwargs['host_name'] = instance.tenant_id
                 kwargs['visible_name'] = instance.tenant_id
         except KeyError as e:
-            logger.error('Zabbix is not properly configured %s', e.message)
-            raise ZabbixError('Zabbix is not properly configured %s' % e.message)
+            logger.error('Zabbix is not properly configured %s', e)
+            raise ZabbixError('Zabbix is not properly configured %s' % e)
 
         _, created = self.get_or_create_host(
             api, instance,
@@ -161,7 +163,7 @@ class ZabbixApiClient(object):
         if hostid is None:
             hostid = self.get_host(instance)['hostid']
 
-        service_parameters['triggerid'] = self.get_host_triggerid(api, hostid)
+        service_parameters['triggerid'] = self.get_host_sla_triggerid(api, hostid)
 
         _, created = self.get_or_create_service(api, service_parameters)
 
@@ -185,7 +187,7 @@ class ZabbixApiClient(object):
         api = self.get_zabbix_api()
         service_data = api.service.get(filter={'name': service_name})
         if len(service_data) != 1:
-            raise ZabbixAPIException('Exactly one result is expected for service name %s'
+            raise pyzabbix.ZabbixAPIException('Exactly one result is expected for service name %s'
                                      ', instead received %s. Instance: %s'
                                      % (service_name, len(service_data), instance)
                                      )
@@ -203,49 +205,12 @@ class ZabbixApiClient(object):
         events = self.get_trigger_events(api, service_trigger_id, start_time, end_time)
         return sla, events
 
-    @_exception_decorator('Can not get instance {1} installation state from zabbix')
-    def get_application_installation_state(self, instance):
-        # a shortcut for the IaaS instances -- all done
-        if instance.type == Instance.Services.IAAS:
-            return 'OK'
-
-        name = self.get_host_name(instance)
-        api = self.get_zabbix_api()
-
-        if api.host.exists(host=name):
-            hostid = api.host.get(filter={'host': name})[0]['hostid']
-            # lookup item by a pre-defined name
-            items = api.item.get(
-                output='extend',
-                hostids=hostid,
-                filter={'key_': self._settings.get('application-status-item', 'application.status')}
-            )
-            if not items:
-                return 'NO DATA'
-            else:
-                item_id = items[0]['itemid']
-            history = api.history.get(
-                output='extend',
-                itemids=item_id,
-                sortfield=["clock"],
-                sortorder="DESC",
-                limit=1
-            )
-            if not history:
-                return 'NO DATA'
-            else:
-                value = history[0]['value']
-                return 'OK' if value == '1' else 'NOT OK'
-        else:
-            logger.warn('Cannot retrieve installation state of instance %s. Host does not exist.', instance)
-            return 'NO DATA'
-
     # Helpers:
     def get_zabbix_api(self):
         unsafe_session = QuietSession()
         unsafe_session.verify = False
 
-        api = ZabbixAPI(server=self._settings['server'], session=unsafe_session)
+        api = pyzabbix.ZabbixAPI(server=self._settings['server'], session=unsafe_session)
         api.login(self._settings['username'], self._settings['password'])
         return api
 
@@ -261,11 +226,13 @@ class ZabbixApiClient(object):
     def get_service_name(self, instance):
         return 'Availability of %s' % instance.backend_id
 
-    def get_host_triggerid(self, api, hostid):
+    def get_host_sla_triggerid(self, api, hostid):
         try:
-            return api.trigger.get(hostids=hostid)[0]['triggerid']
+            return api.trigger.get(hostids=hostid, output=['triggerid'],
+                                   # XXX a hardcoded description, consider refactoring
+                                   filter={'description': 'Missing data about the VM' })[0]['triggerid']
         except IndexError:
-            raise ZabbixAPIException('No template with id: %s' % hostid)
+            raise pyzabbix.ZabbixAPIException('No template with id: %s' % hostid)
 
     def get_or_create_hostgroup(self, api, project):
         group_name = self.get_hostgroup_name(project)
@@ -291,7 +258,7 @@ class ZabbixApiClient(object):
         name = self.get_host_name(instance) if host_name is None else host_name
         if name.strip() == '':
             logger.warn('Cannot register host with empty name, host %s', instance)
-            raise ZabbixAPIException('Zabbix host name cannot be empty')
+            raise pyzabbix.ZabbixAPIException('Zabbix host name cannot be empty')
 
         visible_name = self.get_host_visible_name(instance) if visible_name is None else visible_name
 

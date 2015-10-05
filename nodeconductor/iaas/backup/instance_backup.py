@@ -136,13 +136,6 @@ class InstanceBackupStrategy(BackupStrategy):
         except CloudBackendError as e:
             six.reraise(BackupStrategyExecutionError, e)
 
-    @classmethod
-    def update_order(cls, instance, backups_qs):
-        backup_size = sum(b.metadata['system_snapshot_size'] +
-                          b.metadata['data_snapshot_size'] for b in backups_qs)
-        instance.order.update(**{
-            CostConstants.PriceItem.STORAGE: instance.get_storage_size(extra=backup_size)})
-
     # Helpers
     @classmethod
     def _get_backend(cls, instance):

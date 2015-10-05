@@ -1,7 +1,6 @@
+from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.logging.log import EventLogger, event_logger
-from nodeconductor.core.models import User
 from nodeconductor.structure import models
-from nodeconductor.structure.filters import filter_queryset_for_user
 
 
 class CustomerEventLogger(EventLogger):
@@ -25,9 +24,10 @@ class BalanceEventLogger(EventLogger):
 class ProjectEventLogger(EventLogger):
     project = models.Project
     project_group = models.ProjectGroup
+    project_previous_name = basestring
 
     class Meta:
-        nullable_fields = ['project_group']
+        nullable_fields = ['project_group', 'project_previous_name']
         event_types = ('project_deletion_succeeded',
                        'project_update_succeeded',
                        'project_creation_succeeded')
@@ -93,6 +93,26 @@ class UserOrganizationEventLogger(EventLogger):
                        'user_organization_removed')
 
 
+class ResourceEventLogger(EventLogger):
+    resource = models.Resource
+
+    class Meta:
+        event_types = ('resource_imported',
+                       'resource_created',
+                       'resource_deleted')
+
+
+class SshSyncEventLogger(EventLogger):
+    ssh_key = SshPublicKey
+    service_project_link = models.ServiceProjectLink
+
+    class Meta:
+        event_types = ('ssh_key_push_succeeded',
+                       'ssh_key_push_failed',
+                       'ssh_key_remove_succeeded',
+                       'ssh_key_remove_failed')
+
+
 event_logger.register('customer_role', CustomerRoleEventLogger)
 event_logger.register('project_role', ProjectRoleEventLogger)
 event_logger.register('project_group_role', ProjectGroupRoleEventLogger)
@@ -102,3 +122,5 @@ event_logger.register('customer', CustomerEventLogger)
 event_logger.register('project', ProjectEventLogger)
 event_logger.register('project_group', ProjectGroupEventLogger)
 event_logger.register('balance', BalanceEventLogger)
+event_logger.register('resource', ResourceEventLogger)
+event_logger.register('ssh_sync', SshSyncEventLogger)

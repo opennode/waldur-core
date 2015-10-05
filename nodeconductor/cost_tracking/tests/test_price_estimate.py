@@ -4,7 +4,7 @@ from rest_framework import test, status
 from nodeconductor.cost_tracking import models
 from nodeconductor.cost_tracking.tests import factories
 # dependency from openstack application exists only in tests
-from nodeconductor.iaas.tests import factories as iaas_factories
+from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -28,8 +28,8 @@ class PriceEstimateListTest(test.APITransactionTestCase):
         self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
         self.project_group.projects.add(self.project)
 
-        cloud = iaas_factories.CloudFactory(customer=self.customer)
-        self.service_project_link = iaas_factories.CloudProjectMembershipFactory(project=self.project, cloud=cloud)
+        cloud = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        self.service_project_link = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project, cloud=cloud)
 
         self.link_price_estimate = factories.PriceEstimateFactory(
             year=2012, month=10, scope=self.service_project_link, is_manually_input=True)
@@ -54,7 +54,7 @@ class PriceEstimateListTest(test.APITransactionTestCase):
         self.assertNotIn(other_price_estimate.uuid.hex, [obj['uuid'] for obj in response.data])
 
     def test_user_can_filter_price_estimate_by_scope(self):
-        self.client.force_authenticate(self.users['administrator'])
+        self.client.force_authenticate(self.users['owner'])
         response = self.client.get(
             factories.PriceEstimateFactory.get_list_url(),
             data={'scope': structure_factories.ProjectFactory.get_url(self.project)})
@@ -64,7 +64,7 @@ class PriceEstimateListTest(test.APITransactionTestCase):
         self.assertEqual(response.data[0]['uuid'], self.project_price_estimate.uuid.hex)
 
     def test_user_can_filter_price_estimates_by_date(self):
-        self.client.force_authenticate(self.users['owner'])
+        self.client.force_authenticate(self.users['administrator'])
         response = self.client.get(
             factories.PriceEstimateFactory.get_list_url(),
             data={'date': '{}.{}'.format(self.link_price_estimate.year, self.link_price_estimate.month)})
@@ -83,6 +83,14 @@ class PriceEstimateListTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['uuid'], self.project_price_estimate.uuid.hex)
+
+    def test_user_receive_error_on_filtering_by_not_visible_for_him_object(self):
+        data = {'scope': structure_factories.ProjectFactory.get_url()}
+
+        self.client.force_authenticate(self.users['administrator'])
+        response = self.client.get(factories.PriceEstimateFactory.get_list_url(), data=data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 @ddt
@@ -103,12 +111,12 @@ class PriceEstimateCreateTest(test.APITransactionTestCase):
         self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
         self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
         self.project_group.projects.add(self.project)
-
-        cloud = iaas_factories.CloudFactory(customer=self.customer)
-        self.service_project_link = iaas_factories.CloudProjectMembershipFactory(project=self.project, cloud=cloud)
+        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        self.service_project_link = openstack_factories.OpenStackServiceProjectLinkFactory(
+            project=self.project, service=self.service)
 
         self.valid_data = {
-            'scope': iaas_factories.CloudProjectMembershipFactory.get_url(self.service_project_link),
+            'scope': openstack_factories.OpenStackServiceProjectLinkFactory.get_url(self.service_project_link),
             'total': 100,
             'details': {'ram': 50, 'disk': 50},
             'month': 7,
@@ -175,12 +183,12 @@ class PriceEstimateUpdateTest(test.APITransactionTestCase):
         self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
         self.project_group.projects.add(self.project)
 
-        cloud = iaas_factories.CloudFactory(customer=self.customer)
-        self.service_project_link = iaas_factories.CloudProjectMembershipFactory(project=self.project, cloud=cloud)
+        cloud = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        self.service_project_link = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project, cloud=cloud)
 
         self.price_estimate = factories.PriceEstimateFactory(scope=self.service_project_link)
         self.valid_data = {
-            'scope': iaas_factories.CloudProjectMembershipFactory.get_url(self.service_project_link),
+            'scope': openstack_factories.OpenStackServiceProjectLinkFactory.get_url(self.service_project_link),
             'total': 100,
             'details': {'ram': 50, 'disk': 50},
             'month': 7,
@@ -188,8 +196,8 @@ class PriceEstimateUpdateTest(test.APITransactionTestCase):
         }
 
     def test_price_estimate_scope_cannot_be_updated(self):
-        other_service_project_link = iaas_factories.CloudProjectMembershipFactory(project=self.project)
-        self.valid_data['scope'] = iaas_factories.CloudProjectMembershipFactory.get_url(
+        other_service_project_link = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project)
+        self.valid_data['scope'] = openstack_factories.OpenStackServiceProjectLinkFactory.get_url(
             other_service_project_link)
 
         self.client.force_authenticate(self.users['staff'])
@@ -226,8 +234,8 @@ class PriceEstimateDeleteTest(test.APITransactionTestCase):
         self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
         self.project_group.projects.add(self.project)
 
-        cloud = iaas_factories.CloudFactory(customer=self.customer)
-        self.service_project_link = iaas_factories.CloudProjectMembershipFactory(project=self.project, cloud=cloud)
+        cloud = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        self.service_project_link = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project, cloud=cloud)
 
         self.manual_link_price_estimate = factories.PriceEstimateFactory(
             scope=self.service_project_link, is_manually_input=True)

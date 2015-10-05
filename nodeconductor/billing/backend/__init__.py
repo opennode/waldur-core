@@ -3,12 +3,16 @@ import importlib
 
 from django.utils import six
 from django.conf import settings
-from django.core.files.base import ContentFile
+
 
 logger = logging.getLogger(__name__)
 
 
 class BillingBackendError(Exception):
+    pass
+
+
+class NotFoundBillingBackendError(BillingBackendError):
     pass
 
 
@@ -27,6 +31,7 @@ class BillingBackend(object):
                 "Dummy backend for billing is used, "
                 "set BILLING_DUMMY to False to disable dummy backend")
             self.api = DummyBillingAPI()
+            self.api_url = ':dummy:'
         elif not config:
             raise BillingBackendError(
                 "Can't find billing settings. "
@@ -45,21 +50,26 @@ class BillingBackend(object):
                 six.reraise(BillingBackendError, e)
             else:
                 self.api = backend_cls(**config)
+                self.api_url = config.get('api_url', ':unknown:')
 
     def __getattr__(self, name):
         return getattr(self.api, name)
 
+    def __repr__(self):
+        return 'Billing backend %s' % self.api_url
+
     def get_or_create_client(self):
-        if self.customer.billing_backend_id:
-            return self.customer.billing_backend_id
-
-        self.customer.billing_backend_id = self.api.add_client(
-            name=self.customer.name,
-            organization=self.customer.name,
-            email="%s@example.com" % self.customer.uuid  # XXX: a fake email address unique to a customer
-        )
-
-        self.customer.save(update_fields=['billing_backend_id'])
+        try:
+            client = self.api.get_client_by_uuid(self.customer.uuid.hex)
+            if self.customer.billing_backend_id != client['accountId']:
+                self.customer.billing_backend_id = client['accountId']
+                self.customer.save(update_fields=['billing_backend_id'])
+        except NotFoundBillingBackendError:
+            self.customer.billing_backend_id = self.api.add_client(
+                email="%s@example.com" % self.customer.uuid,  # XXX: a fake email address unique to a customer
+                name=self.customer.name,
+                uuid=self.customer.uuid.hex)
+            self.customer.save(update_fields=['billing_backend_id'])
 
         return self.customer.billing_backend_id
 
@@ -71,47 +81,46 @@ class BillingBackend(object):
         self.customer.save(update_fields=['balance'])
 
     def sync_invoices(self):
-        backend_id = self.get_or_create_client()
+        client_id = self.get_or_create_client()
 
         # Update or create invoices from backend
         cur_invoices = {i.backend_id: i for i in self.customer.invoices.all()}
-        for invoice in self.api.get_invoices(backend_id, with_pdf=True):
+        for invoice in self.api.get_invoices(client_id):
             cur_invoice = cur_invoices.pop(invoice['backend_id'], None)
             if cur_invoice:
                 cur_invoice.date = invoice['date']
                 cur_invoice.amount = invoice['amount']
-                cur_invoice.status = invoice['status']
                 cur_invoice.save(update_fields=['date', 'amount'])
             else:
                 cur_invoice = self.customer.invoices.create(
                     backend_id=invoice['backend_id'],
                     date=invoice['date'],
-                    amount=invoice['amount'],
-                    status=invoice['status']
-                )
+                    amount=invoice['amount'])
 
-            if 'pdf' in invoice:
-                cur_invoice.pdf.delete()
-                cur_invoice.pdf.save('Invoice-%d.pdf' % cur_invoice.uuid, ContentFile(invoice['pdf']))
-                cur_invoice.save(update_fields=['pdf'])
+            cur_invoice.generate_pdf(invoice)
+            cur_invoice.generate_usage_pdf(invoice)
 
         # Remove stale invoices
         map(lambda i: i.delete(), cur_invoices.values())
 
-    def get_invoice_items(self, invoice_id):
-        return self.api.get_invoice_items(invoice_id)
-
-    def add_order(self, resource_content_type,  name='', **options):
+    def subscribe(self, resource):
         client_id = self.get_or_create_client()
-        return self.api.add_order(resource_content_type, client_id, name, **options)
+        resource.billing_backend_id = self.api.add_subscription(client_id, resource)
+        resource.save(update_fields=['billing_backend_id'])
 
-    def update_order(self, backend_resource_id, backend_template_id, **options):
-        client_id = self.get_or_create_client()
-        return self.api.update_order(client_id, backend_resource_id, backend_template_id, **options)
+    def terminate(self, resource):
+        self.api.del_subscription(resource.billing_backend_id)
+        resource_model = resource.__class__
+        if resource_model.objects.filter(pk=resource.pk).exists():
+            resource.billing_backend_id = ''
+            resource.save(update_fields=['billing_backend_id'])
 
-    def get_total_cost_of_active_products(self):
+    def add_usage_data(self, resource, usage_data):
+        self.api.add_usage(resource.billing_backend_id, usage_data)
+
+    def get_invoice_estimate(self, resource):
         client_id = self.get_or_create_client()
-        return self.api.get_total_cost_of_active_products(client_id)
+        return self.api.get_dry_invoice(client_id, resource.billing_backend_id)
 
 
 class DummyBillingAPI(object):

@@ -31,13 +31,13 @@ def update_instance_sla(sla_type):
     if sla_type == 'yearly':
         period = dt.year
         start_time = int(datetime.datetime.strptime('01/01/%s' % dt.year, '%d/%m/%Y').strftime("%s"))
-        end_time = int(datetime.datetime.strptime('01/01/%s' % (dt.year + 1), '%d/%m/%Y').strftime("%s"))
     else:  # it's a monthly SLA update
         period = '%s-%s' % (dt.year, dt.month)
         month_start = datetime.datetime.strptime('01/%s/%s' % (dt.month, dt.year),
                                                     '%d/%m/%Y')
         start_time = int(month_start.strftime("%s"))
-        end_time = int(add_months(month_start, 1).strftime("%s"))
+
+    end_time = int(dt.strftime("%s"))
 
     instances = Instance.objects.exclude(state__in=[
         Instance.States.DELETING,

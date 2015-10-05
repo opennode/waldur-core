@@ -1,12 +1,12 @@
 
 from django.core.management.base import BaseCommand
 
-from nodeconductor.billing.models import PriceList, Invoice
+from nodeconductor.billing.models import Invoice
 from nodeconductor.structure.models import Customer
 
 
 class Command(BaseCommand):
-    help = 'Create dummy invoices & pricelist'
+    help = 'Create dummy invoices & price list'
 
     def handle(self, *args, **options):
         invoices = (
@@ -16,18 +16,6 @@ class Command(BaseCommand):
             {'date': '2014-10-17', 'amount': 2.45},
             {'date': '2014-10-21', 'amount': 10.00},
         )
-
-        pricelist = {
-            'cpu_hours': 1000,
-            'ram_gb': 500,
-            'storage_gb': 300,
-            'server_num': 700,
-        }
-
-        cur_prices = set(p.name for p in PriceList.objects.all())
-        for name, price in pricelist.items():
-            if name not in cur_prices:
-                PriceList.objects.create(name=name, price=price)
 
         customer = Customer.objects.first()
         if customer:

@@ -1,7 +1,12 @@
 from django.db import models
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.utils.encoding import python_2_unicode_compatible
+from model_utils import FieldTracker
 
+from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
+from nodeconductor.quotas.models import QuotaModelMixin
+from nodeconductor.iaas.models import PaidInstance, SecurityGroupRuleValidationMixin
 from nodeconductor.logging.log import LoggableMixin
 
 
@@ -15,16 +20,23 @@ class OpenStackService(structure_models.Service):
         return self.settings.backend_url
 
 
-class OpenStackServiceProjectLink(LoggableMixin, structure_models.ServiceProjectLink):
+class OpenStackServiceProjectLink(QuotaModelMixin, structure_models.ServiceProjectLink):
+    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances', 'security_group_count', 'security_group_rule_count',
+                    'floating_ip_count']
+
     service = models.ForeignKey(OpenStackService)
 
     tenant_id = models.CharField(max_length=64, blank=True)
     internal_network_id = models.CharField(max_length=64, blank=True)
+    external_network_id = models.CharField(max_length=64, blank=True)
 
     availability_zone = models.CharField(
         max_length=100, blank=True,
         help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
     )
+
+    class Meta:
+        unique_together = ('service', 'project')
 
     @property
     def cloud(self):
@@ -44,9 +56,6 @@ class OpenStackServiceProjectLink(LoggableMixin, structure_models.ServiceProject
     def get_quota_parents(self):
         return [self.project]
 
-    def get_log_fields(self):
-        return ('project', 'cloud',)
-
     def get_backend(self):
         return super(OpenStackServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)
 
@@ -62,7 +71,70 @@ class Image(structure_models.ServiceProperty):
     min_ram = models.PositiveIntegerField(default=0, help_text='Minimum memory size in MiB')
 
 
-class Instance(LoggableMixin, structure_models.VirtualMachineMixin, structure_models.Resource):
+@python_2_unicode_compatible
+class SecurityGroup(core_models.UuidMixin,
+                    core_models.NameMixin,
+                    core_models.DescribableMixin,
+                    core_models.SynchronizableMixin):
+
+    class Permissions(object):
+        customer_path = 'service_project_link__project__customer'
+        project_path = 'service_project_link__project'
+        project_group_path = 'service_project_link__project__project_groups'
+
+    service_project_link = models.ForeignKey(
+        OpenStackServiceProjectLink, related_name='security_groups')
+
+    backend_id = models.CharField(max_length=128, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+@python_2_unicode_compatible
+class SecurityGroupRule(SecurityGroupRuleValidationMixin, models.Model):
+    TCP = 'tcp'
+    UDP = 'udp'
+    ICMP = 'icmp'
+
+    CHOICES = (
+        (TCP, 'tcp'),
+        (UDP, 'udp'),
+        (ICMP, 'icmp'),
+    )
+
+    security_group = models.ForeignKey(SecurityGroup, related_name='rules')
+    protocol = models.CharField(max_length=4, blank=True, choices=CHOICES)
+    from_port = models.IntegerField(validators=[MaxValueValidator(65535)], null=True)
+    to_port = models.IntegerField(validators=[MaxValueValidator(65535)], null=True)
+    cidr = models.CharField(max_length=32, blank=True)
+
+    backend_id = models.CharField(max_length=128, blank=True)
+
+    def __str__(self):
+        return '%s (%s): %s (%s -> %s)' % \
+               (self.security_group, self.protocol, self.cidr, self.from_port, self.to_port)
+
+
+class FloatingIP(core_models.UuidMixin):
+
+    class Permissions(object):
+        customer_path = 'service_project_link__project__customer'
+        project_path = 'service_project_link__project'
+        project_group_path = 'service_project_link__project__project_groups'
+
+    service_project_link = models.ForeignKey(
+        OpenStackServiceProjectLink, related_name='floating_ips')
+
+    address = models.GenericIPAddressField(protocol='IPv4')
+    status = models.CharField(max_length=30)
+    backend_id = models.CharField(max_length=255)
+    backend_network_id = models.CharField(max_length=255, editable=False)
+
+    tracker = FieldTracker()
+
+
+class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, PaidInstance):
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
     service_project_link = models.ForeignKey(
@@ -78,6 +150,8 @@ class Instance(LoggableMixin, structure_models.VirtualMachineMixin, structure_mo
     data_volume_size = models.PositiveIntegerField(
         default=DEFAULT_DATA_VOLUME_SIZE, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
 
+    tracker = FieldTracker()
+
     @property
     def cloud_project_membership(self):
         # Temporary backward compatibility
@@ -88,3 +162,12 @@ class Instance(LoggableMixin, structure_models.VirtualMachineMixin, structure_mo
             'uuid', 'name', 'type', 'service_project_link', 'ram', 'cores',
             'data_volume_size', 'system_volume_size',
         )
+
+
+class InstanceSecurityGroup(models.Model):
+    class Permissions(object):
+        project_path = 'instance__project'
+        project_group_path = 'instance__project__project_groups'
+
+    instance = models.ForeignKey(Instance, related_name='security_groups')
+    security_group = models.ForeignKey(SecurityGroup, related_name='instance_groups')

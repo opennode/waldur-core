@@ -4,8 +4,8 @@ from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.cost_tracking import models, CostConstants
-from nodeconductor.oracle import models as oracle_models
-from nodeconductor.oracle.tests import factories as oracle_factories
+from nodeconductor.openstack import models as openstack_models
+from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -36,7 +36,7 @@ class AbstractPriceListItemFactory(factory.DjangoModelFactory):
         abstract = True
 
     resource_content_type = factory.LazyAttribute(
-        lambda _: ContentType.objects.get_for_model(oracle_models.Database))
+        lambda _: ContentType.objects.get_for_model(openstack_models.Instance))
 
     key = factory.Sequence(lambda n: 'price list item %s' % n)
     value = factory.Iterator([10, 100, 1000, 10000, 1313, 13])
@@ -48,7 +48,7 @@ class PriceListItemFactory(AbstractPriceListItemFactory):
     class Meta(object):
         model = models.PriceListItem
 
-    service = factory.SubFactory(oracle_factories.OracleServiceFactory)
+    service = factory.SubFactory(openstack_factories.OpenStackServiceFactory)
 
     @classmethod
     def get_list_url(self):

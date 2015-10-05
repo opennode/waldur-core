@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from datetime import datetime, timedelta
+import logging
 import pytz
 
 from croniter.croniter import croniter
@@ -18,6 +19,8 @@ from nodeconductor.core import fields as core_fields
 from nodeconductor.backup import managers, exceptions, utils
 from nodeconductor.logging.log import LoggableMixin
 
+
+logger = logging.getLogger(__name__)
 
 class BackupSourceAbstractModel(models.Model):
     """
@@ -41,7 +44,8 @@ class BackupSchedule(core_models.UuidMixin,
     Model representing a backup schedule for a generic object.
     """
     # backup specific settings
-    retention_time = models.PositiveIntegerField(help_text='Retention time in days')
+    retention_time = models.PositiveIntegerField(
+        help_text='Retention time in days')  # if 0 - backup will be kept forever
     maximal_number_of_backups = models.PositiveSmallIntegerField()
     schedule = core_fields.CronScheduleField(max_length=15)
     next_trigger_at = models.DateTimeField(null=True)
@@ -62,14 +66,29 @@ class BackupSchedule(core_models.UuidMixin,
         base_time = datetime.now(pytz.timezone(self.timezone))
         self.next_trigger_at = croniter(self.schedule, base_time).get_next(datetime)
 
+    def _check_backup_source_state(self):
+        """
+        Backup source should be stable state.
+        """
+        state = self.backup_source.state
+        if state not in self.backup_source.States.STABLE_STATES:
+            logger.warning('Cannot execute backup schedule for %s in state %s.' % (self.backup_source, state))
+            return False
+
+        return True
+
     def _create_backup(self):
         """
         Creates new backup based on schedule and starts backup process
         """
+        if not self._check_backup_source_state():
+            return
+
+        kept_until = django_timezone.now() + timedelta(days=self.retention_time) if self.retention_time else None
         backup = Backup.objects.create(
             backup_schedule=self,
             backup_source=self.backup_source,
-            kept_until=django_timezone.now() + timedelta(days=self.retention_time),
+            kept_until=kept_until,
             description='scheduled backup')
         backup.start_backup()
         return backup
@@ -286,7 +305,3 @@ class BackupStrategy(object):
     def delete(cls, backup_source, metadata):
         raise NotImplementedError(
             'Implement delete() that would perform backup of a model.')
-
-    @classmethod
-    def update_order(cls, backup_source, active_backups_qs):
-        pass

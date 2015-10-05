@@ -1,5 +1,9 @@
 from __future__ import unicode_literals
 
+import copy
+
+from django.conf import settings
+from django.test.utils import override_settings
 from rest_framework import test, status
 
 
@@ -119,3 +123,9 @@ class ListPermissionsTest(test.APITransactionTestCase):
             for actual, expected in zip(response.data, expected_results):
                 for key, value in expected.iteritems():
                     self.assertEqual(actual[key], value)
+
+
+def override_nodeconductor_settings(**kwargs):
+    nc_settings = copy.deepcopy(settings.NODECONDUCTOR)
+    nc_settings.update(kwargs)
+    return override_settings(NODECONDUCTOR=nc_settings)

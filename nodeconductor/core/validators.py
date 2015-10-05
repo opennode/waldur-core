@@ -8,4 +8,4 @@ def validate_cron_schedule(value):
         base_time = timezone.now()
         croniter(value, base_time)
     except (KeyError, ValueError) as e:
-        raise ValidationError(e.message)
+        raise ValidationError(str(e))

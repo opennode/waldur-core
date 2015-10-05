@@ -1,8 +1,7 @@
 import logging
 
 from nodeconductor.billing.log import event_logger
-from nodeconductor.billing.backend import BillingBackendError
-from nodeconductor.cost_tracking import models
+from nodeconductor.billing.models import PaidResource
 
 
 logger = logging.getLogger('nodeconductor.billing')
@@ -35,37 +34,34 @@ def log_invoice_delete(sender, instance, **kwargs):
 
 
 def track_order(sender, instance, name=None, source=None, **kwargs):
-    if not issubclass(instance.__class__, models.PaidResource):
-        return
-
-    order = instance.order
-    try:
-        if name == instance.begin_provisioning.__name__:
-            order.add()
-
-        if name == instance.set_online.__name__:
-            if source == instance.States.PROVISIONING:
-                order.accept()
-            if source == instance.States.STARTING:
-                order.update(flavor=instance.flavor_name)
-
-        if name == instance.set_offline.__name__:
-            if source == instance.States.STOPPING:
-                order.update(flavor=None)
-
-        if name == instance.set_erred.__name__:
-            if source == instance.States.PROVISIONING:
-                order.cancel()
-
-        if name == instance.set_resized.__name__:
-            order.update(flavor=None)
-
-    except BillingBackendError:
-        logger.exception("Failed to track order for resource %s" % instance)
-        instance.state = instance.States.ERRED
-        instance.save()
+    if source == instance.States.PROVISIONING and name == instance.set_online.__name__:
+        instance.order.subscribe()
 
 
-def cancel_purchase(sender, instance=None, **kwargs):
-    if issubclass(instance.__class__, models.PaidResource):
-        instance.order.cancel_purchase()
+def terminate_purchase(sender, instance=None, **kwargs):
+    instance.order.terminate()
+
+
+def update_resource_name(sender, instance, created=False, **kwargs):
+    if not created and instance.billing_backend_id and instance.name != instance._old_values['name']:
+        instance.order.backend.update_subscription_fields(
+            instance.billing_backend_id,
+            resource_name=instance.name)
+
+
+def update_project_name(sender, instance, created=False, **kwargs):
+    if not created and instance.tracker.has_changed('name'):
+        for model in PaidResource.get_all_models():
+            for resource in model.objects.filter(project=instance):
+                resource.order.backend.update_subscription_fields(
+                    resource.billing_backend_id,
+                    project_name=resource.project.full_name)
+
+
+def update_project_group_name(sender, instance, created=False, **kwargs):
+    if not created and instance.tracker.has_changed('name'):
+        for model in PaidResource.get_all_models():
+            for resource in model.objects.filter(project__project_groups=instance):
+                resource.order.backend.update_subscription_fields(
+                    resource.billing_backend_id,
+                    project_name=resource.project.full_name)

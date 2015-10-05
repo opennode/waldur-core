@@ -68,7 +68,7 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
                 params.setlist(order_by_field, ordering)
             else:
                 params = request.query_params
-
+            # pass request as parameter to filter class if it expects such argument
             return filter_class(params, queryset=queryset).qs
 
         return queryset
@@ -90,6 +90,48 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
             return '-' + ordering
 
         return ordering
+
+
+class GenericKeyFilterBackend(filters.DjangoFilterBackend):
+    """
+    Backend for filtering by backend field.
+
+    Methods 'get_related_models' and 'get_field_name' has to be implemented.
+    Example:
+
+        class AlertScopeFilterBackend(core_filters.GenericKeyFilterBackend):
+
+            def get_related_models(self):
+                return utils.get_loggable_models()
+
+            def get_field_name(self):
+                return 'scope'
+    """
+    content_type_field = 'content_type'
+    object_id_field = 'object_id'
+
+    def get_related_models(self):
+        """ Return all models that are acceptable as filter argument """
+        raise NotImplementedError
+
+    def get_field_name(self):
+        """ Get name of filter field name in request """
+        raise NotImplementedError
+
+    def get_field_value(self, request):
+        field_name = self.get_field_name()
+        return request.query_params.get(field_name)
+
+    def filter_queryset(self, request, queryset, view):
+        value = self.get_field_value(request)
+        if value:
+            field = core_serializers.GenericRelatedField(related_models=self.get_related_models())
+            # Trick to set field context without serializer
+            field._context = {'request': request}
+            obj = field.to_internal_value(value)
+            ct = ContentType.objects.get_for_model(obj)
+            return queryset.filter(**{self.object_id_field: obj.id, self.content_type_field: ct})
+        return queryset
 
 
 class MappedChoiceFilter(django_filters.ChoiceFilter):
@@ -118,42 +160,20 @@ class MappedChoiceFilter(django_filters.ChoiceFilter):
 class URLFilter(django_filters.CharFilter):
     """ Filter by hyperlinks. ViewSet name must be supplied in order to validate URL. """
 
-    def __init__(self, viewset=None, **kwargs):
+    def __init__(self, view_name, lookup_field='uuid', **kwargs):
         super(URLFilter, self).__init__(**kwargs)
-        self.viewset = viewset
+        self.view_name = view_name
+        self.lookup_field = lookup_field
 
     def filter(self, qs, value):
         uuid = ''
         path = urlparse(value).path
         if path.startswith('/'):
             url = resolve(path)
-            if url.func.cls is self.viewset:
-                pk_name = getattr(url.func.cls, 'lookup_field', 'pk')
-                uuid = url.kwargs.get(pk_name)
+            if url.func.url_name == self.view_name:
+                uuid = url.kwargs.get(self.lookup_field)
 
         return super(URLFilter, self).filter(qs, uuid)
-
-
-class GenericKeyFilter(django_filters.CharFilter):
-    """
-    Filter by generic key.
-
-    Filter analog for GenericRelatedField.
-    """
-
-    def __init__(self, content_type_field='content_type', object_id_field='object_id', related_models=(), **kwargs):
-        super(GenericKeyFilter, self).__init__(**kwargs)
-        self.content_type_field = content_type_field
-        self.object_id_field = object_id_field
-        self.related_models = related_models
-
-    def filter(self, qs, value):
-        if value:
-            field = core_serializers.GenericRelatedField(related_models=self.related_models)
-            obj = field.to_internal_value(value)
-            ct = ContentType.objects.get_for_model(obj)
-            return qs.filter(**{self.object_id_field: obj.id, self.content_type_field: ct})
-        return qs
 
 
 class TimestampFilter(django_filters.NumberFilter):
@@ -168,8 +188,39 @@ class TimestampFilter(django_filters.NumberFilter):
         return qs
 
 
+class CategoryFilter(django_filters.CharFilter):
+    """
+    Filters queryset by category names.
+    If category name does not match, it will work as CharFilter.
+
+    :param categories: dictionary of category names as keys and category elements as values.
+    """
+    def __init__(self, categories, **kwargs):
+        super(CategoryFilter, self).__init__(**kwargs)
+        self.categories = categories
+
+    def filter(self, qs, value):
+        if value in self.categories.keys():
+            return qs.filter(**{'%s__in' % self.name: self.categories[value]})
+
+        return super(CategoryFilter, self).filter(qs, value)
+
+
 class StaffOrUserFilter(object):
     def filter_queryset(self, request, queryset, view):
         if request.user.is_staff:
             return queryset
         return queryset.filter(user=request.user)
+
+
+class ContentTypeFilter(django_filters.CharFilter):
+
+    def filter(self, qs, value):
+        if value:
+            try:
+                app_label, model = value.split('.')
+                ct = ContentType.objects.get(app_label=app_label, model=model)
+                return super(ContentTypeFilter, self).filter(qs, ct)
+            except (ContentType.DoesNotExist, ValueError):
+                return qs.none()
+        return qs

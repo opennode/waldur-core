@@ -4,7 +4,7 @@ Quotas application
 Overview
 --------
 
-``quotas`` - django application, that provides implementation of per object resource limits and usages.
+``quotas`` - Django application that provides implementation of per object resource limits and usages.
 
 
 Base model with quotas
@@ -29,8 +29,9 @@ quotas names. Also ``add_quotas_to_scope`` handler has to be connected to object
             dispatch_uid='nodeconductor.myapp.handlers.add_quotas_to_mymodel',
         )
 
-Notice: quotas can be created only in ``add_quotas_to_scope`` handler. They can not be added anywhere else in the code.
-This guarantee that objects of the same model will have same quotas.
+
+Note that quotas can only be created in ``add_quotas_to_scope`` handler. They can not be added anywhere else in the code.
+This assures that objects of the same model will have the same quotas.
 
 
 Change object quotas usage and limit
@@ -104,5 +105,13 @@ Ordering can be done only by one quota at a time.
 QuotaInline for admin models
 ----------------------------
 
-``quotas.admin`` contains generic inline model``QuotaInline``, which can be used for as inline model for any quota
+``quotas.admin`` contains generic inline model``QuotaInline``, which can be used as inline model for any quota
 scope.
+
+
+Global count quotas for models
+------------------------------
+
+Global count quota - quota without scope that stores information about count of all model instances.
+To create new global quota - add field GLOBAL_COUNT_QUOTA_NAME = '<quota name>' to model.
+(Please use prefix <nc_global> for global quotas names)

@@ -1,14 +1,14 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.translation import ungettext, gettext
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
-from nodeconductor.quotas.admin import QuotaInline
-from nodeconductor.structure.admin import ProtectedModelMixin
 from nodeconductor.iaas import models
 from nodeconductor.iaas import tasks
+from nodeconductor.quotas.admin import QuotaInline
+from nodeconductor.structure.admin import ProtectedModelMixin
 
 
 # Inspired by Django Snippet https://djangosnippets.org/snippets/2629/
@@ -89,7 +89,8 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     search_fields = ('cloud__customer__name', 'project__name', 'cloud__name')
     inlines = [QuotaInline]
 
-    actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships', 'detect_external_networks']
+    actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships',
+               'detect_external_networks', 'allocate_floating_ip']
 
     def get_queryset(self, request):
         queryset = super(CloudProjectMembershipAdmin, self).get_queryset(request)
@@ -168,6 +169,28 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
 
     detect_external_networks.short_description = "Attempt to lookup and set external network id of the connected router"
 
+    def allocate_floating_ip(self, request, queryset):
+        queryset = queryset.exclude(state=SynchronizationStates.ERRED).exclude(external_network_id='')
+
+        tasks_scheduled = 0
+
+        for membership in queryset.iterator():
+            tasks.allocate_floating_ip.delay(membership.pk)
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'One cloud project membership scheduled for floating IP allocation',
+            '%(tasks_scheduled)d cloud project memberships scheduled for floating IP allocation',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    allocate_floating_ip.short_description = "Allocate floating IPs for selected cloud project memberships"
+
     def get_cloud_name(self, obj):
         return obj.cloud.name
 
@@ -203,7 +226,7 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
     search_fields = ['name', 'uuid']
     list_filter = ['state', 'cloud_project_membership__project', 'template']
 
-    actions = ['pull_installation_state']
+    actions = ['pull_installation_state', 'subscribe']
 
     fieldsets = (
         (_('General'), {'fields': ('name', 'description', 'cloud_project_membership')}),
@@ -213,10 +236,8 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
         (_('Access configuration'), {'fields': ('key_name', 'key_fingerprint')}),
         (_('Network configuration'), {'fields': ('internal_ips', 'external_ips')}),
         (_('Deployment settings'), {'fields': ('template', 'type', 'agreed_sla', 'user_data')}),
-        (_('Backend connections'), {'fields': ('backend_id', 'billing_backend_id', 'billing_backend_template_id', 'billing_backend_purchase_order_id')}),
-
+        (_('Billing'), {'fields': ('billing_backend_id',)}),
     )
-
 
     def get_project_name(self, obj):
         return obj.cloud_project_membership.project.name
@@ -247,6 +268,33 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
 
     pull_installation_state.short_description = "Pull Installation state"
 
+    def subscribe(self, request, queryset):
+        erred_instances = []
+        subscribed_instances = []
+        for instance in queryset:
+            is_subscribed, _ = instance.order.subscribe()
+            if is_subscribed:
+                subscribed_instances.append(instance)
+            else:
+                erred_instances.append(instance)
+
+        if subscribed_instances:
+            subscribed_instances_count = len(subscribed_instances)
+            message = ungettext(
+                'One instance subscribed',
+                '%(subscribed_instances_count)d instances subscribed',
+                subscribed_instances_count
+            )
+            message = message % {'subscribed_instances_count': subscribed_instances_count}
+            self.message_user(request, message)
+
+        if erred_instances:
+            message = gettext('Failed to subscribe instances: %(erred_instances)s')
+            message = message % {'erred_instances': ', '.join([i.name for i in erred_instances])}
+            self.message_user(request, message, level=messages.ERROR)
+
+    subscribe.short_description = "Subscribe to billing backend"
+
 
 class ImageInline(ReadonlyInlineMixin, admin.TabularInline):
     model = models.Image
@@ -276,7 +324,8 @@ class LicenseInlineFormSet(forms.models.BaseInlineFormSet):
         licenses = {}
         for form in self.forms:
             license = form.cleaned_data.get('templatelicense')
-            if license:
+            del_key = form.add_prefix('DELETE')
+            if license and del_key not in form.data:
                 licenses.setdefault(license.service_type, [])
                 licenses[license.service_type].append(license)
 
@@ -344,6 +393,7 @@ class InstanceSlaHistoryAdmin(admin.ModelAdmin):
 
 class FloatingIPAdmin(admin.ModelAdmin):
     list_display = ('cloud_project_membership', 'address', 'status')
+    readonly_fields = ('backend_network_id',)
 
 
 admin.site.register(models.Cloud, CloudAdmin)

@@ -16,7 +16,7 @@ Filtering of customer list is supported through HTTP query parameters, the follo
   'project_group_name', 'cloud_account_name', 'project_name'
 - ?scope=<URL> - url of object that is connected to event
 - ?scope_type=<string> - name of scope type of object that is connected to event (Ex.: project, customer...)
-
+- ?exclude_features=<feature> (can be list) - exclude event from output if it's type corresponds to one of listed features
 
 Events count
 ------------
@@ -87,6 +87,7 @@ Request should contain fields:
 When hook is activated, POST request is issued against destination URL with the following data:
 
 .. code-block:: javascript
+
     {
         "timestamp": "2015-07-14T12:12:56.000000",
         "message": "Customer ABC LLC has been updated.",
@@ -116,6 +117,7 @@ Request should contain fields:
 Example of a request:
 
 .. code-block:: javascript
+
     {
         "events": [
             "iaas_instance_start_succeeded"
@@ -126,6 +128,7 @@ Example of a request:
 You may temporarily disable hook without deleting it by issuing following PATCH request against hook URL:
 
 .. code-block:: javascript
+
     {
         "is_active": "false"
     }

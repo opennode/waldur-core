@@ -1,18 +1,19 @@
 from __future__ import unicode_literals
-
 import logging
 
 from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.db import models
-from django.utils.lru_cache import lru_cache
 
 from nodeconductor.core.serializers import UnboundSerializerMethodField
-from nodeconductor.structure.filters import filter_queryset_for_user
+from nodeconductor.iaas.models import SecurityGroup, SecurityGroupRule
+from nodeconductor.quotas import handlers as quotas_handlers
+from nodeconductor.structure.managers import filter_queryset_for_user
 
 
-logger = logging.getLogger('nodeconductor.iaas')
+logger = logging.getLogger(__name__)
 
 
 def filter_clouds(clouds, request):
@@ -35,106 +36,43 @@ def add_clouds_to_related_model(sender, fields, **kwargs):
     fields['clouds'] = UnboundSerializerMethodField(filter_clouds)
 
 
-@lru_cache(maxsize=1)
-def _get_default_security_groups():
-    nc_settings = getattr(settings, 'NODECONDUCTOR', {})
-    config_groups = nc_settings.get('DEFAULT_SECURITY_GROUPS', [])
-    groups = []
-
-    def get_icmp(config_rule, key):
-        result = config_rule[key]
-
-        if not isinstance(result, (int, long)):
-            raise TypeError('wrong type for "%s": expected int, found %s' %
-                            (key, type(result).__name__))
-
-        if not -1 <= result <= 255:
-            raise ValueError('wrong value for "%s": '
-                             'expected value in range [-1, 255], found %d' %
-                             key, result)
-
-        return result
-
-    def get_port(config_rule, key):
-        result = config_rule[key]
-
-        if not isinstance(result, (int, long)):
-            raise TypeError('wrong type for "%s": expected int, found %s' %
-                            (key, type(result).__name__))
-
-        if not 1 <= result <= 65535:
-            raise ValueError('wrong value for "%s": '
-                             'expected value in range [1, 65535], found %d' %
-                             (key, result))
-
-        return result
-
-    for config_group in config_groups:
-        try:
-            name = config_group['name']
-            description = config_group['description']
-            config_rules = config_group['rules']
-            if not isinstance(config_rules, (tuple, list)):
-                raise TypeError('wrong type for "rules": expected list, found %s' %
-                                type(config_rules).__name__)
-
-            rules = []
-            for config_rule in config_rules:
-                protocol = config_rule['protocol']
-                if protocol == 'icmp':
-                    from_port = get_icmp(config_rule, 'icmp_type')
-                    to_port = get_icmp(config_rule, 'icmp_code')
-                elif protocol in ('tcp', 'udp'):
-                    from_port = get_port(config_rule, 'from_port')
-                    to_port = get_port(config_rule, 'to_port')
-
-                    if to_port < from_port:
-                        raise ValueError('wrong value for "to_port": '
-                                         'expected value less that from_port (%d), found %d' %
-                                         (from_port, to_port))
-                else:
-                    raise ValueError('wrong value for "protocol": '
-                                     'expected one of (tcp, udp, icmp), found %s' %
-                                     protocol)
-
-                rules.append({
-                    'protocol': protocol,
-                    'cidr': config_rule['cidr'],
-                    'from_port': from_port,
-                    'to_port': to_port,
-                })
-        except KeyError as e:
-            logger.error('Skipping misconfigured security group: parameter "%s" not found',
-                         e.message)
-        except (ValueError, TypeError) as e:
-            logger.error('Skipping misconfigured security group: %s',
-                         e.message)
-        else:
-            groups.append({
-                'name': name,
-                'description': description,
-                'rules': rules,
-            })
-
-    return groups
-
-
 def create_initial_security_groups(sender, instance=None, created=False, **kwargs):
     if not created:
         return
 
-    from nodeconductor.iaas.models import SecurityGroup
+    nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+    config_groups = nc_settings.get('DEFAULT_SECURITY_GROUPS', [])
 
-    for group in _get_default_security_groups():
-        g = SecurityGroup.objects.create(
-            name=group['name'],
-            description=group['description'],
+    for group in config_groups:
+        sg_name = group.get('name')
+        if sg_name in (None, ''):
+            logger.error('Skipping misconfigured security group: parameter "name" not found or is empty.')
+            continue
+
+        rules = group.get('rules')
+        if type(rules) not in (list, tuple):
+            logger.error('Skipping misconfigured security group: parameter "rules" should be list or tuple.')
+            continue
+
+        sg_description = group.get('description', None)
+        sg = SecurityGroup.objects.get_or_create(
             cloud_project_membership=instance,
-        )
+            description=sg_description,
+            name=sg_name)[0]
 
-        for rule in group['rules']:
-            g.rules.create(**rule)
+        for rule in rules:
+            if 'icmp_type' in rule:
+                rule['from_port'] = rule.pop('icmp_type')
+            if 'icmp_code' in rule:
+                rule['to_port'] = rule.pop('icmp_code')
 
+            try:
+                rule = SecurityGroupRule(group=sg, **rule)
+                rule.full_clean()
+            except ValidationError as e:
+                logger.error('Failed to create rule for security group %s: %s.' % (sg_name, e))
+            else:
+                rule.save()
 
 def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwargs):
     from nodeconductor.backup.models import Backup
@@ -169,7 +107,6 @@ def check_instance_name_update(sender, instance=None, created=False, **kwargs):
         zabbix_update_host_visible_name.delay(instance.uuid.hex)
 
 
-# This signal has to be connected to all resources (NC-634)
 def increase_quotas_usage_on_instance_creation(sender, instance=None, created=False, **kwargs):
     if created:
         instance.service_project_link.add_quota_usage('max_instances', 1)
@@ -185,3 +122,9 @@ def decrease_quotas_usage_on_instances_deletion(sender, instance=None, **kwargs)
     instance.service_project_link.add_quota_usage('ram', -instance.ram)
     instance.service_project_link.add_quota_usage(
         'storage', -(instance.system_volume_size + instance.data_volume_size))
+
+
+change_customer_nc_service_quota = quotas_handlers.quantity_quota_handler_factory(
+    path_to_quota_scope='customer',
+    quota_name='nc_service_count',
+)

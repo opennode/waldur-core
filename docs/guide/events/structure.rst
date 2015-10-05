@@ -69,3 +69,32 @@ Structure events
 
     **role_revoked**
         User has lost role.
+
+------------
+
+.. glossary::
+
+    **resource_imported**
+        Existing resource has been imported from service to project.
+
+    **resource_created**
+        New resource has been created.
+
+    **resource_deleted**
+        Resource has been deleted.
+
+------------
+
+.. glossary::
+
+    **ssh_key_push_succeeded**
+        SSH key has been pushed to service.
+
+    **ssh_key_push_failed**
+        Failed to push SSH key to service.
+
+    **ssh_key_remove_succeeded**
+        SSH key has been removed from service.
+
+    **ssh_key_remove_failed**
+        Failed to delete SSH key from service.

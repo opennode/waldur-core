@@ -1,7 +1,13 @@
+import logging
+
 from celery import shared_task
 
 from nodeconductor.core.tasks import transition, throttle
-from nodeconductor.openstack.models import Instance
+from nodeconductor.openstack.backend import OpenStackBackendError
+from nodeconductor.openstack.models import OpenStackServiceProjectLink, Instance, SecurityGroup
+
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(name='nodeconductor.openstack.provision')
@@ -14,17 +20,11 @@ def provision(instance_uuid, **kwargs):
 
 
 @shared_task(name='nodeconductor.openstack.destroy')
-@transition(Instance, 'begin_deleting')
 def destroy(instance_uuid, transition_entity=None):
-    instance = transition_entity
-    try:
-        backend = instance.get_backend()
-        backend._old_backend.delete_instance(instance)
-    except:
-        set_erred(instance_uuid)
-        raise
-    else:
-        instance.delete()
+    destroy_instance.apply_async(
+        args=(instance_uuid,),
+        link=delete.si(instance_uuid),
+        link_error=set_erred.si(instance_uuid))
 
 
 @shared_task(name='nodeconductor.openstack.start')
@@ -49,6 +49,79 @@ def restart(instance_uuid):
         args=(instance_uuid,),
         link=set_online.si(instance_uuid),
         link_error=set_erred.si(instance_uuid))
+
+
+@shared_task(name='nodeconductor.openstack.sync_instance_security_groups')
+def sync_instance_security_groups(instance_uuid):
+    instance = Instance.objects.get(uuid=instance_uuid)
+    backend = instance.get_backend()
+    backend.sync_instance_security_groups(instance)
+
+
+@shared_task(name='nodeconductor.openstack.sync_security_group')
+@transition(SecurityGroup, 'begin_syncing')
+def sync_security_group(security_group_uuid, action, transition_entity=None):
+    security_group = transition_entity
+    backend = security_group.service_project_link.get_backend()
+
+    @transition(SecurityGroup, 'set_in_sync')
+    def succeeded(security_group_uuid, transition_entity=None):
+        pass
+
+    @transition(SecurityGroup, 'set_erred')
+    def failed(security_group_uuid, transition_entity=None):
+        pass
+
+    try:
+        func = getattr(backend, '%s_security_group' % action)
+        func(security_group)
+    except:
+        failed(security_group_uuid)
+        raise
+    else:
+        if action == 'delete':
+            security_group.delete()
+        else:
+            succeeded(security_group_uuid)
+
+
+@shared_task(name='nodeconductor.openstack.sync_external_network')
+def sync_external_network(service_project_link_str, action, data=()):
+    service_project_link = next(OpenStackServiceProjectLink.from_string(service_project_link_str))
+    backend = service_project_link.get_backend()
+
+    try:
+        func = getattr(backend, '%s_external_network' % action)
+        func(service_project_link, **data)
+    except OpenStackBackendError:
+        logger.warning(
+            "Failed to %s external network for service project link %s.",
+            action, service_project_link_str)
+
+
+@shared_task(name='nodeconductor.openstack.allocate_floating_ip')
+def allocate_floating_ip(service_project_link_str):
+    service_project_link = next(OpenStackServiceProjectLink.from_string(service_project_link_str))
+    backend = service_project_link.get_backend()
+
+    try:
+        backend.allocate_floating_ip_address(service_project_link)
+    except OpenStackBackendError:
+        logger.warning(
+            "Failed to allocate floating IP for service project link %s.",
+            service_project_link_str)
+
+
+@shared_task
+def assign_floating_ip(instance_uuid, floating_ip_uuid):
+    instance = Instance.objects.get(uuid=instance_uuid)
+    floating_ip = instance.service_project_link.floating_ips.get(uuid=floating_ip_uuid)
+    backend = instance.cloud.get_backend()
+
+    try:
+        backend.assign_floating_ip_to_instance(instance, floating_ip)
+    except OpenStackBackendError:
+        logger.warning("Failed to assign floating IP to the instance with id %s.", instance_uuid)
 
 
 @shared_task(is_heavy_task=True)
@@ -85,6 +158,14 @@ def restart_instance(instance_uuid, transition_entity=None):
 
 
 @shared_task
+@transition(Instance, 'begin_deleting')
+def destroy_instance(instance_uuid, transition_entity=None):
+    instance = transition_entity
+    backend = instance.get_backend()
+    backend.delete_instance(instance)
+
+
+@shared_task
 @transition(Instance, 'set_online')
 def set_online(instance_uuid, transition_entity=None):
     pass
@@ -100,3 +181,84 @@ def set_offline(instance_uuid, transition_entity=None):
 @transition(Instance, 'set_erred')
 def set_erred(instance_uuid, transition_entity=None):
     pass
+
+
+@shared_task
+def delete(instance_uuid):
+    Instance.objects.get(uuid=instance_uuid).delete()
+
+
+# Security-group related methods
+# XXX: copy-paste from iaas.tasks.security_groups
+@shared_task(name='nodeconductor.openstack.create_security_group')
+@transition(SecurityGroup, 'begin_syncing')
+def create_security_group(security_group_uuid, transition_entity=None):
+    security_group = transition_entity
+
+    openstack_create_security_group.apply_async(
+        args=(security_group.uuid.hex,),
+        link=security_group_sync_succeeded.si(security_group_uuid),
+        link_error=security_group_sync_failed.si(security_group_uuid),
+    )
+
+
+@shared_task(name='nodeconductor.openstack.update_security_group')
+@transition(SecurityGroup, 'begin_syncing')
+def update_security_group(security_group_uuid, transition_entity=None):
+    security_group = transition_entity
+
+    openstack_update_security_group.apply_async(
+        args=(security_group.uuid.hex,),
+        link=security_group_sync_succeeded.si(security_group_uuid),
+        link_error=security_group_sync_failed.si(security_group_uuid),
+    )
+
+
+@shared_task(name='nodeconductor.openstack.delete_security_group')
+@transition(SecurityGroup, 'begin_syncing')
+def delete_security_group(security_group_uuid, transition_entity=None):
+    security_group = transition_entity
+
+    openstack_delete_security_group.apply_async(
+        args=(security_group.uuid.hex,),
+        link=security_group_deletion_succeeded.si(security_group_uuid),
+        link_error=security_group_sync_failed.si(security_group_uuid),
+    )
+
+
+@shared_task
+@transition(SecurityGroup, 'set_in_sync')
+def security_group_sync_succeeded(security_group_uuid, transition_entity=None):
+    pass
+
+
+@shared_task
+@transition(SecurityGroup, 'set_erred')
+def security_group_sync_failed(security_group_uuid, transition_entity=None):
+    pass
+
+
+@shared_task
+def security_group_deletion_succeeded(security_group_uuid):
+    SecurityGroup.objects.filter(uuid=security_group_uuid).delete()
+
+
+@shared_task
+def openstack_create_security_group(security_group_uuid):
+    security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
+    backend = security_group.service_project_link.get_backend()
+    backend.create_security_group(security_group)
+
+
+@shared_task
+def openstack_update_security_group(security_group_uuid):
+    security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
+    backend = security_group.service_project_link.get_backend()
+    backend.update_security_group(security_group)
+
+
+@shared_task
+def openstack_delete_security_group(security_group_uuid):
+    security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
+    backend = security_group.service_project_link.get_backend()
+    backend.delete_security_group(security_group)

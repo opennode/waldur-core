@@ -83,11 +83,33 @@ class SecurityGroupCreateTest(test.APITransactionTestCase):
 
     def test_security_group_raises_validation_error_on_wrong_membership_in_request(self):
         del self.valid_data['cloud_project_membership']['url']
+        self._ensure_validation_error_is_raised(self.valid_data)
 
+    def test_security_group_raises_validation_error_if_rule_port_is_invalid(self):
+        self.valid_data['rules'][0]['to_port'] = 80000
+        self._ensure_validation_error_is_raised(self.valid_data)
+
+    def test_security_group_raises_validation_error_if_protocol_is_invalid(self):
+        self.valid_data['rules'][0]['protocol'] = 'ip'
+        self._ensure_validation_error_is_raised(self.valid_data)
+
+    def test_security_group_raises_validation_error_if_rule_icmp_port_is_invalid(self):
+        self.valid_data['rules'][0]['protocol'] = 'icmp'
+        self.valid_data['rules'][0]['from_port'] = 300
+        self._ensure_validation_error_is_raised(self.valid_data)
+
+    def test_security_group_raises_validation_error_if_rule_to_port_is_less_than_from_port(self):
+        self.valid_data['rules'][0]['from_port'] = 30
+        self.valid_data['rules'][0]['to_port'] = 20
+        self._ensure_validation_error_is_raised(self.valid_data)
+
+    # Helper methods
+    def _ensure_validation_error_is_raised(self, data):
         self.client.force_authenticate(self.admin)
-        response = self.client.post(self.url, data=self.valid_data)
+        response = self.client.post(self.url, data=data)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(models.SecurityGroup.objects.filter(name=self.valid_data['name']).exists())
 
 
 class SecurityGroupUpdateTest(test.APITransactionTestCase):
@@ -121,7 +143,7 @@ class SecurityGroupUpdateTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.admin)
         response = self.client.patch(self.url, data={'rules': rules})
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         reread_security_group = models.SecurityGroup.objects.get(pk=self.security_group.pk)
         self.assertEqual(len(rules), reread_security_group.rules.count())
         saved_rule = reread_security_group.rules.first()
@@ -174,6 +196,34 @@ class SecurityGroupUpdateTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         mocked_task.delay.assert_called_once_with(self.security_group.uuid.hex)
+
+    def test_user_can_remove_rule_from_security_group(self):
+        rule1 = factories.SecurityGroupRuleFactory(group=self.security_group)
+        factories.SecurityGroupRuleFactory(group=self.security_group)
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.patch(self.url, data={'rules': [{'id': rule1.id}]})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.security_group.rules.count(), 1)
+        self.assertEqual(self.security_group.rules.all()[0], rule1)
+
+    def test_user_can_add_new_security_group_rule_and_left_existant(self):
+        exist_rule = factories.SecurityGroupRuleFactory(group=self.security_group)
+        self.client.force_authenticate(self.admin)
+        new_rule_data = {
+            'protocol': 'udp',
+            'from_port': 100,
+            'to_port': 8001,
+            'cidr': 'test_cidr',
+        }
+
+        response = self.client.patch(self.url, data={'rules': [{'id': exist_rule.id}, new_rule_data]})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.security_group.rules.count(), 2)
+        self.assertTrue(self.security_group.rules.filter(id=exist_rule.id).exists())
+        self.assertTrue(self.security_group.rules.filter(**new_rule_data).exists())
 
 
 class SecurityGroupDeleteTest(test.APITransactionTestCase):

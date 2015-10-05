@@ -3,7 +3,8 @@ from rest_framework import test, status
 
 from nodeconductor.cost_tracking import models, CostConstants
 from nodeconductor.cost_tracking.tests import factories
-from nodeconductor.oracle.tests import factories as oracle_factories
+from nodeconductor.openstack import models as openstack_models
+from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -27,7 +28,7 @@ class PriceListItemListTest(test.APITransactionTestCase):
         self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
         self.project_group.projects.add(self.project)
 
-        self.service = oracle_factories.OracleServiceFactory(customer=self.customer)
+        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
         self.price_list_item = factories.PriceListItemFactory(service=self.service)
 
     @data('staff', 'owner', 'manager')
@@ -52,7 +53,7 @@ class PriceListItemListTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.users['staff'])
         response = self.client.get(
             factories.PriceListItemFactory.get_list_url(),
-            data={'service': oracle_factories.OracleServiceFactory.get_url(self.service)}
+            data={'service': openstack_factories.OpenStackServiceFactory.get_url(self.service)}
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -79,9 +80,10 @@ class PriceListItemCreateTest(test.APITransactionTestCase):
         self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
         self.project_group.projects.add(self.project)
 
-        self.service = oracle_factories.OracleServiceFactory(customer=self.customer)
+        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        openstack_models.OpenStackServiceProjectLink.objects.create(project=self.project, service=self.service)
         self.valid_data = {
-            'service': oracle_factories.OracleServiceFactory.get_url(self.service),
+            'service': openstack_factories.OpenStackServiceFactory.get_url(self.service),
             'value': 100,
             'units': 'UAH',
             'key': 'test_key',
@@ -102,7 +104,7 @@ class PriceListItemCreateTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.users[user])
         response = self.client.post(factories.PriceListItemFactory.get_list_url(), data=self.valid_data)
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, str(response.data) + " " + user)
         self.assertFalse(models.PriceListItem.objects.filter(
             service=self.service, value=self.valid_data['value'], item_type=self.valid_data['item_type']).exists())
 
@@ -126,7 +128,7 @@ class PriceListItemUpdateTest(test.APITransactionTestCase):
         self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
         self.project_group.projects.add(self.project)
 
-        self.service = oracle_factories.OracleServiceFactory(customer=self.customer)
+        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
         self.price_list_item = factories.PriceListItemFactory(service=self.service)
 
     @data('staff', 'owner')

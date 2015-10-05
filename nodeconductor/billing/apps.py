@@ -6,7 +6,9 @@ from django_fsm.signals import post_transition
 from django.conf import settings
 
 from nodeconductor.billing import handlers
+from nodeconductor.billing.models import PaidResource
 from nodeconductor.structure import models as structure_models
+from nodeconductor.core.handlers import preserve_fields_before_update
 
 
 class BillingConfig(AppConfig):
@@ -29,12 +31,12 @@ class BillingConfig(AppConfig):
         )
 
         nc_settings = getattr(settings, 'NODECONDUCTOR', {})
-        if nc_settings.get('ENABLE_WHMCS_ORDER_PROCESSING', False):
-            for index, resource in enumerate(structure_models.Resource.get_all_models()):
+        if nc_settings.get('ENABLE_ORDER_PROCESSING', False):
+            for index, resource in enumerate(PaidResource.get_all_models()):
                 signals.post_delete.connect(
-                    handlers.cancel_purchase,
+                    handlers.terminate_purchase,
                     sender=resource,
-                    dispatch_uid='nodeconductor.billing.handlers.cancel_purchase_{}_{}'.format(
+                    dispatch_uid='nodeconductor.billing.handlers.terminate_purchase_{}_{}'.format(
                         resource.__name__, index),
                 )
 
@@ -44,3 +46,29 @@ class BillingConfig(AppConfig):
                     dispatch_uid='nodeconductor.billing.handlers.track_order_{}_{}'.format(
                         resource.__name__, index),
                 )
+
+                signals.pre_save.connect(
+                    preserve_fields_before_update,
+                    sender=resource,
+                    dispatch_uid='nodeconductor.billing.handlers.preserve_fields_before_update_{}_{}'.format(
+                        resource.__name__, index),
+                )
+
+                signals.post_save.connect(
+                    handlers.update_resource_name,
+                    sender=resource,
+                    dispatch_uid='nodeconductor.billing.handlers.update_resource_name_{}_{}'.format(
+                        resource.__name__, index),
+                )
+
+            signals.post_save.connect(
+                handlers.update_project_name,
+                sender=structure_models.Project,
+                dispatch_uid='nodeconductor.billing.handlers.update_project_name',
+            )
+
+            signals.post_save.connect(
+                handlers.update_project_group_name,
+                sender=structure_models.ProjectGroup,
+                dispatch_uid='nodeconductor.billing.handlers.update_project_group_name',
+            )
