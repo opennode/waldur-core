@@ -354,6 +354,23 @@ class UserOrganizationApprovalApiTest(test.APITransactionTestCase):
             response.data
         )
 
+    def test_user_can_remove_organization_before_it_is_approved(self):
+        user = self.users['user_with_request_to_a_customer']
+        self.client.force_authenticate(user)
+        url = factories.UserFactory.get_url(user, action='remove_organization')
+        client_url = factories.UserFactory.get_url(user)
+
+        response = self.client.post(url)
+        self.assertEquals(response.status_code, status.HTTP_200_OK, response.data)
+
+        #check the status of the claim
+        response = self.client.get(client_url)
+        self.assertDictContainsSubset(
+            {'organization': '',
+             'organization_approved': False},
+            response.data
+        )
+
     def test_user_see_status_of_his_claim_for_organization_membership(self):
         user = self.users['no_role']
         self.client.force_authenticate(user)
