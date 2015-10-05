@@ -249,7 +249,7 @@ class OpenStackBaseClient(object):
 class KeystoneClient(OpenStackBaseClient):
     """ Dummy OpenStack identity service """
 
-    VERSION = '1.3.0'
+    VERSION = '0.9.0'
     Exceptions = keystone_exceptions
 
     class Auth(object):
@@ -451,7 +451,7 @@ class KeystoneClient(OpenStackBaseClient):
 class NovaClient(OpenStackBaseClient):
     """ Dummy OpenStack computing service """
 
-    VERSION = '2.23.0'
+    VERSION = '2.17.0'
     Exceptions = nova_exceptions
 
     class Flavor(OpenStackResourceList):
@@ -463,9 +463,9 @@ class NovaClient(OpenStackBaseClient):
         def create(self, name=None, image=None, flavor=None, key_name=None, security_groups=None,
                    availability_zone=None, block_device_mapping=(), block_device_mapping_v2=(), nics=()):
 
-            keystone_session = self.client.client.session
-            cinder = CinderClient(keystone_session)
-            neutron = NeutronClient(keystone_session)
+            auth = self.client.client.session.auth
+            cinder = CinderClient(auth.auth_url, auth.username, auth.password)
+            neutron = NeutronClient(auth.auth_url, auth.username, auth.password)
 
             if not block_device_mapping and not block_device_mapping_v2:
                 if not image:
@@ -620,9 +620,10 @@ class NovaClient(OpenStackBaseClient):
                     'Conflict',
                     "Security group rule already exists. Group id is %s." % grouprole.id)
 
-    def __init__(self, session, tenant_id=None, **kwargs):
+    def __init__(self, auth_url, username, api_key, tenant_id=None, **kwargs):
         self.tenant_id = tenant_id
-        self.client = KeystoneClient(session)
+        self.client = KeystoneClient(
+            session=KeystoneClient.Session(auth=v2.Password(auth_url, username, api_key)))
         self.flavors = self._get_resources('Flavor')
         self.servers = self._get_resources('Server')
         self.volumes = self._get_resources('ServerVolume')
@@ -636,7 +637,7 @@ class NovaClient(OpenStackBaseClient):
 class GlanceClient(OpenStackBaseClient):
     """ Dummy OpenStack image service """
 
-    VERSION = '0.17.0'
+    VERSION = '0.12.0'
     Exceptions = glance_exceptions
 
     class Image(OpenStackResourceList):
@@ -652,7 +653,7 @@ class GlanceClient(OpenStackBaseClient):
 class NeutronClient(OpenStackBaseClient):
     """ Dummy OpenStack networking service """
 
-    VERSION = '2.4.0'
+    VERSION = '2.3.4'
     Exceptions = neutron_exceptions
 
     class Router(OpenStackResourceList):
@@ -676,8 +677,9 @@ class NeutronClient(OpenStackBaseClient):
             })
             return super(NeutronClient.Subnet, self).create(kwargs['name'], kwargs)
 
-    def __init__(self, session, tenant_id=None, **kwargs):
-        self.client = KeystoneClient(session)
+    def __init__(self, auth_url, username, password, tenant_id=None, **kwargs):
+        self.client = KeystoneClient(
+            session=KeystoneClient.Session(auth=v2.Password(auth_url, username, password)))
 
     def show_network(self, network_id):
         networks = self._get_resources('Network')
@@ -740,7 +742,7 @@ class NeutronClient(OpenStackBaseClient):
 class CinderClient(OpenStackBaseClient):
     """ Dummy OpenStack volume service """
 
-    VERSION = '1.2.1'
+    VERSION = '1.0.9'
     Exceptions = cinder_exceptions
 
     class VolumeBackup(OpenStackResourceList):
@@ -850,9 +852,10 @@ class CinderClient(OpenStackBaseClient):
                 status='available',
                 **args))
 
-    def __init__(self, session, tenant_id=None, **kwargs):
+    def __init__(self, auth_url, username, api_key, tenant_id=None, **kwargs):
         self.tenant_id = tenant_id
-        self.client = KeystoneClient(session)
+        self.client = KeystoneClient(
+            session=KeystoneClient.Session(auth=v2.Password(auth_url, username, api_key)))
         self.backups = self._get_resources('VolumeBackup')
         self.restores = self._get_resources('VolumeRestore')
         self.volumes = self._get_resources('Volume')
@@ -877,7 +880,7 @@ class CinderClient(OpenStackBaseClient):
 class CeilometerClient(OpenStackBaseClient):
     """ Dummy OpenStack measurements service """
 
-    VERSION = '1.0.13'
+    VERSION = '1.0.10'
     Exceptions = ceilometer_exceptions
 
     class Statistics(OpenStackResourceList):

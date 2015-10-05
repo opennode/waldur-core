@@ -52,7 +52,7 @@ def _get_cinder_version():
     try:
         return pkg_resources.get_distribution('python-cinderclient').parsed_version
     except ValueError:
-        return '00000001', '00000002', '00000001', '*final'
+        return '00000001', '00000000', '00000009', '*final'
 
 
 @lru_cache(maxsize=1)
@@ -60,7 +60,7 @@ def _get_neutron_version():
     try:
         return pkg_resources.get_distribution('python-neutronclient').parsed_version
     except ValueError:
-        return '00000002', '00000004', '00000000', '*final'
+        return '00000002', '00000003', '00000004', '*final'
 
 
 @lru_cache(maxsize=1)
@@ -68,7 +68,7 @@ def _get_nova_version():
     try:
         return pkg_resources.get_distribution('python-novaclient').parsed_version
     except ValueError:
-        return '00000002', '00000023', '00000000', '*final'
+        return '00000002', '00000017', '00000000', '*final'
 
 
 class OpenStackClient(object):
