@@ -120,6 +120,8 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
             link=sync_service_project_link_succeeded.si(service_project_link_str),
             link_error=sync_service_project_link_failed.si(service_project_link_str))
 
+    return True
+
 
 @shared_task
 @transition(models.ServiceSettings, 'begin_syncing')
