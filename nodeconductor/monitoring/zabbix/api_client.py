@@ -97,7 +97,7 @@ class ZabbixApiClient(object):
                     "%s-templateid" % instance.template.application_type.slug.lower())
             if is_tenant:
                 kwargs['host_name'] = instance.tenant_id
-                kwargs['visible_name'] = instance.tenant_id
+                kwargs['visible_name'] = '%s-%s' % (instance.tenant_id, instance.project.name)
         except KeyError as e:
             logger.error('Zabbix is not properly configured %s', e)
             raise ZabbixError('Zabbix is not properly configured %s' % e)
