@@ -139,11 +139,6 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
             form.base_fields['shared'].initial = True
         return form
 
-    def save_model(self, request, obj, form, change):
-        super(ServiceSettingsAdmin, self).save_model(request, obj, form, change)
-        if not change:
-            send_task('structure', 'sync_service_settings')(obj.uuid.hex, initial=True)
-
     def sync(self, request, queryset):
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
         service_uuids = list(queryset.values_list('uuid', flat=True))
