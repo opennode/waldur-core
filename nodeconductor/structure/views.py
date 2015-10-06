@@ -433,8 +433,8 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = serializers.UserOrganizationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        if instance.organization:
-            return Response({'detail': "User has an existing organization claim."},
+        if instance.organization and instance.organization_approved:
+            return Response({'detail': "User has approved organization. Remove it before claiming a new one."},
                             status=status.HTTP_409_CONFLICT)
 
         organization = serializer.validated_data['organization']

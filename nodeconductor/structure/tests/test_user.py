@@ -397,8 +397,11 @@ class UserOrganizationApprovalApiTest(test.APITransactionTestCase):
         self._can_remove_user_from_his_customer_organization(self.users['owner'])
 
     # negative
-    def test_user_cannot_claim_organization_membership_if_one_claim_is_pending(self):
+    def test_user_cannot_claim_organization_membership_if_he_has_approved_one(self):
         user = self.users['user_with_request_to_a_customer']
+        user.organization_approved = True
+        user.save()
+
         self.client.force_authenticate(user)
         url = factories.UserFactory.get_url(user, action='claim_organization')
 
