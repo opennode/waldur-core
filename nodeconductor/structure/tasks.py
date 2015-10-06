@@ -93,7 +93,7 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
     if service_project_links is not None:
         if not isinstance(service_project_links, (list, tuple)):
             service_project_links = [service_project_links]
-        link_objects = models.ServiceProjectLink.from_string(service_project_links)
+        link_objects = list(models.ServiceProjectLink.from_string(service_project_links))
     else:
         # Ignore iaas cloud project membership because it does not support default sync flow
         spl_models = [model for model in models.ServiceProjectLink.get_all_models() if model._meta.app_label != 'iaas']

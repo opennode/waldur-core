@@ -909,8 +909,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     name=attrs['name'],
                     customer=customer,
                     **args)
-
-                send_task('structure', 'sync_service_settings')(settings.uuid.hex, initial=True)
                 attrs['settings'] = settings
 
             for f in settings_fields + extra_fields:
