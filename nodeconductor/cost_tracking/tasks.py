@@ -25,7 +25,7 @@ def update_current_month_projected_estimate(customer_uuid=None, resource_uuid=No
     if customer_uuid and resource_uuid:
         raise RuntimeError("Either customer_uuid or resource_uuid could be supplied, both received.")
 
-    def update_price_for_scope(scope, absolute_cost=0, delta_cost=0, date=None, update_if_exists=True):
+    def update_price_for_scope(scope, absolute_cost=None, delta_cost=None, date=None, update_if_exists=True):
         if date is None:
             date = datetime.date.today()
         estimate, created = PriceEstimate.objects.get_or_create(
@@ -35,9 +35,10 @@ def update_current_month_projected_estimate(customer_uuid=None, resource_uuid=No
             year=date.year)
 
         if update_if_exists or created:
-            delta = absolute_cost if created else absolute_cost - estimate.total
-            estimate.total = absolute_cost if absolute_cost else F('total') + delta_cost
+            previous_total = estimate.total
+            estimate.total = absolute_cost if absolute_cost is not None else F('total') + delta_cost
             estimate.save(update_fields=['total'])
+            delta = previous_total - estimate.total
         else:
             delta = 0
 
@@ -46,13 +47,12 @@ def update_current_month_projected_estimate(customer_uuid=None, resource_uuid=No
     def update_price_for_resource_and_its_parents(resource, monthly_cost, date=None, update_if_exists=True):
         # save monthly cost as is for initial scope
         delta_cost = update_price_for_scope(
-            instance, absolute_cost=monthly_cost, date=date, update_if_exists=update_if_exists)
+            resource, absolute_cost=monthly_cost, date=date, update_if_exists=update_if_exists)
 
         # increment total cost by delta for parent nodes
-        if delta_cost:
-            spl = instance.service_project_link
-            for scope in (spl, spl.project, spl.service, instance.customer):
-                update_price_for_scope(scope, delta_cost=delta_cost, date=date, update_if_exists=update_if_exists)
+        spl = resource.service_project_link
+        for scope in (spl, spl.project, spl.service, resource.customer):
+            update_price_for_scope(scope, delta_cost=delta_cost, date=date, update_if_exists=update_if_exists)
 
     def get_resource_creation_month_cost(resource, monthly_cost):
         month_start = resource.created.replace(day=1, hour=0, minute=0, second=0)
