@@ -2038,38 +2038,50 @@ class OpenStackBackend(OpenStackClient):
 
             return membership.internal_network_id
 
-        network_name = self.create_backend_name()
-        network = {
-            'name': network_name,
-            'tenant_id': membership.tenant_id,
-        }
+        network_name = self.get_tenant_internal_network_name(membership)
+        networks = neutron.list_networks(name=network_name)['networks']
 
-        # in case nothing fits, create and persist internal network
-        create_response = neutron.create_network({'networks': [network]})
-        network_id = create_response['networks'][0]['id']
-        membership.internal_network_id = network_id
-        membership.save()
+        if networks:
+            network = networks[0]
+            membership.internal_network_id = network['id']
+            membership.save()
+            logger.info('Internal network %s for tenant %s already exists.', network_name, membership.tenant_id)
 
-        subnet_name = '{0}-sn01'.format(network_name)
+            subnet_id = network['subnets'][0]
+            self.get_or_create_router(neutron, network_name, subnet_id, membership.tenant_id)
+        else:
+            network = {
+                'name': network_name,
+                'tenant_id': membership.tenant_id,
+            }
 
-        logger.info('Creating subnet %s', subnet_name)
-        subnet_data = {
-            'network_id': membership.internal_network_id,
-            'tenant_id': membership.tenant_id,
-            'cidr': '192.168.42.0/24',
-            'allocation_pools': [
-                {
-                    'start': '192.168.42.10',
-                    'end': '192.168.42.250'
-                }
-            ],
-            'name': subnet_name,
-            'ip_version': 4,
-            'enable_dhcp': True,
-        }
-        create_response = neutron.create_subnet({'subnets': [subnet_data]})
-        self.get_or_create_router(neutron, network_name, create_response['subnets'][0]['id'],
-                                  membership.tenant_id)
+            # in case nothing fits, create and persist internal network
+            create_response = neutron.create_network({'networks': [network]})
+            network_id = create_response['networks'][0]['id']
+            membership.internal_network_id = network_id
+            membership.save()
+            logger.info('Internal network %s was created for tenant %s.', network_name, membership.tenant_id)
+
+            subnet_name = '{0}-sn01'.format(network_name)
+
+            logger.info('Creating subnet %s', subnet_name)
+            subnet_data = {
+                'network_id': membership.internal_network_id,
+                'tenant_id': membership.tenant_id,
+                'cidr': '192.168.42.0/24',
+                'allocation_pools': [
+                    {
+                        'start': '192.168.42.10',
+                        'end': '192.168.42.250'
+                    }
+                ],
+                'name': subnet_name,
+                'ip_version': 4,
+                'enable_dhcp': True,
+            }
+            create_response = neutron.create_subnet({'subnets': [subnet_data]})
+            self.get_or_create_router(neutron, network_name, create_response['subnets'][0]['id'],
+                                      membership.tenant_id)
 
         return membership.internal_network_id
 
@@ -2207,11 +2219,19 @@ class OpenStackBackend(OpenStackClient):
 
         try:
             if not external:
-                neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
-                logger.info('Internal subnet %s was connected to the router %s.', subnet_id, router_name)
+                ports = neutron.list_ports(device_id=router['id'], tenant_id=tenant_id)['ports']
+                if not ports:
+                    neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
+                    logger.info('Internal subnet %s was connected to the router %s.', subnet_id, router_name)
+                else:
+                    logger.info('Internal subnet %s is already connected to the router %s.', subnet_id, router_name)
             else:
-                neutron.add_gateway_router(router['id'], {'network_id': network_id})
-                logger.info('External network %s was connected to the router %s.', network_id, router_name)
+                if (not router.get('external_gateway_info') or
+                        router['external_gateway_info'].get('network_id') != network_id):
+                    neutron.add_gateway_router(router['id'], {'network_id': network_id})
+                    logger.info('External network %s was connected to the router %s.', network_id, router_name)
+                else:
+                    logger.info('External network %s is already connected to router %s.', network_id, router_name)
         except neutron_exceptions.NeutronClientException as e:
             logger.warning(e)
 
@@ -2235,6 +2255,9 @@ class OpenStackBackend(OpenStackClient):
 
     def get_tenant_name(self, membership):
         return 'nc-{0}'.format(membership.project.uuid.hex)
+
+    def get_tenant_internal_network_name(self, membership):
+        return 'nc-{}-network'.format(membership.project.uuid.hex)
 
     def create_backend_name(self):
         return 'nc-{0}'.format(uuid.uuid4().hex)
