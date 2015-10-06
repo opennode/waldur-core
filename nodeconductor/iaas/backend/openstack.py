@@ -2257,7 +2257,7 @@ class OpenStackBackend(OpenStackClient):
         return 'nc-{0}'.format(membership.project.uuid.hex)
 
     def get_tenant_internal_network_name(self, membership):
-        return 'nc-{}-network'.format(membership.project.uuid.hex)
+        return 'nc-{0}'.format(membership.project.uuid.hex)
 
     def create_backend_name(self):
         return 'nc-{0}'.format(uuid.uuid4().hex)
