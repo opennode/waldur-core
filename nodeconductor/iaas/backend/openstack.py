@@ -328,6 +328,9 @@ class OpenStackBackend(OpenStackClient):
     def remove_user(self, user, membership):
         pass
 
+    def remove_link(self, membership):
+        raise ServiceBackendNotImplemented
+
     def get_resources_for_import(self):
         raise ServiceBackendNotImplemented
 

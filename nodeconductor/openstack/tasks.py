@@ -5,6 +5,7 @@ from celery import shared_task
 from nodeconductor.core.tasks import transition, throttle
 from nodeconductor.openstack.backend import OpenStackBackendError
 from nodeconductor.openstack.models import OpenStackServiceProjectLink, Instance, SecurityGroup
+from nodeconductor.structure.models import ServiceSettings
 
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,13 @@ def restart(instance_uuid):
         args=(instance_uuid,),
         link=set_online.si(instance_uuid),
         link_error=set_erred.si(instance_uuid))
+
+
+@shared_task(name='nodeconductor.openstack.remove_tenant')
+def remove_tenant(settings_uuid, tenant_id):
+    settings = ServiceSettings.objects.get(uuid=settings_uuid)
+    backend = settings.get_backend(tenant_id=tenant_id)
+    backend.cleanup(dryrun=False)
 
 
 @shared_task(name='nodeconductor.openstack.sync_instance_security_groups')

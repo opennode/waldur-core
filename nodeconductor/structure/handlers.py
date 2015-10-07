@@ -10,7 +10,7 @@ from django.contrib.auth import get_user_model
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
-from nodeconductor.structure import SupportedServices, signals
+from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
@@ -471,3 +471,11 @@ def sync_service_settings_with_backend(sender, instance, created=False, **kwargs
 def sync_service_project_link_with_backend(sender, instance, created=False, **kwargs):
     if created:
         send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
+
+
+def remove_service_project_link_from_backend(sender, instance, **kwargs):
+    backend = instance.get_backend()
+    try:
+        backend.remove_link(instance)
+    except ServiceBackendNotImplemented:
+        pass
