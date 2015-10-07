@@ -84,8 +84,6 @@ class OpenStackClient(object):
         'CeilometerClient': (ceilometer_client.Client, dummy_clients.CeilometerClient),
     }
 
-    MAX_USERNAME_LENGTH = 64
-
     def __init__(self, dummy=False):
         self.dummy = dummy
 
@@ -270,6 +268,8 @@ class OpenStackBackend(OpenStackClient):
     """ NodeConductor interface to OpenStack.
         Test mode implies by creating an instance as OpenStackBackend(dummy=True)
     """
+
+    MAX_USERNAME_LENGTH = 64
 
     @classmethod
     def create_session(
