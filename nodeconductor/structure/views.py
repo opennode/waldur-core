@@ -963,7 +963,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             except ServiceBackendError as e:
                 raise APIException(e)
 
-            send_task('cost_tracking', 'update_current_month_projected_estimate')(
+            send_task('cost_tracking', 'update_projected_estimate')(
                 resource_uuid=resource.uuid.hex)
 
             return Response(serializer.data, status=status.HTTP_200_OK)

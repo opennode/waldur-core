@@ -1,9 +1,7 @@
 import logging
-import datetime
 from dateutil.rrule import rrule, MONTHLY
 
 from celery import shared_task
-from django.db.models import F
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
@@ -19,40 +17,11 @@ from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplem
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='nodeconductor.cost_tracking.update_current_month_projected_estimate')
-def update_current_month_projected_estimate(customer_uuid=None, resource_uuid=None):
+@shared_task(name='nodeconductor.cost_tracking.update_projected_estimate')
+def update_projected_estimate(customer_uuid=None, resource_uuid=None):
 
     if customer_uuid and resource_uuid:
         raise RuntimeError("Either customer_uuid or resource_uuid could be supplied, both received.")
-
-    def update_price_for_scope(scope, absolute_cost=None, delta_cost=None, date=None, update_if_exists=True):
-        if date is None:
-            date = datetime.date.today()
-        estimate, created = PriceEstimate.objects.get_or_create(
-            content_type=ContentType.objects.get_for_model(scope),
-            object_id=scope.id,
-            month=date.month,
-            year=date.year)
-
-        if update_if_exists or created:
-            previous_total = estimate.total
-            estimate.total = absolute_cost if absolute_cost is not None else F('total') + delta_cost
-            estimate.save(update_fields=['total'])
-            delta = previous_total - estimate.total
-        else:
-            delta = 0
-
-        return delta
-
-    def update_price_for_resource_and_its_parents(resource, monthly_cost, date=None, update_if_exists=True):
-        # save monthly cost as is for initial scope
-        delta_cost = update_price_for_scope(
-            resource, absolute_cost=monthly_cost, date=date, update_if_exists=update_if_exists)
-
-        # increment total cost by delta for parent nodes
-        spl = resource.service_project_link
-        for scope in (spl, spl.project, spl.service, resource.customer):
-            update_price_for_scope(scope, delta_cost=delta_cost, date=date, update_if_exists=update_if_exists)
 
     def get_resource_creation_month_cost(resource, monthly_cost):
         month_start = resource.created.replace(day=1, hour=0, minute=0, second=0)
@@ -82,23 +51,27 @@ def update_current_month_projected_estimate(customer_uuid=None, resource_uuid=No
                 logger.info("Update cost estimate for resource %s: %s", instance, monthly_cost)
 
                 creation_month_cost = get_resource_creation_month_cost(instance, monthly_cost)
+                spl = instance.service_project_link
+                parents = (spl, spl.project, spl.service, instance.customer)
 
                 now = timezone.now()
                 created = instance.created
-                if created.month == now.month:
+                if created.month == now.month and created.year == now.year:
                     # update only current month estimate
-                    update_price_for_resource_and_its_parents(instance, creation_month_cost)
+                    PriceEstimate.update_price_for_scope(instance, now.month, now.year, creation_month_cost,
+                                                         parents=parents)
                 else:
                     # update current month estimate
-                    update_price_for_resource_and_its_parents(instance, monthly_cost)
+                    PriceEstimate.update_price_for_scope(instance, now.month, now.year, monthly_cost,
+                                                         parents=parents)
                     # update first month estimate
-                    update_price_for_resource_and_its_parents(
-                            instance, creation_month_cost, date=created, update_if_exists=False)
+                    PriceEstimate.update_price_for_scope(instance, created.month, created.year, creation_month_cost,
+                                                         parents=parents, update_if_exists=False)
                     # update price estimate for previous months if it does not exist:
                     previous_months = rrule(MONTHLY, dtstart=created, until=now.replace(day=1, hour=0, minute=0))[1:]
                     for date in previous_months:
-                        update_price_for_resource_and_its_parents(
-                            instance, monthly_cost, date=date, update_if_exists=False)
+                        PriceEstimate.update_price_for_scope(instance, date.month, date.year, monthly_cost,
+                                                             parents=parents, update_if_exists=False)
 
 
 @shared_task(name='nodeconductor.cost_tracking.update_today_usage')
