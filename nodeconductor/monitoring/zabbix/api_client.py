@@ -188,9 +188,9 @@ class ZabbixApiClient(object):
         service_data = api.service.get(filter={'name': service_name})
         if len(service_data) != 1:
             raise pyzabbix.ZabbixAPIException('Exactly one result is expected for service name %s'
-                                     ', instead received %s. Instance: %s'
-                                     % (service_name, len(service_data), instance)
-                                     )
+                                              ', instead received %s. Instance: %s'
+                                              % (service_name, len(service_data), instance)
+                                              )
         service_id = service_data[0]['serviceid']
         sla = api.service.getsla(
             filter={'serviceids': service_id},
@@ -218,7 +218,7 @@ class ZabbixApiClient(object):
         return '%s' % instance.backend_id
 
     def get_host_visible_name(self, instance):
-        return '%s-%s' % (instance.uuid, instance.name)
+        return ('%s-%s' % (instance.uuid, instance.name))[:64]
 
     def get_hostgroup_name(self, project):
         return '%s_%s' % (project.name, project.uuid)
@@ -230,7 +230,7 @@ class ZabbixApiClient(object):
         try:
             return api.trigger.get(hostids=hostid, output=['triggerid'],
                                    # XXX a hardcoded description, consider refactoring
-                                   filter={'description': 'Missing data about the VM' })[0]['triggerid']
+                                   filter={'description': 'Missing data about the VM'})[0]['triggerid']
         except IndexError:
             raise pyzabbix.ZabbixAPIException('No template with id: %s' % hostid)
 

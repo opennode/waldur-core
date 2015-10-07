@@ -269,6 +269,8 @@ class OpenStackBackend(OpenStackClient):
         Test mode implies by creating an instance as OpenStackBackend(dummy=True)
     """
 
+    MAX_USERNAME_LENGTH = 64
+
     @classmethod
     def create_session(
             cls, keystone_url=None, instance_uuid=None, membership_id=None, check_tenant=True, membership=None,
@@ -1966,7 +1968,7 @@ class OpenStackBackend(OpenStackClient):
             username = '{0}-{1}'.format(
                 User.objects.make_random_password(),
                 membership.project.name,
-            )
+            )[:self.MAX_USERNAME_LENGTH]
 
         # Try to create user in keystone
         password = User.objects.make_random_password()
