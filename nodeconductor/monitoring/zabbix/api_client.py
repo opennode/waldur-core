@@ -224,9 +224,9 @@ class ZabbixApiClient(object):
 
     def get_host_visible_name(self, host, is_tenant=False):
         if is_tenant:
-            return '%s-%s' % (host.tenant_id, host.project.name)
+            return ('%s-%s' % (host.tenant_id, host.project.name))[:64]
 
-        return '%s-%s' % (host.uuid, host.name)
+        return ('%s-%s' % (host.uuid, host.name))[:64]
 
     def get_hostgroup_name(self, project):
         return '%s_%s' % (project.name, project.uuid)
