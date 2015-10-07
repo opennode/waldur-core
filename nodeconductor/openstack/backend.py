@@ -131,6 +131,10 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info('Successfully synchronized ServiceProjectLink %s', service_project_link.to_string())
 
+    def remove_link(self, service_project_link):
+        settings = service_project_link.service.settings
+        send_task('openstack', 'remove_tenant')(settings.uuid.hex, service_project_link.tenant_id)
+
     def sync_quotas(self, service_project_link, quotas):
         self.push_quotas(service_project_link, quotas)
         self.pull_quotas(service_project_link)
@@ -495,6 +499,82 @@ class OpenStackBackend(ServiceBackend):
             six.reraise(OpenStackBackendError, e)
         else:
             logger.info("Successfully provisioned instance %s", instance.uuid)
+
+    def cleanup(self, dryrun=True):
+        # floatingips
+        neutron = self.neutron_admin_client
+        floatingips = neutron.list_floatingips(tenant_id=self.tenant_id)
+        if floatingips:
+            for floatingip in floatingips['floatingips']:
+                logger.info("Deleting floatingip %s from tenant %s", floatingip['id'], self.tenant_id)
+                if not dryrun:
+                    neutron.delete_floatingip(floatingip['id'])
+
+        # ports
+        ports = neutron.list_ports(tenant_id=self.tenant_id)
+        if ports:
+            for port in ports['ports']:
+                logger.info("Deleting port %s from tenant %s", port['id'], self.tenant_id)
+                if not dryrun:
+                    neutron.remove_interface_router(port['device_id'], {'port_id': port['id']})
+
+        # routers
+        routers = neutron.list_routers(tenant_id=self.tenant_id)
+        if routers:
+            for router in routers['routers']:
+                logger.info("Deleting router %s from tenant %s", router['id'], self.tenant_id)
+                if not dryrun:
+                    neutron.delete_router(router['id'])
+
+        # networks
+        networks = neutron.list_networks(tenant_id=self.tenant_id)
+        if networks:
+            for network in networks['networks']:
+                for subnet in network['subnets']:
+                    logger.info("Deleting subnetwork %s from tenant %s", subnet, self.tenant_id)
+                    if not dryrun:
+                        neutron.delete_subnet(subnet)
+
+                logger.info("Deleting network %s from tenant %s", network['id'], self.tenant_id)
+                if not dryrun:
+                    neutron.delete_network(network['id'])
+
+        # security groups
+        nova = self.nova_client
+        sgroups = nova.security_groups.list()
+        for sgroup in sgroups:
+            logger.info("Deleting security group %s from tenant %s", sgroup.id, self.tenant_id)
+            if not dryrun:
+                sgroup.delete()
+
+        # servers (instances)
+        servers = nova.servers.list()
+        for server in servers:
+            logger.info("Deleting server %s from tenant %s", server.id, self.tenant_id)
+            if not dryrun:
+                server.delete()
+
+        # volumes
+        cinder = self.cinder_client
+        volumes = cinder.volumes.list()
+        for volume in volumes:
+            logger.info("Deleting volume %s from tenant %s", volume.id, self.tenant_id)
+            if not dryrun:
+                volume.delete()
+
+        # backups (snapshots)
+        backups = cinder.backups.list()
+        for backup in backups:
+            logger.info("Deleting backup %s from tenant %s", backup.id, self.tenant_id)
+            if not dryrun:
+                backup.delete()
+
+        # tenant
+        keystone = self.keystone_admin_client
+        logger.info("Deleting tenant %s", self.tenant_id)
+        if not dryrun:
+            keystone.tenants.delete(self.tenant_id)
+
 
     @reraise_exceptions
     def create_security_group(self, security_group):
