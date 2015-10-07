@@ -554,27 +554,26 @@ class OpenStackBackend(ServiceBackend):
             if not dryrun:
                 server.delete()
 
-        # volumes
+        # snapshots
         cinder = self.cinder_client
+        snapshots = cinder.volume_snapshots.list()
+        for snapshot in snapshots:
+            logger.info("Deleting snapshots %s from tenant %s", snapshot.id, self.tenant_id)
+            if not dryrun:
+                snapshot.delete()
+
+        # volumes
         volumes = cinder.volumes.list()
         for volume in volumes:
             logger.info("Deleting volume %s from tenant %s", volume.id, self.tenant_id)
             if not dryrun:
                 volume.delete()
 
-        # backups (snapshots)
-        backups = cinder.backups.list()
-        for backup in backups:
-            logger.info("Deleting backup %s from tenant %s", backup.id, self.tenant_id)
-            if not dryrun:
-                backup.delete()
-
         # tenant
         keystone = self.keystone_admin_client
         logger.info("Deleting tenant %s", self.tenant_id)
         if not dryrun:
             keystone.tenants.delete(self.tenant_id)
-
 
     @reraise_exceptions
     def create_security_group(self, security_group):
