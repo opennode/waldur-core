@@ -188,9 +188,9 @@ class ZabbixApiClient(object):
         service_data = api.service.get(filter={'name': service_name})
         if len(service_data) != 1:
             raise pyzabbix.ZabbixAPIException('Exactly one result is expected for service name %s'
-                                     ', instead received %s. Instance: %s'
-                                     % (service_name, len(service_data), instance)
-                                     )
+                                              ', instead received %s. Instance: %s'
+                                              % (service_name, len(service_data), instance)
+                                              )
         service_id = service_data[0]['serviceid']
         sla = api.service.getsla(
             filter={'serviceids': service_id},

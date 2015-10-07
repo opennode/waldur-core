@@ -84,6 +84,8 @@ class OpenStackClient(object):
         'CeilometerClient': (ceilometer_client.Client, dummy_clients.CeilometerClient),
     }
 
+    MAX_USERNAME_LENGTH = 64
+
     def __init__(self, dummy=False):
         self.dummy = dummy
 
@@ -1966,7 +1968,7 @@ class OpenStackBackend(OpenStackClient):
             username = '{0}-{1}'.format(
                 User.objects.make_random_password(),
                 membership.project.name,
-            )
+            )[:self.MAX_USERNAME_LENGTH]
 
         # Try to create user in keystone
         password = User.objects.make_random_password()
