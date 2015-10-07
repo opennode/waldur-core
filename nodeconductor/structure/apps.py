@@ -4,6 +4,7 @@ from django.apps import AppConfig
 from django.contrib.auth import get_user_model
 from django.db.models import signals
 
+from nodeconductor.core.handlers import preserve_fields_before_update
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.models import Resource, ServiceProjectLink, Service, set_permissions_for_model
@@ -248,6 +249,18 @@ class StructureConfig(AppConfig):
             handlers.remove_stale_users_key_from_his_projects_services,
             sender=SshPublicKey,
             dispatch_uid='nodeconductor.structure.handlers.remove_stale_users_key_from_his_projects_services',
+        )
+
+        signals.pre_save.connect(
+            preserve_fields_before_update,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.preserve_fields_before_update',
+        )
+
+        signals.post_save.connect(
+            handlers.check_project_name_update,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.check_project_name_update'
         )
 
         structure_signals.structure_role_granted.connect(

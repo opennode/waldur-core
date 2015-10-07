@@ -91,6 +91,22 @@ def propagate_user_to_his_projects_services(sender, instance=None, created=False
             link.add_key(key)
 
 
+def check_project_name_update(sender, instance=None, created=False, **kwargs):
+    if created:
+        return
+
+    old_name = instance._old_values['name']
+    if old_name != instance.name:
+        from nodeconductor.iaas.models import CloudProjectMembership
+
+        cpms = CloudProjectMembership.objects.filter(project__uuid=instance.uuid)
+        if cpms.exists():
+            from nodeconductor.iaas.tasks.zabbix import zabbix_update_host_visible_name
+
+            for cpm in cpms:
+                zabbix_update_host_visible_name.delay(cpm.pk, is_tenant=True)
+
+
 def remove_stale_user_from_his_projects_services(sender, instance=None, **kwargs):
     """ Remove user from all services it belongs via projects """
     for link in get_links(user=instance):
