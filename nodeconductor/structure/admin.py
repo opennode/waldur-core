@@ -41,7 +41,7 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     readonly_fields = ['balance']
     actions = [
         'sync_with_backend',
-        'update_current_month_projected_estimate',
+        'update_projected_estimate',
     ]
     list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created']
 
@@ -61,14 +61,14 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
 
     sync_with_backend.short_description = "Sync selected customers with billing backend"
 
-    def update_current_month_projected_estimate(self, request, queryset):
+    def update_projected_estimate(self, request, queryset):
         customers_without_backend_id = []
         succeeded_customers = []
         for customer in queryset:
             if not customer.billing_backend_id:
                 customers_without_backend_id.append(customer)
                 continue
-            send_task('cost_tracking', 'update_current_month_projected_estimate')(
+            send_task('cost_tracking', 'update_projected_estimate')(
                 customer_uuid=customer.uuid.hex)
             succeeded_customers.append(customer)
 
@@ -90,7 +90,7 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
             message = message % {'customers_names': ', '.join([c.name for c in customers_without_backend_id])}
             self.message_user(request, message)
 
-    update_current_month_projected_estimate.short_description = "Update current month projected cost estimate"
+    update_projected_estimate.short_description = "Update projected cost estimate"
 
 
 class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
