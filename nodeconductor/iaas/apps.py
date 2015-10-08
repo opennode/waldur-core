@@ -3,9 +3,10 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.db.models import signals
 
-from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.core import handlers as core_handlers
 from nodeconductor.core.signals import pre_serializer_fields
+from nodeconductor.structure.models import Project
+from nodeconductor.quotas import handlers as quotas_handlers
 
 
 class IaasConfig(AppConfig):
@@ -94,4 +95,10 @@ class IaasConfig(AppConfig):
             handlers.change_customer_nc_service_quota,
             sender=Cloud,
             dispatch_uid='nodeconductor.iaas.handlers.decrease_customer_nc_service_quota'
+        )
+
+        signals.post_save.connect(
+            handlers.check_project_name_update,
+            sender=Project,
+            dispatch_uid='nodeconductor.iaas.handlers.check_project_name_update'
         )

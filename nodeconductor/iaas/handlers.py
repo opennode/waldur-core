@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from nodeconductor.core.serializers import UnboundSerializerMethodField
-from nodeconductor.iaas.models import SecurityGroup, SecurityGroupRule
+from nodeconductor.iaas.models import SecurityGroup, SecurityGroupRule, CloudProjectMembership
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.managers import filter_queryset_for_user
 
@@ -122,6 +122,20 @@ def decrease_quotas_usage_on_instances_deletion(sender, instance=None, **kwargs)
     instance.service_project_link.add_quota_usage('ram', -instance.ram)
     instance.service_project_link.add_quota_usage(
         'storage', -(instance.system_volume_size + instance.data_volume_size))
+
+
+def check_project_name_update(sender, instance=None, created=False, **kwargs):
+    if created:
+        return
+
+    old_name = instance.tracker.previous('name')
+    if old_name != instance.name:
+        cpms = CloudProjectMembership.objects.filter(project__uuid=instance.uuid)
+        if cpms.exists():
+            from nodeconductor.iaas.tasks.zabbix import zabbix_update_host_visible_name
+
+            for cpm in cpms:
+                zabbix_update_host_visible_name.delay(cpm.pk, is_tenant=True)
 
 
 change_customer_nc_service_quota = quotas_handlers.quantity_quota_handler_factory(

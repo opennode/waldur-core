@@ -80,27 +80,28 @@ class ZabbixPublicApiTest(unittest.TestCase):
 
     # Host visible name update
     def test_host_visible_name_is_not_updated_if_host_does_not_exist(self):
-        self.api.host.exists = Mock(return_value=False)
+        self.api.host.get = Mock(return_value=[])
 
         self.zabbix_client.update_host_visible_name(self.instance)
 
         expected_host_name = self.zabbix_client.get_host_name(self.instance)
-        self.api.host.exists.assert_called_once_with(host=expected_host_name)
+        self.api.host.get.assert_called_once_with(filter={'host': expected_host_name})
         self.assertFalse(self.api.host.update.called, 'Host visible name should not have been updated')
 
     def test_visible_name_is_updated_if_host_exists(self):
+        self.api.host.get.return_value = [{'hostid': 5}]
         self.zabbix_client.update_host_visible_name(self.instance)
 
         expected_host_name = self.zabbix_client.get_host_name(self.instance)
         expected_visible_name = self.zabbix_client.get_host_visible_name(self.instance)
-        self.api.host.exists.assert_called_once_with(host=expected_host_name)
+        self.api.host.get.assert_called_once_with(filter={'host': expected_host_name})
         self.api.host.update.assert_called_once_with({
-            "host": expected_host_name,
+            "hostid": 5,
             "name": expected_visible_name,
         })
 
     def test_update_host_visible_name_raises_zabbix_error_on_api_exception(self):
-        self.api.host.exists.side_effect = ZabbixAPIException
+        self.api.host.get.side_effect = ZabbixAPIException
 
         self.assertRaises(ZabbixError, lambda: self.zabbix_client.update_host_visible_name(self.instance))
 
