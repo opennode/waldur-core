@@ -89,13 +89,14 @@ class ZabbixPublicApiTest(unittest.TestCase):
         self.assertFalse(self.api.host.update.called, 'Host visible name should not have been updated')
 
     def test_visible_name_is_updated_if_host_exists(self):
+        self.api.host.get.return_value = [{'hostid': 5}]
         self.zabbix_client.update_host_visible_name(self.instance)
 
         expected_host_name = self.zabbix_client.get_host_name(self.instance)
         expected_visible_name = self.zabbix_client.get_host_visible_name(self.instance)
         self.api.host.get.assert_called_once_with(filter={'host': expected_host_name})
         self.api.host.update.assert_called_once_with({
-            "hostid": 1,
+            "hostid": 5,
             "name": expected_visible_name,
         })
 
