@@ -227,7 +227,7 @@ class SynchronizableMixin(models.Model):
     class Meta(object):
         abstract = True
 
-    # XXX: CEATION_SCHEDULED has to become default state
+    # XXX: CREATION_SCHEDULED has to become a default state
     state = FSMIntegerField(
         default=SynchronizationStates.SYNCING_SCHEDULED,
         choices=SynchronizationStates.CHOICES,
