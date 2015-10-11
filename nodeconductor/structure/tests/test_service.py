@@ -95,7 +95,8 @@ class SuspendServiceTest(test.APITransactionTestCase):
                     })
 
             else:
-                service = models['service'].objects.get(customer=self.customer, settings=settings)
+                service = models['service'].objects.create(
+                    customer=self.customer, settings=settings, name=settings.name, available_for_all=True)
 
             service_url = self._get_url(
                 SupportedServices.get_detail_view_for_model(models['service']), uuid=service.uuid.hex)

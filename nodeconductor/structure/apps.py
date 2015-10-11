@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.contrib.auth import get_user_model
 from django.db.models import signals
+from django_fsm import signals as fsm_signals
 
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
@@ -292,7 +293,7 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.sync_service_settings_with_backend',
         )
 
-        signals.post_save.connect(
+        fsm_signals.post_transition.connect(
             handlers.connect_shared_service_settings_to_customers,
             sender=ServiceSettings,
             dispatch_uid='nodeconductor.structure.handlers.connect_shared_service_settings_to_customers',

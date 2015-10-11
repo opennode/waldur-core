@@ -74,17 +74,23 @@ def sync_service_settings(settings_uuids=None, initial=False):
         settings = settings.filter(state=SynchronizationStates.IN_SYNC)
 
     for obj in settings:
-        # Settings are being created in SYNCING_SCHEDULED state,
-        # thus bypass transition during 'initial' sync.
-        if not initial:
+        if obj.state == SynchronizationStates.IN_SYNC:
             obj.schedule_syncing()
             obj.save()
 
-        settings_uuid = obj.uuid.hex
-        begin_syncing_service_settings.apply_async(
-            args=(settings_uuid,),
-            link=sync_service_settings_succeeded.si(settings_uuid),
-            link_error=sync_service_settings_failed.si(settings_uuid))
+            settings_uuid = obj.uuid.hex
+            begin_syncing_service_settings.apply_async(
+                args=(settings_uuid,),
+                link=sync_service_settings_succeeded.si(settings_uuid),
+                link_error=sync_service_settings_failed.si(settings_uuid))
+        elif obj.state == SynchronizationStates.CREATION_SCHEDULED:
+            settings_uuid = obj.uuid.hex
+            begin_creating_service_settings.apply_async(
+                args=(settings_uuid,),
+                link=sync_service_settings_succeeded.si(settings_uuid),
+                link_error=sync_service_settings_failed.si(settings_uuid))
+        else:
+            logger.warning('Cannot sync service settings %s from state %s', obj.name, obj.state)
 
 
 @shared_task(name='nodeconductor.structure.sync_service_project_links', max_retries=120, default_retry_delay=5)
@@ -112,18 +118,25 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
             return False
 
     for obj in link_objects:
-        # Links are being created in SYNCING_SCHEDULED state,
-        # thus bypass transition during 'initial' sync.
-        if not initial:
+        if obj.state == SynchronizationStates.IN_SYNC:
             obj.schedule_syncing()
             obj.save()
 
-        service_project_link_str = obj.to_string()
-        begin_syncing_service_project_links.apply_async(
-            args=(service_project_link_str,),
-            kwargs={'quotas': quotas, 'initial': initial},
-            link=sync_service_project_link_succeeded.si(service_project_link_str),
-            link_error=sync_service_project_link_failed.si(service_project_link_str))
+            service_project_link_str = obj.to_string()
+            begin_syncing_service_project_links.apply_async(
+                args=(service_project_link_str,),
+                kwargs={'quotas': quotas, 'initial': initial},
+                link=sync_service_project_link_succeeded.si(service_project_link_str),
+                link_error=sync_service_project_link_failed.si(service_project_link_str))
+        elif obj.state == SynchronizationStates.CREATION_SCHEDULED:
+            service_project_link_str = obj.to_string()
+            begin_syncing_service_project_links.apply_async(
+                args=(service_project_link_str,),
+                kwargs={'quotas': quotas, 'initial': initial, 'transition_method': 'begin_creating'},
+                link=sync_service_project_link_succeeded.si(service_project_link_str),
+                link_error=sync_service_project_link_failed.si(service_project_link_str))
+        else:
+            logger.warning('Cannot sync SPL %s from state %s', obj.id, obj.state)
 
     return True
 
@@ -131,6 +144,17 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
 @shared_task
 @transition(models.ServiceSettings, 'begin_syncing')
 def begin_syncing_service_settings(settings_uuid, transition_entity=None):
+    settings = transition_entity
+    try:
+        backend = settings.get_backend()
+        backend.sync()
+    except ServiceBackendNotImplemented:
+        pass
+
+
+@shared_task
+@transition(models.ServiceSettings, 'begin_creating')
+def begin_creating_service_settings(settings_uuid, transition_entity=None):
     settings = transition_entity
     try:
         backend = settings.get_backend()
@@ -152,10 +176,11 @@ def sync_service_settings_failed(settings_uuid, transition_entity=None):
 
 
 @shared_task
-def begin_syncing_service_project_links(service_project_link_str, quotas=None, initial=False, transition_entity=None):
+def begin_syncing_service_project_links(service_project_link_str, quotas=None, initial=False,
+                                        transition_entity=None, transition_method='begin_syncing'):
     spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
 
-    @transition(spl_model, 'begin_syncing')
+    @transition(spl_model, transition_method)
     def process(service_project_link_pk, quotas=None, transition_entity=None):
         service_project_link = transition_entity
         try:
