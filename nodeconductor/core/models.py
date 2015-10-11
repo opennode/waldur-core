@@ -207,8 +207,12 @@ class SynchronizationStates(object):
     SYNCING = 2
     IN_SYNC = 3
     ERRED = 4
+    CREATION_SCHEDULED = 5
+    CREATING = 6
 
     CHOICES = (
+        (CREATION_SCHEDULED, _('Creation Scheduled')),
+        (CREATING, _('Creating')),
         (SYNCING_SCHEDULED, _('Sync Scheduled')),
         (SYNCING, _('Syncing')),
         (IN_SYNC, _('In Sync')),
@@ -223,10 +227,15 @@ class SynchronizableMixin(models.Model):
     class Meta(object):
         abstract = True
 
+    # XXX: CEATION_SCHEDULED has to become default state
     state = FSMIntegerField(
         default=SynchronizationStates.SYNCING_SCHEDULED,
         choices=SynchronizationStates.CHOICES,
     )
+
+    @transition(field=state, source=SynchronizationStates.CREATION_SCHEDULED, target=SynchronizationStates.CREATING)
+    def begin_creating(self):
+        pass
 
     @transition(field=state, source=SynchronizationStates.SYNCING_SCHEDULED, target=SynchronizationStates.SYNCING)
     def begin_syncing(self):
@@ -236,7 +245,8 @@ class SynchronizableMixin(models.Model):
     def schedule_syncing(self):
         pass
 
-    @transition(field=state, source=SynchronizationStates.SYNCING, target=SynchronizationStates.IN_SYNC)
+    @transition(field=state, source=[SynchronizationStates.SYNCING, SynchronizationStates.CREATING],
+                target=SynchronizationStates.IN_SYNC)
     def set_in_sync(self):
         pass
 

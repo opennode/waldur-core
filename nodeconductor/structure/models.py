@@ -507,6 +507,10 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
         verbose_name_plural = "Service settings"
 
 
+# XXX: Temporary hack. Will be removed after all synchronizable models will support creation states
+ServiceSettings._meta.get_field('state').default = core_models.SynchronizationStates.CREATION_SCHEDULED
+
+
 @python_2_unicode_compatible
 class Service(core_models.SerializableAbstractMixin,
               core_models.UuidMixin,
@@ -614,6 +618,9 @@ class ServiceProjectLink(core_models.SerializableAbstractMixin,
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
+
+# XXX: Temporary hack. Will be removed after all synchronizable models will support creation states
+ServiceProjectLink._meta.get_field('state').default = core_models.SynchronizationStates.CREATION_SCHEDULED
 
 
 def validate_yaml(value):
