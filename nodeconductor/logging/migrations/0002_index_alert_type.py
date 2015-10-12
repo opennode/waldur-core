@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# XXX: Actual migration number - 0004. It cannot be renamed, because it is already executed and will be executed
+#      again (and cause error) after renaming.
 from __future__ import unicode_literals
 
 from django.db import models, migrations
@@ -7,7 +9,7 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('logging', '0003_emailhook_webhook'),
+        ('logging', '0001_squashed_0003_emailhook_webhook'),
     ]
 
     operations = [

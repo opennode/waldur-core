@@ -25,7 +25,7 @@ def init_is_closed_attribute(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('logging', '0004_index_alert_type'),
+        ('logging', '0002_index_alert_type'),
     ]
 
     operations = [
