@@ -7,7 +7,7 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('logging', '0001_squashed_0003_emailhook_webhook'),
+        ('logging', '0003_emailhook_webhook'),
     ]
 
     operations = [
