@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-# XXX: Actual migration number - 0004. It cannot be renamed, because it is already executed and will be executed
-#      again (and cause error) after renaming.
 from __future__ import unicode_literals
 
 from django.db import models, migrations
