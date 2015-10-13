@@ -253,6 +253,7 @@ class AlertLogger(BaseLogger):
         context = self.compile_context(**alert_context)
         msg = self.compile_message(message_template, context)
         with transaction.atomic():
+            logger.debug('About to create new alert for scope: %s (id: %s), with type: %s', scope, scope.id, alert_type)
             try:
                 content_type = ct_models.ContentType.objects.get_for_model(scope)
                 alert = models.Alert.objects.get(
@@ -262,10 +263,13 @@ class AlertLogger(BaseLogger):
                     alert.message = msg
                     alert.save()
                 created = False
+                logger.info(
+                    'Opened alert for scope %s (id: %s), with type %s already exists', scope, scope.id, alert_type)
             except models.Alert.DoesNotExist:
                 alert = models.Alert.objects.create(
                     alert_type=alert_type, message=msg, severity=severity, context=context, scope=scope)
                 created = True
+                logger.info('Created new alert for scope %s (id: %s), with type %s', scope, scope.id, alert_type)
 
         return alert, created
 
