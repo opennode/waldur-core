@@ -109,7 +109,7 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
             [list(model.objects.filter(state=SynchronizationStates.IN_SYNC)) for model in spl_models], [])
 
     if not link_objects:
-        return
+        return True
 
     # For newly created SPLs make sure their settings in stable state, retry otherwise
     if initial:

@@ -155,6 +155,9 @@ class CloudProjectMembership(QuotaModelMixin, structure_models.ServiceProjectLin
         return 'cloudproject_membership'
 
 
+CloudProjectMembership._meta.get_field('state').default = core_models.SynchronizationStates.SYNCING_SCHEDULED
+
+
 @python_2_unicode_compatible
 class Flavor(LoggableMixin, core_models.UuidMixin, core_models.NameMixin, models.Model):
     """
