@@ -344,6 +344,9 @@ class Project(core_models.DescribableMixin,
 
         return queryset.exists()
 
+    def get_users(self):
+        return get_user_model().objects.filter(groups__projectrole__project=self)
+
     def __str__(self):
         return '%(name)s | %(customer)s' % {
             'name': self.name,
