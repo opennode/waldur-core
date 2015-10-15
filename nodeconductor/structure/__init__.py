@@ -373,7 +373,7 @@ class ServiceBackend(object):
     def sync(self):
         raise ServiceBackendNotImplemented
 
-    def sync_link(self, service_project_link):
+    def sync_link(self, service_project_link, is_initial=False):
         raise ServiceBackendNotImplemented
 
     def remove_link(self, service_project_link):
