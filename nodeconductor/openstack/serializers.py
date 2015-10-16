@@ -210,7 +210,9 @@ class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class SecurityGroupSerializer(core_serializers.AugmentedSerializerMixin,
-                              serializers.HyperlinkedModelSerializer):
+                              structure_serializers.BasePropertySerializer):
+
+    SERVICE_TYPE = SupportedServices.Types.OpenStack
 
     state = MappedChoiceField(
         choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],

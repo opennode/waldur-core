@@ -90,6 +90,10 @@ class SecurityGroup(core_models.UuidMixin,
     def __str__(self):
         return self.name
 
+    @classmethod
+    def get_url_name(cls):
+        return 'openstack-sgp'
+
 
 @python_2_unicode_compatible
 class SecurityGroupRule(SecurityGroupRuleValidationMixin, models.Model):
