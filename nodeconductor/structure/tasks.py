@@ -83,10 +83,7 @@ def sync_service_settings(settings_uuids=None):
                 args=(settings_uuid,),
                 link=sync_service_settings_succeeded.si(settings_uuid),
                 link_error=sync_service_settings_failed.si(settings_uuid))
-        elif obj.state == SynchronizationStates.NEW:
-            obj.schedule_creating()
-            obj.save()
-
+        elif obj.state == SynchronizationStates.CREATION_SCHEDULED:
             begin_creating_service_settings.apply_async(
                 args=(settings_uuid,),
                 link=sync_service_settings_succeeded.si(settings_uuid),
@@ -115,7 +112,25 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
 
     for obj in link_objects:
         service_project_link_str = obj.to_string()
-        if obj.state == SynchronizationStates.IN_SYNC:
+        if initial:
+            # For newly created SPLs make sure their settings in stable state, retry otherwise
+            if obj.service.settings.state != SynchronizationStates.IN_SYNC:
+                return False
+
+            if obj.state == SynchronizationStates.NEW:
+                obj.schedule_creating()
+                obj.save()
+            elif obj.state != SynchronizationStates.CREATION_SCHEDULED:
+                # Don't sync already created SPL during initial phase
+                return True
+
+            begin_syncing_service_project_links.apply_async(
+                args=(service_project_link_str,),
+                kwargs={'quotas': quotas, 'initial': True, 'transition_method': 'begin_creating'},
+                link=sync_service_project_link_succeeded.si(service_project_link_str),
+                link_error=sync_service_project_link_failed.si(service_project_link_str))
+
+        elif obj.state == SynchronizationStates.IN_SYNC:
             obj.schedule_syncing()
             obj.save()
 
@@ -125,19 +140,6 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
                 link=sync_service_project_link_succeeded.si(service_project_link_str),
                 link_error=sync_service_project_link_failed.si(service_project_link_str))
 
-        elif obj.state == SynchronizationStates.NEW and initial:
-            # For newly created SPLs make sure their settings in stable state, retry otherwise
-            if obj.service.settings.state != SynchronizationStates.IN_SYNC:
-                return False
-
-            obj.schedule_creating()
-            obj.save()
-
-            begin_syncing_service_project_links.apply_async(
-                args=(service_project_link_str,),
-                kwargs={'quotas': quotas, 'initial': True, 'transition_method': 'begin_creating'},
-                link=sync_service_project_link_succeeded.si(service_project_link_str),
-                link_error=sync_service_project_link_failed.si(service_project_link_str))
         else:
             logger.warning('Cannot sync SPL %s from state %s', obj.id, obj.state)
 

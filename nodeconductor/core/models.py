@@ -230,7 +230,7 @@ class SynchronizableMixin(models.Model):
         abstract = True
 
     state = FSMIntegerField(
-        default=SynchronizationStates.NEW,
+        default=SynchronizationStates.CREATION_SCHEDULED,
         choices=SynchronizationStates.CHOICES,
     )
 
