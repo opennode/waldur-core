@@ -96,6 +96,9 @@ class Cloud(core_models.UuidMixin, core_models.NameMixin, LoggableMixin,
         return self.name
 
 
+Cloud._meta.get_field('state').default = core_models.SynchronizationStates.SYNCING_SCHEDULED
+
+
 class ServiceStatistics(models.Model):
     cloud = models.ForeignKey(Cloud, related_name='stats')
     key = models.CharField(max_length=32)
@@ -509,6 +512,9 @@ class SecurityGroup(core_models.UuidMixin,
 
     def __str__(self):
         return self.name
+
+
+SecurityGroup._meta.get_field('state').default = core_models.SynchronizationStates.SYNCING_SCHEDULED
 
 
 class SecurityGroupRuleValidationMixin(object):

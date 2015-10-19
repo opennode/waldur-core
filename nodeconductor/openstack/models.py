@@ -95,6 +95,9 @@ class SecurityGroup(core_models.UuidMixin,
         return 'openstack-sgp'
 
 
+SecurityGroup._meta.get_field('state').default = core_models.SynchronizationStates.SYNCING_SCHEDULED
+
+
 @python_2_unicode_compatible
 class SecurityGroupRule(SecurityGroupRuleValidationMixin, models.Model):
     TCP = 'tcp'

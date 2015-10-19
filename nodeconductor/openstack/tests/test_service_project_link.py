@@ -1,4 +1,3 @@
-import unittest
 from mock import patch
 
 from rest_framework import test, status
@@ -33,21 +32,16 @@ class ServiceProjectLinkCreateDeleteTest(test.APISimpleTestCase):
             'project': structure_factories.ProjectFactory.get_url(self.project)
         }
 
-        with patch('celery.app.base.Celery.send_task') as mocked_task:
-            response = self.client.post(url, payload)
-            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-            service_project_link = models.OpenStackServiceProjectLink.objects.get(
-                project=self.project, service=self.service)
+        response = self.client.post(url, payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        service_project_link = models.OpenStackServiceProjectLink.objects.get(
+            project=self.project, service=self.service)
 
-            self.assertEqual(service_project_link.availability_zone, availability_zone)
+        self.assertEqual(service_project_link.availability_zone, availability_zone)
 
-            mocked_task.assert_called_once_with(
-                'nodeconductor.structure.sync_service_project_links',
-                (service_project_link.to_string(),), {'initial': True}, countdown=2)
-
-            # duplicate call should result in 400 code
-            response = self.client.post(url, payload)
-            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # duplicate call should result in 400 code
+        response = self.client.post(url, payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
@@ -256,15 +250,8 @@ class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
         project = self.connected_project
         payload = self._get_valid_payload(service, project)
 
-        with patch('celery.app.base.Celery.send_task') as mocked_task:
-            response = self.client.post(self.url, payload)
-            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-            service_project_link = models.OpenStackServiceProjectLink.objects.get(
-                project=project, service=service)
-
-            mocked_task.assert_called_with(
-                'nodeconductor.structure.sync_service_project_links',
-                (service_project_link.to_string(),), {'initial': True}, countdown=2)
+        response = self.client.post(self.url, payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_admin_cannot_connect_new_service_and_project_if_he_is_project_admin(self):
         user = self.users['admin']
