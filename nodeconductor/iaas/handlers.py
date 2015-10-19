@@ -7,6 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from nodeconductor.core.tasks import send_task
 from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.iaas.models import SecurityGroup, SecurityGroupRule, CloudProjectMembership
 from nodeconductor.quotas import handlers as quotas_handlers
@@ -34,6 +35,11 @@ def filter_clouds(clouds, request):
 
 def add_clouds_to_related_model(sender, fields, **kwargs):
     fields['clouds'] = UnboundSerializerMethodField(filter_clouds)
+
+
+def sync_cloud_project_membership_with_backend(sender, instance, created=False, **kwargs):
+    if created:
+        send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
 
 
 def create_initial_security_groups(sender, instance=None, created=False, **kwargs):
@@ -73,6 +79,7 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
                 logger.error('Failed to create rule for security group %s: %s.' % (sg_name, e))
             else:
                 rule.save()
+
 
 def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwargs):
     from nodeconductor.backup.models import Backup

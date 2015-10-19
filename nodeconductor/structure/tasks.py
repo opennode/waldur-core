@@ -64,7 +64,7 @@ def recover_erred_services():
 
 
 @shared_task(name='nodeconductor.structure.sync_service_settings')
-def sync_service_settings(settings_uuids=None, initial=False):
+def sync_service_settings(settings_uuids=None):
     settings = models.ServiceSettings.objects.all()
     if settings_uuids:
         if not isinstance(settings_uuids, (list, tuple)):
@@ -74,17 +74,19 @@ def sync_service_settings(settings_uuids=None, initial=False):
         settings = settings.filter(state=SynchronizationStates.IN_SYNC)
 
     for obj in settings:
+        settings_uuid = obj.uuid.hex
         if obj.state == SynchronizationStates.IN_SYNC:
             obj.schedule_syncing()
             obj.save()
 
-            settings_uuid = obj.uuid.hex
             begin_syncing_service_settings.apply_async(
                 args=(settings_uuid,),
                 link=sync_service_settings_succeeded.si(settings_uuid),
                 link_error=sync_service_settings_failed.si(settings_uuid))
-        elif obj.state == SynchronizationStates.CREATION_SCHEDULED:
-            settings_uuid = obj.uuid.hex
+        elif obj.state == SynchronizationStates.NEW:
+            obj.schedule_creating()
+            obj.save()
+
             begin_creating_service_settings.apply_async(
                 args=(settings_uuid,),
                 link=sync_service_settings_succeeded.si(settings_uuid),
@@ -111,28 +113,29 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
     if not link_objects:
         return True
 
-    # For newly created SPLs make sure their settings in stable state, retry otherwise
-    if initial:
-        settings = link_objects[0].service.settings
-        if settings.state != SynchronizationStates.IN_SYNC:
-            return False
-
     for obj in link_objects:
+        service_project_link_str = obj.to_string()
         if obj.state == SynchronizationStates.IN_SYNC:
             obj.schedule_syncing()
             obj.save()
 
-            service_project_link_str = obj.to_string()
             begin_syncing_service_project_links.apply_async(
                 args=(service_project_link_str,),
-                kwargs={'quotas': quotas, 'initial': initial},
+                kwargs={'quotas': quotas, 'initial': False},
                 link=sync_service_project_link_succeeded.si(service_project_link_str),
                 link_error=sync_service_project_link_failed.si(service_project_link_str))
-        elif obj.state == SynchronizationStates.CREATION_SCHEDULED:
-            service_project_link_str = obj.to_string()
+
+        elif obj.state == SynchronizationStates.NEW and initial:
+            # For newly created SPLs make sure their settings in stable state, retry otherwise
+            if obj.service.settings.state != SynchronizationStates.IN_SYNC:
+                return False
+
+            obj.schedule_creating()
+            obj.save()
+
             begin_syncing_service_project_links.apply_async(
                 args=(service_project_link_str,),
-                kwargs={'quotas': quotas, 'initial': initial, 'transition_method': 'begin_creating'},
+                kwargs={'quotas': quotas, 'initial': True, 'transition_method': 'begin_creating'},
                 link=sync_service_project_link_succeeded.si(service_project_link_str),
                 link_error=sync_service_project_link_failed.si(service_project_link_str))
         else:

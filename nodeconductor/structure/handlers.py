@@ -468,12 +468,7 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
 
 def sync_service_settings_with_backend(sender, instance, created=False, **kwargs):
     if created:
-        send_task('structure', 'sync_service_settings')(instance.uuid.hex, initial=True)
-
-
-def sync_service_project_link_with_backend(sender, instance, created=False, **kwargs):
-    if created:
-        send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
+        send_task('structure', 'sync_service_settings')(instance.uuid.hex)
 
 
 def remove_service_project_link_from_backend(sender, instance, **kwargs):

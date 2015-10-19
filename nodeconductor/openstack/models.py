@@ -60,6 +60,9 @@ class OpenStackServiceProjectLink(QuotaModelMixin, structure_models.ServiceProje
         return super(OpenStackServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)
 
 
+OpenStackServiceProjectLink._meta.get_field('state').default = core_models.SynchronizationStates.NEW
+
+
 class Flavor(LoggableMixin, structure_models.ServiceProperty):
     cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
     ram = models.PositiveIntegerField(help_text='Memory size in MiB')
@@ -93,6 +96,9 @@ class SecurityGroup(core_models.UuidMixin,
     @classmethod
     def get_url_name(cls):
         return 'openstack-sgp'
+
+
+SecurityGroup._meta.get_field('state').default = core_models.SynchronizationStates.SYNCING_SCHEDULED
 
 
 @python_2_unicode_compatible
