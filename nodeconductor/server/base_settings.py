@@ -45,6 +45,7 @@ INSTALLED_APPS = (
     'nodeconductor.openstack',
     # 'nodeconductor.oracle',
     'nodeconductor.iaas',
+    'nodeconductor.sugarcrm',
     'nodeconductor.support',
     'nodeconductor.ldapsync',
 

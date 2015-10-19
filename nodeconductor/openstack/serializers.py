@@ -1,8 +1,6 @@
-from rest_framework import serializers
-
 from django.db import transaction
-from django.db.models import Max
 from netaddr import IPNetwork
+from rest_framework import serializers
 
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.core import models as core_models

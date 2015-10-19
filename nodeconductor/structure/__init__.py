@@ -17,6 +17,7 @@ class ServiceTypes(object):
     GitLab = 5
     Oracle = 6
     Azure = 7
+    SugarCRM = 8
 
     CHOICES = (
         (OpenStack, 'OpenStack'),
@@ -26,6 +27,7 @@ class ServiceTypes(object):
         (GitLab, 'GitLab'),
         (Oracle, 'Oracle'),
         (Azure, 'Azure'),
+        (SugarCRM, 'SugarCRM'),
     )
 
 
@@ -208,7 +210,7 @@ class SupportedServices(object):
                 'resources': {resource['name']: reverse(resource['list_view'], request=request)
                               for resource in service['resources'].values()},
                 'properties': {resource['name']: reverse(resource['list_view'], request=request)
-                              for resource in service.get('properties', {}).values()}
+                               for resource in service.get('properties', {}).values()}
             }
         return data
 
