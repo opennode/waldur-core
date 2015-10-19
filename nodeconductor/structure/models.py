@@ -58,7 +58,7 @@ class StructureModel(models.Model):
             except AttributeError:
                 pass
             else:
-                if not path == 'self':
+                if not path == 'self' and '__' in path:
                     return reduce(getattr, path.split('__'), self)
 
         raise AttributeError(
