@@ -249,6 +249,12 @@ CELERYBEAT_SCHEDULE = {
         'task': 'nodeconductor.structure.sync_service_project_links',
         'schedule': timedelta(minutes=30),
         'args': (),
+    },
+
+    'close-alerts-without-scope': {
+        'task': 'nodeconductor.logging.close_alerts_without_scope',
+        'schedule': timedelta(minutes=30),
+        'args': (),
     }
 }
 

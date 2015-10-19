@@ -8,14 +8,14 @@ import django_fsm
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('structure', '0022_init_global_count_quotas'),
+        ('iaas', '0049_add_creation_states'),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='servicesettings',
+            model_name='cloudprojectmembership',
             name='state',
-            field=django_fsm.FSMIntegerField(default=5, choices=[(0, 'New'), (5, 'Creation Scheduled'), (6, 'Creating'), (1, 'Sync Scheduled'), (2, 'Syncing'), (3, 'In Sync'), (4, 'Erred')]),
+            field=django_fsm.FSMIntegerField(default=1, choices=[(0, 'New'), (5, 'Creation Scheduled'), (6, 'Creating'), (1, 'Sync Scheduled'), (2, 'Syncing'), (3, 'In Sync'), (4, 'Erred')]),
             preserve_default=True,
         ),
     ]

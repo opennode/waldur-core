@@ -823,6 +823,34 @@ class ResourceViewSet(BaseSummaryView):
         else:
             return [url for (type, url) in resources]
 
+    @list_route()
+    def count(self, request):
+        """
+        Count resources by type. Example output:
+        {
+            "Amazon.Instance": 0,
+            "GitLab.Project": 3,
+            "Azure.VirtualMachine": 0,
+            "IaaS.Instance": 10,
+            "DigitalOcean.Droplet": 0,
+            "OpenStack.Instance": 0,
+            "GitLab.Group": 8
+        }
+        """
+        types = request.query_params.getlist('resource_type', [])
+        params = self.get_params(request)
+        resources = SupportedServices.get_resources(request).items()
+
+        result = {}
+        for (type, url) in resources:
+            if types != [] and type not in types:
+                continue
+            response = request_api(request, url, method='HEAD', params=params)
+            if not response.success:
+                raise APIException(response.data)
+            result[type] = response.total
+        return Response(result)
+
 
 class ServicesViewSet(BaseSummaryView):
     """ The summary list of all user services. """

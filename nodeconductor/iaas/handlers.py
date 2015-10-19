@@ -74,6 +74,7 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
             else:
                 rule.save()
 
+
 def prevent_deletion_of_instances_with_connected_backups(sender, instance, **kwargs):
     from nodeconductor.backup.models import Backup
     ct = ContentType.objects.get_for_model(instance._meta.model)

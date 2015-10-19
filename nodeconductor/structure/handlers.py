@@ -454,26 +454,28 @@ def connect_project_to_all_available_services(sender, instance, created=False, *
     for service_model in Service.get_all_models():
         for service in service_model.objects.filter(available_for_all=True, customer=project.customer):
             service_project_link_model = service.projects.through
-            service_project_link_model.objects.create(project=project, service=service)
+            service_project_link_model.objects.create(
+                project=project, service=service, state=SynchronizationStates.NEW)
 
 
-# XXX: Service project link sync will fail if service settings model is not IN_SYNC
 def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance, created=False, **kwargs):
     service = instance
     if service.available_for_all:
         service_project_link_model = service.projects.through
         for project in service.customer.projects.all():
-            service_project_link_model.objects.get_or_create(project=project, service=service)
+            service_project_link_model.objects.get_or_create(
+                project=project, service=service, state=SynchronizationStates.NEW)
 
 
 def sync_service_settings_with_backend(sender, instance, created=False, **kwargs):
     if created:
-        send_task('structure', 'sync_service_settings')(instance.uuid.hex, initial=True)
+        send_task('structure', 'sync_service_settings')(instance.uuid.hex)
 
 
 def sync_service_project_link_with_backend(sender, instance, created=False, **kwargs):
     if created:
-        send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
+        if instance.state != SynchronizationStates.NEW:
+            send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
 
 
 def remove_service_project_link_from_backend(sender, instance, **kwargs):

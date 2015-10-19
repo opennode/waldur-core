@@ -58,7 +58,7 @@ class StructureModel(models.Model):
             except AttributeError:
                 pass
             else:
-                if not path == 'self':
+                if not path == 'self' and '__' in path:
                     return reduce(getattr, path.split('__'), self)
 
         raise AttributeError(
@@ -344,6 +344,9 @@ class Project(core_models.DescribableMixin,
 
         return queryset.exists()
 
+    def get_users(self):
+        return get_user_model().objects.filter(groups__projectrole__project=self)
+
     def __str__(self):
         return '%(name)s | %(customer)s' % {
             'name': self.name,
@@ -507,10 +510,6 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
         verbose_name_plural = "Service settings"
 
 
-# XXX: Temporary hack. Will be removed after all synchronizable models will support creation states
-ServiceSettings._meta.get_field('state').default = core_models.SynchronizationStates.CREATION_SCHEDULED
-
-
 @python_2_unicode_compatible
 class Service(core_models.SerializableAbstractMixin,
               core_models.UuidMixin,
@@ -618,9 +617,6 @@ class ServiceProjectLink(core_models.SerializableAbstractMixin,
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
-
-# XXX: Temporary hack. Will be removed after all synchronizable models will support creation states
-ServiceProjectLink._meta.get_field('state').default = core_models.SynchronizationStates.CREATION_SCHEDULED
 
 
 def validate_yaml(value):
