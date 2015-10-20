@@ -15,3 +15,17 @@ class SugarCRMServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkVi
 class CRMViewSet(structure_views.BaseResourceViewSet):
     queryset = models.CRM.objects.all()
     serializer_class = serializers.CRMSerializer
+
+    def perform_provision(self, serializer):
+        resource = serializer.save()
+        backend = resource.get_backend()
+        backend.provision(resource)
+
+    # User can only create and delete CRMs. He cannot stop them.
+    @structure_views.safe_operation(valid_state=models.CRM.States.ONLINE)
+    def destroy(self, request, resource, uuid=None):
+        if resource.backend_id:
+            backend = resource.get_backend()
+            backend.destroy(resource)
+        else:
+            self.perform_destroy(resource)

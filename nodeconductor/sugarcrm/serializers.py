@@ -52,4 +52,4 @@ class CRMSerializer(structure_serializers.BaseResourceSerializer):
 
     class Meta(structure_serializers.BaseResourceSerializer.Meta):
         model = models.CRM
-        view_name = 'sugarcrm-crm-detail'
+        view_name = 'sugarcrm-crms-detail'
