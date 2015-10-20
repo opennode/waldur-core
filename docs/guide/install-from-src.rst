@@ -50,6 +50,8 @@ Additional requirements:
 
     venv/bin/nodeconductor collectstatic --noinput
 
+7. In order to install SAML2_ based authentication you should also install ``nodeconductor-saml2`` plugin.
+
 Configuration
 +++++++++++++
 
@@ -275,3 +277,4 @@ See also: `Django database settings`_.
 .. _Django database settings: https://docs.djangoproject.com/en/1.7/ref/settings/#databases
 .. _ICMP Types and Codes: http://en.wikipedia.org/wiki/Internet_Control_Message_Protocol#Control_messages
 .. _CIDR notation: http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing#CIDR_notation
+.. _SAML2: https://en.wikipedia.org/wiki/SAML_2.0
