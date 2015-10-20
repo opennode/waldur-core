@@ -49,8 +49,6 @@ def stop_customer_resources(customer_uuid):
 @shared_task(name='nodeconductor.structure.recover_erred_services')
 def recover_erred_services(service_project_links=None):
     if service_project_links is not None:
-        if not isinstance(service_project_links, (list, tuple)):
-            service_project_links = [service_project_links]
         erred_spls = models.ServiceProjectLink.from_string(service_project_links)
     else:
         for service_type, service in SupportedServices.get_service_models().items():
@@ -102,9 +100,7 @@ def sync_service_settings(settings_uuids=None):
 @retry_if_false
 def sync_service_project_links(service_project_links=None, quotas=None, initial=False):
     if service_project_links is not None:
-        if not isinstance(service_project_links, (list, tuple)):
-            service_project_links = [service_project_links]
-        link_objects = list(models.ServiceProjectLink.from_string(service_project_links))
+        link_objects = models.ServiceProjectLink.from_string(service_project_links)
         # Ignore iaas cloud project membership because it does not support default sync flow
         link_objects = [lo for lo in link_objects if lo._meta.app_label != 'iaas']
     else:
