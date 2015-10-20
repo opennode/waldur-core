@@ -45,7 +45,7 @@ class SugarCRMRealBackend(SugarCRMBaseBackend):
 
     Backend uses two clients for operations:
     1. NodeCondcutor OpenStack client uses to NC OpenStack application endpoints for operations with SugarCRM VM.
-    2. SugarCRM client interacts with SugaCRM API.
+    2. SugarCRM client interacts with SugarCRM API.
     """
 
     DEFAULT_IMAGE = 'sugarcrm'
