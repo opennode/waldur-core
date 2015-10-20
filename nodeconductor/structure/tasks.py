@@ -47,20 +47,26 @@ def stop_customer_resources(customer_uuid):
 
 
 @shared_task(name='nodeconductor.structure.recover_erred_services')
-def recover_erred_services():
-    for service_type, service in SupportedServices.get_service_models().items():
-        # TODO: Remove IaaS support (NC-645)
-        is_iaas = service_type == SupportedServices.Types.IaaS
+def recover_erred_services(service_project_links=None):
+    if service_project_links is not None:
+        if not isinstance(service_project_links, (list, tuple)):
+            service_project_links = [service_project_links]
+        erred_spls = models.ServiceProjectLink.from_string(service_project_links)
+    else:
+        for service_type, service in SupportedServices.get_service_models().items():
+            # TODO: Remove IaaS support (NC-645)
+            is_iaas = service_type == SupportedServices.Types.IaaS
 
-        query = Q(state=SynchronizationStates.ERRED)
-        if is_iaas:
-            query |= Q(cloud__state=SynchronizationStates.ERRED)
-        else:
-            query |= Q(service__settings__state=SynchronizationStates.ERRED)
+            query = Q(state=SynchronizationStates.ERRED)
+            if is_iaas:
+                query |= Q(cloud__state=SynchronizationStates.ERRED)
+            else:
+                query |= Q(service__settings__state=SynchronizationStates.ERRED)
 
-        erred_spls = service['service_project_link'].objects.filter(query)
-        for spl in erred_spls:
-            recover_erred_service.delay(spl.to_string(), is_iaas=is_iaas)
+            erred_spls = service['service_project_link'].objects.filter(query)
+
+    for spl in erred_spls:
+        recover_erred_service.delay(spl.to_string(), is_iaas=is_iaas)
 
 
 @shared_task(name='nodeconductor.structure.sync_service_settings')
