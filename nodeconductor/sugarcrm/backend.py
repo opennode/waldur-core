@@ -23,8 +23,6 @@ class SugarCRMBackend(object):
     def __getattr__(self, name):
         return getattr(self.backend, name)
 
-# TODO: figure out how SPL sync actually works and why it is not working if sync is not necessary
-
 
 class SugarCRMBaseBackend(ServiceBackend):
 
