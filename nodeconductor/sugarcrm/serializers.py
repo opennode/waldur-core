@@ -9,9 +9,9 @@ class ServiceSerializer(structure_serializers.BaseServiceSerializer):
 
     SERVICE_TYPE = SupportedServices.Types.SugarCRM
     SERVICE_ACCOUNT_FIELDS = {
-        'backend_url': 'NodeConductor endpoint (e.g. http://rest-test.nodeconductor.com/)',
-        'username': 'NodeConductor user username (e.g. Walter)',
-        'password': 'NodeConductor user password (e.g. Walter)',
+        'backend_url': 'NodeConductor endpoint (e.g. http://example.com/)',
+        'username': 'NodeConductor user username (e.g. Username)',
+        'password': 'NodeConductor user password (e.g. Password)',
     }
     SERVICE_ACCOUNT_EXTRA_FIELDS = {
         'backend_spl_id': 'ID of OpenStack service project link that will be used for sugarCRM resources creation. '
