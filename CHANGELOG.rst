@@ -5,6 +5,16 @@ Release NEXT
 ------------
 - <none yet>.
 
+Release 0.76.0
+--------------
+- Bump supported versions of OpenStack libraries to Juno version.
+- Implementation of lazy SPL creation for more efficient backend resource usage.
+- Introduction of NEW and CREATION_SCHEDULED states for the SPLs.
+- Added automatic OpenStack tenant deletion on OpenStack SPL removal.
+- Fix maximum length for generated OpenStack and Zabbix names to fit into their model.
+- Allow organisation claim to be modified by the claimer before it's confirmed.
+- Bugfixes
+
 Release 0.75.0
 --------------
 
