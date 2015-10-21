@@ -105,7 +105,7 @@ class SugarCRMRealBackend(SugarCRMBaseBackend):
     def __init__(self, settings):
         self.spl_url = settings.backend_url
         self.options = settings.options or {}
-        self.nc_client = self.NodeConductorOpenStackClient(settings.username, settings.password)
+        self.nc_client = self.NodeConductorOpenStackClient(self.spl_url, settings.username, settings.password)
 
     def schedule_crm_instance_provision(self, crm):
         min_cores = self.options.get('min_cores', self.DEFAULT_MIN_CORES)
@@ -180,7 +180,7 @@ class SugarCRMRealBackend(SugarCRMBaseBackend):
 
     def _get_crm_security_groups(self):
         security_groups_names = self.options.get('security_groups', self.DEFAULT_SECURITY_GROUPS)
-        response = self.nc_client.get(reverse('openstack-sgp-list'), params={'service_project_link', self.spl_url})
+        response = self.nc_client.get(reverse('openstack-sgp-list'), params={'service_project_link': self.spl_url})
         if not response.ok:
             raise SugarCRMBackendError('Cannot get security groups from NC backend: response code - %s, '
                                        'response content: %s' % (response.status_code, response.content))

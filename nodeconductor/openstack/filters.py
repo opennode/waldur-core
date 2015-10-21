@@ -134,7 +134,7 @@ class SecurityGroupFilter(django_filters.FilterSet):
         name='service_project_link__service__settings__uuid'
     )
     service_project_link = core_filters.URLFilter(
-        view_name='openstack-spl',
+        view_name='openstack-spl-detail',
         name='service_project_link__pk',
         lookup_field='pk',
     )
