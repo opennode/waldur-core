@@ -13,7 +13,6 @@ tests_requires = [
     'mock==1.0.1',
     'mock-django==0.6.6',
     'six>=1.9.0',
-    'stevedore==1.0.0',
     'django-celery==3.1.16',
 ]
 
@@ -53,6 +52,7 @@ install_requires = [
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
+    'stevedore==1.0.0',
     'xhtml2pdf>=0.0.6',
 ]
 
