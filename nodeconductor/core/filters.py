@@ -169,9 +169,9 @@ class URLFilter(django_filters.CharFilter):
         uuid = ''
         path = urlparse(value).path
         if path.startswith('/'):
-            url = resolve(path)
-            if url.func.url_name == self.view_name:
-                uuid = url.kwargs.get(self.lookup_field)
+            match = resolve(path)
+            if match.url_name == self.view_name:
+                uuid = match.kwargs.get(self.lookup_field)
 
         return super(URLFilter, self).filter(qs, uuid)
 
