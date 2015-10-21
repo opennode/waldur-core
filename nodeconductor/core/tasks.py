@@ -379,6 +379,6 @@ def send_task(app_label, task_name):
 
     def delay(*args, **kwargs):
         full_task_name = 'nodeconductor.%s.%s' % (app_label, task_name)
-        send_celery_task(full_task_name, args, kwargs)
+        send_celery_task(full_task_name, args, kwargs, countdown=2)
 
     return delay

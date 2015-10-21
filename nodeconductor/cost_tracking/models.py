@@ -3,7 +3,7 @@ import logging
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
 from jsonfield import JSONField
@@ -39,7 +39,7 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
 
     @classmethod
     @lru_cache(maxsize=1)
-    def get_estimated_models(self):
+    def get_estimated_models(cls):
         return (
             structure_models.Resource.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models() +
@@ -49,11 +49,45 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
 
     @classmethod
     @lru_cache(maxsize=1)
-    def get_editable_estimated_models(self):
+    def get_editable_estimated_models(cls):
         return (
             structure_models.Resource.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models()
         )
+
+    @classmethod
+    @transaction.atomic
+    def update_price_for_scope(cls, scope, month, year, total, parents=tuple(), update_if_exists=True):
+        estimate, created = cls.objects.get_or_create(
+            content_type=ContentType.objects.get_for_model(scope),
+            object_id=scope.id,
+            month=month,
+            year=year)
+
+        if update_if_exists or created:
+            delta = total - estimate.total
+            estimate.total = total
+            estimate.save(update_fields=['total'])
+        else:
+            delta = 0
+
+        for parent in parents:
+            estimate, created = cls.objects.get_or_create(
+                content_type=ContentType.objects.get_for_model(parent),
+                object_id=parent.id,
+                month=month,
+                year=year)
+
+            if delta or created:
+                estimate.total += delta
+                estimate.save(update_fields=['total'])
+
+    @classmethod
+    def update_price_for_resource(cls, resource, month, year, total, update_if_exists=True):
+        spl = resource.service_project_link
+        parents = (spl, spl.project, spl.service, resource.customer)
+
+        cls.update_price_for_scope(resource, month, year, total, parents=parents, update_if_exists=update_if_exists)
 
     def __str__(self):
         return '%s for %s-%s' % (self.scope, self.year, self.month)

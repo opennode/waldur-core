@@ -812,6 +812,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     resources_count = serializers.SerializerMethodField()
     service_type = serializers.SerializerMethodField()
     shared = serializers.ReadOnlyField(source='settings.shared')
+    state = serializers.SerializerMethodField()
 
     class Meta(object):
         model = NotImplemented
@@ -823,7 +824,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name',
             'settings', 'dummy',
             'backend_url', 'username', 'password', 'token', 'certificate',
-            'resources_count', 'service_type', 'shared'
+            'resources_count', 'service_type', 'shared', 'state'
         )
         protected_fields = (
             'customer', 'settings',
@@ -909,8 +910,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     name=attrs['name'],
                     customer=customer,
                     **args)
-
-                send_task('structure', 'sync_service_settings')(settings.uuid.hex, initial=True)
                 attrs['settings'] = settings
 
             for f in settings_fields + extra_fields:
@@ -930,6 +929,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     def get_service_type(self, obj):
         return SupportedServices.get_name_for_model(obj)
+
+    def get_state(self, obj):
+        return obj.settings.get_state_display()
 
 
 class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,

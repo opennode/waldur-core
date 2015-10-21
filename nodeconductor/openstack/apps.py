@@ -50,12 +50,6 @@ class OpenStackConfig(AppConfig):
         )
 
         signals.post_save.connect(
-            handlers.sync_service_project_link_with_backend,
-            sender=OpenStackServiceProjectLink,
-            dispatch_uid='nodeconductor.structure.handlers.sync_service_project_link_with_backend',
-        )
-
-        signals.post_save.connect(
             handlers.change_floating_ip_quota_on_status_change,
             sender=FloatingIP,
             dispatch_uid='nodeconductor.openstack.handlers.change_floating_ip_quota_on_status_change',

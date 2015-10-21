@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
@@ -26,6 +28,9 @@ class UuidMixin(models.Model):
 
 class Alert(UuidMixin, TimeStampedModel):
 
+    class Meta:
+        unique_together = ("content_type", "object_id", "alert_type", "is_closed")
+
     class SeverityChoices(object):
         DEBUG = 10
         INFO = 20
@@ -37,6 +42,9 @@ class Alert(UuidMixin, TimeStampedModel):
     message = models.CharField(max_length=255)
     severity = models.SmallIntegerField(choices=SeverityChoices.CHOICES)
     closed = models.DateTimeField(null=True, blank=True)
+    # Hack: This field stays blank until alert closing.
+    #       After closing it gets unique value to avoid unique together constraint break.
+    is_closed = models.CharField(blank=True, max_length=32)
     acknowledged = models.BooleanField(default=False)
     context = JSONField(blank=True)
 
@@ -48,6 +56,7 @@ class Alert(UuidMixin, TimeStampedModel):
 
     def close(self):
         self.closed = timezone.now()
+        self.is_closed = uuid.uuid4().hex
         self.save()
 
     def acknowledge(self):

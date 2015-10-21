@@ -1,10 +1,12 @@
 import logging
 
-from celery import shared_task
+from celery import shared_task, chain
 
 from nodeconductor.core.tasks import transition, throttle
 from nodeconductor.openstack.backend import OpenStackBackendError
 from nodeconductor.openstack.models import OpenStackServiceProjectLink, Instance, SecurityGroup
+from nodeconductor.structure.models import ServiceSettings
+from nodeconductor.structure.tasks import sync_service_project_links
 
 
 logger = logging.getLogger(__name__)
@@ -12,9 +14,11 @@ logger = logging.getLogger(__name__)
 
 @shared_task(name='nodeconductor.openstack.provision')
 def provision(instance_uuid, **kwargs):
-    provision_instance.apply_async(
-        args=(instance_uuid,),
-        kwargs=kwargs,
+    instance = Instance.objects.get(uuid=instance_uuid)
+    chain(
+        sync_service_project_links.si(instance.service_project_link.to_string(), initial=True),
+        provision_instance.si(instance_uuid, **kwargs),
+    ).apply_async(
         link=set_online.si(instance_uuid),
         link_error=set_erred.si(instance_uuid))
 
@@ -49,6 +53,13 @@ def restart(instance_uuid):
         args=(instance_uuid,),
         link=set_online.si(instance_uuid),
         link_error=set_erred.si(instance_uuid))
+
+
+@shared_task(name='nodeconductor.openstack.remove_tenant')
+def remove_tenant(settings_uuid, tenant_id):
+    settings = ServiceSettings.objects.get(uuid=settings_uuid)
+    backend = settings.get_backend(tenant_id=tenant_id)
+    backend.cleanup(dryrun=False)
 
 
 @shared_task(name='nodeconductor.openstack.sync_instance_security_groups')

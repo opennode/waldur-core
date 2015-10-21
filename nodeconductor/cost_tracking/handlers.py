@@ -12,7 +12,7 @@ logger = logging.getLogger('nodeconductor.cost_tracking')
 
 def estimate_costs(sender, instance, name=None, source=None, **kwargs):
     if source == instance.States.PROVISIONING and name == instance.set_online.__name__:
-        send_task('cost_tracking', 'update_current_month_projected_estimate')(
+        send_task('cost_tracking', 'update_projected_estimate')(
             resource_uuid=instance.uuid.hex)
 
 

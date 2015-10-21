@@ -168,6 +168,7 @@ class AlertsCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         ct = ContentType.objects.get_for_model(structure_models.Project)
         self.assertTrue(models.Alert.objects.filter(
+            pk=self.alert.pk,
             content_type=ct,
             object_id=self.project.id,
             alert_type=self.alert.alert_type,

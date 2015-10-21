@@ -3,15 +3,18 @@ from celery import shared_task, chain
 from django.utils import timezone
 
 from nodeconductor.core.tasks import transition, retry_if_false
-from nodeconductor.structure.models import ServiceSettings
 from nodeconductor.oracle.models import Database
 from nodeconductor.oracle.backend import OracleBackendError
+from nodeconductor.structure.models import ServiceSettings
+from nodeconductor.structure.tasks import sync_service_project_links
 
 
 @shared_task(name='nodeconductor.oracle.provision_database', is_heavy_task=True)
 def provision_database(database_uuid, provision_params):
+    database = Database.objects.get(uuid=database_uuid)
     chain(
-        create_database.s(database_uuid, provision_params),
+        sync_service_project_links.si(database.service_project_link.to_string(), initial=True),
+        create_database.si(database_uuid, provision_params),
         wait_for_status.s("RUNNING"),
     ).apply_async(
         link=set_database_online.si(database_uuid),

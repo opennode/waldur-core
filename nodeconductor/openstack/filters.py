@@ -130,6 +130,9 @@ class SecurityGroupFilter(django_filters.FilterSet):
     project = django_filters.CharFilter(
         name='service_project_link__project__uuid',
     )
+    settings_uuid = django_filters.CharFilter(
+        name='service_project_link__service__settings__uuid'
+    )
 
     class Meta(object):
         model = models.SecurityGroup
