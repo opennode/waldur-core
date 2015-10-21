@@ -41,7 +41,7 @@ install_requires = [
     'oslo.i18n==1.0.0',
     'oslo.utils==1.0.0',
     'paypalrestsdk>=1.10.0',
-    'Pillow>=2.0.0',
+    'Pillow>=2.0.0,<3.0.0',
     'python-ceilometerclient==1.0.12',
     'python-cinderclient==1.1.1',
     'python-glanceclient==0.15.0',
