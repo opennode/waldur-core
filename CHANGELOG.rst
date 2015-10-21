@@ -21,7 +21,7 @@ Release 0.75.0
 - Added invoice generation.
 - Add reporting of shared service consumption to KillBill.
 - Enhanced cost esimation module.
-- Dropped WHMCS billing, replaced with KillBill.io
+- Dropped WHMCS billing, replaced with KillBill.io.
 - New admin skin based on Fluent project.
 
 Release 0.74.0
@@ -260,7 +260,7 @@ Release 0.48.0
 --------------
 - Expose of requirements of mapped images in template list.
 - UUID of objects is exposed in multiple endpoints.
-- Bugfixes
+- Bugfixes.
 
 Release 0.47.0
 --------------
@@ -283,7 +283,7 @@ Release 0.45.0
 
 Release 0.44.0
 --------------
-- Bugfixes
+- Bugfixes.
 
 Release 0.43.0
 --------------
