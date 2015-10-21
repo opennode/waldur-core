@@ -13,17 +13,16 @@ Release 0.76.0
 - Added automatic OpenStack tenant deletion on OpenStack SPL removal.
 - Fix maximum length for generated OpenStack and Zabbix names to fit into their model.
 - Allow organisation claim to be modified by the claimer before it's confirmed.
-- Bugfixes
+- Bugfixes.
 
 Release 0.75.0
 --------------
-
-- Multiple bugfixes
+- Multiple bugfixes.
 - Added invoice generation.
 - Add reporting of shared service consumption to KillBill.
 - Enhanced cost esimation module.
 - Dropped WHMCS billing, replaced with KillBill.io
-- New admin skin based on Fluent project
+- New admin skin based on Fluent project.
 
 Release 0.74.0
 --------------
