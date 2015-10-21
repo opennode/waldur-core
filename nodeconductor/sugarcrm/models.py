@@ -18,3 +18,7 @@ class SugarCRMServiceProjectLink(structure_models.ServiceProjectLink):
 class CRM(structure_models.Resource):
     service_project_link = models.ForeignKey(
         SugarCRMServiceProjectLink, related_name='crms', on_delete=models.PROTECT)
+
+    @classmethod
+    def get_url_name(cls):
+        return 'sugarcrm-crms'
