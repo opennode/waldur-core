@@ -133,8 +133,10 @@ class SecurityGroupFilter(django_filters.FilterSet):
     settings_uuid = django_filters.CharFilter(
         name='service_project_link__service__settings__uuid'
     )
-    service_project_link_id = django_filters.CharFilter(
-        name='service_project_link_id'
+    service_project_link = core_filters.URLFilter(
+        view_name='openstack-spl',
+        name='service_project_link__pk',
+        lookup_field='pk',
     )
 
     class Meta(object):
@@ -144,7 +146,7 @@ class SecurityGroupFilter(django_filters.FilterSet):
             'description',
             'service',
             'project',
-            'service_project_link_id',
+            'service_project_link',
         ]
 
 

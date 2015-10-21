@@ -9,14 +9,14 @@ class ServiceSerializer(structure_serializers.BaseServiceSerializer):
 
     SERVICE_TYPE = SupportedServices.Types.SugarCRM
     SERVICE_ACCOUNT_FIELDS = {
-        'backend_url': 'NodeConductor endpoint (e.g. http://example.com/)',
+        'backend_url': 'URL of OpenStack service project link that will be used for sugarCRM resources creation '
+                       '(required, e.g.: http://example.com/api/openstack-service-project-link/1/)',
         'username': 'NodeConductor user username (e.g. Username)',
         'password': 'NodeConductor user password (e.g. Password)',
     }
     SERVICE_ACCOUNT_EXTRA_FIELDS = {
-        'backend_spl_id': 'ID of OpenStack service project link that will be used for sugarCRM resources creation. '
-                          'Required.',
         'image': 'CRMs OpenStack instance image name. (default: "sugarcrm")',
+        'security_groups': 'List of CRMs OpenStack instance security groups names. (default: ["http"])',
         'min_cores': 'Minimum amount of cores for CRMs OpenStack instance. (default: 2)',
         'min_ram': 'Minimum amount of ram for CRMs OpenStack instance. (default: 2048 MB)',
         'system_size': 'Storage volume size CRMs OpenStack instance. (default: 32768 MB)',
