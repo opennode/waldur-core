@@ -96,8 +96,8 @@ class ZabbixApiClient(object):
                 kwargs['application_templateid'] = self._settings.get(
                     "%s-templateid" % instance.template.application_type.slug.lower())
             if is_tenant:
-                kwargs['host_name'] = instance.tenant_id
-                kwargs['visible_name'] = instance.tenant_id
+                kwargs['host_name'] = self.get_host_name(instance, is_tenant)
+                kwargs['visible_name'] = self.get_host_visible_name(instance, is_tenant)
         except KeyError as e:
             logger.error('Zabbix is not properly configured %s', e)
             raise ZabbixError('Zabbix is not properly configured %s' % e)
@@ -116,17 +116,19 @@ class ZabbixApiClient(object):
             logger.warn('Can not create new Zabbix host for instance %s. Already exists.', instance)
 
     @_exception_decorator('Can not update Zabbix host visible name for instance {1}. {exception_name}: {exception}')
-    def update_host_visible_name(self, instance):
-        name = self.get_host_name(instance)
-        visible_name = self.get_host_visible_name(instance)
+    def update_host_visible_name(self, host, is_tenant=False):
+        name = self.get_host_name(host, is_tenant)
+        visible_name = self.get_host_visible_name(host, is_tenant)
         api = self.get_zabbix_api()
 
-        if api.host.exists(host=name):
-            api.host.update({"host": name,
+        hosts = api.host.get(filter={'host': name})
+        if hosts:
+            host_id = hosts[0]['hostid']
+            api.host.update({"hostid": host_id,
                              "name": visible_name})
-            logger.debug('Zabbix host visible name has been updated for instance %s.', instance)
+            logger.debug('Zabbix host visible name has been updated for %s.', host)
         else:
-            logger.warn('Can not update Zabbix host visible name for instance %s. Host does not exist.', instance)
+            logger.warn('Can not update Zabbix host visible name for %s. Host does not exist.', host)
 
     @_exception_decorator('Can not delete zabbix host')
     def delete_host(self, instance):
@@ -188,9 +190,9 @@ class ZabbixApiClient(object):
         service_data = api.service.get(filter={'name': service_name})
         if len(service_data) != 1:
             raise pyzabbix.ZabbixAPIException('Exactly one result is expected for service name %s'
-                                     ', instead received %s. Instance: %s'
-                                     % (service_name, len(service_data), instance)
-                                     )
+                                              ', instead received %s. Instance: %s'
+                                              % (service_name, len(service_data), instance)
+                                              )
         service_id = service_data[0]['serviceid']
         sla = api.service.getsla(
             filter={'serviceids': service_id},
@@ -214,11 +216,17 @@ class ZabbixApiClient(object):
         api.login(self._settings['username'], self._settings['password'])
         return api
 
-    def get_host_name(self, instance):
-        return '%s' % instance.backend_id
+    def get_host_name(self, host, is_tenant=False):
+        if is_tenant:
+            return '%s' % host.tenant_id
 
-    def get_host_visible_name(self, instance):
-        return '%s-%s' % (instance.uuid, instance.name)
+        return '%s' % host.backend_id
+
+    def get_host_visible_name(self, host, is_tenant=False):
+        if is_tenant:
+            return ('%s-%s' % (host.tenant_id, host.project.name))[:64]
+
+        return ('%s-%s' % (host.uuid, host.name))[:64]
 
     def get_hostgroup_name(self, project):
         return '%s_%s' % (project.name, project.uuid)
@@ -230,7 +238,7 @@ class ZabbixApiClient(object):
         try:
             return api.trigger.get(hostids=hostid, output=['triggerid'],
                                    # XXX a hardcoded description, consider refactoring
-                                   filter={'description': 'Missing data about the VM' })[0]['triggerid']
+                                   filter={'description': 'Missing data about the VM'})[0]['triggerid']
         except IndexError:
             raise pyzabbix.ZabbixAPIException('No template with id: %s' % hostid)
 

@@ -41,7 +41,7 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     readonly_fields = ['balance']
     actions = [
         'sync_with_backend',
-        'update_current_month_projected_estimate',
+        'update_projected_estimate',
     ]
     list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created']
 
@@ -61,14 +61,14 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
 
     sync_with_backend.short_description = "Sync selected customers with billing backend"
 
-    def update_current_month_projected_estimate(self, request, queryset):
+    def update_projected_estimate(self, request, queryset):
         customers_without_backend_id = []
         succeeded_customers = []
         for customer in queryset:
             if not customer.billing_backend_id:
                 customers_without_backend_id.append(customer)
                 continue
-            send_task('cost_tracking', 'update_current_month_projected_estimate')(
+            send_task('cost_tracking', 'update_projected_estimate')(
                 customer_uuid=customer.uuid.hex)
             succeeded_customers.append(customer)
 
@@ -90,7 +90,7 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
             message = message % {'customers_names': ', '.join([c.name for c in customers_without_backend_id])}
             self.message_user(request, message)
 
-    update_current_month_projected_estimate.short_description = "Update current month projected cost estimate"
+    update_projected_estimate.short_description = "Update projected cost estimate"
 
 
 class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
@@ -139,11 +139,6 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
             form.base_fields['shared'].initial = True
         return form
 
-    def save_model(self, request, obj, form, change):
-        super(ServiceSettingsAdmin, self).save_model(request, obj, form, change)
-        if not change:
-            send_task('structure', 'sync_service_settings')(obj.uuid.hex, initial=True)
-
     def sync(self, request, queryset):
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
         service_uuids = list(queryset.values_list('uuid', flat=True))
@@ -174,7 +169,7 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
     list_display_links = ('get_service_name',)
     search_fields = ('service__customer__name', 'project__name', 'service__name')
 
-    actions = ['sync_with_backend']
+    actions = ['sync_with_backend', 'recover_erred_service_project_links']
 
     def get_queryset(self, request):
         queryset = super(ServiceProjectLinkAdmin, self).get_queryset(request)
@@ -195,6 +190,22 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
         self.message_user(request, message)
 
     sync_with_backend.short_description = "Sync selected service project links with backend"
+
+    def recover_erred_service_project_links(self, request, queryset):
+        queryset = queryset.filter(state=SynchronizationStates.ERRED)
+        send_task('structure', 'recover_erred_services')([spl.to_string() for spl in queryset])
+        tasks_scheduled = queryset.count()
+
+        message = ungettext(
+            'One service project link scheduled for recovery',
+            '%(tasks_scheduled)d service project links scheduled for recovery',
+            tasks_scheduled
+        )
+        message = message % {'tasks_scheduled': tasks_scheduled}
+
+        self.message_user(request, message)
+
+    recover_erred_service_project_links.short_description = "Recover selected service project links"
 
     def get_service_name(self, obj):
         return obj.service.name

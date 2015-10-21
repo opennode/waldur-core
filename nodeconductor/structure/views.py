@@ -433,8 +433,8 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = serializers.UserOrganizationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        if instance.organization:
-            return Response({'detail': "User has an existing organization claim."},
+        if instance.organization and instance.organization_approved:
+            return Response({'detail': "User has approved organization. Remove it before claiming a new one."},
                             status=status.HTTP_409_CONFLICT)
 
         organization = serializer.validated_data['organization']
@@ -765,10 +765,6 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
     filter_class = filters.ServiceSettingsFilter
     lookup_field = 'uuid'
 
-    def perform_create(self, serializer):
-        instance = serializer.save()
-        send_task('structure', 'sync_service_settings')(instance.uuid.hex, initial=True)
-
 
 class ServiceMetadataViewSet(viewsets.GenericViewSet):
     """ Metadata about supported services, resources and properties. """
@@ -826,6 +822,34 @@ class ResourceViewSet(BaseSummaryView):
             return [url for (type, url) in resources if type in types]
         else:
             return [url for (type, url) in resources]
+
+    @list_route()
+    def count(self, request):
+        """
+        Count resources by type. Example output:
+        {
+            "Amazon.Instance": 0,
+            "GitLab.Project": 3,
+            "Azure.VirtualMachine": 0,
+            "IaaS.Instance": 10,
+            "DigitalOcean.Droplet": 0,
+            "OpenStack.Instance": 0,
+            "GitLab.Group": 8
+        }
+        """
+        types = request.query_params.getlist('resource_type', [])
+        params = self.get_params(request)
+        resources = SupportedServices.get_resources(request).items()
+
+        result = {}
+        for (type, url) in resources:
+            if types != [] and type not in types:
+                continue
+            response = request_api(request, url, method='HEAD', params=params)
+            if not response.success:
+                raise APIException(response.data)
+            result[type] = response.total
+        return Response(result)
 
 
 class ServicesViewSet(BaseSummaryView):
@@ -967,7 +991,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             except ServiceBackendError as e:
                 raise APIException(e)
 
-            send_task('cost_tracking', 'update_current_month_projected_estimate')(
+            send_task('cost_tracking', 'update_projected_estimate')(
                 resource_uuid=resource.uuid.hex)
 
             return Response(serializer.data, status=status.HTTP_200_OK)

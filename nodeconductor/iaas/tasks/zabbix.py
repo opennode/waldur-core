@@ -8,7 +8,7 @@ from celery import shared_task
 from django.conf import settings
 
 from nodeconductor.core.tasks import retry_if_false
-from nodeconductor.iaas.models import Instance
+from nodeconductor.iaas.models import Instance, CloudProjectMembership
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
@@ -47,11 +47,15 @@ def zabbix_create_host_and_service_for_all_instances():
 
 @shared_task
 @zabbix_task
-def zabbix_update_host_visible_name(instance_uuid):
-    instance = Instance.objects.get(uuid=instance_uuid)
+def zabbix_update_host_visible_name(instance_uuid, is_tenant=False):
+    if is_tenant:
+        host = CloudProjectMembership.objects.get(pk=instance_uuid)
+    else:
+        host = Instance.objects.get(uuid=instance_uuid)
+
     try:
         zabbix_client = ZabbixApiClient()
-        zabbix_client.update_host_visible_name(instance)
+        zabbix_client.update_host_visible_name(host, is_tenant)
     except ZabbixError as e:
         # task does not have to fail if something is wrong with zabbix
         logger.error('Zabbix host visible name update has failed %s' % e, exc_info=1)

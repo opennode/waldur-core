@@ -47,24 +47,28 @@ def stop_customer_resources(customer_uuid):
 
 
 @shared_task(name='nodeconductor.structure.recover_erred_services')
-def recover_erred_services():
-    for service_type, service in SupportedServices.get_service_models().items():
-        # TODO: Remove IaaS support (NC-645)
-        is_iaas = service_type == SupportedServices.Types.IaaS
+def recover_erred_services(service_project_links=None):
+    if service_project_links is not None:
+        erred_spls = models.ServiceProjectLink.from_string(service_project_links)
+    else:
+        for service_type, service in SupportedServices.get_service_models().items():
+            # TODO: Remove IaaS support (NC-645)
+            is_iaas = service_type == SupportedServices.Types.IaaS
 
-        query = Q(state=SynchronizationStates.ERRED)
-        if is_iaas:
-            query |= Q(cloud__state=SynchronizationStates.ERRED)
-        else:
-            query |= Q(service__settings__state=SynchronizationStates.ERRED)
+            query = Q(state=SynchronizationStates.ERRED)
+            if is_iaas:
+                query |= Q(cloud__state=SynchronizationStates.ERRED)
+            else:
+                query |= Q(service__settings__state=SynchronizationStates.ERRED)
 
-        erred_spls = service['service_project_link'].objects.filter(query)
-        for spl in erred_spls:
-            recover_erred_service.delay(spl.to_string(), is_iaas=is_iaas)
+            erred_spls = service['service_project_link'].objects.filter(query)
+
+    for spl in erred_spls:
+        recover_erred_service.delay(spl.to_string(), is_iaas=is_iaas)
 
 
 @shared_task(name='nodeconductor.structure.sync_service_settings')
-def sync_service_settings(settings_uuids=None, initial=False):
+def sync_service_settings(settings_uuids=None):
     settings = models.ServiceSettings.objects.all()
     if settings_uuids:
         if not isinstance(settings_uuids, (list, tuple)):
@@ -74,49 +78,90 @@ def sync_service_settings(settings_uuids=None, initial=False):
         settings = settings.filter(state=SynchronizationStates.IN_SYNC)
 
     for obj in settings:
-        # Settings are being created in SYNCING_SCHEDULED state,
-        # thus bypass transition during 'initial' sync.
-        if not initial:
+        settings_uuid = obj.uuid.hex
+        if obj.state == SynchronizationStates.IN_SYNC:
             obj.schedule_syncing()
             obj.save()
 
-        settings_uuid = obj.uuid.hex
-        begin_syncing_service_settings.apply_async(
-            args=(settings_uuid,),
-            link=sync_service_settings_succeeded.si(settings_uuid),
-            link_error=sync_service_settings_failed.si(settings_uuid))
+            begin_syncing_service_settings.apply_async(
+                args=(settings_uuid,),
+                link=sync_service_settings_succeeded.si(settings_uuid),
+                link_error=sync_service_settings_failed.si(settings_uuid))
+        elif obj.state == SynchronizationStates.CREATION_SCHEDULED:
+            begin_creating_service_settings.apply_async(
+                args=(settings_uuid,),
+                link=sync_service_settings_succeeded.si(settings_uuid),
+                link_error=sync_service_settings_failed.si(settings_uuid))
+        else:
+            logger.warning('Cannot sync service settings %s from state %s', obj.name, obj.state)
 
 
-@shared_task(name='nodeconductor.structure.sync_service_project_links')
+@shared_task(name='nodeconductor.structure.sync_service_project_links', max_retries=120, default_retry_delay=5)
+@retry_if_false
 def sync_service_project_links(service_project_links=None, quotas=None, initial=False):
     if service_project_links is not None:
-        if not isinstance(service_project_links, (list, tuple)):
-            service_project_links = [service_project_links]
         link_objects = models.ServiceProjectLink.from_string(service_project_links)
+        # Ignore iaas cloud project membership because it does not support default sync flow
+        link_objects = [lo for lo in link_objects if lo._meta.app_label != 'iaas']
     else:
         # Ignore iaas cloud project membership because it does not support default sync flow
         spl_models = [model for model in models.ServiceProjectLink.get_all_models() if model._meta.app_label != 'iaas']
         link_objects = sum(
             [list(model.objects.filter(state=SynchronizationStates.IN_SYNC)) for model in spl_models], [])
 
+    if not link_objects:
+        return True
+
     for obj in link_objects:
-        # Settings are being created in SYNCING_SCHEDULED state,
-        # thus bypass transition during 'initial' sync.
-        if not initial:
+        service_project_link_str = obj.to_string()
+        if initial:
+            # For newly created SPLs make sure their settings in stable state, retry otherwise
+            if obj.service.settings.state != SynchronizationStates.IN_SYNC:
+                return False
+
+            if obj.state == SynchronizationStates.NEW:
+                obj.schedule_creating()
+                obj.save()
+            elif obj.state != SynchronizationStates.CREATION_SCHEDULED:
+                # Don't sync already created SPL during initial phase
+                return True
+
+            begin_syncing_service_project_links.apply_async(
+                args=(service_project_link_str,),
+                kwargs={'quotas': quotas, 'initial': True, 'transition_method': 'begin_creating'},
+                link=sync_service_project_link_succeeded.si(service_project_link_str),
+                link_error=sync_service_project_link_failed.si(service_project_link_str))
+
+        elif obj.state == SynchronizationStates.IN_SYNC:
             obj.schedule_syncing()
             obj.save()
 
-        service_project_link_str = obj.to_string()
-        begin_syncing_service_project_links.apply_async(
-            args=(service_project_link_str,),
-            kwargs={'quotas': quotas, 'initial': initial},
-            link=sync_service_project_link_succeeded.si(service_project_link_str),
-            link_error=sync_service_project_link_failed.si(service_project_link_str))
+            begin_syncing_service_project_links.apply_async(
+                args=(service_project_link_str,),
+                kwargs={'quotas': quotas, 'initial': False},
+                link=sync_service_project_link_succeeded.si(service_project_link_str),
+                link_error=sync_service_project_link_failed.si(service_project_link_str))
+
+        else:
+            logger.warning('Cannot sync SPL %s from state %s', obj.id, obj.state)
+
+    return True
 
 
 @shared_task
 @transition(models.ServiceSettings, 'begin_syncing')
 def begin_syncing_service_settings(settings_uuid, transition_entity=None):
+    settings = transition_entity
+    try:
+        backend = settings.get_backend()
+        backend.sync()
+    except ServiceBackendNotImplemented:
+        pass
+
+
+@shared_task
+@transition(models.ServiceSettings, 'begin_creating')
+def begin_creating_service_settings(settings_uuid, transition_entity=None):
     settings = transition_entity
     try:
         backend = settings.get_backend()
@@ -138,10 +183,11 @@ def sync_service_settings_failed(settings_uuid, transition_entity=None):
 
 
 @shared_task
-def begin_syncing_service_project_links(service_project_link_str, quotas=None, initial=False, transition_entity=None):
+def begin_syncing_service_project_links(service_project_link_str, quotas=None, initial=False,
+                                        transition_entity=None, transition_method='begin_syncing'):
     spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
 
-    @transition(spl_model, 'begin_syncing')
+    @transition(spl_model, transition_method)
     def process(service_project_link_pk, quotas=None, transition_entity=None):
         service_project_link = transition_entity
         try:

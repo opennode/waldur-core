@@ -32,7 +32,7 @@ FLUENT_DASHBOARD_APP_ICONS = {
 }
 
 ADMIN_TOOLS_INDEX_DASHBOARD = 'nodeconductor.server.admin.dashboard.CustomIndexDashboard'
-ADMIN_TOOLS_APP_INDEX_DASHBOARD = 'fluent_dashboard.dashboard.FluentAppIndexDashboard'
+ADMIN_TOOLS_APP_INDEX_DASHBOARD = 'nodeconductor.server.admin.dashboard.CustomAppIndexDashboard'
 ADMIN_TOOLS_MENU = 'nodeconductor.server.admin.menu.CustomMenu'
 
 # Should be specified, otherwise all Applications dashboard will be included.

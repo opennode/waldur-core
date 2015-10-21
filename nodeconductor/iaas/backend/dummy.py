@@ -249,7 +249,7 @@ class OpenStackBaseClient(object):
 class KeystoneClient(OpenStackBaseClient):
     """ Dummy OpenStack identity service """
 
-    VERSION = '1.3.0'
+    VERSION = '0.11.1'
     Exceptions = keystone_exceptions
 
     class Auth(object):
@@ -451,7 +451,7 @@ class KeystoneClient(OpenStackBaseClient):
 class NovaClient(OpenStackBaseClient):
     """ Dummy OpenStack computing service """
 
-    VERSION = '2.23.0'
+    VERSION = '2.20.0'
     Exceptions = nova_exceptions
 
     class Flavor(OpenStackResourceList):
@@ -636,7 +636,7 @@ class NovaClient(OpenStackBaseClient):
 class GlanceClient(OpenStackBaseClient):
     """ Dummy OpenStack image service """
 
-    VERSION = '0.17.0'
+    VERSION = '0.15.0'
     Exceptions = glance_exceptions
 
     class Image(OpenStackResourceList):
@@ -652,7 +652,7 @@ class GlanceClient(OpenStackBaseClient):
 class NeutronClient(OpenStackBaseClient):
     """ Dummy OpenStack networking service """
 
-    VERSION = '2.4.0'
+    VERSION = '2.3.9'
     Exceptions = neutron_exceptions
 
     class Router(OpenStackResourceList):
@@ -740,7 +740,7 @@ class NeutronClient(OpenStackBaseClient):
 class CinderClient(OpenStackBaseClient):
     """ Dummy OpenStack volume service """
 
-    VERSION = '1.2.1'
+    VERSION = '1.1.1'
     Exceptions = cinder_exceptions
 
     class VolumeBackup(OpenStackResourceList):
@@ -874,10 +874,11 @@ class CinderClient(OpenStackBaseClient):
             return False
         return True
 
+
 class CeilometerClient(OpenStackBaseClient):
     """ Dummy OpenStack measurements service """
 
-    VERSION = '1.0.13'
+    VERSION = '1.0.12'
     Exceptions = ceilometer_exceptions
 
     class Statistics(OpenStackResourceList):

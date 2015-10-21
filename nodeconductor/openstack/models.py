@@ -90,6 +90,13 @@ class SecurityGroup(core_models.UuidMixin,
     def __str__(self):
         return self.name
 
+    @classmethod
+    def get_url_name(cls):
+        return 'openstack-sgp'
+
+
+SecurityGroup._meta.get_field('state').default = core_models.SynchronizationStates.SYNCING_SCHEDULED
+
 
 @python_2_unicode_compatible
 class SecurityGroupRule(SecurityGroupRuleValidationMixin, models.Model):

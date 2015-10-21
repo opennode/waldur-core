@@ -35,14 +35,19 @@ class IsAdminOrOwnerOrOrganizationManager(IsAdminOrReadOnly):
     """
 
     def has_permission(self, request, view):
-        user = request.user
-
-        if user.is_staff or request.method in SAFE_METHODS:
+        approving_user = request.user
+        if approving_user.is_staff or request.method in SAFE_METHODS:
             return True
         elif request.method == 'POST' and view.action_map.get('post') in \
                 ['approve_organization', 'reject_organization', 'remove_organization']:
-                return _can_manage_organization(view.get_object(), user)
+
+            candidate_user = view.get_object()
+            if approving_user == candidate_user and view.action_map.get('post') == 'remove_organization' \
+                    and not candidate_user.organization_approved:
+                return True
+
+            return _can_manage_organization(candidate_user, approving_user)
         elif view.suffix == 'List' or request.method == 'DELETE':
             return False
 
-        return user == view.get_object()
+        return approving_user == view.get_object()

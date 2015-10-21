@@ -49,7 +49,7 @@ class TestHookService(test.APITransactionTestCase):
                                       event_type=self.event_type,
                                       event_context={'customer': self.customer})
 
-        mocked_task.assert_called_once_with('nodeconductor.logging.process_event', mock.ANY, {})
+        mocked_task.assert_called_once_with('nodeconductor.logging.process_event', mock.ANY, {}, countdown=2)
         mocked_task.reset_mock()
 
         # Remove hook handler so that other tests won't depend on it
