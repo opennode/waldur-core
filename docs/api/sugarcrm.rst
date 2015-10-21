@@ -2,7 +2,7 @@ SugarCRM service provides an interface to SugarCRM system.
 It creates separate VM for each SugarCRM installation via NodeConductor OpenStack endpoints.
 
 SugarCRM services list
---------------------
+----------------------
 
 To get a list of services, run GET against **/api/sugarcrm/** as authenticated user.
 
@@ -21,10 +21,10 @@ Request parameters:
 
 Next parameters will be used for settings creation if settings is not defined:
 
- - backend_url — NodeConductor endpoint (e.g. http://rest-test.nodeconductor.com/);
+ - backend_url - URL of OpenStack service project link that will be used for sugarCRM resources creation
+                 (required, e.g.: http://example.com/api/openstack-service-project-link/1/);
  - username - NodeConductor user username (e.g. User);
  - password - NodeConductor user password (e.g. Password);
- - backend_spl_id - ID of OpenStack service project link that will be used for sugarCRM resources creation (required);
  - image - CRM OpenStack instance image name (default: "sugarcrm");
  - min_ram - minimum amount of ram for CRMs OpenStack instance (default: 2048 MB);
  - min_cores - storage volume size CRMs OpenStack instance. (default: 32768 MB);
@@ -99,7 +99,7 @@ parameters:
 
 .. code-block:: http
 
-    POST /api/oracle-databases/ HTTP/1.1
+    POST /api/sugarcrm-crms/ HTTP/1.1
     Content-Type: application/json
     Accept: application/json
     Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
