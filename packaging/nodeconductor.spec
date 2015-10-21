@@ -12,7 +12,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.75.0
+Version: 0.76.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -20,9 +20,9 @@ License: Copyright 2014 OpenNode LLC.  All rights reserved.
 Requires: logrotate
 Requires: MySQL-python
 Requires: nodeconductor-saml2
-Requires: python-ceilometerclient = 1.0.10
+Requires: python-ceilometerclient = 1.0.12
 Requires: python-celery >= 3.1.15, python-celery < 3.2
-Requires: python-cinderclient = 1.0.9
+Requires: python-cinderclient = 1.1.1
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.7.1
 Requires: python-django-admin-tools = 0.6.0
@@ -39,13 +39,13 @@ Requires: python-django-reversion >= 1.8.7
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
 Requires: python-future = 0.15.0
-Requires: python-glanceclient = 1:0.12.0
+Requires: python-glanceclient = 1:0.15.0
 Requires: python-jira = 0.47
 Requires: python-jsonfield = 1.0.0
-Requires: python-keystoneclient = 1:0.9.0
+Requires: python-keystoneclient = 1:0.11.1
 Requires: python-lxml >= 3.2.0
-Requires: python-neutronclient = 2.3.4
-Requires: python-novaclient = 1:2.17.0
+Requires: python-neutronclient = 2.3.9
+Requires: python-novaclient = 1:2.20.0
 Requires: python-pillow >= 2.0.0
 Requires: python-paypal-rest-sdk >= 1.10.0
 Requires: python-redis = 2.10.3
@@ -193,8 +193,8 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
-* Tue Oct 20 2015 Victor Mireyev <victor@opennodecloud.com> - 0.76.0-1.el7
-- Extract SAML authentication to a plugin
+* Wed Oct 21 2015 Jenkins <jenkins@opennodecloud.com> - 0.76.0-1.el7
+- New upstream release
 
 * Mon Oct 5 2015 Jenkins <jenkins@opennodecloud.com> - 0.75.0-1.el7
 - New upstream release

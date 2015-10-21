@@ -233,7 +233,7 @@ CELERYBEAT_SCHEDULE = {
     },
 
     'update-current-month-cost-projections': {
-        'task': 'nodeconductor.cost_tracking.update_current_month_projected_estimate',
+        'task': 'nodeconductor.cost_tracking.update_projected_estimate',
         'schedule': timedelta(hours=24),
         'args': (),
     },
@@ -246,6 +246,12 @@ CELERYBEAT_SCHEDULE = {
 
     'update-openstack-service-project-links-quotas': {
         'task': 'nodeconductor.structure.sync_service_project_links',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+
+    'close-alerts-without-scope': {
+        'task': 'nodeconductor.logging.close_alerts_without_scope',
         'schedule': timedelta(minutes=30),
         'args': (),
     }

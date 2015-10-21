@@ -99,6 +99,15 @@ Therefore configuration might look like this:
         'OPENSTACK_QUOTAS_INSTANCE_RATIOS': {
             'volumes': 4,
             'snapshots': 20,
+        },
+        'BILLING': {
+            'backend': 'nodeconductor.billing.backend.killbill.KillBillAPI',
+            'api_url': 'http://killbill.example.com/1.0/kb/',
+            'username': 'admin',
+            'password': 'password',
+            'api_key': 'bob',
+            'api_secret': 'lazar',
+            'currency': 'USD',
         }
     }
 
@@ -200,6 +209,30 @@ Therefore configuration might look like this:
 
         snapshots
           Number of snapshots per instance.
+
+    BILLING
+      Dictionary of billing engine parameters.
+
+        backend
+          Path to Kill Bill driver.
+
+        api_url
+          Url of Kill Bill API.
+
+        username
+            Username of Kill Bill admin account.
+
+        password
+            Password of Kill Bill admin account.
+
+        api_key
+            Kill Bill tenant API key.
+
+        api_secret
+            Kill Bill tenant API secret.
+
+        Additional Kill Bill parameters. For example: **currency**.
+
 
 NodeConductor also needs access to Zabbix database. For that a read-only user needs to be created in Zabbix database.
 

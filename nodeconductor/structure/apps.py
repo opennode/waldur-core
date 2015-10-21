@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.contrib.auth import get_user_model
 from django.db.models import signals
+from django_fsm import signals as fsm_signals
 
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.quotas import handlers as quotas_handlers
@@ -215,6 +216,12 @@ class StructureConfig(AppConfig):
             )
 
             signals.post_save.connect(
+                handlers.sync_service_project_link_with_backend,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.sync_service_project_link_with_backend_%s' % model.__name__,
+            )
+
+            signals.post_save.connect(
                 handlers.change_project_nc_service_quota,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_service_quota_%s' % model.__name__,
@@ -224,6 +231,12 @@ class StructureConfig(AppConfig):
                 handlers.change_project_nc_service_quota,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_service_quota_%s' % model.__name__,
+            )
+
+            signals.post_delete.connect(
+                handlers.remove_service_project_link_from_backend,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.remove_service_project_link_from_backend_%s' % model.__name__,
             )
 
         signals.pre_delete.connect(
@@ -275,6 +288,12 @@ class StructureConfig(AppConfig):
         )
 
         signals.post_save.connect(
+            handlers.sync_service_settings_with_backend,
+            sender=ServiceSettings,
+            dispatch_uid='nodeconductor.structure.handlers.sync_service_settings_with_backend',
+        )
+
+        fsm_signals.post_transition.connect(
             handlers.connect_shared_service_settings_to_customers,
             sender=ServiceSettings,
             dispatch_uid='nodeconductor.structure.handlers.connect_shared_service_settings_to_customers',

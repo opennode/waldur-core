@@ -1,7 +1,5 @@
-from admin_tools.utils import get_admin_site_name
 from django.utils.translation import ugettext_lazy as _
-from django.core.urlresolvers import reverse
-from fluent_dashboard.dashboard import modules, FluentIndexDashboard
+from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
 from fluent_dashboard.modules import AppIconList
 
 
@@ -47,7 +45,6 @@ class CustomIndexDashboard(FluentIndexDashboard):
         self.children.append(AppIconList(_('Backup'), models=('nodeconductor.backup.*',)))
 
     def init_with_context(self, context):
-        site_name = get_admin_site_name(context)
         self.children.append(modules.LinkList(
             _('Quick links'),
             layout='inline',
@@ -59,3 +56,13 @@ class CustomIndexDashboard(FluentIndexDashboard):
                 [_('Documentation'), 'http://nodeconductor.readthedocs.org/en/stable/'],
             ]
         ))
+
+
+class CustomAppIndexDashboard(FluentAppIndexDashboard):
+    def __init__(self, app_title, models, **kwargs):
+        super(CustomAppIndexDashboard, self).__init__(app_title, models, **kwargs)
+        path = self._get_app_models_path()
+        self.children = [modules.ModelList(title=app_title, models=[path])]
+
+    def _get_app_models_path(self):
+        return '%s.models.*' % self.app_title.replace(' ', '.', 1).replace(' ', '_').lower()

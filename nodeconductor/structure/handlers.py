@@ -8,14 +8,13 @@ from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
 
 from nodeconductor.core.tasks import send_task
-from nodeconductor.core.models import SshPublicKey
+from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.quotas import handlers as quotas_handlers
-from nodeconductor.structure import SupportedServices, signals
+from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
-                                            Customer, ProjectGroup, ServiceProjectLink, ServiceSettings, Service,
-                                            BalanceHistory)
+                                            Customer, ProjectGroup, ServiceProjectLink, ServiceSettings, Service)
 from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
 
@@ -422,7 +421,7 @@ def connect_customer_to_shared_service_settings(sender, instance, created=False,
         return
     customer = instance
 
-    for shared_settings in ServiceSettings.objects.filter(shared=True):
+    for shared_settings in ServiceSettings.objects.filter(shared=True, state=SynchronizationStates.IN_SYNC):
         service_model = SupportedServices.get_service_models()[shared_settings.type]['service']
         service_model.objects.create(customer=customer,
                                      settings=shared_settings,
@@ -430,18 +429,21 @@ def connect_customer_to_shared_service_settings(sender, instance, created=False,
                                      available_for_all=True)
 
 
-def connect_shared_service_settings_to_customers(sender, instance, created=False, **kwargs):
+def connect_shared_service_settings_to_customers(sender, instance, name, source, target, **kwargs):
     """ Connected service settings with all customers if they were created or become shared """
     service_settings = instance
-    if not service_settings.shared or not created:
+    if (target != SynchronizationStates.IN_SYNC or
+            source not in (SynchronizationStates.ERRED, SynchronizationStates.CREATING) or
+            not service_settings.shared):
         return
 
     service_model = SupportedServices.get_service_models()[service_settings.type]['service']
     for customer in Customer.objects.all():
-        service_model.objects.create(customer=customer,
-                                     settings=service_settings,
-                                     name=service_settings.name,
-                                     available_for_all=True)
+        if not service_model.objects.filter(customer=customer, settings=service_settings).exists():
+            service_model.objects.create(customer=customer,
+                                         settings=service_settings,
+                                         name=service_settings.name,
+                                         available_for_all=True)
 
 
 def connect_project_to_all_available_services(sender, instance, created=False, **kwargs):
@@ -452,7 +454,8 @@ def connect_project_to_all_available_services(sender, instance, created=False, *
     for service_model in Service.get_all_models():
         for service in service_model.objects.filter(available_for_all=True, customer=project.customer):
             service_project_link_model = service.projects.through
-            service_project_link_model.objects.create(project=project, service=service)
+            service_project_link_model.objects.create(
+                project=project, service=service, state=SynchronizationStates.NEW)
 
 
 def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance, created=False, **kwargs):
@@ -460,4 +463,24 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
     if service.available_for_all:
         service_project_link_model = service.projects.through
         for project in service.customer.projects.all():
-            service_project_link_model.objects.get_or_create(project=project, service=service)
+            service_project_link_model.objects.get_or_create(
+                project=project, service=service, state=SynchronizationStates.NEW)
+
+
+def sync_service_settings_with_backend(sender, instance, created=False, **kwargs):
+    if created:
+        send_task('structure', 'sync_service_settings')(instance.uuid.hex)
+
+
+def sync_service_project_link_with_backend(sender, instance, created=False, **kwargs):
+    if created:
+        if instance.state != SynchronizationStates.NEW:
+            send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
+
+
+def remove_service_project_link_from_backend(sender, instance, **kwargs):
+    backend = instance.get_backend()
+    try:
+        backend.remove_link(instance)
+    except ServiceBackendNotImplemented:
+        pass

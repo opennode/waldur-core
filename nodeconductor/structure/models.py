@@ -58,7 +58,7 @@ class StructureModel(models.Model):
             except AttributeError:
                 pass
             else:
-                if not path == 'self':
+                if not path == 'self' and '__' in path:
                     return reduce(getattr, path.split('__'), self)
 
         raise AttributeError(
@@ -343,6 +343,9 @@ class Project(core_models.DescribableMixin,
             queryset = queryset.filter(role_type=role_type)
 
         return queryset.exists()
+
+    def get_users(self):
+        return get_user_model().objects.filter(groups__projectrole__project=self)
 
     def __str__(self):
         return '%(name)s | %(customer)s' % {

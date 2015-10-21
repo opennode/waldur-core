@@ -1,5 +1,6 @@
 from django.test import TestCase
 
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.openstack import models as openstack_models
 from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import models, SupportedServices
@@ -45,7 +46,9 @@ class ServiceSettingsSignalsTest(TestCase):
     def test_new_shared_services_connects_to_existed_customers(self):
         customer = factories.CustomerFactory()
         new_shared_service_settings = factories.ServiceSettingsFactory(
-            type=SupportedServices.Types.OpenStack, shared=True)
+            type=SupportedServices.Types.OpenStack, shared=True, state=SynchronizationStates.CREATING)
+        new_shared_service_settings.set_in_sync()
+        new_shared_service_settings.save()
 
         self.assertTrue(openstack_models.OpenStackService.objects.filter(
             customer=customer, settings=new_shared_service_settings, available_for_all=True).exists())

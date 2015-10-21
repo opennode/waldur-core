@@ -36,7 +36,7 @@ class UserAndSshKeyPropagationTest(test.APITransactionTestCase):
         return ServiceProjectLinkFactory(service=service, project=project)
 
     def assert_task_called(self, task, name, entity):
-        calls = [call(name, (entity, link.to_string()), {}) for link in self.links]
+        calls = [call(name, (entity, link.to_string()), {}, countdown=2) for link in self.links]
         task.assert_has_calls(calls, any_order=True)
 
     def test_create_and_delete_key(self, mocked_task):

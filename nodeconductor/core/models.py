@@ -203,12 +203,18 @@ class SshPublicKey(LoggableMixin, UuidMixin, models.Model):
 
 
 class SynchronizationStates(object):
+    NEW = 0
     SYNCING_SCHEDULED = 1
     SYNCING = 2
     IN_SYNC = 3
     ERRED = 4
+    CREATION_SCHEDULED = 5
+    CREATING = 6
 
     CHOICES = (
+        (NEW, _('New')),
+        (CREATION_SCHEDULED, _('Creation Scheduled')),
+        (CREATING, _('Creating')),
         (SYNCING_SCHEDULED, _('Sync Scheduled')),
         (SYNCING, _('Syncing')),
         (IN_SYNC, _('In Sync')),
@@ -224,9 +230,13 @@ class SynchronizableMixin(models.Model):
         abstract = True
 
     state = FSMIntegerField(
-        default=SynchronizationStates.SYNCING_SCHEDULED,
+        default=SynchronizationStates.CREATION_SCHEDULED,
         choices=SynchronizationStates.CHOICES,
     )
+
+    @transition(field=state, source=SynchronizationStates.CREATION_SCHEDULED, target=SynchronizationStates.CREATING)
+    def begin_creating(self):
+        pass
 
     @transition(field=state, source=SynchronizationStates.SYNCING_SCHEDULED, target=SynchronizationStates.SYNCING)
     def begin_syncing(self):
@@ -236,7 +246,12 @@ class SynchronizableMixin(models.Model):
     def schedule_syncing(self):
         pass
 
-    @transition(field=state, source=SynchronizationStates.SYNCING, target=SynchronizationStates.IN_SYNC)
+    @transition(field=state, source=SynchronizationStates.NEW, target=SynchronizationStates.CREATION_SCHEDULED)
+    def schedule_creating(self):
+        pass
+
+    @transition(field=state, source=[SynchronizationStates.SYNCING, SynchronizationStates.CREATING],
+                target=SynchronizationStates.IN_SYNC)
     def set_in_sync(self):
         pass
 

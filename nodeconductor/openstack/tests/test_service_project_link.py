@@ -1,4 +1,3 @@
-import unittest
 from mock import patch
 
 from rest_framework import test, status
@@ -20,7 +19,6 @@ class ServiceProjectLinkCreateDeleteTest(test.APISimpleTestCase):
         self.project = structure_factories.ProjectFactory(customer=self.customer)
         self.service = factories.OpenStackServiceFactory(customer=self.customer)
 
-    @unittest.skip('Skipping till NC-848 is properly resolved')
     def test_membership_creation(self):
         self.client.force_authenticate(self.owner)
 
@@ -34,21 +32,16 @@ class ServiceProjectLinkCreateDeleteTest(test.APISimpleTestCase):
             'project': structure_factories.ProjectFactory.get_url(self.project)
         }
 
-        with patch('celery.app.base.Celery.send_task') as mocked_task:
-            response = self.client.post(url, payload)
-            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-            service_project_link = models.OpenStackServiceProjectLink.objects.get(
-                project=self.project, service=self.service)
+        response = self.client.post(url, payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        service_project_link = models.OpenStackServiceProjectLink.objects.get(
+            project=self.project, service=self.service)
 
-            self.assertEqual(service_project_link.availability_zone, availability_zone)
+        self.assertEqual(service_project_link.availability_zone, availability_zone)
 
-            mocked_task.assert_called_once_with(
-                'nodeconductor.structure.sync_service_project_links',
-                (service_project_link.to_string(),), {'initial': True})
-
-            # duplicate call should result in 400 code
-            response = self.client.post(url, payload)
-            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # duplicate call should result in 400 code
+        response = self.client.post(url, payload)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
@@ -73,7 +66,7 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
             self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
             mocked_task.assert_called_once_with(
                 'nodeconductor.structure.sync_service_project_links',
-                (self.service_project_link.to_string(),), {'quotas': quotas_data})
+                (self.service_project_link.to_string(),), {'quotas': quotas_data}, countdown=2)
 
     def test_volume_and_snapshot_quotas_are_created_with_max_instances_quota(self):
         self.client.force_authenticate(self.staff)
@@ -90,7 +83,7 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
                 self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
                 mocked_task.assert_called_once_with(
                     'nodeconductor.structure.sync_service_project_links',
-                    (self.service_project_link.to_string(),), {'quotas': quotas_data})
+                    (self.service_project_link.to_string(),), {'quotas': quotas_data}, countdown=2)
 
     def test_volume_and_snapshot_quotas_are_not_created_without_max_instances_quota(self):
         self.client.force_authenticate(self.staff)
@@ -101,7 +94,7 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
             self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
             mocked_task.assert_called_once_with(
                 'nodeconductor.structure.sync_service_project_links',
-                (self.service_project_link.to_string(),), {'quotas': quotas_data})
+                (self.service_project_link.to_string(),), {'quotas': quotas_data}, countdown=2)
 
     def test_volume_and_snapshot_values_not_provided_in_settings_use_default_values(self):
         self.client.force_authenticate(self.staff)
@@ -117,7 +110,7 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
                 self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
                 mocked_task.assert_called_once_with(
                     'nodeconductor.structure.sync_service_project_links',
-                    (self.service_project_link.to_string(),), {'quotas': quotas_data})
+                    (self.service_project_link.to_string(),), {'quotas': quotas_data}, countdown=2)
 
     def test_staff_user_can_create_external_network(self):
         self.client.force_authenticate(user=self.staff)
@@ -133,7 +126,7 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
             self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
             mocked_task.assert_called_once_with(
                 'nodeconductor.openstack.sync_external_network',
-                (self.service_project_link.to_string(), 'create', payload), {})
+                (self.service_project_link.to_string(), 'create', payload), {}, countdown=2)
 
     def test_staff_user_can_delete_existent_external_network(self):
         self.service_project_link.external_network_id = 'abcd1234'
@@ -145,7 +138,7 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
             self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
             mocked_task.assert_called_once_with(
                 'nodeconductor.openstack.sync_external_network',
-                (self.service_project_link.to_string(), 'delete'), {})
+                (self.service_project_link.to_string(), 'delete'), {}, countdown=2)
 
     def test_staff_user_cannot_delete_not_existent_external_network(self):
         self.client.force_authenticate(user=self.staff)
@@ -193,7 +186,7 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
 
             mocked_task.assert_called_once_with(
                 'nodeconductor.openstack.allocate_floating_ip',
-                (spl.to_string(),), {})
+                (spl.to_string(),), {}, countdown=2)
 
 
 class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
@@ -249,7 +242,6 @@ class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
         response = self.client.post(self.url, payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    @unittest.skip('Skipping till NC-848 is properly resolved')
     def test_group_manager_can_connect_project_and_service(self):
         user = self.users['group_manager']
         self.client.force_authenticate(user=user)
@@ -258,15 +250,8 @@ class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
         project = self.connected_project
         payload = self._get_valid_payload(service, project)
 
-        with patch('celery.app.base.Celery.send_task') as mocked_task:
-            response = self.client.post(self.url, payload)
-            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-            service_project_link = models.OpenStackServiceProjectLink.objects.get(
-                project=project, service=service)
-
-            mocked_task.assert_called_with(
-                'nodeconductor.structure.sync_service_project_links',
-                (service_project_link.to_string(),), {'initial': True})
+        response = self.client.post(self.url, payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_admin_cannot_connect_new_service_and_project_if_he_is_project_admin(self):
         user = self.users['admin']
