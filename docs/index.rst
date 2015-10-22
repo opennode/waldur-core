@@ -30,6 +30,14 @@ API
 
    api/api
 
+NodeConductor Extensions
+------------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   extensions/intro
+
 Developing NodeConductor
 ------------------------
 
