@@ -400,9 +400,10 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
                     "Security group {} has wrong service or project. New instance and its "
                     "security groups have to belong to same project and service".format(security_group.name))
 
-        if not attrs['skip_external_ip_assignment'] and not service_project_link.external_network_id:
-            raise serializers.ValidationError(
-                "Cannot assign external IP if service project link has no external network")
+        if service_project_link.state == core_models.SynchronizationStates.IN_SYNC:
+            if not attrs['skip_external_ip_assignment'] and not service_project_link.external_network_id:
+                raise serializers.ValidationError(
+                    "Cannot assign external IP if service project link has no external network")
 
         return attrs
 
