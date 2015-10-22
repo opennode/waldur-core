@@ -826,10 +826,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state'
         )
-        protected_fields = (
-            'customer', 'settings',
-            'backend_url', 'username', 'password', 'token', 'certificate', 'dummy'
-        )
+        settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
+        protected_fields = ('customer', 'settings', 'dummy') + settings_fields
         related_paths = ('customer',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -852,7 +850,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             fields['settings'].queryset = fields['settings'].queryset.filter(type=self.SERVICE_TYPE)
 
         if self.SERVICE_ACCOUNT_FIELDS is not NotImplemented:
-            for field in ('backend_url', 'username', 'password', 'token', 'certificate'):
+            for field in self.Meta.settings_fields:
                 if field in self.SERVICE_ACCOUNT_FIELDS:
                     fields[field].help_text = self.SERVICE_ACCOUNT_FIELDS[field]
                 else:
@@ -889,7 +887,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     raise serializers.ValidationError('Customer must match settings customer.')
 
         if self.context['request'].method == 'POST':
-            settings_fields = 'backend_url', 'username', 'password', 'token'
+            # Make shallow copy to protect from mutations
+            settings_fields = self.Meta.settings_fields[:]
             create_settings = any([attrs.get(f) for f in settings_fields])
             if not settings and not create_settings:
                 raise serializers.ValidationError(
