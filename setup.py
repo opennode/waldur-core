@@ -1,7 +1,11 @@
 #!/usr/bin/env python
-
+import sys
 from setuptools import setup, find_packages
+from optparse import OptionParser
 
+
+parser = OptionParser()
+(options, args) = parser.parse_args(sys.argv)
 
 dev_requires = [
     'Sphinx==1.2.2',
@@ -18,7 +22,6 @@ tests_requires = [
 
 install_requires = [
     'Celery>=3.1.15,<3.2',
-    'cliff==1.7.0',
     'croniter>=0.3.4,<0.3.6',
     'Django>=1.7.1,<1.8',
     'django-auth-ldap==1.2.0',
@@ -36,9 +39,6 @@ install_requires = [
     'jira>=0.47',
     'jsonfield==1.0.0',
     'lxml>=3.2',
-    'oslo.config==1.4.0',
-    'oslo.i18n==1.0.0',
-    'oslo.utils==1.0.0',
     'paypalrestsdk>=1.10.0',
     'Pillow>=2.0.0,<3.0.0',
     'python-ceilometerclient==1.0.12',
@@ -52,9 +52,25 @@ install_requires = [
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
-    'stevedore==1.0.0',
     'xhtml2pdf>=0.0.6',
 ]
+
+
+# RPM installation does not need oslo, cliff and stevedore libs -
+# they are required only for installation with setuptools
+try:
+    action = args[1]
+except IndexError:
+    pass
+else:
+    if action in ['develop', 'install', 'test']:
+        install_requires += [
+            'cliff==1.7.0',
+            'oslo.config==1.4.0',
+            'oslo.i18n==1.0.0',
+            'oslo.utils==1.0.0',
+            'stevedore==1.0.0',
+        ]
 
 
 setup(
