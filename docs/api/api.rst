@@ -146,10 +146,6 @@ Statistics
 
 .. include:: statistics.rst
 
-SugarCRM
-========
-
-.. include:: sugarcrm.rst
 
 Templates
 =========

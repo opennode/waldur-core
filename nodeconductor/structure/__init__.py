@@ -332,7 +332,8 @@ class SupportedServices(object):
 
     @classmethod
     def _is_active_model(cls, model):
-        return '.'.join(model.__module__.split('.')[:2]) in settings.INSTALLED_APPS
+        return ('.'.join(model.__module__.split('.')[:2]) in settings.INSTALLED_APPS or
+                '.'.join(model.__module__.split('.')[:1]) in settings.INSTALLED_APPS)
 
     @classmethod
     def _get_model_srt(cls, model):
