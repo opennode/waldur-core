@@ -91,9 +91,11 @@ cp packaging/settings.py nodeconductor/server/settings.py
 
 %install
 rm -rf %{buildroot}
+<<<<<<< HEAD
 %{__python} -V
 %{__python} setup.py install --help
 %{__python} setup.py install --skip-build --root %{buildroot}
+python setup.py install --single-version-externally-managed -O1 --root=%{buildroot} --record=INSTALLED_FILES
 
 mkdir -p %{buildroot}%{_unitdir}
 cp packaging%{__celery_systemd_unit_file} %{buildroot}%{__celery_systemd_unit_file}
