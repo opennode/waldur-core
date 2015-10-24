@@ -87,11 +87,11 @@ NodeConductor is an infrastructure and application management server developed b
 
 %build
 cp packaging/settings.py nodeconductor/server/settings.py
-python setup.py build
+%{__python} setup.py build
 
 %install
 rm -rf %{buildroot}
-{__python2} setup.py install --skip-build --root %{buildroot} --record=INSTALLED_FILES
+%{__python} setup.py install --record=INSTALLED_FILES --root %{buildroot}
 
 mkdir -p %{buildroot}%{_unitdir}
 cp packaging%{__celery_systemd_unit_file} %{buildroot}%{__celery_systemd_unit_file}
@@ -111,7 +111,7 @@ echo "'django.contrib.admin', 'fluent_dashboard', 'admin_tools', 'admin_tools.th
 echo "SECRET_KEY='tmp'" >> tmp_settings.py
 echo "STATIC_ROOT='%{buildroot}%{__data_dir}/static'" >> tmp_settings.py
 echo "STATIC_URL='/static/'" >> tmp_settings.py
-python manage.py collectstatic --noinput --settings=tmp_settings
+%{__python} manage.py collectstatic --noinput --settings=tmp_settings
 
 mkdir -p %{buildroot}%{__log_dir}
 echo "%{__log_dir}" >> INSTALLED_FILES
