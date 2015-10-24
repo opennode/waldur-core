@@ -91,7 +91,7 @@ python setup.py build
 
 %install
 rm -rf %{buildroot}
-python setup.py install --skip-build --root %{buildroot} --record=INSTALLED_FILES
+{__python2} setup.py install --skip-build --root %{buildroot} --record=INSTALLED_FILES
 
 mkdir -p %{buildroot}%{_unitdir}
 cp packaging%{__celery_systemd_unit_file} %{buildroot}%{__celery_systemd_unit_file}
