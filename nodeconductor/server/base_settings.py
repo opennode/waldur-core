@@ -306,7 +306,7 @@ except (ImportError, NameError):
 
 
 try:
-    from sugarcrm.settings import *
-    INSTALLED_APPS += ('sugarcrm',)
+    from nodeconductor_sugarcrm.settings import *
+    INSTALLED_APPS += ('nodeconductor_sugarcrm',)
 except (ImportError, NameError):
     pass
