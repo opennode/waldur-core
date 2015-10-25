@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 import sys
 from setuptools import setup, find_packages
-from optparse import OptionParser
 
-
-parser = OptionParser()
-(options, args) = parser.parse_args(sys.argv)
 
 dev_requires = [
     'Sphinx==1.2.2',
@@ -59,7 +55,7 @@ install_requires = [
 # RPM installation does not need oslo, cliff and stevedore libs -
 # they are required only for installation with setuptools
 try:
-    action = args[1]
+    action = sys.argv[1]
 except IndexError:
     pass
 else:
