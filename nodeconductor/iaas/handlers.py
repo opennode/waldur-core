@@ -59,6 +59,10 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
             cloud_project_membership=instance,
             description=sg_description,
             name=sg_name)[0]
+        # Default security group will be created automatically. No need to push it for the first time.
+        if sg_name == 'default':
+            sg.state = 3
+            sg.save()
 
         for rule in rules:
             if 'icmp_type' in rule:
