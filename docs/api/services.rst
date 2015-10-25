@@ -82,8 +82,7 @@ Example:
 
 Filtering of services list is supported through HTTP query parameters, the following fields are supported:
 
-- ?customer_uuid=<customer uuid>
-- ?customer=<customer url>
+- ?customer=<customer uuid>
 
 Create new service
 ------------------
