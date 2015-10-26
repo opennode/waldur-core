@@ -17,6 +17,7 @@ class ServiceTypes(object):
     GitLab = 5
     Oracle = 6
     Azure = 7
+    SugarCRM = 8
 
     CHOICES = (
         (OpenStack, 'OpenStack'),
@@ -26,6 +27,7 @@ class ServiceTypes(object):
         (GitLab, 'GitLab'),
         (Oracle, 'Oracle'),
         (Azure, 'Azure'),
+        (SugarCRM, 'SugarCRM'),
     )
 
 
@@ -208,7 +210,7 @@ class SupportedServices(object):
                 'resources': {resource['name']: reverse(resource['list_view'], request=request)
                               for resource in service['resources'].values()},
                 'properties': {resource['name']: reverse(resource['list_view'], request=request)
-                              for resource in service.get('properties', {}).values()}
+                               for resource in service.get('properties', {}).values()}
             }
         return data
 
@@ -330,7 +332,12 @@ class SupportedServices(object):
 
     @classmethod
     def _is_active_model(cls, model):
-        return '.'.join(model.__module__.split('.')[:2]) in settings.INSTALLED_APPS
+        """ Check is model app name is in list of INSTALLED_APPS """
+        # We need to use such tricky way to check because of inconsistence apps names:
+        # some apps are included in format "<module_name>.<app_name>" like "nodeconductor.openstack"
+        # other apps are included in format "<app_name>" like "nodecondcutor_sugarcrm"
+        return ('.'.join(model.__module__.split('.')[:2]) in settings.INSTALLED_APPS or
+                '.'.join(model.__module__.split('.')[:1]) in settings.INSTALLED_APPS)
 
     @classmethod
     def _get_model_srt(cls, model):

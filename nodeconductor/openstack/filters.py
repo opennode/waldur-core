@@ -133,6 +133,11 @@ class SecurityGroupFilter(django_filters.FilterSet):
     settings_uuid = django_filters.CharFilter(
         name='service_project_link__service__settings__uuid'
     )
+    service_project_link = core_filters.URLFilter(
+        view_name='openstack-spl-detail',
+        name='service_project_link__pk',
+        lookup_field='pk',
+    )
 
     class Meta(object):
         model = models.SecurityGroup
@@ -140,7 +145,8 @@ class SecurityGroupFilter(django_filters.FilterSet):
             'name',
             'description',
             'service',
-            'project'
+            'project',
+            'service_project_link',
         ]
 
 
@@ -158,4 +164,23 @@ class FloatingIPFilter(django_filters.FilterSet):
             'project',
             'service',
             'status',
+        ]
+
+
+class FlavorFilter(structure_filters.ServicePropertySettingsFilter):
+
+    class Meta(structure_filters.ServicePropertySettingsFilter.Meta):
+        model = models.Flavor
+        fields = dict({
+            'cores': ['exact', 'gte', 'lte'],
+            'ram': ['exact', 'gte', 'lte'],
+            'disk': ['exact', 'gte', 'lte'],
+        }, **{field: ['exact'] for field in structure_filters.ServicePropertySettingsFilter.Meta.fields})
+        order_by = [
+            'cores',
+            '-cores',
+            'ram',
+            '-ram',
+            'disk',
+            '-disk',
         ]
