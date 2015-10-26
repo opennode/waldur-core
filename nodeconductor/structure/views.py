@@ -813,7 +813,7 @@ class BaseSummaryView(viewsets.GenericViewSet):
 class ResourceViewSet(BaseSummaryView):
     """ The summary list of all user resources. """
 
-    params = ('name', 'project_uuid', 'customer_uuid')
+    params = ('name', 'project_uuid', 'customer')
 
     def get_urls(self, request):
         types = request.query_params.getlist('resource_type', [])
@@ -855,7 +855,7 @@ class ResourceViewSet(BaseSummaryView):
 class ServicesViewSet(BaseSummaryView):
     """ The summary list of all user services. """
 
-    params = ('name', 'project_uuid', 'customer_uuid')
+    params = ('name', 'project_uuid', 'customer')
 
     def get_urls(self, request):
         return SupportedServices.get_services(request).values()
