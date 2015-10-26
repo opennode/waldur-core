@@ -1,4 +1,5 @@
 .. include:: development_guideline.rst
+.. include:: documentation_guideline.rst
 .. include:: ssh-keys.rst
 .. include:: permissions.rst
 .. include:: managed-entities.rst

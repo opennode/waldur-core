@@ -10,10 +10,10 @@ This plugin adds support for managing OpenStack deployments - tenants, instances
 Guide
 -----
 .. toctree::
-    openstack/installation
+    installation
 
 API
 ---
 .. toctree::
-    openstack/service
-    openstack/resource
+    service
+    resource

@@ -36,7 +36,7 @@ NodeConductor Plugins
 .. toctree::
    :maxdepth: 1
 
-   plugins/intro
+   plugins/openstack/intro
 
 Developing NodeConductor
 ------------------------
