@@ -1071,6 +1071,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseResourceFilter
+    metadata_class = serializers.ResourceProvisioningMetadata
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):
