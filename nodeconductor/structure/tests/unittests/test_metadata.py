@@ -1,6 +1,3 @@
-import mock
-
-from django.db import models
 from django.test import TestCase
 from rest_framework import serializers
 
@@ -9,26 +6,21 @@ from nodeconductor.structure.serializers import ResourceProvisioningMetadata
 
 class ResourceProvisioningMetadataTest(TestCase):
     def get_serializer(self):
-        class Image(models.Model):
-            name = models.CharField(max_length=100)
+        STATE_CHOICES = (
+            (1, 'Ready'),
+            (2, 'Erred')
+        )
 
-        class VirtualMachine(models.Model):
-            STATE_CHOICES = (
-                (1, 'Ready'),
-                (2, 'Erred'),
-            )
+        class Queryset(object):
+            def all(self):
+                return {'key': 'value'}
 
-            name = models.CharField(max_length=100)
-            description = models.TextField()
+        class VirtualMachineSerializer(serializers.Serializer):
+            name = serializers.CharField(max_length=100, read_only=True)
+            description = serializers.CharField(max_length=100)
 
-            state = models.IntegerField(choices=STATE_CHOICES)
-            image = models.ForeignKey(Image)
-
-        class VirtualMachineSerializer(serializers.ModelSerializer):
-            class Meta:
-                model = VirtualMachine
-                fields = ('name', 'description', 'state', 'image')
-                read_only_fields = ('name',)
+            state = serializers.ChoiceField(choices=STATE_CHOICES)
+            image = serializers.RelatedField(queryset=Queryset())
 
         return VirtualMachineSerializer()
 
