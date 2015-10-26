@@ -9,6 +9,9 @@ from nodeconductor.structure.serializers import ResourceProvisioningMetadata
 
 class ResourceProvisioningMetadataTest(TestCase):
     def get_serializer(self):
+        class Image(models.Model):
+            name = models.CharField(max_length=100)
+
         class VirtualMachine(models.Model):
             STATE_CHOICES = (
                 (1, 'Ready'),
@@ -19,10 +22,7 @@ class ResourceProvisioningMetadataTest(TestCase):
             description = models.TextField()
 
             state = models.IntegerField(choices=STATE_CHOICES)
-            image = models.ForeignKey('Image')
-
-        class Image(models.Model):
-            name = models.CharField(max_length=100)
+            image = models.ForeignKey(Image)
 
         class VirtualMachineSerializer(serializers.ModelSerializer):
             class Meta:
