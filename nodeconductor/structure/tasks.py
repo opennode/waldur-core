@@ -115,6 +115,9 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
     for obj in link_objects:
         service_project_link_str = obj.to_string()
         if initial:
+            # Ignore SPLs with ERRED service settings
+            if obj.service.settings.state == SynchronizationStates.ERRED:
+                break
             # For newly created SPLs make sure their settings in stable state, retry otherwise
             if obj.service.settings.state != SynchronizationStates.IN_SYNC:
                 return False
