@@ -1,51 +1,6 @@
 Service
 =======
 
-List OpenStack services
------------------------
-
-To list OpenStack services, issue GET against **/api/openstack/** as a customer owner.
-
-Example of a request:
-
-.. code-block:: http
-
-    GET /api/openstack/ HTTP/1.1
-    Content-Type: application/json
-    Accept: application/json
-    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-    Host: example.com
-
-    [
-        {
-            "uuid": "a66f449fab9f4b999c6be0e32d643059",
-            "url": "http://www.example.com/api/openstack/a66f449fab9f4b999c6be0e32d643059/",
-            "name": "Stratus",
-            "projects": [],
-            "customer": "http://www.example.com/api/customers/b3b0d890cab244b88429db838ead737a/",
-            "customer_name": "Ministry of Bells",
-            "customer_native_name": "",
-            "settings": "http://www.example.com/api/service-settings/beed810ccec24dd786ed9c79d7fb72fe/"
-        },
-        {
-            "uuid": "cc83b515a4364a4699a6b36f99b39381",
-            "url": "http://www.example.com/api/openstack/cc83b515a4364a4699a6b36f99b39381/",
-            "name": "Cumulus",
-            "projects": [],
-            "customer": "http://www.example.com/api/customers/5bf7c7f1c67842849cbfc0b544d67056/",
-            "customer_name": "Ministry of Whistles",
-            "customer_native_name": "",
-            "settings": "http://www.example.com/api/service-settings/2b688349377c4a28bf929ba0f60d6f46/"
-        }
-    ]
-
-Filtering of services list is supported through HTTP query parameters, the following fields are supported:
-
-- ?name=<service name>
-- ?customer=<customer uuid>
-- ?project_uuid=<project uuid>
-
-
 Create OpenStack service
 ------------------------
 
@@ -71,7 +26,7 @@ Or provide your own credentials. Example:
 
 .. code-block:: http
 
-    POST /api/oracle/ HTTP/1.1
+    POST /api/openstack/ HTTP/1.1
     Content-Type: application/json
     Accept: application/json
     Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
