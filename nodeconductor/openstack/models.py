@@ -15,6 +15,7 @@ class OpenStackService(structure_models.Service):
         structure_models.Project, related_name='openstack_services', through='OpenStackServiceProjectLink')
 
     class Meta:
+        unique_together = ('customer', 'settings')
         verbose_name = 'OpenStack service'
         verbose_name_plural = 'OpenStack services'
 
