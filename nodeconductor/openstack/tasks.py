@@ -27,7 +27,8 @@ def provision(instance_uuid, **kwargs):
             kwargs={'initial': True, 'transition_method': 'begin_creating'},
             link=chain(sync_service_project_link_succeeded.si(spl.to_string()),
                        provision.si(instance_uuid, **kwargs)),
-            link_error=sync_service_project_link_failed.si(spl.to_string())
+            link_error=chain(sync_service_project_link_failed.si(spl.to_string()),
+                             set_erred.si(instance_uuid)),
         )
     else:
         provision_instance.apply_async(
