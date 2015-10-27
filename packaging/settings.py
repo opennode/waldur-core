@@ -722,8 +722,8 @@ if config.get('sentry', 'dsn') != '':
     }
 
 extensions = ('nodeconductor_plus.py', 'nodeconductor_saml2.py')
-for extension in extensions:
+for extension_name in extensions:
     # optionally load extension configurations
-    extension_configuration = os.path.join(conf_dir, extension)
-    if os.path.isfile(extension_configuration):
-        execfile(extension_configuration)
+    extension_conf_file_path = os.path.join(conf_dir, extension_name)
+    if os.path.isfile(extension_conf_file_path):
+        execfile(extension_conf_file_path)

@@ -19,7 +19,6 @@ License: Copyright 2014 OpenNode LLC.  All rights reserved.
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 Requires: logrotate
 Requires: MySQL-python
-Requires: nodeconductor-saml2
 Requires: python-ceilometerclient = 1.0.12
 Requires: python-celery >= 3.1.15, python-celery < 3.2
 Requires: python-cinderclient = 1.1.1
