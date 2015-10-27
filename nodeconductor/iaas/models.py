@@ -425,6 +425,10 @@ class InstanceSlaHistory(models.Model):
     instance = models.ForeignKey(Instance, related_name='slas')
     value = models.DecimalField(max_digits=11, decimal_places=4, null=True, blank=True)
 
+    class Meta:
+        verbose_name = 'Instance SLA history'
+        verbose_name_plural = 'Instance SLA histories'
+
     def __str__(self):
         return 'SLA for %s during %s: %s' % (self.instance, self.period, self.value)
 

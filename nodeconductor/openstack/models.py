@@ -14,6 +14,10 @@ class OpenStackService(structure_models.Service):
     projects = models.ManyToManyField(
         structure_models.Project, related_name='openstack_services', through='OpenStackServiceProjectLink')
 
+    class Meta:
+        verbose_name = 'OpenStack service'
+        verbose_name_plural = 'OpenStack services'
+
     @property
     def auth_url(self):
         # XXX: Temporary backward compatibility
@@ -37,6 +41,8 @@ class OpenStackServiceProjectLink(QuotaModelMixin, structure_models.ServiceProje
 
     class Meta:
         unique_together = ('service', 'project')
+        verbose_name = 'OpenStack service project link'
+        verbose_name_plural = 'OpenStack service project links'
 
     @property
     def cloud(self):
