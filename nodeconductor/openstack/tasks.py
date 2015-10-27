@@ -3,10 +3,12 @@ import logging
 from celery import shared_task, chain
 
 from nodeconductor.core.tasks import transition, throttle
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.openstack.backend import OpenStackBackendError
 from nodeconductor.openstack.models import OpenStackServiceProjectLink, Instance, SecurityGroup
 from nodeconductor.structure.models import ServiceSettings
-from nodeconductor.structure.tasks import sync_service_project_links
+from nodeconductor.structure.tasks import (
+    begin_syncing_service_project_links, sync_service_project_link_succeeded, sync_service_project_link_failed)
 
 
 logger = logging.getLogger(__name__)
@@ -15,12 +17,25 @@ logger = logging.getLogger(__name__)
 @shared_task(name='nodeconductor.openstack.provision')
 def provision(instance_uuid, **kwargs):
     instance = Instance.objects.get(uuid=instance_uuid)
-    chain(
-        sync_service_project_links.si(instance.service_project_link.to_string(), initial=True),
-        provision_instance.si(instance_uuid, **kwargs),
-    ).apply_async(
-        link=set_online.si(instance_uuid),
-        link_error=set_erred.si(instance_uuid))
+    spl = instance.service_project_link
+    if spl.state == SynchronizationStates.NEW:
+        # Sync NEW SPL before instance provision
+        spl.schedule_creating()
+        spl.save()
+        begin_syncing_service_project_links.apply_async(
+            args=(spl.to_string(),),
+            kwargs={'initial': True, 'transition_method': 'begin_creating'},
+            link=chain(sync_service_project_link_succeeded.si(spl.to_string()),
+                       provision.si(instance_uuid, **kwargs)),
+            link_error=sync_service_project_link_failed.si(spl.to_string())
+        )
+    else:
+        provision_instance.apply_async(
+            args=(instance_uuid,),
+            kwargs=kwargs,
+            link=set_online.si(instance_uuid),
+            link_error=set_erred.si(instance_uuid)
+        )
 
 
 @shared_task(name='nodeconductor.openstack.destroy')
