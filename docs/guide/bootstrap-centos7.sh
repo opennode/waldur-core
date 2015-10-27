@@ -1,7 +1,6 @@
 # Configure repositories
 yum -y install epel-release
-yum -y install https://repos.fedorapeople.org/repos/openstack/EOL/openstack-icehouse/rdo-release-icehouse-4.noarch.rpm
-sed -i 's,openstack/openstack-icehouse/,openstack/EOL/openstack-icehouse/,' /etc/yum.repos.d/rdo-release.repo
+yum -y install https://repos.fedorapeople.org/repos/openstack/openstack-juno/rdo-release-juno-1.noarch.rpm
 yum -y install http://opennodecloud.com/centos/7/nodeconductor-release.rpm
 
 # Install and enable services

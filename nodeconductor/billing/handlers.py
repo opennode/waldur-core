@@ -10,14 +10,14 @@ logger = logging.getLogger('nodeconductor.billing')
 def log_invoice_save(sender, instance, created=False, **kwargs):
     if created:
         event_logger.invoice.info(
-            'Invoice for customer {customer_name} for the period of {invoice_date} has been created.',
+            '{invoice_date}. Invoice for customer {customer_name} has been created.',
             event_type='invoice_creation_succeeded',
             event_context={
                 'invoice': instance,
             })
     else:
         event_logger.invoice.info(
-            'Invoice for customer {customer_name} for the period of {invoice_date} has been updated.',
+            '{invoice_date}. Invoice for customer {customer_name} has been updated.',
             event_type='invoice_update_succeeded',
             event_context={
                 'invoice': instance,
@@ -26,7 +26,7 @@ def log_invoice_save(sender, instance, created=False, **kwargs):
 
 def log_invoice_delete(sender, instance, **kwargs):
     event_logger.invoice.info(
-        'Invoice for customer {customer_name} for the period of {invoice_date} has been deleted.',
+        '{invoice_date}. Invoice for customer {customer_name} has been deleted.',
         event_type='invoice_deletion_succeeded',
         event_context={
             'invoice': instance,

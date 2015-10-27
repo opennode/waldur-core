@@ -52,7 +52,7 @@ def _get_cinder_version():
     try:
         return pkg_resources.get_distribution('python-cinderclient').parsed_version
     except ValueError:
-        return '00000001', '00000000', '00000009', '*final'
+        return '00000001', '00000001', '00000001', '*final'
 
 
 @lru_cache(maxsize=1)
@@ -60,7 +60,7 @@ def _get_neutron_version():
     try:
         return pkg_resources.get_distribution('python-neutronclient').parsed_version
     except ValueError:
-        return '00000002', '00000003', '00000004', '*final'
+        return '00000002', '00000003', '00000009', '*final'
 
 
 @lru_cache(maxsize=1)
@@ -68,7 +68,7 @@ def _get_nova_version():
     try:
         return pkg_resources.get_distribution('python-novaclient').parsed_version
     except ValueError:
-        return '00000002', '00000017', '00000000', '*final'
+        return '00000002', '00000020', '00000000', '*final'
 
 
 class OpenStackClient(object):
@@ -1065,7 +1065,6 @@ class OpenStackBackend(OpenStackClient):
                 backend_public_key = None
 
             backend_flavor = nova.flavors.get(backend_flavor_id)
-            backend_image = glance.images.get(image.backend_id)
 
             if not system_volume_id:
                 system_volume_name = '{0}-system'.format(instance.name)
@@ -1076,7 +1075,7 @@ class OpenStackBackend(OpenStackClient):
                     size=size,
                     display_name=system_volume_name,
                     display_description='',
-                    imageRef=backend_image.id,
+                    imageRef=image.backend_id,
                 )
                 system_volume_id = system_volume.id
 

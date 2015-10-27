@@ -337,11 +337,9 @@ class OpenStackBackend(ServiceBackend):
         try:
             nova = self.nova_client
             cinder = self.cinder_client
-            glance = self.glance_client
             neutron = self.neutron_client
 
             backend_flavor = nova.flavors.get(backend_flavor_id)
-            backend_image = glance.images.get(backend_image_id)
 
             # verify if the internal network to connect to exists
             service_project_link = instance.service_project_link
@@ -401,7 +399,7 @@ class OpenStackBackend(ServiceBackend):
                 size=self.mb2gb(instance.system_volume_size),
                 display_name=system_volume_name,
                 display_description='',
-                imageRef=backend_image.id)
+                imageRef=backend_image_id)
 
             data_volume_name = '{0}-data'.format(instance.name)
             logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)

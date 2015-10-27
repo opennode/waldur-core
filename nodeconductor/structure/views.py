@@ -813,7 +813,7 @@ class BaseSummaryView(viewsets.GenericViewSet):
 class ResourceViewSet(BaseSummaryView):
     """ The summary list of all user resources. """
 
-    params = ('name', 'project_uuid', 'customer_uuid')
+    params = ('name', 'project_uuid', 'customer')
 
     def get_urls(self, request):
         types = request.query_params.getlist('resource_type', [])
@@ -855,7 +855,7 @@ class ResourceViewSet(BaseSummaryView):
 class ServicesViewSet(BaseSummaryView):
     """ The summary list of all user services. """
 
-    params = ('name', 'project_uuid', 'customer_uuid')
+    params = ('name', 'project_uuid', 'customer')
 
     def get_urls(self, request):
         return SupportedServices.get_services(request).values()
@@ -1016,6 +1016,47 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
     filter_class = filters.BaseServiceProjectLinkFilter
 
 
+def safe_operation(valid_state=None):
+    def decorator(view_fn):
+        @functools.wraps(view_fn)
+        def wrapped(self, request, *args, **kwargs):
+            message = "Performing %s operation is not allowed for resource in its current state"
+            operation_name = view_fn.__name__
+
+            try:
+                with transaction.atomic():
+                    resource = self.get_object()
+                    project = resource.service_project_link.project
+                    is_admin = project.has_user(request.user, models.ProjectRole.ADMINISTRATOR) \
+                        or project.customer.has_user(request.user, models.CustomerRole.OWNER)
+
+                    if not is_admin and not request.user.is_staff:
+                        raise PermissionDenied(
+                            "Only project administrator or staff allowed to perform this action.")
+
+                    if valid_state and resource.state != valid_state:
+                        raise core_exceptions.IncorrectStateException(message % operation_name)
+
+                    # Important! We are passing back the instance from current transaction to a view
+                    try:
+                        view_fn(self, request, resource, *args, **kwargs)
+                    except ServiceBackendNotImplemented:
+                        raise MethodNotAllowed(operation_name)
+
+            except TransitionNotAllowed:
+                raise core_exceptions.IncorrectStateException(message % operation_name)
+
+            except IntegrityError:
+                return Response({'status': '%s was not scheduled' % operation_name},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({'status': '%s was scheduled' % operation_name},
+                            status=status.HTTP_202_ACCEPTED)
+
+        return wrapped
+    return decorator
+
+
 class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
                           core_mixins.UserContextMixin,
                           viewsets.ModelViewSet):
@@ -1030,46 +1071,6 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseResourceFilter
-
-    def safe_operation(valid_state=None):
-        def decorator(view_fn):
-            @functools.wraps(view_fn)
-            def wrapped(self, request, *args, **kwargs):
-                message = "Performing %s operation is not allowed for resource in its current state"
-                operation_name = view_fn.__name__
-
-                try:
-                    with transaction.atomic():
-                        resource = self.get_object()
-                        project = resource.service_project_link.project
-                        is_admin = project.has_user(request.user, models.ProjectRole.ADMINISTRATOR) \
-                            or project.customer.has_user(request.user, models.CustomerRole.OWNER)
-
-                        if not is_admin and not request.user.is_staff:
-                            raise PermissionDenied(
-                                "Only project administrator or staff allowed to perform this action.")
-
-                        if valid_state and resource.state != valid_state:
-                            raise core_exceptions.IncorrectStateException(message % operation_name)
-
-                        # Important! We are passing back the instance from current transaction to a view
-                        try:
-                            view_fn(self, request, resource, *args, **kwargs)
-                        except ServiceBackendNotImplemented:
-                            raise MethodNotAllowed(operation_name)
-
-                except TransitionNotAllowed:
-                    raise core_exceptions.IncorrectStateException(message % operation_name)
-
-                except IntegrityError:
-                    return Response({'status': '%s was not scheduled' % operation_name},
-                                    status=status.HTTP_400_BAD_REQUEST)
-
-                return Response({'status': '%s was scheduled' % operation_name},
-                                status=status.HTTP_202_ACCEPTED)
-
-            return wrapped
-        return decorator
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):

@@ -738,7 +738,7 @@ class ResourceFilter(django_filters.FilterSet):
 
     name = django_filters.CharFilter(lookup_type='icontains')
 
-    customer_uuid = django_filters.CharFilter(
+    customer = django_filters.CharFilter(
         name='cloud_project_membership__project__customer__uuid'
     )
 
@@ -771,7 +771,7 @@ class ResourceFilter(django_filters.FilterSet):
         fields = [
             'name',
             'template_name',
-            'customer_uuid',
+            'customer',
             'customer_name',
             'customer_native_name',
             'customer_abbreviation',
@@ -1014,9 +1014,6 @@ class CloudFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(
         name='customer__uuid',
     )
-    customer_uuid = django_filters.CharFilter(
-        name='customer__uuid',
-    )
     customer_name = django_filters.CharFilter(
         lookup_type='icontains',
         name='customer__name',
@@ -1045,7 +1042,6 @@ class CloudFilter(django_filters.FilterSet):
         fields = [
             'name',
             'customer',
-            'customer_uuid',
             'customer_name',
             'customer_native_name',
             'project',

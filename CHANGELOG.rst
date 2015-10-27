@@ -5,15 +5,24 @@ Release NEXT
 ------------
 - <none yet>.
 
+Release 0.76.0
+--------------
+- Bump supported versions of OpenStack libraries to Juno version.
+- Implementation of lazy SPL creation for more efficient backend resource usage.
+- Introduction of NEW and CREATION_SCHEDULED states for the SPLs.
+- Added automatic OpenStack tenant deletion on OpenStack SPL removal.
+- Fix maximum length for generated OpenStack and Zabbix names to fit into their model.
+- Allow organisation claim to be modified by the claimer before it's confirmed.
+- Bugfixes.
+
 Release 0.75.0
 --------------
-
-- Multiple bugfixes
+- Multiple bugfixes.
 - Added invoice generation.
 - Add reporting of shared service consumption to KillBill.
 - Enhanced cost esimation module.
-- Dropped WHMCS billing, replaced with KillBill.io
-- New admin skin based on Fluent project
+- Dropped WHMCS billing, replaced with KillBill.io.
+- New admin skin based on Fluent project.
 
 Release 0.74.0
 --------------
@@ -251,7 +260,7 @@ Release 0.48.0
 --------------
 - Expose of requirements of mapped images in template list.
 - UUID of objects is exposed in multiple endpoints.
-- Bugfixes
+- Bugfixes.
 
 Release 0.47.0
 --------------
@@ -274,7 +283,7 @@ Release 0.45.0
 
 Release 0.44.0
 --------------
-- Bugfixes
+- Bugfixes.
 
 Release 0.43.0
 --------------
