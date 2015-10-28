@@ -56,18 +56,18 @@ def update_projected_estimate(customer_uuid=None, resource_uuid=None):
                 created = instance.created
                 if created.month == now.month and created.year == now.year:
                     # update only current month estimate
-                    PriceEstimate.update_price_for_resource(instance, now.month, now.year, creation_month_cost)
+                    PriceEstimate.update_price_for_scope(instance, now.month, now.year, creation_month_cost)
                 else:
                     # update current month estimate
-                    PriceEstimate.update_price_for_resource(instance, now.month, now.year, monthly_cost)
+                    PriceEstimate.update_price_for_scope(instance, now.month, now.year, monthly_cost)
                     # update first month estimate
-                    PriceEstimate.update_price_for_resource(instance, created.month, created.year, creation_month_cost,
-                                                            update_if_exists=False)
+                    PriceEstimate.update_price_for_scope(instance, created.month, created.year, creation_month_cost,
+                                                         update_if_exists=False)
                     # update price estimate for previous months if it does not exist:
                     previous_months = rrule(MONTHLY, dtstart=created, until=now.replace(day=1, hour=0, minute=0))[1:]
                     for date in previous_months:
-                        PriceEstimate.update_price_for_resource(instance, date.month, date.year, monthly_cost,
-                                                                update_if_exists=False)
+                        PriceEstimate.update_price_for_scope(instance, date.month, date.year, monthly_cost,
+                                                             update_if_exists=False)
 
 
 @shared_task(name='nodeconductor.cost_tracking.update_today_usage')

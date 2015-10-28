@@ -85,13 +85,6 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
                     estimate.total += delta
                     estimate.save(update_fields=['total'])
 
-    @classmethod
-    def update_price_for_resource(cls, resource, month, year, total, update_if_exists=True):
-        spl = resource.service_project_link
-        parents = (spl, spl.project, spl.service, resource.customer)
-
-        cls.update_price_for_scope(resource, month, year, total, parents=parents, update_if_exists=update_if_exists)
-
     def __str__(self):
         return '%s for %s-%s' % (self.scope, self.year, self.month)
 
