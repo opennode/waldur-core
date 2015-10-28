@@ -18,6 +18,7 @@ class ServiceTypes(object):
     Oracle = 6
     Azure = 7
     SugarCRM = 8
+    SaltMGMT = 9
 
     CHOICES = (
         (OpenStack, 'OpenStack'),
@@ -28,6 +29,7 @@ class ServiceTypes(object):
         (Oracle, 'Oracle'),
         (Azure, 'Azure'),
         (SugarCRM, 'SugarCRM'),
+        (SaltMGMT, 'SaltMGMT'),
     )
 
 

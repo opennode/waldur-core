@@ -310,3 +310,10 @@ try:
     INSTALLED_APPS += ('nodeconductor_sugarcrm',)
 except (ImportError, NameError):
     pass
+
+
+try:
+    from nodeconductor_saltmgmt.settings import *
+    INSTALLED_APPS += ('nodeconductor_saltmgmt',)
+except (ImportError, NameError):
+    pass
