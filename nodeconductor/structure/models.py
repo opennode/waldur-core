@@ -622,7 +622,7 @@ class ServiceProjectLink(core_models.SerializableAbstractMixin,
         return ('project', 'service',)
 
     def get_parents(self):
-        return [self.project]
+        return [self.project, self.service]
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
