@@ -265,6 +265,7 @@ class ProjectRole(core_models.UuidMixin, models.Model):
 class Project(core_models.DescribableMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
+              core_models.DescendantMixin,
               quotas_models.QuotaModelMixin,
               LoggableMixin,
               TimeStampedModel,
@@ -363,7 +364,7 @@ class Project(core_models.DescribableMixin,
     def get_permitted_objects_uuids(cls, user):
         return {'project_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
 
-    def get_quota_parents(self):
+    def get_parents(self):
         return [self.customer]
 
     def get_links(self):
@@ -397,6 +398,7 @@ class ProjectGroupRole(core_models.UuidMixin, models.Model):
 class ProjectGroup(core_models.UuidMixin,
                    core_models.DescribableMixin,
                    core_models.NameMixin,
+                   core_models.DescendantMixin,
                    quotas_models.QuotaModelMixin,
                    LoggableMixin,
                    TimeStampedModel):
@@ -473,6 +475,9 @@ class ProjectGroup(core_models.UuidMixin,
 
     def get_log_fields(self):
         return ('uuid', 'customer', 'name')
+
+    def get_parents(self):
+        return [self.customer]
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
@@ -583,6 +588,7 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 @python_2_unicode_compatible
 class ServiceProjectLink(core_models.SerializableAbstractMixin,
                          core_models.SynchronizableMixin,
+                         core_models.DescendantMixin,
                          LoggableMixin,
                          StructureModel):
     """ Base service-project link class. See Service class for usage example. """
@@ -614,6 +620,9 @@ class ServiceProjectLink(core_models.SerializableAbstractMixin,
 
     def get_log_fields(self):
         return ('project', 'service',)
+
+    def get_parents(self):
+        return [self.project]
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
@@ -653,6 +662,7 @@ class Resource(core_models.UuidMixin,
                core_models.DescribableMixin,
                core_models.NameMixin,
                core_models.SerializableAbstractMixin,
+               core_models.DescendantMixin,
                LoggableMixin,
                TimeStampedModel,
                StructureModel):
@@ -762,6 +772,9 @@ class Resource(core_models.UuidMixin,
         context = super(Resource, self)._get_log_context(entity_name)
         context['resource_type'] = SupportedServices.get_name_for_model(self)
         return context
+
+    def get_parents(self):
+        return [self.service_project_link]
 
     def __str__(self):
         return self.name

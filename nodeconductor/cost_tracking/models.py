@@ -57,12 +57,13 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
 
     @classmethod
     @transaction.atomic
-    def update_price_for_scope(cls, scope, month, year, total, parents=tuple(), update_if_exists=True):
+    def update_price_for_scope(cls, scope, month, year, total, update_if_exists=True):
         estimate, created = cls.objects.get_or_create(
             content_type=ContentType.objects.get_for_model(scope),
             object_id=scope.id,
             month=month,
-            year=year)
+            year=year,
+            is_manually_input=False)
 
         if update_if_exists or created:
             delta = total - estimate.total
@@ -71,16 +72,18 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
         else:
             delta = 0
 
-        for parent in parents:
-            estimate, created = cls.objects.get_or_create(
-                content_type=ContentType.objects.get_for_model(parent),
-                object_id=parent.id,
-                month=month,
-                year=year)
+        if isinstance(scope, core_models.DescendantMixin):
+            for parent in scope.get_ancestors():
+                estimate, created = cls.objects.get_or_create(
+                    content_type=ContentType.objects.get_for_model(parent),
+                    object_id=parent.id,
+                    month=month,
+                    year=year,
+                    is_manually_input=False)
 
-            if delta or created:
-                estimate.total += delta
-                estimate.save(update_fields=['total'])
+                if delta or created:
+                    estimate.total += delta
+                    estimate.save(update_fields=['total'])
 
     @classmethod
     def update_price_for_resource(cls, resource, month, year, total, update_if_exists=True):

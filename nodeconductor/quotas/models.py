@@ -6,7 +6,7 @@ from django.utils.encoding import python_2_unicode_compatible
 
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.quotas import exceptions, managers
-from nodeconductor.core.models import UuidMixin, NameMixin, ReversionMixin
+from nodeconductor.core.models import UuidMixin, NameMixin, ReversionMixin, DescendantMixin
 
 
 @python_2_unicode_compatible
@@ -63,7 +63,6 @@ class QuotaModelMixin(models.Model):
     For quotas implementation such methods and fields have to be defined:
       - QUOTAS_NAMES - list of names for object quotas
       - can_user_update_quotas(self, user) - return True if user has permission to update quotas of this object
-      - get_quota_parents(self) - return list of 'quota parents'
 
     Additional optional fields:
       - GLOBAL_COUNT_QUOTA_NAME - name of global count quota. It presents - global quota will be automatically created
@@ -126,10 +125,10 @@ class QuotaModelMixin(models.Model):
                 self._add_delta_to_ancestors(field, quota_name, delta)
 
     def _add_delta_to_ancestors(self, field, quota_name, delta):
-        if not delta:
+        if not delta or not isinstance(self, DescendantMixin):
             return
 
-        for ancestor in self._get_quota_ancestors():
+        for ancestor in self.get_ancestors():
             with transaction.atomic():
                 try:
                     quota = ancestor.quotas.select_for_update().get(name=quota_name)
@@ -161,36 +160,16 @@ class QuotaModelMixin(models.Model):
             if quota.is_exceeded(delta):
                 errors.append('%s quota limit: %s, requires %s (%s)\n' % (
                     quota.name, quota.limit, quota.usage + delta, quota.scope))
-        for parent in self.get_quota_parents():
-            if parent.quotas.filter(name=name).exists():
-                errors += parent.validate_quota_change(quota_deltas)
+        if isinstance(self, DescendantMixin):
+            for parent in self.get_parents():
+                if parent.quotas.filter(name=name).exists():
+                    errors += parent.validate_quota_change(quota_deltas)
         if not raise_exception:
             return errors
         else:
             if errors:
                 raise exceptions.QuotaExceededException('One or more quotas were exceeded: %s' % ';'.join(errors))
 
-    def _get_quota_ancestors(self):
-        """
-        Get all unique quota ancestors
-        """
-        ancestors = list(self.get_quota_parents())
-        ancestor_unique_attributes = [(a.__class__, a.id) for a in ancestors]
-        for ancestor in ancestors:
-            for parent in ancestor.get_quota_parents():
-                if (parent.__class__, parent.id) not in ancestor_unique_attributes:
-                    ancestors.append(parent)
-        return ancestors
-
-    def get_quota_parents(self):
-        """
-        Return list of other quota scopes that contain quotas of current scope.
-
-        Example: Customer quotas contain quotas of all customers projects.
-        """
-        return []
-
-    # XXX: This method will be improved with frontend quotas implementation.
     def can_user_update_quotas(self, user):
         """
         Return True if user has permission to update quota
