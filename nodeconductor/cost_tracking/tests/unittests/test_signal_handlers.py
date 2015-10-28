@@ -72,3 +72,16 @@ class PriceListItemsHandlersTest(TestCase):
         default_item.delete()
 
         self.assertFalse(models.PriceListItem.objects.filter(id=item.id).exists())
+
+    def test_ancestor_price_estimate_will_be_decreased_after_descendor_deletion(self):
+        instance = openstack_factories.InstanceFactory()
+        total = 77
+        month = 10
+        year = 2015
+        models.PriceEstimate.update_price_for_scope(instance, month, year, total)
+
+        instance.delete()
+
+        project = instance.service_project_link.project
+        self.assertEqual(models.PriceEstimate.objects.get(scope=project, month=month, year=year).total, 0)
+        self.assertEqual(models.PriceEstimate.objects.get(scope=project.customer, month=month, year=year).total, 0)

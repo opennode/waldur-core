@@ -138,9 +138,6 @@ class CloudProjectMembership(QuotaModelMixin, structure_models.ServiceProjectLin
     def __str__(self):
         return '{0} | {1}'.format(self.cloud.name, self.project.name)
 
-    def get_quota_parents(self):
-        return [self.project]
-
     def get_backend(self):
         return self.cloud.get_backend()
 

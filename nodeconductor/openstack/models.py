@@ -60,9 +60,6 @@ class OpenStackServiceProjectLink(QuotaModelMixin, structure_models.ServiceProje
         # XXX: Temporary backward compatibility
         return self.service.settings.password
 
-    def get_quota_parents(self):
-        return [self.project]
-
     def get_backend(self):
         return super(OpenStackServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)
 

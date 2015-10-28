@@ -1,7 +1,9 @@
 import logging
 
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 
+from nodeconductor.core import models as core_models
 from nodeconductor.core.tasks import send_task
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices
@@ -104,3 +106,12 @@ def delete_price_list_items_if_default_was_deleted(sender, instance, **kwargs):
         item_type=default_item.tracker.previous('item_type'),
         resource_content_type=default_item.resource_content_type,
     ).delete()
+
+
+def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
+    estimates = models.PriceEstimate.objects.filter(scope=instance)
+    # Set estimates total to zero before deletion - to update ancestors estimate
+    for estimate in estimates.filter(is_manually_input=False):
+        models.PriceEstimate.update_price_for_scope(instance, month=estimate.month, year=estimate.year, total=0)
+
+    estimates.delete()
