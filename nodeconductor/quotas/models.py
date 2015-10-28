@@ -128,7 +128,8 @@ class QuotaModelMixin(models.Model):
         if not delta or not isinstance(self, DescendantMixin):
             return
 
-        for ancestor in self.get_ancestors():
+        ancestors = (a for a in self.get_ancestors() if isinstance(a, QuotaModelMixin))
+        for ancestor in ancestors:
             with transaction.atomic():
                 try:
                     quota = ancestor.quotas.select_for_update().get(name=quota_name)
@@ -162,7 +163,7 @@ class QuotaModelMixin(models.Model):
                     quota.name, quota.limit, quota.usage + delta, quota.scope))
         if isinstance(self, DescendantMixin):
             for parent in self.get_parents():
-                if parent.quotas.filter(name=name).exists():
+                if isinstance(parent, QuotaModelMixin) and parent.quotas.filter(name=name).exists():
                     errors += parent.validate_quota_change(quota_deltas)
         if not raise_exception:
             return errors
