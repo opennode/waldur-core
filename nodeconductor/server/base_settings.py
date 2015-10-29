@@ -97,7 +97,6 @@ REST_FRAMEWORK = {
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'permission.backends.PermissionBackend',
-    'djangosaml2.backends.Saml2Backend',
 )
 
 ANONYMOUS_USER_ID = None
@@ -131,8 +130,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATIC_URL = '/static/'
-
-SAML_CREATE_UNKNOWN_USER = True
 
 BROKER_URL = 'redis://localhost'
 CELERY_RESULT_BACKEND = 'redis://localhost'
@@ -293,10 +290,20 @@ NODECONDUCTOR = {
     'TOKEN_KEY': 'x-auth-token',
 }
 
+
+# XXX: We need to import each registered extension separately, based on extensions info.
+
 # import optional extension settings from supported modules
 try:
     from nodeconductor_plus.settings import *
     INSTALLED_APPS += NODECONDUCTOR_PLUS_APPS
     CELERYBEAT_SCHEDULE.update(NODECONDUCTOR_PLUS_CELERYBEAT_SCHEDULE)
+except (ImportError, NameError):
+    pass
+
+
+try:
+    from nodeconductor_sugarcrm.settings import *
+    INSTALLED_APPS += ('nodeconductor_sugarcrm',)
 except (ImportError, NameError):
     pass

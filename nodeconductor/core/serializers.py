@@ -44,10 +44,6 @@ class IPAddressField(serializers.CharField):
         self.validators += ip_validators
 
 
-class Saml2ResponseSerializer(serializers.Serializer):
-    saml2response = Base64Field(required=True)
-
-
 class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         fields = ('url', 'name')

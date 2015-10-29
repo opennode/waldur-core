@@ -30,6 +30,15 @@ API
 
    api/api
 
+NodeConductor Plugins
+---------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   plugins/openstack/intro
+   plugins/sugarcrm
+
 Developing NodeConductor
 ------------------------
 
@@ -50,5 +59,4 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`

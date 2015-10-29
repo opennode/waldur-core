@@ -1,11 +1,13 @@
 from __future__ import unicode_literals
 
+from collections import OrderedDict
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.contrib import auth
 from django.db import models as django_models
 from django.conf import settings
 from django.utils import six
-from rest_framework import serializers, exceptions
+from django.utils.encoding import force_text
+from rest_framework import exceptions, metadata, serializers
 from rest_framework.reverse import reverse
 
 from nodeconductor.core import serializers as core_serializers
@@ -627,6 +629,11 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
         return fields
 
+    def validate(self, attrs):
+        user = User(**attrs)
+        user.clean()
+        return attrs
+
 
 class CreationTimeStatsSerializer(serializers.Serializer):
     MODEL_NAME_CHOICES = (('project', 'project'), ('customer', 'customer'), ('project_group', 'project_group'))
@@ -826,10 +833,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state'
         )
-        protected_fields = (
-            'customer', 'settings',
-            'backend_url', 'username', 'password', 'token', 'certificate', 'dummy'
-        )
+        settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
+        protected_fields = ('customer', 'settings', 'dummy') + settings_fields
         related_paths = ('customer',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -852,7 +857,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             fields['settings'].queryset = fields['settings'].queryset.filter(type=self.SERVICE_TYPE)
 
         if self.SERVICE_ACCOUNT_FIELDS is not NotImplemented:
-            for field in ('backend_url', 'username', 'password', 'token', 'certificate'):
+            for field in self.Meta.settings_fields:
                 if field in self.SERVICE_ACCOUNT_FIELDS:
                     fields[field].help_text = self.SERVICE_ACCOUNT_FIELDS[field]
                 else:
@@ -889,7 +894,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     raise serializers.ValidationError('Customer must match settings customer.')
 
         if self.context['request'].method == 'POST':
-            settings_fields = 'backend_url', 'username', 'password', 'token'
+            # Make shallow copy to protect from mutations
+            settings_fields = self.Meta.settings_fields[:]
             create_settings = any([attrs.get(f) for f in settings_fields])
             if not settings and not create_settings:
                 raise serializers.ValidationError(
@@ -1212,3 +1218,57 @@ class AggregateSerializer(serializers.Serializer):
         else:
             queryset = models.Project.objects.filter(customer__in=list(queryset))
             return filter_queryset_for_user(queryset, user)
+
+
+class ResourceProvisioningMetadata(metadata.SimpleMetadata):
+    """
+    Difference from SimpleMetadata class:
+    1) Skip read-only fields, because options are used only for provisioning new resource.
+    2) Don't expose choices for fields with queryset in order to reduce size of response.
+    """
+    def get_serializer_info(self, serializer):
+        """
+        Given an instance of a serializer, return a dictionary of metadata
+        about its fields.
+        """
+        if hasattr(serializer, 'child'):
+            # If this is a `ListSerializer` then we want to examine the
+            # underlying child serializer instance instead.
+            serializer = serializer.child
+        return OrderedDict([
+            (field_name, self.get_field_info(field))
+            for field_name, field in serializer.fields.items()
+            if not getattr(field, 'read_only', False)
+        ])
+
+    def get_field_info(self, field):
+        """
+        Given an instance of a serializer field, return a dictionary
+        of metadata about it.
+        """
+        field_info = OrderedDict()
+        field_info['type'] = self.label_lookup[field]
+        field_info['required'] = getattr(field, 'required', False)
+
+        attrs = [
+            'read_only', 'label', 'help_text',
+            'min_length', 'max_length',
+            'min_value', 'max_value'
+        ]
+
+        for attr in attrs:
+            value = getattr(field, attr, None)
+            if value is not None and value != '':
+                field_info[attr] = force_text(value, strings_only=True)
+
+        if not field_info.get('read_only') and hasattr(field, 'choices') \
+           and not hasattr(field, 'queryset'):
+            field_info['choices'] = [
+                {
+                    'value': choice_value,
+                    'display_name': force_text(choice_name, strings_only=True)
+                }
+                for choice_value, choice_name in field.choices.items()
+            ]
+
+        return field_info

@@ -1,8 +1,6 @@
-from rest_framework import serializers
-
 from django.db import transaction
-from django.db.models import Max
 from netaddr import IPNetwork
+from rest_framework import serializers
 
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.core import models as core_models
@@ -400,7 +398,20 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
                     "Security group {} has wrong service or project. New instance and its "
                     "security groups have to belong to same project and service".format(security_group.name))
 
-        if not attrs['skip_external_ip_assignment'] and not service_project_link.external_network_id:
+        options = settings.options or {}
+        missed_net = (
+            (
+                (service_project_link.state == core_models.SynchronizationStates.IN_SYNC) or
+                (
+                    service_project_link.state == core_models.SynchronizationStates.NEW and
+                    'external_network_id' not in options
+                )
+            )
+            and not service_project_link.external_network_id
+            and not attrs['skip_external_ip_assignment']
+        )
+
+        if missed_net:
             raise serializers.ValidationError(
                 "Cannot assign external IP if service project link has no external network")
 
