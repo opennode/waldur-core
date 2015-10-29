@@ -2,7 +2,6 @@
 from nodeconductor.server.base_settings import *
 
 import os
-import saml2
 import warnings
 
 from ConfigParser import RawConfigParser
@@ -88,20 +87,6 @@ config_defaults = {
     'rest_api': {
         'cors_allowed_domains': 'localhost,127.0.0.1',
     },
-    'saml2': {
-        'acs_url': '',
-        'attribute_map_civil_number': 'Civil number',
-        'attribute_map_dir': os.path.join(conf_dir, 'saml2', 'attribute-maps'),
-        'attribute_map_full_name': 'Full name',
-        'attribute_map_native_name': 'Native name',
-        'debug': 'false',
-        'entity_id': 'saml-sp2',
-        'idp_metadata_cert': '',
-        'idp_metadata_file': os.path.join(conf_dir, 'saml2', 'idp-metadata.xml'),
-        'idp_metadata_url': '',
-        'log_file': '',  # empty to disable logging SAML2-related stuff to file
-        'log_level': 'INFO',
-    },
     'sentry': {
         'dsn': '',  # raven package is needed for this to work
     },
@@ -132,10 +117,6 @@ for section, options in config_defaults.items():
     for option, value in options.items():
         if not config.has_option(section, option):
             config.set(section, option, value)
-
-# These shouldn't be configurable by user -- see SAML2 section for details
-config.set('saml2', 'cert_file', os.path.join(conf_dir, 'saml2', 'dummy.crt'))
-config.set('saml2', 'key_file', os.path.join(conf_dir, 'saml2', 'dummy.pem'))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config.get('global', 'secret_key')
@@ -262,12 +243,6 @@ LOGGING = {
             'formatter': 'simple',
             'level': config.get('events', 'log_level').upper(),
         },
-        'file-saml2': {
-            'class': 'logging.handlers.WatchedFileHandler',
-            'filename': '/dev/null',
-            'formatter': 'simple',
-            'level': config.get('saml2', 'log_level').upper(),
-        },
         # Forward logs to syslog
         # See also: https://docs.python.org/2/library/logging.handlers.html#sysloghandler
         'syslog': {
@@ -315,9 +290,6 @@ LOGGING = {
         'django': {
             'handlers': [],
         },
-        'djangosaml2': {
-            'handlers': [],
-        },
         'nodeconductor': {
             'handlers': [],
             'level': config.get('logging', 'log_level').upper(),
@@ -354,10 +326,6 @@ if config.getboolean('events', 'syslog'):
 
 if config.getboolean('events', 'hook'):
     LOGGING['loggers']['nodeconductor']['handlers'].append('hook')
-
-if config.get('saml2', 'log_file') != '':
-    LOGGING['handlers']['file-saml2']['filename'] = config.get('saml2', 'log_file')
-    LOGGING['loggers']['djangosaml2']['handlers'].append('file-saml2')
 
 # Static files
 # See also: https://docs.djangoproject.com/en/1.7/ref/settings/#static-files
@@ -420,83 +388,6 @@ MIDDLEWARE_CLASSES = (
 # Cache group memberships for an 10 mins to minimize LDAP traffic
 #AUTH_LDAP_CACHE_GROUPS = True
 #AUTH_LDAP_GROUP_CACHE_TIMEOUT = 600
-
-# SAML2
-SAML_CONFIG = {
-    # full path to the xmlsec1 binary program
-    'xmlsec_binary': '/usr/bin/xmlsec1',
-
-    # your entity id, usually your subdomain plus the url to the metadata view
-    'entityid': config.get('saml2', 'entity_id'),
-
-    # directory with attribute mapping
-    'attribute_map_dir': config.get('saml2', 'attribute_map_dir'),
-
-    # this block states what services we provide
-    'service': {
-        # we are just a lonely SP
-        'sp': {
-            'endpoints': {
-                # url and binding to the assertion consumer service view
-                # do not change the binding or service name
-                'assertion_consumer_service': [
-                    (config.get('saml2', 'acs_url'), saml2.BINDING_HTTP_POST),
-                ],
-            },
-            'allow_unsolicited': True,  # NOTE: This is the cornerstone! Never set to False
-
-            # attributes that this project needs to identify a user
-            'required_attributes': [
-                'omanIDCivilNumber',
-            ],
-
-            # attributes that may be useful to have but not required
-            'optional_attributes': [
-                'omancardTitleFullNameEn',
-                'omancardTitleFullNameAr',
-            ],
-        },
-    },
-
-    # where the remote metadata is stored
-    'metadata': {
-        'local': [
-            config.get('saml2', 'idp_metadata_file'),
-        ],
-    },
-
-    # set to 1 to output debugging information
-    'debug': int(config.getboolean('saml2', 'debug')),
-
-    # These following files are dummies
-    # They are supposed to be valid, but are not really used.
-    # They are only used to make PySAML2 happy.
-    'key_file': config.get('saml2', 'key_file'),  # private part
-    'cert_file': config.get('saml2', 'cert_file'),  # public part
-
-    'only_use_keys_in_metadata': False,
-    'allow_unknown_attributes': True,
-
-    'accepted_time_diff': 120,
-}
-
-if config.get('saml2', 'idp_metadata_url') != '':
-    SAML_CONFIG['metadata'].update({
-        'remote': [
-            {
-                'url': config.get('saml2', 'idp_metadata_url'),
-                'cert': config.get('saml2', 'idp_metadata_cert'),
-            }
-        ],
-    })
-
-SAML_DJANGO_USER_MAIN_ATTRIBUTE = 'civil_number'
-
-SAML_ATTRIBUTE_MAPPING = {
-    config.get('saml2', 'attribute_map_civil_number'): ('username', 'civil_number'),
-    config.get('saml2', 'attribute_map_full_name'): ('full_name',),
-    config.get('saml2', 'attribute_map_native_name'): ('native_name',),
-}
 
 # Celery
 # See also: http://docs.celeryproject.org/en/latest/getting-started/brokers/index.html#broker-instructions
@@ -830,7 +721,9 @@ if config.get('sentry', 'dsn') != '':
         'dsn': config.get('sentry', 'dsn'),
     }
 
-# optionally load extension configurations
-plus_configuration = os.path.join(conf_dir, 'nodeconductor_plus.py')
-if os.path.isfile(plus_configuration):
-    execfile(plus_configuration)
+extensions = ('nodeconductor_plus.py', 'nodeconductor_saml2.py')
+for extension_name in extensions:
+    # optionally load extension configurations
+    extension_conf_file_path = os.path.join(conf_dir, extension_name)
+    if os.path.isfile(extension_conf_file_path):
+        execfile(extension_conf_file_path)

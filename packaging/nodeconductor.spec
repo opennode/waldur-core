@@ -2,7 +2,6 @@
 %define __data_dir %{_datadir}/%{name}
 %define __log_dir %{_localstatedir}/log/%{name}
 %define __logrotate_dir %{_sysconfdir}/logrotate.d
-%define __saml2_conf_dir %{__conf_dir}/saml2
 %define __work_dir %{_sharedstatedir}/%{name}
 
 %define __celery_conf_file %{__conf_dir}/celery.conf
@@ -10,8 +9,6 @@
 %define __celerybeat_systemd_unit_file %{_unitdir}/%{name}-celerybeat.service
 %define __conf_file %{__conf_dir}/settings.ini
 %define __logrotate_conf_file %{__logrotate_dir}/%{name}
-%define __saml2_cert_file %{__saml2_conf_dir}/dummy.crt
-%define __saml2_key_file %{__saml2_conf_dir}/dummy.pem
 
 Name: nodeconductor
 Summary: NodeConductor
@@ -19,12 +16,9 @@ Version: 0.76.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
-# openssl package is needed to generate SAML2 keys during NodeConductor install
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
-# xmlsec1-openssl package is needed for SAML2 features to work
 Requires: logrotate
 Requires: MySQL-python
-Requires: openssl
 Requires: python-ceilometerclient = 1.0.12
 Requires: python-celery >= 3.1.15, python-celery < 3.2
 Requires: python-cinderclient = 1.1.1
@@ -41,7 +35,6 @@ Requires: python-django-permission = 0.8.2
 Requires: python-django-polymorphic >= 0.7.0
 Requires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
 Requires: python-django-reversion >= 1.8.7
-Requires: python-django-saml2 = 0.13.0
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
 Requires: python-future = 0.15.0
@@ -62,7 +55,6 @@ Requires: python-urllib3 >= 1.10.1
 Requires: python-xhtml2pdf >= 0.0.6
 Requires: python-zabbix >= 0.7.2
 Requires: PyYAML
-Requires: xmlsec1-openssl
 
 Source0: %{name}-%{version}.tar.gz
 
@@ -120,10 +112,6 @@ mkdir -p %{buildroot}%{__logrotate_dir}
 cp packaging%{__logrotate_conf_file} %{buildroot}%{__logrotate_conf_file}
 echo "%{__logrotate_conf_file}" >> INSTALLED_FILES
 
-mkdir -p %{buildroot}%{__saml2_conf_dir}
-# TODO: Maybe use attribute-maps from PySAML2
-cp -r attribute-maps %{buildroot}%{__saml2_conf_dir}/
-
 mkdir -p %{buildroot}%{__work_dir}
 echo "%{__work_dir}" >> INSTALLED_FILES
 
@@ -145,11 +133,6 @@ if [ "$1" = 1 ]; then
     # This package is being installed for the first time
     echo "[%{name}] Generating secret key..."
     sed -i "s,{{ secret_key }},$(head -c32 /dev/urandom | base64)," %{__conf_file}
-
-    echo "[%{name}] Generating SAML2 keypair..."
-    if [ ! -f %{__saml2_cert_file} -a ! -f %{__saml2_key_file} ]; then
-        openssl req -batch -newkey rsa:2048 -new -x509 -days 3652 -nodes -out %{__saml2_cert_file} -keyout %{__saml2_key_file}
-    fi
 
     echo "[%{name}] Adding new system user %{name}..."
     useradd --home %{__work_dir} --shell /sbin/nologin --system --user-group %{name}
