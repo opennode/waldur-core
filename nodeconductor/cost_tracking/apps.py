@@ -65,3 +65,11 @@ class CostTrackingConfig(AppConfig):
             sender=DefaultPriceListItem,
             dispatch_uid='nodeconductor.cost_tracking.handlers.delete_price_list_items_if_default_was_deleted'
         )
+
+        for index, model in enumerate(PriceEstimate.get_estimated_models()):
+            signals.pre_delete.connect(
+                handlers.delete_price_estimate_on_scope_deletion,
+                sender=model,
+                dispatch_uid=('nodeconductor.cost_tracking.handlers.delete_price_estimate_on_scope_deletion_{}_{}'
+                              .format(model.__name__, index))
+            )

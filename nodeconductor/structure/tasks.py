@@ -115,6 +115,9 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
     for obj in link_objects:
         service_project_link_str = obj.to_string()
         if initial:
+            # Ignore SPLs with ERRED service settings
+            if obj.service.settings.state == SynchronizationStates.ERRED:
+                break
             # For newly created SPLs make sure their settings in stable state, retry otherwise
             if obj.service.settings.state != SynchronizationStates.IN_SYNC:
                 return False
@@ -263,13 +266,17 @@ def recover_erred_service(service_project_link_str, is_iaas=False):
 def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
     try:
         public_key = SshPublicKey.objects.get(uuid=ssh_public_key_uuid)
-        service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
     except SshPublicKey.DoesNotExist:
-        logger.warn('Missing public key %s.', ssh_public_key_uuid)
+        logger.warning('Missing public key %s.', ssh_public_key_uuid)
+        return True
+    try:
+        service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
+    except models.ServiceProjectLink.DoesNotExist:
+        logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
     if service_project_link.state != SynchronizationStates.IN_SYNC:
-        logger.warn(
+        logger.warning(
             'Not pushing public keys for service project link %s which is in state %s.',
             service_project_link_str, service_project_link.get_state_display())
 
@@ -295,7 +302,7 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
     except ServiceBackendNotImplemented:
         pass
     except (ServiceBackendError, CloudBackendError):
-        logger.warn(
+        logger.warning(
             'Failed to push SSH key %s to service project link %s',
             public_key.uuid, service_project_link_str,
             exc_info=1)
@@ -315,7 +322,11 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
 @shared_task(name='nodeconductor.structure.remove_ssh_public_key')
 def remove_ssh_public_key(key_data, service_project_link_str):
     public_key = deserialize_ssh_key(key_data)
-    service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
+    try:
+        service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
+    except models.ServiceProjectLink.DoesNotExist:
+        logger.warning('Missing service project link %s.', service_project_link_str)
+        return True
 
     try:
         backend = service_project_link.get_backend()
@@ -331,7 +342,7 @@ def remove_ssh_public_key(key_data, service_project_link_str):
     except ServiceBackendNotImplemented:
         pass
     except (ServiceBackendError, CloudBackendError):
-        logger.warn(
+        logger.warning(
             'Failed to remove SSH key %s from service project link %s',
             public_key.uuid, service_project_link_str,
             exc_info=1)
@@ -349,11 +360,19 @@ def remove_ssh_public_key(key_data, service_project_link_str):
 @shared_task(name='nodeconductor.structure.add_user', max_retries=120, default_retry_delay=30)
 @retry_if_false
 def add_user(user_uuid, service_project_link_str):
-    user = get_user_model().objects.get(uuid=user_uuid)
-    service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
+    try:
+        user = get_user_model().objects.get(uuid=user_uuid)
+    except get_user_model().DoesNotExist:
+        logger.warning('Missing user %s.', user_uuid)
+        return True
+    try:
+        service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
+    except models.ServiceProjectLink.DoesNotExist:
+        logger.warning('Missing service project link %s.', service_project_link_str)
+        return True
 
     if service_project_link.state != SynchronizationStates.IN_SYNC:
-        logger.warn(
+        logger.warning(
             'Not adding users for service project link %s which is in state %s.',
             service_project_link_str, service_project_link.get_state_display())
 
@@ -371,7 +390,7 @@ def add_user(user_uuid, service_project_link_str):
     except ServiceBackendNotImplemented:
         pass
     except (ServiceBackendError, CloudBackendError):
-        logger.warn(
+        logger.warning(
             'Failed to add user %s for service project link %s',
             user.uuid, service_project_link_str,
             exc_info=1)
@@ -382,7 +401,11 @@ def add_user(user_uuid, service_project_link_str):
 @shared_task(name='nodeconductor.structure.remove_user')
 def remove_user(user_data, service_project_link_str):
     user = deserialize_user(user_data)
-    service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
+    try:
+        service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
+    except models.ServiceProjectLink.DoesNotExist:
+        logger.warning('Missing service project link %s.', service_project_link_str)
+        return True
 
     try:
         backend = service_project_link.get_backend()

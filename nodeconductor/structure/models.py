@@ -265,6 +265,7 @@ class ProjectRole(core_models.UuidMixin, models.Model):
 class Project(core_models.DescribableMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
+              core_models.DescendantMixin,
               quotas_models.QuotaModelMixin,
               LoggableMixin,
               TimeStampedModel,
@@ -363,7 +364,7 @@ class Project(core_models.DescribableMixin,
     def get_permitted_objects_uuids(cls, user):
         return {'project_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
 
-    def get_quota_parents(self):
+    def get_parents(self):
         return [self.customer]
 
     def get_links(self):
@@ -397,6 +398,7 @@ class ProjectGroupRole(core_models.UuidMixin, models.Model):
 class ProjectGroup(core_models.UuidMixin,
                    core_models.DescribableMixin,
                    core_models.NameMixin,
+                   core_models.DescendantMixin,
                    quotas_models.QuotaModelMixin,
                    LoggableMixin,
                    TimeStampedModel):
@@ -473,6 +475,9 @@ class ProjectGroup(core_models.UuidMixin,
 
     def get_log_fields(self):
         return ('uuid', 'customer', 'name')
+
+    def get_parents(self):
+        return [self.customer]
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
@@ -558,20 +563,13 @@ class Service(core_models.SerializableAbstractMixin,
         return context
 
 
-@python_2_unicode_compatible
-class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
+class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
     """ Base service properties like image, flavor, region,
         which are usually used for Resource provisioning.
     """
 
     class Meta(object):
         abstract = True
-
-    settings = models.ForeignKey(ServiceSettings, related_name='+', blank=True, null=True)
-    backend_id = models.CharField(max_length=255, db_index=True)
-
-    def __str__(self):
-        return '{0} | {1}'.format(self.name, self.settings)
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -581,8 +579,38 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
 
 
 @python_2_unicode_compatible
+class ServiceProperty(BaseServiceProperty):
+
+    class Meta(object):
+        abstract = True
+        unique_together = ('settings', 'backend_id')
+
+    settings = models.ForeignKey(ServiceSettings, related_name='+')
+    backend_id = models.CharField(max_length=255, db_index=True)
+
+    def __str__(self):
+        return '{0} | {1}'.format(self.name, self.settings)
+
+
+@python_2_unicode_compatible
+class GeneralServiceProperty(BaseServiceProperty):
+    """
+    Service property which is not connected to settings
+    """
+
+    class Meta(object):
+        abstract = True
+
+    backend_id = models.CharField(max_length=255, db_index=True, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+@python_2_unicode_compatible
 class ServiceProjectLink(core_models.SerializableAbstractMixin,
                          core_models.SynchronizableMixin,
+                         core_models.DescendantMixin,
                          LoggableMixin,
                          StructureModel):
     """ Base service-project link class. See Service class for usage example. """
@@ -614,6 +642,9 @@ class ServiceProjectLink(core_models.SerializableAbstractMixin,
 
     def get_log_fields(self):
         return ('project', 'service',)
+
+    def get_parents(self):
+        return [self.project, self.service]
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
@@ -653,6 +684,7 @@ class Resource(core_models.UuidMixin,
                core_models.DescribableMixin,
                core_models.NameMixin,
                core_models.SerializableAbstractMixin,
+               core_models.DescendantMixin,
                LoggableMixin,
                TimeStampedModel,
                StructureModel):
@@ -762,6 +794,9 @@ class Resource(core_models.UuidMixin,
         context = super(Resource, self)._get_log_context(entity_name)
         context['resource_type'] = SupportedServices.get_name_for_model(self)
         return context
+
+    def get_parents(self):
+        return [self.service_project_link]
 
     def __str__(self):
         return self.name

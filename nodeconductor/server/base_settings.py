@@ -293,10 +293,20 @@ NODECONDUCTOR = {
     'TOKEN_KEY': 'x-auth-token',
 }
 
+
+# XXX: We need to import each registered extension separately, based on extensions info.
+
 # import optional extension settings from supported modules
 try:
     from nodeconductor_plus.settings import *
     INSTALLED_APPS += NODECONDUCTOR_PLUS_APPS
     CELERYBEAT_SCHEDULE.update(NODECONDUCTOR_PLUS_CELERYBEAT_SCHEDULE)
+except (ImportError, NameError):
+    pass
+
+
+try:
+    from nodeconductor_sugarcrm.settings import *
+    INSTALLED_APPS += ('nodeconductor_sugarcrm',)
 except (ImportError, NameError):
     pass

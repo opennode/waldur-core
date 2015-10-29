@@ -30,6 +30,14 @@ API
 
    api/api
 
+NodeConductor Plugins
+---------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   plugins/openstack/intro
+
 Developing NodeConductor
 ------------------------
 

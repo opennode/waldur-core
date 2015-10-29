@@ -500,8 +500,7 @@ class ServiceSettingsFilter(django_filters.FilterSet):
 
 
 class BaseServiceFilter(django_filters.FilterSet):
-    customer_uuid = django_filters.CharFilter(name='customer__uuid')
-    customer = core_filters.URLFilter(view_name='customer-detail', name='customer__uuid')
+    customer = django_filters.CharFilter(name='customer__uuid')
     name = django_filters.CharFilter(lookup_type='icontains')
     project_uuid = django_filters.CharFilter(name='projects__uuid', distinct=True)
 
@@ -520,13 +519,13 @@ class BaseServiceProjectLinkFilter(django_filters.FilterSet):
 
 class BaseResourceFilter(django_filters.FilterSet):
     project_uuid = django_filters.CharFilter(name='service_project_link__project__uuid')
-    customer_uuid = django_filters.CharFilter(name='service_project_link__service__customer__uuid')
+    customer = django_filters.CharFilter(name='service_project_link__service__customer__uuid')
     service_uuid = django_filters.CharFilter(name='service_project_link__service__uuid')
     name = django_filters.CharFilter(lookup_type='icontains')
 
     class Meta(object):
         model = models.Resource
-        fields = ('project_uuid', 'customer_uuid', 'service_uuid', 'name')
+        fields = ('project_uuid', 'customer', 'service_uuid', 'name')
 
 
 class BaseServicePropertyFilter(django_filters.FilterSet):

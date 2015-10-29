@@ -7,7 +7,6 @@ class AuthEventLogger(EventLogger):
 
     class Meta:
         event_types = ('auth_logged_in_with_username',
-                       'auth_logged_in_with_pki',
                        'auth_logged_out')
 
 

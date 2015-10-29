@@ -138,9 +138,6 @@ class CloudProjectMembership(QuotaModelMixin, structure_models.ServiceProjectLin
     def __str__(self):
         return '{0} | {1}'.format(self.cloud.name, self.project.name)
 
-    def get_quota_parents(self):
-        return [self.project]
-
     def get_backend(self):
         return self.cloud.get_backend()
 
@@ -424,6 +421,10 @@ class InstanceSlaHistory(models.Model):
     period = models.CharField(max_length=10)
     instance = models.ForeignKey(Instance, related_name='slas')
     value = models.DecimalField(max_digits=11, decimal_places=4, null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Instance SLA history'
+        verbose_name_plural = 'Instance SLA histories'
 
     def __str__(self):
         return 'SLA for %s during %s: %s' % (self.instance, self.period, self.value)
