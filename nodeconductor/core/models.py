@@ -125,6 +125,11 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         else:
             return {'user_uuid': [user.uuid.hex]}
 
+    def clean(self):
+        # User email has to be unique or empty
+        if self.email and self.id is None and User.objects.filter(email=self.email).exists():
+            raise ValidationError('User with email "%s" already exists' % self.email)
+
 
 def validate_ssh_public_key(ssh_key):
     # http://stackoverflow.com/a/2494645
