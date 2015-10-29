@@ -313,7 +313,7 @@ except (ImportError, NameError):
 
 
 try:
-    from nodeconductor_saltmgmt.settings import *
-    INSTALLED_APPS += ('nodeconductor_saltmgmt',)
+    from nodeconductor_saltstack.settings import *
+    INSTALLED_APPS += ('nodeconductor_saltstack',)
 except (ImportError, NameError):
     pass
