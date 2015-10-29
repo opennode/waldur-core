@@ -97,7 +97,6 @@ REST_FRAMEWORK = {
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'permission.backends.PermissionBackend',
-    'djangosaml2.backends.Saml2Backend',
 )
 
 ANONYMOUS_USER_ID = None
@@ -131,8 +130,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATIC_URL = '/static/'
-
-SAML_CREATE_UNKNOWN_USER = True
 
 BROKER_URL = 'redis://localhost'
 CELERY_RESULT_BACKEND = 'redis://localhost'
