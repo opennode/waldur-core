@@ -25,14 +25,14 @@ def _check_output(*popenargs, **kwargs):
     return output
 
 
-def _get_version():
+def _get_version(package_name='nodeconductor'):
     import pkg_resources
 
     # Based on http://stackoverflow.com/a/17638236/175349
     # and https://github.com/pwaller/__autoversion__/blob/master/__autoversion__.py
 
     try:
-        return pkg_resources.get_distribution('nodeconductor').version
+        return pkg_resources.get_distribution(package_name).version
     except pkg_resources.DistributionNotFound:
         import os.path
         import re
@@ -61,4 +61,3 @@ def _get_version():
             return 'unknown'
 
 __version__ = _get_version()
-del _get_version

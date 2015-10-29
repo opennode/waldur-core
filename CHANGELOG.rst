@@ -5,6 +5,16 @@ Release NEXT
 ------------
 - <none yet>.
 
+Release 0.77.0
+--------------
+- Refactor documentation to support plugins.
+- Move OpenStack documentation to the plugins section.
+- Add documentation section for SugarCRM plugin.
+- Make services filtering by customer consistent.
+- Fix OpenStack instance provisioning.
+- Make admin page application names more user friendly.
+- Bugfixes.
+
 Release 0.76.0
 --------------
 - Bump supported versions of OpenStack libraries to Juno version.
