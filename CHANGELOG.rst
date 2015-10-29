@@ -8,7 +8,7 @@ Release NEXT
 Release 0.77.0
 --------------
 - Refactor documentation to support plugins.
-- Move openstack documentation to the plugins section.
+- Move OpenStack documentation to the plugins section.
 - Add documentation section for SugarCRM plugin.
 - Make services filtering by customer consistent.
 - Fix OpenStack instance provisioning.
