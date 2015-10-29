@@ -307,3 +307,10 @@ try:
     INSTALLED_APPS += ('nodeconductor_sugarcrm',)
 except (ImportError, NameError):
     pass
+
+
+try:
+    from nodeconductor_saltstack.settings import *
+    INSTALLED_APPS += ('nodeconductor_saltstack',)
+except (ImportError, NameError):
+    pass

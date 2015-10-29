@@ -769,7 +769,7 @@ class Resource(core_models.UuidMixin,
         help_text="WARNING! Should not be changed manually unless you really know what you are doing.",
         max_length=1)
 
-    def get_backend(self):
+    def get_backend(self, **kwargs):
         return self.service_project_link.get_backend()
 
     def get_cost(self, start_date, end_date):
