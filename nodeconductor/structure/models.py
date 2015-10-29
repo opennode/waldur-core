@@ -563,8 +563,7 @@ class Service(core_models.SerializableAbstractMixin,
         return context
 
 
-@python_2_unicode_compatible
-class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
+class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
     """ Base service properties like image, flavor, region,
         which are usually used for Resource provisioning.
     """
@@ -572,17 +571,40 @@ class ServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model
     class Meta(object):
         abstract = True
 
-    settings = models.ForeignKey(ServiceSettings, related_name='+', blank=True, null=True)
-    backend_id = models.CharField(max_length=255, db_index=True)
-
-    def __str__(self):
-        return '{0} | {1}'.format(self.name, self.settings)
-
     @classmethod
     @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
+
+
+@python_2_unicode_compatible
+class ServiceProperty(BaseServiceProperty):
+
+    class Meta(object):
+        abstract = True
+        unique_together = ('settings', 'backend_id')
+
+    settings = models.ForeignKey(ServiceSettings, related_name='+')
+    backend_id = models.CharField(max_length=255, db_index=True)
+
+    def __str__(self):
+        return '{0} | {1}'.format(self.name, self.settings)
+
+
+@python_2_unicode_compatible
+class GeneralServiceProperty(BaseServiceProperty):
+    """
+    Service property which is not connected to settings
+    """
+
+    class Meta(object):
+        abstract = True
+
+    backend_id = models.CharField(max_length=255, db_index=True, unique=True)
+
+    def __str__(self):
+        return self.name
 
 
 @python_2_unicode_compatible
