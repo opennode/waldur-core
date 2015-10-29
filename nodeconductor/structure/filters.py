@@ -535,7 +535,7 @@ class BaseServicePropertyFilter(django_filters.FilterSet):
     )
 
     class Meta(object):
-        model = models.ServiceProperty
+        model = models.BaseServiceProperty
         fields = ('name',)
 
 
