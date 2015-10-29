@@ -629,6 +629,11 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
         return fields
 
+    def validate(self, attrs):
+        user = User(**attrs)
+        user.clean()
+        return attrs
+
 
 class CreationTimeStatsSerializer(serializers.Serializer):
     MODEL_NAME_CHOICES = (('project', 'project'), ('customer', 'customer'), ('project_group', 'project_group'))
