@@ -314,3 +314,10 @@ try:
     INSTALLED_APPS += ('nodeconductor_saltstack',)
 except (ImportError, NameError):
     pass
+
+
+try:
+    import nodeconductor_saml2
+    INSTALLED_APPS += ('nodeconductor_saml2',)
+except (ImportError, NameError):
+    pass
