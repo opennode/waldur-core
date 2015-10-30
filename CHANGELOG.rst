@@ -5,6 +5,12 @@ Release NEXT
 ------------
 - <none yet>.
 
+Release 0.78.0
+--------------
+- Fix plugin support.
+- Documentation updates.
+- Bugfixes.
+
 Release 0.77.0
 --------------
 - Refactor documentation to support plugins.
