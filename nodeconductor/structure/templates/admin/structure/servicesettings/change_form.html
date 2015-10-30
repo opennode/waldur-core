@@ -6,8 +6,8 @@
     <div id="service-settings-content">
         <h4>Amazon</h4>
         <ul>
-            <li>Username — AWS access key ID</li>
-            <li>Token — AWS secret access key</li>
+            <li>Username — AWS access key ID</li>
+            <li>Token — AWS secret access key</li>
         </ul>
         <p>* make sure your AWS user have proper permission policy attached, e.g. "AmazonEC2FullAccess"</p>
         <p>
@@ -15,25 +15,13 @@
         </p>
         <h4>Azure</h4>
         <ul>
-            <li>Username — Azure subscription id in the form of GUID</li>
-            <li>Certificate — Azure X509 certificate file in .pem form</li>
+            <li>Username — Azure subscription id in the form of GUID</li>
+            <li>Certificate — Azure X509 certificate file in .pem form</li>
         </ul>
         <p>
             Supported Azure options are: "<code>location</code>" (default: "Central US"),
             "<code>cloud_service_name</code>" (optional, if defined all connected SPLs will operate in the defined cloud service group),
             "<code>images_regex</code>" (optional, an regex to limit images list)
-        </p>
-        <h4>OpenStack</h4>
-        <ul>
-            <li>Backend url — Keystone auth URL (e.g. http://keystone.example.com:5000/v2.0)</li>
-            <li>Username</li>
-            <li>Password</li>
-        </ul>
-        <p>
-            Supported OpenStack options are: "<code>tenant_name</code>" (default: "admin"),
-            "<code>availability_zone</code>", "<code>cpu_overcommit_ratio</code>" (default: 1) and
-            "<code>external_network_id</code>" (ID of OpenStack external network that will be connected to new service
-            tenants)
         </p>
         <h4>DigitalOcean</h4>
         <ul>
@@ -52,6 +40,18 @@
             <li>Password</li>
             <li>Token — Private token (will be used instead of username/password if supplied)</li>
         </ul>
+        <h4>OpenStack</h4>
+        <ul>
+            <li>Backend url — Keystone auth URL (e.g. http://keystone.example.com:5000/v2.0)</li>
+            <li>Username</li>
+            <li>Password</li>
+        </ul>
+        <p>
+            Supported OpenStack options are: "<code>tenant_name</code>" (default: "admin"),
+            "<code>availability_zone</code>", "<code>cpu_overcommit_ratio</code>" (default: 1) and
+            "<code>external_network_id</code>" (ID of OpenStack external network that will be connected to new service
+            tenants)
+        </p>
         <h4>Oracle</h4>
         <ul>
             <li>Backend url — Oracle EM host (e.g. https://oracle.example.com:7802/em)</li>
@@ -75,6 +75,11 @@
                 <li>"<code>data_size</code>" - Data volume size of CRMs OpenStack instance (default: 65536 MB)</li>
             </ul>
         </p>
+        <h4>SaltStack</h4>
+        <ul>
+            <li>Backend url — URL for salt master API (required, e.g.: http://salt-master.example.com:8080)</li>
+            <li>Password — Secret key</li>
+        </ul>
     </div>
 </div>
 <script type="text/javascript">
