@@ -70,7 +70,7 @@ else:
 
 setup(
     name='nodeconductor',
-    version='0.77.0',
+    version='0.78.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
