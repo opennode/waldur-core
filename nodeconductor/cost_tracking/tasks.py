@@ -1,5 +1,5 @@
 import logging
-from dateutil.rrule import rrule, MONTHLY
+from dateutil.relativedelta import relativedelta
 
 from celery import shared_task
 from django.conf import settings
@@ -64,10 +64,11 @@ def update_projected_estimate(customer_uuid=None, resource_uuid=None):
                     PriceEstimate.update_price_for_scope(instance, created.month, created.year, creation_month_cost,
                                                          update_if_exists=False)
                     # update price estimate for previous months if it does not exist:
-                    previous_months = rrule(MONTHLY, dtstart=created, until=now.replace(day=1, hour=0, minute=0))[1:]
-                    for date in previous_months:
+                    date = now - relativedelta(months=+1)
+                    while not (date.month == created.month and date.year == created.year):
                         PriceEstimate.update_price_for_scope(instance, date.month, date.year, monthly_cost,
                                                              update_if_exists=False)
+                        date -= relativedelta(months=+1)
 
 
 @shared_task(name='nodeconductor.cost_tracking.update_today_usage')
