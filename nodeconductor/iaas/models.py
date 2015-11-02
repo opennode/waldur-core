@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import logging
+import re
 
 from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
@@ -541,6 +542,15 @@ class SecurityGroupRuleValidationMixin(object):
             raise ValidationError('Wrong value for "to_port": '
                                   'expected value in range [1, 65535], found %d' % self.to_port)
 
+    def validate_cidr(self):
+        if not self.cidr:
+            return
+        cidr_regex = ('^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|'
+                      '25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$')
+        pattern = re.compile(cidr_regex)
+        if pattern.match(self.cidr) is None:
+            raise ValidationError('Wrong cidr value. Expected cidr format: <0-255>.<0-255>.<0-255>.<0-255>/<0-32>')
+
     def clean(self):
         if self.protocol == 'icmp':
             self.validate_icmp()
@@ -549,6 +559,7 @@ class SecurityGroupRuleValidationMixin(object):
         else:
             raise ValidationError('Wrong value for "protocol": '
                                   'expected one of (tcp, udp, icmp), found %s' % self.protocol)
+        self.validate_cidr()
 
 
 @python_2_unicode_compatible
