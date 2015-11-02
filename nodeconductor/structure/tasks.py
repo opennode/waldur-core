@@ -4,6 +4,7 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from celery import shared_task
 
@@ -271,7 +272,7 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
         return True
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except models.ServiceProjectLink.DoesNotExist:
+    except ObjectDoesNotExist:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
@@ -324,7 +325,7 @@ def remove_ssh_public_key(key_data, service_project_link_str):
     public_key = deserialize_ssh_key(key_data)
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except models.ServiceProjectLink.DoesNotExist:
+    except ObjectDoesNotExist:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
@@ -367,7 +368,7 @@ def add_user(user_uuid, service_project_link_str):
         return True
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except models.ServiceProjectLink.DoesNotExist:
+    except ObjectDoesNotExist:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
@@ -403,7 +404,7 @@ def remove_user(user_data, service_project_link_str):
     user = deserialize_user(user_data)
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except models.ServiceProjectLink.DoesNotExist:
+    except ObjectDoesNotExist:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
