@@ -12,6 +12,11 @@ from nodeconductor.monitoring.zabbix.errors import ZabbixError
 logger = logging.getLogger(__name__)
 
 
+# TODO: implement monitoring tasks.
+
+
+# XXX: Deprecated tasks. Should be removed after iaas module refactoring
+
 def add_months(source_date, months):
     month = source_date.month - 1 + months
     year = source_date.year + month / 12
@@ -33,8 +38,7 @@ def update_instance_sla(sla_type):
         start_time = int(datetime.datetime.strptime('01/01/%s' % dt.year, '%d/%m/%Y').strftime("%s"))
     else:  # it's a monthly SLA update
         period = '%s-%s' % (dt.year, dt.month)
-        month_start = datetime.datetime.strptime('01/%s/%s' % (dt.month, dt.year),
-                                                    '%d/%m/%Y')
+        month_start = datetime.datetime.strptime('01/%s/%s' % (dt.month, dt.year), '%d/%m/%Y')
         start_time = int(month_start.strftime("%s"))
 
     end_time = int(dt.strftime("%s"))
