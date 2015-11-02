@@ -3,6 +3,13 @@ Resources list
 
 Use */api/resources/* to get a list of all the resources of any type that a user can see.
 
+Supported filters are:
+
+- ?name - case insensitive matching of a resource name
+- ?resource_type (can be list) - for example, DigitalOcean.Droplet, GitLab.Project
+- ?customer=<customer uuid>
+- ?project_uuid=<project uuid>
+
 OpenStack Resources list
 ------------------------
 
