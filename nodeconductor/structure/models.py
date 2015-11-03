@@ -326,16 +326,26 @@ class Project(core_models.DescribableMixin,
             if role_type is not None:
                 memberships = memberships.filter(group__projectrole__role_type=role_type)
 
-            for membership in memberships.iterator():
-                role = membership.group.projectrole
-                structure_role_revoked.send(
-                    sender=Project,
-                    structure=self,
-                    user=membership.user,
-                    role=role.role_type,
-                )
+            self.remove_memberships(memberships)
 
-                membership.delete()
+    def remove_all_users(self):
+        UserGroup = get_user_model().groups.through
+
+        with transaction.atomic():
+            memberships = UserGroup.objects.filter(group__projectrole__project=self)
+            self.remove_memberships(memberships)
+
+    def remove_memberships(self, memberships):
+        for membership in memberships.iterator():
+            role = membership.group.projectrole
+            structure_role_revoked.send(
+                sender=Project,
+                structure=self,
+                user=membership.user,
+                role=role.role_type,
+            )
+
+            membership.delete()
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
