@@ -145,6 +145,7 @@ class JiraRealBackend(JiraBaseBackend):
             else:
                 query_string = "project = {} AND reporter = {}".format(
                     self.manager.core_project, username)
+            query_string += " order by updated desc"
 
             return self.IssueQuerySet(self.manager.jira, query_string)
 
