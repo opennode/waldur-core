@@ -1,13 +1,13 @@
 from __future__ import unicode_literals
 
 import logging
-import re
 
 from django.contrib.contenttypes import generic as ct_generic
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
+from iptools.ipv4 import validate_cidr
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
@@ -545,10 +545,8 @@ class SecurityGroupRuleValidationMixin(object):
     def validate_cidr(self):
         if not self.cidr:
             return
-        cidr_regex = ('^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|'
-                      '25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$')
-        pattern = re.compile(cidr_regex)
-        if pattern.match(self.cidr) is None:
+
+        if not validate_cidr(self.cidr):
             raise ValidationError('Wrong cidr value. Expected cidr format: <0-255>.<0-255>.<0-255>.<0-255>/<0-32>')
 
     def clean(self):
