@@ -37,7 +37,7 @@ class SecurityGroupCreateTest(test.APITransactionTestCase):
                     'protocol': 'tcp',
                     'from_port': 1,
                     'to_port': 10,
-                    'cidr': 'test_cidr',
+                    'cidr': '11.11.1.2/24',
                 }
             ]
         }
@@ -126,7 +126,7 @@ class SecurityGroupUpdateTest(test.APITransactionTestCase):
                 'protocol': 'udp',
                 'from_port': 100,
                 'to_port': 8001,
-                'cidr': 'test_cidr',
+                'cidr': '11.11.1.2/24',
             }
         ]
 
@@ -167,7 +167,7 @@ class SecurityGroupUpdateTest(test.APITransactionTestCase):
                 'protocol': 'udp',
                 'from_port': 100,
                 'to_port': 8001,
-                'cidr': 'test_cidr',
+                'cidr': '11.11.1.2/24',
             }
         ]
 
@@ -207,7 +207,7 @@ class SecurityGroupUpdateTest(test.APITransactionTestCase):
             'protocol': 'udp',
             'from_port': 100,
             'to_port': 8001,
-            'cidr': 'test_cidr',
+            'cidr': '11.11.1.2/24',
         }
 
         response = self.client.patch(self.url, data={'rules': [{'id': exist_rule.id}, new_rule_data]})
