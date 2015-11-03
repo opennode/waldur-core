@@ -479,20 +479,7 @@ class ServiceSettingsFilter(django_filters.FilterSet):
         choices=SupportedServices.Types.get_direct_filter_mapping(),
         choice_mappings=SupportedServices.Types.get_reverse_filter_mapping(),
     )
-    state = core_filters.MappedChoiceFilter(
-        choices=(
-            ('sync_scheduled', 'Sync Scheduled'),
-            ('syncing', 'Syncing'),
-            ('in_sync', 'In Sync'),
-            ('erred', 'Erred'),
-        ),
-        choice_mappings={
-            'sync_scheduled': core_models.SynchronizationStates.SYNCING_SCHEDULED,
-            'syncing': core_models.SynchronizationStates.SYNCING,
-            'in_sync': core_models.SynchronizationStates.IN_SYNC,
-            'erred': core_models.SynchronizationStates.ERRED,
-        },
-    )
+    state = core_filters.SynchronizationStateFilter()
 
     class Meta(object):
         model = models.ServiceSettings
