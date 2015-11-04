@@ -56,8 +56,8 @@ Hooks
 -----
 
 Hooks API allows user to receive event notifications via different channel, like email or webhook.
-To get a list of your web hooks, run GET against **/api/hooks-web/** as an authenticated user.
-Example of a response:
+
+To get a list of all your hooks, run GET against **/api/hooks/** as an authenticated user. Example of a response:
 
 .. code-block:: javascript
 
