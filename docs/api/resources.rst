@@ -7,8 +7,24 @@ Supported filters are:
 
 - ?name - case insensitive matching of a resource name
 - ?resource_type (can be list) - for example, DigitalOcean.Droplet, GitLab.Project
-- ?customer=<customer uuid>
+- ?state=<resource state>. Possible values: Provisioning Scheduled, Provisioning, Online, Offline, Starting Scheduled,
+                           Starting, Stopping Scheduled, Stopping, Erred, Deletion Scheduled, Deleting,
+                           Resizing Scheduled, Resizing, Restarting Scheduled, Restarting
+- ?description=<resource description>
+- ?customer=<customer uuid> (deprecated, please use customer_uuid instead)
+- ?customer_uuid=<customer uuid>
+- ?customer_name=<customer name>
+- ?customer_native_name=<customer native name>
+- ?customer_abbreviation=<customer abbreviation>
+- ?project=<project uuid> (deprecated, please use project_uuid instead)
 - ?project_uuid=<project uuid>
+- ?project_name=<project_name>
+- ?project_group=<project_group uuid> (deprecated, please use project_group_uuid instead)
+- ?project_group_uuid=<project_group uuid>
+- ?project_group_name=<project_group name>
+- ?service_uuid=<service uuid>
+- ?service_name=<service name>
+
 
 OpenStack Resources list
 ------------------------
