@@ -41,6 +41,7 @@ Requires: python-future = 0.15.0
 Requires: python-glanceclient = 1:0.15.0
 Requires: python-jira = 0.47
 Requires: python-jsonfield = 1.0.0
+Requires: python-iptools >= 0.6.1
 Requires: python-keystoneclient = 1:0.11.1
 Requires: python-lxml >= 3.2.0
 Requires: python-neutronclient = 2.3.9
