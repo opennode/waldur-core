@@ -5,6 +5,7 @@ from django.db.models import Count
 from rest_framework import response, viewsets, permissions, status, decorators, mixins
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
+from nodeconductor.core.views import BaseSummaryView
 from nodeconductor.logging import elasticsearch_client, models, serializers, filters
 
 
@@ -129,3 +130,8 @@ class WebHookViewSet(BaseHookViewSet):
 class EmailHookViewSet(BaseHookViewSet):
     queryset = models.EmailHook.objects.all()
     serializer_class = serializers.EmailHookSerializer
+
+
+class HookSummary(BaseSummaryView):
+    def get_urls(self, request):
+        return ('webhook-list', 'emailhook-list')

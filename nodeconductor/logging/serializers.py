@@ -37,12 +37,14 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
 class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
     event_types = serializers.MultipleChoiceField(choices=log.get_valid_events(), allow_blank=False)
     author_uuid = serializers.ReadOnlyField(source='user.uuid')
+    hook_type = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.BaseHook
 
         fields = (
-            'url', 'uuid', 'is_active', 'author_uuid', 'event_types', 'created', 'modified'
+            'url', 'uuid', 'is_active', 'author_uuid', 'event_types', 'created', 'modified',
+            'hook_type'
         )
 
         extra_kwargs = {
@@ -57,6 +59,9 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
         validated_data['event_types'] = list(validated_data['event_types'])
         return validated_data
 
+    def get_hook_type(self, hook):
+        raise NotImplemented
+
 
 class WebHookSerializer(BaseHookSerializer):
     content_type = MappedChoiceField(
@@ -69,9 +74,15 @@ class WebHookSerializer(BaseHookSerializer):
         model = models.WebHook
         fields = BaseHookSerializer.Meta.fields + ('destination_url', 'content_type')
 
+    def get_hook_type(self, hook):
+        return 'webhook'
+
 
 class EmailHookSerializer(BaseHookSerializer):
 
     class Meta(BaseHookSerializer.Meta):
         model = models.EmailHook
         fields = BaseHookSerializer.Meta.fields + ('email', )
+
+    def get_hook_type(self, hook):
+        return 'email'

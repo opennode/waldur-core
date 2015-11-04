@@ -525,7 +525,7 @@ class BaseResourceFilter(django_filters.FilterSet):
         name='service_project_link__project__project_groups__name', lookup_type='icontains')
     # service
     service_uuid = django_filters.CharFilter(name='service_project_link__service__uuid')
-    service_name = django_filters.CharFilter(name='service_project_link__service__name')
+    service_name = django_filters.CharFilter(name='service_project_link__service__name', lookup_type='icontains')
     # resource
     name = django_filters.CharFilter(lookup_type='icontains')
     description = django_filters.CharFilter(lookup_type='icontains')

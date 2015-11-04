@@ -8,14 +8,17 @@ from django.utils.encoding import force_text
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import APIException
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.views import exception_handler as rf_exception_handler
+from rest_framework.viewsets import GenericViewSet
 
 from nodeconductor import __version__
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.serializers import AuthTokenSerializer
+from nodeconductor.core.utils import request_api
 from nodeconductor.logging.log import event_logger
 
 
@@ -105,3 +108,40 @@ def exception_handler(exc, context):
         exc = IncorrectStateException(detail=detail)
 
     return rf_exception_handler(exc, context)
+
+
+class BaseSummaryView(GenericViewSet):
+    params = []
+
+    def list(self, request):
+
+        def fetch_data(view_name, params):
+            response = request_api(request, view_name, params=params)
+            if not response.success:
+                raise APIException(response.data)
+            return response
+
+        data = []
+        for url in self.get_urls(request):
+            params = self.get_params(request)
+            response = fetch_data(url, params)
+
+            if response.total and response.total > len(response.data):
+                params['page_size'] = response.total
+                response = fetch_data(url, params)
+            data += response.data
+
+        page = self.paginate_queryset(data)
+        if page is not None:
+            return self.get_paginated_response(page)
+        return Response(data)
+
+    def get_params(self, request):
+        params = {}
+        for key in self.params:
+            if key in request.query_params:
+                params[key] = request.query_params.get(key)
+        return params
+
+    def get_urls(self, request):
+        return []
