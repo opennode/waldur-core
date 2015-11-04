@@ -73,7 +73,8 @@ To get a list of all your hooks, run GET against **/api/hooks/** as an authentic
                 "iaas_instance_start_succeeded"
             ],
             "destination_url": "http://example.com",
-            "content_type": "json"
+            "content_type": "json",
+            "hook_type": "webhook"
         }
     ]
 
