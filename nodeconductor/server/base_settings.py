@@ -4,10 +4,13 @@ Django base settings for nodeconductor project.
 from __future__ import absolute_import
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+import os
+import warnings
+
 from datetime import timedelta
 from celery.schedules import crontab
-import os
 
+from nodeconductor.core import NodeConductorExtension
 from nodeconductor.server.admin.settings import *
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
@@ -291,33 +294,17 @@ NODECONDUCTOR = {
 }
 
 
-# XXX: We need to import each registered extension separately, based on extensions info.
+for ext in NodeConductorExtension.get_extensions():
+    INSTALLED_APPS += (ext.django_app(),)
 
-# import optional extension settings from supported modules
-try:
-    from nodeconductor_plus.settings import *
-    INSTALLED_APPS += NODECONDUCTOR_PLUS_APPS
-    CELERYBEAT_SCHEDULE.update(NODECONDUCTOR_PLUS_CELERYBEAT_SCHEDULE)
-except (ImportError, NameError):
-    pass
+    for name, task in ext.celery_tasks().items():
+        if name in CELERYBEAT_SCHEDULE:
+            warnings.warn(
+                "Celery beat task %s from NodeConductor extension %s "
+                "is overlapping with primary tasks definition" % (name, ext.django_app()))
+        else:
+            CELERYBEAT_SCHEDULE[name] = task
 
-
-try:
-    from nodeconductor_sugarcrm.settings import *
-    INSTALLED_APPS += ('nodeconductor_sugarcrm',)
-except (ImportError, NameError):
-    pass
-
-
-try:
-    from nodeconductor_saltstack.settings import *
-    INSTALLED_APPS += ('nodeconductor_saltstack',)
-except (ImportError, NameError):
-    pass
-
-
-try:
-    import nodeconductor_saml2
-    INSTALLED_APPS += ('nodeconductor_saml2',)
-except (ImportError, NameError):
-    pass
+    for key, val in ext.Settings.__dict__.items():
+        if not key.startswith('_'):
+            globals()[key] = val
