@@ -813,7 +813,7 @@ class BaseSummaryView(viewsets.GenericViewSet):
 class ResourceViewSet(BaseSummaryView):
     """ The summary list of all user resources. """
 
-    params = ('name', 'project_uuid', 'customer')
+    params = filters.BaseResourceFilter.Meta.fields
 
     def get_urls(self, request):
         types = request.query_params.getlist('resource_type', [])
