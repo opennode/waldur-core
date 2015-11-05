@@ -493,6 +493,7 @@ class BaseServiceFilter(django_filters.FilterSet):
 
     class Meta(object):
         model = models.Service
+        fields = ('name', 'project_uuid', 'customer')
 
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):

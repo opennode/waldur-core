@@ -819,7 +819,7 @@ class ResourceViewSet(BaseSummaryView):
 class ServicesViewSet(BaseSummaryView):
     """ The summary list of all user services. """
 
-    params = ('name', 'project_uuid', 'customer')
+    params = filters.BaseServiceFilter.Meta.fields
 
     def get_urls(self, request):
         return SupportedServices.get_services(request).values()
