@@ -1,7 +1,7 @@
 Service types
 -------------
 
-To get a list of supported service types, run GET against **/api/services/** as an authenticated user.
+To get a list of supported service types, run GET against **/api/service-metadata/** as an authenticated user.
 Example of a request:
 
 .. code-block:: http
@@ -45,7 +45,15 @@ Use an endpoint from the returned list in order to create new service.
 List services
 -------------
 
-To list services, issue GET to specific endpoint from a list above as a customer owner.
+To list all services without regard to its type, run GET against **/api/services/** as an authenticated user.
+
+Supported filters are:
+
+- ?name - case insensitive matching of a resource name
+- ?customer=<customer uuid>
+- ?project_uuid=<project uuid>
+
+To list services of specific type issue GET to specific endpoint from a list above as a customer owner.
 Individual endpoint used for every service type.
 Example:
 
