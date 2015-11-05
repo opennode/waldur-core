@@ -50,8 +50,6 @@ INSTALLED_APPS = (
     'nodeconductor.iaas',
     'nodeconductor.support',
     'nodeconductor.ldapsync',
-    # TODO: remove
-    'nodeconductor_zabbix',
 
     'nodeconductor.testdata',
 
