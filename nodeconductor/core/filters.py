@@ -6,7 +6,7 @@ from django.core.urlresolvers import resolve
 import django_filters
 from rest_framework import filters
 
-from nodeconductor.core import serializers as core_serializers, fields as core_fields
+from nodeconductor.core import serializers as core_serializers, fields as core_fields, models as core_models
 
 
 class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
@@ -134,15 +134,10 @@ class GenericKeyFilterBackend(filters.DjangoFilterBackend):
         return queryset
 
 
-class MappedChoiceFilter(django_filters.ChoiceFilter):
-    """
-    A choice field that maps enum values from representation to model ones and back.
-
-    Filter analog for MappedChoiceField
-    """
+class MappedFilterMixin(object):
 
     def __init__(self, choice_mappings, **kwargs):
-        super(MappedChoiceFilter, self).__init__(**kwargs)
+        super(MappedFilterMixin, self).__init__(**kwargs)
 
         # TODO: enable this assert then filtering by numbers will be disabled
         # assert set(k for k, _ in self.field.choices) == set(choice_mappings.keys()), 'Choices do not match mappings'
@@ -151,10 +146,57 @@ class MappedChoiceFilter(django_filters.ChoiceFilter):
         self.mapped_to_model = choice_mappings
         self.model_to_mapped = {v: k for k, v in six.iteritems(choice_mappings)}
 
+
+class MappedChoiceFilter(MappedFilterMixin, django_filters.ChoiceFilter):
+    """
+    A choice field that maps enum values from representation to model ones and back.
+
+    Filter analog for MappedChoiceField.
+    """
+
     def filter(self, qs, value):
         if value in self.mapped_to_model:
             value = self.mapped_to_model[value]
         return super(MappedChoiceFilter, self).filter(qs, value)
+
+
+class MappedMultipleChoiceFilter(MappedFilterMixin, django_filters.MultipleChoiceFilter):
+    """
+    A multiple choice field that maps enum values from representation to model ones and back.
+
+    Filter analog for MappedChoiceField that allow to filter by several choices.
+    """
+
+    def filter(self, qs, value):
+        value = [self.mapped_to_model[v] for v in value if v in self.mapped_to_model]
+        return super(MappedMultipleChoiceFilter, self).filter(qs, value)
+
+
+class SynchronizationStateFilter(MappedMultipleChoiceFilter):
+    DEFAULT_CHOICES = (
+        ('New', 'New'),
+        ('Creation Scheduled', 'Creation Scheduled'),
+        ('Creating', 'Creating'),
+        ('Sync Scheduled', 'Sync Scheduled'),
+        ('Syncing', 'Syncing'),
+        ('In Sync', 'In Sync'),
+        ('Erred', 'Erred'),
+    )
+
+    DEFAULT_CHOICE_MAPPING = {
+        'New': core_models.SynchronizationStates.NEW,
+        'Creation Scheduled': core_models.SynchronizationStates.CREATION_SCHEDULED,
+        'Creating': core_models.SynchronizationStates.CREATING,
+        'Sync Scheduled': core_models.SynchronizationStates.SYNCING_SCHEDULED,
+        'Syncing': core_models.SynchronizationStates.SYNCING,
+        'In Sync': core_models.SynchronizationStates.IN_SYNC,
+        'Erred': core_models.SynchronizationStates.ERRED,
+    }
+
+    def __init__(self, choices=DEFAULT_CHOICES, choice_mappings=None, **kwargs):
+        if choice_mappings is None:
+            choice_mappings = self.DEFAULT_CHOICE_MAPPING
+        super(SynchronizationStateFilter, self).__init__(choices=choices, choice_mappings=choice_mappings, **kwargs)
 
 
 class URLFilter(django_filters.CharFilter):

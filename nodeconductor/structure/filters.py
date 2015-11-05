@@ -479,20 +479,7 @@ class ServiceSettingsFilter(django_filters.FilterSet):
         choices=SupportedServices.Types.get_direct_filter_mapping(),
         choice_mappings=SupportedServices.Types.get_reverse_filter_mapping(),
     )
-    state = core_filters.MappedChoiceFilter(
-        choices=(
-            ('sync_scheduled', 'Sync Scheduled'),
-            ('syncing', 'Syncing'),
-            ('in_sync', 'In Sync'),
-            ('erred', 'Erred'),
-        ),
-        choice_mappings={
-            'sync_scheduled': core_models.SynchronizationStates.SYNCING_SCHEDULED,
-            'syncing': core_models.SynchronizationStates.SYNCING,
-            'in_sync': core_models.SynchronizationStates.IN_SYNC,
-            'erred': core_models.SynchronizationStates.ERRED,
-        },
-    )
+    state = core_filters.SynchronizationStateFilter()
 
     class Meta(object):
         model = models.ServiceSettings
@@ -518,14 +505,49 @@ class BaseServiceProjectLinkFilter(django_filters.FilterSet):
 
 
 class BaseResourceFilter(django_filters.FilterSet):
-    project_uuid = django_filters.CharFilter(name='service_project_link__project__uuid')
+    # customer
     customer = django_filters.CharFilter(name='service_project_link__service__customer__uuid')
+    customer_uuid = django_filters.CharFilter(name='service_project_link__service__customer__uuid')
+    customer_name = django_filters.CharFilter(
+        name='service_project_link__service__customer__name', lookup_type='icontains')
+    customer_native_name = django_filters.CharFilter(
+        name='service_project_link__project__customer__native_name', lookup_type='icontains')
+    customer_abbreviation = django_filters.CharFilter(
+        name='service_project_link__project__customer__abbreviation', lookup_type='icontains')
+    # project
+    project = django_filters.CharFilter(name='service_project_link__project__uuid')
+    project_uuid = django_filters.CharFilter(name='service_project_link__project__uuid')
+    project_name = django_filters.CharFilter(name='service_project_link__project__name', lookup_type='icontains')
+    # project group
+    project_group = django_filters.CharFilter(name='service_project_link__project__project_groups__uuid')
+    project_group_uuid = django_filters.CharFilter(name='service_project_link__project__project_groups__uuid')
+    project_group_name = django_filters.CharFilter(
+        name='service_project_link__project__project_groups__name', lookup_type='icontains')
+    # service
     service_uuid = django_filters.CharFilter(name='service_project_link__service__uuid')
+    service_name = django_filters.CharFilter(name='service_project_link__service__name', lookup_type='icontains')
+    # resource
     name = django_filters.CharFilter(lookup_type='icontains')
+    description = django_filters.CharFilter(lookup_type='icontains')
+    state = core_filters.MappedMultipleChoiceFilter(
+        choices=[(representation, representation) for db_value, representation in models.Resource.States.CHOICES],
+        choice_mappings={representation: db_value for db_value, representation in models.Resource.States.CHOICES},
+    )
 
     class Meta(object):
         model = models.Resource
-        fields = ('project_uuid', 'customer', 'service_uuid', 'name')
+        fields = (
+            # customer
+            'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
+            # project
+            'project', 'project_uuid', 'project_name',
+            # project group
+            'project_group', 'project_group_uuid', 'project_group_name',
+            # service
+            'service_uuid', 'service_name',
+            # resource
+            'name', 'description', 'state',
+        )
 
 
 class BaseServicePropertyFilter(django_filters.FilterSet):

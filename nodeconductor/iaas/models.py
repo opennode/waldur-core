@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
+from iptools.ipv4 import validate_cidr
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
@@ -541,6 +542,13 @@ class SecurityGroupRuleValidationMixin(object):
             raise ValidationError('Wrong value for "to_port": '
                                   'expected value in range [1, 65535], found %d' % self.to_port)
 
+    def validate_cidr(self):
+        if not self.cidr:
+            return
+
+        if not validate_cidr(self.cidr):
+            raise ValidationError('Wrong cidr value. Expected cidr format: <0-255>.<0-255>.<0-255>.<0-255>/<0-32>')
+
     def clean(self):
         if self.protocol == 'icmp':
             self.validate_icmp()
@@ -549,6 +557,7 @@ class SecurityGroupRuleValidationMixin(object):
         else:
             raise ValidationError('Wrong value for "protocol": '
                                   'expected one of (tcp, udp, icmp), found %s' % self.protocol)
+        self.validate_cidr()
 
 
 @python_2_unicode_compatible

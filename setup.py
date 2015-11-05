@@ -31,6 +31,7 @@ install_requires = [
     'django-uuidfield==0.5.0',
     'djangorestframework>=3.1.0,<3.2.0',
     'elasticsearch>=1.0.0,<2.0.0',
+    'iptools>=0.6.1',
     'jira>=0.47',
     'jsonfield==1.0.0',
     'lxml>=3.2',

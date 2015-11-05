@@ -107,6 +107,10 @@ def propagate_user_to_services_of_newly_granted_project(sender, structure, user,
             link.add_key(key)
 
 
+def revoke_roles_on_project_deletion(sender, instance=None, **kwargs):
+    instance.remove_all_users()
+
+
 def remove_stale_user_from_services_of_revoked_project(sender, structure, user, role, **kwargs):
     """ Remove user and ssh public key from a service of old project """
     keys = get_keys(user=user)

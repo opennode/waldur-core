@@ -2,7 +2,6 @@ from django.test import TestCase
 
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.openstack import models as openstack_models
-from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import models, SupportedServices
 from nodeconductor.structure.tests import factories
 

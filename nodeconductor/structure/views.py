@@ -37,6 +37,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.tasks import send_task
+from nodeconductor.core.views import BaseSummaryView
 from nodeconductor.core.utils import request_api, datetime_to_timestamp
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
@@ -773,47 +774,10 @@ class ServiceMetadataViewSet(viewsets.GenericViewSet):
         return Response(SupportedServices.get_services_with_resources(request))
 
 
-class BaseSummaryView(viewsets.GenericViewSet):
-    params = []
-
-    def list(self, request):
-
-        def fetch_data(view_name, params):
-            response = request_api(request, view_name, params=params)
-            if not response.success:
-                raise APIException(response.data)
-            return response
-
-        data = []
-        for url in self.get_urls(request):
-            params = self.get_params(request)
-            response = fetch_data(url, params)
-
-            if response.total and response.total > len(response.data):
-                params['page_size'] = response.total
-                response = fetch_data(url, params)
-            data += response.data
-
-        page = self.paginate_queryset(data)
-        if page is not None:
-            return self.get_paginated_response(page)
-        return response.Response(data)
-
-    def get_params(self, request):
-        params = {}
-        for key in self.params:
-            if key in request.query_params:
-                params[key] = request.query_params.get(key)
-        return params
-
-    def get_urls(self, request):
-        return []
-
-
 class ResourceViewSet(BaseSummaryView):
     """ The summary list of all user resources. """
 
-    params = ('name', 'project_uuid', 'customer')
+    params = filters.BaseResourceFilter.Meta.fields
 
     def get_urls(self, request):
         types = request.query_params.getlist('resource_type', [])

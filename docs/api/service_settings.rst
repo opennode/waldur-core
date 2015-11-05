@@ -8,7 +8,7 @@ Supported filters are:
 
 - ?name=<text> - partial matching used for searching
 - ?type=<type> - choices: OpenStack, DigitalOcean, Amazon, Jira, GitLab, Oracle
-- ?state=<state> - choices: sync_scheduled, syncing, in_sync, erred
+- ?state=<state> - choices: New, Creation Scheduled, Creating, Sync Scheduled, Syncing, In Sync, Erred
 
 Update Service Settings
 -----------------------
