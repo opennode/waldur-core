@@ -8,6 +8,8 @@ class PriceItemTypes(object):
     LICENSE_OS = 'license-os'
     SUPPORT = 'support'
     NETWORK = 'network'
+    USAGE = 'usage'
+    USERS = 'users'
 
     CHOICES = (
         (FLAVOR, 'flavor'),
@@ -16,9 +18,11 @@ class PriceItemTypes(object):
         (LICENSE_OS, 'license-os'),
         (SUPPORT, 'support'),
         (NETWORK, 'network'),
+        (USAGE, 'usage'),
+        (USERS, 'users'),
     )
 
-    NUMERICS = (STORAGE,)
+    NUMERICS = (STORAGE, USERS)
 
 
 class OsTypes(object):
