@@ -22,7 +22,6 @@ install_requires = [
     'Django>=1.7.1,<1.8',
     'django-auth-ldap==1.2.0',
     'django-filter==0.10',
-    'django-admin-tools>=0.6,<0.7',
     'django-fluent-dashboard==0.5.1',
     'django-fsm==2.2.0',
     'django-model-utils==2.2',
