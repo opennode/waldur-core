@@ -110,6 +110,12 @@ TEMPLATE_DIRS = (
     os.path.join(BASE_DIR, 'nodeconductor', 'landing', 'templates'),
 )
 
+TEMPLATE_LOADERS = (
+    'django.template.loaders.filesystem.Loader',
+    'django.template.loaders.app_directories.Loader',
+    'admin_tools.template_loaders.Loader'
+)
+
 ROOT_URLCONF = 'nodeconductor.server.urls'
 
 AUTH_USER_MODEL = 'core.User'
