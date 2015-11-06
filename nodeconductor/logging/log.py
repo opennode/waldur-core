@@ -8,7 +8,7 @@ import logging
 
 from django.apps import apps
 from django.contrib.contenttypes import models as ct_models
-from django.db import IntegrityError
+from django.db import transaction, IntegrityError
 from django.utils import six
 
 from nodeconductor.core.tasks import send_task
@@ -255,22 +255,23 @@ class AlertLogger(BaseLogger):
         content_type = ct_models.ContentType.objects.get_for_model(scope)
 
         try:
-            alert = models.Alert.objects.select_for_update().get(
-                content_type=content_type,
-                object_id=scope.id,
-                alert_type=alert_type,
-                closed__isnull=True
-            )
-            if alert.severity != severity or alert.message != msg:
-                alert.severity = severity
-                alert.message = msg
-                alert.save()
+            with transaction.atomic():
+                alert = models.Alert.objects.select_for_update().get(
+                    content_type=content_type,
+                    object_id=scope.id,
+                    alert_type=alert_type,
+                    closed__isnull=True
+                )
+                if alert.severity != severity or alert.message != msg:
+                    alert.severity = severity
+                    alert.message = msg
+                    alert.save()
 
-                logger.info(
-                    'Updated alert for scope %s (id: %s), with type %s',
-                    scope, scope.id, alert_type)
+                    logger.info(
+                        'Updated alert for scope %s (id: %s), with type %s',
+                        scope, scope.id, alert_type)
 
-            return alert, False
+                return alert, False
         except models.Alert.DoesNotExist:
             pass
 
