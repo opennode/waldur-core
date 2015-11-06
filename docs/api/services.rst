@@ -47,7 +47,7 @@ List services
 
 To list all services without regard to its type, run GET against **/api/services/** as an authenticated user.
 
-Supported filters are:
+Filtering of services list is supported through HTTP query parameters, the following fields are supported:
 
 - ?name - case insensitive matching of a service name
 - ?customer=<customer uuid>
@@ -87,10 +87,6 @@ Example:
             "settings": "http://www.example.com/api/service-settings/2b688349377c4a28bf929ba0f60d6f46/"
         }
     ]
-
-Filtering of services list is supported through HTTP query parameters, the following fields are supported:
-
-- ?customer=<customer uuid>
 
 Create new service
 ------------------
