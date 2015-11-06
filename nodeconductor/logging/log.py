@@ -253,26 +253,39 @@ class AlertLogger(BaseLogger):
         context = self.compile_context(**alert_context)
         msg = self.compile_message(message_template, context)
         content_type = ct_models.ContentType.objects.get_for_model(scope)
+
         try:
-            alert, created = models.Alert.objects.update_or_create(
+            alert = models.Alert.objects.select_for_update().get(
                 content_type=content_type,
                 object_id=scope.id,
                 alert_type=alert_type,
-                closed__isnull=True,
-                defaults={
-                    'severity': severity,
-                    'message': msg
-                }
+                closed__isnull=True
             )
-            if created:
+            if alert.severity != severity or alert.message != msg:
+                alert.severity = severity
+                alert.message = msg
+                alert.save()
+
                 logger.info(
-                    'Created new alert for scope %s (id: %s), with type %s',
+                    'Updated alert for scope %s (id: %s), with type %s',
                     scope, scope.id, alert_type)
-            else:
-                logger.info(
-                    'Opened alert for scope %s (id: %s), with type %s already exists',
-                    scope, scope.id, alert_type)
-            return alert, created
+
+            return alert, False
+        except models.Alert.DoesNotExist:
+            pass
+
+        try:
+            alert = models.Alert.objects.create(
+                scope=scope,
+                alert_type=alert_type,
+                severity=severity,
+                message=msg,
+                context=context
+            )
+            logger.info(
+                'Created new alert for scope %s (id: %s), with type %s',
+                scope, scope.id, alert_type)
+            return alert, True
         except IntegrityError:
             logger.warning(
                 'Could not create alert for scope %s (id: %s), with type %s due to concurrent update',
