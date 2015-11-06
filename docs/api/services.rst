@@ -49,7 +49,7 @@ To list all services without regard to its type, run GET against **/api/services
 
 Supported filters are:
 
-- ?name - case insensitive matching of a resource name
+- ?name - case insensitive matching of a service name
 - ?customer=<customer uuid>
 - ?project_uuid=<project uuid>
 
