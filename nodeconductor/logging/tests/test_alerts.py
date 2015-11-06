@@ -1,12 +1,14 @@
 from datetime import timedelta
+import mock
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.db import IntegrityError
 from django.utils import timezone
 from rest_framework import test, status
 
 from nodeconductor.core import utils as core_utils
-from nodeconductor.logging import models
+from nodeconductor.logging import log, models
 from nodeconductor.logging.tests import factories
 # Dependency from `structure` application exists only in tests
 from nodeconductor.structure import models as structure_models
@@ -242,3 +244,36 @@ class TestAlertActions(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         reread_alert = models.Alert.objects.get(pk=self.alert.pk)
         self.assertFalse(reread_alert.acknowledged)
+
+
+class AlertUniquenessTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.project = structure_factories.ProjectFactory()
+
+    def get_logger(self):
+        if not hasattr(log.alert_logger, 'test_alert_logger'):
+            class TestAlertLogger(log.AlertLogger):
+                class Meta:
+                    alert_types = ('test_alert',)
+
+            log.alert_logger.register('test_alert_logger', TestAlertLogger)
+
+        return log.alert_logger.test_alert_logger
+
+    def log_alert(self):
+        return self.get_logger().info('Message', scope=self.project, alert_type='test_alert')
+
+    def test_duplicate_alert_is_not_created(self):
+        alert, created = self.log_alert()
+        self.assertEqual(created, True)
+
+        alert, created = self.log_alert()
+        self.assertEqual(created, False)
+
+    def test_if_race_conditions_detected_alert_skipped(self):
+        with mock.patch('nodeconductor.logging.log.models') as mock_models:
+            mock_models.Alert.objects.update_or_create.side_effect = IntegrityError
+
+            alert, created = self.log_alert()
+            self.assertEqual(created, False)

@@ -8,7 +8,7 @@ import logging
 
 from django.apps import apps
 from django.contrib.contenttypes import models as ct_models
-from django.db import transaction
+from django.db import IntegrityError
 from django.utils import six
 
 from nodeconductor.core.tasks import send_task
@@ -233,16 +233,16 @@ class AlertLogger(BaseLogger):
         return getattr(self._meta, 'alert_types', tuple())
 
     def info(self, *args, **kwargs):
-        self.process(models.Alert.SeverityChoices.INFO, *args, **kwargs)
+        return self.process(models.Alert.SeverityChoices.INFO, *args, **kwargs)
 
     def error(self, *args, **kwargs):
-        self.process(models.Alert.SeverityChoices.ERROR, *args, **kwargs)
+        return self.process(models.Alert.SeverityChoices.ERROR, *args, **kwargs)
 
     def warning(self, *args, **kwargs):
-        self.process(models.Alert.SeverityChoices.WARNING, *args, **kwargs)
+        return self.process(models.Alert.SeverityChoices.WARNING, *args, **kwargs)
 
     def debug(self, *args, **kwargs):
-        self.process(models.Alert.SeverityChoices.DEBUG, *args, **kwargs)
+        return self.process(models.Alert.SeverityChoices.DEBUG, *args, **kwargs)
 
     def process(self, severity, message_template, scope, alert_type='undefined', alert_context=None):
         self.validate_logging_type(alert_type)
@@ -252,26 +252,32 @@ class AlertLogger(BaseLogger):
 
         context = self.compile_context(**alert_context)
         msg = self.compile_message(message_template, context)
-        with transaction.atomic():
-            logger.debug('About to create new alert for scope: %s (id: %s), with type: %s', scope, scope.id, alert_type)
-            try:
-                content_type = ct_models.ContentType.objects.get_for_model(scope)
-                alert = models.Alert.objects.get(
-                    object_id=scope.id, content_type=content_type, alert_type=alert_type, closed__isnull=True)
-                if alert.severity != severity or alert.message != msg:
-                    alert.severity = severity
-                    alert.message = msg
-                    alert.save()
-                created = False
+        content_type = ct_models.ContentType.objects.get_for_model(scope)
+        try:
+            alert, created = models.Alert.objects.update_or_create(
+                content_type=content_type,
+                object_id=scope.id,
+                alert_type=alert_type,
+                closed__isnull=True,
+                defaults={
+                    'severity': severity,
+                    'message': msg
+                }
+            )
+            if created:
                 logger.info(
-                    'Opened alert for scope %s (id: %s), with type %s already exists', scope, scope.id, alert_type)
-            except models.Alert.DoesNotExist:
-                alert = models.Alert.objects.create(
-                    alert_type=alert_type, message=msg, severity=severity, context=context, scope=scope)
-                created = True
-                logger.info('Created new alert for scope %s (id: %s), with type %s', scope, scope.id, alert_type)
-
-        return alert, created
+                    'Created new alert for scope %s (id: %s), with type %s',
+                    scope, scope.id, alert_type)
+            else:
+                logger.info(
+                    'Opened alert for scope %s (id: %s), with type %s already exists',
+                    scope, scope.id, alert_type)
+            return alert, created
+        except IntegrityError:
+            logger.warning(
+                'Could not create alert for scope %s (id: %s), with type %s due to concurrent update',
+                scope, scope.id, alert_type)
+            return None, False
 
     def close(self, scope, alert_type):
         try:
