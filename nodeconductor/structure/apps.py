@@ -257,6 +257,12 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.remove_stale_users_key_from_his_projects_services',
         )
 
+        signals.pre_delete.connect(
+            handlers.revoke_roles_on_project_deletion,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.revoke_roles_on_project_deletion',
+        )
+
         structure_signals.structure_role_granted.connect(
             handlers.propagate_user_to_services_of_newly_granted_project,
             sender=Project,
@@ -325,5 +331,12 @@ class StructureConfig(AppConfig):
                 handlers.change_customer_nc_service_quota,
                 sender=service_model,
                 dispatch_uid='nodeconductor.structure.handlers.decrease_customer_nc_service_quota_{}_{}'.format(
-                                service_model.__name__, index)
+                                service_model.__name__, index),
+            )
+
+            signals.post_delete.connect(
+                handlers.delete_service_settings,
+                sender=service_model,
+                dispatch_uid='nodeconductor.structure.handlers.delete_service_settings_{}_{}'.format(
+                                service_model.__name__, index),
             )

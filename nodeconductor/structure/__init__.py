@@ -19,6 +19,7 @@ class ServiceTypes(object):
     Azure = 7
     SugarCRM = 8
     SaltStack = 9
+    Zabbix = 10
 
     CHOICES = (
         (OpenStack, 'OpenStack'),
@@ -30,6 +31,7 @@ class ServiceTypes(object):
         (Azure, 'Azure'),
         (SugarCRM, 'SugarCRM'),
         (SaltStack, 'SaltStack'),
+        (Zabbix, 'Zabbix'),
     )
 
 

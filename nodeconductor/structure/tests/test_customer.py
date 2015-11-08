@@ -556,23 +556,23 @@ class CustomerQuotasTest(test.APITransactionTestCase):
 
     def test_customer_projects_quota_increases_on_project_creation(self):
         factories.ProjectFactory(customer=self.customer)
-        self.assertEqual(self.customer.quotas.get(name='nc_project_count').usage, 1)
+        self.assert_quota_usage('nc_project_count', 1)
 
     def test_customer_projects_quota_decreases_on_project_deletion(self):
         project = factories.ProjectFactory(customer=self.customer)
         project.delete()
-        self.assertEqual(self.customer.quotas.get(name='nc_project_count').usage, 0)
+        self.assert_quota_usage('nc_project_count', 0)
 
     def test_customer_services_quota_increases_on_service_creation(self):
         from nodeconductor.iaas.tests import factories as iaas_factories
         service = iaas_factories.CloudFactory(customer=self.customer)
-        self.assertEqual(self.customer.quotas.get(name='nc_service_count').usage, 1)
+        self.assert_quota_usage('nc_service_count', 1)
 
     def test_customer_services_quota_decreases_on_service_deletion(self):
         from nodeconductor.iaas.tests import factories as iaas_factories
         service = iaas_factories.CloudFactory(customer=self.customer)
         service.delete()
-        self.assertEqual(self.customer.quotas.get(name='nc_service_count').usage, 0)
+        self.assert_quota_usage('nc_service_count', 0)
 
     def test_customer_and_project_service_project_link_quota_updated(self):
         from nodeconductor.iaas.tests import factories as iaas_factories
@@ -587,8 +587,8 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         self.assertEqual(project1.quotas.get(name='nc_service_project_link_count').usage, 1)
         self.assertEqual(project2.quotas.get(name='nc_service_project_link_count').usage, 1)
 
-        self.assertEqual(self.customer.quotas.get(name='nc_service_project_link_count').usage, 2)
-        self.assertEqual(self.customer.quotas.get(name='nc_service_count').usage, 1)
+        self.assert_quota_usage('nc_service_project_link_count', 2)
+        self.assert_quota_usage('nc_service_count', 1)
 
     # XXX: this test should be rewritten after instances will become part of general services
     def test_customer_instances_quota_increases_on_instance_creation(self):
@@ -598,7 +598,7 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         cpm = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project)
         iaas_factories.InstanceFactory(cloud_project_membership=cpm)
 
-        self.assertEqual(self.customer.quotas.get(name='nc_resource_count').usage, 1)
+        self.assert_quota_usage('nc_resource_count', 1)
 
     # XXX: this test should be rewritten after instances will become part of general services
     def test_customer_instances_quota_decreases_on_instance_deletion(self):
@@ -609,44 +609,44 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         instance = iaas_factories.InstanceFactory(cloud_project_membership=cpm)
         instance.delete()
 
-        self.assertEqual(self.customer.quotas.get(name='nc_resource_count').usage, 0)
+        self.assert_quota_usage('nc_resource_count', 0)
 
     def test_customer_users_quota_increases_on_adding_owner(self):
         user = factories.UserFactory()
         self.customer.add_user(user, CustomerRole.OWNER)
-        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 1)
+        self.assert_quota_usage('nc_user_count', 1)
 
     def test_customer_users_quota_decreases_on_removing_owner(self):
         user = factories.UserFactory()
         self.customer.add_user(user, CustomerRole.OWNER)
         self.customer.remove_user(user)
-        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 0)
+        self.assert_quota_usage('nc_user_count', 0)
 
     def test_customer_users_quota_increases_on_adding_administrator(self):
         project = factories.ProjectFactory(customer=self.customer)
         user = factories.UserFactory()
         project.add_user(user, ProjectRole.ADMINISTRATOR)
-        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 1)
+        self.assert_quota_usage('nc_user_count', 1)
 
     def test_customer_users_quota_decreases_on_removing_administrator(self):
         project = factories.ProjectFactory(customer=self.customer)
         user = factories.UserFactory()
         project.add_user(user, ProjectRole.ADMINISTRATOR)
         project.remove_user(user)
-        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 0)
+        self.assert_quota_usage('nc_user_count', 0)
 
     def test_customer_users_quota_increases_on_adding_manager(self):
         project_group = factories.ProjectGroupFactory(customer=self.customer)
         user = factories.UserFactory()
         project_group.add_user(user, ProjectGroupRole.MANAGER)
-        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 1)
+        self.assert_quota_usage('nc_user_count', 1)
 
     def test_customer_users_quota_decreases_on_removing_manager(self):
         project_group = factories.ProjectGroupFactory(customer=self.customer)
         user = factories.UserFactory()
         project_group.add_user(user, ProjectGroupRole.MANAGER)
         project_group.remove_user(user)
-        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 0)
+        self.assert_quota_usage('nc_user_count', 0)
 
     def test_customer_quota_is_not_increased_on_adding_owner_as_administrator(self):
         user = factories.UserFactory()
@@ -654,7 +654,7 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         self.customer.add_user(user, CustomerRole.OWNER)
         project.add_user(user, ProjectRole.ADMINISTRATOR)
 
-        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 1)
+        self.assert_quota_usage('nc_user_count', 1)
 
     def test_customer_quota_is_not_increased_on_adding_owner_as_manager(self):
         user = factories.UserFactory()
@@ -662,4 +662,29 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         self.customer.add_user(user, CustomerRole.OWNER)
         project.add_user(user, ProjectRole.ADMINISTRATOR)
 
-        self.assertEqual(self.customer.quotas.get(name='nc_user_count').usage, 1)
+        self.assert_quota_usage('nc_user_count', 1)
+
+    def test_customer_users_quota_decreases_when_one_project_is_deleted(self):
+        project = factories.ProjectFactory(customer=self.customer)
+        user = factories.UserFactory()
+
+        project.add_user(user, ProjectRole.ADMINISTRATOR)
+        self.assert_quota_usage('nc_user_count', 1)
+
+        project.delete()
+        self.assert_quota_usage('nc_user_count', 0)
+
+    def test_customer_users_quota_decreases_when_projects_are_deleted_in_bulk(self):
+        count = 2
+        for _ in range(count):
+            project = factories.ProjectFactory(customer=self.customer)
+            user = factories.UserFactory()
+            project.add_user(user, ProjectRole.ADMINISTRATOR)
+
+        self.assert_quota_usage('nc_user_count', count)
+
+        self.customer.projects.all().delete()
+        self.assert_quota_usage('nc_user_count', 0)
+
+    def assert_quota_usage(self, name, value):
+        self.assertEqual(value, self.customer.quotas.get(name=name).usage)

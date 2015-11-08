@@ -8,6 +8,7 @@ def register_in(router):
     router.register(r'events', views.EventViewSet, base_name='event')
     router.register(r'hooks-web', views.WebHookViewSet, base_name='webhook')
     router.register(r'hooks-email', views.EmailHookViewSet, base_name='emailhook')
+    router.register(r'hooks', views.HookSummary, base_name='hooks')
 
 
 events_count_history = views.EventViewSet.as_view({'get': 'count_history'})

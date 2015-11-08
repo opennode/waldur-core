@@ -630,7 +630,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
     def validate(self, attrs):
-        user = User(**attrs)
+        user = User(id=getattr(self.instance, 'id', None), **attrs)
         user.clean()
         return attrs
 
