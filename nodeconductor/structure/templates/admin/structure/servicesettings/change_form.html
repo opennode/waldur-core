@@ -80,6 +80,19 @@
             <li>Backend url — URL for salt master API (required, e.g.: http://salt-master.example.com:8080)</li>
             <li>Password — Secret key</li>
         </ul>
+        <h4>Zabbix</h4>
+        <ul>
+            <li>Backend url - Zabbix API URL (e.g. http://example.com/zabbix/api_jsonrpc.php)</li>
+            <li>Username - Zabbix user username (e.g. admin)</li>
+            <li>Password - Zabbix user password (e.g. zabbix)</li>
+        </ul>
+        <p>
+            <ul style="margin-left:30px;">Supported SugarCRM options are:
+                <li>"<code>host_group_name</code>" - Zabbix host group name for registered hosts. (default: "nodeconductor")</li>
+                <li>"<code>interface_parameters</code>" - Parameters for hosts interface. (default: {"dns": "", "ip": "0.0.0.0", "main": 1, "port": "10050", "type": 1, "useip": 1})</li>
+                <li>"<code>templates_names</code>" - List of Zabbix hosts templates. (default: ["nodeconductor"])</li>
+            </ul>
+        </p>
     </div>
 </div>
 <script type="text/javascript">
