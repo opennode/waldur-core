@@ -331,5 +331,12 @@ class StructureConfig(AppConfig):
                 handlers.change_customer_nc_service_quota,
                 sender=service_model,
                 dispatch_uid='nodeconductor.structure.handlers.decrease_customer_nc_service_quota_{}_{}'.format(
-                                service_model.__name__, index)
+                                service_model.__name__, index),
+            )
+
+            signals.post_delete.connect(
+                handlers.delete_service_settings,
+                sender=service_model,
+                dispatch_uid='nodeconductor.structure.handlers.delete_service_settings_{}_{}'.format(
+                                service_model.__name__, index),
             )
