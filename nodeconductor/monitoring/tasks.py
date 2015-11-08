@@ -12,11 +12,6 @@ from nodeconductor.monitoring.zabbix.errors import ZabbixError
 logger = logging.getLogger(__name__)
 
 
-# TODO: implement monitoring tasks.
-
-
-# XXX: Deprecated tasks. Should be removed after iaas module refactoring
-
 def add_months(source_date, months):
     month = source_date.month - 1 + months
     year = source_date.year + month / 12
