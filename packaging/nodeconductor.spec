@@ -100,10 +100,29 @@ cp packaging%{__conf_file} %{buildroot}%{__conf_file}
 mkdir -p %{buildroot}%{__data_dir}/static
 echo "%{__data_dir}" >> INSTALLED_FILES
 cat > tmp_settings.py << EOF
-from nodeconductor.server.base_settings import *
+# Minimal settings required for 'collectstatic' command
+INSTALLED_APPS=(
+    'admin_tools',
+    'admin_tools.dashboard',
+    'admin_tools.menu',
+    'admin_tools.theming',
+    'fluent_dashboard',
+    'django.contrib.admin',
+    'django.contrib.staticfiles',
+    'rest_framework',
+    'nodeconductor.landing',
+)
 SECRET_KEY='tmp'
 STATIC_ROOT='%{buildroot}%{__data_dir}/static'
 STATIC_URL='/static/'
+TEMPLATE_CONTEXT_PROCESSORS = (
+    'django.template.context_processors.request',  # required by django-admin-tools >= 0.7.0
+)
+TEMPLATE_LOADERS = (
+    'django.template.loaders.filesystem.Loader',
+    'django.template.loaders.app_directories.Loader',
+    'admin_tools.template_loaders.Loader',  # required by django-admin-tools >= 0.7.0
+)
 EOF
 %{__python} manage.py collectstatic --noinput --settings=tmp_settings
 
