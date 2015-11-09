@@ -245,7 +245,7 @@ CELERYBEAT_SCHEDULE = {
     },
 
     'update-today-usage': {
-        'task': 'nodeconductor.cost_tracking.update_today_usage',
+        'task': 'nodeconductor.biling.update_today_usage',
         'schedule': crontab(minute=10),
         'args': (),
     },
