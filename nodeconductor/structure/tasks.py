@@ -2,10 +2,12 @@ from __future__ import unicode_literals
 
 import logging
 
+from celery import current_app
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
+from django.utils import six
 from celery import shared_task
 
 from nodeconductor.core.tasks import transition, retry_if_false
@@ -87,12 +89,12 @@ def sync_service_settings(settings_uuids=None):
             begin_syncing_service_settings.apply_async(
                 args=(settings_uuid,),
                 link=sync_service_settings_succeeded.si(settings_uuid),
-                link_error=sync_service_settings_failed.si(settings_uuid))
+                link_error=sync_service_settings_failed.s(settings_uuid))
         elif obj.state == SynchronizationStates.CREATION_SCHEDULED:
             begin_creating_service_settings.apply_async(
                 args=(settings_uuid,),
                 link=sync_service_settings_succeeded.si(settings_uuid),
-                link_error=sync_service_settings_failed.si(settings_uuid))
+                link_error=sync_service_settings_failed.s(settings_uuid))
         else:
             logger.warning('Cannot sync service settings %s from state %s', obj.name, obj.state)
 
@@ -134,7 +136,7 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
                 args=(service_project_link_str,),
                 kwargs={'quotas': quotas, 'initial': True, 'transition_method': 'begin_creating'},
                 link=sync_service_project_link_succeeded.si(service_project_link_str),
-                link_error=sync_service_project_link_failed.si(service_project_link_str))
+                link_error=sync_service_project_link_failed.s(service_project_link_str))
 
         elif obj.state == SynchronizationStates.IN_SYNC:
             obj.schedule_syncing()
@@ -144,7 +146,7 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
                 args=(service_project_link_str,),
                 kwargs={'quotas': quotas, 'initial': False},
                 link=sync_service_project_link_succeeded.si(service_project_link_str),
-                link_error=sync_service_project_link_failed.si(service_project_link_str))
+                link_error=sync_service_project_link_failed.s(service_project_link_str))
 
         else:
             logger.warning('Cannot sync SPL %s from state %s', obj.id, obj.state)
@@ -181,9 +183,32 @@ def sync_service_settings_succeeded(settings_uuid, transition_entity=None):
 
 
 @shared_task
-@transition(models.ServiceSettings, 'set_erred')
-def sync_service_settings_failed(settings_uuid, transition_entity=None):
-    pass
+def sync_service_settings_failed(task_uuid, settings_uuid):
+
+    @transition(models.ServiceSettings, 'set_erred')
+    def process(settings_uuid, transition_entity=None):
+        result = current_app.AsyncResult(task_uuid)
+        log_service_settings_sync_failed(transition_entity, result.result)
+
+    process(settings_uuid)
+
+
+def log_service_settings_sync_failed(settings, exception):
+    message = six.text_type(exception)
+    if not message:
+        return
+
+    logger.error(
+        "Service settings %s has failed to sync with an error: %s", settings.uuid.hex, message)
+
+    event_logger.service_settings.error(
+        'Service settings {service_settings_name} has failed to sync',
+        event_type='service_settings_sync_failed',
+        event_context={
+            'service_settings': settings,
+            'message': message
+        }
+    )
 
 
 @shared_task
@@ -218,14 +243,33 @@ def sync_service_project_link_succeeded(service_project_link_str):
 
 
 @shared_task
-def sync_service_project_link_failed(service_project_link_str):
+def sync_service_project_link_failed(task_uuid, service_project_link_str):
     spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
 
     @transition(spl_model, 'set_erred')
     def process(service_project_link_pk, transition_entity=None):
-        pass
+        result = current_app.AsyncResult(task_uuid)
+        log_service_project_link_sync_failed(transition_entity, result.result)
 
     process(spl_pk)
+
+
+def log_service_project_link_sync_failed(service_project_link, exception):
+    message = six.text_type(exception)
+
+    logger.error(
+        "Service project link %s has failed to sync with an error: %s",
+        service_project_link.to_string(),
+        message)
+
+    event_logger.service_project_link.error(
+        'Service project link has failed to sync',
+        event_type='service_project_link_sync_failed',
+        event_context={
+            'service_project_link': service_project_link,
+            'message': message
+        }
+    )
 
 
 @shared_task

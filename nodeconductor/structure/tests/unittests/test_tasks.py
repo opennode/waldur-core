@@ -3,8 +3,10 @@ import mock
 from django.test import TestCase
 
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.openstack.models import OpenStackServiceProjectLink
 from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import tasks as structure_tasks
+from nodeconductor.structure import ServiceBackendError
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
@@ -60,3 +62,37 @@ class TestUserSynchronizationTask(TestCase):
         self.link.delete()
         structure_tasks.remove_user(serialize_user(self.user), self.link_str)
         self.assertFalse(mock_backend().remove_user.called)
+
+
+@mock.patch('nodeconductor.structure.tasks.event_logger')
+@mock.patch('nodeconductor.structure.tasks.current_app')
+class TestSynchronizationError(TestCase):
+    def setUp(self):
+        self.link = openstack_factories.OpenStackServiceProjectLinkFactory(
+            state=SynchronizationStates.IN_SYNC)
+        self.settings = self.link.service.settings
+        self.exception = ServiceBackendError("Unable to authenticate user")
+
+    def test_when_service_has_failed_to_sync_event_is_emitted(self, mock_app, mock_event_logger):
+        mock_app.AsyncResult().result = self.exception
+        structure_tasks.sync_service_settings_failed('task_uuid', self.settings.uuid.hex)
+        mock_event_logger.service_settings.error.assert_called_once_with(
+            'Service settings {service_settings_name} has failed to sync',
+            event_type='service_settings_sync_failed',
+            event_context={
+                'service_settings': self.settings,
+                'message': self.exception.message
+            }
+        )
+
+    def test_when_service__project_link_has_failed_to_sync_event_is_emitted(self, mock_app, mock_event_logger):
+        mock_app.AsyncResult().result = self.exception
+        structure_tasks.sync_service_project_link_failed('task_uuid', self.link.to_string())
+        mock_event_logger.service_project_link.error.assert_called_once_with(
+            'Service project link has failed to sync',
+            event_type='service_project_link_sync_failed',
+            event_context={
+                'service_project_link': self.link,
+                'message': self.exception.message
+            }
+        )
