@@ -107,7 +107,7 @@ Structure events
         Service settings has failed to sync.
 
     **service_settings_recovered**
-        Service settings has failed to sync.
+        Service settings has been recovered.
 
     **service_project_link_sync_failed**
         Service project link has failed to sync.
