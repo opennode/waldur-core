@@ -3,7 +3,9 @@ import mock
 from django.test import TestCase
 
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.openstack import models as openstack_models
 from nodeconductor.openstack.tests import factories as openstack_factories
+from nodeconductor.structure import models as structure_models
 from nodeconductor.structure import tasks as structure_tasks
 from nodeconductor.structure import ServiceBackendError
 from nodeconductor.structure.tests import factories as structure_factories
@@ -71,10 +73,20 @@ class TestServiceSynchronizationTask(TestCase):
         self.settings = self.link.service.settings
         self.exception = ServiceBackendError("Unable to authenticate user")
 
+    def get_link(self):
+        return openstack_models.OpenStackServiceProjectLink.objects.get(pk=self.link.pk)
+
+    def get_settings(self):
+        return structure_models.ServiceSettings.objects.get(pk=self.settings.pk)
+
     def test_when_service_has_failed_event_is_emitted(self, mock_event_logger):
         with mock.patch('nodeconductor.structure.tasks.current_app') as mock_app:
             mock_app.AsyncResult().result = self.exception
             structure_tasks.sync_service_settings_failed('task_uuid', self.settings.uuid.hex)
+
+            settings = self.get_settings()
+            self.assertEqual(settings.state, SynchronizationStates.ERRED)
+            self.assertEqual(settings.error_message, self.exception.message)
 
             mock_event_logger.service_settings.error.assert_called_once_with(
                 'Service settings {service_settings_name} has failed to sync.',
@@ -90,8 +102,12 @@ class TestServiceSynchronizationTask(TestCase):
             mock_app.AsyncResult().result = self.exception
             structure_tasks.sync_service_project_link_failed('task_uuid', self.link.to_string())
 
+            link = self.get_link()
+            self.assertEqual(link.state, SynchronizationStates.ERRED)
+            self.assertEqual(link.error_message, self.exception.message)
+
             mock_event_logger.service_project_link.error.assert_called_once_with(
-                'Service project link has failed to sync.',
+                'Synchronization of service project link has failed.',
                 event_type='service_project_link_sync_failed',
                 event_context={
                     'service_project_link': self.link,
@@ -109,6 +125,14 @@ class TestServiceSynchronizationTask(TestCase):
         with mock.patch('nodeconductor.structure.models.ServiceProjectLink.get_backend') as mock_backend:
             mock_backend().ping.return_value = True
             structure_tasks.recover_erred_service(self.link.to_string())
+
+            settings = self.get_settings()
+            self.assertEqual(settings.state, SynchronizationStates.IN_SYNC)
+            self.assertEqual(settings.error_message, '')
+
+            link = self.get_link()
+            self.assertEqual(link.state, SynchronizationStates.IN_SYNC)
+            self.assertEqual(link.error_message, '')
 
             mock_event_logger.service_settings.info.assert_called_once_with(
                 'Service settings {service_settings_name} has been recovered.',

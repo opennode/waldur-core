@@ -118,7 +118,8 @@ class ServiceProjectLinkEventLogger(EventLogger):
     message = six.text_type
 
     class Meta:
-        event_types = ('service_project_link_sync_failed',
+        event_types = ('service_project_link_creation_failed',
+                       'service_project_link_sync_failed',
                        'service_project_link_recovered')
 
 
