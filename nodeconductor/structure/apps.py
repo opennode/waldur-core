@@ -215,6 +215,20 @@ class StructureConfig(AppConfig):
                 dispatch_uid='nodeconductor.structure.handlers.%s' % name,
             )
 
+            fsm_signals.post_transition.connect(
+                handlers.log_service_project_link_sync_failed,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.'
+                             'log_service_project_link_sync_failed_%s' % model.__name__,
+            )
+
+            fsm_signals.post_transition.connect(
+                handlers.log_service_project_link_recovered,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.'
+                             'log_service_project_link_recovered_%s' % model.__name__,
+            )
+
             signals.post_save.connect(
                 handlers.sync_service_project_link_with_backend,
                 sender=model,
@@ -297,6 +311,18 @@ class StructureConfig(AppConfig):
             handlers.sync_service_settings_with_backend,
             sender=ServiceSettings,
             dispatch_uid='nodeconductor.structure.handlers.sync_service_settings_with_backend',
+        )
+
+        fsm_signals.post_transition.connect(
+            handlers.log_service_sync_failed,
+            sender=ServiceSettings,
+            dispatch_uid='nodeconductor.structure.handlers.log_service_sync_failed',
+        )
+
+        fsm_signals.post_transition.connect(
+            handlers.log_service_recovered,
+            sender=ServiceSettings,
+            dispatch_uid='nodeconductor.structure.handlers.log_service_recovered',
         )
 
         fsm_signals.post_transition.connect(
