@@ -11,7 +11,6 @@ class PriceItemTypes(object):
     LICENSE_APPLICATION = 'license-application'
     LICENSE_OS = 'license-os'
     SUPPORT = 'support'
-    USERS = 'users'
 
     CHOICES = (
         (FLAVOR, 'flavor'),
@@ -19,10 +18,7 @@ class PriceItemTypes(object):
         (LICENSE_APPLICATION, 'license-application'),
         (LICENSE_OS, 'license-os'),
         (SUPPORT, 'support'),
-        (USERS, 'users'),
     )
-
-    NUMERICS = (STORAGE, USERS)
 
 
 # XXX: Support type should be moved to instance model
