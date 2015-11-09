@@ -37,7 +37,6 @@ Requires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 
 Requires: python-django-reversion >= 1.8.7
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
-Requires: python-future = 0.15.0
 Requires: python-glanceclient = 1:0.15.0
 Requires: python-jira = 0.47
 Requires: python-jsonfield = 1.0.0
