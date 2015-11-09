@@ -113,7 +113,11 @@ TEMPLATE_DIRS = (
 TEMPLATE_LOADERS = (
     'django.template.loaders.filesystem.Loader',
     'django.template.loaders.app_directories.Loader',
-    'admin_tools.template_loaders.Loader'
+    'admin_tools.template_loaders.Loader',  # required by django-admin-tools >= 0.7.0
+)
+
+TEMPLATE_CONTEXT_PROCESSORS = (
+    'django.template.context_processors.request',  # required by django-admin-tools >= 0.7.0
 )
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
