@@ -202,7 +202,7 @@ def log_service_settings_sync_failed(settings, exception):
         "Service settings %s has failed to sync with an error: %s", settings.uuid.hex, message)
 
     event_logger.service_settings.error(
-        'Service settings {service_settings_name} has failed to sync',
+        'Service settings {service_settings_name} has failed to sync.',
         event_type='service_settings_sync_failed',
         event_context={
             'service_settings': settings,
@@ -263,7 +263,7 @@ def log_service_project_link_sync_failed(service_project_link, exception):
         message)
 
     event_logger.service_project_link.error(
-        'Service project link has failed to sync',
+        'Service project link has failed to sync.',
         event_type='service_project_link_sync_failed',
         event_context={
             'service_project_link': service_project_link,

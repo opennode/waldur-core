@@ -98,3 +98,13 @@ Structure events
 
     **ssh_key_remove_failed**
         Failed to delete SSH key from service.
+
+------------
+
+.. glossary::
+
+    **service_settings_sync_failed**
+        Service settings has failed to sync.
+
+    **service_project_link_sync_failed**
+        Service project link has failed to sync.
