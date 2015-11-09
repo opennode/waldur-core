@@ -296,12 +296,27 @@ def recover_erred_service(service_project_link_str, is_iaas=False):
         is_active = False
 
     if is_active:
-        for entity in (spl, settings):
-            if entity.state == SynchronizationStates.ERRED:
-                entity.set_in_sync_from_erred()
-                entity.save()
+        if settings.state == SynchronizationStates.ERRED:
+            settings.set_in_sync_from_erred()
+            settings.save()
 
-        logger.info('Service settings %s has been recovered.' % settings)
+            logger.info('Service settings %s has been recovered.' % settings)
+            event_logger.service_settings.info(
+                'Service settings {service_settings_name} has been recovered.',
+                event_type='service_settings_recovered',
+                event_context={'service_settings': settings}
+            )
+
+        if spl.state == SynchronizationStates.ERRED:
+            spl.set_in_sync_from_erred()
+            spl.save()
+
+            logger.info('Service project link %s has been recovered.' % service_project_link_str)
+            event_logger.service_project_link.info(
+                'Service project link has been recovered.',
+                event_type='service_project_link_recovered',
+                event_context={'service_project_link': spl}
+            )
     else:
         logger.info('Failed to recover service settings %s.' % settings)
 

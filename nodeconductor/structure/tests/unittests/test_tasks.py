@@ -3,7 +3,6 @@ import mock
 from django.test import TestCase
 
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.openstack.models import OpenStackServiceProjectLink
 from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import tasks as structure_tasks
 from nodeconductor.structure import ServiceBackendError
@@ -65,34 +64,60 @@ class TestUserSynchronizationTask(TestCase):
 
 
 @mock.patch('nodeconductor.structure.tasks.event_logger')
-@mock.patch('nodeconductor.structure.tasks.current_app')
-class TestSynchronizationError(TestCase):
+class TestServiceSynchronizationTask(TestCase):
     def setUp(self):
         self.link = openstack_factories.OpenStackServiceProjectLinkFactory(
             state=SynchronizationStates.IN_SYNC)
         self.settings = self.link.service.settings
         self.exception = ServiceBackendError("Unable to authenticate user")
 
-    def test_when_service_has_failed_to_sync_event_is_emitted(self, mock_app, mock_event_logger):
-        mock_app.AsyncResult().result = self.exception
-        structure_tasks.sync_service_settings_failed('task_uuid', self.settings.uuid.hex)
-        mock_event_logger.service_settings.error.assert_called_once_with(
-            'Service settings {service_settings_name} has failed to sync',
-            event_type='service_settings_sync_failed',
-            event_context={
-                'service_settings': self.settings,
-                'message': self.exception.message
-            }
-        )
+    def test_when_service_has_failed_event_is_emitted(self, mock_event_logger):
+        with mock.patch('nodeconductor.structure.tasks.current_app') as mock_app:
+            mock_app.AsyncResult().result = self.exception
+            structure_tasks.sync_service_settings_failed('task_uuid', self.settings.uuid.hex)
 
-    def test_when_service__project_link_has_failed_to_sync_event_is_emitted(self, mock_app, mock_event_logger):
-        mock_app.AsyncResult().result = self.exception
-        structure_tasks.sync_service_project_link_failed('task_uuid', self.link.to_string())
-        mock_event_logger.service_project_link.error.assert_called_once_with(
-            'Service project link has failed to sync',
-            event_type='service_project_link_sync_failed',
-            event_context={
-                'service_project_link': self.link,
-                'message': self.exception.message
-            }
-        )
+            mock_event_logger.service_settings.error.assert_called_once_with(
+                'Service settings {service_settings_name} has failed to sync.',
+                event_type='service_settings_sync_failed',
+                event_context={
+                    'service_settings': self.settings,
+                    'message': self.exception.message
+                }
+            )
+
+    def test_when_service_project_link_has_failed_event_is_emitted(self, mock_event_logger):
+        with mock.patch('nodeconductor.structure.tasks.current_app') as mock_app:
+            mock_app.AsyncResult().result = self.exception
+            structure_tasks.sync_service_project_link_failed('task_uuid', self.link.to_string())
+
+            mock_event_logger.service_project_link.error.assert_called_once_with(
+                'Service project link has failed to sync.',
+                event_type='service_project_link_sync_failed',
+                event_context={
+                    'service_project_link': self.link,
+                    'message': self.exception.message
+                }
+            )
+
+    def test_when_service_is_recovered_event_is_emitted(self, mock_event_logger):
+        self.link.set_erred()
+        self.link.save()
+
+        self.settings.set_erred()
+        self.settings.save()
+
+        with mock.patch('nodeconductor.structure.models.ServiceProjectLink.get_backend') as mock_backend:
+            mock_backend().ping.return_value = True
+            structure_tasks.recover_erred_service(self.link.to_string())
+
+            mock_event_logger.service_settings.info.assert_called_once_with(
+                'Service settings {service_settings_name} has been recovered.',
+                event_type='service_settings_recovered',
+                event_context={'service_settings': self.settings}
+            )
+
+            mock_event_logger.service_project_link.info.assert_called_once_with(
+                'Service project link has been recovered.',
+                event_type='service_project_link_recovered',
+                event_context={'service_project_link': self.link}
+            )
