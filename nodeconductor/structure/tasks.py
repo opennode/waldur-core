@@ -275,10 +275,10 @@ def recover_erred_service(service_project_link_str, is_iaas=False):
         is_active = False
 
     if is_active:
-      for entity in (spl, settings):
-          if entity.state == SynchronizationStates.ERRED:
-              entity.set_in_sync_from_erred()
-              entity.save()
+        for entity in (spl, settings):
+            if entity.state == SynchronizationStates.ERRED:
+                entity.set_in_sync_from_erred()
+                entity.save()
     else:
         logger.info('Failed to recover service settings %s.' % settings)
 
