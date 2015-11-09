@@ -6,7 +6,7 @@ from django.shortcuts import redirect
 from django.utils.translation import ungettext
 
 from nodeconductor.core.tasks import send_task
-from nodeconductor.cost_tracking import models
+from nodeconductor.cost_tracking import models, CostTrackingRegister
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import models as structure_models, admin as structure_admin
 
@@ -49,7 +49,8 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         my_urls = patterns(
             '',
             url(r'^sync/$', self.admin_site.admin_view(self.sync)),
-            url(r'^create_for_flavors/$', self.admin_site.admin_view(self.create_for_flavors)),
+            url(r'^init_from_registered_applications/$',
+                self.admin_site.admin_view(self.init_from_registered_applications)),
         )
         return my_urls + super(DefaultPriceListItemAdmin, self).get_urls()
 
@@ -58,28 +59,25 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         self.message_user(request, "Price lists scheduled for sync")
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
-    def create_for_flavors(self, request):
-        # XXX: this import creates circular dependency between iaas and cost_tracking applications:
-        from nodeconductor.iaas.models import Instance, Flavor
-        instance_content_type = ContentType.objects.get_for_model(Instance)
-        executed_flavors = []
-        for flavor in Flavor.objects.all():
-            lookup_kwargs = {'item_type': 'flavor', 'key': flavor.name, 'resource_content_type': instance_content_type}
-            if not models.DefaultPriceListItem.objects.filter(**lookup_kwargs).exists():
-                item = models.DefaultPriceListItem(**lookup_kwargs)
-                item.name = 'Flavor type: {}'.format(flavor.name)
-                item.save()
-                executed_flavors.append(flavor)
-
-        if executed_flavors:
+    def init_from_registered_applications(self, request):
+        created_items = []
+        for backend in CostTrackingRegister.get_registered_backends():
+            for item in backend.get_default_price_list_items():
+                if not models.DefaultPriceListItem.objects.filter(resource_content_type=item.resource_content_type,
+                                                                  item_type=item.item_type, key=item.key).exists():
+                    if not item.name:
+                        item.name = '{}: {}'.format(item.item_type, item.key)
+                    item.save()
+                    created_items.append(item)
+        if created_items:
             message = ungettext(
-                'Price item were created for flavor: {}'.format(executed_flavors[0].name),
-                'Price items were created for flavors: {}'.format(', '.join(f.name for f in executed_flavors)),
-                len(executed_flavors)
+                'Price item were created for key: {}'.format(created_items[0].key),
+                'Price items were created for flavors: {}'.format(', '.join(item.key for item in created_items)),
+                len(created_items)
             )
             self.message_user(request, message)
         else:
-            self.message_user(request, "Price items exist for all flavors")
+            self.message_user(request, "Price items exist for all registered applications")
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 

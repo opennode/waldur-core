@@ -2,7 +2,6 @@ from django.utils import six
 
 from nodeconductor.backup.models import BackupStrategy
 from nodeconductor.backup.exceptions import BackupStrategyExecutionError
-from nodeconductor.cost_tracking import CostConstants
 from nodeconductor.iaas import tasks
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.iaas import models
