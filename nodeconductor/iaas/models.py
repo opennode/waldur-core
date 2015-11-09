@@ -18,7 +18,7 @@ from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
 from nodeconductor.quotas.models import QuotaModelMixin
-from nodeconductor.structure import models as structure_models, ServiceBackend
+from nodeconductor.structure import models as structure_models
 
 logger = logging.getLogger(__name__)
 
@@ -319,13 +319,7 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
-class PaidInstance(PaidResource):
-
-    class Meta(object):
-        abstract = True
-
-
-class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMixin, PaidInstance):
+class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMixin, PaidResource):
     """
     A generalization of a single virtual machine.
 

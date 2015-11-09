@@ -71,8 +71,8 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
                     created_items.append(item)
         if created_items:
             message = ungettext(
-                'Price item were created for key: {}'.format(created_items[0].key),
-                'Price items were created for flavors: {}'.format(', '.join(item.key for item in created_items)),
+                'Price item was created: {}'.format(created_items[0].name),
+                'Price items were created: {}'.format(', '.join(item.name for item in created_items)),
                 len(created_items)
             )
             self.message_user(request, message)
