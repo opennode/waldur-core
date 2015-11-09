@@ -241,7 +241,7 @@ def sync_service_project_link_succeeded(service_project_link_str):
 
 
 @shared_task
-def sync_service_project_link_failed(service_project_link_str, initial=False):
+def sync_service_project_link_failed(service_project_link_str):
     spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
 
     @transition(spl_model, 'set_erred')
@@ -275,12 +275,10 @@ def recover_erred_service(service_project_link_str, is_iaas=False):
         is_active = False
 
     if is_active:
-        if settings.state == SynchronizationStates.ERRED:
-            settings.set_in_sync_from_erred()
-            settings.save()
-        if spl.state == SynchronizationStates.ERRED:
-            spl.set_in_sync_from_erred()
-            spl.save()
+      for entity in (spl, settings):
+          if entity.state == SynchronizationStates.ERRED:
+              entity.set_in_sync_from_erred()
+              entity.save()
     else:
         logger.info('Failed to recover service settings %s.' % settings)
 
