@@ -60,8 +60,7 @@ INSTALLED_APPS = (
     'django_fsm',
     'reversion',
 )
-
-INSTALLED_APPS += ADMIN_APPS
+INSTALLED_APPS += ADMIN_INSTALLED_APPS
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -109,6 +108,15 @@ TEMPLATE_DIRS = (
     os.path.join(BASE_DIR, 'nodeconductor', 'billing', 'templates'),
     os.path.join(BASE_DIR, 'nodeconductor', 'landing', 'templates'),
 )
+
+TEMPLATE_CONTEXT_PROCESSORS = ()
+TEMPLATE_CONTEXT_PROCESSORS += ADMIN_TEMPLATE_CONTEXT_PROCESSORS
+
+TEMPLATE_LOADERS = (
+    'django.template.loaders.filesystem.Loader',
+    'django.template.loaders.app_directories.Loader',
+)
+TEMPLATE_LOADERS += ADMIN_TEMPLATE_LOADERS
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
 

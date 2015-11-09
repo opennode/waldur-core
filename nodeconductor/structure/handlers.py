@@ -488,3 +488,10 @@ def remove_service_project_link_from_backend(sender, instance, **kwargs):
         backend.remove_link(instance)
     except ServiceBackendNotImplemented:
         pass
+
+
+def delete_service_settings(sender, instance, **kwargs):
+    """ Delete not shared service settings without services """
+    service = instance
+    if not service.settings.shared:
+        service.settings.delete()
