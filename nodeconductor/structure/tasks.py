@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import functools
 import logging
 
 from django.conf import settings
@@ -19,6 +20,21 @@ from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
 
 
 logger = logging.getLogger(__name__)
+
+
+def save_error_message(processing_fn):
+    @functools.wraps(processing_fn)
+    def wrapped(*args, **kwargs):
+        try:
+            return processing_fn(args, **kwargs)
+        except Exception as exception:
+            message = six.text_type(exception)
+            transition_entity = kwargs['transition_entity']
+            if message:
+                transition_entity.error_message = message
+                transition_entity.save()
+            raise exception
+    return wrapped
 
 
 @shared_task(name='nodeconductor.structure.stop_customer_resources')
@@ -155,6 +171,7 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
 
 @shared_task
 @transition(models.ServiceSettings, 'begin_syncing')
+@save_error_message
 def begin_syncing_service_settings(settings_uuid, transition_entity=None):
     settings = transition_entity
     try:
@@ -162,16 +179,11 @@ def begin_syncing_service_settings(settings_uuid, transition_entity=None):
         backend.sync()
     except ServiceBackendNotImplemented:
         pass
-    except ServiceBackendError as exception:
-        message = six.text_type(exception)
-        if message:
-            settings.error_message = message
-            settings.save()
-        raise exception
 
 
 @shared_task
 @transition(models.ServiceSettings, 'begin_creating')
+@save_error_message
 def begin_creating_service_settings(settings_uuid, transition_entity=None):
     settings = transition_entity
     try:
@@ -179,12 +191,6 @@ def begin_creating_service_settings(settings_uuid, transition_entity=None):
         backend.sync()
     except ServiceBackendNotImplemented:
         pass
-    except ServiceBackendError as exception:
-        message = six.text_type(exception)
-        if message:
-            settings.error_message = message
-            settings.save()
-        raise exception
 
 
 @shared_task
@@ -209,6 +215,7 @@ def begin_syncing_service_project_links(service_project_link_str, quotas=None, i
     spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
 
     @transition(spl_model, transition_method)
+    @save_error_message
     def process(service_project_link_pk, quotas=None, transition_entity=None):
         service_project_link = transition_entity
         try:
@@ -219,12 +226,6 @@ def begin_syncing_service_project_links(service_project_link_str, quotas=None, i
                 backend.sync_link(service_project_link, is_initial=initial)
         except ServiceBackendNotImplemented:
             pass
-        except ServiceBackendError as exception:
-            message = six.text_type(exception)
-            if message:
-                service_project_link.error_message = message
-                service_project_link.save()
-            raise exception
 
     process(spl_pk, quotas=quotas)
 
