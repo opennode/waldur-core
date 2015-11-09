@@ -120,7 +120,6 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 TEMPLATE_LOADERS = (
     'django.template.loaders.filesystem.Loader',
     'django.template.loaders.app_directories.Loader',
-    'admin_tools.template_loaders.Loader'
     'admin_tools.template_loaders.Loader',  # required by django-admin-tools >= 0.7.0
 )
 EOF
