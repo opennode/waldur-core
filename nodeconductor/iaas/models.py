@@ -12,13 +12,13 @@ from iptools.ipv4 import validate_cidr
 from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.utils import request_api
-from nodeconductor.cost_tracking import CostConstants, models as cost_tracking_models
+from nodeconductor.cost_tracking import models as cost_tracking_models
 from nodeconductor.billing.models import PaidResource
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
 from nodeconductor.quotas.models import QuotaModelMixin
-from nodeconductor.structure import models as structure_models, ServiceBackend
+from nodeconductor.structure import models as structure_models
 
 logger = logging.getLogger(__name__)
 
@@ -223,11 +223,35 @@ class Template(core_models.UuidMixin,
     """
     A template for the IaaS instance. If it is inactive, it is not visible to non-staff users.
     """
+    class OsTypes(object):
+        CENTOS6 = 'centos6'
+        CENTOS7 = 'centos7'
+        UBUNTU = 'ubuntu'
+        RHEL6 = 'rhel6'
+        RHEL7 = 'rhel7'
+        FREEBSD = 'freebsd'
+        WINDOWS = 'windows'
+        OTHER = 'other'
+
+        CHOICES = (
+            (CENTOS6, 'Centos 6'),
+            (CENTOS7, 'Centos 7'),
+            (UBUNTU, 'Ubuntu'),
+            (RHEL6, 'RedHat 6'),
+            (RHEL7, 'RedHat 7'),
+            (FREEBSD, 'FreeBSD'),
+            (WINDOWS, 'Windows'),
+            (OTHER, 'Other'),
+        )
+
+        CATEGORIES = {
+            'linux': (CENTOS6, CENTOS7, UBUNTU, RHEL6, RHEL7)
+        }
 
     # Model doesn't inherit NameMixin, because name field must be unique.
     name = models.CharField(max_length=150, unique=True)
     os = models.CharField(max_length=100, blank=True)
-    os_type = models.CharField(max_length=10, choices=CostConstants.Os.CHOICES, default=CostConstants.Os.OTHER)
+    os_type = models.CharField(max_length=10, choices=OsTypes.CHOICES, default=OsTypes.OTHER)
     is_active = models.BooleanField(default=False)
     sla_level = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     icon_name = models.CharField(max_length=100, blank=True)
@@ -295,36 +319,7 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
-class PaidInstance(PaidResource):
-
-    class Meta(object):
-        abstract = True
-
-    def get_usage_state(self):
-        state = {
-            CostConstants.PriceItem.LICENSE_OS: self.template.os_type,
-            CostConstants.PriceItem.SUPPORT: (CostConstants.Support.PREMIUM
-                                              if self.type == self.Services.PAAS
-                                              else CostConstants.Support.BASIC),
-        }
-
-        application = self.template.application_type
-        if application:
-            state[CostConstants.PriceItem.LICENSE_APPLICATION] = application.slug
-
-        if self.state == self.States.ONLINE and self.flavor_name:
-            state[CostConstants.PriceItem.FLAVOR] = self.flavor_name
-
-        storage_size = self.data_volume_size
-        storage_size += sum(b.metadata['system_snapshot_size'] +
-                            b.metadata['data_snapshot_size'] for b in self.backups.get_active())
-
-        state[CostConstants.PriceItem.STORAGE] = ServiceBackend.mb2gb(storage_size)
-
-        return state
-
-
-class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMixin, PaidInstance):
+class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMixin, PaidResource):
     """
     A generalization of a single virtual machine.
 

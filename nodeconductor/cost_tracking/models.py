@@ -11,7 +11,7 @@ from model_utils import FieldTracker
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.utils import hours_in_month
-from nodeconductor.cost_tracking import managers, CostConstants
+from nodeconductor.cost_tracking import managers
 from nodeconductor.structure import models as structure_models
 
 
@@ -96,9 +96,7 @@ class AbstractPriceListItem(models.Model):
     key = models.CharField(max_length=255)
     value = models.DecimalField("Hourly rate", default=0, max_digits=9, decimal_places=2)
     units = models.CharField(max_length=255, blank=True)
-    item_type = models.CharField(max_length=255,
-                                 choices=CostConstants.PriceItem.CHOICES,
-                                 default=CostConstants.PriceItem.FLAVOR)
+    item_type = models.CharField(max_length=255)
 
     @property
     def monthly_rate(self):
@@ -127,7 +125,7 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
         unique_together = ('key', 'content_type', 'object_id')
 
 
-# XXX: this model has to be moved to separate module that will connect OpenStack instances and cost tracking
+# XXX: this model has to be moved to OpenStack application
 @python_2_unicode_compatible
 class ApplicationType(core_models.NameMixin, models.Model):
     slug = models.CharField(max_length=150, unique=True)
