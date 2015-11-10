@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 from celery import shared_task
 from django.utils import timezone
 
+from nodeconductor.cost_tracking import CostTrackingRegister
 from nodeconductor.cost_tracking.models import PriceEstimate
 from nodeconductor.structure.models import Resource
 from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented
@@ -34,8 +35,8 @@ def update_projected_estimate(customer_uuid=None, resource_uuid=None):
 
         for instance in queryset.iterator():
             try:
-                backend = instance.get_backend()
-                monthly_cost = backend.get_monthly_cost_estimate(instance)
+                cost_tracking_backend = CostTrackingRegister.get_resource_backend(instance)
+                monthly_cost = cost_tracking_backend.get_monthly_cost_estimate(instance)
             except ServiceBackendNotImplemented:
                 continue
             except ServiceBackendError as e:
