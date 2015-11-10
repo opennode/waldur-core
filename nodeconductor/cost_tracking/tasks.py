@@ -37,7 +37,7 @@ def update_projected_estimate(customer_uuid=None, resource_uuid=None):
             try:
                 cost_tracking_backend = CostTrackingRegister.get_resource_backend(instance)
                 monthly_cost = cost_tracking_backend.get_monthly_cost_estimate(instance)
-            except ServiceBackendNotImplemented:
+            except ServiceBackendNotImplemented as e:
                 continue
             except ServiceBackendError as e:
                 logger.error("Failed to get cost estimate for resource %s: %s", instance, e)

@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from nodeconductor.cost_tracking.models import PriceEstimate
 from nodeconductor.cost_tracking.tasks import update_projected_estimate
-from nodeconductor.openstack.backend import OpenStackBackend
+from nodeconductor.openstack.cost_tracking import OpenStackCostTrackingBackend
 from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
@@ -28,7 +28,7 @@ class UpdateProjectedEstimateTest(TransactionTestCase):
                                                              created=two_months_ago)
         # mock estimate calculation task for tests:
         self.INSTANCE_MONTHLY_COST = 10
-        OpenStackBackend.get_monthly_cost_estimate = lambda s, i: self.INSTANCE_MONTHLY_COST
+        OpenStackCostTrackingBackend.get_monthly_cost_estimate = classmethod(lambda c, i: self.INSTANCE_MONTHLY_COST)
 
     def test_estimate_calculation_for_current_month_if_parents_has_no_estimates(self):
         update_projected_estimate(customer_uuid=self.customer.uuid.hex)
