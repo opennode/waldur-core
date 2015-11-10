@@ -1,16 +1,14 @@
 from __future__ import unicode_literals
 
-import functools
 import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
-from django.utils import six
 from celery import shared_task
 
-from nodeconductor.core.tasks import transition, retry_if_false
+from nodeconductor.core.tasks import transition, retry_if_false, save_error_message
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure.log import event_logger
@@ -20,21 +18,6 @@ from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
 
 
 logger = logging.getLogger(__name__)
-
-
-def save_error_message(processing_fn):
-    @functools.wraps(processing_fn)
-    def wrapped(*args, **kwargs):
-        try:
-            return processing_fn(args, **kwargs)
-        except Exception as exception:
-            message = six.text_type(exception)
-            transition_entity = kwargs['transition_entity']
-            if message:
-                transition_entity.error_message = message
-                transition_entity.save()
-            raise exception
-    return wrapped
 
 
 @shared_task(name='nodeconductor.structure.stop_customer_resources')
@@ -200,13 +183,9 @@ def sync_service_settings_succeeded(settings_uuid, transition_entity=None):
 
 
 @shared_task
-def sync_service_settings_failed(settings_uuid):
-
-    @transition(models.ServiceSettings, 'set_erred')
-    def process(settings_uuid, transition_entity=None):
-        pass
-
-    process(settings_uuid)
+@transition(models.ServiceSettings, 'set_erred')
+def sync_service_settings_failed(settings_uuid, transition_entity=None):
+    pass
 
 
 @shared_task

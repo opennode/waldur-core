@@ -341,6 +341,25 @@ def transition(model_class, processing_state, error_state='set_erred'):
     return decorator
 
 
+def save_error_message(func):
+    """
+    This function will work only if transition_entity is defined in kwargs and
+    transition_entity is instance of SynchronizableMixin
+    """
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+        try:
+            return func(args, **kwargs)
+        except Exception as exception:
+            message = six.text_type(exception)
+            transition_entity = kwargs['transition_entity']
+            if message:
+                transition_entity.error_message = message
+                transition_entity.save(update_fields=['error_message'])
+            raise exception
+    return wrapped
+
+
 def retry_if_false(func):
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
