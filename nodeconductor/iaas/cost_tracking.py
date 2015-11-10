@@ -90,3 +90,4 @@ class IaaSCostTrackingBackend(CostTrackingBackend):
         # support
         support_name = SupportTypes.PREMIUM if resource.type == resource.Services.PAAS else SupportTypes.BASIC
         items.append((PriceItemTypes.SUPPORT, support_name, 1))
+        return items

@@ -21,8 +21,14 @@ Add-on connection:
         CostTrackingRegister.register(self.label, cost_tracking.IaaSCostTrackingBackend)
 
 """
+import logging
+from decimal import Decimal
+
+from django.contrib.contenttypes.models import ContentType
+
 
 default_app_config = 'nodeconductor.cost_tracking.apps.CostTrackingConfig'
+logger = logging.getLogger(__name__)
 
 
 class CostTrackingRegister(object):
@@ -67,6 +73,22 @@ class CostTrackingBackend(object):
 
     @classmethod
     def get_monthly_cost_estimate(cls, resource):
-        """ Get resource monthly cost estimate """
-        # TODO: implement monthly cost estimate calculation based on items prices and used items.
-        raise NotImplementedError()
+        """ Get resource monthly cost estimate.
+
+        By default monthly cost estimate is calculated as multiplication
+        of default price list items prices on used items time.
+        Method should return decimal as result.
+        """
+        from nodeconductor.cost_tracking.models import DefaultPriceListItem
+        resource_content_type = ContentType.objects.get_for_model(resource)
+        resource_price_items = DefaultPriceListItem.objects.filter(resource_content_type=resource_content_type)
+        resource_prices = {(item.item_type, item.key): Decimal(item.monthly_rate) for item in resource_price_items}
+
+        monthly_cost = 0
+        for item_type, item_key, item_count in cls.get_used_items(resource):
+            try:
+                monthly_cost += resource_prices[(item_type, item_key)] * item_count
+            except KeyError:
+                logger.error('Can not find price item with key "%s" and type "%s" for resource "%s"',
+                             item_key, item_type, resource_content_type.name)
+        return monthly_cost

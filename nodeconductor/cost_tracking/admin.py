@@ -62,7 +62,11 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
     def init_from_registered_applications(self, request):
         created_items = []
         for backend in CostTrackingRegister.get_registered_backends():
-            for item in backend.get_default_price_list_items():
+            try:
+                items = backend.get_default_price_list_items()
+            except NotImplementedError:
+                continue
+            for item in items:
                 if not models.DefaultPriceListItem.objects.filter(resource_content_type=item.resource_content_type,
                                                                   item_type=item.item_type, key=item.key).exists():
                     if not item.name:
