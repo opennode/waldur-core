@@ -6,7 +6,7 @@ from django.shortcuts import redirect
 from nodeconductor.billing import models
 from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.billing.models import PaidResource
-from nodeconductor.cost_tracking.tasks import update_today_usage_of_resource
+from nodeconductor.billing.tasks import update_today_usage_of_resource
 
 
 class InvoiceAdmin(admin.ModelAdmin):

@@ -5,6 +5,13 @@ Release NEXT
 ------------
 - <none yet>.
 
+Release 0.79.0
+--------------
+- Refactored cost tracking to make it pluggable.
+- Refactor plugin system.
+- Add events for failing and recovering Link and Service instances.
+- Bugfixes
+
 Release 0.78.0
 --------------
 - Fix plugin support.

@@ -27,10 +27,9 @@ from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core.filters import DjangoMappingFilterBackend, CategoryFilter
+from nodeconductor.core.filters import DjangoMappingFilterBackend, CategoryFilter, SynchronizationStateFilter
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
-from nodeconductor.cost_tracking import CostConstants
 from nodeconductor.iaas import models
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas import tasks
@@ -562,7 +561,7 @@ class TemplateFilter(django_filters.FilterSet):
     )
 
     os_type = CategoryFilter(
-        categories=CostConstants.Os.CATEGORIES
+        categories=models.Template.OsTypes.CATEGORIES
     )
 
     application_type = django_filters.CharFilter(
@@ -1300,6 +1299,7 @@ class SecurityGroupFilter(django_filters.FilterSet):
     project = django_filters.CharFilter(
         name='cloud_project_membership__project__uuid',
     )
+    state = SynchronizationStateFilter()
 
     class Meta(object):
         model = models.SecurityGroup
@@ -1307,7 +1307,8 @@ class SecurityGroupFilter(django_filters.FilterSet):
             'name',
             'description',
             'cloud',
-            'project'
+            'project',
+            'state',
         ]
 
 

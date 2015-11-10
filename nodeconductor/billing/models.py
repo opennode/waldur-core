@@ -272,9 +272,6 @@ class PaidResource(models.Model):
     billing_backend_id = models.CharField(max_length=255, blank=True, help_text='ID of a resource in backend')
     last_usage_update_time = models.DateTimeField(blank=True, null=True)
 
-    def get_usage_state(self):
-        raise NotImplementedError
-
     @classmethod
     @lru_cache(maxsize=1)
     def get_all_models(cls):

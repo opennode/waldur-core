@@ -4,10 +4,11 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from celery import shared_task
 
-from nodeconductor.core.tasks import transition, retry_if_false
+from nodeconductor.core.tasks import transition, retry_if_false, save_error_message
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure.log import event_logger
@@ -153,6 +154,7 @@ def sync_service_project_links(service_project_links=None, quotas=None, initial=
 
 @shared_task
 @transition(models.ServiceSettings, 'begin_syncing')
+@save_error_message
 def begin_syncing_service_settings(settings_uuid, transition_entity=None):
     settings = transition_entity
     try:
@@ -164,6 +166,7 @@ def begin_syncing_service_settings(settings_uuid, transition_entity=None):
 
 @shared_task
 @transition(models.ServiceSettings, 'begin_creating')
+@save_error_message
 def begin_creating_service_settings(settings_uuid, transition_entity=None):
     settings = transition_entity
     try:
@@ -191,6 +194,7 @@ def begin_syncing_service_project_links(service_project_link_str, quotas=None, i
     spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
 
     @transition(spl_model, transition_method)
+    @save_error_message
     def process(service_project_link_pk, quotas=None, transition_entity=None):
         service_project_link = transition_entity
         try:
@@ -255,8 +259,6 @@ def recover_erred_service(service_project_link_str, is_iaas=False):
             if entity.state == SynchronizationStates.ERRED:
                 entity.set_in_sync_from_erred()
                 entity.save()
-
-        logger.info('Service settings %s has been recovered.' % settings)
     else:
         logger.info('Failed to recover service settings %s.' % settings)
 
@@ -271,7 +273,7 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
         return True
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except models.ServiceProjectLink.DoesNotExist:
+    except ObjectDoesNotExist:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
@@ -324,7 +326,7 @@ def remove_ssh_public_key(key_data, service_project_link_str):
     public_key = deserialize_ssh_key(key_data)
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except models.ServiceProjectLink.DoesNotExist:
+    except ObjectDoesNotExist:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
@@ -367,7 +369,7 @@ def add_user(user_uuid, service_project_link_str):
         return True
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except models.ServiceProjectLink.DoesNotExist:
+    except ObjectDoesNotExist:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
@@ -403,7 +405,7 @@ def remove_user(user_data, service_project_link_str):
     user = deserialize_user(user_data)
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except models.ServiceProjectLink.DoesNotExist:
+    except ObjectDoesNotExist:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 

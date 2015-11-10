@@ -1,7 +1,7 @@
 Service types
 -------------
 
-To get a list of supported service types, run GET against **/api/services/** as an authenticated user.
+To get a list of supported service types, run GET against **/api/service-metadata/** as an authenticated user.
 Example of a request:
 
 .. code-block:: http
@@ -45,7 +45,15 @@ Use an endpoint from the returned list in order to create new service.
 List services
 -------------
 
-To list services, issue GET to specific endpoint from a list above as a customer owner.
+To list all services without regard to its type, run GET against **/api/services/** as an authenticated user.
+
+Filtering of services list is supported through HTTP query parameters, the following fields are supported:
+
+- ?name - case insensitive matching of a service name
+- ?customer=<customer uuid>
+- ?project_uuid=<project uuid>
+
+To list services of specific type issue GET to specific endpoint from a list above as a customer owner.
 Individual endpoint used for every service type.
 Example:
 
@@ -66,7 +74,10 @@ Example:
             "customer": "http://www.example.com/api/customers/b3b0d890cab244b88429db838ead737a/",
             "customer_name": "Ministry of Bells",
             "customer_native_name": "",
-            "settings": "http://www.example.com/api/service-settings/beed810ccec24dd786ed9c79d7fb72fe/"
+            "settings": "http://www.example.com/api/service-settings/beed810ccec24dd786ed9c79d7fb72fe/",
+            "state": "Erred",
+            "error_message": "Unable to authenticate you.",
+            "resources_count": 0
         },
         {
             "uuid": "cc83b515a4364a4699a6b36f99b39381",
@@ -76,13 +87,12 @@ Example:
             "customer": "http://www.example.com/api/customers/5bf7c7f1c67842849cbfc0b544d67056/",
             "customer_name": "Ministry of Whistles",
             "customer_native_name": "",
-            "settings": "http://www.example.com/api/service-settings/2b688349377c4a28bf929ba0f60d6f46/"
+            "settings": "http://www.example.com/api/service-settings/2b688349377c4a28bf929ba0f60d6f46/",
+            "state": "In Sync",
+            "error_message": "",
+            "resources_count": 10
         }
     ]
-
-Filtering of services list is supported through HTTP query parameters, the following fields are supported:
-
-- ?customer=<customer uuid>
 
 Create new service
 ------------------

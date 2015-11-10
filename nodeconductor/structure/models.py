@@ -326,16 +326,26 @@ class Project(core_models.DescribableMixin,
             if role_type is not None:
                 memberships = memberships.filter(group__projectrole__role_type=role_type)
 
-            for membership in memberships.iterator():
-                role = membership.group.projectrole
-                structure_role_revoked.send(
-                    sender=Project,
-                    structure=self,
-                    user=membership.user,
-                    role=role.role_type,
-                )
+            self.remove_memberships(memberships)
 
-                membership.delete()
+    def remove_all_users(self):
+        UserGroup = get_user_model().groups.through
+
+        with transaction.atomic():
+            memberships = UserGroup.objects.filter(group__projectrole__project=self)
+            self.remove_memberships(memberships)
+
+    def remove_memberships(self, memberships):
+        for membership in memberships.iterator():
+            role = membership.group.projectrole
+            structure_role_revoked.send(
+                sender=Project,
+                structure=self,
+                user=membership.user,
+                role=role.role_type,
+            )
+
+            membership.delete()
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
@@ -485,7 +495,14 @@ class ProjectGroup(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.SynchronizableMixin):
+class ServiceSettings(core_models.UuidMixin,
+                      core_models.NameMixin,
+                      core_models.SynchronizableMixin,
+                      LoggableMixin):
+
+    class Meta:
+        verbose_name = "Service settings"
+        verbose_name_plural = "Service settings"
 
     class Permissions(object):
         customer_path = 'customer'
@@ -510,9 +527,13 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
     def __str__(self):
         return '%s (%s)' % (self.name, self.get_type_display())
 
-    class Meta:
-        verbose_name = "Service settings"
-        verbose_name_plural = "Service settings"
+    def get_log_fields(self):
+        return ('uuid', 'name', 'customer')
+
+    def _get_log_context(self, entity_name):
+        context = super(ServiceSettings, self)._get_log_context(entity_name)
+        context['service_settings_type'] = self.get_type_display()
+        return context
 
 
 @python_2_unicode_compatible

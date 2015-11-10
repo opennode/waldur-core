@@ -630,7 +630,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
     def validate(self, attrs):
-        user = User(**attrs)
+        user = User(id=getattr(self.instance, 'id', None), **attrs)
         user.clean()
         return attrs
 
@@ -724,7 +724,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = models.ServiceSettings
         fields = (
-            'url', 'uuid', 'name', 'type', 'state', 'shared',
+            'url', 'uuid', 'name', 'type', 'state', 'error_message', 'shared',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
             'dummy'
@@ -820,6 +820,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     service_type = serializers.SerializerMethodField()
     shared = serializers.ReadOnlyField(source='settings.shared')
     state = serializers.SerializerMethodField()
+    error_message = serializers.ReadOnlyField(source='settings.error_message')
 
     class Meta(object):
         model = NotImplemented
@@ -831,7 +832,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name',
             'settings', 'dummy',
             'backend_url', 'username', 'password', 'token', 'certificate',
-            'resources_count', 'service_type', 'shared', 'state'
+            'resources_count', 'service_type', 'shared', 'state', 'error_message'
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
         protected_fields = ('customer', 'settings', 'dummy') + settings_fields
@@ -961,7 +962,7 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
             'url',
             'project', 'project_name', 'project_uuid',
             'service', 'service_name', 'service_uuid',
-            'state',
+            'state', 'error_message'
         )
         related_paths = ('project', 'service')
         extra_kwargs = {

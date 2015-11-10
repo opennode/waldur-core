@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import permission
-import pkg_resources
 
 from django.conf import settings
 from django.conf.urls import patterns
@@ -10,6 +9,7 @@ from django.conf.urls import url
 from django.contrib import admin
 from django.views.generic import TemplateView
 
+from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.routers import SortedDefaultRouter as DefaultRouter
 from nodeconductor.cost_tracking import urls as cost_tracking_urls
 from nodeconductor.backup import urls as backup_urls
@@ -48,15 +48,9 @@ urlpatterns = patterns(
 )
 
 if settings.NODECONDUCTOR.get('EXTENSIONS_AUTOREGISTER'):
-    for nodeconductor_extension in pkg_resources.iter_entry_points('nodeconductor_extensions'):
-        for app in settings.INSTALLED_APPS:
-            if nodeconductor_extension.module_name.startswith(app):
-                extension_module = nodeconductor_extension.load()
-                if hasattr(extension_module, 'register_in'):
-                    extension_module.register_in(router)
-                if hasattr(extension_module, 'urlpatterns'):
-                    urlpatterns += extension_module.urlpatterns
-                break
+    for ext in NodeConductorExtension.get_extensions():
+        urlpatterns += ext.django_urls()
+        ext.rest_urls()(router)
 
 urlpatterns += patterns(
     '',

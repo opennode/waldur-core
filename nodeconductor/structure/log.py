@@ -1,3 +1,5 @@
+from django.utils import six
+
 from nodeconductor.core.models import User, SshPublicKey
 from nodeconductor.logging.log import EventLogger, event_logger
 from nodeconductor.structure import models
@@ -24,7 +26,7 @@ class BalanceEventLogger(EventLogger):
 class ProjectEventLogger(EventLogger):
     project = models.Project
     project_group = models.ProjectGroup
-    project_previous_name = basestring
+    project_previous_name = six.text_type
 
     class Meta:
         nullable_fields = ['project_group', 'project_previous_name']
@@ -45,8 +47,8 @@ class ProjectGroupEventLogger(EventLogger):
 class CustomerRoleEventLogger(EventLogger):
     customer = models.Customer
     affected_user = User
-    structure_type = basestring
-    role_name = basestring
+    structure_type = six.text_type
+    role_name = six.text_type
 
     class Meta:
         event_types = 'role_granted', 'role_revoked'
@@ -56,8 +58,8 @@ class ProjectRoleEventLogger(EventLogger):
     project = models.Project
     project_group = models.ProjectGroup
     affected_user = User
-    structure_type = basestring
-    role_name = basestring
+    structure_type = six.text_type
+    role_name = six.text_type
 
     class Meta:
         nullable_fields = ['project_group']
@@ -67,8 +69,8 @@ class ProjectRoleEventLogger(EventLogger):
 class ProjectGroupRoleEventLogger(EventLogger):
     project_group = models.ProjectGroup
     affected_user = User
-    structure_type = basestring
-    role_name = basestring
+    structure_type = six.text_type
+    role_name = six.text_type
 
     class Meta:
         event_types = 'role_granted', 'role_revoked'
@@ -84,7 +86,7 @@ class ProjectGroupMembershipEventLogger(EventLogger):
 
 class UserOrganizationEventLogger(EventLogger):
     affected_user = User
-    affected_organization = basestring
+    affected_organization = six.text_type
 
     class Meta:
         event_types = ('user_organization_claimed',
@@ -100,6 +102,25 @@ class ResourceEventLogger(EventLogger):
         event_types = ('resource_imported',
                        'resource_created',
                        'resource_deleted')
+
+
+class ServiceSettingsEventLogger(EventLogger):
+    service_settings = models.ServiceSettings
+    message = six.text_type
+
+    class Meta:
+        event_types = ('service_settings_sync_failed',
+                       'service_settings_recovered')
+
+
+class ServiceProjectLinkEventLogger(EventLogger):
+    service_project_link = models.ServiceProjectLink
+    message = six.text_type
+
+    class Meta:
+        event_types = ('service_project_link_creation_failed',
+                       'service_project_link_sync_failed',
+                       'service_project_link_recovered')
 
 
 class SshSyncEventLogger(EventLogger):
@@ -123,4 +144,6 @@ event_logger.register('project', ProjectEventLogger)
 event_logger.register('project_group', ProjectGroupEventLogger)
 event_logger.register('balance', BalanceEventLogger)
 event_logger.register('resource', ResourceEventLogger)
+event_logger.register('service_settings', ServiceSettingsEventLogger)
+event_logger.register('service_project_link', ServiceProjectLinkEventLogger)
 event_logger.register('ssh_sync', SshSyncEventLogger)

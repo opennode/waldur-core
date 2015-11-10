@@ -9,6 +9,7 @@ Supported filters:
 - ?description=<description> - only groups where description starts with defined one
 - ?project=<project_uuid> - only groups connected to a defined cloud
 - ?cloud=<cloud_uuid> - only groups connected to a defined project
+- ?state=<state> - choices: New, Creation Scheduled, Creating, Sync Scheduled, Syncing, In Sync, Erred
 
 When instantiating a new instance, setting both **project** and **cloud** filters will result in a proper set of
 security groups for selection.

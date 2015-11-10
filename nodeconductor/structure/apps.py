@@ -215,6 +215,20 @@ class StructureConfig(AppConfig):
                 dispatch_uid='nodeconductor.structure.handlers.%s' % name,
             )
 
+            fsm_signals.post_transition.connect(
+                handlers.log_service_project_link_sync_failed,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.'
+                             'log_service_project_link_sync_failed_%s' % model.__name__,
+            )
+
+            fsm_signals.post_transition.connect(
+                handlers.log_service_project_link_recovered,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.'
+                             'log_service_project_link_recovered_%s' % model.__name__,
+            )
+
             signals.post_save.connect(
                 handlers.sync_service_project_link_with_backend,
                 sender=model,
@@ -257,6 +271,12 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.remove_stale_users_key_from_his_projects_services',
         )
 
+        signals.pre_delete.connect(
+            handlers.revoke_roles_on_project_deletion,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.revoke_roles_on_project_deletion',
+        )
+
         structure_signals.structure_role_granted.connect(
             handlers.propagate_user_to_services_of_newly_granted_project,
             sender=Project,
@@ -294,6 +314,18 @@ class StructureConfig(AppConfig):
         )
 
         fsm_signals.post_transition.connect(
+            handlers.log_service_sync_failed,
+            sender=ServiceSettings,
+            dispatch_uid='nodeconductor.structure.handlers.log_service_sync_failed',
+        )
+
+        fsm_signals.post_transition.connect(
+            handlers.log_service_recovered,
+            sender=ServiceSettings,
+            dispatch_uid='nodeconductor.structure.handlers.log_service_recovered',
+        )
+
+        fsm_signals.post_transition.connect(
             handlers.connect_shared_service_settings_to_customers,
             sender=ServiceSettings,
             dispatch_uid='nodeconductor.structure.handlers.connect_shared_service_settings_to_customers',
@@ -325,5 +357,12 @@ class StructureConfig(AppConfig):
                 handlers.change_customer_nc_service_quota,
                 sender=service_model,
                 dispatch_uid='nodeconductor.structure.handlers.decrease_customer_nc_service_quota_{}_{}'.format(
-                                service_model.__name__, index)
+                                service_model.__name__, index),
+            )
+
+            signals.post_delete.connect(
+                handlers.delete_service_settings,
+                sender=service_model,
+                dispatch_uid='nodeconductor.structure.handlers.delete_service_settings_{}_{}'.format(
+                                service_model.__name__, index),
             )

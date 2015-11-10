@@ -89,7 +89,7 @@ def hours_in_month(month=None, year=None):
     return 24 * days_in_month
 
 
-def request_api(request, url_or_view_name, method='GET', data=None, params=None):
+def request_api(request, url_or_view_name, method='GET', data=None, params=None, verify=False):
     """ Make a request to API internally.
         Use 'request.user' for authentication.
         Return a JSON response.
@@ -102,7 +102,7 @@ def request_api(request, url_or_view_name, method='GET', data=None, params=None)
     else:
         url = request.build_absolute_uri(reverse(url_or_view_name))
 
-    response = method(url, headers={'Authorization': 'Token %s' % token.key}, data=data, params=params)
+    response = method(url, headers={'Authorization': 'Token %s' % token.key}, data=data, params=params, verify=verify)
 
     result = type('Result', (object,), {})
     try:

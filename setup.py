@@ -20,6 +20,7 @@ install_requires = [
     'Celery>=3.1.15,<3.2',
     'croniter>=0.3.4,<0.3.6',
     'Django>=1.7.1,<1.8',
+    'django-admin-tools==0.7.0',
     'django-auth-ldap==1.2.0',
     'django-filter==0.10',
     'django-fluent-dashboard==0.5.1',
@@ -31,6 +32,7 @@ install_requires = [
     'django-uuidfield==0.5.0',
     'djangorestframework>=3.1.0,<3.2.0',
     'elasticsearch>=1.0.0,<2.0.0',
+    'iptools>=0.6.1',
     'jira>=0.47',
     'jsonfield==1.0.0',
     'lxml>=3.2',
@@ -70,7 +72,7 @@ else:
 
 setup(
     name='nodeconductor',
-    version='0.78.0',
+    version='0.79.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

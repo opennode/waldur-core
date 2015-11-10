@@ -3,7 +3,7 @@ import factory
 from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
 
-from nodeconductor.cost_tracking import models, CostConstants
+from nodeconductor.cost_tracking import models
 from nodeconductor.openstack import models as openstack_models
 from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure.tests import factories as structure_factories
@@ -40,7 +40,7 @@ class AbstractPriceListItemFactory(factory.DjangoModelFactory):
 
     key = factory.Sequence(lambda n: 'price list item %s' % n)
     value = factory.Iterator([10, 100, 1000, 10000, 1313, 13])
-    item_type = factory.Iterator([CostConstants.PriceItem.FLAVOR, CostConstants.PriceItem.STORAGE])
+    item_type = factory.Iterator(['flavor', 'storage'])
     units = factory.Iterator(['USD', 'EUR', 'UAH', 'OMR'])
 
 

@@ -4,10 +4,13 @@ Django base settings for nodeconductor project.
 from __future__ import absolute_import
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+import os
+import warnings
+
 from datetime import timedelta
 from celery.schedules import crontab
-import os
 
+from nodeconductor.core import NodeConductorExtension
 from nodeconductor.server.admin.settings import *
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
@@ -57,8 +60,7 @@ INSTALLED_APPS = (
     'django_fsm',
     'reversion',
 )
-
-INSTALLED_APPS += ADMIN_APPS
+INSTALLED_APPS += ADMIN_INSTALLED_APPS
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -106,6 +108,15 @@ TEMPLATE_DIRS = (
     os.path.join(BASE_DIR, 'nodeconductor', 'billing', 'templates'),
     os.path.join(BASE_DIR, 'nodeconductor', 'landing', 'templates'),
 )
+
+TEMPLATE_CONTEXT_PROCESSORS = ()
+TEMPLATE_CONTEXT_PROCESSORS += ADMIN_TEMPLATE_CONTEXT_PROCESSORS
+
+TEMPLATE_LOADERS = (
+    'django.template.loaders.filesystem.Loader',
+    'django.template.loaders.app_directories.Loader',
+)
+TEMPLATE_LOADERS += ADMIN_TEMPLATE_LOADERS
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
 
@@ -236,7 +247,7 @@ CELERYBEAT_SCHEDULE = {
     },
 
     'update-today-usage': {
-        'task': 'nodeconductor.cost_tracking.update_today_usage',
+        'task': 'nodeconductor.biling.update_today_usage',
         'schedule': crontab(minute=10),
         'args': (),
     },
@@ -291,33 +302,17 @@ NODECONDUCTOR = {
 }
 
 
-# XXX: We need to import each registered extension separately, based on extensions info.
+for ext in NodeConductorExtension.get_extensions():
+    INSTALLED_APPS += (ext.django_app(),)
 
-# import optional extension settings from supported modules
-try:
-    from nodeconductor_plus.settings import *
-    INSTALLED_APPS += NODECONDUCTOR_PLUS_APPS
-    CELERYBEAT_SCHEDULE.update(NODECONDUCTOR_PLUS_CELERYBEAT_SCHEDULE)
-except (ImportError, NameError):
-    pass
+    for name, task in ext.celery_tasks().items():
+        if name in CELERYBEAT_SCHEDULE:
+            warnings.warn(
+                "Celery beat task %s from NodeConductor extension %s "
+                "is overlapping with primary tasks definition" % (name, ext.django_app()))
+        else:
+            CELERYBEAT_SCHEDULE[name] = task
 
-
-try:
-    from nodeconductor_sugarcrm.settings import *
-    INSTALLED_APPS += ('nodeconductor_sugarcrm',)
-except (ImportError, NameError):
-    pass
-
-
-try:
-    from nodeconductor_saltstack.settings import *
-    INSTALLED_APPS += ('nodeconductor_saltstack',)
-except (ImportError, NameError):
-    pass
-
-
-try:
-    import nodeconductor_saml2
-    INSTALLED_APPS += ('nodeconductor_saml2',)
-except (ImportError, NameError):
-    pass
+    for key, val in ext.Settings.__dict__.items():
+        if not key.startswith('_'):
+            globals()[key] = val

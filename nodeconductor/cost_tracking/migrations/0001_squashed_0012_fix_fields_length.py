@@ -6,7 +6,19 @@ import jsonfield.fields
 import uuidfield.fields
 import django.core.validators
 
-from nodeconductor.cost_tracking import ApplicationTypes
+
+class ApplicationTypes(object):
+    WORDPRESS = 'wordpress'
+    POSTGRESQL = 'postgresql'
+    ZIMBRA = 'zimbra'
+    NONE = 'none'
+
+    CHOICES = (
+        (WORDPRESS, 'WordPress'),
+        (POSTGRESQL, 'PostgreSQL'),
+        (ZIMBRA, 'Zimbra'),
+        (NONE, 'None'),
+    )
 
 
 def init_default_application_types(apps, schema_editor):
@@ -53,7 +65,7 @@ class Migration(migrations.Migration):
                 ('key', models.CharField(max_length=255)),
                 ('value', models.DecimalField(default=0, verbose_name=b'Hourly rate', max_digits=9, decimal_places=2)),
                 ('units', models.CharField(max_length=255, blank=True)),
-                ('item_type', models.CharField(default=b'flavor', max_length=255, choices=[(b'flavor', b'flavor'), (b'storage', b'storage'), (b'license-application', b'license-application'), (b'license-os', b'license-os'), (b'support', b'support'), (b'network', b'network')])),
+                ('item_type', models.CharField(default=b'flavor', max_length=255, choices=[(b'flavor', b'flavor'), (b'storage', b'storage'), (b'license-application', b'license-application'), (b'license-os', b'license-os'), (b'support', b'support'), (b'network', b'network'), (b'usage', b'usage'), (b'users', b'users')])),
                 ('is_manually_input', models.BooleanField(default=False)),
                 ('resource_content_type', models.ForeignKey(related_name='+', default=None, to='contenttypes.ContentType')),
             ],
@@ -71,7 +83,7 @@ class Migration(migrations.Migration):
                 ('key', models.CharField(max_length=255)),
                 ('value', models.DecimalField(default=0, verbose_name=b'Hourly rate', max_digits=9, decimal_places=2)),
                 ('units', models.CharField(max_length=255, blank=True)),
-                ('item_type', models.CharField(default=b'flavor', max_length=255, choices=[(b'flavor', b'flavor'), (b'storage', b'storage'), (b'license-application', b'license-application'), (b'license-os', b'license-os'), (b'support', b'support'), (b'network', b'network')])),
+                ('item_type', models.CharField(default=b'flavor', max_length=255, choices=[(b'flavor', b'flavor'), (b'storage', b'storage'), (b'license-application', b'license-application'), (b'license-os', b'license-os'), (b'support', b'support'), (b'network', b'network'), (b'usage', b'usage'), (b'users', b'users')])),
                 ('resource_content_type', models.ForeignKey(default=None, to='contenttypes.ContentType')),
             ],
             options={

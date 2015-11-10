@@ -107,6 +107,10 @@ def propagate_user_to_services_of_newly_granted_project(sender, structure, user,
             link.add_key(key)
 
 
+def revoke_roles_on_project_deletion(sender, instance=None, **kwargs):
+    instance.remove_all_users()
+
+
 def remove_stale_user_from_services_of_revoked_project(sender, structure, user, role, **kwargs):
     """ Remove user and ssh public key from a service of old project """
     keys = get_keys(user=user)
@@ -472,10 +476,86 @@ def sync_service_settings_with_backend(sender, instance, created=False, **kwargs
         send_task('structure', 'sync_service_settings')(instance.uuid.hex)
 
 
+def log_service_sync_failed(sender, instance, name, source, target, **kwargs):
+    settings = instance
+    message = settings.error_message
+    if message and target == SynchronizationStates.ERRED:
+        logger.error(
+            "Service settings %s has failed to sync with an error: %s", settings.uuid.hex, message)
+
+        event_logger.service_settings.error(
+            'Service settings {service_settings_name} has failed to sync.',
+            event_type='service_settings_sync_failed',
+            event_context={
+                'service_settings': settings,
+                'message': message
+            }
+        )
+
+
+def log_service_recovered(sender, instance, name, source, target, **kwargs):
+    settings = instance
+    if source == SynchronizationStates.ERRED and target == SynchronizationStates.IN_SYNC:
+        logger.info('Service settings %s has been recovered.' % settings)
+        event_logger.service_settings.info(
+            'Service settings {service_settings_name} has been recovered.',
+            event_type='service_settings_recovered',
+            event_context={'service_settings': settings}
+        )
+
+
 def sync_service_project_link_with_backend(sender, instance, created=False, **kwargs):
     if created:
         if instance.state != SynchronizationStates.NEW:
             send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
+
+
+def log_service_project_link_sync_failed(sender, instance, name, source, target, **kwargs):
+    service_project_link = instance
+    message = service_project_link.error_message
+
+    if not message or target != SynchronizationStates.ERRED:
+        return
+
+    if source == SynchronizationStates.CREATING:
+        logger.error(
+            "Creation of service project link %s has failed with an error: %s",
+            service_project_link.to_string(),
+            message)
+
+        event_logger.service_project_link.error(
+            'Creation of service project link has failed.',
+            event_type='service_project_link_creation_failed',
+            event_context={
+                'service_project_link': service_project_link,
+                'message': message
+            }
+        )
+    elif source == SynchronizationStates.SYNCING:
+        logger.error(
+            "Synchronization of service project link %s has failed with an error: %s",
+            service_project_link.to_string(),
+            message)
+
+        event_logger.service_project_link.error(
+            'Synchronization of service project link has failed.',
+            event_type='service_project_link_sync_failed',
+            event_context={
+                'service_project_link': service_project_link,
+                'message': message
+            }
+        )
+
+
+def log_service_project_link_recovered(sender, instance, name, source, target, **kwargs):
+    service_project_link = instance
+    if source == SynchronizationStates.ERRED and target == SynchronizationStates.IN_SYNC:
+        logger.info('Service project link %s has been recovered.' % service_project_link.to_string())
+        event_logger.service_project_link.info(
+            'Service project link has been recovered.',
+            event_type='service_project_link_recovered',
+            event_context={'service_project_link': service_project_link}
+        )
 
 
 def remove_service_project_link_from_backend(sender, instance, **kwargs):
@@ -484,3 +564,10 @@ def remove_service_project_link_from_backend(sender, instance, **kwargs):
         backend.remove_link(instance)
     except ServiceBackendNotImplemented:
         pass
+
+
+def delete_service_settings(sender, instance, **kwargs):
+    """ Delete not shared service settings without services """
+    service = instance
+    if not service.settings.shared:
+        service.settings.delete()
