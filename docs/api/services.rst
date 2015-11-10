@@ -74,7 +74,10 @@ Example:
             "customer": "http://www.example.com/api/customers/b3b0d890cab244b88429db838ead737a/",
             "customer_name": "Ministry of Bells",
             "customer_native_name": "",
-            "settings": "http://www.example.com/api/service-settings/beed810ccec24dd786ed9c79d7fb72fe/"
+            "settings": "http://www.example.com/api/service-settings/beed810ccec24dd786ed9c79d7fb72fe/",
+            "state": "Erred",
+            "error_message": "Unable to authenticate you.",
+            "resources_count": 0
         },
         {
             "uuid": "cc83b515a4364a4699a6b36f99b39381",
@@ -84,7 +87,10 @@ Example:
             "customer": "http://www.example.com/api/customers/5bf7c7f1c67842849cbfc0b544d67056/",
             "customer_name": "Ministry of Whistles",
             "customer_native_name": "",
-            "settings": "http://www.example.com/api/service-settings/2b688349377c4a28bf929ba0f60d6f46/"
+            "settings": "http://www.example.com/api/service-settings/2b688349377c4a28bf929ba0f60d6f46/",
+            "state": "In Sync",
+            "error_message": "",
+            "resources_count": 10
         }
     ]
 
