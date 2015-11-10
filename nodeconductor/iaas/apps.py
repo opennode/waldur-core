@@ -5,6 +5,7 @@ from django.db.models import signals
 
 from nodeconductor.core import handlers as core_handlers
 from nodeconductor.core.signals import pre_serializer_fields
+from nodeconductor.cost_tracking import CostTrackingRegister
 from nodeconductor.structure.models import Project
 from nodeconductor.quotas import handlers as quotas_handlers
 
@@ -19,8 +20,10 @@ class IaasConfig(AppConfig):
         Cloud = self.get_model('Cloud')
         CloudProjectMembership = self.get_model('CloudProjectMembership')
 
-        from nodeconductor.iaas import handlers
+        from nodeconductor.iaas import handlers, cost_tracking
         from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
+
+        CostTrackingRegister.register(self.label, cost_tracking.IaaSCostTrackingBackend)
 
         pre_serializer_fields.connect(
             handlers.add_clouds_to_related_model,

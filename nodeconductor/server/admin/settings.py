@@ -8,16 +8,16 @@ ADMIN_INSTALLED_APPS = (
 )
 
 # FIXME: Move generic (not related to admin) context processors to base_settings
+# Note: replace 'django.core.context_processors' with 'django.template.context_processors' in Django 1.8+
 ADMIN_TEMPLATE_CONTEXT_PROCESSORS = (
     'django.contrib.auth.context_processors.auth',
     'django.contrib.messages.context_processors.messages',
-    'django.core.context_processors.request',
     'django.core.context_processors.debug',
     'django.core.context_processors.i18n',
     'django.core.context_processors.media',
+    'django.core.context_processors.request',  # required by django-admin-tools >= 0.7.0
     'django.core.context_processors.static',
     'django.core.context_processors.tz',
-    'django.template.context_processors.request',  # required by django-admin-tools >= 0.7.0
 )
 
 ADMIN_TEMPLATE_LOADERS = (

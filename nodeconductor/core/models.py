@@ -238,6 +238,7 @@ class SynchronizableMixin(models.Model):
         default=SynchronizationStates.CREATION_SCHEDULED,
         choices=SynchronizationStates.CHOICES,
     )
+    error_message = models.TextField(blank=True)
 
     @transition(field=state, source=SynchronizationStates.CREATION_SCHEDULED, target=SynchronizationStates.CREATING)
     def begin_creating(self):
@@ -266,7 +267,7 @@ class SynchronizableMixin(models.Model):
 
     @transition(field=state, source=SynchronizationStates.ERRED, target=SynchronizationStates.IN_SYNC)
     def set_in_sync_from_erred(self):
-        pass
+        self.error_message = ''
 
 
 class ReversionMixin(object):

@@ -495,7 +495,14 @@ class ProjectGroup(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.SynchronizableMixin):
+class ServiceSettings(core_models.UuidMixin,
+                      core_models.NameMixin,
+                      core_models.SynchronizableMixin,
+                      LoggableMixin):
+
+    class Meta:
+        verbose_name = "Service settings"
+        verbose_name_plural = "Service settings"
 
     class Permissions(object):
         customer_path = 'customer'
@@ -520,9 +527,13 @@ class ServiceSettings(core_models.UuidMixin, core_models.NameMixin, core_models.
     def __str__(self):
         return '%s (%s)' % (self.name, self.get_type_display())
 
-    class Meta:
-        verbose_name = "Service settings"
-        verbose_name_plural = "Service settings"
+    def get_log_fields(self):
+        return ('uuid', 'name', 'customer')
+
+    def _get_log_context(self, entity_name):
+        context = super(ServiceSettings, self)._get_log_context(entity_name)
+        context['service_settings_type'] = self.get_type_display()
+        return context
 
 
 @python_2_unicode_compatible

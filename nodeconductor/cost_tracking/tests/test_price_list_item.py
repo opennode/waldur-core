@@ -1,7 +1,7 @@
 from ddt import ddt, data
 from rest_framework import test, status
 
-from nodeconductor.cost_tracking import models, CostConstants
+from nodeconductor.cost_tracking import models
 from nodeconductor.cost_tracking.tests import factories
 from nodeconductor.openstack import models as openstack_models
 from nodeconductor.openstack.tests import factories as openstack_factories
@@ -87,7 +87,7 @@ class PriceListItemCreateTest(test.APITransactionTestCase):
             'value': 100,
             'units': 'UAH',
             'key': 'test_key',
-            'item_type': CostConstants.PriceItem.STORAGE,
+            'item_type': 'storage',
         }
 
     @data('staff', 'owner')

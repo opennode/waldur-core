@@ -6,7 +6,19 @@ import jsonfield.fields
 import uuidfield.fields
 import django.core.validators
 
-from nodeconductor.cost_tracking import ApplicationTypes
+
+class ApplicationTypes(object):
+    WORDPRESS = 'wordpress'
+    POSTGRESQL = 'postgresql'
+    ZIMBRA = 'zimbra'
+    NONE = 'none'
+
+    CHOICES = (
+        (WORDPRESS, 'WordPress'),
+        (POSTGRESQL, 'PostgreSQL'),
+        (ZIMBRA, 'Zimbra'),
+        (NONE, 'None'),
+    )
 
 
 def init_default_application_types(apps, schema_editor):

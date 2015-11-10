@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 from django.db.models import signals
 
+from nodeconductor.cost_tracking import CostTrackingRegister
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.openstack import handlers
 from nodeconductor.structure import SupportedServices
@@ -17,7 +18,9 @@ class OpenStackConfig(AppConfig):
         FloatingIP = self.get_model('FloatingIP')
 
         from nodeconductor.openstack.backend import OpenStackBackend
+        from nodeconductor.openstack.cost_tracking import OpenStackCostTrackingBackend
         SupportedServices.register_backend(OpenStackService, OpenStackBackend)
+        CostTrackingRegister.register(self.label, OpenStackCostTrackingBackend)
 
         signals.post_save.connect(
             handlers.create_initial_security_groups,
