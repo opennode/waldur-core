@@ -1,9 +1,11 @@
 from django.contrib import admin, messages
+from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.db import models as django_models
+from django.forms import ModelForm, ModelMultipleChoiceField
 from django.http import HttpResponseRedirect
 from django.utils.translation import ungettext
 
-from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.core.models import SynchronizationStates, User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models
@@ -110,6 +112,71 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
     list_display = ['name', 'uuid', 'customer', 'created']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
+
+
+class RoleAdminForm(ModelForm):
+    users = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
+                                     widget=FilteredSelectMultiple(verbose_name='Users', is_stacked=False))
+
+    def __init__(self, *args, **kwargs):
+        super(RoleAdminForm, self).__init__(*args, **kwargs)
+
+        if self.instance and self.instance.pk:
+            self.fields['users'].initial = self.instance.permission_group.user_set.all()
+
+    def save(self, commit=False):
+        role = super(RoleAdminForm, self).save(commit=False)
+
+        if role.pk:
+            role.permission_group.user_set = self.cleaned_data['users']
+            self.save_m2m()
+
+        return role
+
+
+class ProjectRoleAdmin(admin.ModelAdmin):
+    form = RoleAdminForm
+    fields = ('project', 'role_type', 'users')
+    readonly_fields = ['project', 'role_type']
+    list_display = ['project', 'role_type']
+    search_fields = ['project__name', 'project__customer__name']
+    actions = None
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class ProjectGroupRoleAdmin(admin.ModelAdmin):
+    form = RoleAdminForm
+    fields = ('project_group', 'role_type', 'users')
+    readonly_fields = ['project_group', 'role_type']
+    list_display = ['project_group', 'role_type']
+    search_fields = ['project_group__name', 'project_group__customer__name']
+    actions = None
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class CustomerRoleAdmin(admin.ModelAdmin):
+    form = RoleAdminForm
+    fields = ('customer', 'role_type', 'users')
+    readonly_fields = ['customer', 'role_type']
+    list_display = ['customer', 'role_type']
+    search_fields = ['customer__name']
+    actions = None
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
@@ -233,3 +300,6 @@ admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ProjectGroup, ProjectGroupAdmin)
 admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)
+admin.site.register(models.CustomerRole, CustomerRoleAdmin)
+admin.site.register(models.ProjectGroupRole, ProjectGroupRoleAdmin)
+admin.site.register(models.ProjectRole, ProjectRoleAdmin)
