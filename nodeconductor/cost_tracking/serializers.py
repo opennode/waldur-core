@@ -99,14 +99,18 @@ class PriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
 class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
-    resource_content_type = serializers.SerializerMethodField()
+    resource_content_type = serializers.SerializerMethodField()  # Deprecated, should be delete in NC-921
+    resource_type = serializers.SerializerMethodField()
 
     class Meta:
         model = models.DefaultPriceListItem
-        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'resource_content_type')
+        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'resource_content_type', 'resource_type')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
 
     def get_resource_content_type(self, obj):
         return '{}.{}'.format(obj.resource_content_type.app_label, obj.resource_content_type.model)
+
+    def get_resource_type(self, obj):
+        return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
