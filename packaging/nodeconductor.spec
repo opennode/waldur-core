@@ -38,15 +38,15 @@ Requires: python-django-reversion >= 1.8.7
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
 Requires: python-glanceclient = 1:0.15.0
+Requires: python-iptools >= 0.6.1
 Requires: python-jira = 0.47
 Requires: python-jsonfield = 1.0.0
-Requires: python-iptools >= 0.6.1
 Requires: python-keystoneclient = 1:0.11.1
 Requires: python-lxml >= 3.2.0
 Requires: python-neutronclient = 2.3.9
 Requires: python-novaclient = 1:2.20.0
-Requires: python-pillow >= 2.0.0
 Requires: python-paypal-rest-sdk >= 1.10.0
+Requires: python-pillow >= 2.0.0
 Requires: python-redis = 2.10.3
 Requires: python-requests = 2.6.0
 Requires: python-sqlparse >= 0.1.11
@@ -61,15 +61,14 @@ Source0: %{name}-%{version}.tar.gz
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
-# python-django package is needed to generate static files
-# python-django-rest-framework package is needed to generate static files
+# python-django* packages are needed to generate static files
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
 BuildRequires: python-django >= 1.7.1
+BuildRequires: python-django-fluent-dashboard
 BuildRequires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
 BuildRequires: python-setuptools
 BuildRequires: systemd
-BuildRequires: python-django-fluent-dashboard
 
 %description
 NodeConductor is an infrastructure and application management server developed by OpenNode.
@@ -132,7 +131,7 @@ mkdir -p %{buildroot}%{__logrotate_dir}
 cp packaging%{__logrotate_conf_file} %{buildroot}%{__logrotate_conf_file}
 echo "%{__logrotate_conf_file}" >> INSTALLED_FILES
 
-mkdir -p %{buildroot}%{__work_dir}
+mkdir -p %{buildroot}%{__work_dir}/media
 echo "%{__work_dir}" >> INSTALLED_FILES
 
 cat INSTALLED_FILES | sort | uniq > INSTALLED_FILES_CLEAN
