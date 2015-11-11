@@ -120,7 +120,6 @@ class OpenStackBackend(ServiceBackend):
 
         try:
             self.push_link(service_project_link)
-            # XXX: Does not work due to a bug: NC-828
             self.push_security_groups(service_project_link, is_initial=is_initial)
             self.pull_quotas(service_project_link)
             self.pull_floating_ips(service_project_link)
