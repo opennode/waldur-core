@@ -106,7 +106,7 @@ class ResourceEventLogger(EventLogger):
 
 class ServiceSettingsEventLogger(EventLogger):
     service_settings = models.ServiceSettings
-    message = six.text_type
+    error_message = six.text_type
 
     class Meta:
         event_types = ('service_settings_sync_failed',
@@ -115,7 +115,7 @@ class ServiceSettingsEventLogger(EventLogger):
 
 class ServiceProjectLinkEventLogger(EventLogger):
     service_project_link = models.ServiceProjectLink
-    message = six.text_type
+    error_message = six.text_type
 
     class Meta:
         event_types = ('service_project_link_creation_failed',
