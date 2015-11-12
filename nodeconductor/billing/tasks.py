@@ -100,7 +100,7 @@ def update_today_usage_of_resource(resource_str):
     with transaction.atomic():
         resource = next(Resource.from_string(resource_str))
         backend = CostTrackingRegister.get_resource_backend(resource)
-        used_items = backend.get_used_items()
+        used_items = backend.get_used_items(resource)
 
         numerical = ['storage', 'users']  # XXX: use consistent method for usage calculation
         content_type = ContentType.objects.get_for_model(resource)
