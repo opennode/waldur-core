@@ -349,7 +349,7 @@ def save_error_message(func):
     @functools.wraps(func)
     def wrapped(*args, **kwargs):
         try:
-            return func(args, **kwargs)
+            return func(*args, **kwargs)
         except Exception as exception:
             message = six.text_type(exception)
             transition_entity = kwargs['transition_entity']
