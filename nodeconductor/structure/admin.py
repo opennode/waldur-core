@@ -95,9 +95,54 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     update_projected_estimate.short_description = "Update projected cost estimate"
 
 
-class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+class ProjectAdminForm(ModelForm):
+    admins = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
+                                      widget=FilteredSelectMultiple(verbose_name='Admins', is_stacked=False))
+    managers = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
+                                        widget=FilteredSelectMultiple(verbose_name='Managers', is_stacked=False))
 
-    fields = ('name', 'description', 'customer')
+    def __init__(self, *args, **kwargs):
+        super(ProjectAdminForm, self).__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            project_users = self.instance.get_users()
+            self.admins = project_users.filter(groups__projectrole__role_type=0).distinct()
+            self.managers = project_users.filter(groups__projectrole__role_type=1).distinct()
+            self.fields['admins'].initial = self.admins
+            self.fields['managers'].initial = self.managers
+
+    def save(self, commit=True):
+        project = super(ProjectAdminForm, self).save(commit=False)
+
+        if commit:
+            project.save()
+
+        new_admins = self.cleaned_data['admins']
+        added_admins = new_admins.exclude(pk__in=self.admins)
+        removed_admins = self.admins.exclude(pk__in=new_admins)
+        for user in added_admins:
+            project.add_user(user, role_type=0)
+
+        for user in set(removed_admins):
+            project.remove_user(user, role_type=0)
+
+        new_managers = self.cleaned_data['managers']
+        added_managers = new_managers.exclude(pk__in=self.managers)
+        removed_managers = self.managers.exclude(pk__in=new_managers)
+        for user in added_managers:
+            project.add_user(user, role_type=1)
+
+        for user in set(removed_managers):
+            project.remove_user(user, role_type=1)
+
+        self.save_m2m()
+
+        return project
+
+
+class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+    form = ProjectAdminForm
+
+    fields = ('name', 'description', 'customer', 'admins', 'managers')
 
     list_display = ['name', 'uuid', 'customer', 'created']
     search_fields = ['name', 'uuid']
@@ -114,29 +159,8 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
     change_readonly_fields = ['customer']
 
 
-class RoleAdminForm(ModelForm):
-    users = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
-                                     widget=FilteredSelectMultiple(verbose_name='Users', is_stacked=False))
-
-    def __init__(self, *args, **kwargs):
-        super(RoleAdminForm, self).__init__(*args, **kwargs)
-
-        if self.instance and self.instance.pk:
-            self.fields['users'].initial = self.instance.permission_group.user_set.all()
-
-    def save(self, commit=False):
-        role = super(RoleAdminForm, self).save(commit=False)
-
-        if role.pk:
-            role.permission_group.user_set = self.cleaned_data['users']
-            self.save_m2m()
-
-        return role
-
-
 class ProjectRoleAdmin(admin.ModelAdmin):
-    form = RoleAdminForm
-    fields = ('project', 'role_type', 'users')
+    fields = ('project', 'role_type')
     readonly_fields = ['project', 'role_type']
     list_display = ['project', 'role_type']
     search_fields = ['project__name', 'project__customer__name']
@@ -150,8 +174,7 @@ class ProjectRoleAdmin(admin.ModelAdmin):
 
 
 class ProjectGroupRoleAdmin(admin.ModelAdmin):
-    form = RoleAdminForm
-    fields = ('project_group', 'role_type', 'users')
+    fields = ('project_group', 'role_type')
     readonly_fields = ['project_group', 'role_type']
     list_display = ['project_group', 'role_type']
     search_fields = ['project_group__name', 'project_group__customer__name']
@@ -165,8 +188,7 @@ class ProjectGroupRoleAdmin(admin.ModelAdmin):
 
 
 class CustomerRoleAdmin(admin.ModelAdmin):
-    form = RoleAdminForm
-    fields = ('customer', 'role_type', 'users')
+    fields = ('customer', 'role_type')
     readonly_fields = ['customer', 'role_type']
     list_display = ['customer', 'role_type']
     search_fields = ['customer__name']
