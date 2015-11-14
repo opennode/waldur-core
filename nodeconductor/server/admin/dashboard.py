@@ -39,12 +39,6 @@ class CustomIndexDashboard(FluentIndexDashboard):
                 )
             ]
         ))
-        self.children.append(modules.ModelList(
-            title='Roles',
-            models=('nodeconductor.structure.models.CustomerRole',
-                    'nodeconductor.structure.models.ProjectRole',
-                    'nodeconductor.structure.models.ProjectGroupRole'),
-        ))
         self.children.append(AppIconList(_('Billing'), models=('nodeconductor.billing.models.Invoice',
                                                                'nodeconductor.cost_tracking.*')))
         self.children.append(AppIconList(_('Structure'), models=('nodeconductor.structure.*',)))
