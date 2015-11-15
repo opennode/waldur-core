@@ -1,9 +1,11 @@
 from django.contrib import admin, messages
+from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.db import models as django_models
+from django.forms import ModelForm, ModelMultipleChoiceField
 from django.http import HttpResponseRedirect
 from django.utils.translation import ungettext
 
-from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.core.models import SynchronizationStates, User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models
@@ -37,7 +39,43 @@ class ProtectedModelMixin(object):
             return response
 
 
+class CustomerAdminForm(ModelForm):
+    owners = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
+                                      widget=FilteredSelectMultiple(verbose_name='Owners', is_stacked=False))
+
+    def __init__(self, *args, **kwargs):
+        super(CustomerAdminForm, self).__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.owners = self.instance.roles.get(
+                role_type=models.CustomerRole.OWNER).permission_group.user_set.all()
+            self.fields['owners'].initial = self.owners
+        else:
+            self.owners = User.objects.none()
+
+    def save(self, commit=True):
+        customer = super(CustomerAdminForm, self).save(commit=False)
+
+        if not customer.pk:
+            customer.save()
+
+        new_owners = self.cleaned_data['owners']
+        added_owners = new_owners.exclude(pk__in=self.owners)
+        removed_owners = self.owners.exclude(pk__in=new_owners)
+        for user in added_owners:
+            customer.add_user(user, role_type=models.CustomerRole.OWNER)
+
+        for user in removed_owners:
+            customer.remove_user(user, role_type=models.CustomerRole.OWNER)
+
+        self.save_m2m()
+
+        return customer
+
+
 class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
+    form = CustomerAdminForm
+    fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
+              'billing_backend_id', 'balance', 'owners')
     readonly_fields = ['balance']
     actions = [
         'sync_with_backend',
@@ -93,9 +131,57 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     update_projected_estimate.short_description = "Update projected cost estimate"
 
 
-class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+class ProjectAdminForm(ModelForm):
+    admins = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
+                                      widget=FilteredSelectMultiple(verbose_name='Admins', is_stacked=False))
+    managers = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
+                                        widget=FilteredSelectMultiple(verbose_name='Managers', is_stacked=False))
 
-    fields = ('name', 'description', 'customer')
+    def __init__(self, *args, **kwargs):
+        super(ProjectAdminForm, self).__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.admins = self.instance.roles.get(
+                role_type=models.ProjectRole.ADMINISTRATOR).permission_group.user_set.all()
+            self.managers = self.instance.roles.get(
+                role_type=models.ProjectRole.MANAGER).permission_group.user_set.all()
+            self.fields['admins'].initial = self.admins
+            self.fields['managers'].initial = self.managers
+        else:
+            self.admins, self.managers = User.objects.none(), User.objects.none()
+
+    def save(self, commit=True):
+        project = super(ProjectAdminForm, self).save(commit=False)
+
+        if not project.pk:
+            project.save()
+
+        new_admins = self.cleaned_data['admins']
+        added_admins = new_admins.exclude(pk__in=self.admins)
+        removed_admins = self.admins.exclude(pk__in=new_admins)
+        for user in added_admins:
+            project.add_user(user, role_type=models.ProjectRole.ADMINISTRATOR)
+
+        for user in removed_admins:
+            project.remove_user(user, role_type=models.ProjectRole.ADMINISTRATOR)
+
+        new_managers = self.cleaned_data['managers']
+        added_managers = new_managers.exclude(pk__in=self.managers)
+        removed_managers = self.managers.exclude(pk__in=new_managers)
+        for user in added_managers:
+            project.add_user(user, role_type=models.ProjectRole.MANAGER)
+
+        for user in removed_managers:
+            project.remove_user(user, role_type=models.ProjectRole.MANAGER)
+
+        self.save_m2m()
+
+        return project
+
+
+class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+    form = ProjectAdminForm
+
+    fields = ('name', 'description', 'customer', 'admins', 'managers')
 
     list_display = ['name', 'uuid', 'customer', 'created']
     search_fields = ['name', 'uuid']
@@ -103,9 +189,42 @@ class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
     inlines = [QuotaInline]
 
 
-class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+class ProjectGroupAdminForm(ModelForm):
+    managers = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
+                                        widget=FilteredSelectMultiple(verbose_name='Managers', is_stacked=False))
 
-    fields = ('name', 'description', 'customer')
+    def __init__(self, *args, **kwargs):
+        super(ProjectGroupAdminForm, self).__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.managers = self.instance.roles.get(
+                role_type=models.ProjectGroupRole.MANAGER).permission_group.user_set.all()
+            self.fields['managers'].initial = self.managers
+        else:
+            self.managers = User.objects.none()
+
+    def save(self, commit=True):
+        group = super(ProjectGroupAdminForm, self).save(commit=False)
+
+        if not group.pk:
+            group.save()
+
+        new_managers = self.cleaned_data['managers']
+        added_managers = new_managers.exclude(pk__in=self.managers)
+        removed_managers = self.managers.exclude(pk__in=new_managers)
+        for user in added_managers:
+            group.add_user(user, role_type=models.ProjectGroupRole.MANAGER)
+
+        for user in removed_managers:
+            group.remove_user(user, role_type=models.ProjectGroupRole.MANAGER)
+
+        self.save_m2m()
+
+        return group
+
+
+class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+    form = ProjectGroupAdminForm
+    fields = ('name', 'description', 'customer', 'managers')
 
     list_display = ['name', 'uuid', 'customer', 'created']
     search_fields = ['name', 'uuid']
