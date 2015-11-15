@@ -8,7 +8,7 @@ from rest_framework.utils.urls import remove_query_param, replace_query_param
 
 class LinkHeaderPagination(pagination.PageNumberPagination):
     page_size_query_param = 'page_size'
-    max_page_size = 100
+    max_page_size = 300
 
     def get_paginated_response(self, data):
         link_candidates = OrderedDict((
