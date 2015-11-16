@@ -578,6 +578,9 @@ class Service(core_models.SerializableAbstractMixin,
         """ This name will be used by generic relationships to membership model for URL creation """
         return cls._meta.app_label
 
+    def get_log_fields(self):
+        return ('uuid', 'name', 'customer')
+
     def _get_log_context(self, entity_name):
         context = super(Service, self)._get_log_context(entity_name)
         context['service_type'] = SupportedServices.get_name_for_model(self)
