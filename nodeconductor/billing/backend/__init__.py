@@ -53,7 +53,11 @@ class BillingBackend(object):
                 self.api_url = config.get('api_url', ':unknown:')
 
     def __getattr__(self, name):
-        return getattr(self.api, name)
+        try:
+            return getattr(self.api, name)
+        except AttributeError:
+            raise BillingBackendError(
+                "Method '%s' is not implemented for class '%s'" % (name, self.api.__class__.__name__))
 
     def __repr__(self):
         return 'Billing backend %s' % self.api_url

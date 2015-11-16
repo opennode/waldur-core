@@ -4,7 +4,7 @@ from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 
 from nodeconductor.billing import models
-from nodeconductor.billing.backend import BillingBackend
+from nodeconductor.billing.backend import BillingBackend, BillingBackendError
 from nodeconductor.billing.models import PaidResource
 from nodeconductor.billing.tasks import update_today_usage_of_resource
 
@@ -30,10 +30,16 @@ class InvoiceAdmin(admin.ModelAdmin):
                         "Can't post usage for %s: %s" % (resource, e),
                         level=messages.ERROR)
 
-        backend = BillingBackend()
-        backend.api.test.move_days(31)
+        try:
+            backend = BillingBackend()
+            backend.api.test.move_days(31)
+        except BillingBackendError:
+            self.message_user(
+                request, "Unsupported operation for billing backend %s" % backend, level=messages.ERROR)
+        else:
+            self.message_user(
+                request, "KillBill invoices generated. Now please choose customers to sync.")
 
-        self.message_user(request, "KillBill invoices generated. Now please choose customers to sync.")
         return redirect(reverse('admin:structure_customer_changelist'))
 
 
