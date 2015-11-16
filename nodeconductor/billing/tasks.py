@@ -67,8 +67,11 @@ def sync_billing_customers(customer_uuids=None):
 def sync_billing_customer(customer_uuid):
     customer = Customer.objects.get(uuid=customer_uuid)
     backend = customer.get_billing_backend()
-    backend.sync_customer()
-    backend.sync_invoices()
+    try:
+        backend.sync_customer()
+        backend.sync_invoices()
+    except BillingBackendError as e:
+        logger.error("Can't sync billing customer with %s: %s", backend, e)
 
 
 @shared_task(name='nodeconductor.billing.update_today_usage')
