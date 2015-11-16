@@ -102,6 +102,11 @@ def update_today_usage_of_resource(resource_str):
         backend = CostTrackingRegister.get_resource_backend(resource)
         used_items = backend.get_used_items(resource)
 
+        if not resource.billing_backend_id:
+            logger.warning(
+                "Can't update usage for resource %s which is not subscribed to backend", resource_str)
+            return
+
         numerical = ['storage', 'users']  # XXX: use consistent method for usage calculation
         content_type = ContentType.objects.get_for_model(resource)
 
