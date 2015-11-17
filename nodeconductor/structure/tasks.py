@@ -4,7 +4,6 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from celery import shared_task
 
@@ -233,8 +232,12 @@ def sync_service_project_link_failed(service_project_link_str):
 
 @shared_task
 def recover_erred_service(service_project_link_str, is_iaas=False):
-    spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
-    spl = spl_model.objects.get(pk=spl_pk)
+    try:
+        spl = next(models.ServiceProjectLink.from_string(service_project_link_str))
+    except StopIteration:
+        logger.warning('Missing service project link %s.', service_project_link_str)
+        return
+
     settings = spl.cloud if is_iaas else spl.service.settings
 
     try:
@@ -273,7 +276,7 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
         return True
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except ObjectDoesNotExist:
+    except StopIteration:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
@@ -326,7 +329,7 @@ def remove_ssh_public_key(key_data, service_project_link_str):
     public_key = deserialize_ssh_key(key_data)
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except ObjectDoesNotExist:
+    except StopIteration:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
@@ -369,7 +372,7 @@ def add_user(user_uuid, service_project_link_str):
         return True
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except ObjectDoesNotExist:
+    except StopIteration:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
@@ -405,7 +408,7 @@ def remove_user(user_data, service_project_link_str):
     user = deserialize_user(user_data)
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except ObjectDoesNotExist:
+    except StopIteration:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
