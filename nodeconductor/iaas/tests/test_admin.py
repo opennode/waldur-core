@@ -35,7 +35,7 @@ class BaseAdminTestCase(TestCase):
 @mock.patch('nodeconductor.iaas.admin.send_task')
 class RecoverCloudProjectMembershipTest(BaseAdminTestCase):
 
-    def test_when_recover_action_applied_task_is_sent(self, mock_task):
+    def test_erred_cpm_is_passed_to_backend_task(self, mock_task):
         erred_cpm = factories.CloudProjectMembershipFactory(
             state=SynchronizationStates.ERRED)
 
@@ -43,11 +43,11 @@ class RecoverCloudProjectMembershipTest(BaseAdminTestCase):
         self.assertContains(response, 'One cloud project membership scheduled for recovery')
         mock_task('structure', 'recover_erred_services').assert_called_with([erred_cpm.to_string()])
 
-    def test_synced_cpm_skipped(self, mock_task):
-        online_cpm = factories.CloudProjectMembershipFactory(
+    def test_synced_cpm_is_skipped(self, mock_task):
+        synced_cpm = factories.CloudProjectMembershipFactory(
             state=SynchronizationStates.IN_SYNC)
 
-        response = self.recover_cpm([online_cpm])
+        response = self.recover_cpm([synced_cpm])
         self.assertFalse(mock_task.called)
 
     def recover_cpm(self, items):
