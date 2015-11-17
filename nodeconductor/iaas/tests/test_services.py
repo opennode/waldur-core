@@ -1,4 +1,6 @@
 from decimal import Decimal
+from datetime import date
+
 from django.core.urlresolvers import reverse
 from rest_framework import test, status
 
@@ -167,16 +169,22 @@ class ServiceEventsTest(test.APISimpleTestCase):
         self.user = structure_factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=self.user)
         self.instance = factories.InstanceFactory()
-        self.sla_history = factories.InstanceSlaHistoryFactory(instance=self.instance, period='2015-5')
+        today = date.today()
+        self.sla_history = factories.InstanceSlaHistoryFactory(instance=self.instance,
+                                                               period='%s-%s' % (today.year, today.month))
 
     def test_service_without_events_returns_empty_list(self):
-        response = self.client.get(self._get_service_events_url(self.instance), data={'period': '2015-5'})
+        today = date.today()
+        response = self.client.get(self._get_service_events_url(self.instance),
+                                   data={'period': '%s-%s' % (today.year, today.month)})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [])
 
     def test_service_with_events_returns_events_list(self):
+        today = date.today()
         event = factories.InstanceSlaHistoryEventsFactory(instance=self.sla_history)
-        response = self.client.get(self._get_service_events_url(self.instance), data={'period': '2015-5'})
+        response = self.client.get(self._get_service_events_url(self.instance),
+                                   data={'period': '%s-%s' % (today.year, today.month)})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertItemsEqual([{'timestamp': event.timestamp, 'state': event.state}], response.data)
 
