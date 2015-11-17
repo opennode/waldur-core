@@ -233,7 +233,7 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
 
 class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     readonly_fields = ('error_message',)
-    list_display = ('name', 'customer', 'type', 'shared', 'state')
+    list_display = ('name', 'customer', 'type', 'shared', 'state', 'error_message')
     list_filter = ('type', 'state', 'shared')
     change_readonly_fields = ('shared', 'customer')
     actions = ['sync']

@@ -90,8 +90,8 @@ class ApplicationTypeAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug')
     prepopulated_fields = {'slug': ('name',)}
 
-
-admin.site.register(models.PriceListItem, PriceListItemAdmin)
+# TODO: disabled to reduce confusion. Enable once we start using it.
+# admin.site.register(models.PriceListItem, PriceListItemAdmin)
 admin.site.register(models.DefaultPriceListItem, DefaultPriceListItemAdmin)
 admin.site.register(models.PriceEstimate)
 admin.site.register(models.ApplicationType, ApplicationTypeAdmin)
