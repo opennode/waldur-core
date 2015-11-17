@@ -7,7 +7,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 from django.core import validators
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone
@@ -300,7 +300,10 @@ class SerializableAbstractMixin(object):
             objects = [objects]
         for obj in objects:
             model, pk = cls.parse_model_string(obj)
-            yield model._default_manager.get(pk=pk)
+            try:
+                yield model._default_manager.get(pk=pk)
+            except ObjectDoesNotExist:
+                continue
 
 
 class DescendantMixin(object):
