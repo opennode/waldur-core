@@ -835,7 +835,7 @@ class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
             year, month = map(int, period.split('-'))
         else:
             year = int(period)
-            month = 1
+            month = 12
         last_day = calendar.monthrange(year, month)[1]
         return super(ResourceViewSet, self).get_queryset().filter(created__lte=datetime.date(year, month, last_day))
 
