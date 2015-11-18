@@ -129,7 +129,6 @@ class SshSyncEventLogger(EventLogger):
 
     class Meta:
         event_types = ('ssh_key_push_succeeded',
-                       'ssh_key_push_failed',
                        'ssh_key_remove_succeeded',
                        'ssh_key_remove_failed')
 

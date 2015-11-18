@@ -312,15 +312,6 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
             public_key.uuid, service_project_link_str,
             exc_info=1)
 
-        event_logger.ssh_sync.warning(
-            'Failed to push SSH key {ssh_key_name} to {service_name}.',
-            event_type='ssh_key_push_failed',
-            event_context={
-                'service_project_link': service_project_link,
-                'ssh_key': public_key
-            }
-        )
-
     return True
 
 
