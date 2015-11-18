@@ -4,6 +4,7 @@ from django.utils.translation import ungettext, gettext
 from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.core.tasks import send_task
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 from nodeconductor.iaas import models
 from nodeconductor.iaas import tasks
@@ -33,7 +34,7 @@ class CloudAdmin(admin.ModelAdmin):
     list_display = ('name', 'customer', 'state')
     ordering = ('name', 'customer')
 
-    actions = ['sync_services', 'recover_erred_services']
+    actions = ['sync_services']
 
     def sync_services(self, request, queryset):
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
@@ -54,30 +55,6 @@ class CloudAdmin(admin.ModelAdmin):
         self.message_user(request, message)
 
     sync_services.short_description = "Update selected cloud accounts from backend"
-
-    def recover_erred_services(self, request, queryset):
-        # TODO: Extract to a service
-
-        queryset = queryset.filter(state=SynchronizationStates.ERRED)
-
-        tasks_scheduled = 0
-
-        for service in queryset.iterator():
-            tasks.recover_erred_service.delay(service.uuid.hex)
-            tasks_scheduled += 1
-
-        message = ungettext(
-            'One cloud account scheduled for recovery',
-            '%(tasks_scheduled)d cloud accounts scheduled for recovery',
-            tasks_scheduled
-        )
-        message = message % {
-            'tasks_scheduled': tasks_scheduled,
-        }
-
-        self.message_user(request, message)
-
-    recover_erred_services.short_description = "Recover selected cloud accounts"
 
 
 # noinspection PyMethodMayBeStatic
@@ -124,15 +101,10 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     pull_cloud_memberships.short_description = "Update selected cloud project memberships from backend"
 
     def recover_erred_cloud_memberships(self, request, queryset):
-        # TODO: Extract to a service
-
         queryset = queryset.filter(state=SynchronizationStates.ERRED)
-
-        tasks_scheduled = 0
-
-        for membership in queryset.iterator():
-            tasks.recover_erred_cloud_membership.delay(membership.pk)
-            tasks_scheduled += 1
+        tasks_scheduled = queryset.count()
+        if tasks_scheduled:
+            send_task('structure', 'recover_erred_services')([spl.to_string() for spl in queryset])
 
         message = ungettext(
             'One cloud project membership scheduled for recovery',
