@@ -51,8 +51,6 @@ INSTALLED_APPS = (
     'nodeconductor.support',
     'nodeconductor.ldapsync',
 
-    'nodeconductor.testdata',
-
     'rest_framework',
     'rest_framework.authtoken',
 
