@@ -18,9 +18,6 @@ EVENT_FEATURES = {
     'ssh': [
         'ssh_key_creation_succeeded',
         'ssh_key_deletion_succeeded',
-        'ssh_key_push_succeeded',
-        'ssh_key_remove_succeeded',
-        'ssh_key_remove_failed',
     ],
     'projects': [
         'project_creation_succeeded',

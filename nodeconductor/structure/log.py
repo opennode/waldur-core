@@ -123,16 +123,6 @@ class ServiceProjectLinkEventLogger(EventLogger):
                        'service_project_link_recovered')
 
 
-class SshSyncEventLogger(EventLogger):
-    ssh_key = SshPublicKey
-    service_project_link = models.ServiceProjectLink
-
-    class Meta:
-        event_types = ('ssh_key_push_succeeded',
-                       'ssh_key_remove_succeeded',
-                       'ssh_key_remove_failed')
-
-
 event_logger.register('customer_role', CustomerRoleEventLogger)
 event_logger.register('project_role', ProjectRoleEventLogger)
 event_logger.register('project_group_role', ProjectGroupRoleEventLogger)
@@ -145,4 +135,3 @@ event_logger.register('balance', BalanceEventLogger)
 event_logger.register('resource', ResourceEventLogger)
 event_logger.register('service_settings', ServiceSettingsEventLogger)
 event_logger.register('service_project_link', ServiceProjectLinkEventLogger)
-event_logger.register('ssh_sync', SshSyncEventLogger)
