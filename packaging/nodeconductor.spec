@@ -42,17 +42,14 @@ Requires: python-iptools >= 0.6.1
 Requires: python-jira = 0.47
 Requires: python-jsonfield = 1.0.0
 Requires: python-keystoneclient = 1:0.11.1
-Requires: python-lxml >= 3.2.0
 Requires: python-neutronclient = 2.3.9
 Requires: python-novaclient = 1:2.20.0
-Requires: python-paypal-rest-sdk >= 1.10.0
 Requires: python-pillow >= 2.0.0
 Requires: python-redis = 2.10.3
 Requires: python-requests = 2.6.0
 Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 >= 1.10.1
-Requires: python-xhtml2pdf >= 0.0.6
 Requires: python-zabbix >= 0.7.2
 Requires: PyYAML
 
