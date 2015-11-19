@@ -3,6 +3,7 @@ from django.contrib import admin, messages
 from django.utils.translation import ungettext, gettext
 from django.utils.translation import ugettext_lazy as _
 
+from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
 from nodeconductor.iaas import models
@@ -239,6 +240,13 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
         (_('Billing'), {'fields': ('billing_backend_id',)}),
     )
 
+    def get_actions(self, request):
+        actions = super(InstanceAdmin, self).get_actions(request)
+        if not NodeConductorExtension.is_installed('nodeconductor_killbill'):
+            if 'subscribe' in actions:
+                del actions['subscribe']
+        return actions
+
     def get_project_name(self, obj):
         return obj.cloud_project_membership.project.name
 
@@ -269,14 +277,18 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
     pull_installation_state.short_description = "Pull Installation state"
 
     def subscribe(self, request, queryset):
+        from nodeconductor_killbill.backend import KillBillBackend, KillBillError
+
         erred_instances = []
         subscribed_instances = []
         for instance in queryset:
-            is_subscribed, _ = instance.order.subscribe()
-            if is_subscribed:
-                subscribed_instances.append(instance)
-            else:
+            try:
+                backend = KillBillBackend(instance.customer)
+                backend.subscribe(instance)
+            except KillBillError:
                 erred_instances.append(instance)
+            else:
+                subscribed_instances.append(instance)
 
         if subscribed_instances:
             subscribed_instances_count = len(subscribed_instances)
@@ -387,7 +399,7 @@ class InstanceSlaHistoryAdmin(admin.ModelAdmin):
     inlines = (
         InstanceSlaHistoryEventsInline,
     )
-    list_display = ('instance', 'period',  'value')
+    list_display = ('instance', 'period', 'value')
     list_filter = ('instance', 'period')
 
 

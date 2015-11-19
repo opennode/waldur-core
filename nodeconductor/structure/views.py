@@ -3,21 +3,15 @@ from __future__ import unicode_literals
 import time
 import logging
 import functools
-import os
-import StringIO
 
-from collections import defaultdict, OrderedDict
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from django import http
 from django.conf import settings as django_settings
 from django.contrib import auth
-from django.db import connection, transaction, IntegrityError
-from django.db.models import Q, Sum
-from django.template.loader import render_to_string
+from django.db import transaction, IntegrityError
+from django.db.models import Q
 from django.utils import timezone
 from django_fsm import TransitionNotAllowed
-from xhtml2pdf import pisa
 
 from rest_framework import filters as rf_filters
 from rest_framework import mixins
@@ -72,101 +66,9 @@ class CustomerViewSet(viewsets.ModelViewSet):
         if not self.request.user.is_staff:
             customer.add_user(self.request.user, models.CustomerRole.OWNER)
 
-    # XXX: This detail route should be moved to billing application.
-    @list_route()
-    def annual_report(self, request):
-        from nodeconductor.billing.models import Invoice
-
-        group_by = request.query_params.get('group_by', 'customer')
-        if group_by not in ('customer', 'month'):
-            return Response(
-                {'Detail': 'group_by parameter can be only `month` or `customer`'},
-                status=status.HTTP_400_BAD_REQUEST)
-
-        truncate_date = connection.ops.date_trunc_sql('month', 'date')
-        invoices = Invoice.objects.all()
-        invoices_values = (
-            invoices
-            .extra({'month': truncate_date})
-            .values('month', 'customer__name')
-            .annotate(Sum('amount'))
-        )
-
-        formatted_data = defaultdict(list)
-        if group_by == 'customer':
-            for invoice in invoices_values:
-                month = invoice['month']
-                if isinstance(month, basestring):
-                    month = datetime.strptime(invoice['month'], '%Y-%m-%d')
-                formatted_data[invoice['customer__name']].append((month, invoice['amount__sum']))
-            formatted_data.default_factory = None
-            global_data = {}
-            for customer_name, month_data in formatted_data.items():
-                formatted_data[customer_name] = sorted(month_data, key=lambda x: x[0], reverse=True)
-
-                year_data = defaultdict(lambda: 0)
-                for month, value in month_data:
-                    year_data[month.year] += value
-                year_data.default_factory = None
-                global_data[customer_name] = sorted(year_data.items(), key=lambda x: x[0], reverse=True)
-
-            global_partial_sums = [sum([el[1] for el in v]) for v in formatted_data.values()]
-        else:
-            for invoice in invoices_values:
-                month = invoice['month']
-                if isinstance(month, basestring):
-                    month = datetime.strptime(invoice['month'], '%Y-%m-%d')
-                formatted_data[month].append((invoice['customer__name'], invoice['amount__sum']))
-            formatted_data.default_factory = None
-
-            global_data = defaultdict(lambda: defaultdict(lambda: 0))
-            for month, customer_data in formatted_data.items():
-                for customer_name, value in customer_data:
-                    global_data[month.year][customer_name] += value
-            for value in global_data.values():
-                value.default_factory = None
-            global_data.default_factory = None
-            global_data = OrderedDict(sorted(global_data.items(), key=lambda x: x[0], reverse=True))
-            global_partial_sums = [sum([el[1] for el in v.items()]) for v in global_data.values()]
-
-        formatted_data = OrderedDict(sorted(formatted_data.items(), key=lambda x: x[0], reverse=True))
-        global_data = OrderedDict(sorted(global_data.items(), key=lambda x: x[0], reverse=True))
-        partial_sums = [sum([el[1] for el in v]) for v in formatted_data.values()]
-        total_sum = sum(partial_sums)
-
-        info = django_settings.NODECONDUCTOR.get('BILLING_INVOICE', {})
-        logo = info.get('logo', None)
-        if logo and not logo.startswith('/'):
-            logo = os.path.join(django_settings.BASE_DIR, logo)
-
-        context = {
-            'formatted_data': formatted_data,
-            'global_data': global_data,
-            'group_by': group_by,
-            'partial_sums': iter(partial_sums),
-            'global_partial_sums': iter(global_partial_sums),
-            'total_sum': total_sum,
-            'currency': django_settings.NODECONDUCTOR.get('BILLING').get('currency', ''),
-            'logo': logo,
-        }
-
-        result = StringIO.StringIO()
-        pisa.pisaDocument(
-            StringIO.StringIO(render_to_string('billing/annual_report.html', context)),
-            result
-        )
-
-        response = http.HttpResponse(result.getvalue(), content_type='application/pdf')
-
-        if request.query_params.get('download'):
-            download_name = 'cost_report_by_%s.pdf' % group_by
-            response['Content-Disposition'] = 'attachment; filename="%s"' % download_name
-
-        return response
-
     @detail_route()
     def balance_history(self, request, uuid=None):
-        default_start = timezone.now() - timedelta(days=30) # one month ago
+        default_start = timezone.now() - timedelta(days=30)  # one month ago
         timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(data={
             'start': request.query_params.get('from', datetime_to_timestamp(default_start)),
             'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
@@ -568,7 +470,6 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
             raise PermissionDenied('You do not have permission to perform this action.')
 
         affected_project.remove_user(affected_user, role)
-
 
 
 class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,

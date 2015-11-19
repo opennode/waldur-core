@@ -3,7 +3,6 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
 
-from nodeconductor.billing.models import PaidResource
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
 from nodeconductor.quotas.models import QuotaModelMixin
@@ -146,7 +145,10 @@ class FloatingIP(core_models.UuidMixin):
     tracker = FieldTracker()
 
 
-class Instance(structure_models.VirtualMachineMixin, structure_models.Resource, PaidResource):
+class Instance(structure_models.Resource,
+               structure_models.PaidResource,
+               structure_models.VirtualMachineMixin):
+
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
     service_project_link = models.ForeignKey(

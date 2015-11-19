@@ -1,10 +1,11 @@
 from django.conf.urls import patterns, url
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 from django.utils.translation import ungettext
 
+from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.tasks import send_task
 from nodeconductor.cost_tracking import models, CostTrackingRegister
 from nodeconductor.structure import SupportedServices
@@ -55,8 +56,12 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         return my_urls + super(DefaultPriceListItemAdmin, self).get_urls()
 
     def sync(self, request):
-        send_task('billing', 'sync_pricelist')()
-        self.message_user(request, "Price lists scheduled for sync")
+        if NodeConductorExtension.is_installed('nodeconductor_killbill'):
+            send_task('killbill', 'sync_pricelist')()
+            self.message_user(request, "Price lists scheduled for sync")
+        else:
+            self.message_user(request, "Unknown billing backend. Can't sync", level=messages.ERROR)
+
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
     def init_from_registered_applications(self, request):
