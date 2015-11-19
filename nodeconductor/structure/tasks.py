@@ -296,30 +296,16 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
     backend = service_project_link.get_backend()
     try:
         backend.add_ssh_key(public_key, service_project_link)
-        event_logger.ssh_sync.info(
-            'SSH key {ssh_key_name} has been pushed to {service_name}.',
-            event_type='ssh_key_push_succeeded',
-            event_context={
-                'service_project_link': service_project_link,
-                'ssh_key': public_key
-            }
-        )
+        logger.info(
+            'SSH key %s has been pushed to service project link %s.',
+            public_key.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
     except (ServiceBackendError, CloudBackendError):
         logger.warning(
-            'Failed to push SSH key %s to service project link %s',
+            'Failed to push SSH key %s to service project link %s.',
             public_key.uuid, service_project_link_str,
             exc_info=1)
-
-        event_logger.ssh_sync.warning(
-            'Failed to push SSH key {ssh_key_name} to {service_name}.',
-            event_type='ssh_key_push_failed',
-            event_context={
-                'service_project_link': service_project_link,
-                'ssh_key': public_key
-            }
-        )
 
     return True
 
@@ -336,30 +322,16 @@ def remove_ssh_public_key(key_data, service_project_link_str):
     try:
         backend = service_project_link.get_backend()
         backend.remove_ssh_key(public_key, service_project_link)
-        event_logger.ssh_sync.info(
-            'SSH key {ssh_key_name} has been removed from {service_name}.',
-            event_type='ssh_key_remove_succeeded',
-            event_context={
-                'service_project_link': service_project_link,
-                'ssh_key': public_key
-            }
-        )
+        logger.info(
+            'SSH key %s has been removed from service project link %s.',
+            public_key.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
     except (ServiceBackendError, CloudBackendError):
         logger.warning(
-            'Failed to remove SSH key %s from service project link %s',
+            'Failed to remove SSH key %s from service project link %s.',
             public_key.uuid, service_project_link_str,
             exc_info=1)
-
-        event_logger.ssh_sync.warning(
-            'Failed to delete SSH key {ssh_key_name} from {service_name}.',
-            event_type='ssh_key_remove_failed',
-            event_context={
-                'service_project_link': service_project_link,
-                'ssh_key': public_key
-            }
-        )
 
 
 @shared_task(name='nodeconductor.structure.add_user', max_retries=120, default_retry_delay=30)
@@ -392,6 +364,9 @@ def add_user(user_uuid, service_project_link_str):
     backend = service_project_link.get_backend()
     try:
         backend.add_user(user, service_project_link)
+        logger.info(
+            'User %s has been added to service project link %s.',
+            user.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
     except (ServiceBackendError, CloudBackendError):
@@ -415,5 +390,8 @@ def remove_user(user_data, service_project_link_str):
     try:
         backend = service_project_link.get_backend()
         backend.remove_user(user, service_project_link)
+        logger.info(
+            'User %s has been removed from service project link %s.',
+            user.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
