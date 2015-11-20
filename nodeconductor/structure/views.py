@@ -908,12 +908,12 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
         return {}
 
     @detail_route()
-    def imported_resources(self, request, uuid=None):
+    def managed_resources(self, request, uuid=None):
         service = self.get_object()
         backend = self.get_backend(service)
 
         try:
-            resources = backend.get_imported_resources()
+            resources = backend.get_managed_resources()
         except ServiceBackendNotImplemented:
             resources = []
 

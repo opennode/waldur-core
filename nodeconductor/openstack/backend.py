@@ -330,7 +330,7 @@ class OpenStackBackend(ServiceBackend):
             if instance.id not in cur_instances and
             self._old_backend._get_instance_state(instance) != models.Instance.States.ERRED]
 
-    def get_imported_resources(self):
+    def get_managed_resources(self):
         try:
             ids = [instance.id for instance in self.nova_client.servers.list()]
             return models.Instance.objects.filter(backend_id__in=ids)

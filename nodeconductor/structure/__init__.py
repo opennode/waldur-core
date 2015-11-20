@@ -420,7 +420,7 @@ class ServiceBackend(object):
     def get_resources_for_import(self):
         raise ServiceBackendNotImplemented
 
-    def get_imported_resources(self):
+    def get_managed_resources(self):
         raise ServiceBackendNotImplemented
 
     def get_monthly_cost_estimate(self, resource):
