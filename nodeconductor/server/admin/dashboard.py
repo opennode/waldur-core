@@ -2,6 +2,8 @@ from django.utils.translation import ugettext_lazy as _
 from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
 from fluent_dashboard.modules import AppIconList
 
+from nodeconductor.core import NodeConductorExtension
+
 
 class CustomIndexDashboard(FluentIndexDashboard):
     """
@@ -39,8 +41,14 @@ class CustomIndexDashboard(FluentIndexDashboard):
                 )
             ]
         ))
-        self.children.append(AppIconList(_('Billing'), models=('nodeconductor.billing.models.Invoice',
-                                                               'nodeconductor.cost_tracking.*')))
+
+        billing_models = ['nodeconductor.cost_tracking.*']
+        if NodeConductorExtension.is_installed('nodeconductor_killbill'):
+            billing_models.append('nodeconductor_killbill.models.Invoice')
+        if NodeConductorExtension.is_installed('nodeconductor_paypal'):
+            billing_models.append('nodeconductor_paypal.models.Payment')
+
+        self.children.append(AppIconList(_('Billing'), models=billing_models))
         self.children.append(AppIconList(_('Structure'), models=('nodeconductor.structure.*',)))
         self.children.append(AppIconList(_('Backup'), models=('nodeconductor.backup.*',)))
 

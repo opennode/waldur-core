@@ -13,7 +13,6 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.utils import request_api
 from nodeconductor.cost_tracking import models as cost_tracking_models
-from nodeconductor.billing.models import PaidResource
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.template.models import TemplateService
 from nodeconductor.template import TemplateProvisionError
@@ -319,7 +318,9 @@ class IaasTemplateService(TemplateService):
                 raise TemplateProvisionError(response.data)
 
 
-class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMixin, PaidResource):
+class Instance(structure_models.Resource,
+               structure_models.PaidResource,
+               structure_models.BaseVirtualMachineMixin):
     """
     A generalization of a single virtual machine.
 

@@ -8,7 +8,6 @@ import os
 import warnings
 
 from datetime import timedelta
-from celery.schedules import crontab
 
 from nodeconductor.core import NodeConductorExtension
 from nodeconductor.server.admin.settings import *
@@ -44,7 +43,6 @@ INSTALLED_APPS = (
     'nodeconductor.quotas',
     'nodeconductor.structure',
     'nodeconductor.cost_tracking',
-    'nodeconductor.billing',
     'nodeconductor.openstack',
     # 'nodeconductor.oracle',
     'nodeconductor.iaas',
@@ -103,8 +101,6 @@ ANONYMOUS_USER_ID = None
 
 TEMPLATE_DIRS = (
     os.path.join(BASE_DIR, 'nodeconductor', 'templates'),
-    os.path.join(BASE_DIR, 'nodeconductor', 'billing', 'templates'),
-    os.path.join(BASE_DIR, 'nodeconductor', 'landing', 'templates'),
 )
 
 TEMPLATE_CONTEXT_PROCESSORS = ()
@@ -165,12 +161,6 @@ CELERYBEAT_SCHEDULE = {
         'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
         'schedule': timedelta(minutes=10),
         'args': ('yearly',),
-    },
-
-    'debit-customers': {
-        'task': 'nodeconductor.billing.debit_customers',
-        'schedule': crontab(hour=0, minute=30),
-        'args': (),
     },
 
     'sync-services': {
@@ -244,12 +234,6 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
-    'update-today-usage': {
-        'task': 'nodeconductor.biling.update_today_usage',
-        'schedule': crontab(minute=10),
-        'args': (),
-    },
-
     'update-openstack-service-project-links-quotas': {
         'task': 'nodeconductor.structure.sync_service_project_links',
         'schedule': timedelta(minutes=30),
@@ -272,7 +256,6 @@ CELERY_TASK_THROTTLING = {
 
 NODECONDUCTOR = {
     'EXTENSIONS_AUTOREGISTER': True,
-    'ENABLE_ORDER_PROCESSING': False,
     'DEFAULT_SECURITY_GROUPS': (
         {
             'name': 'ssh',

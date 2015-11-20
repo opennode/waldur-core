@@ -247,7 +247,7 @@ class CustomerSerializer(core_serializers.DynamicSerializer,
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
-        # Balance should be modified by paypal in billing
+        # Balance should be modified by nodeconductor_paypal app
         read_only_fields = ('balance', )
 
     def _get_filtered_data(self, objects, serializer):
