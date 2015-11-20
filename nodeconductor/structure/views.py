@@ -808,6 +808,19 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     def get_import_context(self):
         return {}
 
+    @detail_route()
+    def managed_resources(self, request, uuid=None):
+        service = self.get_object()
+        backend = self.get_backend(service)
+
+        try:
+            resources = backend.get_managed_resources()
+        except ServiceBackendNotImplemented:
+            resources = []
+
+        serializer = serializers.BasicResourceSerializer(resources, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     @detail_route(methods=['get', 'post'])
     def link(self, request, uuid=None):
         if not self._can_import():
@@ -819,20 +832,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
         if self.request.method == 'GET':
             try:
-                # project_uuid can be supplied in order to get a list of resources
-                # available for import (link) based on project, depends on backend implementation
-                project_uuid = request.query_params.get('project_uuid')
-                if project_uuid:
-                    spl_class = SupportedServices.get_related_models(service)['service_project_link']
-                    try:
-                        spl = spl_class.objects.get(project__uuid=project_uuid, service=service)
-                    except:
-                        raise NotFound("Can't find project %s" % project_uuid)
-                    else:
-                        backend = spl.get_backend()
-                else:
-                    backend = service.get_backend()
-
+                backend = self.get_backend(service)
                 try:
                     resources = backend.get_resources_for_import(**self.get_import_context())
                 except ServiceBackendNotImplemented:
@@ -860,6 +860,21 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                 resource_uuid=resource.uuid.hex)
 
             return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def get_backend(self, service):
+        # project_uuid can be supplied in order to get a list of resources
+        # available for import (link) based on project, depends on backend implementation
+        project_uuid = self.request.query_params.get('project_uuid')
+        if project_uuid:
+            spl_class = SupportedServices.get_related_models(service)['service_project_link']
+            try:
+                spl = spl_class.objects.get(project__uuid=project_uuid, service=service)
+            except:
+                raise NotFound("Can't find project %s" % project_uuid)
+            else:
+                return spl.get_backend()
+        else:
+            return service.get_backend()
 
 
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,

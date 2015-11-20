@@ -992,6 +992,22 @@ class ResourceSerializerMetaclass(serializers.SerializerMetaclass):
         return super(ResourceSerializerMetaclass, cls).__new__(cls, name, bases, args)
 
 
+class BasicResourceSerializer(serializers.Serializer):
+    uuid = serializers.ReadOnlyField()
+    name = serializers.ReadOnlyField()
+
+    project_name = serializers.ReadOnlyField(source='service_project_link.project.name')
+    project_uuid = serializers.ReadOnlyField(source='service_project_link.project.uuid')
+
+    customer_uuid = serializers.ReadOnlyField(source='service_project_link.project.customer.uuid')
+    customer_name = serializers.ReadOnlyField(source='service_project_link.project.customer.name')
+
+    resource_type = serializers.SerializerMethodField()
+
+    def get_resource_type(self, resource):
+        return SupportedServices.get_name_for_model(resource)
+
+
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                              PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,

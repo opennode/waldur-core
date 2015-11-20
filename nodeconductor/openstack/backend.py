@@ -330,6 +330,13 @@ class OpenStackBackend(ServiceBackend):
             if instance.id not in cur_instances and
             self._old_backend._get_instance_state(instance) != models.Instance.States.ERRED]
 
+    def get_managed_resources(self):
+        try:
+            ids = [instance.id for instance in self.nova_client.servers.list()]
+            return models.Instance.objects.filter(backend_id__in=ids)
+        except nova_exceptions.ClientException:
+            return []
+
     def provision_instance(self, instance, backend_flavor_id=None, backend_image_id=None,
                            skip_external_ip_assignment=False):
         logger.info('About to provision instance %s', instance.uuid)
