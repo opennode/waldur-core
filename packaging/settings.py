@@ -18,7 +18,6 @@ config_defaults = {
     'global': {
         'db_backend': 'sqlite3',
         'debug': 'false',
-        'enable_order_processing': 'false',
         'media_root': os.path.join(work_dir, 'media'),
         'owner_can_manage_customer': 'false',
         'secret_key': '',
@@ -164,6 +163,11 @@ if config.has_option('celery', 'recover_erred_cloud_memberships_period'):
     warnings.warn(
         "celery.recover_erred_cloud_memberships_period property in settings.ini is "
         "no longer supported and will be ignored in favor of celery.recover_erred_services_period")
+
+if config.has_option('global', 'enable_order_processing'):
+    warnings.warn(
+        "global.enable_order_processing property in settings.ini is "
+        "no longer supported and will be ignored")
 
 if config.get('global', 'db_backend') == 'mysql':
     DATABASES['default'] = {
@@ -682,21 +686,6 @@ NODECONDUCTOR.update({
             'zimbra-templateid': config.get('zabbix', 'zimbra_template_id'),
         }
     },
-    'BILLING': {
-        'backend': 'nodeconductor.billing.backend.killbill.KillBillAPI',
-        'api_url': config.get('billing', 'api_url'),
-        'username': config.get('billing', 'username'),
-        'password': config.get('billing', 'password'),
-        'api_key': config.get('billing', 'api_key'),
-        'api_secret': config.get('billing', 'api_secret'),
-        'currency': config.get('billing', 'currency'),
-    },
-    'BILLING_INVOICE': {
-        'logo': config.get('billing', 'logo'),
-        'company': config.get('billing', 'company'),
-        'bank': config.get('billing', 'bank'),
-        'account': config.get('billing', 'account'),
-    },
     'ELASTICSEARCH': {
         'username': config.get('elasticsearch', 'username'),
         'password': config.get('elasticsearch', 'password'),
@@ -707,11 +696,27 @@ NODECONDUCTOR.update({
 
     'OWNER_CAN_MANAGE_CUSTOMER': config.getboolean('global', 'owner_can_manage_customer'),
 
-    'ENABLE_ORDER_PROCESSING': config.getboolean('global', 'enable_order_processing'),
-
     'SHOW_ALL_USERS': config.getboolean('global', 'show_all_users'),
 
 })
+
+NODECONDUCTOR_KILLBILL = {
+    'BACKEND': {
+        'api_url': config.get('billing', 'api_url'),
+        'username': config.get('billing', 'username'),
+        'password': config.get('billing', 'password'),
+        'api_key': config.get('billing', 'api_key'),
+        'api_secret': config.get('billing', 'api_secret'),
+        'currency': config.get('billing', 'currency'),
+    },
+    'INVOICE': {
+        'logo': config.get('billing', 'logo'),
+        'company': config.get('billing', 'company'),
+        'bank': config.get('billing', 'bank'),
+        'account': config.get('billing', 'account'),
+    },
+}
+
 
 # Sentry integration
 # See also: http://raven.readthedocs.org/en/latest/integrations/django.html#setup
