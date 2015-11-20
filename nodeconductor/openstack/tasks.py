@@ -2,7 +2,7 @@ import logging
 
 from celery import shared_task, chain
 
-from nodeconductor.core.tasks import transition, throttle
+from nodeconductor.core.tasks import save_error_message, transition, throttle
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.openstack.backend import OpenStackBackendError
 from nodeconductor.openstack.models import OpenStackServiceProjectLink, Instance, SecurityGroup
@@ -153,6 +153,7 @@ def assign_floating_ip(instance_uuid, floating_ip_uuid):
 
 @shared_task(is_heavy_task=True)
 @transition(Instance, 'begin_provisioning')
+@save_error_message
 def provision_instance(instance_uuid, transition_entity=None, **kwargs):
     instance = transition_entity
     with throttle(key=instance.service_project_link.service.settings.backend_url):
@@ -162,6 +163,7 @@ def provision_instance(instance_uuid, transition_entity=None, **kwargs):
 
 @shared_task
 @transition(Instance, 'begin_starting')
+@save_error_message
 def start_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
@@ -170,6 +172,7 @@ def start_instance(instance_uuid, transition_entity=None):
 
 @shared_task
 @transition(Instance, 'begin_stopping')
+@save_error_message
 def stop_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
@@ -178,6 +181,7 @@ def stop_instance(instance_uuid, transition_entity=None):
 
 @shared_task
 @transition(Instance, 'begin_restarting')
+@save_error_message
 def restart_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
@@ -186,6 +190,7 @@ def restart_instance(instance_uuid, transition_entity=None):
 
 @shared_task
 @transition(Instance, 'begin_deleting')
+@save_error_message
 def destroy_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
