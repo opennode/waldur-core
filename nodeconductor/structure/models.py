@@ -718,6 +718,7 @@ class PaidResource(models.Model):
 class Resource(core_models.UuidMixin,
                core_models.DescribableMixin,
                core_models.NameMixin,
+               core_models.ErrorMessageMixin,
                core_models.SerializableAbstractMixin,
                core_models.DescendantMixin,
                LoggableMixin,

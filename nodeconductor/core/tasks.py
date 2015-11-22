@@ -344,7 +344,7 @@ def transition(model_class, processing_state, error_state='set_erred'):
 def save_error_message(func):
     """
     This function will work only if transition_entity is defined in kwargs and
-    transition_entity is instance of SynchronizableMixin
+    transition_entity is instance of ErrorMessageMixin
     """
     @functools.wraps(func)
     def wrapped(*args, **kwargs):

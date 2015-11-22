@@ -64,6 +64,16 @@ class UuidMixin(models.Model):
     uuid = UUIDField(auto=True, unique=True)
 
 
+class ErrorMessageMixin(models.Model):
+    """
+    Mixin to add a standardized "error_message" field.
+    """
+    class Meta(object):
+        abstract = True
+
+    error_message = models.TextField(blank=True)
+
+
 class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
     username = models.CharField(
         _('username'), max_length=30, unique=True,
@@ -230,7 +240,7 @@ class SynchronizationStates(object):
     UNSTABLE_STATES = set(dict(CHOICES).keys()) - STABLE_STATES
 
 
-class SynchronizableMixin(models.Model):
+class SynchronizableMixin(ErrorMessageMixin):
     class Meta(object):
         abstract = True
 
@@ -238,7 +248,6 @@ class SynchronizableMixin(models.Model):
         default=SynchronizationStates.CREATION_SCHEDULED,
         choices=SynchronizationStates.CHOICES,
     )
-    error_message = models.TextField(blank=True)
 
     @transition(field=state, source=SynchronizationStates.CREATION_SCHEDULED, target=SynchronizationStates.CREATING)
     def begin_creating(self):
