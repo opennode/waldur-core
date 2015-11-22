@@ -35,14 +35,14 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
+from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
-from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented
-from nodeconductor.billing.backend import BillingBackendError
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas.backend import CloudBackendError, CloudBackendInternalError
 from nodeconductor.iaas.backend import dummy as dummy_clients
 from nodeconductor.iaas import models
+from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented
 
 logger = logging.getLogger(__name__)
 
@@ -335,14 +335,15 @@ class OpenStackBackend(OpenStackClient):
         raise ServiceBackendNotImplemented
 
     def get_monthly_cost_estimate(self, instance):
-        nc_settings = getattr(settings, 'NODECONDUCTOR', {})
-        if not nc_settings.get('ENABLE_ORDER_PROCESSING'):
+        if not NodeConductorExtension.is_installed('nodeconductor_killbill'):
             raise ServiceBackendNotImplemented
 
+        from nodeconductor_killbill.backend import KillBillBackend, KillBillError
+
         try:
-            backend = instance.order.backend
+            backend = KillBillBackend(instance.customer)
             invoice = backend.get_invoice_estimate(instance)
-        except BillingBackendError as e:
+        except KillBillError as e:
             logger.error("Failed to get cost estimate for instance %s: %s", instance, e)
             six.reraise(ServiceBackendError, e)
 

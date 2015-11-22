@@ -488,7 +488,7 @@ def log_service_sync_failed(sender, instance, name, source, target, **kwargs):
             event_type='service_settings_sync_failed',
             event_context={
                 'service_settings': settings,
-                'message': message
+                'error_message': message
             }
         )
 
@@ -528,7 +528,7 @@ def log_service_project_link_sync_failed(sender, instance, name, source, target,
             event_type='service_project_link_creation_failed',
             event_context={
                 'service_project_link': service_project_link,
-                'message': message
+                'error_message': message
             }
         )
     elif source == SynchronizationStates.SYNCING:
@@ -542,7 +542,7 @@ def log_service_project_link_sync_failed(sender, instance, name, source, target,
             event_type='service_project_link_sync_failed',
             event_context={
                 'service_project_link': service_project_link,
-                'message': message
+                'error_message': message
             }
         )
 

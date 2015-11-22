@@ -36,7 +36,9 @@ def update_projected_estimate(customer_uuid=None, resource_uuid=None):
         for instance in queryset.iterator():
             try:
                 cost_tracking_backend = CostTrackingRegister.get_resource_backend(instance)
-                monthly_cost = cost_tracking_backend.get_monthly_cost_estimate(instance)
+                if not cost_tracking_backend:
+                    continue
+                monthly_cost = float(cost_tracking_backend.get_monthly_cost_estimate(instance))
             except ServiceBackendNotImplemented as e:
                 continue
             except ServiceBackendError as e:

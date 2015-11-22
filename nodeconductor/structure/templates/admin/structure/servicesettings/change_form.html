@@ -72,13 +72,14 @@
                 <li>"<code>min_cores</code>" - Minimum amount of cores for CRMs OpenStack instance (default: 2)</li>
                 <li>"<code>min_ram</code>" - Minimum amount of ram for CRMs OpenStack instance (default: 2048 MB)</li>
                 <li>"<code>system_size</code>" - Storage volume size CRMs OpenStack instance (default: 32768 MB)</li>
-                <li>"<code>data_size</code>" - Data volume size of CRMs OpenStack instance (default: 65536 MB)</li>
+                <li>"<code>user_data</code>" - User data that will be passed to CRMs OpenStack instance on creation, word {password} will be replaced with auto-generated admin password (default: "#cloud-config:\nruncmd:\n - [bootstrap, -p, {password}])</li>
             </ul>
         </p>
         <h4>SaltStack</h4>
         <ul>
             <li>Backend url — URL for salt master API (required, e.g.: http://salt-master.example.com:8080)</li>
-            <li>Password — Secret key</li>
+            <li>Username</li>
+            <li>Password</li>
         </ul>
         <h4>Zabbix</h4>
         <ul>

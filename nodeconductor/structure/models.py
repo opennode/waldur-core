@@ -22,7 +22,6 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import models as quotas_models
 from nodeconductor.logging.log import LoggableMixin
-from nodeconductor.billing.backend import BillingBackend
 from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
@@ -95,9 +94,6 @@ class Customer(core_models.UuidMixin,
         'nc_service_count'
     ]
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_customer_count'
-
-    def get_billing_backend(self):
-        return BillingBackend(self)
 
     def get_log_fields(self):
         return ('uuid', 'name', 'abbreviation', 'contact_details')
@@ -578,6 +574,9 @@ class Service(core_models.SerializableAbstractMixin,
         """ This name will be used by generic relationships to membership model for URL creation """
         return cls._meta.app_label
 
+    def get_log_fields(self):
+        return ('uuid', 'name', 'customer')
+
     def _get_log_context(self, entity_name):
         context = super(Service, self)._get_log_context(entity_name)
         context['service_type'] = SupportedServices.get_name_for_model(self)
@@ -700,10 +699,26 @@ class VirtualMachineMixin(BaseVirtualMachineMixin):
         abstract = True
 
 
+class PaidResource(models.Model):
+    """ Extend Resource model with methods to track usage cost and handle orders """
+
+    billing_backend_id = models.CharField(max_length=255, blank=True, help_text='ID of a resource in backend')
+    last_usage_update_time = models.DateTimeField(blank=True, null=True)
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in Resource.get_all_models() if issubclass(model, cls)]
+
+    class Meta(object):
+        abstract = True
+
+
 @python_2_unicode_compatible
 class Resource(core_models.UuidMixin,
                core_models.DescribableMixin,
                core_models.NameMixin,
+               core_models.ErrorMessageMixin,
                core_models.SerializableAbstractMixin,
                core_models.DescendantMixin,
                LoggableMixin,

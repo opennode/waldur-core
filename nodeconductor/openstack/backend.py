@@ -120,7 +120,6 @@ class OpenStackBackend(ServiceBackend):
 
         try:
             self.push_link(service_project_link)
-            # XXX: Does not work due to a bug: NC-828
             self.push_security_groups(service_project_link, is_initial=is_initial)
             self.pull_quotas(service_project_link)
             self.pull_floating_ips(service_project_link)
@@ -330,6 +329,13 @@ class OpenStackBackend(ServiceBackend):
         } for instance in instances
             if instance.id not in cur_instances and
             self._old_backend._get_instance_state(instance) != models.Instance.States.ERRED]
+
+    def get_managed_resources(self):
+        try:
+            ids = [instance.id for instance in self.nova_client.servers.list()]
+            return models.Instance.objects.filter(backend_id__in=ids)
+        except nova_exceptions.ClientException:
+            return []
 
     def provision_instance(self, instance, backend_flavor_id=None, backend_image_id=None,
                            skip_external_ip_assignment=False):

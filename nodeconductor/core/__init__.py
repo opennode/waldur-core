@@ -38,3 +38,10 @@ class NodeConductorExtension(object):
             extension_module = nodeconductor_extension.load()
             if inspect.isclass(extension_module) and issubclass(extension_module, cls):
                 yield extension_module
+
+    @classmethod
+    def is_installed(cls, extension):
+        for ext in cls.get_extensions():
+            if extension == ext.django_app():
+                return True
+        return False

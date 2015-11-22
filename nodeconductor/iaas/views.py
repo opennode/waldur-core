@@ -4,6 +4,7 @@ import functools
 import datetime
 import logging
 import time
+import calendar
 
 from django.db import models as django_models
 from django.db import transaction, IntegrityError
@@ -834,8 +835,9 @@ class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
             year, month = map(int, period.split('-'))
         else:
             year = int(period)
-            month = 1
-        return super(ResourceViewSet, self).get_queryset().filter(created__gte=datetime.date(year, month, 1))
+            month = 12
+        last_day = calendar.monthrange(year, month)[1]
+        return super(ResourceViewSet, self).get_queryset().filter(created__lte=datetime.date(year, month, last_day))
 
     def _get_period(self):
         period = self.request.query_params.get('period')

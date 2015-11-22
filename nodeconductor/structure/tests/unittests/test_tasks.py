@@ -101,7 +101,7 @@ class TestServiceSynchronizationTask(TestCase):
             event_type='service_settings_sync_failed',
             event_context={
                 'service_settings': self.settings,
-                'message': self.exception.message
+                'error_message': self.exception.message
             }
         )
 
@@ -119,7 +119,7 @@ class TestServiceSynchronizationTask(TestCase):
             event_type='service_project_link_sync_failed',
             event_context={
                 'service_project_link': self.link,
-                'message': self.exception.message
+                'error_message': self.exception.message
             }
         )
 
