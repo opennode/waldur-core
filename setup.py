@@ -35,7 +35,7 @@ install_requires = [
     'iptools>=0.6.1',
     'jira>=0.47',
     'jsonfield==1.0.0',
-    'nodeconductor_templates>=0.1.0',
+    'nodeconductor-templates>=0.1.0',
     'Pillow>=2.0.0,<3.0.0',
     'python-ceilometerclient==1.0.12',
     'python-cinderclient==1.1.1',
