@@ -39,7 +39,6 @@ INSTALLED_APPS = (
     'nodeconductor.logging',
     'nodeconductor.core',
     'nodeconductor.backup',
-    'nodeconductor.template',
     'nodeconductor.monitoring',
     'nodeconductor.quotas',
     'nodeconductor.structure',

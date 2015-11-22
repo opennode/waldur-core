@@ -10,13 +10,9 @@ from django.utils.encoding import python_2_unicode_compatible
 from iptools.ipv4 import validate_cidr
 
 from nodeconductor.core import models as core_models
-from nodeconductor.core.fields import CronScheduleField
-from nodeconductor.core.utils import request_api
 from nodeconductor.cost_tracking import models as cost_tracking_models
 from nodeconductor.billing.models import PaidResource
 from nodeconductor.logging.log import LoggableMixin
-from nodeconductor.template.models import TemplateService
-from nodeconductor.template import TemplateProvisionError
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.structure import models as structure_models
 
@@ -294,29 +290,6 @@ class FloatingIP(core_models.UuidMixin):
     status = models.CharField(max_length=30)
     backend_id = models.CharField(max_length=255)
     backend_network_id = models.CharField(max_length=255, editable=False)
-
-
-class IaasTemplateService(TemplateService):
-    project = models.ForeignKey(structure_models.Project, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
-    flavor = models.ForeignKey(Flavor, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
-    template = models.ForeignKey(Template, blank=True, null=True, on_delete=models.SET_NULL, related_name='+')
-    backup_schedule = CronScheduleField(max_length=15, null=True)
-
-    def provision(self, options, request=None):
-        response = request_api(request, 'instance-list', method='POST', data=options)
-        if not response.success:
-            raise TemplateProvisionError(response.data)
-
-        if 'backup_schedule' in options:
-            options = dict(
-                schedule=options['backup_schedule'],
-                backup_source=response.data['url'],
-                retention_time=1,
-                maximal_number_of_backups=2,
-            )
-            response = request_api(request, 'backupschedule-list', method='POST', data=options)
-            if not response.success:
-                raise TemplateProvisionError(response.data)
 
 
 class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMixin, PaidResource):

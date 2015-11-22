@@ -21,7 +21,6 @@ from nodeconductor.oracle import urls as oracle_urls
 from nodeconductor.quotas import urls as quotas_urls
 from nodeconductor.structure import urls as structure_urls
 from nodeconductor.support import urls as support_urls
-from nodeconductor.template import urls as template_urls
 
 
 admin.autodiscover()
@@ -38,7 +37,6 @@ openstack_urls.register_in(router)
 quotas_urls.register_in(router)
 structure_urls.register_in(router)
 support_urls.register_in(router)
-template_urls.register_in(router)
 
 
 urlpatterns = patterns(

@@ -165,7 +165,6 @@ class Migration(migrations.Migration):
     dependencies = [
         ('contenttypes', '0001_initial'),
         ('structure', '0015_drop_service_polymorphic'),
-        ('template', '0004_upgrate_polymorphic_package'),
         ('cost_tracking', '__latest__'),
     ]
 

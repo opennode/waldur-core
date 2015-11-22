@@ -2,12 +2,9 @@ from __future__ import unicode_literals
 
 from django.test import TestCase, RequestFactory
 from rest_framework.serializers import ValidationError
-from rest_framework.test import APIRequestFactory
 
 from nodeconductor.iaas import serializers
 from nodeconductor.iaas.tests import factories
-from nodeconductor.template.tests import factories as template_factories
-from nodeconductor.template import serializers as template_serializers
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -218,29 +215,3 @@ class ExternalNetworkSerializerTest(TestCase):
         }
         serializer = serializers.ExternalNetworkSerializer(data=data)
         self.assertFalse(serializer.is_valid())
-
-
-class IaasTemplateServiceTest(TestCase):
-    def setUp(self):
-        self.project = structure_factories.ProjectFactory()
-        self.template = template_factories.TemplateFactory()
-        self.iaas_template_service = factories.IaasTemplateServiceFactory(
-            base_template=self.template,
-            template=factories.TemplateFactory(),
-            flavor=factories.FlavorFactory(),
-            project=self.project)
-
-    def test_create_template_service(self):
-        iaas_template_service = self.template.services.first()
-        self.assertIsNotNone(iaas_template_service)
-        self.assertIsInstance(iaas_template_service, factories.IaasTemplateServiceFactory._meta.model)
-        self.assertEqual(iaas_template_service.project, self.project)
-
-    def test_template_serializer_returns_proper_service_type(self):
-        factory = APIRequestFactory()
-        request = factory.get('/')
-        context = {'request': request}
-
-        serializer = template_serializers.TemplateSerializer(instance=self.template, context=context)
-        service_type = serializer.data['services'][0].get('service_type')
-        self.assertEqual(service_type, 'IaaS')
