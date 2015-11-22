@@ -97,20 +97,11 @@ Therefore configuration might look like this:
                 'groupid': '8',
                 'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
             }
-        }
+        },
         'OPENSTACK_QUOTAS_INSTANCE_RATIOS': {
             'volumes': 4,
             'snapshots': 20,
         },
-        'BILLING': {
-            'backend': 'nodeconductor.billing.backend.killbill.KillBillAPI',
-            'api_url': 'http://killbill.example.com/1.0/kb/',
-            'username': 'admin',
-            'password': 'password',
-            'api_key': 'bob',
-            'api_secret': 'lazar',
-            'currency': 'USD',
-        }
     }
 
 **Available settings**

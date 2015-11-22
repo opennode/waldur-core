@@ -11,7 +11,6 @@ from iptools.ipv4 import validate_cidr
 
 from nodeconductor.core import models as core_models
 from nodeconductor.cost_tracking import models as cost_tracking_models
-from nodeconductor.billing.models import PaidResource
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.structure import models as structure_models
@@ -292,7 +291,9 @@ class FloatingIP(core_models.UuidMixin):
     backend_network_id = models.CharField(max_length=255, editable=False)
 
 
-class Instance(structure_models.Resource, structure_models.BaseVirtualMachineMixin, PaidResource):
+class Instance(structure_models.Resource,
+               structure_models.PaidResource,
+               structure_models.BaseVirtualMachineMixin):
     """
     A generalization of a single virtual machine.
 

@@ -4,7 +4,6 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from celery import shared_task
 
@@ -233,8 +232,12 @@ def sync_service_project_link_failed(service_project_link_str):
 
 @shared_task
 def recover_erred_service(service_project_link_str, is_iaas=False):
-    spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
-    spl = spl_model.objects.get(pk=spl_pk)
+    try:
+        spl = next(models.ServiceProjectLink.from_string(service_project_link_str))
+    except StopIteration:
+        logger.warning('Missing service project link %s.', service_project_link_str)
+        return
+
     settings = spl.cloud if is_iaas else spl.service.settings
 
     try:
@@ -273,7 +276,7 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
         return True
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except ObjectDoesNotExist:
+    except StopIteration:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
@@ -293,30 +296,16 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
     backend = service_project_link.get_backend()
     try:
         backend.add_ssh_key(public_key, service_project_link)
-        event_logger.ssh_sync.info(
-            'SSH key {ssh_key_name} has been pushed to {service_name}.',
-            event_type='ssh_key_push_succeeded',
-            event_context={
-                'service_project_link': service_project_link,
-                'ssh_key': public_key
-            }
-        )
+        logger.info(
+            'SSH key %s has been pushed to service project link %s.',
+            public_key.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
     except (ServiceBackendError, CloudBackendError):
         logger.warning(
-            'Failed to push SSH key %s to service project link %s',
+            'Failed to push SSH key %s to service project link %s.',
             public_key.uuid, service_project_link_str,
             exc_info=1)
-
-        event_logger.ssh_sync.warning(
-            'Failed to push SSH key {ssh_key_name} to {service_name}.',
-            event_type='ssh_key_push_failed',
-            event_context={
-                'service_project_link': service_project_link,
-                'ssh_key': public_key
-            }
-        )
 
     return True
 
@@ -326,37 +315,23 @@ def remove_ssh_public_key(key_data, service_project_link_str):
     public_key = deserialize_ssh_key(key_data)
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except ObjectDoesNotExist:
+    except StopIteration:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
     try:
         backend = service_project_link.get_backend()
         backend.remove_ssh_key(public_key, service_project_link)
-        event_logger.ssh_sync.info(
-            'SSH key {ssh_key_name} has been removed from {service_name}.',
-            event_type='ssh_key_remove_succeeded',
-            event_context={
-                'service_project_link': service_project_link,
-                'ssh_key': public_key
-            }
-        )
+        logger.info(
+            'SSH key %s has been removed from service project link %s.',
+            public_key.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
     except (ServiceBackendError, CloudBackendError):
         logger.warning(
-            'Failed to remove SSH key %s from service project link %s',
+            'Failed to remove SSH key %s from service project link %s.',
             public_key.uuid, service_project_link_str,
             exc_info=1)
-
-        event_logger.ssh_sync.warning(
-            'Failed to delete SSH key {ssh_key_name} from {service_name}.',
-            event_type='ssh_key_remove_failed',
-            event_context={
-                'service_project_link': service_project_link,
-                'ssh_key': public_key
-            }
-        )
 
 
 @shared_task(name='nodeconductor.structure.add_user', max_retries=120, default_retry_delay=30)
@@ -369,7 +344,7 @@ def add_user(user_uuid, service_project_link_str):
         return True
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except ObjectDoesNotExist:
+    except StopIteration:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
@@ -389,6 +364,9 @@ def add_user(user_uuid, service_project_link_str):
     backend = service_project_link.get_backend()
     try:
         backend.add_user(user, service_project_link)
+        logger.info(
+            'User %s has been added to service project link %s.',
+            user.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
     except (ServiceBackendError, CloudBackendError):
@@ -405,12 +383,15 @@ def remove_user(user_data, service_project_link_str):
     user = deserialize_user(user_data)
     try:
         service_project_link = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except ObjectDoesNotExist:
+    except StopIteration:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
 
     try:
         backend = service_project_link.get_backend()
         backend.remove_user(user, service_project_link)
+        logger.info(
+            'User %s has been removed from service project link %s.',
+            user.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass

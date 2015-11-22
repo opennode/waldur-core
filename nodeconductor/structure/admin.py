@@ -77,27 +77,8 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
               'billing_backend_id', 'balance', 'owners')
     readonly_fields = ['balance']
-    actions = [
-        'sync_with_backend',
-        'update_projected_estimate',
-    ]
+    actions = ['update_projected_estimate']
     list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created']
-
-    def sync_with_backend(self, request, queryset):
-        customer_uuids = list(queryset.values_list('uuid', flat=True))
-        send_task('billing', 'sync_billing_customers')(customer_uuids)
-
-        tasks_scheduled = queryset.count()
-        message = ungettext(
-            'One customer scheduled for sync with billing backend',
-            '%(tasks_scheduled)d customers scheduled for sync with billing backend',
-            tasks_scheduled
-        )
-        message = message % {'tasks_scheduled': tasks_scheduled}
-
-        self.message_user(request, message)
-
-    sync_with_backend.short_description = "Sync selected customers with billing backend"
 
     def update_projected_estimate(self, request, queryset):
         customers_without_backend_id = []
@@ -233,7 +214,7 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
 
 class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     readonly_fields = ('error_message',)
-    list_display = ('name', 'customer', 'type', 'shared', 'state')
+    list_display = ('name', 'customer', 'type', 'shared', 'state', 'error_message')
     list_filter = ('type', 'state', 'shared')
     change_readonly_fields = ('shared', 'customer')
     actions = ['sync']

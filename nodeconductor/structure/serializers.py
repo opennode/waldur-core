@@ -247,7 +247,7 @@ class CustomerSerializer(core_serializers.DynamicSerializer,
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
-        # Balance should be modified by paypal in billing
+        # Balance should be modified by nodeconductor_paypal app
         read_only_fields = ('balance', )
 
     def _get_filtered_data(self, objects, serializer):
@@ -992,6 +992,22 @@ class ResourceSerializerMetaclass(serializers.SerializerMetaclass):
         return super(ResourceSerializerMetaclass, cls).__new__(cls, name, bases, args)
 
 
+class BasicResourceSerializer(serializers.Serializer):
+    uuid = serializers.ReadOnlyField()
+    name = serializers.ReadOnlyField()
+
+    project_name = serializers.ReadOnlyField(source='service_project_link.project.name')
+    project_uuid = serializers.ReadOnlyField(source='service_project_link.project.uuid')
+
+    customer_uuid = serializers.ReadOnlyField(source='service_project_link.project.customer.uuid')
+    customer_name = serializers.ReadOnlyField(source='service_project_link.project.customer.name')
+
+    resource_type = serializers.SerializerMethodField()
+
+    def get_resource_type(self, resource):
+        return SupportedServices.get_name_for_model(resource)
+
+
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                              PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
@@ -1045,7 +1061,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'service', 'service_name', 'service_uuid',
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-            'project_groups',
+            'project_groups', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link',
         )
         protected_fields = ('service', 'service_project_link')
