@@ -7,14 +7,14 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('billing', '0003_invoice_status'),
+        ('iaas', '0052_add_error_message'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='invoice',
-            name='usage_pdf',
-            field=models.FileField(null=True, upload_to=b'invoices_usage', blank=True),
+            model_name='instance',
+            name='error_message',
+            field=models.TextField(blank=True),
             preserve_default=True,
         ),
     ]

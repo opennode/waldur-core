@@ -7,7 +7,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 from django.core import validators
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone
@@ -62,6 +62,16 @@ class UuidMixin(models.Model):
         abstract = True
 
     uuid = UUIDField(auto=True, unique=True)
+
+
+class ErrorMessageMixin(models.Model):
+    """
+    Mixin to add a standardized "error_message" field.
+    """
+    class Meta(object):
+        abstract = True
+
+    error_message = models.TextField(blank=True)
 
 
 class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
@@ -230,7 +240,7 @@ class SynchronizationStates(object):
     UNSTABLE_STATES = set(dict(CHOICES).keys()) - STABLE_STATES
 
 
-class SynchronizableMixin(models.Model):
+class SynchronizableMixin(ErrorMessageMixin):
     class Meta(object):
         abstract = True
 
@@ -238,7 +248,6 @@ class SynchronizableMixin(models.Model):
         default=SynchronizationStates.CREATION_SCHEDULED,
         choices=SynchronizationStates.CHOICES,
     )
-    error_message = models.TextField(blank=True)
 
     @transition(field=state, source=SynchronizationStates.CREATION_SCHEDULED, target=SynchronizationStates.CREATING)
     def begin_creating(self):
@@ -300,7 +309,10 @@ class SerializableAbstractMixin(object):
             objects = [objects]
         for obj in objects:
             model, pk = cls.parse_model_string(obj)
-            yield model._default_manager.get(pk=pk)
+            try:
+                yield model._default_manager.get(pk=pk)
+            except ObjectDoesNotExist:
+                continue
 
 
 class DescendantMixin(object):

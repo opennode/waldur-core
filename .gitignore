@@ -14,8 +14,6 @@ celerybeat-schedule
 /.sublime
 
 nodeconductor/server/settings.py
-nodeconductor_plus
-ncplus
 
 # Editor artifacts
 # vim

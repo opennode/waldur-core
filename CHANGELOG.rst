@@ -5,12 +5,18 @@ Release NEXT
 ------------
 - <none yet>.
 
+Release 0.80.0
+--------------
+- Exposed error_message field for each of the SynchronizableMixin-objects.
+- Added role manipulation capability to /admin.
+- Fixed filtering of the SLA view of IaaS resources.
+
 Release 0.79.0
 --------------
 - Refactored cost tracking to make it pluggable.
 - Refactor plugin system.
 - Add events for failing and recovering Link and Service instances.
-- Bugfixes
+- Bugfixes.
 
 Release 0.78.0
 --------------

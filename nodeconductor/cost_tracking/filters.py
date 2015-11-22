@@ -7,7 +7,7 @@ from rest_framework import filters
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.cost_tracking import models, serializers
-from nodeconductor.structure import models as structure_models
+from nodeconductor.structure import models as structure_models, SupportedServices
 
 
 class PriceEstimateFilter(django_filters.FilterSet):
@@ -78,13 +78,29 @@ class PriceListItemServiceFilterBackend(core_filters.GenericKeyFilterBackend):
         return 'service'
 
 
+class ResourceTypeFilter(django_filters.CharFilter):
+
+    def filter(self, qs, value):
+        if value:
+            resource_models = SupportedServices.get_resource_models()
+            try:
+                model = resource_models[value]
+                ct = ContentType.objects.get_for_model(model)
+                return super(ResourceTypeFilter, self).filter(qs, ct)
+            except (ContentType.DoesNotExist, KeyError):
+                return qs.none()
+        return qs
+
+
 class DefaultPriceListItemFilter(django_filters.FilterSet):
     resource_content_type = core_filters.ContentTypeFilter()
+    resource_type = ResourceTypeFilter(name='resource_content_type')
 
     class Meta:
         model = models.DefaultPriceListItem
         fields = [
             'key',
             'item_type',
-            'resource_content_type'
+            'resource_content_type',
+            'resource_type',
         ]

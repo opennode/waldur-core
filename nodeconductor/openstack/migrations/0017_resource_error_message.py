@@ -7,14 +7,14 @@ from django.db import models, migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('billing', '0002_pricelist'),
+        ('openstack', '0016_add_error_message'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='invoice',
-            name='status',
-            field=models.CharField(max_length=80, blank=True),
+            model_name='instance',
+            name='error_message',
+            field=models.TextField(blank=True),
             preserve_default=True,
         ),
     ]

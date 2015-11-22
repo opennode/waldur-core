@@ -106,7 +106,7 @@ class ResourceEventLogger(EventLogger):
 
 class ServiceSettingsEventLogger(EventLogger):
     service_settings = models.ServiceSettings
-    message = six.text_type
+    error_message = six.text_type
 
     class Meta:
         event_types = ('service_settings_sync_failed',
@@ -115,23 +115,12 @@ class ServiceSettingsEventLogger(EventLogger):
 
 class ServiceProjectLinkEventLogger(EventLogger):
     service_project_link = models.ServiceProjectLink
-    message = six.text_type
+    error_message = six.text_type
 
     class Meta:
         event_types = ('service_project_link_creation_failed',
                        'service_project_link_sync_failed',
                        'service_project_link_recovered')
-
-
-class SshSyncEventLogger(EventLogger):
-    ssh_key = SshPublicKey
-    service_project_link = models.ServiceProjectLink
-
-    class Meta:
-        event_types = ('ssh_key_push_succeeded',
-                       'ssh_key_push_failed',
-                       'ssh_key_remove_succeeded',
-                       'ssh_key_remove_failed')
 
 
 event_logger.register('customer_role', CustomerRoleEventLogger)
@@ -146,4 +135,3 @@ event_logger.register('balance', BalanceEventLogger)
 event_logger.register('resource', ResourceEventLogger)
 event_logger.register('service_settings', ServiceSettingsEventLogger)
 event_logger.register('service_project_link', ServiceProjectLinkEventLogger)
-event_logger.register('ssh_sync', SshSyncEventLogger)

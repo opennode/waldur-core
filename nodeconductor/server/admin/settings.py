@@ -26,12 +26,12 @@ ADMIN_TEMPLATE_LOADERS = (
 
 FLUENT_DASHBOARD_APP_ICONS = {
     'structure/customer': 'system-users.png',
-    'structure/servicesettings':  'preferences-other.png',
+    'structure/servicesettings': 'preferences-other.png',
     'structure/project': 'folder.png',
     'structure/projectgroup': 'folder-bookmark.png',
     'backup/backup': 'document-export-table.png',
     'backup/backupschedule': 'view-resource-calendar.png',
-    'billing/invoice': 'help-donate.png',
+    'nodeconductor_killbill/invoice': 'help-donate.png',
     'cost_tracking/pricelistitem': 'view-bank-account.png',
     'cost_tracking/priceestimate': 'feed-subscribe.png',
     'cost_tracking/defaultpricelistitem': 'view-calendar-list.png'

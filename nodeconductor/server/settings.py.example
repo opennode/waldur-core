@@ -199,32 +199,4 @@ NODECONDUCTOR['JIRA_SUPPORT'] = {
     'project': 'NST',
 }
 
-# Example of settings for billing using KillBill API.
-NODECONDUCTOR['BILLING'] = {
-    'backend': 'nodeconductor.billing.backend.killbill.KillBillAPI',
-    'api_url': 'http://killbill.example.com/1.0/kb/',
-    'username': 'admin',
-    'password': 'password',
-    'api_key': 'bob',
-    'api_secret': 'lazar',
-    'currency': 'USD',
-}
-NODECONDUCTOR['BILLING_INVOICE'] = {
-    'logo': 'logo.png',  # Full or relative path to logo for billing invoices
-    'company': 'OpenNode',
-    'bank': 'American Bank',
-    'account': '123456789',
-}
-
-"""
-NODECONDUCTOR['BILLING'] = {
-    'backend': 'nodeconductor.billing.backend.paypal.PaypalBackend',
-    'mode': 'sandbox',
-    'client_id': '',
-    'client_secret': '',
-    'currency_name': 'USD',
-    'return_url': 'http://example.com/payment/return'
-}
-"""
-
 DEFAULT_FROM_EMAIL='noreply@example.com'
