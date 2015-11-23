@@ -156,6 +156,9 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     services = NestedServiceProjectLinkSerializer(source='get_links', many=True, read_only=True)
 
+    app_count = serializers.SerializerMethodField()
+    vm_count = serializers.SerializerMethodField()
+
     class Meta(object):
         model = models.Project
         fields = (
@@ -168,6 +171,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'services',
             'resource_quota', 'resource_quota_usage',
             'created',
+            'app_count', 'vm_count'
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -198,6 +202,18 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'customer',
+
+    def get_app_count(self, project):
+        resources = models.Resource.get_all_models()
+        return sum(resource.objects.filter(project=project).count()
+                   for resource in resources
+                   if not issubclass(resource, models.VirtualMachineMixin))
+
+    def get_vm_count(self,  project):
+        resources = models.Resource.get_all_models()
+        return sum(resource.objects.filter(project=project).count()
+                   for resource in resources
+                   if issubclass(resource, models.VirtualMachineMixin))
 
     def update(self, instance, validated_data):
         if 'project_groups' in validated_data:
