@@ -25,10 +25,10 @@ class OpenStackConfig(AppConfig):
         from nodeconductor.openstack.cost_tracking import OpenStackCostTrackingBackend
         CostTrackingRegister.register(self.label, OpenStackCostTrackingBackend)
 
-        # templates
-        from nodeconductor_templates import TemplatesRegistry
-        from nodeconductor.openstack.templates import InstanceProvisionTemplateForm
-        TemplatesRegistry.register(InstanceProvisionTemplateForm)
+        # template
+        from nodeconductor.template import TemplateRegistry
+        from nodeconductor.openstack.template import InstanceProvisionTemplateForm
+        TemplateRegistry.register(InstanceProvisionTemplateForm)
 
         signals.post_save.connect(
             handlers.create_initial_security_groups,
