@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- <none yet>.
+- Rewrite template application.
 
 Release 0.80.0
 --------------
