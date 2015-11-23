@@ -1,51 +1,47 @@
-
 from django.contrib import admin
-from polymorphic.admin import (
-    PolymorphicParentModelAdmin, PolymorphicChildModelAdmin,
-    PolymorphicChildModelFilter,
-)
 
-from nodeconductor.template import get_template_services
-from nodeconductor.template.models import Template, TemplateService
+from nodeconductor.template import models, TemplateRegistry
 
 
-all_services = []
-admin_inlines = []
-for service in get_template_services():
-    class StandardAdminClass(PolymorphicChildModelAdmin):
-        base_model = TemplateService
+class BaseTemplateInline(admin.StackedInline):
+    model = models.Template
+    extra = 0
+    max_num = 1
 
-    class InlineAdminClass(admin.StackedInline):
-        readonly_fields = ['templateservice_ptr']
-        model = service
-        extra = 1
+    def get_formset(self, request, obj=None, **kwargs):
+        self.form.set_request(request)
+        return super(BaseTemplateInline, self).get_formset(request, obj, **kwargs)
 
-    if service._admin_form:
-        StandardAdminClass.form = service._admin_form
-        InlineAdminClass.form = service._admin_form
-
-    admin_inlines.append(InlineAdminClass)
-    all_services.append((service, StandardAdminClass))
+    def queryset(self, request):
+        qs = super(BaseTemplateInline, self).queryset(request)
+        return qs.filter(resource_content_type=self.form.get_resource_content_type())
 
 
-class TemplateAdmin(admin.ModelAdmin):
+class TemplateGroupAdmin(admin.ModelAdmin):
     list_display = ('name', 'uuid', 'is_active')
 
+    def get_inlines(self):
+        if not hasattr(self, '_inlines'):
+            self._inlines = []
+            for resource_model in TemplateRegistry.get_resource_models():
+                template_form = TemplateRegistry.get_resource_form(resource_model)
+
+                class TemplateInline(BaseTemplateInline):
+                    form = template_form
+                    verbose_name = "Template for %s %s provision" % (
+                        resource_model._meta.app_label, resource_model._meta.verbose_name)
+                    verbose_name_plural = "Templates for %s %s provision" % (
+                        resource_model._meta.app_label, resource_model._meta.verbose_name)
+
+                self._inlines.append(TemplateInline)
+        return self._inlines
+
     def add_view(self, *args, **kwargs):
-        self.inlines = tuple()
-        return super(TemplateAdmin, self).add_view(*args, **kwargs)
+        self.inlines = self.get_inlines()
+        return super(TemplateGroupAdmin, self).add_view(*args, **kwargs)
 
     def change_view(self, *args, **kwargs):
-        self.inlines = admin_inlines
-        return super(TemplateAdmin, self).change_view(*args, **kwargs)
+        self.inlines = self.get_inlines()
+        return super(TemplateGroupAdmin, self).change_view(*args, **kwargs)
 
-
-class TemplateServiceAdmin(PolymorphicParentModelAdmin):
-    list_display = ('name', 'base_template')
-    list_filter = (PolymorphicChildModelFilter,)
-    base_model = TemplateService
-    child_models = all_services
-
-
-# admin.site.register(Template, TemplateAdmin)
-# admin.site.register(TemplateService, TemplateServiceAdmin)
+admin.site.register(models.TemplateGroup, TemplateGroupAdmin)
